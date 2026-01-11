@@ -58,4 +58,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->middleware(EnsureStoreOwnership::class);
     Route::put('/stores/{store}/settings', [StoreSettingsController::class, 'update'])
         ->middleware(EnsureStoreOwnership::class);
+
+    // Exports
+    Route::get('/stores/{store}/exports', [ExportController::class, 'index'])
+        ->middleware(EnsureStoreOwnership::class);
+    Route::post('/stores/{store}/exports', [ExportController::class, 'store'])
+        ->middleware(EnsureStoreOwnership::class);
+    Route::get('/exports', [ExportController::class, 'all']);
+    Route::get('/exports/{export}/download', [ExportController::class, 'download']);
+    Route::post('/exports/{export}/retry', [ExportController::class, 'retry']);
 });
