@@ -24,7 +24,7 @@ A production-ready multi-tenant control panel for managing BTCPay Server stores 
 
 3. **Configure environment variables** in `.env`:
    - Database credentials
-   - BTCPay Server API configuration
+   - BTCPay Server API configuration (see BTCPay API Key Permissions below)
    - Session and Sanctum settings
 
 4. **Start Docker containers**:
@@ -84,7 +84,99 @@ Ensure the following environment variables are set in production:
 - `SESSION_SAME_SITE=lax`
 - `SANCTUM_STATEFUL_DOMAINS=panel.dvadsatjeden.org`
 
+## BTCPay API Key Permissions
+
+The server-level API key (`BTCPAY_API_KEY`) should have the following permissions:
+- **Store Management**: Create stores, read/store update (safe fields only)
+- **Invoice Management**: List and read invoices
+- **Webhook Access**: Receive webhook events (if webhooks are configured)
+
+The API key is stored server-side only and all store access is enforced at the application layer via the `stores` table mapping `user_id` to `btcpay_store_id`.
+
+## Store Creation Flow
+
+1. User completes 3-step wizard:
+   - Step 1: Store name, default currency, timezone
+   - Step 2: Choose wallet backend (Blink or Aqua via Boltz plugin)
+   - Step 3: Confirmation
+
+2. System creates store in BTCPay Server via Greenfield API
+
+3. Local store record created with UUID (never expose `btcpay_store_id` to frontend)
+
+4. Wallet onboarding checklist initialized based on `wallet_type`
+
+5. User redirected to "Next steps" page with checklist link
+
+## Wallet Onboarding Checklist
+
+After store creation, merchants complete a dynamic checklist based on their chosen wallet type:
+
+### Blink Checklist:
+1. Connect Blink wallet in BTCPay Store → Wallet settings
+2. Confirm Lightning payments enabled
+3. Test invoice payment (link to test invoice)
+4. Optional: Set payout/withdrawal policy in Blink
+
+### Aqua (Boltz) Checklist:
+1. Open store in BTCPay
+2. Enable Boltz plugin for the store
+3. Connect Aqua wallet via Boltz
+4. Verify swap routing works
+5. Test Lightning invoice payment
+
+The checklist is informational only and does not validate wallet state automatically. Checklist items can be marked as complete manually.
+
+## Export Formats
+
+The system provides two CSV export formats:
+
+### Standard CSV Format
+- Columns: invoiceId, createdTime, status, amount, currency, paidAmount, paymentMethod, buyerEmail, orderId, checkoutLink
+- Suitable for general invoice management
+
+### Accounting-Friendly CSV Format
+- Columns: invoice_id, issue_date, settlement_date, gross_amount, currency, payment_method, status, external_reference
+- Snake_case column names
+- Date formatting (YYYY-MM-DD)
+- No Lightning-specific internals
+
+Exports support filtering by date range and status. Large exports use pagination and streaming to handle datasets of any size safely.
+
+## LNURL-Auth Skeleton
+
+The application includes a skeleton implementation of LNURL-auth:
+
+- Challenge endpoint: `POST /api/lnurl-auth/challenge` (generates k1, returns lnurl-auth URL)
+- Verification endpoint: `POST /api/lnurl-auth/verify` (exists but verification logic is TODO)
+
+When `LNURL_AUTH_ENABLED=false`, the "Login with Lightning" button is hidden. When enabled, the button is shown but verification is not yet implemented.
+
+Classic email/password authentication always works regardless of LNURL-auth status.
+
+## Security Features
+
+- **Multi-tenant isolation**: Store access enforced via `stores` table mapping
+- **UUID-based routing**: Only local UUIDs exposed to frontend, never `btcpay_store_id`
+- **Audit logging**: Sensitive actions (store create/update, exports) are logged
+- **Rate limiting**: Auth endpoints rate limited
+- **Webhook verification**: Webhook signature verification when `BTCPAY_WEBHOOK_SECRET` is set
+- **CSRF protection**: Sanctum SPA cookie authentication with CSRF tokens
+- **Secure cookies**: HttpOnly, secure, SameSite=Lax
+
+## Testing
+
+Run tests:
+```bash
+docker-compose exec php php artisan test
+```
+
+Key test suites:
+- Authentication flows
+- Store creation (uses Http::fake() for BTCPay)
+- Authorization (users cannot access other users' stores)
+- Export jobs
+
 ## License
 
 MIT
-
