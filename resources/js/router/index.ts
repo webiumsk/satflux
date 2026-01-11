@@ -64,6 +64,12 @@ const router = createRouter({
             component: () => import('../pages/stores/Checklist.vue'),
             meta: { requiresAuth: true },
         },
+        {
+            path: '/stores/:id/settings',
+            name: 'stores-settings',
+            component: () => import('../pages/stores/Settings.vue'),
+            meta: { requiresAuth: true },
+        },
     ],
 });
 
