@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: d21panel_nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./public:/var/www/public
+      - ./storage:/var/www/storage
+    depends_on:
+      - php
+    networks:
+      - d21panel
+
+  php:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: d21panel_php
+    volumes:
+      - .:/var/www
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    working_dir: /var/www
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - d21panel
+    environment:
+      - PHP_OPCACHE_ENABLE=1
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: d21panel_postgres
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-d21panel}
+      POSTGRES_USER: ${DB_USERNAME:-d21panel}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-d21panel}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - d21panel
+
+  redis:
+    image: redis:7-alpine
+    container_name: d21panel_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - d21panel
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  d21panel:
+    driver: bridge
+
