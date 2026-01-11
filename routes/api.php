@@ -52,4 +52,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->middleware(EnsureStoreOwnership::class);
     Route::put('/stores/{store}/checklist/{itemKey}', [StoreChecklistController::class, 'update'])
         ->middleware(EnsureStoreOwnership::class);
+
+    // Store Settings
+    Route::get('/stores/{store}/settings', [StoreSettingsController::class, 'show'])
+        ->middleware(EnsureStoreOwnership::class);
+    Route::put('/stores/{store}/settings', [StoreSettingsController::class, 'update'])
+        ->middleware(EnsureStoreOwnership::class);
 });
