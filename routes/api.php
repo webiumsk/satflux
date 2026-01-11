@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\LnurlAuthController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\StoreChecklistController;
 use App\Http\Controllers\StoreController;
 use App\Http\Middleware\EnsureStoreOwnership;
 use Illuminate\Support\Facades\Route;
@@ -44,5 +45,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/stores', [StoreController::class, 'index']);
     Route::post('/stores', [StoreController::class, 'store']);
     Route::get('/stores/{store}', [StoreController::class, 'show'])
+        ->middleware(EnsureStoreOwnership::class);
+
+    // Store Checklist
+    Route::get('/stores/{store}/checklist', [StoreChecklistController::class, 'index'])
+        ->middleware(EnsureStoreOwnership::class);
+    Route::put('/stores/{store}/checklist/{itemKey}', [StoreChecklistController::class, 'update'])
         ->middleware(EnsureStoreOwnership::class);
 });

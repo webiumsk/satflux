@@ -58,6 +58,12 @@ const router = createRouter({
             component: () => import('../pages/stores/NextSteps.vue'),
             meta: { requiresAuth: true },
         },
+        {
+            path: '/stores/:id/checklist',
+            name: 'stores-checklist',
+            component: () => import('../pages/stores/Checklist.vue'),
+            meta: { requiresAuth: true },
+        },
     ],
 });
 
