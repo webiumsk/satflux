@@ -34,6 +34,30 @@ const router = createRouter({
             component: () => import('../pages/account/Profile.vue'),
             meta: { requiresAuth: true },
         },
+        {
+            path: '/stores',
+            name: 'stores',
+            component: () => import('../pages/stores/Index.vue'),
+            meta: { requiresAuth: true },
+        },
+        {
+            path: '/stores/create',
+            name: 'stores-create',
+            component: () => import('../pages/stores/Create.vue'),
+            meta: { requiresAuth: true },
+        },
+        {
+            path: '/stores/:id',
+            name: 'stores-show',
+            component: () => import('../pages/stores/Show.vue'),
+            meta: { requiresAuth: true },
+        },
+        {
+            path: '/stores/:id/next-steps',
+            name: 'stores-next-steps',
+            component: () => import('../pages/stores/NextSteps.vue'),
+            meta: { requiresAuth: true },
+        },
     ],
 });
 
