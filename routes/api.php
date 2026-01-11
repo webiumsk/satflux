@@ -16,6 +16,9 @@ Route::get('/health', function () {
     return response()->json(['status' => 'ok']);
 });
 
+// Webhooks (no auth required - verified via signature)
+Route::post('/webhooks/btcpay', [WebhookController::class, 'handle']);
+
 // Authentication routes (rate limited)
 Route::middleware(['throttle:auth'])->group(function () {
     Route::post('/auth/register', [RegisterController::class, 'register']);
@@ -43,7 +46,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Stores
     Route::get('/stores', [StoreController::class, 'index']);
-    Route::post('/stores', [StoreController::class, 'store']);
+    Route::post('/stores', [StoreController::class, 'store'])
+        ->middleware(AuditLog::class . ':store.created');
     Route::get('/stores/{store}', [StoreController::class, 'show'])
         ->middleware(EnsureStoreOwnership::class);
 
@@ -57,13 +61,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/stores/{store}/settings', [StoreSettingsController::class, 'show'])
         ->middleware(EnsureStoreOwnership::class);
     Route::put('/stores/{store}/settings', [StoreSettingsController::class, 'update'])
-        ->middleware(EnsureStoreOwnership::class);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':store.updated']);
 
     // Exports
     Route::get('/stores/{store}/exports', [ExportController::class, 'index'])
         ->middleware(EnsureStoreOwnership::class);
     Route::post('/stores/{store}/exports', [ExportController::class, 'store'])
-        ->middleware(EnsureStoreOwnership::class);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':export.created']);
     Route::get('/exports', [ExportController::class, 'all']);
     Route::get('/exports/{export}/download', [ExportController::class, 'download']);
     Route::post('/exports/{export}/retry', [ExportController::class, 'retry']);
