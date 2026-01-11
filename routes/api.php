@@ -1,5 +1,10 @@
 <?php
 
+use App\Http\Controllers\AccountController;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\LnurlAuthController;
+use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\Auth\RegisterController;
 use Illuminate\Support\Facades\Route;
 
 // Health check endpoint
@@ -7,3 +12,25 @@ Route::get('/health', function () {
     return response()->json(['status' => 'ok']);
 });
 
+// Authentication routes (rate limited)
+Route::middleware(['throttle:auth'])->group(function () {
+    Route::post('/auth/register', [RegisterController::class, 'register']);
+    Route::post('/auth/login', [LoginController::class, 'login']);
+    Route::post('/auth/logout', [LoginController::class, 'logout'])->middleware('auth:sanctum');
+    
+    // Password reset
+    Route::post('/auth/password/reset-link', [PasswordResetController::class, 'sendResetLink']);
+    Route::post('/auth/password/reset', [PasswordResetController::class, 'reset']);
+    
+    // LNURL-auth
+    Route::post('/lnurl-auth/challenge', [LnurlAuthController::class, 'challenge']);
+    Route::post('/lnurl-auth/verify', [LnurlAuthController::class, 'verify']);
+});
+
+// Authenticated routes
+Route::middleware(['auth:sanctum'])->group(function () {
+    // User/Account routes
+    Route::get('/user', [AccountController::class, 'user']);
+    Route::put('/user', [AccountController::class, 'updateProfile']);
+    Route::put('/user/password', [AccountController::class, 'updatePassword']);
+});
