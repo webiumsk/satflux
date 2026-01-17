@@ -1,12 +1,14 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import axios from 'axios';
 import api from '../services/api';
+import { useStoresStore } from './stores';
 
 export interface User {
     id: number;
-    name: string;
     email: string;
     email_verified_at?: string;
+    role?: string;
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -27,6 +29,9 @@ export const useAuthStore = defineStore('auth', () => {
     async function login(email: string, password: string, remember = false) {
         loading.value = true;
         try {
+            // Ensure CSRF cookie is set before login
+            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            
             const response = await api.post('/auth/login', {
                 email,
                 password,
@@ -39,11 +44,13 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    async function register(name: string, email: string, password: string, password_confirmation: string) {
+    async function register(email: string, password: string, password_confirmation: string) {
         loading.value = true;
         try {
+            // Ensure CSRF cookie is set before register
+            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            
             const response = await api.post('/auth/register', {
-                name,
                 email,
                 password,
                 password_confirmation,
@@ -60,6 +67,10 @@ export const useAuthStore = defineStore('auth', () => {
             await api.post('/auth/logout');
         } finally {
             user.value = null;
+            // Clear stores to prevent data leakage between sessions
+            const storesStore = useStoresStore();
+            storesStore.stores = [];
+            storesStore.currentStore = null;
         }
     }
 
@@ -73,4 +84,7 @@ export const useAuthStore = defineStore('auth', () => {
         logout,
     };
 });
+
+
+
 

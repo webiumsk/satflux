@@ -13,21 +13,48 @@ class BtcPayClient
 {
     protected PendingRequest $client;
     protected string $baseUrl;
+    protected string $apiKey;
     protected int $maxRetries = 3;
     protected int $initialBackoff = 1; // seconds
 
-    public function __construct()
+    public function __construct(?string $apiKey = null)
     {
         $this->baseUrl = rtrim(config('services.btcpay.base_url', env('BTCPAY_BASE_URL')), '/');
-        $apiKey = config('services.btcpay.api_key', env('BTCPAY_API_KEY'));
+        $this->apiKey = $apiKey ?? config('services.btcpay.api_key', env('BTCPAY_API_KEY'));
 
+        $this->initializeClient();
+    }
+
+    /**
+     * Initialize the HTTP client with current API key.
+     */
+    protected function initializeClient(): void
+    {
         $this->client = Http::baseUrl($this->baseUrl)
             ->withHeaders([
-                'Authorization' => "Bearer {$apiKey}",
+                'Authorization' => "Bearer {$this->apiKey}",
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
             ])
             ->timeout(30);
+    }
+
+    /**
+     * Get the current API key.
+     */
+    public function getApiKey(): string
+    {
+        return $this->apiKey;
+    }
+
+    /**
+     * Set a different API key for this client instance.
+     * Useful for using user-level API keys instead of server-level.
+     */
+    public function setApiKey(string $apiKey): void
+    {
+        $this->apiKey = $apiKey;
+        $this->initializeClient();
     }
 
     /**
@@ -55,11 +82,91 @@ class BtcPayClient
     }
 
     /**
+     * Make a PATCH request to BTCPay API.
+     */
+    public function patch(string $endpoint, array $data = []): array
+    {
+        return $this->request('PATCH', $endpoint, ['json' => $data]);
+    }
+
+    /**
      * Make a DELETE request to BTCPay API.
      */
     public function delete(string $endpoint): array
     {
         return $this->request('DELETE', $endpoint);
+    }
+
+    /**
+     * Make a POST request with multipart form data (for file uploads).
+     * 
+     * @param string $endpoint API endpoint
+     * @param \Illuminate\Http\UploadedFile $file The uploaded file
+     * @return array Response data
+     */
+    public function postMultipart(string $endpoint, $file): array
+    {
+        $attempt = 0;
+        $backoff = $this->initialBackoff;
+
+        while ($attempt <= $this->maxRetries) {
+            try {
+                // Create a new client without Content-Type header for multipart
+                $client = Http::baseUrl($this->baseUrl)
+                    ->withHeaders([
+                        'Authorization' => "Bearer {$this->apiKey}",
+                        'Accept' => 'application/json',
+                        // Don't set Content-Type - Laravel will set it automatically for multipart
+                    ])
+                    ->timeout(30);
+
+                // $file is the UploadedFile object directly
+                $response = $client->attach('file', file_get_contents($file->getRealPath()), $file->getClientOriginalName())
+                    ->post($endpoint);
+
+                if ($response->successful()) {
+                    $responseData = $response->json();
+                    $this->logRequest('POST', $endpoint, ['multipart' => true], $response, $responseData);
+                    return $responseData ?? [];
+                }
+
+                // Handle rate limiting
+                if ($response->status() === 429) {
+                    $retryAfter = (int) ($response->header('Retry-After') ?? $backoff);
+                    $this->logRequest('POST', $endpoint, ['multipart' => true], $response, null, "Rate limit exceeded, retry after {$retryAfter}s");
+
+                    if ($attempt < $this->maxRetries) {
+                        sleep($backoff);
+                        $backoff = $this->exponentialBackoff($backoff);
+                        $attempt++;
+                        continue;
+                    }
+
+                    throw new BtcPayRateLimitException("Rate limit exceeded", $retryAfter);
+                }
+
+                // Handle other errors
+                $this->handleErrorResponse($response, 'POST', $endpoint);
+
+            } catch (BtcPayRateLimitException $e) {
+                throw $e;
+            } catch (BtcPayException $e) {
+                throw $e;
+            } catch (\Exception $e) {
+                $this->logRequest('POST', $endpoint, ['multipart' => true], null, null, "Exception: {$e->getMessage()}");
+                
+                if ($attempt < $this->maxRetries) {
+                    sleep($backoff);
+                    $backoff = $this->exponentialBackoff($backoff);
+                    $attempt++;
+                    continue;
+                }
+
+                throw new BtcPayException("Request failed after {$this->maxRetries} retries: {$e->getMessage()}", 0, $e);
+            }
+        }
+
+        throw new BtcPayException("Request failed after {$this->maxRetries} retries");
     }
 
     /**
@@ -151,6 +258,11 @@ class BtcPayClient
             $message = json_encode($message);
         }
 
+        // Include more details for 422 validation errors
+        if ($statusCode === 422 && isset($json['errors'])) {
+            $message .= ' - Validation errors: ' . json_encode($json['errors']);
+        }
+
         $this->logRequest($method, $endpoint, [], $response, $json, "Error: {$message}");
 
         throw new BtcPayException($message, $statusCode);
@@ -216,4 +328,9 @@ class BtcPayClient
         return $sanitized;
     }
 }
+
+
+
+
+
 

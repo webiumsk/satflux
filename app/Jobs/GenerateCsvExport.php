@@ -29,6 +29,17 @@ class GenerateCsvExport implements ShouldQueue
             $store = $this->export->store;
             $filters = $this->export->filters ?? [];
             
+            // Ensure store has user relationship loaded
+            $store->load('user');
+            
+            // Verify merchant has API key (will throw exception if missing)
+            try {
+                $store->user->getBtcPayApiKeyOrFail();
+            } catch (\Illuminate\Http\Exceptions\HttpResponseException $e) {
+                $this->export->markAsFailed('BTCPay API key not configured. Please contact support.');
+                return;
+            }
+            
             // Build filters for BTCPay API
             $btcpayFilters = [];
             if (isset($filters['status'])) {
@@ -88,12 +99,15 @@ class GenerateCsvExport implements ShouldQueue
             'checkoutLink',
         ]);
 
-        // Fetch invoices with pagination
+        // Load merchant API key from store owner
+        $userApiKey = $store->user->getBtcPayApiKeyOrFail();
+
+        // Fetch invoices with pagination using merchant token
         $skip = 0;
         $take = 100;
 
         do {
-            $invoices = $invoiceService->listInvoices($store->btcpay_store_id, $filters, $skip, $take);
+            $invoices = $invoiceService->listInvoices($store->btcpay_store_id, $filters, $skip, $take, $userApiKey);
             
             foreach ($invoices as $invoice) {
                 fputcsv($handle, [
@@ -128,12 +142,15 @@ class GenerateCsvExport implements ShouldQueue
             'external_reference',
         ]);
 
-        // Fetch invoices with pagination
+        // Load merchant API key from store owner
+        $userApiKey = $store->user->getBtcPayApiKeyOrFail();
+
+        // Fetch invoices with pagination using merchant token
         $skip = 0;
         $take = 100;
 
         do {
-            $invoices = $invoiceService->listInvoices($store->btcpay_store_id, $filters, $skip, $take);
+            $invoices = $invoiceService->listInvoices($store->btcpay_store_id, $filters, $skip, $take, $userApiKey);
             
             foreach ($invoices as $invoice) {
                 $createdTime = isset($invoice['createdTime']) ? date('Y-m-d', strtotime($invoice['createdTime'])) : '';

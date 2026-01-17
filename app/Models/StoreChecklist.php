@@ -66,3 +66,10 @@ class StoreChecklist extends Model
     }
 }
 
+
+
+
+
+
+
+

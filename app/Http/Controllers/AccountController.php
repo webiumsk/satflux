@@ -13,7 +13,10 @@ class AccountController extends Controller
      */
     public function user(Request $request)
     {
-        return response()->json($request->user());
+        $user = $request->user();
+        // Ensure role is visible in response
+        $user->makeVisible('role');
+        return response()->json($user);
     }
 
     /**
@@ -21,8 +24,7 @@ class AccountController extends Controller
      */
     public function updateProfile(Request $request)
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+        $validated = $request->validate([            
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,'.$request->user()->id],
         ]);
 
@@ -51,4 +53,11 @@ class AccountController extends Controller
         return response()->json(['message' => 'Password updated successfully']);
     }
 }
+
+
+
+
+
+
+
 

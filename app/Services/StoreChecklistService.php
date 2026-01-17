@@ -15,68 +15,68 @@ class StoreChecklistService
 
     /**
      * Get all checklist item definitions.
+     * Note: All configuration should be done via Panel UI, not BTCPay UI.
+     * Links to BTCPay UI are removed as merchants should not access BTCPay directly.
      */
     public static function getAllChecklistItems(): array
     {
-        $btcpayBaseUrl = config('services.btcpay.base_url', env('BTCPAY_BASE_URL'));
-
         return [
             'blink' => [
                 'connect_wallet' => [
                     'key' => 'connect_wallet',
-                    'description' => 'Connect Blink wallet in BTCPay Store → Wallet settings',
-                    'link' => $btcpayBaseUrl . '/stores/{storeId}/Wallet',
+                    'description' => 'Connect Blink wallet via Wallet Connection settings',
+                    'link' => null, // No direct BTCPay UI links - configure via Panel
                     'order' => 1,
                 ],
                 'enable_lightning' => [
                     'key' => 'enable_lightning',
-                    'description' => 'Confirm Lightning payments enabled',
-                    'link' => $btcpayBaseUrl . '/stores/{storeId}/Wallet',
+                    'description' => 'Confirm Lightning payments are enabled',
+                    'link' => null,
                     'order' => 2,
                 ],
                 'test_invoice' => [
                     'key' => 'test_invoice',
-                    'description' => 'Test invoice payment (link to test invoice)',
-                    'link' => $btcpayBaseUrl . '/stores/{storeId}/Invoices',
+                    'description' => 'Create and test a test invoice payment',
+                    'link' => null,
                     'order' => 3,
                 ],
                 'set_payout_policy' => [
                     'key' => 'set_payout_policy',
-                    'description' => 'Optional: Set payout/withdrawal policy in Blink',
-                    'link' => $btcpayBaseUrl . '/stores/{storeId}/Wallet',
+                    'description' => 'Optional: Set payout/withdrawal policy in Blink wallet',
+                    'link' => null,
                     'order' => 4,
                     'optional' => true,
                 ],
             ],
             'aqua_boltz' => [
-                'open_store' => [
-                    'key' => 'open_store',
-                    'description' => 'Open store in BTCPay',
-                    'link' => $btcpayBaseUrl . '/stores/{storeId}',
+                'configure_wallet' => [
+                    'key' => 'configure_wallet',
+                    'description' => 'Configure Aqua wallet connection via Wallet Connection settings',
+                    'link' => null,
                     'order' => 1,
                 ],
                 'enable_boltz_plugin' => [
                     'key' => 'enable_boltz_plugin',
-                    'description' => 'Enable Boltz plugin for the store',
-                    'link' => $btcpayBaseUrl . '/stores/{storeId}/Plugins',
+                    'description' => 'Enable Boltz plugin for the store (requires support assistance)',
+                    'link' => null,
                     'order' => 2,
                 ],
                 'connect_aqua_wallet' => [
                     'key' => 'connect_aqua_wallet',
-                    'description' => 'Connect Aqua wallet via Boltz',
-                    'link' => $btcpayBaseUrl . '/stores/{storeId}/Plugins',
+                    'description' => 'Connect Aqua wallet via Boltz (requires support assistance)',
+                    'link' => null,
                     'order' => 3,
                 ],
                 'verify_swap_routing' => [
                     'key' => 'verify_swap_routing',
-                    'description' => 'Verify swap routing works',
-                    'link' => $btcpayBaseUrl . '/stores/{storeId}/Plugins',
+                    'description' => 'Verify swap routing works correctly',
+                    'link' => null,
                     'order' => 4,
                 ],
                 'test_lightning_invoice' => [
                     'key' => 'test_lightning_invoice',
-                    'description' => 'Test Lightning invoice payment',
-                    'link' => $btcpayBaseUrl . '/stores/{storeId}/Invoices',
+                    'description' => 'Create and test a Lightning invoice payment',
+                    'link' => null,
                     'order' => 5,
                 ],
             ],
@@ -98,4 +98,11 @@ class StoreChecklistService
         }
     }
 }
+
+
+
+
+
+
+
 

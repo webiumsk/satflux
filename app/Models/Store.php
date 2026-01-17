@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Store extends Model
 {
@@ -62,6 +63,22 @@ class Store extends Model
     }
 
     /**
+     * Get the apps for the store.
+     */
+    public function apps(): HasMany
+    {
+        return $this->hasMany(App::class);
+    }
+
+    /**
+     * Get the wallet connection for the store.
+     */
+    public function walletConnection(): HasOne
+    {
+        return $this->hasOne(WalletConnection::class);
+    }
+
+    /**
      * Scope a query to only include stores for a specific user.
      */
     public function scopeForUser($query, int $userId)
@@ -69,4 +86,10 @@ class Store extends Model
         return $query->where('user_id', $userId);
     }
 }
+
+
+
+
+
+
 

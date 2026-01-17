@@ -9,15 +9,28 @@ const api = axios.create({
     withCredentials: true,
 });
 
-// Request interceptor to ensure CSRF cookie is set
+// Ensure CSRF token is sent with all requests
+// Axios automatically reads XSRF-TOKEN cookie and sets X-XSRF-TOKEN header,
+// but we need to ensure the cookie is available
 api.interceptors.request.use(
     async (config) => {
-        // Ensure CSRF cookie is set before making requests
-        try {
-            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
-        } catch (error) {
-            // CSRF cookie endpoint may fail on first request, continue anyway
+        // Get CSRF token from cookie (XSRF-TOKEN is the cookie name Sanctum uses)
+        const getCookie = (name: string): string | null => {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) {
+                return parts.pop()?.split(';').shift() || null;
+            }
+            return null;
+        };
+
+        const csrfToken = getCookie('XSRF-TOKEN');
+        
+        // If token exists in cookie, set it in header
+        if (csrfToken) {
+            config.headers['X-XSRF-TOKEN'] = decodeURIComponent(csrfToken);
         }
+
         return config;
     },
     (error) => {
@@ -29,13 +42,19 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401) {
-            // Handle unauthorized - redirect to login
-            window.location.href = '/login';
-        }
+        // Don't redirect on 401 in interceptor - let router guard handle it
+        // Redirecting here causes infinite loops when router guard calls fetchUser()
+        // Router guard will handle authentication redirects properly
         return Promise.reject(error);
     }
 );
 
 export default api;
+
+
+
+
+
+
+
 

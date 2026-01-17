@@ -28,8 +28,14 @@ class ProcessBtcPayWebhook implements ShouldQueue
     {
         // TODO: Process webhook event
         // This is a skeleton - no business logic implemented
-        
+
         $this->webhookEvent->markAsProcessed();
     }
 }
+
+
+
+
+
+
 

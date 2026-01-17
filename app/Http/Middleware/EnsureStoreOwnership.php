@@ -16,25 +16,22 @@ class EnsureStoreOwnership
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $storeId = $request->route('store');
+        $store = $request->route('store');
 
-        if (!$storeId) {
+        if (!$store instanceof Store) {
             abort(404, 'Store not found');
         }
 
-        $store = Store::where('id', $storeId)
-            ->where('user_id', $request->user()->id)
-            ->firstOrFail();
-
-        // Add the store to the request for use in controllers
-        $request->merge(['store' => $store]);
-        $request->setRouteResolver(function () use ($store, $request) {
-            $route = $request->route();
-            $route->setParameter('store', $store);
-            return $route;
-        });
+        // Verify ownership
+        if ($store->user_id !== $request->user()->id) {
+            abort(403, 'Unauthorized access to store');
+        }
 
         return $next($request);
     }
 }
+
+
+
+
 

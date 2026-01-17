@@ -22,17 +22,6 @@
           {{ item.description }}
           <span v-if="item.optional" class="text-xs text-gray-400 ml-1">(Optional)</span>
         </label>
-        <div v-if="item.link" class="mt-1">
-          <a
-            :href="item.link"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-sm text-indigo-600 hover:text-indigo-500"
-            @click.stop
-          >
-            Open in BTCPay →
-          </a>
-        </div>
       </div>
     </div>
   </div>
@@ -88,4 +77,11 @@ onMounted(() => {
   fetchChecklist();
 });
 </script>
+
+
+
+
+
+
+
 

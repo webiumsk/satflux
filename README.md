@@ -25,7 +25,16 @@ A production-ready multi-tenant control panel for managing BTCPay Server stores 
 3. **Configure environment variables** in `.env`:
    - Database credentials
    - BTCPay Server API configuration (see BTCPay API Key Permissions below)
-   - Session and Sanctum settings
+   - Session and Sanctum settings:
+     ```
+     # Sanctum SPA authentication (for localhost development)
+     SANCTUM_STATEFUL_DOMAINS=localhost,localhost:8080,127.0.0.1,127.0.0.1:8080
+     
+     # Session configuration for localhost (HTTP, not HTTPS)
+     SESSION_DOMAIN=
+     SESSION_SECURE_COOKIE=false
+     SESSION_SAME_SITE=lax
+     ```
 
 4. **Start Docker containers**:
    ```bash
@@ -62,6 +71,13 @@ A production-ready multi-tenant control panel for managing BTCPay Server stores 
    npm run build
    ```
 
+10. **Clear configuration cache** (if you modify `.env` or config files):
+   ```bash
+   docker-compose exec php php artisan optimize:clear
+   ```
+   
+   This is especially important for local troubleshooting when changing session or Sanctum settings.
+
 ## Development
 
 - **Backend API**: http://localhost:8080/api
@@ -71,18 +87,21 @@ A production-ready multi-tenant control panel for managing BTCPay Server stores 
 
 ## Production Deployment
 
-The application is configured to run behind Cloudflare with:
-- TrustProxies middleware configured for proxy headers
+Pre detailný návod na nasadenie aplikácie na produkčný server pozri [DEPLOYMENT.md](DEPLOYMENT.md).
+
+Aplikácia je nakonfigurovaná na beh za Cloudflare proxy s:
+- TrustProxies middleware pre proxy headers
 - Secure session cookies
 - Sanctum SPA cookie authentication
-- Rate limiting on auth endpoints
+- Rate limiting na auth endpoints
 
-Ensure the following environment variables are set in production:
+Kľúčové environment variables pre produkciu:
 - `APP_URL=https://panel.dvadsatjeden.org`
 - `SESSION_DOMAIN=panel.dvadsatjeden.org`
 - `SESSION_SECURE_COOKIE=true`
 - `SESSION_SAME_SITE=lax`
 - `SANCTUM_STATEFUL_DOMAINS=panel.dvadsatjeden.org`
+- `LNURL_AUTH_DOMAIN=https://panel.dvadsatjeden.org`
 
 ## BTCPay API Key Permissions
 
