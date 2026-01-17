@@ -15,14 +15,16 @@ class InvoiceService
 
     /**
      * List invoices with pagination support.
+     * If a user-level API key is provided, it will be used instead of server-level.
      * 
      * @param string $storeId BTCPay store ID
      * @param array $filters Optional filters (status, orderId, itemCode, etc.)
      * @param int|null $skip Number of records to skip
      * @param int|null $take Number of records to take
+     * @param string|null $userApiKey User-level API key (optional)
      * @return array Invoice list with pagination metadata
      */
-    public function listInvoices(string $storeId, array $filters = [], ?int $skip = null, ?int $take = null): array
+    public function listInvoices(string $storeId, array $filters = [], ?int $skip = null, ?int $take = null, ?string $userApiKey = null): array
     {
         $query = $filters;
 
@@ -34,34 +36,74 @@ class InvoiceService
             $query['take'] = $take;
         }
 
-        return $this->client->get("/api/v1/stores/{$storeId}/invoices", $query);
+        $originalApiKey = null;
+        if ($userApiKey) {
+            // Temporarily use user-level API key
+            $originalApiKey = $this->client->getApiKey();
+            $this->client->setApiKey($userApiKey);
+        }
+
+        try {
+            return $this->client->get("/api/v1/stores/{$storeId}/invoices", $query);
+        } finally {
+            // Restore original API key if we changed it
+            if ($userApiKey && $originalApiKey) {
+                $this->client->setApiKey($originalApiKey);
+            }
+        }
     }
 
     /**
      * Get a single invoice by ID.
+     * If a user-level API key is provided, it will be used instead of server-level.
      */
-    public function getInvoice(string $storeId, string $invoiceId): array
+    public function getInvoice(string $storeId, string $invoiceId, ?string $userApiKey = null): array
     {
-        $cacheKey = "btcpay:invoice:{$storeId}:{$invoiceId}";
+        // Include API key hash in cache key to prevent cross-merchant cache pollution
+        $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
+        $cacheKey = "btcpay:invoice:{$storeId}:{$invoiceId}:{$apiKeyHash}";
         
-        return Cache::remember($cacheKey, 30, function () use ($storeId, $invoiceId) {
-            return $this->client->get("/api/v1/stores/{$storeId}/invoices/{$invoiceId}");
+        return Cache::remember($cacheKey, 30, function () use ($storeId, $invoiceId, $userApiKey) {
+            $originalApiKey = null;
+            if ($userApiKey) {
+                // Temporarily use user-level API key
+                $originalApiKey = $this->client->getApiKey();
+                $this->client->setApiKey($userApiKey);
+            }
+
+            try {
+                return $this->client->get("/api/v1/stores/{$storeId}/invoices/{$invoiceId}");
+            } finally {
+                // Restore original API key if we changed it
+                if ($userApiKey && $originalApiKey) {
+                    $this->client->setApiKey($originalApiKey);
+                }
+            }
         });
     }
 
     /**
      * Get invoice count for a store (cached).
+     * If a user-level API key is provided, it will be used instead of server-level.
      */
-    public function getInvoiceCount(string $storeId, array $filters = []): int
+    public function getInvoiceCount(string $storeId, array $filters = [], ?string $userApiKey = null): int
     {
-        $cacheKey = "btcpay:invoice:count:{$storeId}:" . md5(serialize($filters));
+        // Include API key hash in cache key to prevent cross-merchant cache pollution
+        $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
+        $cacheKey = "btcpay:invoice:count:{$storeId}:{$apiKeyHash}:" . md5(serialize($filters));
         
-        return Cache::remember($cacheKey, 60, function () use ($storeId, $filters) {
+        return Cache::remember($cacheKey, 60, function () use ($storeId, $filters, $userApiKey) {
             // BTCPay API doesn't have a direct count endpoint, so we fetch a small page
-            $result = $this->listInvoices($storeId, $filters, 0, 1);
+            $result = $this->listInvoices($storeId, $filters, 0, 1, $userApiKey);
             // Note: BTCPay API may return total count in response, adjust based on actual API response
             return count($result) ?? 0;
         });
     }
 }
+
+
+
+
+
+
 

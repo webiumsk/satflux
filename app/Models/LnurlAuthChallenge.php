@@ -19,6 +19,7 @@ class LnurlAuthChallenge extends Model
         'k1',
         'expires_at',
         'consumed_at',
+        'pending_user_id',
         'ip_address',
         'user_agent',
     ];
@@ -51,5 +52,16 @@ class LnurlAuthChallenge extends Model
     {
         return $this->consumed_at !== null;
     }
+
+    /**
+     * Get the pending user associated with this challenge.
+     */
+    public function pendingUser()
+    {
+        return $this->belongsTo(User::class, 'pending_user_id');
+    }
 }
+
+
+
 

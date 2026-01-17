@@ -1,8 +1,27 @@
 <template>
-  <router-view />
+  <AppLayout v-if="needsLayout">
+    <router-view />
+  </AppLayout>
+  <router-view v-else />
 </template>
 
 <script setup lang="ts">
-// Root App component
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+import AppLayout from './components/layout/AppLayout.vue';
+
+const route = useRoute();
+
+// Show layout for authenticated pages (pages that require auth)
+const needsLayout = computed(() => {
+  return route.meta.requiresAuth === true;
+});
 </script>
+
+
+
+
+
+
+
 

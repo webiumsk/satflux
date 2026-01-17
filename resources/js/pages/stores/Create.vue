@@ -1,6 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-100 py-8">
-    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 class="text-3xl font-bold text-gray-900 mb-8">Create Store</h1>
 
       <div class="bg-white shadow rounded-lg p-6">
@@ -44,16 +43,20 @@
           </div>
           <div>
             <label for="default_currency" class="block text-sm font-medium text-gray-700">Default Currency</label>
-            <select
+            <input
               id="default_currency"
               v-model="form.default_currency"
+              type="text"
+              list="currency-selection-suggestion"
               required
+              placeholder="Select or type currency (e.g., USD, BTC, EUR)"
               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            >
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="BTC">BTC</option>
-            </select>
+            />
+            <datalist id="currency-selection-suggestion">
+              <option v-for="currency in currencies" :key="currency.code" :value="currency.code">
+                {{ currency.code }} - {{ currency.name }}
+              </option>
+            </datalist>
           </div>
           <div>
             <label for="timezone" class="block text-sm font-medium text-gray-700">Timezone</label>
@@ -63,11 +66,23 @@
               required
               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             >
-              <option value="UTC">UTC</option>
-              <option value="America/New_York">America/New_York</option>
-              <option value="Europe/London">Europe/London</option>
-              <option value="Asia/Tokyo">Asia/Tokyo</option>
+              <option v-for="tz in timezones" :key="tz" :value="tz">{{ tz }}</option>
             </select>
+          </div>
+          <div>
+            <label for="preferred_exchange" class="block text-sm font-medium text-gray-700">
+              Preferred Price Source
+            </label>
+            <select
+              id="preferred_exchange"
+              v-model="form.preferred_exchange"
+              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            >
+              <option v-for="exchange in exchanges" :key="exchange.value" :value="exchange.value">
+                {{ exchange.label }}
+              </option>
+            </select>
+            <p class="mt-2 text-sm text-gray-500">The recommended price source gets chosen based on the default currency.</p>
           </div>
           <div class="flex justify-end">
             <button
@@ -111,6 +126,36 @@
               </label>
             </div>
           </div>
+          
+          <!-- Connection String Input -->
+          <div v-if="form.wallet_type">
+            <label :for="form.wallet_type === 'blink' ? 'connection_string_blink' : 'connection_string_aqua'" class="block text-sm font-medium text-gray-700 mb-2">
+              {{ form.wallet_type === 'blink' ? 'Connection String' : 'Descriptor' }}
+            </label>
+            <textarea
+              :id="form.wallet_type === 'blink' ? 'connection_string_blink' : 'connection_string_aqua'"
+              v-model="form.connection_string"
+              rows="4"
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono text-sm"
+              :placeholder="form.wallet_type === 'blink' 
+                ? 'type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx'
+                : 'wpkh([fingerprint/hdpath]xpub...)'"
+            ></textarea>
+            <p class="mt-1 text-sm text-gray-500">
+              <span v-if="form.wallet_type === 'blink'">
+                Format: <code class="bg-gray-100 px-1 py-0.5 rounded">type=blink;server=https://...;api-key=...;wallet-id=...</code><br>
+                Paste your Blink connection string with server URL, API key, and wallet ID.
+              </span>
+              <span v-else>
+                Paste your Bitcoin Core output descriptor (watch-only, no private keys).<br>
+                Example formats: <code class="bg-gray-100 px-1 py-0.5 rounded">wpkh(...)</code>, <code class="bg-gray-100 px-1 py-0.5 rounded">tr(...)</code>
+              </span>
+            </p>
+            <p class="mt-1 text-sm text-gray-400">
+              You can also configure this later in Wallet Connection settings.
+            </p>
+          </div>
+          
           <div class="flex justify-between">
             <button
               @click="currentStep = 1"
@@ -145,9 +190,20 @@
                 <dt class="text-sm text-gray-600">Timezone:</dt>
                 <dd class="text-sm font-medium text-gray-900">{{ form.timezone }}</dd>
               </div>
+              <div class="flex justify-between" v-if="form.preferred_exchange">
+                <dt class="text-sm text-gray-600">Preferred Price Source:</dt>
+                <dd class="text-sm font-medium text-gray-900">{{ exchanges.find(e => e.value === form.preferred_exchange)?.label || form.preferred_exchange }}</dd>
+              </div>
               <div class="flex justify-between">
                 <dt class="text-sm text-gray-600">Wallet Type:</dt>
                 <dd class="text-sm font-medium text-gray-900">{{ form.wallet_type === 'blink' ? 'Blink' : 'Aqua (Boltz)' }}</dd>
+              </div>
+              <div class="flex justify-between" v-if="form.connection_string">
+                <dt class="text-sm text-gray-600">Connection:</dt>
+                <dd class="text-sm font-medium text-gray-900">
+                  <span class="text-green-600">Configured</span>
+                  <span class="text-gray-400 text-xs ml-2">({{ form.wallet_type === 'blink' ? 'Connection string' : 'Descriptor' }} provided)</span>
+                </dd>
               </div>
             </dl>
           </div>
@@ -157,7 +213,8 @@
           <div class="flex justify-between">
             <button
               @click="currentStep = 2"
-              class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+              :disabled="loading"
+              class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
             >
               Back
             </button>
@@ -166,19 +223,20 @@
               :disabled="loading"
               class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
             >
-              {{ loading ? 'Creating...' : 'Create Store' }}
+              {{ loading ? 'Creating...' : 'Go to Store' }}
             </button>
           </div>
         </div>
       </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStoresStore } from '../../store/stores';
+import { currencies } from '../../data/currencies';
+import { exchanges } from '../../data/exchanges';
 
 const router = useRouter();
 const storesStore = useStoresStore();
@@ -191,8 +249,65 @@ const form = ref({
   name: '',
   default_currency: 'USD',
   timezone: 'UTC',
+  preferred_exchange: '',
   wallet_type: '' as 'blink' | 'aqua_boltz' | '',
+  connection_string: '',
 });
+
+// Common timezones - you can expand this list
+const timezones = [
+  'UTC',
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'America/Phoenix',
+  'America/Toronto',
+  'America/Vancouver',
+  'America/Sao_Paulo',
+  'America/Argentina/Buenos_Aires',
+  'America/Santiago',
+  'America/Mexico_City',
+  'Europe/London',
+  'Europe/Paris',
+  'Europe/Berlin',
+  'Europe/Rome',
+  'Europe/Madrid',
+  'Europe/Amsterdam',
+  'Europe/Brussels',
+  'Europe/Vienna',
+  'Europe/Prague',
+  'Europe/Warsaw',
+  'Europe/Stockholm',
+  'Europe/Copenhagen',
+  'Europe/Helsinki',
+  'Europe/Athens',
+  'Europe/Istanbul',
+  'Europe/Moscow',
+  'Europe/Kiev',
+  'Asia/Dubai',
+  'Asia/Tokyo',
+  'Asia/Shanghai',
+  'Asia/Hong_Kong',
+  'Asia/Singapore',
+  'Asia/Seoul',
+  'Asia/Bangkok',
+  'Asia/Jakarta',
+  'Asia/Manila',
+  'Asia/Kolkata',
+  'Asia/Karachi',
+  'Asia/Dhaka',
+  'Asia/Tehran',
+  'Asia/Jerusalem',
+  'Australia/Sydney',
+  'Australia/Melbourne',
+  'Australia/Brisbane',
+  'Australia/Perth',
+  'Pacific/Auckland',
+  'Pacific/Honolulu',
+];
+
+const currencyOptions = computed(() => currencies.map(c => `${c.code} - ${c.name}`));
 
 async function handleSubmit() {
   error.value = '';
@@ -200,7 +315,7 @@ async function handleSubmit() {
 
   try {
     const store = await storesStore.createStore(form.value);
-    router.push(`/stores/${store.id}/next-steps`);
+    router.push(`/stores/${store.id}`);
   } catch (err: any) {
     error.value = err.response?.data?.message || 'Failed to create store. Please try again.';
     if (err.response?.data?.errors) {
@@ -212,4 +327,11 @@ async function handleSubmit() {
   }
 }
 </script>
+
+
+
+
+
+
+
 

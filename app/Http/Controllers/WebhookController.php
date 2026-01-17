@@ -30,7 +30,7 @@ class WebhookController extends Controller
             // Verify signature (simplified - actual implementation depends on BTCPay signature format)
             $payload = $request->getContent();
             $expectedSignature = hash_hmac('sha256', $payload, $secret);
-            
+
             if (!hash_equals($expectedSignature, $signature)) {
                 Log::warning('BTCPay webhook signature verification failed', [
                     'ip' => $request->ip(),
@@ -70,4 +70,10 @@ class WebhookController extends Controller
         return response()->json(['status' => 'received']);
     }
 }
+
+
+
+
+
+
 

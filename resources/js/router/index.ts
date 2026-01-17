@@ -29,6 +29,11 @@ const router = createRouter({
             meta: { requiresGuest: true },
         },
         {
+            path: '/auth/verify-email/:id/:hash',
+            name: 'verify-email',
+            component: () => import('../pages/auth/VerifyEmail.vue'),
+        },
+        {
             path: '/account',
             name: 'account',
             component: () => import('../pages/account/Profile.vue'),
@@ -70,6 +75,54 @@ const router = createRouter({
             component: () => import('../pages/stores/Settings.vue'),
             meta: { requiresAuth: true },
         },
+        {
+            path: '/stores/:id/wallet-connection',
+            name: 'stores-wallet-connection',
+            component: () => import('../pages/stores/WalletConnection.vue'),
+            meta: { requiresAuth: true },
+        },
+        {
+            path: '/stores/:id/apps',
+            name: 'stores-apps',
+            component: () => import('../pages/stores/Apps.vue'),
+            meta: { requiresAuth: true },
+        },
+        {
+            path: '/stores/:id/apps/create',
+            name: 'stores-apps-create',
+            component: () => import('../pages/stores/AppsCreate.vue'),
+            meta: { requiresAuth: true },
+        },
+        {
+            path: '/stores/:id/apps/:appId',
+            name: 'stores-apps-show',
+            component: () => import('../pages/stores/AppsShow.vue'),
+            meta: { requiresAuth: true },
+        },
+        {
+            path: '/stores/:id/invoices',
+            name: 'stores-invoices',
+            component: () => import('../pages/stores/Invoices.vue'),
+            meta: { requiresAuth: true },
+        },
+        {
+            path: '/stores/:id/invoices/:invoiceId',
+            name: 'stores-invoices-show',
+            component: () => import('../pages/stores/InvoiceShow.vue'),
+            meta: { requiresAuth: true },
+        },
+        {
+            path: '/stores/:id/exports',
+            name: 'stores-exports',
+            component: () => import('../pages/stores/Exports.vue'),
+            meta: { requiresAuth: true },
+        },
+        {
+            path: '/support/wallet-connections',
+            name: 'support-wallet-connections',
+            component: () => import('../pages/support/WalletConnections.vue'),
+            meta: { requiresAuth: true },
+        },
     ],
 });
 
@@ -77,13 +130,24 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore();
     
-    // Fetch user if not already loaded
-    if (!authStore.user && authStore.isAuthenticated === null) {
-        await authStore.fetchUser();
+    // Only fetch user if not already loaded and not navigating to login/register
+    // This prevents infinite loops
+    if (!authStore.user && to.name !== 'login' && to.name !== 'register' && to.name !== 'password-reset') {
+        try {
+            await authStore.fetchUser();
+        } catch (error) {
+            // If fetch fails (401), user is null which is correct
+            // Router guard will handle redirect below
+        }
     }
 
     if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-        next({ name: 'login', query: { redirect: to.fullPath } });
+        // Redirect to login, but prevent infinite loops
+        if (to.name !== 'login') {
+            next({ name: 'login', query: { redirect: to.fullPath } });
+        } else {
+            next(); // Already on login page, allow it
+        }
     } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
         next({ name: 'home' });
     } else {

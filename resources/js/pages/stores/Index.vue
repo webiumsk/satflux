@@ -1,6 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-100 py-8">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="mb-6 flex justify-between items-center">
         <h1 class="text-3xl font-bold text-gray-900">Stores</h1>
         <router-link
@@ -43,19 +42,26 @@
           </div>
         </div>
       </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useStoresStore } from '../../store/stores';
 
 const storesStore = useStoresStore();
-const { stores, loading } = storesStore;
+const { stores, loading } = storeToRefs(storesStore);
 
 onMounted(() => {
   storesStore.fetchStores();
 });
 </script>
+
+
+
+
+
+
+
 

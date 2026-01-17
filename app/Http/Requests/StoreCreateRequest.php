@@ -24,10 +24,19 @@ class StoreCreateRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'default_currency' => ['required', 'string', 'size:3'],
+            'default_currency' => ['required', 'string', 'max:10'], // Allow BTC, SATS, and 3-letter codes
             'timezone' => ['required', 'string', 'timezone'],
+            'preferred_exchange' => ['nullable', 'string', 'max:255'],
             'wallet_type' => ['required', 'string', Rule::in(['blink', 'aqua_boltz'])],
+            'connection_string' => ['nullable', 'string', 'max:2000'], // Connection string or descriptor
         ];
     }
 }
+
+
+
+
+
+
+
 

@@ -55,6 +55,25 @@ services:
       - redis_data:/data
     networks:
       - d21panel
+      
+  mailpit:
+    image: axllent/mailpit
+    container_name: d21panel_mailpit
+    ports:
+      - "1025:1025"  # SMTP server
+      - "8025:8025"  # Web UI
+    networks:
+      - d21panel
+
+  adminer:
+    image: adminer
+    container_name: d21panel_adminer
+    ports:
+      - "8081:8080"
+    networks:
+      - d21panel
+    depends_on:
+      - postgres
 
 volumes:
   postgres_data:
@@ -63,4 +82,11 @@ volumes:
 networks:
   d21panel:
     driver: bridge
+
+
+
+
+
+
+
 

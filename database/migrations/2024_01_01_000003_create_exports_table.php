@@ -3,7 +3,6 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -12,12 +11,6 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Create enum type for export format
-        DB::statement("CREATE TYPE export_format_enum AS ENUM ('standard', 'accounting')");
-
-        // Create enum type for export status
-        DB::statement("CREATE TYPE export_status_enum AS ENUM ('pending', 'running', 'finished', 'failed')");
-
         Schema::create('exports', function (Blueprint $table) {
             $table->id();
             $table->foreignUuid('store_id')->constrained()->onDelete('cascade');
@@ -43,8 +36,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('exports');
-        DB::statement('DROP TYPE IF EXISTS export_format_enum');
-        DB::statement('DROP TYPE IF EXISTS export_status_enum');
     }
 };
+
+
+
 
