@@ -30,6 +30,11 @@ git clone <repository-url> uzol21
 cd uzol21
 ```
 
+**Dôležité:** Ak používate Git v kontajneri a nastane problém s ownership, spustite:
+```bash
+docker compose -f docker-compose.prod.yml exec --user root php git config --global --add safe.directory /var/www
+```
+
 #### 1.2 Konfigurácia environment variables
 
 ```bash
@@ -38,36 +43,40 @@ nano .env.production  # alebo vim .env.production
 ```
 
 Upravte všetky potrebné hodnoty v `.env.production`, najmä:
-- `APP_KEY` - vygenerujte cez `php artisan key:generate`
-- `DB_PASSWORD` - silné heslo pre databázu
+- `APP_KEY` - vygenerujte cez `docker compose -f docker-compose.prod.yml exec --user root php php artisan key:generate` (po prvom spustení kontajnerov)
+- `DB_PASSWORD` - silné heslo pre databázu (povinné!)
 - `BTCPAY_API_KEY` - API kľúč pre BTCPay Server
-- `REDIS_PASSWORD` - heslo pre Redis (voliteľné)
+- `REDIS_PASSWORD` - heslo pre Redis (voliteľné, môže zostať `null`)
 - Mail nastavenia
 
 #### 1.3 Prvé spustenie
 
 ```bash
 # Spustite kontajnery
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml up -d
 
 # Počkajte, kým sa služby spustia (30 sekúnd)
 sleep 30
 
-# Inštalácia dependencies
-docker-compose -f docker-compose.prod.yml exec php composer install --optimize-autoloader --no-dev
-docker-compose -f docker-compose.prod.yml exec php npm ci --production
-docker-compose -f docker-compose.prod.yml exec php npm run build
+# Inštalácia dependencies (ako root kvôli oprávneniam)
+docker compose -f docker-compose.prod.yml exec --user root php composer install --optimize-autoloader --no-dev
+docker compose -f docker-compose.prod.yml exec --user root php npm ci
+docker compose -f docker-compose.prod.yml exec --user root php npm run build
 
-# Generovanie aplikačného kľúča
-docker-compose -f docker-compose.prod.yml exec php php artisan key:generate
+# Generovanie aplikačného kľúča (ako root)
+docker compose -f docker-compose.prod.yml exec --user root php php artisan key:generate
 
-# Spustenie migrations
-docker-compose -f docker-compose.prod.yml exec php php artisan migrate --force
+# Spustenie migrations (ako root)
+docker compose -f docker-compose.prod.yml exec --user root php php artisan migrate --force
 
-# Optimalizácia Laravel
-docker-compose -f docker-compose.prod.yml exec php php artisan config:cache
-docker-compose -f docker-compose.prod.yml exec php php artisan route:cache
-docker-compose -f docker-compose.prod.yml exec php php artisan view:cache
+# Optimalizácia Laravel (ako root)
+docker compose -f docker-compose.prod.yml exec --user root php php artisan config:cache
+docker compose -f docker-compose.prod.yml exec --user root php php artisan route:cache
+docker compose -f docker-compose.prod.yml exec --user root php php artisan view:cache
+
+# Oprava oprávnení pre storage a cache (ako root)
+docker compose -f docker-compose.prod.yml exec --user root php chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+docker compose -f docker-compose.prod.yml exec --user root php chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 ```
 
 #### 1.4 Reverse Proxy konfigurácia (ak používate)
@@ -111,11 +120,14 @@ Pre časté updatovanie použite automatizovaný deployment script:
 
 Script automaticky:
 1. Stiahne najnovšie zmeny z Gitu
-2. Aktualizuje PHP a Node dependencies
+2. Aktualizuje PHP a Node dependencies (správne oprávnenia)
 3. Zostaví frontend assets
 4. Spustí databázové migrácie
 5. Optimalizuje Laravel cache
-6. Reštartuje kontajnery
+6. Nastaví správne oprávnenia pre storage a cache
+7. Reštartuje kontajnery
+
+**Poznámka:** Script používa `--user root` pre všetky build príkazy, aby zabezpečil správne oprávnenia súborov.
 
 ### Fáza 3: Backupy
 

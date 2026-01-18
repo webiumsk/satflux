@@ -192,7 +192,7 @@ class EmailVerificationController extends Controller
         // This eliminates TTL/resend/caching complications
         $btcpayRandomPassword = Str::random(32);
 
-        return DB::transaction(function () use ($user, $btcpayRandomPassword) {
+        return DB::transaction(function () use ($request, $user, $btcpayRandomPassword) {
             // Mark email as verified
             $user->markEmailAsVerified();
 
@@ -333,7 +333,9 @@ class EmailVerificationController extends Controller
 
             // Automatically log in the user after successful verification
             Auth::login($user);
-            $request->session()->regenerate();
+            if ($request->hasSession()) {
+                $request->session()->regenerate();
+            }
 
             return response()->json([
                 'message' => 'Email verified successfully. You are now logged in.',
