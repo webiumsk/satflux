@@ -1,11 +1,7 @@
-version: '3.8'
-
 services:
   nginx:
     image: nginx:alpine
     container_name: uzol21_nginx_prod
-    ports:
-      - "127.0.0.1:8080:80"  # Bind to localhost only - use reverse proxy on host
     volumes:
       - ./docker/nginx/prod.conf:/etc/nginx/conf.d/default.conf:ro
       - ./public:/var/www/public:ro
@@ -15,9 +11,17 @@ services:
         condition: service_healthy
     networks:
       - uzol21
+      - passbolt_default
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.uzol21-https.entrypoints=websecure"
+      - "traefik.http.routers.uzol21-https.rule=Host(`uzol.dvadsatjeden.org`)"
+      - "traefik.http.routers.uzol21-https.tls=true"
+      - "traefik.http.routers.uzol21-https.tls.certresolver=letsencrypt"
+      - "traefik.http.services.uzol21.loadbalancer.server.port=80"
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost/health || curl -f http://localhost/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -67,7 +71,7 @@ services:
       - uzol21
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-uzol21} -d ${DB_DATABASE:-uzol21}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -79,23 +83,20 @@ services:
     env_file:
       - .env.production
     command: >
-      sh -c "if [ -n \"$$REDIS_PASSWORD\" ]; then 
-        redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\"; 
-      else 
-        redis-server --appendonly yes; 
-      fi"
+      sh -c "
+        if [ -n \"$$REDIS_PASSWORD\" ] && [ \"$$REDIS_PASSWORD\" != \"null\" ]; then 
+          redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\"; 
+        else 
+          redis-server --appendonly yes; 
+        fi
+      "
     volumes:
       - redis_data:/data
     networks:
       - uzol21
     restart: unless-stopped
     healthcheck:
-      test: >
-        sh -c "if [ -n \"$$REDIS_PASSWORD\" ]; then 
-          redis-cli -a \"$$REDIS_PASSWORD\" ping; 
-        else 
-          redis-cli ping; 
-        fi"
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -111,4 +112,6 @@ networks:
   uzol21:
     driver: bridge
     name: uzol21_prod
+  passbolt_default:
+    external: true
 
