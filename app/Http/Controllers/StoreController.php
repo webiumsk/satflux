@@ -272,11 +272,22 @@ class StoreController extends Controller
             }
 
             // Create local store record
+            // $btcpayStoreId was already set above, but verify it's still valid
+            if (!$btcpayStoreId) {
+                $btcpayStoreId = $btcpayStore['id'] ?? $btcpayStore['storeId'] ?? null;
+                if (!$btcpayStoreId) {
+                    abort(500, 'Failed to create store: BTCPay did not return a store ID.');
+                }
+            }
+            
             $store = Store::create([
                 'id' => (string) Str::uuid(),
                 'user_id' => $request->user()->id,
-                'btcpay_store_id' => $btcpayStore['id'] ?? $btcpayStore['storeId'],
+                'btcpay_store_id' => $btcpayStoreId,
                 'name' => $request->name,
+                'default_currency' => $request->default_currency ?? 'EUR',
+                'timezone' => $request->timezone ?? 'Europe/Vienna',
+                'preferred_exchange' => $request->preferred_exchange ?? 'kraken',
                 'wallet_type' => $request->wallet_type,
             ]);
 
@@ -306,8 +317,11 @@ class StoreController extends Controller
                 }
             }
 
+            // Ensure checklistItems relationship is loaded
+            $store->load('checklistItems', 'walletConnection');
+            
             return response()->json([
-                'data' => $this->formatStore($store->load('checklistItems')),
+                'data' => $this->formatStore($store),
                 'message' => 'Store created successfully',
             ], 201);
         });
@@ -361,11 +375,14 @@ class StoreController extends Controller
         $data = [
             'id' => $localStore->id,
             'name' => $btcpayStore['name'] ?? $localStore->name,
+            'default_currency' => $localStore->default_currency ?? ($btcpayStore['defaultCurrency'] ?? 'EUR'),
+            'timezone' => $localStore->timezone ?? ($btcpayStore['timeZone'] ?? 'Europe/Vienna'),
+            'preferred_exchange' => $localStore->preferred_exchange ?? ($btcpayStore['preferredExchange'] ?? 'kraken'),
             'wallet_type' => $localStore->wallet_type,
             'created_at' => $localStore->created_at,
             'updated_at' => $localStore->updated_at,
-            'checklist_items' => $localStore->checklistItems->map(function ($item) use ($localStore) {
-                $definition = StoreChecklistService::getChecklistItems($localStore->wallet_type);
+            'checklist_items' => ($localStore->checklistItems && $localStore->checklistItems->count() > 0) ? $localStore->checklistItems->map(function ($item) use ($localStore) {
+                $definition = StoreChecklistService::getChecklistItems($localStore->wallet_type ?? 'blink');
                 $itemDef = $definition[$item->item_key] ?? null;
                 
                 return [
@@ -375,7 +392,7 @@ class StoreController extends Controller
                     'completed_at' => $item->completed_at,
                     'is_completed' => $item->isCompleted(),
                 ];
-            })->values(),
+            })->values() : collect([]),
             'wallet_connection' => $walletConnection ? [
                 'id' => $walletConnection->id,
                 'type' => $walletConnection->type,
@@ -385,12 +402,20 @@ class StoreController extends Controller
             ] : null,
         ];
 
+        // Use local store values first, fallback to BTCPay values
+        if (!isset($data['default_currency'])) {
+            $data['default_currency'] = $localStore->default_currency ?? ($btcpayStore['defaultCurrency'] ?? 'EUR');
+        }
+        if (!isset($data['timezone'])) {
+            $data['timezone'] = $localStore->timezone ?? ($btcpayStore['timeZone'] ?? 'Europe/Vienna');
+        }
+        if (!isset($data['preferred_exchange'])) {
+            $data['preferred_exchange'] = $localStore->preferred_exchange ?? ($btcpayStore['preferredExchange'] ?? 'kraken');
+        }
+
         // Add BTCPay-specific fields that are safe to expose
         if (isset($btcpayStore['website'])) {
             $data['website'] = $btcpayStore['website'];
-        }
-        if (isset($btcpayStore['defaultCurrency'])) {
-            $data['default_currency'] = $btcpayStore['defaultCurrency'];
         }
         if (isset($btcpayStore['archived'])) {
             $data['archived'] = $btcpayStore['archived'];
@@ -562,12 +587,15 @@ class StoreController extends Controller
         return [
             'id' => $store->id,
             'name' => $store->name,
+            'default_currency' => $store->default_currency ?? 'EUR',
+            'timezone' => $store->timezone ?? 'Europe/Vienna',
+            'preferred_exchange' => $store->preferred_exchange ?? 'kraken',
             'wallet_type' => $store->wallet_type,
             'created_at' => $store->created_at,
             'updated_at' => $store->updated_at,
             'logo_url' => null, // Not available from local DB only (would need BTCPay API)
-            'checklist_items' => $store->checklistItems->map(function ($item) use ($store) {
-                $definition = StoreChecklistService::getChecklistItems($store->wallet_type);
+            'checklist_items' => $store->checklistItems ? $store->checklistItems->map(function ($item) use ($store) {
+                $definition = StoreChecklistService::getChecklistItems($store->wallet_type ?? 'blink');
                 $itemDef = $definition[$item->item_key] ?? null;
                 
                 return [
@@ -577,7 +605,7 @@ class StoreController extends Controller
                     'completed_at' => $item->completed_at,
                     'is_completed' => $item->isCompleted(),
                 ];
-            })->values(),
+            })->values() : collect([]),
             'wallet_connection' => $walletConnection ? [
                 'id' => $walletConnection->id,
                 'type' => $walletConnection->type,

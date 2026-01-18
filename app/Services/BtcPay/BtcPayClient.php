@@ -121,7 +121,9 @@ class BtcPayClient
                     ->timeout(30);
 
                 // $file is the UploadedFile object directly
-                $response = $client->attach('file', file_get_contents($file->getRealPath()), $file->getClientOriginalName())
+                // Use get() method to get file contents - works for both real and fake files
+                $fileContents = $file->get();
+                $response = $client->attach('file', $fileContents, $file->getClientOriginalName())
                     ->post($endpoint);
 
                 if ($response->successful()) {
@@ -308,7 +310,14 @@ class BtcPayClient
             $logData['note'] = $additional;
         }
 
-        Log::channel('btcpay')->info('BTCPay API Request', $logData);
+        try {
+            Log::channel('btcpay')->info('BTCPay API Request', $logData);
+        } catch (\Exception $e) {
+            // Silently fail logging in tests to avoid permission errors
+            if (!app()->environment('testing')) {
+                throw $e;
+            }
+        }
     }
 
     /**

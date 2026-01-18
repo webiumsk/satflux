@@ -43,7 +43,7 @@ class WalletConnectionService
             ['store_id' => $store->id],
             [
                 'type' => $type,
-                'secret_encrypted' => Crypt::encryptString($secret),
+                'encrypted_secret' => Crypt::encryptString($secret),
                 'status' => 'needs_support',
                 'submitted_by_user_id' => $user->id,
             ]

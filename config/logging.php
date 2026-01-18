@@ -18,7 +18,7 @@ return [
     |
     */
 
-    'default' => env('LOG_CHANNEL', 'stack'),
+    'default' => env('APP_ENV') === 'testing' ? 'null' : env('LOG_CHANNEL', 'stack'),
 
     /*
     |--------------------------------------------------------------------------
@@ -75,7 +75,7 @@ return [
         ],
 
         'btcpay' => [
-            'driver' => 'single',
+            'driver' => env('APP_ENV') === 'testing' ? 'null' : 'single',
             'path' => storage_path('logs/btcpay.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
@@ -99,9 +99,15 @@ return [
             'handler' => NullHandler::class,
         ],
 
-        'emergency' => [
-            'path' => storage_path('logs/laravel.log'),
-        ],
+        'emergency' => env('APP_ENV') === 'testing' 
+            ? [
+                'driver' => 'monolog',
+                'handler' => NullHandler::class,
+            ]
+            : [
+                'driver' => 'single',
+                'path' => storage_path('logs/laravel.log'),
+            ],
     ],
 
 ];

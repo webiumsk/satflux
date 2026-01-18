@@ -194,13 +194,15 @@ class WalletConnectionValidator
      *
      * @param string $type Connection type ('blink' or 'aqua_descriptor')
      * @param string $value Secret value to validate
-     * @return array ['valid' => bool, 'errors' => []]
+     * @return array ['valid' => bool, 'type' => string|null, 'errors' => array, 'error' => string|null]
      */
     public function validate(string $type, string $value): array
     {
         $errors = [];
+        $returnType = null;
 
         if ($type === 'blink') {
+            $returnType = 'blink';
             // Validate Blink connection string format
             $parsed = $this->parseBlinkConnectionString($value);
             if (!empty($parsed['errors'])) {
@@ -209,16 +211,19 @@ class WalletConnectionValidator
                 $errors[] = 'Invalid Blink connection string format. Expected: type=blink;server=https://...;api-key=...;wallet-id=...';
             }
         } elseif ($type === 'aqua_descriptor') {
+            $returnType = 'aqua_descriptor';
             if (!$this->validateAquaDescriptor($value)) {
                 $errors[] = 'Invalid descriptor format. Must be a valid Bitcoin Core output descriptor and must not contain private keys (prv).';
             }
         } else {
-            $errors[] = 'Invalid wallet connection type.';
+            throw new \InvalidArgumentException("Unsupported wallet connection type: {$type}");
         }
 
         return [
             'valid' => empty($errors),
+            'type' => $returnType,
             'errors' => $errors,
+            'error' => !empty($errors) ? implode('; ', $errors) : null,
         ];
     }
 }

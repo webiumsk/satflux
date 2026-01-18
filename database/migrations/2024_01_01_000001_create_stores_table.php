@@ -16,6 +16,9 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('btcpay_store_id');
             $table->string('name');
+            $table->string('default_currency', 10)->default('EUR');
+            $table->string('timezone')->default('UTC');
+            $table->string('preferred_exchange')->nullable();
             $table->enum('wallet_type', ['blink', 'aqua_boltz'])->nullable();
             $table->json('metadata')->nullable();
             $table->timestamps();
