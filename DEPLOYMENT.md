@@ -1,6 +1,182 @@
 # Production Deployment Guide
 
-Tento dokument popisuje postup nasadenia UZOL21 aplikácie na produkčný server (zdieľaný Hetzner hosting alebo VPS).
+Tento dokument popisuje postup nasadenia UZOL21 aplikácie na produkčný server.
+
+## Deployment Možnosti
+
+1. **VPS s Dockerom** (odporúčané pre časté updatovanie) - pozri [VPS Docker Deployment](#vps-docker-deployment)
+2. **Zdieľaný hosting** (Hetzner alebo iný) - pozri [Shared Hosting Deployment](#shared-hosting-deployment)
+
+---
+
+## VPS Docker Deployment
+
+Táto metóda je odporúčaná pre VPS servery s Dockerom, kde už bežia iné aplikácie. Umožňuje jednoduché a rýchle updatovanie.
+
+### Požiadavky
+
+- VPS s root prístupom
+- Docker a Docker Compose nainštalované
+- Git prístup k repository
+- Reverse proxy (Nginx alebo Traefik) na hoste pre SSL/TLS (voliteľné)
+
+### Fáza 1: Prvé nasadenie
+
+#### 1.1 Klonovanie repository
+
+```bash
+cd /opt  # alebo iný vhodný adresár
+git clone <repository-url> uzol21
+cd uzol21
+```
+
+#### 1.2 Konfigurácia environment variables
+
+```bash
+cp .env.production.example .env.production
+nano .env.production  # alebo vim .env.production
+```
+
+Upravte všetky potrebné hodnoty v `.env.production`, najmä:
+- `APP_KEY` - vygenerujte cez `php artisan key:generate`
+- `DB_PASSWORD` - silné heslo pre databázu
+- `BTCPAY_API_KEY` - API kľúč pre BTCPay Server
+- `REDIS_PASSWORD` - heslo pre Redis (voliteľné)
+- Mail nastavenia
+
+#### 1.3 Prvé spustenie
+
+```bash
+# Spustite kontajnery
+docker-compose -f docker-compose.prod.yml up -d
+
+# Počkajte, kým sa služby spustia (30 sekúnd)
+sleep 30
+
+# Inštalácia dependencies
+docker-compose -f docker-compose.prod.yml exec php composer install --optimize-autoloader --no-dev
+docker-compose -f docker-compose.prod.yml exec php npm ci --production
+docker-compose -f docker-compose.prod.yml exec php npm run build
+
+# Generovanie aplikačného kľúča
+docker-compose -f docker-compose.prod.yml exec php php artisan key:generate
+
+# Spustenie migrations
+docker-compose -f docker-compose.prod.yml exec php php artisan migrate --force
+
+# Optimalizácia Laravel
+docker-compose -f docker-compose.prod.yml exec php php artisan config:cache
+docker-compose -f docker-compose.prod.yml exec php php artisan route:cache
+docker-compose -f docker-compose.prod.yml exec php php artisan view:cache
+```
+
+#### 1.4 Reverse Proxy konfigurácia (ak používate)
+
+Ak už máte Nginx alebo iný reverse proxy na hoste, pridajte konfiguráciu:
+
+**Nginx na hoste:**
+```nginx
+server {
+    listen 80;
+    server_name uzol.dvadsatjeden.org;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name uzol.dvadsatjeden.org;
+    
+    ssl_certificate /path/to/ssl/cert.pem;
+    ssl_certificate_key /path/to/ssl/key.pem;
+    
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+    }
+}
+```
+
+### Fáza 2: Updatovanie aplikácie
+
+Pre časté updatovanie použite automatizovaný deployment script:
+
+```bash
+./deploy.sh
+```
+
+Script automaticky:
+1. Stiahne najnovšie zmeny z Gitu
+2. Aktualizuje PHP a Node dependencies
+3. Zostaví frontend assets
+4. Spustí databázové migrácie
+5. Optimalizuje Laravel cache
+6. Reštartuje kontajnery
+
+### Fáza 3: Backupy
+
+#### 3.1 Manuálny backup
+
+```bash
+./backup.sh
+```
+
+#### 3.2 Automatizované backupy (cron)
+
+Pridajte do crontab:
+
+```bash
+crontab -e
+```
+
+Pridajte riadok pre denné backupy o 2:00:
+
+```
+0 2 * * * cd /opt/uzol21 && ./backup.sh >> /var/log/uzol21_backup.log 2>&1
+```
+
+### Fáza 4: Monitoring a logy
+
+#### 4.1 Zobrazenie logov
+
+```bash
+# Všetky logy
+docker-compose -f docker-compose.prod.yml logs -f
+
+# Len PHP logy
+docker-compose -f docker-compose.prod.yml logs -f php
+
+# Laravel logy
+docker-compose -f docker-compose.prod.yml exec php tail -f storage/logs/laravel.log
+```
+
+#### 4.2 Kontrola stavu kontajnerov
+
+```bash
+docker-compose -f docker-compose.prod.yml ps
+```
+
+#### 4.3 Health check
+
+```bash
+curl http://localhost:8080/health
+```
+
+### Výhody VPS Docker deploymentu
+
+- **Jednoduché updatovanie**: `./deploy.sh` alebo `git pull && docker-compose up -d`
+- **Izolácia**: Aplikácia beží oddelene od ostatných služieb
+- **Konzistentné prostredie**: Rovnaké prostredie ako v development
+- **Jednoduchý rollback**: `git checkout <previous-commit> && ./deploy.sh`
+- **Mieriteľnosť**: Ľahké pridať ďalšie kontajnery (queue worker, scheduler)
+
+---
+
+## Shared Hosting Deployment
 
 ## Požiadavky
 
