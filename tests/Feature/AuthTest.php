@@ -4,11 +4,21 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
 {
     use RefreshDatabase;
+    
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Fake mail to prevent view rendering and file permission issues
+        Mail::fake();
+        // Ensure session is started for API requests that need it
+        $this->withSession([]);
+    }
 
     public function test_user_can_register(): void
     {
@@ -32,6 +42,7 @@ class AuthTest extends TestCase
             'password' => bcrypt('password'),
         ]);
 
+        // Use postJson() - LoginController now handles missing session gracefully
         $response = $this->postJson('/api/auth/login', [
             'email' => 'test@example.com',
             'password' => 'password',

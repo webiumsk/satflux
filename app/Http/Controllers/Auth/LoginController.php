@@ -25,7 +25,11 @@ class LoginController extends Controller
             ]);
         }
 
-        $request->session()->regenerate();
+        // Only regenerate session if session is available (for SPA/stateful auth)
+        // For stateless API requests, session may not be set
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
 
         return response()->json([
             'message' => 'Login successful',

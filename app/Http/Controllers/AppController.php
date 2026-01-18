@@ -122,6 +122,11 @@ class AppController extends Controller
             $config = $request->config ?? [];
             $config['name'] = $request->name;
             
+            // If currency is not specified in config, use store's default currency
+            if (!isset($config['currency'])) {
+                $config['currency'] = $store->default_currency ?? 'EUR';
+            }
+            
             // Create app in BTCPay
             $btcpayApp = $this->appService->createApp(
                 $store->btcpay_store_id,

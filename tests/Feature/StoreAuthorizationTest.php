@@ -22,7 +22,7 @@ class StoreAuthorizationTest extends TestCase
 
         $response = $this->actingAs($user2)->getJson("/api/stores/{$store->id}");
 
-        $response->assertStatus(404);
+        $response->assertStatus(403);
     }
 
     public function test_user_can_access_own_store(): void

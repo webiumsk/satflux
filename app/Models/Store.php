@@ -22,6 +22,9 @@ class Store extends Model
         'user_id',
         'btcpay_store_id',
         'name',
+        'default_currency',
+        'timezone',
+        'preferred_exchange',
         'wallet_type',
         'metadata',
     ];
