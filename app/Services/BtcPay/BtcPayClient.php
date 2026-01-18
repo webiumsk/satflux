@@ -263,8 +263,18 @@ class BtcPayClient
         }
 
         // Include more details for 422 validation errors
-        if ($statusCode === 422 && isset($json['errors'])) {
-            $message .= ' - Validation errors: ' . json_encode($json['errors']);
+        if ($statusCode === 422) {
+            if (isset($json['errors'])) {
+                $message .= ' - Validation errors: ' . json_encode($json['errors']);
+            }
+            // Also include the full response body for debugging
+            Log::error('BTCPay API 422 Validation Error', [
+                'endpoint' => $endpoint,
+                'method' => $method,
+                'status_code' => $statusCode,
+                'response_body' => $json,
+                'errors' => $json['errors'] ?? null,
+            ]);
         }
 
         $this->logRequest($method, $endpoint, [], $response, $json, "Error: {$message}");

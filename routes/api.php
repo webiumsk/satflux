@@ -189,6 +189,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/stores/{store}/apps/{app}', [AppController::class, 'destroy'])
         ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':app.deleted']);
 
+    // Product Images
+    Route::post('/stores/{store}/products/image', [\App\Http\Controllers\ProductImageController::class, 'upload'])
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':product.image.uploaded']);
+
     // Wallet Connections (Merchant)
     Route::get('/stores/{store}/wallet-connection', [WalletConnectionController::class, 'show'])
         ->middleware([EnsureStoreOwnership::class]);

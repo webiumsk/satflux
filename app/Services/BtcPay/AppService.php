@@ -372,13 +372,119 @@ class AppService
             // Fallback to store-based endpoint
             $endpoints[] = "/api/v1/stores/{$storeId}/apps/{$appId}";
             
+            // Filter and map config to only include fields that BTCPay API accepts
+            // According to BTCPay API docs and response structure:
+            // - tipText (not tipsMessage)
+            // - request (not requestCustomerData) - format: "email", "name", or "email,name"
+            // - template must be valid JSON string or array (not double-encoded)
+            
+            $filteredConfig = [];
+            
+            // Map our field names to BTCPay API field names
+            $fieldMapping = [
+                'appName' => 'appName',
+                'title' => 'title',
+                'description' => 'description',
+                'defaultView' => 'defaultView',
+                'currency' => 'currency',
+                'showItems' => 'showItems',
+                'showCustomAmount' => 'showCustomAmount',
+                'showDiscount' => 'showDiscount',
+                'showSearch' => 'showSearch',
+                'showCategories' => 'showCategories',
+                'enableTips' => 'enableTips',
+                'tipsMessage' => 'tipText', // BTCPay uses 'tipText'
+                'defaultTaxRate' => 'defaultTaxRate', // Keep as is for now
+                'fixedAmountPayButtonText' => 'fixedAmountPayButtonText',
+                'customAmountPayButtonText' => 'customAmountPayButtonText',
+                'htmlLang' => 'htmlLang',
+                'htmlMetaTags' => 'htmlMetaTags',
+                'redirectUrl' => 'redirectUrl',
+                'redirectAutomatically' => 'redirectAutomatically',
+                'notificationUrl' => 'notificationUrl',
+            ];
+            
+            // Map basic fields
+            foreach ($fieldMapping as $ourField => $btcpayField) {
+                if (array_key_exists($ourField, $config)) {
+                    $value = $config[$ourField];
+                    // Skip null values (but keep empty strings, 0, false, and empty arrays)
+                    if ($value !== null) {
+                        $filteredConfig[$btcpayField] = $value;
+                    }
+                }
+            }
+            
+            // Map requestCustomerData to request field
+            // BTCPay expects: "email", "name", or "email,name" (comma-separated)
+            // The 'request' field is required, so always include it
+            if (isset($config['requestCustomerData'])) {
+                $requestValue = $config['requestCustomerData'];
+                // Map our values to BTCPay format
+                $requestMapping = [
+                    'email' => 'email',
+                    'name' => 'name',
+                    'email_name' => 'email,name',
+                    '' => '', // Empty string for no request
+                ];
+                $filteredConfig['request'] = $requestMapping[$requestValue] ?? ($requestValue ?: '');
+            } else {
+                // Always include request field (required by BTCPay API)
+                $filteredConfig['request'] = '';
+            }
+            
+            // Handle template field - must be valid JSON string or array
+            if (isset($config['template'])) {
+                $template = $config['template'];
+                if ($template !== null && $template !== '') {
+                    // If it's already a string, check if it's valid JSON
+                    if (is_string($template)) {
+                        // Try to decode to check if it's valid JSON
+                        $decoded = json_decode($template, true);
+                        if (json_last_error() === JSON_ERROR_NONE) {
+                            // It's valid JSON string, use it as is
+                            $filteredConfig['template'] = $template;
+                        } else {
+                            // Invalid JSON string, try to encode it as array
+                            Log::warning('Invalid JSON in template field, attempting to fix', [
+                                'template' => substr($template, 0, 100), // Log first 100 chars
+                            ]);
+                            $filteredConfig['template'] = json_encode([$template]); // Wrap in array
+                        }
+                    } elseif (is_array($template)) {
+                        // It's an array, encode it to JSON string
+                        $filteredConfig['template'] = json_encode($template);
+                    }
+                }
+            }
+            
+            // Log what we're sending for debugging
+            Log::info('BTCPay app update request', [
+                'store_id' => $storeId,
+                'app_id' => $appId,
+                'app_type' => $appType,
+                'original_config_keys' => array_keys($config),
+                'filtered_config' => $filteredConfig,
+            ]);
+            
             // Try endpoints in order
             $lastException = null;
             foreach ($endpoints as $endpoint) {
                 try {
-                    return $this->client->put($endpoint, $config);
+                    return $this->client->put($endpoint, $filteredConfig);
                 } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
                     $lastException = $e;
+                    // Log the error with more details
+                    if ($e->getCode() === 422) {
+                        Log::error('BTCPay app update validation error', [
+                            'store_id' => $storeId,
+                            'app_id' => $appId,
+                            'app_type' => $appType,
+                            'endpoint' => $endpoint,
+                            'config_sent' => $filteredConfig,
+                            'error_message' => $e->getMessage(),
+                        ]);
+                    }
                     if ($e->getCode() === 404 && count($endpoints) > 1) {
                         // Try next endpoint
                         continue;
