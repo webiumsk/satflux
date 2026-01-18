@@ -24,6 +24,11 @@ RUN docker-php-ext-install pdo_pgsql pgsql mbstring exif pcntl bcmath gd opcache
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+# Install Node.js and npm
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Set working directory
 WORKDIR /var/www
 
