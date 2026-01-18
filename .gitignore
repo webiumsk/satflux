@@ -18,6 +18,10 @@ yarn-error.log
 /.idea
 /.vscode
 
+# Log files (these change frequently and should not be committed)
+/storage/logs/*.log
+!/storage/logs/.gitkeep
+
 
 
 

@@ -35,7 +35,36 @@ fi
 # Step 1: Pull latest changes
 echo -e "${YELLOW}Step 1: Pulling latest changes from Git...${NC}"
 git fetch origin
-git pull origin main || git pull origin master
+
+# Check if there are local changes (including untracked files that might conflict)
+if [ -n "$(git status --porcelain)" ]; then
+    echo -e "${YELLOW}Local changes detected. Stashing changes...${NC}"
+    # Stash including untracked files to avoid conflicts
+    git stash push -u -m "Auto-stash before deployment $(date +%Y-%m-%d_%H:%M:%S)" || {
+        echo -e "${YELLOW}Note: Stash may be empty, continuing...${NC}"
+    }
+fi
+
+# Pull latest changes
+if ! git pull origin main 2>/dev/null && ! git pull origin master 2>/dev/null; then
+    echo -e "${RED}Error: Failed to pull from Git${NC}"
+    echo -e "${YELLOW}Attempting to resolve by resetting to remote state...${NC}"
+    # Try to reset to origin if conflicts persist (this will discard local changes)
+    BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    if [ "$BRANCH" = "master" ] || [ "$BRANCH" = "main" ]; then
+        git reset --hard "origin/$BRANCH" 2>/dev/null || {
+            echo -e "${RED}Fatal: Cannot resolve Git conflicts automatically.${NC}"
+            echo -e "${YELLOW}Please resolve manually or discard local changes.${NC}"
+            exit 1
+        }
+        echo -e "${GREEN}✓ Reset to remote branch $BRANCH${NC}"
+    else
+        echo -e "${RED}Fatal: Cannot determine branch. Please resolve Git conflicts manually.${NC}"
+        exit 1
+    fi
+fi
+
+echo -e "${GREEN}✓ Git pull completed${NC}"
 
 # Step 2: Ensure containers are running
 echo -e "${YELLOW}Step 2: Ensuring containers are running...${NC}"
