@@ -289,14 +289,34 @@ class AppController extends Controller
             $userApiKey
         );
 
-        // Update local record
+        // Update local record with fresh data from BTCPay
         $app->update([
             'name' => $request->input('name', $app->name),
             'config' => $btcpayApp,
         ]);
 
+        // Reload fresh data from BTCPay to ensure we have the latest template/products
+        // This ensures that template is correctly formatted (as JSON string from BTCPay)
+        try {
+            $freshBtcpayApp = $this->appService->getApp(
+                $store->btcpay_store_id,
+                $app->btcpay_app_id,
+                $app->app_type,
+                $userApiKey
+            );
+            // Update local record again with fresh data
+            $app->update(['config' => $freshBtcpayApp]);
+        } catch (\Exception $e) {
+            // If reload fails, use the update response
+            \Log::warning('Failed to reload app data after update', [
+                'app_id' => $app->id,
+                'error' => $e->getMessage(),
+            ]);
+            $freshBtcpayApp = $btcpayApp;
+        }
+
         return response()->json([
-            'data' => $this->formatApp($app->fresh(), $btcpayApp),
+            'data' => $this->formatApp($app->fresh(), $freshBtcpayApp),
             'message' => 'App updated successfully',
         ]);
     }
@@ -337,11 +357,36 @@ class AppController extends Controller
      */
     protected function formatApp(App $app, ?array $btcpayApp = null): array
     {
+        // Get config from local DB or BTCPay API - prioritize BTCPay API data
+        $config = $btcpayApp ?? $app->config ?? [];
+        
+        // BTCPay API may return products in 'items' field (GET) or 'template' field (POST/PUT)
+        // Normalize 'items' to 'template' for frontend consistency
+        if (isset($config['items']) && !isset($config['template'])) {
+            $config['template'] = $config['items'];
+        }
+        
+        // If template is a JSON string, decode it to array for frontend
+        if (isset($config['template']) && is_string($config['template'])) {
+            try {
+                $decoded = json_decode($config['template'], true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $config['template'] = $decoded;
+                }
+            } catch (\Exception $e) {
+                // If decoding fails, keep as is
+                \Log::warning('Failed to decode template JSON in formatApp', [
+                    'app_id' => $app->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+        
         $data = [
             'id' => $app->id,
             'name' => $app->name,
             'app_type' => $app->app_type,
-            'config' => $app->config,
+            'config' => $config,
             'metadata' => $app->metadata,
             'created_at' => $app->created_at,
             'updated_at' => $app->updated_at,
@@ -349,11 +394,57 @@ class AppController extends Controller
 
         // Merge BTCPay data if available
         if ($btcpayApp) {
+            // Update local app config with BTCPay data (but keep local-only fields)
+            // This ensures we have the latest template/products from BTCPay
+            if (!empty($btcpayApp)) {
+                $app->config = array_merge($app->config ?? [], $btcpayApp);
+                $app->save();
+            }
+            
             // Add BTCPay-specific fields that are safe to expose
-            $data['btcpay_app_url'] = config('services.btcpay.base_url') . '/apps/' . ($btcpayApp['id'] ?? $app->btcpay_app_id);
+            $btcpayAppId = $btcpayApp['id'] ?? $app->btcpay_app_id ?? null;
+            if ($btcpayAppId) {
+                // Generate app URL based on app type
+                $data['btcpay_app_url'] = $this->generateAppUrl($app->app_type, $btcpayAppId);
+                // Also include the app ID directly (it's needed for embed codes)
+                $data['btcpay_app_id'] = $btcpayAppId;
+            }
+        } elseif ($app->btcpay_app_id) {
+            // If we have btcpay_app_id but no $btcpayApp data, include it
+            $data['btcpay_app_url'] = $this->generateAppUrl($app->app_type, $app->btcpay_app_id);
+            $data['btcpay_app_id'] = $app->btcpay_app_id;
         }
 
         return $data;
+    }
+
+    /**
+     * Generate BTCPay app URL based on app type.
+     * Different app types have different URL patterns in BTCPay.
+     *
+     * @param string $appType
+     * @param string $appId
+     * @return string
+     */
+    protected function generateAppUrl(string $appType, string $appId): string
+    {
+        $baseUrl = config('services.btcpay.base_url');
+        $basePath = $baseUrl . '/apps/' . $appId;
+
+        // Different app types have different URL patterns
+        switch (strtolower($appType)) {
+            case 'pointofsale':
+                return $basePath . '/pos';
+            case 'crowdfund':
+                return $basePath . '/crowdfund';
+            case 'paymentbutton':
+                return $basePath . '/paymentbutton';
+            case 'lightningaddress':
+                return $basePath . '/lnaddress';
+            default:
+                // Default to base path if app type is unknown
+                return $basePath;
+        }
     }
 
     /**
