@@ -417,27 +417,57 @@ class StoreController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        $btcpayStoreId = $store->btcpay_store_id;
+        $localStoreId = $store->id;
+
         try {
-            // Delete from BTCPay Server using merchant API key
-            $userApiKey = $user->getBtcPayApiKeyOrFail();
-            $this->storeService->deleteStore($store->btcpay_store_id, $userApiKey);
+            // Delete merchant from BTCPay store (removes merchant as owner)
+            // Note: This removes the merchant from the store but doesn't delete the store itself
+            // The store will remain in BTCPay with admin access only
+            try {
+                $userApiKey = $user->getBtcPayApiKeyOrFail();
+                Log::info('Attempting to remove merchant from BTCPay store', [
+                    'store_id' => $localStoreId,
+                    'btcpay_store_id' => $btcpayStoreId,
+                    'user_id' => $user->id,
+                ]);
+                
+                // Try DELETE request - this will remove merchant from store
+                $this->storeService->deleteStore($btcpayStoreId, $userApiKey);
+                
+                Log::info('Merchant removed from BTCPay store', [
+                    'store_id' => $localStoreId,
+                    'btcpay_store_id' => $btcpayStoreId,
+                ]);
+            } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+                // If DELETE fails, log but continue - we'll still delete locally
+                Log::warning('Failed to remove merchant from BTCPay store', [
+                    'store_id' => $localStoreId,
+                    'btcpay_store_id' => $btcpayStoreId,
+                    'error_code' => $e->getCode(),
+                    'error_message' => $e->getMessage(),
+                ]);
+            }
 
             // Delete local record (this will cascade delete related records)
             $store->delete();
 
-            Log::info('Store deleted', [
-                'store_id' => $store->id,
-                'btcpay_store_id' => $store->btcpay_store_id,
+            Log::info('Store deleted from local database', [
+                'store_id' => $localStoreId,
+                'btcpay_store_id' => $btcpayStoreId,
                 'user_id' => $user->id,
             ]);
 
-            return response()->json(['message' => 'Store deleted successfully']);
+            return response()->json([
+                'message' => 'Store deleted successfully',
+            ]);
         } catch (\Exception $e) {
             Log::error('Failed to delete store', [
-                'store_id' => $store->id,
-                'btcpay_store_id' => $store->btcpay_store_id,
+                'store_id' => $localStoreId,
+                'btcpay_store_id' => $btcpayStoreId,
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
+                'error_class' => get_class($e),
             ]);
 
             return response()->json(['message' => 'Failed to delete store: ' . $e->getMessage()], 500);

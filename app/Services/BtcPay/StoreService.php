@@ -130,10 +130,44 @@ class StoreService
      */
     public function addUserToStore(string $storeId, string $userId, string $role = 'Owner'): array
     {
-        return $this->client->post("/api/v1/stores/{$storeId}/users", [
-            'userId' => $userId,
-            'role' => $role,
-        ]);
+        try {
+            return $this->client->post("/api/v1/stores/{$storeId}/users", [
+                'userId' => $userId,
+                'role' => $role,
+            ]);
+        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+            // If user is already in store (409 Conflict or error message contains "already"), this is OK
+            $errorMessage = strtolower($e->getMessage());
+            if ($e->getCode() === 409 || 
+                str_contains($errorMessage, 'already') || 
+                str_contains($errorMessage, 'already added') ||
+                str_contains($errorMessage, 'already exists')) {
+                \Illuminate\Support\Facades\Log::info('User already in store, skipping add', [
+                    'store_id' => $storeId,
+                    'user_id' => $userId,
+                    'role' => $role,
+                    'error_code' => $e->getCode(),
+                ]);
+                // Try to get existing user data and return it
+                try {
+                    $users = $this->getStoreUsers($storeId);
+                    $existingUser = collect($users)->firstWhere('userId', $userId);
+                    if ($existingUser) {
+                        return $existingUser;
+                    }
+                } catch (\Exception $fetchE) {
+                    // If we can't fetch users, just return empty array
+                    \Illuminate\Support\Facades\Log::debug('Could not fetch store users to verify existing user', [
+                        'store_id' => $storeId,
+                        'error' => $fetchE->getMessage(),
+                    ]);
+                }
+                // Return empty array to indicate success (user already exists)
+                return [];
+            }
+            // Re-throw other errors
+            throw $e;
+        }
     }
 
     /**
@@ -176,11 +210,29 @@ class StoreService
         }
 
         try {
+            // Delete request to BTCPay - this removes merchant from store
+            // Note: This doesn't delete the store itself, just removes merchant access
             $this->client->delete("/api/v1/stores/{$storeId}");
+            
             // Clear cache for both server and merchant keys
             $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
             Cache::forget("btcpay:store:{$storeId}:{$apiKeyHash}");
             Cache::forget("btcpay:store:{$storeId}:server");
+            
+            \Illuminate\Support\Facades\Log::info('Merchant removed from BTCPay store', [
+                'store_id' => $storeId,
+                'api_key_type' => $userApiKey ? 'merchant' : 'server',
+            ]);
+        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+            // Re-throw BtcPay exceptions so they can be handled upstream
+            throw $e;
+        } catch (\Exception $e) {
+            // Wrap other exceptions
+            throw new \App\Services\BtcPay\Exceptions\BtcPayException(
+                "Failed to remove merchant from BTCPay store: {$e->getMessage()}",
+                0,
+                $e
+            );
         } finally {
             // Restore original API key if we changed it
             if ($userApiKey && $originalApiKey) {

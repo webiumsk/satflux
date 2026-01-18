@@ -1,6 +1,6 @@
-# D21 Panel - Architecture & Technical Documentation
+# UZOL21 - Architecture & Technical Documentation
 
-**For AI Agents & Developers**: This document provides a comprehensive overview of how the D21 Panel application works, including data flows, component relationships, and implementation details.
+**For AI Agents & Developers**: This document provides a comprehensive overview of how the UZOL21 application works, including data flows, component relationships, and implementation details.
 
 ---
 
@@ -22,7 +22,7 @@
 
 ## System Overview
 
-**D21 Panel** is a multi-tenant control panel for managing BTCPay Server stores. It acts as a bridge between merchants (Panel users) and BTCPay Server, providing a simplified interface while maintaining security and isolation.
+**UZOL21** is a multi-tenant control panel for managing BTCPay Server stores. It acts as a bridge between merchants (UZOL21 users) and BTCPay Server, providing a simplified interface while maintaining security and isolation.
 
 ### Tech Stack
 
@@ -329,7 +329,7 @@ public function someMethod(string $storeId, ?string $userApiKey = null): array
            $user->btcpay_user_id,
            [], // Default permissions
            [], // All stores (no restriction)
-           'Panel API Key - ' . $user->email
+           'UZOL21 API Key - ' . $user->email
        );
        $user->btcpay_api_key = $apiKeyData['apiKey']; // Encrypted automatically
    }
@@ -1100,10 +1100,10 @@ SESSION_SAME_SITE=lax
 ### Production
 
 ```env
-APP_URL=https://panel.dvadsatjeden.org
-SESSION_DOMAIN=panel.dvadsatjeden.org
+APP_URL=https://uzol.dvadsatjeden.org
+SESSION_DOMAIN=uzol.dvadsatjeden.org
 SESSION_SECURE_COOKIE=true
-SANCTUM_STATEFUL_DOMAINS=panel.dvadsatjeden.org
+SANCTUM_STATEFUL_DOMAINS=uzol.dvadsatjeden.org
 ```
 
 ---

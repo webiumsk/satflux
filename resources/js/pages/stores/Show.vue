@@ -822,12 +822,18 @@ async function handleDeleteStore() {
   try {
     await storesStore.deleteStore(store.value.id);
     
-    // Redirect to dashboard after successful deletion
-    router.push({ name: 'dashboard' });
+    // Close modal and redirect to dashboard after successful deletion
+    showDeleteStoreModal.value = false;
+    deleteStoreConfirmText.value = '';
+    
+    // Small delay to show success state before redirect
+    setTimeout(() => {
+      router.push({ name: 'home' });
+    }, 300);
   } catch (error: any) {
+    // Only show error if deletion actually failed
     deleteStoreError.value = error.response?.data?.message || 'Failed to delete store';
     console.error('Failed to delete store:', error);
-  } finally {
     deletingStore.value = false;
   }
 }

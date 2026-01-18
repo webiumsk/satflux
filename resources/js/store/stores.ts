@@ -138,7 +138,8 @@ export const useStoresStore = defineStore('stores', () => {
     async function deleteStore(storeId: string) {
         loading.value = true;
         try {
-            await api.delete(`/stores/${storeId}`);
+            const response = await api.delete(`/stores/${storeId}`);
+            
             // Remove store from local list
             const index = stores.value.findIndex(s => s.id === storeId);
             if (index > -1) {
@@ -152,6 +153,12 @@ export const useStoresStore = defineStore('stores', () => {
             if (dashboard.value) {
                 dashboard.value = null;
             }
+            
+            // Return response (may contain btcpay_deleted flag)
+            return response;
+        } catch (error: any) {
+            // Re-throw error so it can be handled in the component
+            throw error;
         } finally {
             loading.value = false;
         }

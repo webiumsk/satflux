@@ -7,7 +7,7 @@
           <!-- Logo -->
           <router-link to="/" class="flex items-center">
             <div class="flex-shrink-0">
-              <span class="text-2xl font-bold text-indigo-600">D21 Panel</span>
+              <span class="text-2xl font-bold text-indigo-600">UZOL21</span>
             </div>
           </router-link>
 

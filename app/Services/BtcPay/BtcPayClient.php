@@ -182,6 +182,8 @@ class BtcPayClient
                 $response = $this->performRequest($method, $endpoint, $options);
 
                 if ($response->successful()) {
+                    // For DELETE requests, BTCPay may return 204 No Content (empty body)
+                    // or 200 OK with empty/null body
                     $data = $response->json();
                     $this->logRequest($method, $endpoint, $options, $response, $data);
                     return $data ?? [];
