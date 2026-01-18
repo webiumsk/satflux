@@ -104,8 +104,8 @@
           <div class="border-t border-gray-200 pt-8">
             <h2 class="text-lg font-medium text-gray-900 mb-4">Additional Settings</h2>
             <p class="text-sm text-gray-600 mb-4">
-              Additional store configuration options are managed through the Panel interface.
-              All settings that can be configured are available above or through other Panel sections.
+              Additional store configuration options are managed through the UZOL21 interface.
+              All settings that can be configured are available above or through other UZOL21 sections.
             </p>
           </div>
         </div>

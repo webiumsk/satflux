@@ -3,7 +3,7 @@ version: '3.8'
 services:
   nginx:
     image: nginx:alpine
-    container_name: d21panel_nginx
+    container_name: uzol21_nginx
     ports:
       - "8080:80"
     volumes:
@@ -13,13 +13,13 @@ services:
     depends_on:
       - php
     networks:
-      - d21panel
+      - uzol21
 
   php:
     build:
       context: ./docker/php
       dockerfile: Dockerfile
-    container_name: d21panel_php
+    container_name: uzol21_php
     volumes:
       - .:/var/www
       - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini
@@ -28,50 +28,50 @@ services:
       - postgres
       - redis
     networks:
-      - d21panel
+      - uzol21
     environment:
       - PHP_OPCACHE_ENABLE=1
 
   postgres:
     image: postgres:16-alpine
-    container_name: d21panel_postgres
+    container_name: uzol21_postgres
     environment:
-      POSTGRES_DB: ${DB_DATABASE:-d21panel}
-      POSTGRES_USER: ${DB_USERNAME:-d21panel}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-d21panel}
+      POSTGRES_DB: ${DB_DATABASE:-uzol21}
+      POSTGRES_USER: ${DB_USERNAME:-uzol21}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-uzol21}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     networks:
-      - d21panel
+      - uzol21
 
   redis:
     image: redis:7-alpine
-    container_name: d21panel_redis
+    container_name: uzol21_redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
-      - d21panel
+      - uzol21
       
   mailpit:
     image: axllent/mailpit
-    container_name: d21panel_mailpit
+    container_name: uzol21_mailpit
     ports:
       - "1025:1025"  # SMTP server
       - "8025:8025"  # Web UI
     networks:
-      - d21panel
+      - uzol21
 
   adminer:
     image: adminer
-    container_name: d21panel_adminer
+    container_name: uzol21_adminer
     ports:
       - "8081:8080"
     networks:
-      - d21panel
+      - uzol21
     depends_on:
       - postgres
 
@@ -80,7 +80,7 @@ volumes:
   redis_data:
 
 networks:
-  d21panel:
+  uzol21:
     driver: bridge
 
 

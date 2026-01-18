@@ -1,4 +1,4 @@
-# D21 Panel - BTCPay Server Control Panel
+# UZOL21 - BTCPay Server Control Panel
 
 A production-ready multi-tenant control panel for managing BTCPay Server stores via Greenfield API.
 
@@ -96,12 +96,12 @@ Aplikácia je nakonfigurovaná na beh za Cloudflare proxy s:
 - Rate limiting na auth endpoints
 
 Kľúčové environment variables pre produkciu:
-- `APP_URL=https://panel.dvadsatjeden.org`
-- `SESSION_DOMAIN=panel.dvadsatjeden.org`
+- `APP_URL=https://uzol.dvadsatjeden.org`
+- `SESSION_DOMAIN=uzol.dvadsatjeden.org`
 - `SESSION_SECURE_COOKIE=true`
 - `SESSION_SAME_SITE=lax`
-- `SANCTUM_STATEFUL_DOMAINS=panel.dvadsatjeden.org`
-- `LNURL_AUTH_DOMAIN=https://panel.dvadsatjeden.org`
+- `SANCTUM_STATEFUL_DOMAINS=uzol.dvadsatjeden.org`
+- `LNURL_AUTH_DOMAIN=https://uzol.dvadsatjeden.org`
 
 ## BTCPay API Key Permissions
 

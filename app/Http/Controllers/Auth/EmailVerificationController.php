@@ -289,7 +289,7 @@ class EmailVerificationController extends Controller
                                 $user->btcpay_user_id,
                                 [], // Empty array will trigger default permissions in UserService
                                 [], // Allow access to all user's stores (empty = no restriction)
-                                'Panel API Key - ' . $user->email
+                                'UZOL21 API Key - ' . $user->email
                             );
 
                             $apiKey = $apiKeyData['apiKey'] ?? null;
@@ -327,7 +327,7 @@ class EmailVerificationController extends Controller
                     ]);
 
                     // Continue even if BTCPay user creation fails
-                    // User can still use the panel, BTCPay user can be created later
+                    // User can still use UZOL21, BTCPay user can be created later
                 }
             }
 

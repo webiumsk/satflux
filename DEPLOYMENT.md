@@ -1,6 +1,6 @@
 # Production Deployment Guide
 
-Tento dokument popisuje postup nasadenia D21 Panel aplikácie na produkčný server (zdieľaný Hetzner hosting alebo VPS).
+Tento dokument popisuje postup nasadenia UZOL21 aplikácie na produkčný server (zdieľaný Hetzner hosting alebo VPS).
 
 ## Požiadavky
 
@@ -63,9 +63,9 @@ Ak používate FTP/SFTP, nahrajte všetky súbory okrem:
 Vytvorte PostgreSQL databázu cez hosting panel alebo SSH:
 
 ```sql
-CREATE DATABASE d21panel;
-CREATE USER d21panel WITH PASSWORD 'strong_password_here';
-GRANT ALL PRIVILEGES ON DATABASE d21panel TO d21panel;
+CREATE DATABASE uzol21;
+CREATE USER uzol21 WITH PASSWORD 'strong_password_here';
+GRANT ALL PRIVILEGES ON DATABASE uzol21 TO uzol21;
 ```
 
 Poznačte si:
@@ -128,20 +128,20 @@ nano .env  # alebo vim .env
 Upravte nasledujúce hodnoty:
 
 ```env
-APP_NAME="D21 Panel"
+APP_NAME="UZOL21"
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://panel.dvadsatjeden.org
+APP_URL=https://uzol.dvadsatjeden.org
 
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
 DB_PORT=5432
-DB_DATABASE=d21panel
-DB_USERNAME=d21panel
+DB_DATABASE=uzol21
+DB_USERNAME=uzol21
 DB_PASSWORD=your_database_password
 
 SESSION_DRIVER=file
-SESSION_DOMAIN=panel.dvadsatjeden.org
+SESSION_DOMAIN=uzol.dvadsatjeden.org
 SESSION_SECURE_COOKIE=true
 SESSION_SAME_SITE=lax
 
@@ -153,7 +153,7 @@ BTCPAY_API_KEY=your_btcpay_api_key
 BTCPAY_WEBHOOK_SECRET=your_webhook_secret
 
 LNURL_AUTH_ENABLED=true
-LNURL_AUTH_DOMAIN=https://panel.dvadsatjeden.org
+LNURL_AUTH_DOMAIN=https://uzol.dvadsatjeden.org
 
 MAIL_MAILER=smtp  # alebo log pre testovanie
 MAIL_HOST=your_smtp_host
@@ -161,8 +161,8 @@ MAIL_PORT=587
 MAIL_USERNAME=your_smtp_username
 MAIL_PASSWORD=your_smtp_password
 MAIL_ENCRYPTION=tls
-MAIL_FROM_ADDRESS="noreply@panel.dvadsatjeden.org"
-MAIL_FROM_NAME="D21 Panel"
+MAIL_FROM_ADDRESS="noreply@uzol.dvadsatjeden.org"
+MAIL_FROM_NAME="UZOL21"
 ```
 
 ### 4.2 Nastavenie oprávnení
@@ -212,13 +212,13 @@ php artisan view:cache
 
 ### 5.1 Nginx konfigurácia
 
-Vytvorte virtual host súbor (napr. `/etc/nginx/sites-available/panel.dvadsatjeden.org`):
+Vytvorte virtual host súbor (napr. `/etc/nginx/sites-available/uzol.dvadsatjeden.org`):
 
 ```nginx
 server {
     listen 80;
     listen [::]:80;
-    server_name panel.dvadsatjeden.org;
+    server_name uzol.dvadsatjeden.org;
     
     # Redirect HTTP to HTTPS
     return 301 https://$server_name$request_uri;
@@ -227,7 +227,7 @@ server {
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name panel.dvadsatjeden.org;
+    server_name uzol.dvadsatjeden.org;
     
     root /path/to/panel/public;
     index index.php;
@@ -266,23 +266,23 @@ server {
 Aktivujte konfiguráciu:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/panel.dvadsatjeden.org /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/uzol.dvadsatjeden.org /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
 ### 5.2 Apache konfigurácia
 
-Vytvorte virtual host súbor (napr. `/etc/apache2/sites-available/panel.dvadsatjeden.org.conf`):
+Vytvorte virtual host súbor (napr. `/etc/apache2/sites-available/uzol.dvadsatjeden.org.conf`):
 
 ```apache
 <VirtualHost *:80>
-    ServerName panel.dvadsatjeden.org
-    Redirect permanent / https://panel.dvadsatjeden.org/
+    ServerName uzol.dvadsatjeden.org
+    Redirect permanent / https://uzol.dvadsatjeden.org/
 </VirtualHost>
 
 <VirtualHost *:443>
-    ServerName panel.dvadsatjeden.org
+    ServerName uzol.dvadsatjeden.org
     DocumentRoot /path/to/panel/public
 
     SSLEngine on
@@ -302,7 +302,7 @@ Vytvorte virtual host súbor (napr. `/etc/apache2/sites-available/panel.dvadsatj
 Aktivujte konfiguráciu:
 
 ```bash
-sudo a2ensite panel.dvadsatjeden.org
+sudo a2ensite uzol.dvadsatjeden.org
 sudo a2enmod ssl rewrite
 sudo apache2ctl configtest
 sudo systemctl reload apache2
@@ -319,17 +319,17 @@ sudo apt-get install certbot python3-certbot-nginx
 sudo apt-get install certbot python3-certbot-apache
 
 # Pre Nginx:
-sudo certbot --nginx -d panel.dvadsatjeden.org
+sudo certbot --nginx -d uzol.dvadsatjeden.org
 
 # Pre Apache:
-sudo certbot --apache -d panel.dvadsatjeden.org
+sudo certbot --apache -d uzol.dvadsatjeden.org
 ```
 
 **Možnosť B: Cloudflare Origin Certificate**
 
 1. Prihláste sa do Cloudflare
 2. SSL/TLS → Origin Server → Create Certificate
-3. Nastavte doménu: `panel.dvadsatjeden.org`
+3. Nastavte doménu: `uzol.dvadsatjeden.org`
 4. Stiahnite certifikát a privátny kľúč
 5. Uložte ich na server (napr. `/etc/ssl/cloudflare/`)
 6. Upravte Nginx/Apache konfiguráciu, aby používali tieto súbory
@@ -342,8 +342,8 @@ Niektorí hostitelia poskytujú SSL certifikáty cez hosting panel. Postupujte p
 
 ### 6.1 Základné testy
 
-1. **HTTPS prístup**: Otvorte `https://panel.dvadsatjeden.org` v prehliadači
-2. **API health check**: `https://panel.dvadsatjeden.org/api/health`
+1. **HTTPS prístup**: Otvorte `https://uzol.dvadsatjeden.org` v prehliadači
+2. **API health check**: `https://uzol.dvadsatjeden.org/api/health`
 3. **Registrácia**: Vyskúšajte vytvorenie nového účtu
 4. **Login**: Prihláste sa
 5. **LNURL-auth**: Vyskúšajte Lightning autentifikáciu (teraz by mal fungovať s HTTPS)
@@ -393,7 +393,7 @@ php artisan view:cache
 ### Backup databázy
 
 ```bash
-pg_dump -h localhost -U d21panel d21panel > backup_$(date +%Y%m%d).sql
+pg_dump -h localhost -U uzol21 uzol21 > backup_$(date +%Y%m%d).sql
 ```
 
 ### Aktualizácia aplikácie
@@ -430,12 +430,12 @@ php artisan view:cache
 
 - Overte certifikát je na správnom mieste
 - Overte Nginx/Apache konfiguráciu
-- Overte DNS propagáciu: `dig panel.dvadsatjeden.org`
+- Overte DNS propagáciu: `dig uzol.dvadsatjeden.org`
 
 **4. LNURL-auth nefunguje**
 
 - Overte `LNURL_AUTH_ENABLED=true` v `.env`
-- Overte `LNURL_AUTH_DOMAIN=https://panel.dvadsatjeden.org` (HTTPS!)
+- Overte `LNURL_AUTH_DOMAIN=https://uzol.dvadsatjeden.org` (HTTPS!)
 - Overte SSL certifikát je platný
 
 **5. Frontend assets chýbajú**
