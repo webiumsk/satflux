@@ -48,31 +48,32 @@
           </div>
 
           <form @submit.prevent="handleSubmit" class="px-6 py-5 space-y-6">
-            <!-- App Name -->
-            <div>
-              <label for="appName" class="block text-sm font-medium text-gray-700">
-                App Name
-              </label>
-              <input
-                id="appName"
-                v-model="form.appName"
-                type="text"
-                required
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              />
-            </div>
+            <!-- App Name and Title in one row -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label for="appName" class="block text-sm font-medium text-gray-700">
+                  App Name
+                </label>
+                <input
+                  id="appName"
+                  v-model="form.appName"
+                  type="text"
+                  required
+                  class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                />
+              </div>
 
-            <!-- Title -->
-            <div>
-              <label for="title" class="block text-sm font-medium text-gray-700">
-                Title
-              </label>
-              <input
-                id="title"
-                v-model="form.title"
-                type="text"
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              />
+              <div>
+                <label for="title" class="block text-sm font-medium text-gray-700">
+                  Title
+                </label>
+                <input
+                  id="title"
+                  v-model="form.title"
+                  type="text"
+                  class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                />
+              </div>
             </div>
 
             <!-- Description -->
@@ -90,19 +91,90 @@
 
             <!-- Default View -->
             <div>
-              <label for="defaultView" class="block text-sm font-medium text-gray-700">
-                Default View
+              <label class="block text-sm font-medium text-gray-700 mb-3">
+                Point of Sale Style
               </label>
-              <select
-                id="defaultView"
-                v-model="form.defaultView"
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              >
-                <option value="Static">Static</option>
-                <option value="Cart">Cart</option>
-                <option value="Light">Light</option>
-                <option value="Print">Print</option>
-              </select>
+              <div class="btcpay-list-select grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="relative">
+                  <input
+                    type="radio"
+                    value="Static"
+                    id="DefaultView_Static"
+                    v-model="form.defaultView"
+                    class="sr-only"
+                  />
+                  <label
+                    for="DefaultView_Static"
+                    class="btcpay-list-select-item flex flex-col items-center justify-center p-4 border-2 rounded-lg cursor-pointer transition-colors"
+                    :class="form.defaultView === 'Static' ? 'border-indigo-600 bg-indigo-100' : 'border-gray-200 hover:border-indigo-500 hover:bg-indigo-50'"
+                  >
+                    <svg role="img" class="icon icon-pos-static w-8 h-8 mb-2" :class="form.defaultView === 'Static' ? 'text-indigo-600' : 'text-gray-600'">
+                      <use href="/img/icon-sprite.svg#pos-static"></use>
+                    </svg>
+                    <span class="text-sm font-medium text-center">Product list</span>
+                  </label>
+                </div>
+
+                <div class="relative">
+                  <input
+                    type="radio"
+                    value="Cart"
+                    id="DefaultView_Cart"
+                    v-model="form.defaultView"
+                    class="sr-only"
+                  />
+                  <label
+                    for="DefaultView_Cart"
+                    class="btcpay-list-select-item flex flex-col items-center justify-center p-4 border-2 rounded-lg cursor-pointer transition-colors"
+                    :class="form.defaultView === 'Cart' ? 'border-indigo-600 bg-indigo-100' : 'border-gray-200 hover:border-indigo-500 hover:bg-indigo-50'"
+                  >
+                    <svg role="img" class="icon icon-pos-cart w-8 h-8 mb-2" :class="form.defaultView === 'Cart' ? 'text-indigo-600' : 'text-gray-600'">
+                      <use href="/img/icon-sprite.svg#pos-cart"></use>
+                    </svg>
+                    <span class="text-sm font-medium text-center">Product list with cart</span>
+                  </label>
+                </div>
+
+                <div class="relative">
+                  <input
+                    type="radio"
+                    value="Light"
+                    id="DefaultView_Light"
+                    v-model="form.defaultView"
+                    class="sr-only"
+                  />
+                  <label
+                    for="DefaultView_Light"
+                    class="btcpay-list-select-item flex flex-col items-center justify-center p-4 border-2 rounded-lg cursor-pointer transition-colors"
+                    :class="form.defaultView === 'Light' ? 'border-indigo-600 bg-indigo-100' : 'border-gray-200 hover:border-indigo-500 hover:bg-indigo-50'"
+                  >
+                    <svg role="img" class="icon icon-pos-light w-8 h-8 mb-2" :class="form.defaultView === 'Light' ? 'text-indigo-600' : 'text-gray-600'">
+                      <use href="/img/icon-sprite.svg#pos-light"></use>
+                    </svg>
+                    <span class="text-sm font-medium text-center">Keypad</span>
+                  </label>
+                </div>
+
+                <div class="relative">
+                  <input
+                    type="radio"
+                    value="Print"
+                    id="DefaultView_Print"
+                    v-model="form.defaultView"
+                    class="sr-only"
+                  />
+                  <label
+                    for="DefaultView_Print"
+                    class="btcpay-list-select-item flex flex-col items-center justify-center p-4 border-2 rounded-lg cursor-pointer transition-colors"
+                    :class="form.defaultView === 'Print' ? 'border-indigo-600 bg-indigo-100' : 'border-gray-200 hover:border-indigo-500 hover:bg-indigo-50'"
+                  >
+                    <svg role="img" class="icon icon-pos-print w-8 h-8 mb-2" :class="form.defaultView === 'Print' ? 'text-indigo-600' : 'text-gray-600'">
+                      <use href="/img/icon-sprite.svg#pos-print"></use>
+                    </svg>
+                    <span class="text-sm font-medium text-center">Print Display</span>
+                  </label>
+                </div>
+              </div>
             </div>
 
             <!-- Currency -->
@@ -114,8 +186,15 @@
                 id="currency"
                 v-model="form.currency"
                 type="text"
+                list="currency-selection-suggestion"
+                placeholder="Select or type currency (e.g., USD, BTC, EUR)"
                 class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               />
+              <datalist id="currency-selection-suggestion">
+                <option v-for="currency in currencies" :key="currency.code" :value="currency.code">
+                  {{ currency.code }} - {{ currency.name }}
+                </option>
+              </datalist>
             </div>
 
             <!-- Options -->
@@ -327,6 +406,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAppsStore } from '../../store/apps';
 import { useStoresStore } from '../../store/stores';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
+import { currencies } from '../../data/currencies';
 
 const route = useRoute();
 const router = useRouter();
@@ -353,7 +433,7 @@ const form = ref({
   title: '',
   description: '',
   defaultView: 'Static',
-  currency: 'EUR',
+  currency: '',
   showItems: false,
   showCustomAmount: false,
   showDiscount: false,
@@ -387,7 +467,8 @@ async function loadApp() {
         form.value.title = config.title || '';
         form.value.description = config.description || '';
         form.value.defaultView = config.defaultView || 'Static';
-        form.value.currency = config.currency || 'EUR';
+        // Use app currency if set, otherwise use store's default currency
+        form.value.currency = config.currency || (store.value?.default_currency || 'EUR');
         form.value.showItems = config.showItems || false;
         form.value.showCustomAmount = config.showCustomAmount || false;
         form.value.showDiscount = config.showDiscount || false;
@@ -396,6 +477,9 @@ async function loadApp() {
         form.value.enableTips = config.enableTips || false;
         form.value.fixedAmountPayButtonText = config.fixedAmountPayButtonText || 'Buy for {0}';
         form.value.customAmountPayButtonText = config.customAmountPayButtonText || 'Pay';
+      } else {
+        // If no config, use store's default currency
+        form.value.currency = store.value?.default_currency || 'EUR';
       }
     }
   } catch (err: any) {
