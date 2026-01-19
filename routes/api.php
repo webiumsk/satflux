@@ -16,6 +16,7 @@ use App\Http\Controllers\LightningAddressController;
 use App\Http\Controllers\StoreSettingsController;
 use App\Http\Controllers\WalletConnectionController;
 use App\Http\Controllers\WebhookController;
+use App\Http\Controllers\EshopIntegrationController;
 use App\Http\Middleware\AuditLog;
 use App\Http\Middleware\EnsureStoreOwnership;
 use App\Http\Middleware\EnsureSupportRole;
@@ -96,6 +97,12 @@ Route::get('/debug/stores', function (\Illuminate\Http\Request $request) {
 
 // Webhooks (no auth required - verified via signature)
 Route::post('/webhooks/btcpay', [WebhookController::class, 'handle']);
+
+// Public E-shop Integration API (rate limited, no auth required - uses tokens)
+Route::middleware(['throttle:10,1'])->group(function () {
+    Route::post('/public/eshop/connect', [EshopIntegrationController::class, 'connect']);
+    Route::get('/public/eshop/token/{token}', [EshopIntegrationController::class, 'getToken']);
+});
 
 // Authentication routes (rate limited)
 Route::middleware(['throttle:auth'])->group(function () {
@@ -201,6 +208,20 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':lightning-address.updated']);
     Route::delete('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'destroy'])
         ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':lightning-address.deleted']);
+
+    // Store API Keys
+    Route::get('/stores/{store}/api-keys', [\App\Http\Controllers\StoreApiKeyController::class, 'index'])
+        ->middleware(EnsureStoreOwnership::class);
+    Route::post('/stores/{store}/api-keys', [\App\Http\Controllers\StoreApiKeyController::class, 'store'])
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':api-key.created']);
+    Route::get('/stores/{store}/api-keys/{apiKey}', [\App\Http\Controllers\StoreApiKeyController::class, 'show'])
+        ->middleware(EnsureStoreOwnership::class);
+    Route::delete('/stores/{store}/api-keys/{apiKey}', [\App\Http\Controllers\StoreApiKeyController::class, 'destroy'])
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':api-key.deleted']);
+    Route::post('/stores/{store}/api-keys/{apiKey}/regenerate', [\App\Http\Controllers\StoreApiKeyController::class, 'regenerate'])
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':api-key.regenerated']);
+    Route::post('/stores/{store}/api-keys/token', [\App\Http\Controllers\StoreApiKeyController::class, 'generateToken'])
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':api-key.token.generated']);
 
     // Product Images
     Route::post('/stores/{store}/products/image', [\App\Http\Controllers\ProductImageController::class, 'upload'])

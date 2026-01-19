@@ -246,6 +246,24 @@
             </div>
             <div v-else class="ml-4 text-xs text-gray-500">No buttons</div>
           </div>
+
+          <!-- E-shop Integration -->
+          <div class="mb-2">
+            <router-link
+              :to="`/stores/${store.id}/api-keys`"
+              class="flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              :class="
+                $route.name === 'stores-api-keys'
+                  ? 'bg-gray-900 text-white'
+                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+              "
+            >
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+              </svg>
+              E-shop Integration
+            </router-link>
+          </div>
         </nav>
       </div>
 

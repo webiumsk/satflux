@@ -82,6 +82,14 @@ class Store extends Model
     }
 
     /**
+     * Get the API keys for the store.
+     */
+    public function apiKeys(): HasMany
+    {
+        return $this->hasMany(StoreApiKey::class);
+    }
+
+    /**
      * Scope a query to only include stores for a specific user.
      */
     public function scopeForUser($query, int $userId)
