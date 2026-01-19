@@ -44,10 +44,20 @@ nano .env.production  # alebo vim .env.production
 
 Upravte všetky potrebné hodnoty v `.env.production`, najmä:
 - `APP_KEY` - vygenerujte cez `docker compose -f docker-compose.prod.yml exec --user root php php artisan key:generate` (po prvom spustení kontajnerov)
-- `DB_PASSWORD` - silné heslo pre databázu (povinné!)
+- `POSTGRES_PASSWORD` - silné heslo pre PostgreSQL databázu (**povinné!**)
+  - **Dôležité:** Docker Compose expanduje `${VAR}` z shell prostredia, nie z `env_file`. Preto musíte nastaviť `POSTGRES_PASSWORD` priamo v `.env.production` (nie len `DB_PASSWORD`).
+  - Alternatíva: Exportujte v shell pred spustením: `export POSTGRES_PASSWORD="your_password"`
+  - Ak nie je nastavené, použije sa fallback `XXXXXXXX` (nie je bezpečné pre produkciu!)
+- `DB_PASSWORD` - použite rovnakú hodnotu ako `POSTGRES_PASSWORD` (pre Laravel aplikáciu)
 - `BTCPAY_API_KEY` - API kľúč pre BTCPay Server
 - `REDIS_PASSWORD` - heslo pre Redis (voliteľné, môže zostať `null`)
 - Mail nastavenia
+
+**Príklad v `.env.production`:**
+```bash
+DB_PASSWORD=TUyRjtv47HIjfeMt      # Pre Laravel aplikáciu
+POSTGRES_PASSWORD=TUyRjtv47HIjfeMt # Pre Docker Compose (rovnaká hodnota!)
+```
 
 #### 1.3 Prvé spustenie
 

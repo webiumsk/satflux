@@ -11,7 +11,7 @@ services:
         condition: service_healthy
     networks:
       - uzol21
-      - passbolt_default
+      # - passbolt_default  # Uncomment if using Passbolt integration
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
@@ -63,7 +63,10 @@ services:
     environment:
       POSTGRES_DB: ${DB_DATABASE:-uzol21}
       POSTGRES_USER: ${DB_USERNAME:-uzol21}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # Docker Compose expands variables from shell, not env_file
+      # Solution: Use POSTGRES_PASSWORD directly from env_file OR export DB_PASSWORD in shell
+      # If neither is set, fallback to XXXXXXXX (not secure for production!)
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-XXXXXXXX}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -112,6 +115,7 @@ networks:
   uzol21:
     driver: bridge
     name: uzol21_prod
-  passbolt_default:
-    external: true
+  # passbolt_default network is optional - only needed if integrating with Passbolt
+  # passbolt_default:
+  #   external: true
 
