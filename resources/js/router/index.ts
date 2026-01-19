@@ -94,6 +94,12 @@ const router = createRouter({
             meta: { requiresAuth: true },
         },
         {
+            path: '/stores/:id/lightning-addresses',
+            name: 'stores-lightning-addresses',
+            component: () => import('../pages/stores/LightningAddresses.vue'),
+            meta: { requiresAuth: true },
+        },
+        {
             path: '/stores/:id/apps/:appId',
             name: 'stores-apps-show',
             component: () => import('../pages/stores/AppsShow.vue'),
