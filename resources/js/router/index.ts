@@ -100,6 +100,12 @@ const router = createRouter({
             meta: { requiresAuth: true },
         },
         {
+            path: '/stores/:id/api-keys',
+            name: 'stores-api-keys',
+            component: () => import('../pages/stores/ApiKeys.vue'),
+            meta: { requiresAuth: true },
+        },
+        {
             path: '/stores/:id/apps/:appId',
             name: 'stores-apps-show',
             component: () => import('../pages/stores/AppsShow.vue'),
