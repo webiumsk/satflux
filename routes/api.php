@@ -208,6 +208,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Support routes
     Route::middleware([EnsureSupportRole::class])->group(function () {
         Route::get('/support/wallet-connections', [WalletConnectionController::class, 'indexSupport']);
+        Route::get('/support/count', [WalletConnectionController::class, 'getSupportCount']);
         Route::post('/support/wallet-connections/{connection}/reveal', [WalletConnectionController::class, 'reveal'])
             ->middleware(AuditLog::class . ':wallet_connection.revealed');
         Route::get('/support/wallet-connections/{connection}/btcpay-store-url', [WalletConnectionController::class, 'getBtcPayStoreUrl']);

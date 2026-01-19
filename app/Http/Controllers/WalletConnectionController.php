@@ -150,6 +150,21 @@ class WalletConnectionController extends Controller
     }
 
     /**
+     * Get count of items needing support (support role only).
+     */
+    public function getSupportCount(Request $request)
+    {
+        $walletConnectionsCount = WalletConnection::where('status', 'needs_support')->count();
+
+        return response()->json([
+            'data' => [
+                'wallet_connections' => $walletConnectionsCount,
+                'total' => $walletConnectionsCount, // For now only wallet connections, can add stores later
+            ],
+        ]);
+    }
+
+    /**
      * Reveal wallet connection secret (support role only, requires password confirmation).
      */
     public function reveal(Request $request, WalletConnection $connection)
