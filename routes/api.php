@@ -12,6 +12,7 @@ use App\Http\Controllers\ExportController;
 use App\Http\Controllers\StoreChecklistController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\StoreDashboardController;
+use App\Http\Controllers\LightningAddressController;
 use App\Http\Controllers\StoreSettingsController;
 use App\Http\Controllers\WalletConnectionController;
 use App\Http\Controllers\WebhookController;
@@ -188,6 +189,18 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':app.updated']);
     Route::delete('/stores/{store}/apps/{app}', [AppController::class, 'destroy'])
         ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':app.deleted']);
+
+    // Lightning Addresses
+    Route::get('/stores/{store}/lightning-addresses', [LightningAddressController::class, 'index'])
+        ->middleware(EnsureStoreOwnership::class);
+    Route::get('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'show'])
+        ->middleware(EnsureStoreOwnership::class);
+    Route::post('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'store'])
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':lightning-address.created']);
+    Route::put('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'update'])
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':lightning-address.updated']);
+    Route::delete('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'destroy'])
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':lightning-address.deleted']);
 
     // Product Images
     Route::post('/stores/{store}/products/image', [\App\Http\Controllers\ProductImageController::class, 'upload'])
