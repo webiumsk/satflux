@@ -11,7 +11,7 @@ services:
         condition: service_healthy
     networks:
       - uzol21
-      # - passbolt_default  # Uncomment if using Passbolt integration
+      - passbolt_default
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
@@ -115,7 +115,6 @@ networks:
   uzol21:
     driver: bridge
     name: uzol21_prod
-  # passbolt_default network is optional - only needed if integrating with Passbolt
-  # passbolt_default:
-  #   external: true
+  passbolt_default:
+    external: true
 
