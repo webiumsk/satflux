@@ -61,12 +61,9 @@ services:
     env_file:
       - .env.production
     environment:
-      POSTGRES_DB: ${DB_DATABASE:-uzol21}
-      POSTGRES_USER: ${DB_USERNAME:-uzol21}
-      # Docker Compose expands variables from shell, not env_file
-      # Solution: Use POSTGRES_PASSWORD directly from env_file OR export DB_PASSWORD in shell
-      # If neither is set, fallback to XXXXXXXX (not secure for production!)
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-XXXXXXXX}
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
