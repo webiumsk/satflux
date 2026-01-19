@@ -837,6 +837,11 @@
         </div>
         </template>
 
+        <!-- Crowdfund App Template -->
+        <template v-else-if="app.app_type === 'Crowdfund'">
+          <CrowdfundForm :app="app" :store="store" />
+        </template>
+
         <template v-else-if="app">
           <div class="bg-white shadow rounded-lg p-6">
             <h1 class="text-3xl font-bold text-gray-900 mb-4">{{ app.name }}</h1>
@@ -869,6 +874,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAppsStore } from '../../store/apps';
 import ProductEditDrawer from '../../components/stores/ProductEditDrawer.vue';
+import CrowdfundForm from './CrowdfundForm.vue';
 import { useStoresStore } from '../../store/stores';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
 import { currencies } from '../../data/currencies';
