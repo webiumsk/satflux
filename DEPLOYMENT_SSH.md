@@ -27,8 +27,15 @@ Skopírujte celý výstup (začína `ssh-ed25519 ...`).
 4. Vyplňte:
    - **Title**: `uzol21-production-server` (alebo ľubovoľný názov)
    - **Key**: Vložte skopírovaný verejný kľúč
-   - ✅ **Allow write access** - **NECHCKNI** (len čítanie je bezpečnejšie)
+   - ✅ **Allow write access** - **ZAŠKRKNITE** ak chcete pushovať zmeny z servera
+     - Len čítanie je bezpečnejšie, ale ak chcete automaticky pushnúť deploy commity, musíte povoliť write access
 5. Kliknite na **Add key**
+
+**Poznámka:** Ak ste už vytvorili deploy key bez write access a chcete pridať push možnosti:
+1. Choďte na Settings → Deploy keys
+2. Nájdite váš kľúč a kliknite na **Edit**
+3. Zaškrtnite **Allow write access**
+4. Kliknite **Update key**
 
 ### 1.3 Overenie
 
