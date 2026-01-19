@@ -1,6 +1,8 @@
 # Nastavenie SSH Deploy Key pre Private Repozitár
 
-Tento dokument popisuje, ako nastaviť SSH Deploy Key pre automatické deployovanie private repozitára na serveri.
+Tento dokument popisuje, ako nastaviť SSH Deploy Key pre automatické deployovanie private repozitára na **produkčnom serveri**.
+
+**⚠️ Dôležité:** Tieto kroky sa vykonávajú **NA SERVERI**, nie na localhoste!
 
 ## Prečo SSH Deploy Key?
 
@@ -8,18 +10,84 @@ Tento dokument popisuje, ako nastaviť SSH Deploy Key pre automatické deployova
 - ✅ **Bez nutnosti prepínať** repozitár medzi public/private
 - ✅ **Automatické deployy** bez manuálnych hesiel
 
-## Krok 1: Pridať SSH kľúč do GitHubu
+## Krok 1: Vytvoriť SSH kľúč na serveri
 
-### 1.1 Zobraziť verejný kľúč
+### 1.1 Prihlásiť sa na server
 
-Na serveri spustite:
+Najprv sa prihlási na produkčný server:
 ```bash
+ssh uzivatel@tvoj-server.sk
+# alebo ak máš priamy prístup k serveru
+```
+
+### 1.2 Rozhodnúť sa, ako používateľ spúšťa deploy
+
+**Otázka:** Ako používateľ beží deploy script na serveri?
+- Ak ako **root** (cez `sudo`): vytvor kľúč pre root
+- Ak ako **iný používateľ** (napr. `peterhorvath`): vytvor kľúč pre toho používateľa
+
+### 1.3 Vygenerovať SSH kľúč
+
+Na serveri spustite (ako používateľ, ktorý bude spúšťať deploy):
+```bash
+# Pre root používateľa:
+sudo ssh-keygen -t ed25519 -C "uzol21-deploy@server" -f ~/.ssh/github_deploy_key -N ""
+
+# Alebo pre iného používateľa (napr. peterhorvath):
+ssh-keygen -t ed25519 -C "uzol21-deploy@server" -f ~/.ssh/github_deploy_key -N ""
+```
+
+### 1.4 Zobraziť verejný kľúč
+
+**Na serveri** zobraz verejný kľúč:
+```bash
+# Pre root:
+sudo cat ~/.ssh/github_deploy_key.pub
+
+# Alebo pre iného používateľa:
 cat ~/.ssh/github_deploy_key.pub
 ```
 
 Skopírujte celý výstup (začína `ssh-ed25519 ...`).
 
-### 1.2 Pridať Deploy Key do GitHubu
+### 1.3 Nastavenie kľúča pre root (ak deploy beží ako root)
+
+Ak ste vytvorili kľúč pre iného používateľa (napr. `peterhorvath`), ale deploy script beží ako root, skopírujte kľúč:
+
+```bash
+sudo bash << 'ROOTSCRIPT'
+mkdir -p /root/.ssh
+chmod 700 /root/.ssh
+
+# Skopíruj verejný kľúč
+cat /home/peterhorvath/.ssh/github_deploy_key.pub > /root/.ssh/github_deploy_key.pub
+chmod 644 /root/.ssh/github_deploy_key.pub
+
+# Skopíruj súkromný kľúč
+cat /home/peterhorvath/.ssh/github_deploy_key > /root/.ssh/github_deploy_key
+chmod 600 /root/.ssh/github_deploy_key
+
+# Vytvor SSH config
+cat > /root/.ssh/config << 'EOFCONFIG'
+Host github.com
+    HostName github.com
+    User git
+    IdentityFile ~/.ssh/github_deploy_key
+    IdentitiesOnly yes
+EOFCONFIG
+chmod 600 /root/.ssh/config
+
+# Pridaj GitHub do known_hosts
+ssh-keyscan github.com >> /root/.ssh/known_hosts 2>/dev/null
+
+echo "✓ SSH kľúč nastavený pre root"
+cat /root/.ssh/github_deploy_key.pub
+ROOTSCRIPT
+```
+
+## Krok 2: Pridať SSH kľúč do GitHubu
+
+### 2.1 Pridať Deploy Key do GitHubu
 
 1. Otvorte GitHub repozitár: https://github.com/webiumsk/D21Panel
 2. Prejdite na **Settings** → **Deploy keys**
@@ -37,11 +105,15 @@ Skopírujte celý výstup (začína `ssh-ed25519 ...`).
 3. Zaškrtnite **Allow write access**
 4. Kliknite **Update key**
 
-### 1.3 Overenie
+### 2.2 Overenie
 
-Na serveri spustite:
+Na serveri spustite (ako používateľ, ktorý má kľúč):
 ```bash
+# Pre root:
 ssh -T git@github.com
+
+# Alebo pre iného používateľa:
+# ssh -T git@github.com
 ```
 
 Mali by ste vidieť:
@@ -51,7 +123,7 @@ Hi webiumsk/D21Panel! You've successfully authenticated...
 
 **Poznámka:** Môže sa zobraziť "but GitHub does not provide shell access" - to je v poriadku.
 
-## Krok 2: Test Git prístupu
+## Krok 3: Test Git prístupu
 
 ```bash
 cd /home/peterhorvath/apps/bitcoin/D21Panel
@@ -61,7 +133,7 @@ git status
 
 Ak funguje bez chýb, SSH kľúč je správne nastavený! 🎉
 
-## Krok 3: Použitie v deploy.sh
+## Krok 4: Použitie v deploy.sh
 
 `deploy.sh` automaticky používa SSH, ak je remote URL nastavený na SSH formát:
 ```bash
