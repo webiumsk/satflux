@@ -259,26 +259,158 @@ class AppController extends Controller
         // Load merchant API key from store owner
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
+        // If app doesn't have btcpay_app_id, we need to create it in BTCPay first
+        if (!$app->btcpay_app_id) {
+            Log::warning('App update called but btcpay_app_id is missing - creating app in BTCPay first', [
+                'app_id' => $app->id,
+                'store_id' => $store->id,
+                'app_type' => $app->app_type,
+            ]);
+            
+            // Create app in BTCPay
+            $config = $app->config ?? [];
+            
+            // Map 'name' to 'appName' for BTCPay API
+            if ($request->has('name')) {
+                $config['appName'] = $request->name;
+                unset($config['name']);
+            }
+            
+            // Merge in any additional config fields from request
+            if ($request->has('config')) {
+                $requestConfig = $request->config;
+                if (isset($requestConfig['name']) && !isset($requestConfig['appName'])) {
+                    $requestConfig['appName'] = $requestConfig['name'];
+                    unset($requestConfig['name']);
+                }
+                $config = array_merge($config, $requestConfig);
+            }
+            
+            $btcpayApp = $this->appService->createApp(
+                $store->btcpay_store_id,
+                $app->app_type,
+                $request->input('name', $app->name),
+                $config,
+                $userApiKey
+            );
+            
+            // Get BTCPay app ID
+            $btcpayAppId = $btcpayApp['id'] ?? $btcpayApp['appId'] ?? $btcpayApp['app_id'] ?? null;
+            
+            if ($btcpayAppId) {
+                // Update local record with BTCPay app ID
+                $app->update([
+                    'btcpay_app_id' => $btcpayAppId,
+                    'name' => $request->input('name', $app->name),
+                    'config' => $btcpayApp,
+                ]);
+                
+                Log::info('Created app in BTCPay and updated local record', [
+                    'app_id' => $app->id,
+                    'btcpay_app_id' => $btcpayAppId,
+                ]);
+            } else {
+                Log::error('Failed to get BTCPay app ID after creation', [
+                    'app_id' => $app->id,
+                    'btcpay_response' => $btcpayApp,
+                ]);
+            }
+            
+            return response()->json([
+                'data' => $this->formatApp($app->fresh(), $btcpayApp),
+                'message' => 'App created and updated successfully',
+            ]);
+        }
+
         // Update app in BTCPay
-        // Start with existing BTCPay config from local DB, or empty array
-        $config = $app->config ?? [];
+        // IMPORTANT: Start with request config first, then merge DB config as fallback
+        // This ensures new values from form take priority over old values in DB
+        $config = [];
         
-        // Map 'name' to 'appName' for BTCPay API
+        // Start with request config if provided
+        if ($request->has('config')) {
+            $config = $request->config;
+            
+            // CRITICAL: Remove ALL metadata fields from request config that could interfere
+            // These MUST be removed to prevent creating new app instead of updating
+            unset(
+                $config['id'], 
+                $config['appType'], 
+                $config['app_type'],
+                $config['storeId'], 
+                $config['store_id'],
+                $config['archived'], 
+                $config['created'],
+                $config['btcpay_app_id'] // Just in case
+            );
+            
+            // Map 'name' to 'appName' in request config
+            if (isset($config['name']) && !isset($config['appName'])) {
+                $config['appName'] = $config['name'];
+                unset($config['name']);
+            }
+        }
+        
+        // Merge in existing DB config as fallback for fields not provided in request
+        $dbConfig = $app->config ?? [];
+        
+        // CRITICAL: Remove ALL metadata fields from DB config
+        // These are BTCPay metadata fields that should NOT be sent in update requests
+        unset(
+            $dbConfig['id'], 
+            $dbConfig['appType'], 
+            $dbConfig['app_type'],
+            $dbConfig['storeId'], 
+            $dbConfig['store_id'],
+            $dbConfig['archived'], 
+            $dbConfig['created'],
+            $dbConfig['btcpay_app_id'] // Just in case
+        );
+        
+        // Remove old 'title' and 'appName' from DB config if we have new ones in request
+        // This prevents old values from overriding new ones
+        if ($request->has('config')) {
+            if (isset($config['displayTitle']) || isset($config['title'])) {
+                unset($dbConfig['title'], $dbConfig['displayTitle']);
+            }
+            if (isset($config['appName']) || $request->has('name')) {
+                unset($dbConfig['appName'], $dbConfig['name']);
+            }
+        }
+        
+        // Merge DB config as fallback (request config takes priority)
+        $config = array_merge($dbConfig, $config);
+        
+        // FINAL CHECK: Remove id if it somehow got back in during merge
+        // This is a safety measure - id MUST come from $app->btcpay_app_id parameter
+        unset($config['id']);
+        
+        // Map 'name' to 'appName' for BTCPay API (from request name field)
         if ($request->has('name')) {
             $config['appName'] = $request->name;
             // Remove 'name' if it exists
             unset($config['name']);
         }
         
-        // Merge in any additional config fields from request
-        if ($request->has('config')) {
-            $requestConfig = $request->config;
-            // Map 'name' to 'appName' in request config too
-            if (isset($requestConfig['name']) && !isset($requestConfig['appName'])) {
-                $requestConfig['appName'] = $requestConfig['name'];
-                unset($requestConfig['name']);
-            }
-            $config = array_merge($config, $requestConfig);
+        // Log to ensure we're using the correct btcpay_app_id
+        \Log::info('App update - using btcpay_app_id from DB', [
+            'app_id' => $app->id,
+            'btcpay_app_id' => $app->btcpay_app_id,
+            'app_type' => $app->app_type,
+            'config_keys' => array_keys($config),
+            'config_has_id' => isset($config['id']),
+            'config_id_value' => $config['id'] ?? null,
+        ]);
+        
+        // CRITICAL: Verify btcpay_app_id exists before updating
+        if (!$app->btcpay_app_id) {
+            \Log::error('Cannot update app: btcpay_app_id is missing in DB', [
+                'app_id' => $app->id,
+                'store_id' => $store->id,
+            ]);
+            return response()->json([
+                'message' => 'Cannot update app: BTCPay app ID is missing. Please contact support.',
+            ], 400);
         }
 
         $btcpayApp = $this->appService->updateApp(
@@ -336,20 +468,37 @@ class AppController extends Controller
         // Load merchant API key from store owner
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
-        // Delete app from BTCPay
-        $this->appService->deleteApp(
-            $store->btcpay_store_id,
-            $app->btcpay_app_id,
-            $app->app_type, // Pass app_type for correct endpoint
-            $userApiKey
-        );
+        try {
+            // Delete app from BTCPay first
+            $this->appService->deleteApp(
+                $store->btcpay_store_id,
+                $app->btcpay_app_id,
+                $app->app_type, // Pass app_type for correct endpoint
+                $userApiKey
+            );
 
-        // Delete local record
-        $app->delete();
+            // Only delete local record if BTCPay deletion succeeded
+            $app->delete();
 
-        return response()->json([
-            'message' => 'App deleted successfully',
-        ]);
+            return response()->json([
+                'message' => 'App deleted successfully',
+            ]);
+        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+            // If BTCPay deletion fails, don't delete local record
+            \Illuminate\Support\Facades\Log::error('Failed to delete app from BTCPay', [
+                'store_id' => $store->id,
+                'btcpay_store_id' => $store->btcpay_store_id,
+                'app_id' => $app->id,
+                'btcpay_app_id' => $app->btcpay_app_id,
+                'app_type' => $app->app_type,
+                'error' => $e->getMessage(),
+                'status_code' => $e->getCode(),
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to delete app from BTCPay: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
