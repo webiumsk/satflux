@@ -899,7 +899,7 @@
       :is-open="showProductDrawer"
       :product="currentProduct"
       :currency="form.currency || store?.default_currency || 'EUR'"
-      :store-id="storeId"
+      :store-id="storeId.value"
       @close="showProductDrawer = false"
       @save="handleProductSave"
     />
@@ -926,8 +926,8 @@ const router = useRouter();
 const appsStore = useAppsStore();
 const storesStore = useStoresStore();
 
-const storeId = route.params.id as string;
-const appId = route.params.appId as string;
+const storeId = computed(() => route.params.id as string);
+const appId = computed(() => route.params.appId as string);
 const loading = ref(false);
 const saving = ref(false);
 const store = ref<any>(null);
@@ -1229,14 +1229,17 @@ async function loadApp() {
   loading.value = true;
   error.value = '';
   try {
+    const currentStoreId = storeId.value;
+    const currentAppId = appId.value;
+    
     // Load store and apps first
-    if (!store.value) {
-      store.value = await storesStore.fetchStore(storeId);
+    if (!store.value || store.value.id !== currentStoreId) {
+      store.value = await storesStore.fetchStore(currentStoreId);
     }
-    await appsStore.fetchApps(storeId);
+    await appsStore.fetchApps(currentStoreId);
     
     // Then load the specific app
-    app.value = await appsStore.fetchApp(storeId, appId);
+    app.value = await appsStore.fetchApp(currentStoreId, currentAppId);
     
     // Populate form with app data
     if (app.value) {
@@ -1413,7 +1416,7 @@ async function handleSubmit() {
     }
 
     // Update app via API
-    await appsStore.updateApp(storeId, appId, {
+    await appsStore.updateApp(storeId.value, appId.value, {
       name: form.value.appName,
       config,
     });
@@ -1436,11 +1439,11 @@ function handleCreateApp() {
 }
 
 function handleShowSettings() {
-  router.push({ name: 'stores-show', params: { id: storeId }, query: { section: 'settings' } });
+  router.push({ name: 'stores-show', params: { id: storeId.value }, query: { section: 'settings' } });
 }
 
 function handleShowSection(section: string) {
-  router.push({ name: 'stores-show', params: { id: storeId }, query: { section } });
+  router.push({ name: 'stores-show', params: { id: storeId.value }, query: { section } });
 }
 
 async function handleDelete() {
@@ -1453,10 +1456,10 @@ async function handleDelete() {
   deleteError.value = '';
   
   try {
-    await appsStore.deleteApp(storeId, appId);
+    await appsStore.deleteApp(storeId.value, appId.value);
     
     // Redirect to store page after successful deletion
-    router.push({ name: 'stores-show', params: { id: storeId } });
+    router.push({ name: 'stores-show', params: { id: storeId.value } });
   } catch (err: any) {
     deleteError.value = err.response?.data?.message || 'Failed to delete app';
   } finally {
@@ -1469,9 +1472,11 @@ onMounted(() => {
 });
 
 // Reload if route changes
-watch(() => route.params.appId, () => {
-  if (route.params.appId) {
+watch([() => route.params.id, () => route.params.appId], ([newStoreId, newAppId], [oldStoreId, oldAppId]) => {
+  if (newAppId && (newAppId !== oldAppId || newStoreId !== oldStoreId)) {
+    // Reset app state when switching
+    app.value = null;
     loadApp();
   }
-});
+}, { immediate: false });
 </script>
