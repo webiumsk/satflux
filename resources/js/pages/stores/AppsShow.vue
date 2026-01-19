@@ -3,7 +3,7 @@
     <p class="text-gray-500">Loading app...</p>
   </div>
 
-  <div v-else-if="store && app" class="flex h-full bg-gray-100">
+  <div v-else-if="store && app" class="flex h-screen bg-gray-100 overflow-hidden">
     <!-- Sidebar -->
     <StoreSidebar
       :store="store"
@@ -14,19 +14,21 @@
     />
 
     <!-- Main Content -->
-    <div class="flex-1 overflow-y-auto">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <template v-if="app.app_type === 'PointOfSale'">
-        <div class="space-y-6">
-          <!-- App Header with Terminal Link -->
-          <div class="bg-white shadow rounded-lg p-6">
+    <div class="flex-1 overflow-hidden flex flex-col">
+      <!-- Scrollable Content Area -->
+      <div class="flex-1 overflow-y-auto">
+        <!-- Point of Sale Header - Sticky -->
+        <div v-if="app && app.app_type === 'PointOfSale'" class="sticky top-0 z-20 bg-gray-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
+          <div class="bg-white shadow-lg rounded-lg p-6">
             <div class="flex items-center justify-between">
               <div>
                 <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ app.name || 'Point of Sale' }}</h1>
                 <p class="text-sm text-gray-500">Point of Sale App</p>
               </div>
-              <div v-if="app.btcpay_app_url">
+              <div class="flex items-center gap-3">
                 <a
+                  v-if="app.btcpay_app_url"
                   :href="app.btcpay_app_url"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -37,17 +39,62 @@
                   </svg>
                   Open PoS
                 </a>
+                <button
+                  type="submit"
+                  form="pos-settings-form"
+                  :disabled="saving"
+                  class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50"
+                >
+                  {{ saving ? 'Saving...' : 'Save Settings' }}
+                </button>
               </div>
             </div>
           </div>
+        </div>
+        </div>
 
-        <!-- Settings Form -->
-        <div class="bg-white shadow rounded-lg">
+        <!-- Crowdfund Header - Sticky -->
+        <div v-if="app && app.app_type === 'Crowdfund'" class="sticky top-0 z-20 bg-gray-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
+          <div class="bg-white shadow-lg rounded-lg p-6">
+            <div class="flex items-center justify-between">
+              <div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Update Crowdfund</h1>
+              </div>
+              <div class="flex items-center gap-3">
+                <a
+                  v-if="app.btcpay_app_url"
+                  :href="app.btcpay_app_url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Open Crowdfund
+                </a>
+                <button
+                  type="submit"
+                  form="crowdfund-form"
+                  :disabled="(crowdfundFormRef?.saving ?? false) || saving"
+                  class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50"
+                >
+                  {{ ((crowdfundFormRef?.saving ?? false) || saving) ? 'Saving...' : 'Update Crowdfund' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        </div>
+
+        <template v-if="app.app_type === 'PointOfSale'">
+          <!-- Content Container -->
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <!-- Settings Form -->
+          <div class="bg-white shadow rounded-lg">
           <div class="px-6 py-5 border-b border-gray-200">
             <h2 class="text-xl font-semibold text-gray-900">Settings</h2>
           </div>
 
-          <form @submit.prevent="handleSubmit" class="px-6 py-5 space-y-6">
+          <form id="pos-settings-form" @submit.prevent="handleSubmit" class="px-6 py-5 space-y-6">
             <!-- App Name and Title in one row -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -775,16 +822,11 @@
                 Delete App
               </button>
               
-              <button
-                type="submit"
-                :disabled="saving"
-                class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-              >
-                {{ saving ? 'Saving...' : 'Save Settings' }}
-              </button>
             </div>
           </form>
-        </div>
+          </div>
+          </div>
+        </template>
 
         <!-- Delete Confirmation Modal -->
         <div
@@ -834,23 +876,23 @@
             </div>
           </div>
         </div>
+
+          <!-- Crowdfund App Template -->
+          <template v-else-if="app.app_type === 'Crowdfund'">
+            <CrowdfundForm ref="crowdfundFormRef" :app="app" :store="store" />
+          </template>
+
+          <template v-else-if="app">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <div class="bg-white shadow rounded-lg p-6">
+                <h1 class="text-3xl font-bold text-gray-900 mb-4">{{ app.name }}</h1>
+                <p class="text-sm text-gray-500">Type: {{ app.app_type }}</p>
+                <p class="mt-4 text-gray-600">Settings for this app type are not yet implemented.</p>
+              </div>
+            </div>
+          </template>
         </div>
-        </template>
-
-        <!-- Crowdfund App Template -->
-        <template v-else-if="app.app_type === 'Crowdfund'">
-          <CrowdfundForm :app="app" :store="store" />
-        </template>
-
-        <template v-else-if="app">
-          <div class="bg-white shadow rounded-lg p-6">
-            <h1 class="text-3xl font-bold text-gray-900 mb-4">{{ app.name }}</h1>
-            <p class="text-sm text-gray-500">Type: {{ app.app_type }}</p>
-            <p class="mt-4 text-gray-600">Settings for this app type are not yet implemented.</p>
-          </div>
-        </template>
       </div>
-    </div>
 
     <!-- Product Edit Drawer -->
     <ProductEditDrawer

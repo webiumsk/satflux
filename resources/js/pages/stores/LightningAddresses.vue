@@ -3,13 +3,14 @@
     <!-- Sidebar -->
     <StoreSidebar
       :store="store"
-      :apps="[]"
+      :apps="allApps"
       @show-settings="handleShowSettings"
       @show-section="handleShowSection"
     />
 
     <!-- Main Content -->
-    <div class="flex-1 overflow-y-auto">
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <div class="flex-1 overflow-y-auto">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Header -->
         <div class="bg-white shadow rounded-lg p-6 mb-6">
@@ -301,9 +302,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStoresStore } from '../../store/stores';
+import { useAppsStore } from '../../store/apps';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
 import InfoTooltip from '../../components/ui/InfoTooltip.vue';
 import { currencies } from '../../data/currencies';
@@ -312,6 +314,7 @@ import api from '../../services/api';
 const route = useRoute();
 const router = useRouter();
 const storesStore = useStoresStore();
+const appsStore = useAppsStore();
 
 const storeId = route.params.id as string;
 const loading = ref(false);
@@ -324,6 +327,8 @@ const deleteError = ref('');
 const showForm = ref(false);
 const showDeleteModal = ref(false);
 const addressToDelete = ref<any>(null);
+
+const allApps = computed(() => appsStore.apps);
 
 const form = ref({
   username: '',
@@ -338,7 +343,15 @@ const showAdvancedSettings = ref(false);
 onMounted(async () => {
   await loadStore();
   await loadAddresses();
+  await appsStore.fetchApps(storeId);
 });
+
+// Watch for route changes to reload apps if store ID changes
+watch(() => route.params.id, async (newStoreId) => {
+  if (newStoreId && newStoreId !== storeId) {
+    await appsStore.fetchApps(newStoreId as string);
+  }
+}, { immediate: false });
 
 async function loadStore() {
   try {

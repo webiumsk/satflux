@@ -19,10 +19,10 @@
 
   <aside
     v-if="store"
-    class="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-gray-800 text-white flex-shrink-0 min-h-screen transform transition-transform duration-300 ease-in-out"
+    class="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-gray-800 text-white flex-shrink-0 h-full transform transition-transform duration-300 ease-in-out flex flex-col"
     :class="{ '-translate-x-full lg:translate-x-0': !showMobileMenu }"
   >
-    <div class="p-4">
+    <div class="flex-1 overflow-y-auto p-4">
       <!-- Store Selector Dropdown -->
       <div class="mb-6 relative store-dropdown-container">
         <button
