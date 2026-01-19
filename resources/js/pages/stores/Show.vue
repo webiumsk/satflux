@@ -3,7 +3,7 @@
     <p class="text-gray-500">Loading store...</p>
   </div>
 
-  <div v-else-if="store" class="flex h-full bg-gray-100">
+  <div v-else-if="store" class="flex h-screen bg-gray-100 overflow-hidden">
     <!-- Sidebar -->
     <StoreSidebar
       :store="store"
@@ -14,7 +14,8 @@
     />
 
     <!-- Main Content -->
-    <div class="flex-1 overflow-y-auto">
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <div class="flex-1 overflow-y-auto">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Settings View -->
         <div v-if="showSettings" class="max-w-3xl">
@@ -448,6 +449,7 @@
             </button>
           </div>
         </div>
+      </div>
       </div>
     </div>
   </div>

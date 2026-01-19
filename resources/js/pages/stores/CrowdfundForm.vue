@@ -1,26 +1,8 @@
 <template>
-  <div class="space-y-6">
-    <!-- Header -->
-    <div class="bg-white shadow rounded-lg p-6">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900 mb-2">Update Crowdfund</h1>
-        </div>
-        <div v-if="app.btcpay_app_url">
-          <a
-            :href="app.btcpay_app_url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-          >
-            Open Crowdfund
-          </a>
-        </div>
-      </div>
-    </div>
-
+  <!-- Content Container -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
     <!-- Crowdfund Form -->
-    <form @submit.prevent="handleSubmit" class="space-y-6">
+    <form id="crowdfund-form" @submit.prevent="handleSubmit" class="space-y-6">
       <!-- General Information -->
       <div class="bg-white shadow rounded-lg p-6 space-y-6">
         <h2 class="text-xl font-semibold text-gray-900">General Information</h2>
@@ -363,15 +345,9 @@
           Delete App
         </button>
         
-        <button
-          type="submit"
-          :disabled="saving"
-          class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-        >
-          {{ saving ? 'Saving...' : 'Update Crowdfund' }}
-        </button>
       </div>
     </form>
+  </div>
 
     <!-- Perk Edit Drawer -->
     <PerkEditDrawer
@@ -431,7 +407,6 @@
         </div>
       </div>
     </div>
-  </div>
 </template>
 
 <script setup lang="ts">
@@ -844,6 +819,11 @@ onMounted(() => {
     perks.value = [];
     updatePerksJson();
   }
+});
+
+// Expose saving state to parent component
+defineExpose({
+  saving,
 });
 </script>
 
