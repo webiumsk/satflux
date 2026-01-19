@@ -18,6 +18,7 @@ Táto metóda je odporúčaná pre VPS servery s Dockerom, kde už bežia iné a
 - VPS s root prístupom
 - Docker a Docker Compose nainštalované
 - Git prístup k repository
+  - **Pre private repozitáre:** Nastavte SSH Deploy Key - pozri [DEPLOYMENT_SSH.md](DEPLOYMENT_SSH.md)
 - Reverse proxy (Nginx alebo Traefik) na hoste pre SSL/TLS (voliteľné)
 
 ### Fáza 1: Prvé nasadenie
