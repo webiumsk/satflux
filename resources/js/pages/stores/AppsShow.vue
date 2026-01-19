@@ -1199,7 +1199,7 @@ async function loadApp() {
         const config = app.value.config;
         form.value.title = config.title || '';
         form.value.description = config.description || '';
-        form.value.defaultView = config.defaultView || 'Static';
+        form.value.defaultView = config.defaultView || 'Light';
         // Use app currency if set, otherwise use store's default currency
         form.value.currency = config.currency || (store.value?.default_currency || 'EUR');
         form.value.showItems = config.showItems || false;

@@ -38,7 +38,7 @@
             <router-link
               v-if="authStore.user?.role === 'support' || authStore.user?.role === 'admin'"
               to="/support/wallet-connections"
-              class="px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              class="px-3 py-2 rounded-md text-sm font-medium transition-colors relative"
               :class="
                 $route.name === 'support-wallet-connections'
                   ? 'text-indigo-600 bg-indigo-50'
@@ -46,6 +46,12 @@
               "
             >
               Support
+              <span
+                v-if="supportCount > 0"
+                class="absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full min-w-[20px]"
+              >
+                {{ supportCount > 99 ? '99+' : supportCount }}
+              </span>
             </router-link>
           </nav>
         </div>
@@ -121,13 +127,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../store/auth';
+import api from '../../services/api';
 
 const router = useRouter();
 const authStore = useAuthStore();
 const showUserMenu = ref(false);
+const supportCount = ref(0);
+let supportCountInterval: ReturnType<typeof setInterval> | null = null;
 
 const userInitials = computed(() => {
   if (!authStore.user?.email) return '?';
@@ -156,6 +165,51 @@ const handleLogout = async () => {
     router.push({ name: 'login' });
   }
 };
+
+const loadSupportCount = async () => {
+  if (authStore.user?.role !== 'support' && authStore.user?.role !== 'admin') {
+    return;
+  }
+
+  try {
+    const response = await api.get('/support/count');
+    supportCount.value = response.data.data?.total || 0;
+  } catch (error) {
+    console.error('Failed to load support count:', error);
+    supportCount.value = 0;
+  }
+};
+
+// Watch for route changes to refresh count
+router.afterEach(() => {
+  if (authStore.user?.role === 'support' || authStore.user?.role === 'admin') {
+    // Small delay to ensure any status changes are saved
+    setTimeout(() => {
+      loadSupportCount();
+    }, 1000);
+  }
+});
+
+onMounted(() => {
+  // Load support count if user has support/admin role
+  if (authStore.user?.role === 'support' || authStore.user?.role === 'admin') {
+    loadSupportCount();
+    // Refresh count every 30 seconds
+    supportCountInterval = setInterval(loadSupportCount, 30000);
+  }
+});
+
+onUnmounted(() => {
+  if (supportCountInterval) {
+    clearInterval(supportCountInterval);
+  }
+});
+
+onUnmounted(() => {
+  if (supportCountInterval) {
+    clearInterval(supportCountInterval);
+  }
+});
 
 // Click outside directive
 const vClickOutside = {

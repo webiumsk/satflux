@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\Store;
 use App\Models\User;
 use App\Models\WalletConnection;
+use App\Notifications\SupportNeededNotification;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 
@@ -38,6 +39,9 @@ class WalletConnectionService
             ]);
         }
 
+        // Check if this is a new connection or update
+        $isNew = !WalletConnection::where('store_id', $store->id)->exists();
+        
         // Create or update wallet connection
         $connection = WalletConnection::updateOrCreate(
             ['store_id' => $store->id],
@@ -54,7 +58,36 @@ class WalletConnectionService
             'type' => $type,
             'status' => $connection->status,
             'user_id' => $user->id,
+            'is_new' => $isNew,
         ]);
+
+        // Notify support users when a new connection needs support
+        // Only notify for new connections to avoid spam on updates
+        if ($isNew && $connection->status === 'needs_support') {
+            $supportUsers = User::whereIn('role', ['support', 'admin'])
+                ->whereNotNull('email')
+                ->whereNotNull('email_verified_at')
+                ->get();
+
+            foreach ($supportUsers as $supportUser) {
+                try {
+                    $supportUser->notify(new SupportNeededNotification($connection, $store));
+                    Log::info('Support needed notification sent', [
+                        'connection_id' => $connection->id,
+                        'store_id' => $store->id,
+                        'support_user_id' => $supportUser->id,
+                        'support_user_email' => $supportUser->email,
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to send support needed notification', [
+                        'connection_id' => $connection->id,
+                        'store_id' => $store->id,
+                        'support_user_id' => $supportUser->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
 
         return $connection;
     }
