@@ -31,8 +31,17 @@ class LightningAddressController extends Controller
                 $userApiKey
             );
 
+            $addressList = $addresses ?? [];
+            $currentCount = is_array($addressList) ? count($addressList) : 0;
+            $maxAddresses = $store->user->getMaxLightningAddresses();
+
             return response()->json([
-                'data' => $addresses ?? []
+                'data' => $addressList,
+                'limit' => [
+                    'max' => $maxAddresses,
+                    'current' => $currentCount,
+                    'unlimited' => $maxAddresses === null,
+                ],
             ]);
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
             $statusCode = $e->getStatusCode() ?: 500;
@@ -116,6 +125,52 @@ class LightningAddressController extends Controller
 
         // Load merchant API key from store owner
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
+
+        // Check if this is a new address (not an update)
+        $isNewAddress = false;
+        try {
+            $this->lightningAddressService->getAddress(
+                $store->btcpay_store_id,
+                $username,
+                $userApiKey
+            );
+            // Address exists - this is an update, not a new creation
+        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+            // Address doesn't exist - this is a new creation
+            if ($e->getStatusCode() === 404) {
+                $isNewAddress = true;
+            }
+        }
+
+        // If creating a new address, check the limit
+        if ($isNewAddress) {
+            $maxAddresses = $store->user->getMaxLightningAddresses();
+            
+            if ($maxAddresses !== null) {
+                // User has a limit - check current count
+                try {
+                    $existingAddresses = $this->lightningAddressService->listAddresses(
+                        $store->btcpay_store_id,
+                        $userApiKey
+                    );
+                    $currentCount = is_array($existingAddresses) ? count($existingAddresses) : 0;
+                    
+                    if ($currentCount >= $maxAddresses) {
+                        $roleName = $store->user->role ?? 'merchant';
+                        return response()->json([
+                            'message' => "You have reached the maximum number of Lightning Addresses ({$maxAddresses}) for your {$roleName} plan. Please upgrade to add more addresses.",
+                        ], 403);
+                    }
+                } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+                    // If we can't list addresses, log but continue - let BTCPay handle it
+                    Log::warning('Failed to list addresses for limit check', [
+                        'store_id' => $store->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+            // If maxAddresses is null (unlimited), no need to check
+        }
 
         try {
             // Prepare invoiceMetadata - must be an object (associative array), not an array

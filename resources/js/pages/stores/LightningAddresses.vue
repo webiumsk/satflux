@@ -16,12 +16,26 @@
           <div class="flex items-center justify-between">
             <div>
               <h1 class="text-xl font-bold text-gray-900 mb-2">Lightning Address</h1>
-              <p class="text-sm text-gray-500">Manage Lightning Addresses for {{ store?.name || 'this store' }}</p>
+              <p class="text-sm text-gray-500">
+                Manage Lightning Addresses for {{ store?.name || 'this store' }}
+                <span v-if="limit && !limit.unlimited" class="text-gray-400">
+                  ({{ limit.current }}/{{ limit.max }})
+                </span>
+                <span v-else-if="limit && limit.unlimited" class="text-gray-400">
+                  ({{ limit.current }} / unlimited)
+                </span>
+              </p>
             </div>
             <div class="flex items-center gap-2">
               <button
                 @click="openAddForm"
-                class="inline-flex items-center px-2 md:px-4 py-2 border border-transparent text-xs md:text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                :disabled="!canAddAddress"
+                :class="[
+                  'inline-flex items-center px-2 md:px-4 py-2 border border-transparent text-xs md:text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500',
+                  canAddAddress
+                    ? 'text-white bg-orange-600 hover:bg-orange-700'
+                    : 'text-gray-400 bg-gray-300 cursor-not-allowed'
+                ]"
               >
                 Add Address
               </button>
@@ -102,10 +116,19 @@
           <p class="text-gray-500 mb-4">No lightning addresses configured yet.</p>
           <button
             @click="openAddForm"
-            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700"
+            :disabled="!canAddAddress"
+            :class="[
+              'inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md focus:outline-none',
+              canAddAddress
+                ? 'text-white bg-orange-600 hover:bg-orange-700'
+                : 'text-gray-400 bg-gray-300 cursor-not-allowed'
+            ]"
           >
             Add Address
           </button>
+          <p v-if="!canAddAddress && limit" class="mt-2 text-sm text-red-600">
+            {{ limitText }}
+          </p>
         </div>
       </div>
     </div>
@@ -327,6 +350,7 @@ const saving = ref(false);
 const deleting = ref(false);
 const addresses = ref<any[]>([]);
 const store = ref<any>(null);
+const limit = ref<{ max: number | null; current: number; unlimited: boolean } | null>(null);
 const error = ref('');
 const deleteError = ref('');
 const showForm = ref(false);
@@ -334,6 +358,20 @@ const showDeleteModal = ref(false);
 const addressToDelete = ref<any>(null);
 
 const allApps = computed(() => appsStore.apps);
+
+const canAddAddress = computed(() => {
+  if (!limit.value) return true; // If limit not loaded yet, allow (will be validated on backend)
+  if (limit.value.unlimited) return true;
+  return limit.value.current < limit.value.max;
+});
+
+const limitText = computed(() => {
+  if (!limit.value || limit.value.unlimited) return '';
+  if (limit.value.current >= limit.value.max) {
+    return `You have reached the maximum number of Lightning Addresses (${limit.value.max}). Please upgrade your plan to add more.`;
+  }
+  return '';
+});
 
 const form = ref({
   username: '',
@@ -374,6 +412,9 @@ async function loadAddresses() {
   try {
     const response = await api.get(`/stores/${storeId}/lightning-addresses`);
     addresses.value = response.data.data || [];
+    if (response.data.limit) {
+      limit.value = response.data.limit;
+    }
   } catch (err: any) {
     console.error('Failed to load addresses:', err);
     error.value = err.response?.data?.message || 'Failed to load lightning addresses';
