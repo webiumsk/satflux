@@ -76,6 +76,56 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user has a Pro plan.
+     */
+    public function isPro(): bool
+    {
+        return $this->role === 'pro';
+    }
+
+    /**
+     * Check if user has an Enterprise plan.
+     */
+    public function isEnterprise(): bool
+    {
+        return $this->role === 'enterprise';
+    }
+
+    /**
+     * Check if user has a paid plan (Pro or Enterprise).
+     */
+    public function isPaidPlan(): bool
+    {
+        return $this->isPro() || $this->isEnterprise();
+    }
+
+    /**
+     * Get maximum number of Lightning Addresses allowed for this user.
+     * 
+     * @return int|null Maximum number of addresses (null = unlimited)
+     */
+    public function getMaxLightningAddresses(): ?int
+    {
+        // Support and admin users have unlimited
+        if ($this->isSupport() || $this->isAdmin()) {
+            return null; // unlimited
+        }
+
+        // Enterprise users have unlimited
+        if ($this->isEnterprise()) {
+            return null; // unlimited
+        }
+
+        // Pro users have 3
+        if ($this->isPro()) {
+            return 3;
+        }
+
+        // Regular merchants have 1
+        return 1;
+    }
+
+    /**
      * Get the stores for the user.
      */
     public function stores(): HasMany

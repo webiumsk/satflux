@@ -19,7 +19,7 @@ class SetUserRole extends Command
      *
      * @var string
      */
-    protected $description = 'Set user role (merchant, support, admin)';
+    protected $description = 'Set user role (merchant, support, admin, pro, enterprise)';
 
     /**
      * Execute the console command.
@@ -30,7 +30,7 @@ class SetUserRole extends Command
         $role = $this->argument('role');
 
         // Validate role
-        $validRoles = ['merchant', 'support', 'admin'];
+        $validRoles = ['merchant', 'support', 'admin', 'pro', 'enterprise'];
         if (!in_array($role, $validRoles)) {
             $this->error("Invalid role. Allowed roles: " . implode(', ', $validRoles));
             return Command::FAILURE;
