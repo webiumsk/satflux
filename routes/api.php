@@ -28,6 +28,29 @@ Route::get('/health', function () {
     return response()->json(['status' => 'ok']);
 });
 
+// Version endpoint (public - no auth required)
+Route::get('/version', function () {
+    // Try to read version from package.json
+    $packageJsonPath = base_path('package.json');
+    $version = '1.0.0'; // Default fallback
+    
+    if (file_exists($packageJsonPath)) {
+        try {
+            $packageJson = json_decode(file_get_contents($packageJsonPath), true);
+            if (isset($packageJson['version'])) {
+                $version = $packageJson['version'];
+            }
+        } catch (\Exception $e) {
+            // Fallback to default version
+        }
+    }
+    
+    return response()->json([
+        'version' => $version,
+        'name' => 'UZOL21',
+    ]);
+});
+
 // Debug route for local development - verify stores exist in DB
 Route::get('/debug/stores', function (\Illuminate\Http\Request $request) {
     if (!app()->environment('local')) {

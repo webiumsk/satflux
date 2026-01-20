@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# Pre-push git hook to automatically bump patch version when pushing to main/master
+
+# Get the current branch name
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+
+# Define main branches (main or master)
+main_branches=("main" "master")
+
+# Check if pushing to a main branch
+is_main_branch=false
+while read local_ref local_sha remote_ref remote_sha; do
+    # Extract branch name from remote_ref (format: refs/heads/branch_name)
+    remote_branch=$(echo "$remote_ref" | sed 's|refs/heads/||')
+    
+    for main_branch in "${main_branches[@]}"; do
+        if [ "$remote_branch" = "$main_branch" ]; then
+            is_main_branch=true
+            break 2
+        fi
+    done
+done
+
+# Only bump version if pushing to main/master branch
+if [ "$is_main_branch" = true ]; then
+    echo "Pushing to main branch detected. Automatically bumping patch version..."
+    
+    # Get the project root directory (parent of .git)
+    project_root=$(git rev-parse --show-toplevel)
+    
+    # Check if bump-version.js exists
+    bump_script="$project_root/scripts/bump-version.js"
+    if [ ! -f "$bump_script" ]; then
+        echo "Warning: bump-version.js not found at $bump_script"
+        exit 0
+    fi
+    
+    # Check if package.json exists
+    package_json="$project_root/package.json"
+    if [ ! -f "$package_json" ]; then
+        echo "Warning: package.json not found at $package_json"
+        exit 0
+    fi
+    
+    # Get current version before bump
+    current_version=$(node -p "require('$package_json').version")
+    
+    # Bump patch version
+    node "$bump_script" patch
+    
+    # Get new version
+    new_version=$(node -p "require('$package_json').version")
+    
+    # Check if version actually changed
+    if [ "$current_version" != "$new_version" ]; then
+        echo "Version bumped: $current_version → $new_version"
+        
+        # Stage package.json
+        git add "$package_json"
+        
+        # Commit with version bump message
+        git commit -m "chore: bump version to $new_version" --no-verify
+        
+        echo "Version bump committed. Continuing with push..."
+    else
+        echo "Version unchanged, skipping commit."
+    fi
+fi
+
+# Allow push to continue
+exit 0
+
