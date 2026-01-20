@@ -4,10 +4,12 @@
     <main class="flex-1 overflow-hidden">
       <slot />
     </main>
+    <AppFooter />
   </div>
 </template>
 
 <script setup lang="ts">
 import AppHeader from './AppHeader.vue';
+import AppFooter from './AppFooter.vue';
 </script>
 
