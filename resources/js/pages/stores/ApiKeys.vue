@@ -10,25 +10,29 @@
 
     <!-- Main Content -->
     <div class="flex-1 flex flex-col overflow-hidden">
-      <div class="flex-1 overflow-y-auto">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Header -->
-        <div class="bg-white shadow rounded-lg p-6 mb-6">
+      <!-- Header -->
+      <div class="sticky top-0 z-20 bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-4">
           <div class="flex items-center justify-between">
             <div>
-              <h1 class="text-3xl font-bold text-gray-900">E-shop Integration</h1>
-              <p class="text-sm text-gray-500 mt-2">
-                Manage API keys for connecting your e-shop (WooCommerce, etc.) to this store.
-              </p>
+              <h1 class="text-xl font-bold text-gray-900 mb-2">E-shop Integration</h1>
+              <p class="text-sm text-gray-500">Manage API keys for connecting your e-shop (WooCommerce, etc.) to {{ store?.name || 'this store' }}</p>
             </div>
-            <button
-              @click="openCreateForm"
-              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
-            >
-              Create API Key
-            </button>
+            <div class="flex items-center gap-2">
+              <button
+                @click="openCreateForm"
+                class="inline-flex items-center px-2 md:px-4 py-2 border border-transparent text-xs md:text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+              >
+                Create API Key
+              </button>
+            </div>
           </div>
         </div>
+      </div>
+
+      <!-- Content Container -->
+      <div class="flex-1 overflow-y-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         <!-- API Keys List -->
         <div v-if="!loading && apiKeys.length > 0" class="space-y-4">
