@@ -17,6 +17,7 @@ use App\Http\Controllers\StoreSettingsController;
 use App\Http\Controllers\WalletConnectionController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\EshopIntegrationController;
+use App\Http\Controllers\InvoiceController;
 use App\Http\Middleware\AuditLog;
 use App\Http\Middleware\EnsureStoreOwnership;
 use App\Http\Middleware\EnsureSupportRole;
@@ -175,6 +176,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Delete Store
     Route::delete('/stores/{store}', [StoreController::class, 'destroy'])
         ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':store.deleted']);
+
+    // Invoices
+    Route::get('/stores/{store}/invoices', [InvoiceController::class, 'index'])
+        ->middleware(EnsureStoreOwnership::class);
 
     // Exports
     Route::get('/stores/{store}/exports', [ExportController::class, 'index'])

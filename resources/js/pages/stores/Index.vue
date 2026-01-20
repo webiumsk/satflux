@@ -49,7 +49,7 @@
                     {{ getWalletConnectionStatusText(store) }}
                   </p>
                   <p class="text-xs text-gray-400 mt-2">
-                    Created: {{ new Date(store.created_at).toLocaleDateString() }}
+                    Created: {{ formatDate(store.created_at) }}
                   </p>
                 </div>
               </div>
@@ -108,6 +108,18 @@ function getWalletConnectionStatusText(store: any): string {
     default:
       return 'Unknown status';
   }
+}
+
+function formatDate(dateString: string): string {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '-';
+  
+  // European format: DD.MM.YYYY
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}.${month}.${year}`;
 }
 
 onMounted(() => {
