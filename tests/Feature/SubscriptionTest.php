@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Store;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -38,13 +37,9 @@ class SubscriptionTest extends TestCase
     public function authenticated_user_can_create_checkout_with_plan_name()
     {
         $user = User::factory()->create();
-        $store = Store::factory()->create([
-            'user_id' => $user->id,
-            'btcpay_store_id' => 'GVQwmBoEfPpYY4j7YysmVDbTKmFp24XsFvUZATANVqAY',
-        ]);
 
-        // Set subscription store UUID in config
-        config(['services.btcpay.subscription_store_uuid' => $store->id]);
+        // Set subscription store ID directly in config (no local Store record needed)
+        config(['services.btcpay.subscription_store_id' => 'GVQwmBoEfPpYY4j7YysmVDbTKmFp24XsFvUZATANVqAY']);
         config(['services.btcpay.subscription_offering_id' => 'offering_GpWCnNRm6W9qqmgwdC']);
         config(['services.btcpay.subscription_plans.pro' => 'plan_9UQMqk4vbAFyQinRpL']);
 
@@ -63,22 +58,17 @@ class SubscriptionTest extends TestCase
                 'checkoutId' => 'checkout_test123',
             ]);
 
-        // Verify we never expose btcpay_store_id
-        $response->assertJsonMissing(['btcpay_store_id']);
+        // Verify we never expose BTCPay store ID in response
         $responseData = $response->json();
-        $this->assertStringNotContainsString($store->btcpay_store_id, json_encode($responseData));
+        $this->assertStringNotContainsString('GVQwmBoEfPpYY4j7YysmVDbTKmFp24XsFvUZATANVqAY', json_encode($responseData));
     }
 
     /** @test */
     public function checkout_validates_plan_and_offering_belong_to_store()
     {
         $user = User::factory()->create();
-        $store = Store::factory()->create([
-            'user_id' => $user->id,
-            'btcpay_store_id' => 'GVQwmBoEfPpYY4j7YysmVDbTKmFp24XsFvUZATANVqAY',
-        ]);
 
-        config(['services.btcpay.subscription_store_uuid' => $store->id]);
+        config(['services.btcpay.subscription_store_id' => 'GVQwmBoEfPpYY4j7YysmVDbTKmFp24XsFvUZATANVqAY']);
         config(['services.btcpay.subscription_offering_id' => 'offering_GpWCnNRm6W9qqmgwdC']);
         config(['services.btcpay.subscription_plans.pro' => 'plan_9UQMqk4vbAFyQinRpL']);
 
@@ -97,11 +87,7 @@ class SubscriptionTest extends TestCase
     /** @test */
     public function unauthenticated_user_cannot_create_checkout_by_default()
     {
-        $store = Store::factory()->create([
-            'btcpay_store_id' => 'GVQwmBoEfPpYY4j7YysmVDbTKmFp24XsFvUZATANVqAY',
-        ]);
-
-        config(['services.btcpay.subscription_store_uuid' => $store->id]);
+        config(['services.btcpay.subscription_store_id' => 'GVQwmBoEfPpYY4j7YysmVDbTKmFp24XsFvUZATANVqAY']);
         config(['services.btcpay.subscription_plans.pro' => 'plan_9UQMqk4vbAFyQinRpL']);
         config(['services.btcpay.allow_guest_subscriptions' => false]);
 
@@ -131,12 +117,8 @@ class SubscriptionTest extends TestCase
         $user = User::factory()->create([
             'email' => 'test@example.com',
         ]);
-        $store = Store::factory()->create([
-            'user_id' => $user->id,
-            'btcpay_store_id' => 'GVQwmBoEfPpYY4j7YysmVDbTKmFp24XsFvUZATANVqAY',
-        ]);
 
-        config(['services.btcpay.subscription_store_uuid' => $store->id]);
+        config(['services.btcpay.subscription_store_id' => 'GVQwmBoEfPpYY4j7YysmVDbTKmFp24XsFvUZATANVqAY']);
         config(['services.btcpay.subscription_offering_id' => 'offering_GpWCnNRm6W9qqmgwdC']);
         config(['services.btcpay.subscription_plans.pro' => 'plan_9UQMqk4vbAFyQinRpL']);
 
@@ -160,12 +142,8 @@ class SubscriptionTest extends TestCase
     public function checkout_handles_btcpay_api_errors_gracefully()
     {
         $user = User::factory()->create();
-        $store = Store::factory()->create([
-            'user_id' => $user->id,
-            'btcpay_store_id' => 'GVQwmBoEfPpYY4j7YysmVDbTKmFp24XsFvUZATANVqAY',
-        ]);
 
-        config(['services.btcpay.subscription_store_uuid' => $store->id]);
+        config(['services.btcpay.subscription_store_id' => 'GVQwmBoEfPpYY4j7YysmVDbTKmFp24XsFvUZATANVqAY']);
         config(['services.btcpay.subscription_offering_id' => 'offering_GpWCnNRm6W9qqmgwdC']);
         config(['services.btcpay.subscription_plans.pro' => 'plan_9UQMqk4vbAFyQinRpL']);
 

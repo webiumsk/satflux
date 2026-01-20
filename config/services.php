@@ -21,7 +21,7 @@ return [
         'subscription_success_url' => env('SUBSCRIPTION_SUCCESS_URL'),
         'subscription_cancel_url' => env('SUBSCRIPTION_CANCEL_URL'),
         'allow_guest_subscriptions' => env('ALLOW_GUEST_SUBSCRIPTIONS', false),
-        'subscription_store_uuid' => env('SUBSCRIPTION_STORE_UUID'),
+        'subscription_store_id' => env('SUBSCRIPTION_STORE_ID', 'GVQwmBoEfPpYY4j7YysmVDbTKmFp24XsFvUZATANVqAY'),
         'subscription_offering_id' => env('SUBSCRIPTION_OFFERING_ID', 'offering_GpWCnNRm6W9qqmgwdC'),
         'subscription_plans' => [
             'pro' => env('SUBSCRIPTION_PLAN_PRO_ID', 'plan_9UQMqk4vbAFyQinRpL'),

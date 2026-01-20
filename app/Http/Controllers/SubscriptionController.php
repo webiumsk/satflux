@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Store;
 use App\Services\BtcPay\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +20,10 @@ class SubscriptionController extends Controller
      * Create a plan checkout and return the checkout URL.
      * 
      * POST /api/subscriptions/checkout
-     * Body: { storeUuid, planId, offeringId, customerEmail? }
+     * Body: { plan: 'pro'|'enterprise', customerEmail? }
+     * 
+     * For custom integrations, can also use:
+     * Body: { storeId, planId, offeringId, customerEmail? }
      */
     public function checkout(Request $request)
     {
@@ -36,8 +38,8 @@ class SubscriptionController extends Controller
         }
 
         $request->validate([
-            'plan' => ['required_without_all:planId,storeUuid', 'string', 'in:pro,enterprise'],
-            'storeUuid' => ['required_without:plan', 'string', 'exists:stores,id'],
+            'plan' => ['required_without_all:planId,storeId', 'string', 'in:pro,enterprise'],
+            'storeId' => ['required_without:plan', 'string'],
             'planId' => ['required_without:plan', 'string'],
             'offeringId' => ['required_without:plan', 'string'],
             'customerEmail' => ['nullable', 'email', 'max:255'],
@@ -45,29 +47,20 @@ class SubscriptionController extends Controller
 
         // If plan name is provided, use subscription store config
         if ($request->has('plan')) {
-            $storeUuid = config('services.btcpay.subscription_store_uuid');
+            $storeId = config('services.btcpay.subscription_store_id');
             $offeringId = config('services.btcpay.subscription_offering_id');
             $planId = config("services.btcpay.subscription_plans.{$request->input('plan')}");
 
-            if (!$storeUuid || !$offeringId || !$planId) {
+            if (!$storeId || !$offeringId || !$planId) {
                 return response()->json([
                     'message' => 'Subscription configuration is incomplete. Please contact support.',
                 ], 500);
             }
-
-            $store = Store::findOrFail($storeUuid);
         } else {
             // Use provided IDs (for custom integrations)
-            $store = Store::findOrFail($request->input('storeUuid'));
+            $storeId = $request->input('storeId');
             $offeringId = $request->input('offeringId');
             $planId = $request->input('planId');
-        }
-
-        // For authenticated users, verify they own the store (unless feature flag allows guest)
-        if (!$allowGuestCheckout && $request->user()) {
-            // Optional: verify ownership if user is authenticated
-            // For subscription checkout, we might want to allow any user to subscribe
-            // So we'll skip ownership check for now, but validate store exists
         }
 
         try {
@@ -93,8 +86,9 @@ class SubscriptionController extends Controller
             }
 
             // Create checkout via BTCPay
+            // Use BTCPay Store ID directly from config (no local Store record needed)
             $checkout = $this->subscriptionService->createPlanCheckout(
-                $store->btcpay_store_id, // NEVER expose this to frontend, only use internally
+                $storeId, // BTCPay Store ID from config
                 $offeringId,
                 $planId,
                 $options
@@ -107,7 +101,8 @@ class SubscriptionController extends Controller
 
             Log::info('Checkout created via API', [
                 'checkout_id' => $checkout['checkoutId'],
-                'store_uuid' => $store->id, // Only log UUID, never btcpay_store_id
+                'store_id' => $storeId, // BTCPay Store ID
+                'plan' => $request->input('plan'),
                 'user_id' => $request->user()?->id,
             ]);
 
@@ -122,7 +117,7 @@ class SubscriptionController extends Controller
             $errorMessage = $e->getMessage();
 
             Log::error('Failed to create subscription checkout', [
-                'store_uuid' => $store->id,
+                'store_id' => $storeId ?? 'unknown',
                 'plan' => $request->input('plan'),
                 'plan_id' => $planId ?? $request->input('planId'),
                 'offering_id' => $offeringId ?? $request->input('offeringId'),
@@ -148,7 +143,7 @@ class SubscriptionController extends Controller
             ], 500);
         } catch (\Exception $e) {
             Log::error('Unexpected error creating subscription checkout', [
-                'store_uuid' => $store->id,
+                'store_id' => $storeId ?? 'unknown',
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
