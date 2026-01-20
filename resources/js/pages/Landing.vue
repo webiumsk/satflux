@@ -318,14 +318,14 @@
                   <span>Automatic monthly reports</span>
                 </li>
               </ul>
-              <a
+              <button
                 v-if="authStore.isAuthenticated"
-                href="#"
-                @click.prevent="handleUpgrade('pro')"
-                class="block w-full text-center px-6 py-3 bg-white text-indigo-600 font-medium rounded-md hover:bg-indigo-50 transition-colors"
+                @click="handleUpgrade('pro')"
+                :disabled="subscribing"
+                class="block w-full text-center px-6 py-3 bg-white text-indigo-600 font-medium rounded-md hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Upgrade
-              </a>
+                {{ subscribing ? 'Processing...' : 'Upgrade' }}
+              </button>
               <router-link
                 v-else
                 to="/register"
@@ -376,14 +376,14 @@
                   <span class="text-gray-700">SLA guarantees</span>
                 </li>
               </ul>
-              <a
+              <button
                 v-if="authStore.isAuthenticated"
-                href="#"
-                @click.prevent="handleUpgrade('enterprise')"
-                class="block w-full text-center px-6 py-3 border-2 border-indigo-600 text-indigo-600 font-medium rounded-md hover:bg-indigo-50 transition-colors"
+                @click="handleUpgrade('enterprise')"
+                :disabled="subscribing"
+                class="block w-full text-center px-6 py-3 border-2 border-indigo-600 text-indigo-600 font-medium rounded-md hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Contact Us
-              </a>
+                {{ subscribing ? 'Processing...' : 'Upgrade' }}
+              </button>
               <router-link
                 v-else
                 to="/register"
@@ -402,6 +402,13 @@
           <p class="text-sm mt-2">
             For more information contact <router-link to="/support" class="text-indigo-600 hover:text-indigo-700">support</router-link>
           </p>
+          
+          <!-- Error message for subscription -->
+          <div v-if="subscribeError" class="mt-6 max-w-2xl mx-auto">
+            <div class="bg-red-50 border border-red-200 rounded-md p-4">
+              <p class="text-sm text-red-800">{{ subscribeError }}</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -414,12 +421,15 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../store/auth';
-import { onMounted } from 'vue';
+import { onMounted, ref } from 'vue';
 import PublicHeader from '../components/layout/PublicHeader.vue';
 import AppFooter from '../components/layout/AppFooter.vue';
+import api from '../services/api';
 
 const router = useRouter();
 const authStore = useAuthStore();
+const subscribing = ref(false);
+const subscribeError = ref('');
 
 // Ensure user is fetched on mount to show correct buttons
 onMounted(async () => {
@@ -432,10 +442,30 @@ onMounted(async () => {
   }
 });
 
-function handleUpgrade(plan: string) {
-  // TODO: Redirect to subscription page with plan parameter
-  // This will integrate with BTCPay Server subscription
-  router.push({ name: 'account', query: { upgrade: plan } });
+async function handleUpgrade(plan: string) {
+  // Both Pro and Enterprise can use the same checkout flow now
+  subscribing.value = true;
+  subscribeError.value = '';
+
+  try {
+    // Call checkout endpoint with plan name
+    // Backend will look up storeUuid, offeringId, and planId from config
+    const response = await api.post('/subscriptions/checkout', {
+      plan: plan,
+    });
+
+    if (response.data.checkoutUrl) {
+      // Redirect to BTCPay checkout
+      window.location.href = response.data.checkoutUrl;
+    } else {
+      subscribeError.value = 'Failed to create checkout. Please try again.';
+      subscribing.value = false;
+    }
+  } catch (error: any) {
+    console.error('Failed to create checkout:', error);
+    subscribeError.value = error.response?.data?.message || 'Failed to create checkout. Please try again.';
+    subscribing.value = false;
+  }
 }
 
 // Smooth scroll for anchor links

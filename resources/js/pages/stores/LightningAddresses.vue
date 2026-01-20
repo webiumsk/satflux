@@ -29,12 +29,9 @@
             <div class="flex items-center gap-2">
               <button
                 @click="openAddForm"
-                :disabled="!canAddAddress"
                 :class="[
                   'inline-flex items-center px-2 md:px-4 py-2 border border-transparent text-xs md:text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500',
-                  canAddAddress
-                    ? 'text-white bg-orange-600 hover:bg-orange-700'
-                    : 'text-gray-400 bg-gray-300 cursor-not-allowed'
+                  'text-white bg-orange-600 hover:bg-orange-700'
                 ]"
               >
                 Add Address
@@ -116,19 +113,10 @@
           <p class="text-gray-500 mb-4">No lightning addresses configured yet.</p>
           <button
             @click="openAddForm"
-            :disabled="!canAddAddress"
-            :class="[
-              'inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md focus:outline-none',
-              canAddAddress
-                ? 'text-white bg-orange-600 hover:bg-orange-700'
-                : 'text-gray-400 bg-gray-300 cursor-not-allowed'
-            ]"
+            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none"
           >
             Add Address
           </button>
-          <p v-if="!canAddAddress && limit" class="mt-2 text-sm text-red-600">
-            {{ limitText }}
-          </p>
         </div>
       </div>
     </div>
@@ -326,6 +314,16 @@
       </div>
       </div>
     </div>
+
+    <!-- Upgrade Modal -->
+    <UpgradeModal
+      :show="showUpgradeModal"
+      :message="`You have reached the maximum number of Lightning Addresses (${limit?.max || 1}) for your current plan.`"
+      :limits="limit ? [{ feature: 'Lightning Addresses', current: limit.current, max: limit.max }] : []"
+      recommended-plan="pro"
+      upgrade-button-text="Upgrade to Pro"
+      @close="showUpgradeModal = false"
+    />
   </div>
 </template>
 
@@ -336,6 +334,7 @@ import { useStoresStore } from '../../store/stores';
 import { useAppsStore } from '../../store/apps';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
 import InfoTooltip from '../../components/ui/InfoTooltip.vue';
+import UpgradeModal from '../../components/stores/UpgradeModal.vue';
 import { currencies } from '../../data/currencies';
 import api from '../../services/api';
 
@@ -355,6 +354,7 @@ const error = ref('');
 const deleteError = ref('');
 const showForm = ref(false);
 const showDeleteModal = ref(false);
+const showUpgradeModal = ref(false);
 const addressToDelete = ref<any>(null);
 
 const allApps = computed(() => appsStore.apps);
@@ -424,6 +424,12 @@ async function loadAddresses() {
 }
 
 function openAddForm() {
+  // Check if user can add address, if not show upgrade modal
+  if (!canAddAddress.value) {
+    showUpgradeModal.value = true;
+    return;
+  }
+
   form.value = {
     username: '',
     currencyCode: '',
@@ -482,7 +488,16 @@ async function handleSubmit() {
     closeForm();
   } catch (err: any) {
     console.error('Failed to save address:', err);
-    error.value = err.response?.data?.message || 'Failed to save lightning address';
+    const errorMessage = err.response?.data?.message || 'Failed to save lightning address';
+    
+    // Check if error is about limit reached
+    if (err.response?.status === 403 && errorMessage.includes('maximum number')) {
+      // Show upgrade modal instead of form error
+      closeForm();
+      showUpgradeModal.value = true;
+    } else {
+      error.value = errorMessage;
+    }
   } finally {
     saving.value = false;
   }
