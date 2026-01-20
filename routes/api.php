@@ -18,6 +18,7 @@ use App\Http\Controllers\WalletConnectionController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\EshopIntegrationController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\SubscriptionController;
 use App\Http\Middleware\AuditLog;
 use App\Http\Middleware\EnsureStoreOwnership;
 use App\Http\Middleware\EnsureSupportRole;
@@ -280,3 +281,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
             ->middleware(AuditLog::class . ':wallet_connection.marked_connected');
     });
 });
+
+// Subscription checkout (auth handled in controller based on feature flag)
+Route::post('/subscriptions/checkout', [SubscriptionController::class, 'checkout']);

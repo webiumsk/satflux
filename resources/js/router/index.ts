@@ -142,6 +142,12 @@ const router = createRouter({
             meta: { public: true },
         },
         {
+            path: '/billing/success',
+            name: 'billing-success',
+            component: () => import('../pages/BillingSuccess.vue'),
+            meta: { public: true },
+        },
+        {
             path: '/support/wallet-connections',
             name: 'support-wallet-connections',
             component: () => import('../pages/support/WalletConnections.vue'),
