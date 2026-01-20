@@ -99,6 +99,32 @@ class InvoiceService
             return count($result) ?? 0;
         });
     }
+
+    /**
+     * Estimate invoice count for export decision.
+     * This is a quick check to determine if export should be synchronous or asynchronous.
+     * Fetches a larger sample (1000 invoices) to get a better estimate.
+     * If a user-level API key is provided, it will be used instead of server-level.
+     */
+    public function estimateInvoiceCount(string $storeId, array $filters = [], ?string $userApiKey = null): int
+    {
+        // Fetch up to 1000 invoices to get accurate count for decision
+        // We use a larger take value to get a better estimate
+        $result = $this->listInvoices($storeId, $filters, 0, 1000, $userApiKey);
+        
+        // BTCPay API returns invoices in the data array or directly
+        $invoices = $result['data'] ?? $result;
+        
+        if (!is_array($invoices)) {
+            return 0;
+        }
+        
+        $count = count($invoices);
+        
+        // If we got exactly 1000, there might be more, so return 1001 to trigger async
+        // Otherwise return the actual count
+        return $count >= 1000 ? 1001 : $count;
+    }
 }
 
 

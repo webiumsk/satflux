@@ -180,6 +180,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Invoices
     Route::get('/stores/{store}/invoices', [InvoiceController::class, 'index'])
         ->middleware(EnsureStoreOwnership::class);
+    Route::get('/stores/{store}/invoices/export', [InvoiceController::class, 'exportCsv'])
+        ->middleware(EnsureStoreOwnership::class);
 
     // Exports
     Route::get('/stores/{store}/exports', [ExportController::class, 'index'])
