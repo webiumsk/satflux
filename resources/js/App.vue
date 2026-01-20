@@ -13,8 +13,9 @@ import AppLayout from './components/layout/AppLayout.vue';
 const route = useRoute();
 
 // Show layout for authenticated pages (pages that require auth)
+// Public pages (landing) don't need AppLayout, they have their own layout
 const needsLayout = computed(() => {
-  return route.meta.requiresAuth === true;
+  return route.meta.requiresAuth === true && !route.meta.public;
 });
 </script>
 
