@@ -1074,26 +1074,100 @@ async function handleExportInvoices() {
   invoiceExportSuccess.value = '';
   
   try {
-    const response = await api.post(`/stores/${store.value.id}/exports`, {
-      format: 'standard',
-      status: invoiceFilters.value.status || null,
-      date_from: invoiceFilters.value.date_from || null,
-      date_to: invoiceFilters.value.date_to || null,
+    // Build query parameters from filters
+    const params: any = {};
+    if (invoiceFilters.value.status) {
+      params.status = invoiceFilters.value.status;
+    }
+    if (invoiceFilters.value.date_from) {
+      params.date_from = invoiceFilters.value.date_from;
+    }
+    if (invoiceFilters.value.date_to) {
+      params.date_to = invoiceFilters.value.date_to;
+    }
+    
+    // Call hybrid export endpoint with arraybuffer to handle both JSON and CSV
+    const response = await api.get(`/stores/${store.value.id}/invoices/export`, {
+      params,
+      responseType: 'arraybuffer', // Use arraybuffer to handle both JSON and CSV
     });
     
-    invoiceExportSuccess.value = 'Export job has been queued. You will be notified when it\'s ready.';
+    // Check Content-Type header to determine response type
+    const contentType = response.headers['content-type'] || '';
     
-    // Clear success message after 5 seconds
-    setTimeout(() => {
-      invoiceExportSuccess.value = '';
-    }, 5000);
-    
-    // Optionally refresh exports list
-    if (showExports.value) {
-      await fetchExports();
+    if (contentType.includes('application/json')) {
+      // Asynchronous export: response is JSON with export ID
+      // Convert arraybuffer to text and parse JSON
+      const text = new TextDecoder().decode(response.data);
+      const jsonData = JSON.parse(text);
+      
+      if (jsonData.type === 'asynchronous') {
+        invoiceExportSuccess.value = 'Export job has been queued. You will be notified when it\'s ready.';
+        
+        // Clear success message after 5 seconds
+        setTimeout(() => {
+          invoiceExportSuccess.value = '';
+        }, 5000);
+        
+        // Optionally refresh exports list
+        if (showExports.value) {
+          await fetchExports();
+        }
+      } else {
+        throw new Error('Unexpected response type from export endpoint');
+      }
+    } else if (contentType.includes('text/csv')) {
+      // Synchronous export: download CSV immediately
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const urlObj = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = urlObj;
+      
+      // Extract filename from Content-Disposition header or use default
+      const contentDisposition = response.headers['content-disposition'] || '';
+      let filename = 'invoices-' + new Date().toISOString().split('T')[0] + '.csv';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+      
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(urlObj);
+      
+      invoiceExportSuccess.value = 'CSV exported successfully.';
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        invoiceExportSuccess.value = '';
+      }, 3000);
+    } else {
+      throw new Error('Unexpected content type from export endpoint');
     }
   } catch (error: any) {
-    invoiceExportError.value = error.response?.data?.message || 'Failed to create export.';
+    // Handle errors - check if error response is JSON
+    if (error.response?.data) {
+      try {
+        // Try to parse error as JSON (if it's an arraybuffer)
+        if (error.response.data instanceof ArrayBuffer) {
+          const text = new TextDecoder().decode(error.response.data);
+          const jsonError = JSON.parse(text);
+          invoiceExportError.value = jsonError.message || 'Failed to export invoices.';
+        } else if (typeof error.response.data === 'object') {
+          invoiceExportError.value = error.response.data.message || 'Failed to export invoices.';
+        } else {
+          invoiceExportError.value = 'Failed to export invoices.';
+        }
+      } catch {
+        invoiceExportError.value = error.response?.data?.message || 'Failed to export invoices.';
+      }
+    } else {
+      invoiceExportError.value = error.message || 'Failed to export invoices.';
+    }
     
     // Clear error message after 5 seconds
     setTimeout(() => {
