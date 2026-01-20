@@ -258,7 +258,9 @@ async function handleLogin() {
       form.value.password,
       form.value.remember
     );
-    router.push("/");
+    // Redirect to dashboard after login
+    const redirect = router.currentRoute.value.query.redirect as string;
+    router.push(redirect || "/dashboard");
   } catch (err: any) {
     error.value =
       err.response?.data?.message || "Login failed. Please try again.";
@@ -327,7 +329,7 @@ function startPolling(k1: string) {
         stopPolling();
         closeLnurlModal();
         await authStore.fetchUser();
-        router.push("/");
+        router.push("/dashboard");
       } else if (status === "pending_email") {
         // User needs to provide email
         stopPolling();

@@ -5,7 +5,7 @@
         <!-- Left side: Empty on mobile, Logo + Navigation on desktop -->
         <div class="hidden md:flex items-center space-x-8">
           <!-- Logo -->
-          <router-link to="/" class="flex items-center">
+          <router-link to="/dashboard" class="flex items-center">
             <div class="flex-shrink-0">
               <span class="text-2xl font-bold text-indigo-600">UZOL21</span>
             </div>
@@ -13,17 +13,17 @@
 
           <!-- Navigation Menu (Desktop only) -->
           <nav class="hidden md:flex space-x-4">
-            <router-link
-              to="/"
-              class="px-3 py-2 rounded-md text-sm font-medium transition-colors"
-              :class="
-                $route.name === 'home'
-                  ? 'text-indigo-600 bg-indigo-50'
-                  : 'text-gray-700 hover:text-indigo-600 hover:bg-gray-50'
-              "
-            >
-              Dashboard
-            </router-link>
+          <router-link
+            to="/dashboard"
+            class="px-3 py-2 rounded-md text-sm font-medium transition-colors"
+            :class="
+              $route.name === 'home'
+                ? 'text-indigo-600 bg-indigo-50'
+                : 'text-gray-700 hover:text-indigo-600 hover:bg-gray-50'
+            "
+          >
+            Dashboard
+          </router-link>
             <router-link
               to="/stores"
               class="px-3 py-2 rounded-md text-sm font-medium transition-colors"
@@ -58,7 +58,7 @@
 
         <!-- Center: Logo on mobile only -->
         <div class="md:hidden absolute left-1/2 transform -translate-x-1/2">
-          <router-link to="/" class="flex items-center">
+          <router-link to="/dashboard" class="flex items-center">
             <div class="flex-shrink-0">
               <span class="text-2xl font-bold text-indigo-600">UZOL21</span>
             </div>
@@ -176,7 +176,7 @@
         <!-- Navigation Menu -->
         <nav class="p-4 space-y-1">
           <router-link
-            to="/"
+            to="/dashboard"
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-md text-base font-medium transition-colors"
             :class="

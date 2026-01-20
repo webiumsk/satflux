@@ -6,6 +6,12 @@ const router = createRouter({
     routes: [
         {
             path: '/',
+            name: 'landing',
+            component: () => import('../pages/Landing.vue'),
+            meta: { public: true },
+        },
+        {
+            path: '/dashboard',
             name: 'home',
             component: () => import('../pages/Dashboard.vue'),
             meta: { requiresAuth: true },
@@ -130,6 +136,12 @@ const router = createRouter({
             meta: { requiresAuth: true },
         },
         {
+            path: '/support',
+            name: 'support',
+            component: () => import('../pages/Support.vue'),
+            meta: { public: true },
+        },
+        {
             path: '/support/wallet-connections',
             name: 'support-wallet-connections',
             component: () => import('../pages/support/WalletConnections.vue'),
@@ -142,15 +154,21 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore();
     
-    // Only fetch user if not already loaded and not navigating to login/register
-    // This prevents infinite loops
+    // Fetch user info for all pages (except login/register/password-reset) to determine auth state
+    // This is needed for landing page to show correct buttons
     if (!authStore.user && to.name !== 'login' && to.name !== 'register' && to.name !== 'password-reset') {
         try {
             await authStore.fetchUser();
         } catch (error) {
             // If fetch fails (401), user is null which is correct
-            // Router guard will handle redirect below
+            // This allows public pages to work correctly
         }
+    }
+    
+    // Skip auth check for public pages
+    if (to.meta.public) {
+        next();
+        return;
     }
 
     if (to.meta.requiresAuth && !authStore.isAuthenticated) {
