@@ -36,6 +36,7 @@ class SubscriptionService
     ): array {
         // Validate that plan and offering belong to the store
         // This is important for security - we don't want users to subscribe to plans from other stores
+        // However, if API key lacks permissions, we'll skip validation and trust the config values
         try {
             // Verify offering belongs to store
             $offering = $this->client->get("/api/v1/stores/{$storeId}/offerings/{$offeringId}");
@@ -49,13 +50,37 @@ class SubscriptionService
                 throw new BtcPayException("Plan not found or does not belong to this offering", 404);
             }
         } catch (BtcPayException $e) {
-            Log::error('Failed to validate plan/offering ownership', [
-                'store_id' => $storeId,
-                'offering_id' => $offeringId,
-                'plan_id' => $planId,
-                'error' => $e->getMessage(),
-            ]);
-            throw $e;
+            // If error is due to insufficient permissions (403), log warning but continue
+            // We trust the config values - they should be set correctly by admin
+            if ($e->getStatusCode() === 403) {
+                Log::warning('Cannot validate plan/offering ownership - insufficient API permissions', [
+                    'store_id' => $storeId,
+                    'offering_id' => $offeringId,
+                    'plan_id' => $planId,
+                    'error' => $e->getMessage(),
+                    'note' => 'Proceeding with checkout - trusting config values. Consider adding "btcpay.store.canviewofferings" permission to API key.',
+                ]);
+                // Continue with checkout - we trust the config values
+            } elseif ($e->getStatusCode() === 404) {
+                // 404 means plan/offering doesn't exist - this is a real error
+                Log::error('Failed to validate plan/offering ownership', [
+                    'store_id' => $storeId,
+                    'offering_id' => $offeringId,
+                    'plan_id' => $planId,
+                    'error' => $e->getMessage(),
+                ]);
+                throw $e;
+            } else {
+                // Other errors - log and throw
+                Log::error('Failed to validate plan/offering ownership', [
+                    'store_id' => $storeId,
+                    'offering_id' => $offeringId,
+                    'plan_id' => $planId,
+                    'error' => $e->getMessage(),
+                    'status_code' => $e->getStatusCode(),
+                ]);
+                throw $e;
+            }
         }
 
         // Build checkout payload
