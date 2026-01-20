@@ -10,25 +10,29 @@
 
     <!-- Main Content -->
     <div class="flex-1 flex flex-col overflow-hidden">
-      <div class="flex-1 overflow-y-auto">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Header -->
-        <div class="bg-white shadow rounded-lg p-6 mb-6">
+      <!-- Header -->
+      <div class="sticky top-0 z-20 bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-4">
           <div class="flex items-center justify-between">
             <div>
-              <h1 class="text-3xl font-bold text-gray-900">Lightning Address</h1>
-              <p v-if="addresses.length === 0" class="text-sm text-gray-500 mt-2">
-                There are no Lightning Addresses yet.
-              </p>
+              <h1 class="text-xl font-bold text-gray-900 mb-2">Lightning Address</h1>
+              <p class="text-sm text-gray-500">Manage Lightning Addresses for {{ store?.name || 'this store' }}</p>
             </div>
-            <button
-              @click="openAddForm"
-              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
-            >
-              Add Address
-            </button>
+            <div class="flex items-center gap-2">
+              <button
+                @click="openAddForm"
+                class="inline-flex items-center px-2 md:px-4 py-2 border border-transparent text-xs md:text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+              >
+                Add Address
+              </button>
+            </div>
           </div>
         </div>
+      </div>
+
+      <!-- Content Container -->
+      <div class="flex-1 overflow-y-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         <!-- Addresses List -->
         <div v-if="!loading && addresses.length > 0" class="bg-white shadow rounded-lg overflow-hidden">
