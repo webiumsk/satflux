@@ -35,20 +35,20 @@
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-3 py-2 md:px-6 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Address
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-3 py-2 md:px-6 md:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Settings
                 </th>
-                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-3 py-2 md:px-6 md:py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="address in addresses" :key="address.username">
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-3 py-2 md:px-6 md:py-4 whitespace-nowrap">
                   <div class="flex items-center">
                     <input
                       :value="`${address.username}@dvadsatjeden.org`"
@@ -66,7 +66,7 @@
                     </button>
                   </div>
                 </td>
-                <td class="px-6 py-4">
+                <td class="px-3 py-2 md:px-6 md:py-4">
                   <div class="text-sm text-gray-900">
                     <span v-if="address.min || address.max || address.currencyCode">
                       {{ address.min || '0' }} min sats / {{ address.max || '∞' }} max sats
@@ -75,12 +75,12 @@
                     <span v-else class="text-gray-400">-</span>
                   </div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
+                <td class="px-3 py-2 md:px-6 md:py-4 whitespace-nowrap text-sm font-medium text-right">
                   <button
                     @click="confirmDelete(address)"
                     class="text-orange-600 hover:text-orange-900"
                   >
-                    Remove
+                    X
                   </button>
                 </td>
               </tr>

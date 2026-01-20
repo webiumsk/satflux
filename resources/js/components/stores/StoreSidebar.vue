@@ -5,8 +5,12 @@
     @click="showMobileMenu = !showMobileMenu"
     class="fixed top-4 left-4 z-50 lg:hidden p-2 bg-gray-800 text-white rounded-md"
   >
-    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+    <!-- Arrow right when closed, arrow left when open -->
+    <svg v-if="!showMobileMenu" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+    </svg>
+    <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
     </svg>
   </button>
 
@@ -19,7 +23,7 @@
 
   <aside
     v-if="store"
-    class="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-gray-800 text-white flex-shrink-0 h-full transform transition-transform duration-300 ease-in-out flex flex-col"
+    class="fixed lg:static inset-y-0 pt-12 md:pt-0 left-0 z-40 w-64 bg-gray-800 text-white flex-shrink-0 min-h-full transform transition-transform duration-300 ease-in-out flex flex-col"
     :class="{ '-translate-x-full lg:translate-x-0': !showMobileMenu }"
   >
     <div class="flex-1 overflow-y-auto p-4">
@@ -273,7 +277,7 @@
         <nav class="space-y-1">
           <router-link
             :to="`/stores/${store.id}/wallet-connection`"
-            class="flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors"
+            class="flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium transition-colors"
             :class="
               $route.name === 'stores-wallet-connection'
                 ? 'bg-gray-900 text-white'
@@ -289,7 +293,7 @@
             >
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            Wallet Connection
+            <span :class="getWalletConnectionIconClass()">Wallet Connection</span>
           </router-link>
         </nav>
       </div>

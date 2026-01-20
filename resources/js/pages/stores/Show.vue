@@ -16,9 +16,9 @@
     <!-- Main Content -->
     <div class="flex-1 flex flex-col overflow-hidden">
       <div class="flex-1 overflow-y-auto">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Settings View -->
-        <div v-if="showSettings" class="max-w-3xl">
+        <div v-if="showSettings" class="max-w-4xl">
           <div v-if="settingsLoading && !settings" class="text-center py-12">
             <p class="text-gray-500">Loading settings...</p>
           </div>
