@@ -189,8 +189,93 @@
             </div>
 
             <div class="px-6 py-5">
+              <!-- Filters -->
+              <div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Status Filter -->
+                <div>
+                  <label for="invoice-status-filter" class="block text-sm font-medium text-gray-700 mb-2">
+                    Status
+                  </label>
+                  <select
+                    id="invoice-status-filter"
+                    v-model="invoiceFilters.status"
+                    @change="fetchInvoices"
+                    class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="New">New</option>
+                    <option value="Paid">Paid (Partially)</option>
+                    <option value="Settled">Settled</option>
+                    <option value="Invalid">Invalid</option>
+                    <option value="Expired">Expired</option>
+                  </select>
+                </div>
+
+                <!-- Date From -->
+                <div>
+                  <label for="invoice-date-from" class="block text-sm font-medium text-gray-700 mb-2">
+                    From Date
+                  </label>
+                  <input
+                    id="invoice-date-from"
+                    v-model="invoiceFilters.date_from"
+                    type="date"
+                    @change="fetchInvoices"
+                    class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  />
+                </div>
+
+                <!-- Date To -->
+                <div>
+                  <label for="invoice-date-to" class="block text-sm font-medium text-gray-700 mb-2">
+                    To Date
+                  </label>
+                  <input
+                    id="invoice-date-to"
+                    v-model="invoiceFilters.date_to"
+                    type="date"
+                    @change="fetchInvoices"
+                    class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  />
+                </div>
+              </div>
+
+              <!-- Filter Actions -->
+              <div class="mb-4 flex items-center justify-between">
+                <div v-if="hasInvoiceFilters">
+                  <button
+                    @click="clearInvoiceFilters"
+                    class="text-sm text-indigo-600 hover:text-indigo-500"
+                  >
+                    Clear Filters
+                  </button>
+                </div>
+                <button
+                  @click="handleExportInvoices"
+                  :disabled="exportingInvoices"
+                  class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg v-if="!exportingInvoices" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <svg v-else class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {{ exportingInvoices ? 'Exporting...' : 'Export to CSV' }}
+                </button>
+              </div>
+
               <div v-if="invoicesError" class="rounded-md bg-red-50 p-4 mb-4">
                 <div class="text-sm text-red-800">{{ invoicesError }}</div>
+              </div>
+
+              <div v-if="invoiceExportSuccess" class="rounded-md bg-green-50 p-4 mb-4">
+                <div class="text-sm text-green-800">{{ invoiceExportSuccess }}</div>
+              </div>
+
+              <div v-if="invoiceExportError" class="rounded-md bg-red-50 p-4 mb-4">
+                <div class="text-sm text-red-800">{{ invoiceExportError }}</div>
               </div>
 
               <div v-if="invoices.length === 0 && !invoicesLoading" class="text-center py-12">
@@ -262,12 +347,15 @@
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Format</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody class="bg-white divide-y divide-gray-200">
                     <tr v-for="exportItem in exports" :key="exportItem.id" class="hover:bg-gray-50">
                       <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ exportItem.id }}</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ formatDate(exportItem.created_at) }}</td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {{ exportItem.created_at ? formatDate(exportItem.created_at) : '-' }}
+                      </td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm">
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
                           :class="getStatusClass(exportItem.status)">
@@ -275,6 +363,27 @@
                         </span>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ exportItem.format || 'CSV' }}</td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          v-if="exportItem.status === 'finished'"
+                          @click="handleDownloadExport(exportItem)"
+                          :disabled="downloadingExportId === exportItem.id"
+                          class="text-indigo-600 hover:text-indigo-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {{ downloadingExportId === exportItem.id ? 'Downloading...' : 'Download' }}
+                        </button>
+                        <button
+                          v-else-if="exportItem.status === 'failed'"
+                          @click="handleRetryExport(exportItem)"
+                          :disabled="retryingExportId === exportItem.id"
+                          class="text-orange-600 hover:text-orange-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {{ retryingExportId === exportItem.id ? 'Retrying...' : 'Retry' }}
+                        </button>
+                        <span v-else-if="exportItem.status === 'pending' || exportItem.status === 'running'" class="text-gray-400">
+                          {{ exportItem.status === 'running' ? 'Processing...' : 'Waiting...' }}
+                        </span>
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -510,7 +619,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStoresStore } from '../../store/stores';
 import { useAppsStore } from '../../store/apps';
@@ -543,10 +652,20 @@ const settingsSuccess = ref('');
 const invoicesLoading = ref(false);
 const invoices = ref<any[]>([]);
 const invoicesError = ref('');
+const invoiceFilters = ref({
+  status: '',
+  date_from: '',
+  date_to: '',
+});
 
 const exportsLoading = ref(false);
 const exports = ref<any[]>([]);
 const exportsError = ref('');
+const exportingInvoices = ref(false);
+const invoiceExportSuccess = ref('');
+const invoiceExportError = ref('');
+const downloadingExportId = ref<number | null>(null);
+const retryingExportId = ref<number | null>(null);
 
 // Logo management
 const logoInputRef = ref<HTMLInputElement | null>(null);
@@ -681,6 +800,46 @@ watch(() => route.query.section, async (newSection, oldSection) => {
     } finally {
       loading.value = false;
     }
+  }
+});
+
+// Auto-refresh exports status when exports view is visible
+let exportsRefreshInterval: number | null = null;
+
+watch(showExports, (isVisible) => {
+  if (isVisible) {
+    // Fetch exports immediately
+    fetchExports();
+    
+    // Set up interval to refresh exports every 5 seconds if there are pending/running exports
+    exportsRefreshInterval = window.setInterval(() => {
+      const hasPendingOrRunning = exports.value.some((e: any) => 
+        e.status === 'pending' || e.status === 'running'
+      );
+      
+      if (hasPendingOrRunning) {
+        fetchExports();
+      } else {
+        // Clear interval if no pending/running exports
+        if (exportsRefreshInterval) {
+          clearInterval(exportsRefreshInterval);
+          exportsRefreshInterval = null;
+        }
+      }
+    }, 5000);
+  } else {
+    // Clear interval when exports view is hidden
+    if (exportsRefreshInterval) {
+      clearInterval(exportsRefreshInterval);
+      exportsRefreshInterval = null;
+    }
+  }
+});
+
+// Clean up interval on unmount
+onUnmounted(() => {
+  if (exportsRefreshInterval) {
+    clearInterval(exportsRefreshInterval);
   }
 });
 
@@ -870,19 +1029,78 @@ async function fetchInvoices() {
   invoicesLoading.value = true;
   invoicesError.value = '';
   try {
-    // Use dashboard endpoint which already has invoice data
-    // For now, we'll fetch from dashboard - in future, create dedicated endpoint
-    const response = await api.get(`/stores/${store.value.id}/dashboard`);
-    const dashboardData = response.data.data;
-    invoices.value = dashboardData?.recent_invoices || [];
+    // Build query parameters from filters
+    const params: any = {};
+    if (invoiceFilters.value.status) {
+      params.status = invoiceFilters.value.status;
+    }
+    if (invoiceFilters.value.date_from) {
+      params.date_from = invoiceFilters.value.date_from;
+    }
+    if (invoiceFilters.value.date_to) {
+      params.date_to = invoiceFilters.value.date_to;
+    }
     
-    // If we need all invoices, we'd need a separate endpoint
-    // For now, show recent invoices from dashboard
+    const response = await api.get(`/stores/${store.value.id}/invoices`, { params });
+    invoices.value = response.data.data || [];
   } catch (error: any) {
     invoicesError.value = error.response?.data?.message || 'Failed to load invoices.';
     invoices.value = [];
   } finally {
     invoicesLoading.value = false;
+  }
+}
+
+function clearInvoiceFilters() {
+  invoiceFilters.value = {
+    status: '',
+    date_from: '',
+    date_to: '',
+  };
+  fetchInvoices();
+}
+
+const hasInvoiceFilters = computed(() => {
+  return invoiceFilters.value.status !== '' || 
+         invoiceFilters.value.date_from !== '' || 
+         invoiceFilters.value.date_to !== '';
+});
+
+async function handleExportInvoices() {
+  if (!store.value) return;
+  
+  exportingInvoices.value = true;
+  invoiceExportError.value = '';
+  invoiceExportSuccess.value = '';
+  
+  try {
+    const response = await api.post(`/stores/${store.value.id}/exports`, {
+      format: 'standard',
+      status: invoiceFilters.value.status || null,
+      date_from: invoiceFilters.value.date_from || null,
+      date_to: invoiceFilters.value.date_to || null,
+    });
+    
+    invoiceExportSuccess.value = 'Export job has been queued. You will be notified when it\'s ready.';
+    
+    // Clear success message after 5 seconds
+    setTimeout(() => {
+      invoiceExportSuccess.value = '';
+    }, 5000);
+    
+    // Optionally refresh exports list
+    if (showExports.value) {
+      await fetchExports();
+    }
+  } catch (error: any) {
+    invoiceExportError.value = error.response?.data?.message || 'Failed to create export.';
+    
+    // Clear error message after 5 seconds
+    setTimeout(() => {
+      invoiceExportError.value = '';
+    }, 5000);
+  } finally {
+    exportingInvoices.value = false;
   }
 }
 
@@ -899,6 +1117,61 @@ async function fetchExports() {
     exports.value = [];
   } finally {
     exportsLoading.value = false;
+  }
+}
+
+async function handleDownloadExport(exportItem: any) {
+  downloadingExportId.value = exportItem.id;
+  
+  try {
+    const response = await api.get(`/exports/${exportItem.id}/download`);
+    
+    if (response.data.data?.download_url) {
+      // Open download URL in new window/tab
+      window.open(response.data.data.download_url, '_blank');
+    } else {
+      exportsError.value = 'Download URL not available.';
+    }
+  } catch (error: any) {
+    if (error.response?.status === 202) {
+      exportsError.value = 'Export is not ready yet. Please wait a moment and try again.';
+    } else {
+      exportsError.value = error.response?.data?.message || 'Failed to download export.';
+    }
+    
+    // Clear error after 5 seconds
+    setTimeout(() => {
+      exportsError.value = '';
+    }, 5000);
+  } finally {
+    downloadingExportId.value = null;
+  }
+}
+
+async function handleRetryExport(exportItem: any) {
+  retryingExportId.value = exportItem.id;
+  
+  try {
+    await api.post(`/exports/${exportItem.id}/retry`);
+    
+    // Refresh exports list after retry
+    await fetchExports();
+    
+    // Show success message
+    exportsError.value = '';
+    setTimeout(() => {
+      // Refresh again after a short delay to see updated status
+      setTimeout(() => fetchExports(), 2000);
+    }, 1000);
+  } catch (error: any) {
+    exportsError.value = error.response?.data?.message || 'Failed to retry export.';
+    
+    // Clear error after 5 seconds
+    setTimeout(() => {
+      exportsError.value = '';
+    }, 5000);
+  } finally {
+    retryingExportId.value = null;
   }
 }
 
@@ -941,10 +1214,43 @@ function handleViewInvoice(invoice: any) {
   router.push({ name: 'stores-invoices-show', params: { id: store.value.id, invoiceId: invoice.id } });
 }
 
-function formatDate(dateString: string): string {
+function formatDate(dateString: string | number): string {
   if (!dateString) return '-';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  
+  let date: Date;
+  
+  // If it's a number, it's likely a Unix timestamp
+  if (typeof dateString === 'number') {
+    // BTCPay API returns Unix timestamps in seconds, but JavaScript Date expects milliseconds
+    // If the number is less than a reasonable timestamp in milliseconds (year 2000), assume it's in seconds
+    date = dateString < 946684800000 ? new Date(dateString * 1000) : new Date(dateString);
+  } else {
+    // If it's a string, try to parse it
+    // First check if it looks like a Unix timestamp string (only digits)
+    const trimmed = dateString.trim();
+    if (/^\d+$/.test(trimmed)) {
+      const parsed = parseFloat(trimmed);
+      if (!isNaN(parsed) && parsed < 946684800000) {
+        // It's a string representation of a Unix timestamp in seconds
+        date = new Date(parsed * 1000);
+      } else {
+        // It's a Unix timestamp in milliseconds
+        date = new Date(parsed);
+      }
+    } else {
+      // It's an ISO string or other date format (Laravel returns ISO strings like "2026-01-20T12:30:45.000000Z")
+      date = new Date(dateString);
+    }
+  }
+  
+  // Check if date is valid
+  if (isNaN(date.getTime())) return '-';
+  
+  // European format: DD.MM.YYYY
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}.${month}.${year}`;
 }
 
 function formatAmount(amount: string | number, currency: string = 'USD'): string {

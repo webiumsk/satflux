@@ -45,6 +45,22 @@ class GenerateCsvExport implements ShouldQueue
             if (isset($filters['status'])) {
                 $btcpayFilters['status'] = $filters['status'];
             }
+            
+            // Date range filters (BTCPay expects Unix timestamps in seconds)
+            if (isset($filters['date_from']) && $filters['date_from']) {
+                $dateFrom = strtotime($filters['date_from']);
+                if ($dateFrom !== false) {
+                    $btcpayFilters['startDate'] = $dateFrom;
+                }
+            }
+            
+            if (isset($filters['date_to']) && $filters['date_to']) {
+                // Add 23:59:59 to include the entire day
+                $dateTo = strtotime($filters['date_to'] . ' 23:59:59');
+                if ($dateTo !== false) {
+                    $btcpayFilters['endDate'] = $dateTo;
+                }
+            }
 
             $filePath = 'exports/' . $this->export->id . '_' . time() . '.csv';
             $fullPath = storage_path('app/' . $filePath);
@@ -107,7 +123,15 @@ class GenerateCsvExport implements ShouldQueue
         $take = 100;
 
         do {
-            $invoices = $invoiceService->listInvoices($store->btcpay_store_id, $filters, $skip, $take, $userApiKey);
+            $response = $invoiceService->listInvoices($store->btcpay_store_id, $filters, $skip, $take, $userApiKey);
+            
+            // BTCPay API returns invoices in the data array or directly
+            $invoices = $response['data'] ?? $response;
+            
+            // Ensure it's an array
+            if (!is_array($invoices)) {
+                $invoices = [];
+            }
             
             foreach ($invoices as $invoice) {
                 fputcsv($handle, [
@@ -150,7 +174,15 @@ class GenerateCsvExport implements ShouldQueue
         $take = 100;
 
         do {
-            $invoices = $invoiceService->listInvoices($store->btcpay_store_id, $filters, $skip, $take, $userApiKey);
+            $response = $invoiceService->listInvoices($store->btcpay_store_id, $filters, $skip, $take, $userApiKey);
+            
+            // BTCPay API returns invoices in the data array or directly
+            $invoices = $response['data'] ?? $response;
+            
+            // Ensure it's an array
+            if (!is_array($invoices)) {
+                $invoices = [];
+            }
             
             foreach ($invoices as $invoice) {
                 $createdTime = isset($invoice['createdTime']) ? date('Y-m-d', strtotime($invoice['createdTime'])) : '';

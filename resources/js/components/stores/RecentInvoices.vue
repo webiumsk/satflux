@@ -85,9 +85,31 @@ const emit = defineEmits<{
   'view-invoice': [invoice: Invoice];
 }>();
 
-function formatDate(dateString: string): string {
+function formatDate(dateString: string | number): string {
   if (!dateString) return 'N/A';
-  const date = new Date(dateString);
+  
+  let date: Date;
+  
+  // If it's a number, it's likely a Unix timestamp
+  if (typeof dateString === 'number') {
+    // BTCPay API returns Unix timestamps in seconds, but JavaScript Date expects milliseconds
+    // If the number is less than a reasonable timestamp in milliseconds (year 2000), assume it's in seconds
+    date = dateString < 946684800000 ? new Date(dateString * 1000) : new Date(dateString);
+  } else {
+    // If it's a string, try to parse it
+    const parsed = parseFloat(dateString);
+    if (!isNaN(parsed) && parsed < 946684800000) {
+      // It's a string representation of a Unix timestamp in seconds
+      date = new Date(parsed * 1000);
+    } else {
+      // It's an ISO string or other date format
+      date = new Date(dateString);
+    }
+  }
+  
+  // Check if date is valid
+  if (isNaN(date.getTime())) return 'N/A';
+  
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
@@ -99,7 +121,11 @@ function formatDate(dateString: string): string {
   if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
   if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
   
-  return date.toLocaleDateString();
+  // European format: DD.MM.YYYY
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}.${month}.${year}`;
 }
 
 function formatStatus(status: string): string {
