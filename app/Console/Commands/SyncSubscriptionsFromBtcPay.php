@@ -42,18 +42,38 @@ class SyncSubscriptionsFromBtcPay extends Command
         
         try {
             // Fetch all subscriptions from BTCPay
-            $subscriptions = $this->subscriptionService->listSubscriptions($storeId);
+            $this->info("Attempting to fetch subscriptions from store: {$storeId}");
             
-            // BTCPay API might return array of subscriptions or wrapped in a data property
-            $subscriptionsList = $subscriptions['data'] ?? $subscriptions;
-            
-            if (!is_array($subscriptionsList)) {
-                $this->error('Unexpected response format from BTCPay API');
-                Log::error('Unexpected subscription list format', ['response' => $subscriptions]);
-                return Command::FAILURE;
-            }
+            try {
+                $subscriptions = $this->subscriptionService->listSubscriptions($storeId);
+                
+                // BTCPay API might return array of subscriptions or wrapped in a data property
+                $subscriptionsList = $subscriptions['data'] ?? $subscriptions;
+                
+                if (!is_array($subscriptionsList)) {
+                    $this->error('Unexpected response format from BTCPay API');
+                    Log::error('Unexpected subscription list format', ['response' => $subscriptions]);
+                    return Command::FAILURE;
+                }
 
-            $this->info("Found " . count($subscriptionsList) . " subscriptions in BTCPay");
+                $this->info("Found " . count($subscriptionsList) . " subscriptions in BTCPay");
+                
+            } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+                if ($e->getStatusCode() === 404) {
+                    $this->error("HTTP 404 - Subscription API endpoint not found.");
+                    $this->warn("Possible reasons:");
+                    $this->warn("1. BTCPay Server version < 2.3.0 (subscription API requires 2.3.0+)");
+                    $this->warn("2. Subscription feature not enabled in BTCPay");
+                    $this->warn("3. API key missing 'btcpay.store.canviewsubscriptions' permission");
+                    $this->warn("4. Incorrect store ID: {$storeId}");
+                    $this->newLine();
+                    $this->info("Attempting alternative method: checking subscription invoices...");
+                    
+                    // Alternative: try to find subscriptions via invoices with subscription metadata
+                    return $this->syncViaInvoices($storeId);
+                }
+                throw $e;
+            }
 
             $synced = 0;
             $upgraded = 0;
@@ -168,6 +188,132 @@ class SyncSubscriptionsFromBtcPay extends Command
         } catch (\Exception $e) {
             $this->error("Error fetching subscriptions: {$e->getMessage()}");
             Log::error('Error syncing subscriptions from BTCPay', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return Command::FAILURE;
+        }
+    }
+
+    /**
+     * Alternative sync method: find subscriptions via invoices with subscription metadata.
+     */
+    protected function syncViaInvoices(string $storeId): int
+    {
+        $this->info('Fetching invoices from subscription store to find subscriptions...');
+        
+        try {
+            $invoiceService = app(\App\Services\BtcPay\InvoiceService::class);
+            
+            // Fetch recent invoices (last 100 should be enough)
+            $invoices = $invoiceService->listInvoices($storeId, [], 0, 100);
+            
+            $invoicesList = $invoices['data'] ?? $invoices;
+            
+            if (!is_array($invoicesList)) {
+                $this->error('Unexpected response format from BTCPay invoices API');
+                return Command::FAILURE;
+            }
+
+            $this->info("Found " . count($invoicesList) . " invoices to check");
+
+            $synced = 0;
+            $upgraded = 0;
+            $subscriptionsFound = [];
+
+            foreach ($invoicesList as $invoice) {
+                // Look for subscription ID in invoice metadata
+                $subscriptionId = $invoice['metadata']['subscriptionId'] 
+                    ?? $invoice['subscriptionId']
+                    ?? null;
+
+                if (!$subscriptionId || isset($subscriptionsFound[$subscriptionId])) {
+                    continue; // Skip if no subscription ID or already processed
+                }
+
+                $subscriptionsFound[$subscriptionId] = true;
+
+                // Get customer email
+                $customerEmail = $invoice['metadata']['customerEmail'] 
+                    ?? $invoice['metadata']['buyerEmail']
+                    ?? $invoice['buyerEmail'] 
+                    ?? $invoice['customerEmail']
+                    ?? null;
+
+                if (!$customerEmail) {
+                    continue;
+                }
+
+                // Find user
+                $user = User::where('email', $customerEmail)->first();
+                if (!$user) {
+                    continue;
+                }
+
+                // Try to get subscription details (might still fail with 404)
+                try {
+                    $subscription = $this->subscriptionService->getSubscription($storeId, $subscriptionId);
+                    $status = $subscription['status'] ?? null;
+                    $planId = $subscription['planId'] ?? null;
+                    
+                    // Get expiration
+                    $expiresAt = null;
+                    if (isset($subscription['expiresAt'])) {
+                        $expiresAt = is_numeric($subscription['expiresAt']) 
+                            ? now()->parse($subscription['expiresAt'])
+                            : now()->parse($subscription['expiresAt']);
+                    }
+
+                    // Map plan to role
+                    $subscriptionPlans = config('services.btcpay.subscription_plans', []);
+                    $expectedRole = null;
+
+                    if ($planId === ($subscriptionPlans['pro'] ?? null)) {
+                        $expectedRole = 'pro';
+                    } elseif ($planId === ($subscriptionPlans['enterprise'] ?? null)) {
+                        $expectedRole = 'enterprise';
+                    }
+
+                    // Update user
+                    $updateData = [
+                        'btcpay_subscription_id' => $subscriptionId,
+                        'subscription_expires_at' => $expiresAt,
+                        'subscription_grace_period_ends_at' => null,
+                    ];
+
+                    $oldRole = $user->role;
+
+                    if (in_array($status, ['active', 'activeRenewing']) && $expectedRole) {
+                        $updateData['role'] = $expectedRole;
+                        if ($oldRole !== $expectedRole) {
+                            $upgraded++;
+                            $this->line("Upgraded {$user->email} from {$oldRole} to {$expectedRole}");
+                        }
+                    }
+
+                    $user->update($updateData);
+                    $synced++;
+
+                } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+                    // If we can't get subscription details, at least store the subscription ID
+                    $user->update([
+                        'btcpay_subscription_id' => $subscriptionId,
+                    ]);
+                    $synced++;
+                    $this->line("Synced subscription ID for {$user->email} (details unavailable)");
+                }
+            }
+
+            $this->info("Synced {$synced} subscriptions via invoices");
+            if ($upgraded > 0) {
+                $this->info("Upgraded {$upgraded} users");
+            }
+
+            return Command::SUCCESS;
+
+        } catch (\Exception $e) {
+            $this->error("Error syncing via invoices: {$e->getMessage()}");
+            Log::error('Error syncing subscriptions via invoices', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
