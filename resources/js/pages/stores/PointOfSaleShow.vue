@@ -159,16 +159,6 @@
                 ></textarea>
               </div>
 
-              <!-- Products Editor -->
-              <div v-if="shouldShowProductsEditor">
-                <PointOfSaleProductsEditor
-                  v-model:products="products"
-                  :currency="form.currency || store?.default_currency || 'EUR'"
-                  @add="addProduct"
-                  @edit="editProduct"
-                />
-              </div>
-
               <!-- Keypad Settings -->
               <div v-if="form.defaultView === 'Light'" class="mt-6">
                 <div class="flex items-center bg-gray-900 border border-gray-700 p-4 rounded-xl">
@@ -183,6 +173,16 @@
                   </label>
                 </div>
               </div>
+
+              <!-- Products Editor -->
+              <div v-if="shouldShowProductsEditor">
+                <PointOfSaleProductsEditor
+                  v-model:products="products"
+                  :currency="form.currency || store?.default_currency || 'EUR'"
+                  @add="addProduct"
+                  @edit="editProduct"
+                />
+              </div>              
 
               <div class="border-t border-gray-700/50 pt-6">
                  <h3 class="text-lg font-medium text-white mb-4">Checkout Settings</h3>
