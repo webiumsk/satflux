@@ -24,6 +24,9 @@ class User extends Authenticatable
         'btcpay_user_id',
         'btcpay_api_key',
         'role',
+        'btcpay_subscription_id',
+        'subscription_expires_at',
+        'subscription_grace_period_ends_at',
     ];
 
     /**
@@ -48,6 +51,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'btcpay_api_key' => 'encrypted', // Encrypt API key in database
+            'subscription_expires_at' => 'datetime',
+            'subscription_grace_period_ends_at' => 'datetime',
         ];
     }
 
@@ -148,7 +153,7 @@ class User extends Authenticatable
      */
     public function hasVerifiedEmail(): bool
     {
-        return ! is_null($this->email_verified_at);
+        return !is_null($this->email_verified_at);
     }
 
     /**
@@ -162,7 +167,7 @@ class User extends Authenticatable
         if (!$this->btcpay_api_key) {
             abort(500, 'BTCPay API key not configured. Please contact support.');
         }
-        
+
         return $this->btcpay_api_key;
     }
 }

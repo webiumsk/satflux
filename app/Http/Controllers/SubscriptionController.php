@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Services\BtcPay\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -30,7 +31,7 @@ class SubscriptionController extends Controller
         // Feature flag: allow non-authenticated users to checkout
         // For MVP, we require auth, but this can be made optional later
         $allowGuestCheckout = config('services.btcpay.allow_guest_subscriptions', false);
-        
+
         if (!$allowGuestCheckout && !$request->user()) {
             return response()->json([
                 'message' => 'Authentication required to create checkout',
@@ -150,6 +151,153 @@ class SubscriptionController extends Controller
 
             return response()->json([
                 'message' => 'An unexpected error occurred. Please try again later.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Handle subscription success redirect from BTCPay.
+     * 
+     * GET /api/subscriptions/success?checkoutPlanId=...
+     * 
+     * This endpoint processes the redirect after successful subscription checkout
+     * and updates the user's role based on the plan they subscribed to.
+     */
+    public function success(Request $request)
+    {
+        $checkoutPlanId = $request->query('checkoutPlanId');
+
+        if (!$checkoutPlanId) {
+            return response()->json([
+                'message' => 'Missing checkoutPlanId parameter',
+            ], 400);
+        }
+
+        try {
+            // Get checkout details from BTCPay
+            $checkoutDetails = $this->subscriptionService->getPlanCheckout($checkoutPlanId);
+
+            // Extract plan ID and subscription information
+            $planId = $checkoutDetails['planId'] ?? null;
+            $subscriptionId = $checkoutDetails['subscriptionId'] ?? null;
+            $customerEmail = $checkoutDetails['customerEmail']
+                ?? $checkoutDetails['subscriberEmail']
+                ?? $checkoutDetails['email']
+                ?? null;
+
+            if (!$planId) {
+                Log::warning('Subscription success - plan ID not found in checkout details', [
+                    'checkout_id' => $checkoutPlanId,
+                    'checkout_details' => $checkoutDetails,
+                ]);
+                return response()->json([
+                    'message' => 'Plan information not found in checkout',
+                ], 400);
+            }
+
+            // Map plan ID to role
+            $subscriptionPlans = config('services.btcpay.subscription_plans', []);
+            $planRole = null;
+
+            if ($planId === ($subscriptionPlans['pro'] ?? null)) {
+                $planRole = 'pro';
+            } elseif ($planId === ($subscriptionPlans['enterprise'] ?? null)) {
+                $planRole = 'enterprise';
+            }
+
+            if (!$planRole) {
+                Log::warning('Subscription success - unknown plan ID', [
+                    'checkout_id' => $checkoutPlanId,
+                    'plan_id' => $planId,
+                    'subscription_plans' => $subscriptionPlans,
+                ]);
+                return response()->json([
+                    'message' => 'Unknown subscription plan',
+                ], 400);
+            }
+
+            // Find user by email or session
+            $user = null;
+            if ($customerEmail) {
+                $user = User::where('email', $customerEmail)->first();
+            }
+
+            // Fallback: if user not found by email, try to get from session
+            if (!$user && $request->user()) {
+                $user = $request->user();
+            }
+
+            if (!$user) {
+                Log::warning('Subscription success - user not found', [
+                    'checkout_id' => $checkoutPlanId,
+                    'customer_email' => $customerEmail,
+                    'has_session' => $request->user() !== null,
+                ]);
+                // Don't return error - just log, user might need to login
+                return response()->json([
+                    'message' => 'User not found. Please login to activate your subscription.',
+                ], 200);
+            }
+
+            // Update user role and subscription tracking
+            $oldRole = $user->role;
+            $user->role = $planRole;
+
+            // Store subscription ID and expiration if available
+            if ($subscriptionId) {
+                $user->btcpay_subscription_id = $subscriptionId;
+            }
+
+            // Get expiration from checkout details or subscription
+            $expiresAt = null;
+            if (isset($checkoutDetails['expiresAt'])) {
+                $expiresAt = is_numeric($checkoutDetails['expiresAt'])
+                    ? now()->parse($checkoutDetails['expiresAt'])
+                    : now()->parse($checkoutDetails['expiresAt']);
+            }
+
+            if ($expiresAt) {
+                $user->subscription_expires_at = $expiresAt;
+                $user->subscription_grace_period_ends_at = null; // BTCPay handles grace period
+            }
+
+            $user->save();
+
+            Log::info('User role updated after subscription checkout success', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'old_role' => $oldRole,
+                'new_role' => $planRole,
+                'checkout_id' => $checkoutPlanId,
+                'plan_id' => $planId,
+                'subscription_id' => $subscriptionId,
+            ]);
+
+            return response()->json([
+                'message' => 'Subscription activated successfully',
+                'role' => $planRole,
+                'user' => $user->makeVisible('role'),
+            ]);
+
+        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+            Log::error('Failed to process subscription success', [
+                'checkout_id' => $checkoutPlanId,
+                'error' => $e->getMessage(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to process subscription. Please contact support.',
+            ], 500);
+        } catch (\Exception $e) {
+            Log::error('Unexpected error processing subscription success', [
+                'checkout_id' => $checkoutPlanId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'message' => 'An unexpected error occurred. Please contact support.',
             ], 500);
         }
     }

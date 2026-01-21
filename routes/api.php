@@ -36,7 +36,7 @@ Route::get('/version', function () {
     // Try to read version from package.json
     $packageJsonPath = base_path('package.json');
     $version = '1.0.0'; // Default fallback
-    
+
     if (file_exists($packageJsonPath)) {
         try {
             $packageJson = json_decode(file_get_contents($packageJsonPath), true);
@@ -47,7 +47,7 @@ Route::get('/version', function () {
             // Fallback to default version
         }
     }
-    
+
     return response()->json([
         'version' => $version,
         'name' => 'UZOL21',
@@ -59,17 +59,17 @@ Route::get('/debug/stores', function (\Illuminate\Http\Request $request) {
     if (!app()->environment('local')) {
         abort(404);
     }
-    
+
     if (!auth()->check()) {
         return response()->json(['error' => 'Not authenticated'], 401);
     }
-    
+
     $user = auth()->user();
-    
+
     $stores = \App\Models\Store::where('user_id', $user->id)
         ->with('user:id,email,btcpay_user_id')
         ->get();
-    
+
     // Try to get BTCPay stores if API key exists
     $btcpayStores = [];
     $btcpayError = null;
@@ -81,7 +81,7 @@ Route::get('/debug/stores', function (\Illuminate\Http\Request $request) {
             $btcpayError = $e->getMessage();
         }
     }
-    
+
     return response()->json([
         'user_id' => $user->id,
         'user_email' => $user->email,
@@ -99,20 +99,21 @@ Route::get('/debug/stores', function (\Illuminate\Http\Request $request) {
                 'created_at' => $store->created_at,
             ];
         }),
-        'btcpay_stores' => is_array($btcpayStores) ? array_map(function($s) {
+        'btcpay_stores' => is_array($btcpayStores) ? array_map(function ($s) {
             return [
                 'id' => $s['id'] ?? $s['storeId'] ?? null,
                 'name' => $s['name'] ?? null,
             ];
         }, $btcpayStores) : [],
-        'matching_stores' => $stores->filter(function($localStore) use ($btcpayStores) {
-            if (!is_array($btcpayStores)) return false;
+        'matching_stores' => $stores->filter(function ($localStore) use ($btcpayStores) {
+            if (!is_array($btcpayStores))
+                return false;
             $localBtcpayId = $localStore->btcpay_store_id;
-            return collect($btcpayStores)->contains(function($bs) use ($localBtcpayId) {
+            return collect($btcpayStores)->contains(function ($bs) use ($localBtcpayId) {
                 $btcpayStoreId = $bs['id'] ?? $bs['storeId'] ?? null;
                 return $btcpayStoreId === $localBtcpayId;
             });
-        })->map(function($store) {
+        })->map(function ($store) {
             return [
                 'id' => $store->id,
                 'name' => $store->name,
@@ -136,14 +137,14 @@ Route::middleware(['throttle:auth'])->group(function () {
     Route::post('/auth/register', [RegisterController::class, 'register']);
     Route::post('/auth/login', [LoginController::class, 'login']);
     Route::post('/auth/logout', [LoginController::class, 'logout'])->middleware('auth:sanctum');
-    
+
     // Password reset
     Route::post('/auth/password/reset-link', [PasswordResetController::class, 'sendResetLink']);
     Route::post('/auth/password/reset', [PasswordResetController::class, 'reset']);
-    
+
     // Email verification
     Route::post('/auth/email/verification-notification', [EmailVerificationController::class, 'sendVerificationEmail']);
-    
+
     // LNURL-auth
     Route::post('/lnurl-auth/challenge', [LnurlAuthController::class, 'challenge']);
     Route::get('/lnurl-auth/verify', [LnurlAuthController::class, 'verify']);
@@ -296,3 +297,4 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 // Subscription checkout (auth handled in controller based on feature flag)
 Route::post('/subscriptions/checkout', [SubscriptionController::class, 'checkout']);
+Route::get('/subscriptions/success', [SubscriptionController::class, 'success']);
