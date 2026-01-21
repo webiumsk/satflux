@@ -238,23 +238,27 @@ class SubscriptionService
     }
 
     /**
-     * List subscribers for an offering.
-     * BTCPay may require accessing subscriptions via offerings/subscribers endpoint.
+     * Get a subscriber by customer selector (email, customer ID, or identity).
+     * BTCPay API doesn't support listing all subscribers, only getting individual ones.
      * 
      * @param string $storeId BTCPay store ID
      * @param string $offeringId BTCPay offering ID
-     * @return array List of subscribers/subscriptions
+     * @param string $customerSelector Customer selector (email, customer ID, or Email:email@example.com)
+     * @return array Subscriber/subscription details
      * @throws BtcPayException
      */
-    public function listSubscribers(string $storeId, string $offeringId): array
+    public function getSubscriber(string $storeId, string $offeringId, string $customerSelector): array
     {
         try {
-            $response = $this->client->get("/api/v1/stores/{$storeId}/offerings/{$offeringId}/subscribers");
+            // URL encode the customer selector to handle email addresses and special characters
+            $encodedSelector = rawurlencode($customerSelector);
+            $response = $this->client->get("/api/v1/stores/{$storeId}/offerings/{$offeringId}/subscribers/{$encodedSelector}");
             return $response;
         } catch (BtcPayException $e) {
-            Log::error('Failed to list subscribers', [
+            Log::error('Failed to get subscriber', [
                 'store_id' => $storeId,
                 'offering_id' => $offeringId,
+                'customer_selector' => $customerSelector,
                 'error' => $e->getMessage(),
                 'status_code' => $e->getStatusCode(),
             ]);
