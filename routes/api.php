@@ -298,3 +298,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
 // Subscription checkout (auth handled in controller based on feature flag)
 Route::post('/subscriptions/checkout', [SubscriptionController::class, 'checkout']);
 Route::get('/subscriptions/success', [SubscriptionController::class, 'success']);
+Route::get('/subscriptions/details', [SubscriptionController::class, 'details'])->middleware('auth:sanctum');
+Route::get('/subscriptions/credits', [SubscriptionController::class, 'getCredits'])->middleware('auth:sanctum');
+Route::post('/subscriptions/credits', [SubscriptionController::class, 'addCredits'])->middleware('auth:sanctum');
