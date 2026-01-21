@@ -452,12 +452,23 @@ class SubscriptionController extends Controller
 
         try {
             // Add credit via BTCPay API (this will create an invoice for the credit)
-            $result = $this->subscriptionService->addSubscriberCredits($storeId, $offeringId, $user->email, $currency, $amount);
+            $description = $request->input('description', 'Credit purchase');
+            $result = $this->subscriptionService->addSubscriberCredits($storeId, $offeringId, $user->email, $currency, $amount, $description);
+
+            // BTCPay returns invoice information in the response
+            $invoiceId = $result['invoiceId'] ?? null;
+            $invoiceUrl = $result['invoiceUrl'] ?? $result['url'] ?? null;
+
+            // If invoice URL is not in response, construct it from base URL and invoice ID
+            if (!$invoiceUrl && $invoiceId) {
+                $baseUrl = config('services.btcpay.base_url');
+                $invoiceUrl = "{$baseUrl}/i/{$invoiceId}";
+            }
 
             return response()->json([
-                'message' => 'Credit added successfully',
-                'invoiceId' => $result['invoiceId'] ?? null,
-                'invoiceUrl' => $result['invoiceUrl'] ?? $result['url'] ?? null,
+                'message' => 'Credit invoice created successfully',
+                'invoiceId' => $invoiceId,
+                'invoiceUrl' => $invoiceUrl,
                 'details' => $result,
             ]);
 
