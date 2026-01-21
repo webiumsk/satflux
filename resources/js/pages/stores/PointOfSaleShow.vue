@@ -561,7 +561,7 @@ const form = ref({
   appName: '',
   title: '',
   description: '',
-  defaultView: 'Static',
+  defaultView: 'Light',
   currency: '',
   showItems: false,
   showCustomAmount: false,

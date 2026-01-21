@@ -19,7 +19,9 @@ use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\EshopIntegrationController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\AdminController;
 use App\Http\Middleware\AuditLog;
+use App\Http\Middleware\EnsureAdminRole;
 use App\Http\Middleware\EnsureStoreOwnership;
 use App\Http\Middleware\EnsureSupportRole;
 use Illuminate\Support\Facades\Route;
@@ -279,6 +281,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/support/wallet-connections/{connection}/btcpay-store-url', [WalletConnectionController::class, 'getBtcPayStoreUrl']);
         Route::put('/support/wallet-connections/{connection}/mark-connected', [WalletConnectionController::class, 'markConnected'])
             ->middleware(AuditLog::class . ':wallet_connection.marked_connected');
+    });
+
+    // Admin routes
+    Route::middleware([EnsureAdminRole::class])->group(function () {
+        Route::get('/admin/users', [AdminController::class, 'index']);
+        Route::get('/admin/users/{user}', [AdminController::class, 'show']);
+        Route::put('/admin/users/{user}', [AdminController::class, 'update'])
+            ->middleware(AuditLog::class . ':admin.user.updated');
+        Route::delete('/admin/users/{user}', [AdminController::class, 'destroy'])
+            ->middleware(AuditLog::class . ':admin.user.deleted');
     });
 });
 
