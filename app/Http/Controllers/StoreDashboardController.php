@@ -27,56 +27,64 @@ class StoreDashboardController extends Controller
     public function show(Request $request, Store $store)
     {
         $user = $request->user();
-        
+
         // Load merchant API key
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
-        
+
         // Cache key includes API key hash to prevent cross-merchant cache pollution
         $apiKeyHash = md5($userApiKey);
         $cacheKey = "btcpay:dashboard:{$store->id}:{$apiKeyHash}";
-        
+
         return Cache::remember($cacheKey, 60, function () use ($store, $userApiKey) {
             try {
                 // Calculate date 7 days ago
                 $sevenDaysAgo = now()->subDays(7)->toIso8601String();
-                
+
                 // Get all invoices for calculations
-                $allInvoices = $this->invoiceService->listInvoices(
+                // Get all invoices for calculations
+                $result = $this->invoiceService->listInvoices(
                     $store->btcpay_store_id,
                     [],
-                    null,
-                    null,
+                    0,
+                    1000,
                     $userApiKey
                 );
-                
+
+                $allInvoices = $result['data'] ?? $result;
+
                 // Count paid invoices in last 7 days
                 $paidInvoicesLast7d = 0;
                 $totalInvoices = is_array($allInvoices) ? count($allInvoices) : 0;
-                
+
                 if (is_array($allInvoices)) {
                     foreach ($allInvoices as $invoice) {
                         $status = $invoice['status'] ?? null;
                         $createdTime = $invoice['createdTime'] ?? null;
-                        
+
                         // Check if invoice is settled/paid
                         if (in_array($status, ['Settled', 'Complete'])) {
                             // Check if created within last 7 days
-                            if ($createdTime && strtotime($createdTime) >= strtotime($sevenDaysAgo)) {
+                            $invoiceTime = is_numeric($createdTime) ? (int) $createdTime : strtotime($createdTime);
+                            $compareTime = strtotime($sevenDaysAgo);
+
+                            if ($invoiceTime && $invoiceTime >= $compareTime) {
                                 $paidInvoicesLast7d++;
                             }
                         }
                     }
                 }
-                
+
                 // Get recent invoices (last 10)
-                $recentInvoices = $this->invoiceService->listInvoices(
+                $recentInvoicesResult = $this->invoiceService->listInvoices(
                     $store->btcpay_store_id,
                     [],
                     0,
                     10,
                     $userApiKey
                 );
-                
+
+                $recentInvoices = $recentInvoicesResult['data'] ?? $recentInvoicesResult;
+
                 // Format recent invoices
                 $formattedRecentInvoices = [];
                 if (is_array($recentInvoices)) {
@@ -91,35 +99,35 @@ class StoreDashboardController extends Controller
                         ];
                     }, array_slice($recentInvoices, 0, 10));
                 }
-                
+
                 // Calculate sales over time (last 7 days and 30 days)
                 $salesLast7Days = [];
                 $salesLast30Days = [];
                 $totalSales7d = 0;
                 $totalSales30d = 0;
-                
+
                 // Initialize arrays for last 7 days
                 for ($i = 6; $i >= 0; $i--) {
                     $date = now()->subDays($i)->startOfDay();
                     $salesLast7Days[$date->format('Y-m-d')] = ['date' => $date->format('M j'), 'count' => 0];
                 }
-                
+
                 // Initialize arrays for last 30 days (group by week or show last 30 days)
                 for ($i = 29; $i >= 0; $i--) {
                     $date = now()->subDays($i)->startOfDay();
                     $salesLast30Days[$date->format('Y-m-d')] = ['date' => $date->format('M j'), 'count' => 0];
                 }
-                
+
                 if (is_array($allInvoices)) {
                     foreach ($allInvoices as $invoice) {
                         $status = $invoice['status'] ?? null;
                         $createdTime = $invoice['createdTime'] ?? null;
-                        
+
                         // Only count settled/paid invoices
                         if (in_array($status, ['Settled', 'Complete']) && $createdTime) {
                             $invoiceDate = \Carbon\Carbon::parse($createdTime)->startOfDay();
                             $dateKey = $invoiceDate->format('Y-m-d');
-                            
+
                             // Count for last 7 days
                             if ($invoiceDate->isAfter(now()->subDays(7)->startOfDay())) {
                                 if (isset($salesLast7Days[$dateKey])) {
@@ -127,7 +135,7 @@ class StoreDashboardController extends Controller
                                     $totalSales7d++;
                                 }
                             }
-                            
+
                             // Count for last 30 days
                             if ($invoiceDate->isAfter(now()->subDays(30)->startOfDay())) {
                                 if (isset($salesLast30Days[$dateKey])) {
@@ -138,7 +146,7 @@ class StoreDashboardController extends Controller
                         }
                     }
                 }
-                
+
                 // Extract top items from invoices (from metadata or item description)
                 // BTCPay invoices may have item information in metadata
                 $itemCounts = [];
@@ -151,16 +159,16 @@ class StoreDashboardController extends Controller
                             $itemName = null;
                             $itemAmount = floatval($invoice['amount'] ?? 0);
                             $currency = $invoice['currency'] ?? 'EUR';
-                            
+
                             // Check for itemCode first
                             if (isset($invoice['itemCode'])) {
                                 $itemName = $invoice['itemCode'];
-                            } 
+                            }
                             // Check metadata for posData or itemName
                             elseif (isset($invoice['metadata']) && is_array($invoice['metadata'])) {
                                 if (isset($invoice['metadata']['posData'])) {
-                                    $posData = is_string($invoice['metadata']['posData']) 
-                                        ? json_decode($invoice['metadata']['posData'], true) 
+                                    $posData = is_string($invoice['metadata']['posData'])
+                                        ? json_decode($invoice['metadata']['posData'], true)
                                         : $invoice['metadata']['posData'];
                                     if (is_array($posData) && isset($posData['itemCode'])) {
                                         $itemName = $posData['itemCode'];
@@ -170,7 +178,7 @@ class StoreDashboardController extends Controller
                                     $itemName = $invoice['metadata']['itemName'];
                                 }
                             }
-                            
+
                             if ($itemName) {
                                 if (!isset($itemCounts[$itemName])) {
                                     $itemCounts[$itemName] = ['count' => 0, 'total' => 0, 'currency' => $currency];
@@ -181,12 +189,12 @@ class StoreDashboardController extends Controller
                         }
                     }
                 }
-                
+
                 // Sort items by count and take top 5
-                uasort($itemCounts, function($a, $b) {
+                uasort($itemCounts, function ($a, $b) {
                     return $b['count'] - $a['count'];
                 });
-                $topItems = array_slice(array_map(function($name, $data) {
+                $topItems = array_slice(array_map(function ($name, $data) {
                     return [
                         'name' => $name,
                         'count' => $data['count'],
@@ -194,7 +202,7 @@ class StoreDashboardController extends Controller
                         'currency' => $data['currency'],
                     ];
                 }, array_keys($itemCounts), $itemCounts), 0, 5);
-                
+
                 // Get apps for the store
                 $apps = [];
                 $appsGrouped = [
@@ -202,15 +210,15 @@ class StoreDashboardController extends Controller
                     'point_of_sale' => [],
                     'payment_button' => [],
                 ];
-                
+
                 try {
                     $btcpayApps = $this->appService->listApps($store->btcpay_store_id, $userApiKey);
-                    
+
                     // Get local app metadata
                     $localApps = App::where('store_id', $store->id)
                         ->get()
                         ->keyBy('btcpay_app_id');
-                    
+
                     // Group apps by type
                     if (is_array($btcpayApps)) {
                         foreach ($btcpayApps as $btcpayApp) {
@@ -218,18 +226,18 @@ class StoreDashboardController extends Controller
                             if (!$btcpayAppId) {
                                 continue;
                             }
-                            
+
                             $localApp = $localApps->get($btcpayAppId);
                             $appTypeRaw = $localApp ? $localApp->app_type : ($btcpayApp['appType'] ?? 'PointOfSale');
                             $appType = strtolower($appTypeRaw);
-                            
+
                             $formattedApp = [
                                 'id' => $localApp ? $localApp->id : null,
                                 'name' => $btcpayApp['name'] ?? 'Untitled App',
                                 'app_type' => $appTypeRaw, // Keep original format (e.g., 'Crowdfund', 'PointOfSale')
                                 'btcpay_app_id' => $btcpayAppId,
                             ];
-                            
+
                             // Group by type (normalize to lowercase for comparison)
                             if ($appType === 'crowdfund') {
                                 $appsGrouped['crowdfund'][] = $formattedApp;
@@ -238,7 +246,7 @@ class StoreDashboardController extends Controller
                             } elseif ($appType === 'paymentbutton' || $appType === 'payment_button') {
                                 $appsGrouped['payment_button'][] = $formattedApp;
                             }
-                            
+
                             $apps[] = $formattedApp;
                         }
                     }
@@ -258,7 +266,7 @@ class StoreDashboardController extends Controller
                             'app_type' => $appTypeRaw, // Keep original format
                             'btcpay_app_id' => $localApp->btcpay_app_id,
                         ];
-                        
+
                         if ($appType === 'crowdfund') {
                             $appsGrouped['crowdfund'][] = $formattedApp;
                         } elseif ($appType === 'pointofsale' || $appType === 'point_of_sale') {
@@ -268,12 +276,12 @@ class StoreDashboardController extends Controller
                         }
                     }
                 }
-                
+
                 // Determine store status (ready to accept payments if has wallet connection)
                 $store->load('walletConnection');
                 $hasWalletConnection = $store->walletConnection !== null;
                 $isReady = $hasWalletConnection;
-                
+
                 return response()->json([
                     'data' => [
                         'paid_invoices_last_7d' => $paidInvoicesLast7d,
@@ -296,7 +304,7 @@ class StoreDashboardController extends Controller
                     'store_id' => $store->id,
                     'error' => $e->getMessage(),
                 ]);
-                
+
                 // Return minimal data on error
                 return response()->json([
                     'data' => [

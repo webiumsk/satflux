@@ -3,318 +3,344 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
     <!-- Crowdfund Form -->
     <form id="crowdfund-form" @submit.prevent="handleSubmit" class="space-y-6">
+      
       <!-- General Information -->
-      <div class="bg-white shadow rounded-lg p-6 space-y-6">
-        <h2 class="text-xl font-semibold text-gray-900">General Information</h2>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label for="appName" class="block text-sm font-medium text-gray-700">
-              App Name <span class="text-red-500">*</span>
-            </label>
-            <input
-              id="appName"
-              v-model="form.appName"
-              type="text"
-              required
-              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
+      <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
+        <div class="p-6 md:p-8 space-y-6">
+          <h2 class="text-xl font-bold text-white mb-4">General Information</h2>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label for="appName" class="block text-sm font-medium text-gray-300 mb-1">
+                App Name <span class="text-red-400">*</span>
+              </label>
+              <input
+                id="appName"
+                v-model="form.appName"
+                type="text"
+                required
+                class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              />
+            </div>
+
+            <div>
+              <label for="displayTitle" class="block text-sm font-medium text-gray-300 mb-1">
+                Display Title <span class="text-red-400">*</span>
+              </label>
+              <input
+                id="displayTitle"
+                v-model="form.displayTitle"
+                type="text"
+                required
+                class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              />
+            </div>
           </div>
 
           <div>
-            <label for="displayTitle" class="block text-sm font-medium text-gray-700">
-              Display Title <span class="text-red-500">*</span>
+            <label for="tagline" class="block text-sm font-medium text-gray-300 mb-1">
+              Tagline
             </label>
             <input
-              id="displayTitle"
-              v-model="form.displayTitle"
+              id="tagline"
+              v-model="form.tagline"
               type="text"
-              required
-              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
           </div>
-        </div>
 
-        <div>
-          <label for="tagline" class="block text-sm font-medium text-gray-700">
-            Tagline
-          </label>
-          <input
-            id="tagline"
-            v-model="form.tagline"
-            type="text"
-            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-        </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">
+              Featured Image URL
+            </label>
+            <div class="flex gap-3">
+              <input
+                v-model="form.featuredImageUrl"
+                type="text"
+                placeholder="https://example.com/image.jpg"
+                class="flex-1 block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              />
+              <button
+                type="button"
+                @click="handleBrowseImage"
+                class="px-4 py-2 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 hover:text-white transition-all hover:scale-105 shadow-sm"
+              >
+                Browse...
+              </button>
+            </div>
+             <p class="mt-1 text-xs text-gray-500">Image displayed on the crowdfund page header.</p>
+          </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">
-            Featured Image URL
-          </label>
-          <div class="flex gap-2">
+          <div class="flex items-center bg-gray-900 border border-gray-700 p-4 rounded-xl">
             <input
-              v-model="form.featuredImageUrl"
-              type="text"
-              placeholder="No file selected."
-              class="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              id="makePublic"
+              v-model="form.makePublic"
+              type="checkbox"
+              class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
             />
-            <button
-              type="button"
-              @click="handleBrowseImage"
-              class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            >
-              Browse...
-            </button>
+            <div class="ml-3">
+                <label for="makePublic" class="block text-sm font-medium text-white cursor-pointer select-none">
+                Make Crowdfund Public
+                </label>
+                 <p class="text-gray-400 text-xs mt-0.5">The crowdfund will be visible to anyone.</p>
+            </div>
           </div>
-        </div>
 
-        <div class="flex items-center">
-          <input
-            id="makePublic"
-            v-model="form.makePublic"
-            type="checkbox"
-            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-          />
-          <label for="makePublic" class="ml-2 block text-sm text-gray-900">
-            Make Crowdfund Public
-          </label>
-        </div>
-        <p v-if="form.makePublic" class="text-sm text-gray-500 ml-6">
-          The crowdfund will be visible to anyone.
-        </p>
-
-        <div>
-          <label for="description" class="block text-sm font-medium text-gray-700 mb-2">
-            Description <span class="text-red-500">*</span>
-          </label>
-          <!-- Rich text editor will be added here -->
-          <textarea
-            id="description"
-            v-model="form.description"
-            rows="6"
-            required
-            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          ></textarea>
+          <div>
+            <label for="description" class="block text-sm font-medium text-gray-300 mb-1">
+              Description <span class="text-red-400">*</span>
+            </label>
+            <textarea
+              id="description"
+              v-model="form.description"
+              rows="6"
+              required
+              class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+            ></textarea>
+          </div>
         </div>
       </div>
 
       <!-- Goal Section -->
-      <div class="bg-white shadow rounded-lg p-6 space-y-6">
-        <h2 class="text-xl font-semibold text-gray-900">Goal</h2>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label for="targetAmount" class="block text-sm font-medium text-gray-700">
-              Target Amount
-            </label>
-            <input
-              id="targetAmount"
-              v-model="form.targetAmount"
-              type="number"
-              step="0.01"
-              min="0"
-              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
-          </div>
-
-          <div>
-            <label for="currency" class="block text-sm font-medium text-gray-700">
-              Currency
-            </label>
-            <select
-              id="currency"
-              v-model="form.currency"
-              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            >
-              <option value="">Use store default ({{ store?.default_currency || 'EUR' }})</option>
-              <option v-for="currency in currencies" :key="currency.code" :value="currency.code">
-                {{ currency.code }} - {{ currency.name }}
-              </option>
-            </select>
-            <p class="mt-1 text-xs text-gray-500">
-              Uses the store's default currency ({{ store?.default_currency || 'EUR' }}) if empty.
-            </p>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label for="startDate" class="block text-sm font-medium text-gray-700">
-              Start date
-            </label>
-            <div class="mt-1 relative">
-              <input
-                id="startDate"
-                v-model="form.startDate"
-                type="datetime-local"
-                class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 pr-10 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              />
-              <button
-                v-if="form.startDate"
-                type="button"
-                @click="form.startDate = ''"
-                class="absolute right-2 top-1/2 -translate-y-1/2 text-orange-600 hover:text-orange-800"
-                title="Clear date"
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label for="endDate" class="block text-sm font-medium text-gray-700">
-              End date
-            </label>
-            <div class="mt-1 relative">
-              <input
-                id="endDate"
-                v-model="form.endDate"
-                type="datetime-local"
-                :placeholder="form.endDate ? '' : 'No end date has been set'"
-                class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 pr-10 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              />
-              <button
-                v-if="form.endDate"
-                type="button"
-                @click="form.endDate = ''"
-                class="absolute right-2 top-1/2 -translate-y-1/2 text-orange-600 hover:text-orange-800"
-                title="Clear date"
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Recurring Goal -->
-        <div class="space-y-4 pt-4 border-t border-gray-200">
-          <div class="flex items-center">
-            <input
-              id="recurringGoal"
-              v-model="form.recurringGoal"
-              type="checkbox"
-              class="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
-            />
-            <label for="recurringGoal" class="ml-2 block text-sm text-gray-900">
-              Recurring Goal
-            </label>
-          </div>
-          <p v-if="form.recurringGoal" class="text-sm text-gray-500 ml-6">
-            Reset goal after a specific period of time, based on your crowdfund's start date.
-          </p>
-
-          <div v-if="form.recurringGoal" class="ml-6 grid grid-cols-2 gap-4">
-            <div class="flex items-center gap-2">
-              <label for="resetEveryAmount" class="block text-sm font-medium text-gray-700 whitespace-nowrap">
-                Reset goal every
+      <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
+        <div class="p-6 md:p-8 space-y-6">
+          <h2 class="text-xl font-bold text-white mb-4">Goal</h2>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label for="targetAmount" class="block text-sm font-medium text-gray-300 mb-1">
+                Target Amount
               </label>
               <input
-                id="resetEveryAmount"
-                v-model.number="form.resetEveryAmount"
+                id="targetAmount"
+                v-model="form.targetAmount"
                 type="number"
-                min="1"
-                class="block w-20 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
+                step="0.01"
+                min="0"
+                class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />
+            </div>
+
+            <div>
+              <label for="currency" class="block text-sm font-medium text-gray-300 mb-1">
+                Currency
+              </label>
               <select
-                v-model="form.resetEveryUnit"
-                class="block border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
+                id="currency"
+                v-model="form.currency"
+                class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all appearance-none"
               >
-                <option value="Hour">Hour</option>
-                <option value="Day">Day</option>
-                <option value="Week">Week</option>
-                <option value="Month">Month</option>
-                <option value="Year">Year</option>
+                <option value="">Use store default ({{ store?.default_currency || 'EUR' }})</option>
+                <option v-for="currency in currencies" :key="currency.code" :value="currency.code">
+                  {{ currency.code }} - {{ currency.name }}
+                </option>
               </select>
             </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label for="startDate" class="block text-sm font-medium text-gray-300 mb-1">
+                Start date
+              </label>
+              <div class="relative">
+                <input
+                  id="startDate"
+                  v-model="form.startDate"
+                  type="datetime-local"
+                  class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark-calendar-icon"
+                />
+                 <button
+                  v-if="form.startDate"
+                  type="button"
+                  @click="form.startDate = ''"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                  title="Clear date"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label for="endDate" class="block text-sm font-medium text-gray-300 mb-1">
+                End date
+              </label>
+              <div class="relative">
+                <input
+                  id="endDate"
+                  v-model="form.endDate"
+                  type="datetime-local"
+                  :placeholder="form.endDate ? '' : 'No end date has been set'"
+                  class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark-calendar-icon"
+                />
+                <button
+                  v-if="form.endDate"
+                  type="button"
+                  @click="form.endDate = ''"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                  title="Clear date"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recurring Goal -->
+          <div class="pt-6 border-t border-gray-700/50">
+             <div class="bg-gray-900 border border-gray-700 p-4 rounded-xl">
+                <div class="flex items-center">
+                    <input
+                        id="recurringGoal"
+                        v-model="form.recurringGoal"
+                        type="checkbox"
+                        class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
+                    />
+                    <div class="ml-3">
+                         <label for="recurringGoal" class="block text-sm font-medium text-white select-none cursor-pointer">
+                        Recurring Goal
+                        </label>
+                        <p class="text-gray-400 text-xs mt-0.5">
+                         Reset goal after a specific period of time, based on your crowdfund's start date.
+                        </p>
+                    </div>
+                </div>
+
+                <div v-if="form.recurringGoal" class="mt-4 ml-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                     <div class="flex items-center gap-3">
+                        <label for="resetEveryAmount" class="block text-sm font-medium text-gray-300 whitespace-nowrap">
+                            Reset goal every
+                        </label>
+                        <input
+                            id="resetEveryAmount"
+                            v-model.number="form.resetEveryAmount"
+                            type="number"
+                             min="1"
+                            class="block w-24 px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                         <select
+                            v-model="form.resetEveryUnit"
+                            class="block px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
+                            <option value="Hour">Hour</option>
+                            <option value="Day">Day</option>
+                            <option value="Week">Week</option>
+                            <option value="Month">Month</option>
+                            <option value="Year">Year</option>
+                        </select>
+                     </div>
+                </div>
+             </div>
           </div>
         </div>
       </div>
 
       <!-- Perks Section -->
-      <div class="bg-white shadow rounded-lg p-6 space-y-6">
-        <div class="flex items-center justify-between">
-          <h2 class="text-xl font-semibold text-gray-900">Perks</h2>
-          <div class="flex gap-2 border-b border-gray-200">
-            <button
-              type="button"
-              @click="perksViewMode = 'editor'"
-              :class="[
-                'px-4 py-2 text-sm font-medium border-b-2',
-                perksViewMode === 'editor'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              ]"
-            >
-              Editor
-            </button>
-            <button
-              type="button"
-              @click="perksViewMode = 'code'"
-              :class="[
-                'px-4 py-2 text-sm font-medium border-b-2',
-                perksViewMode === 'code'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              ]"
-            >
-              Code
-            </button>
-          </div>
-        </div>
-
-        <!-- Editor View -->
-        <div v-if="perksViewMode === 'editor'">
-          <div class="space-y-4">
-            <div
-              v-for="(perk, index) in perks"
-              :key="index"
-              class="border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-indigo-500"
-              @click="editPerk(index)"
-            >
-              <div class="flex items-start gap-4">
-                <div class="w-16 h-16 bg-gray-100 rounded flex items-center justify-center">
-                  <img
-                    v-if="perk.imageUrl"
-                    :src="perk.imageUrl"
-                    :alt="perk.title"
-                    class="w-full h-full object-cover rounded"
-                  />
-                  <svg v-else class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div class="flex-1">
-                  <h3 class="font-medium text-gray-900">{{ perk.title || 'Custom' }}</h3>
-                  <p class="text-sm text-gray-500">
-                    <span v-if="perk.priceType === 'Minimum'">Min. {{ perk.price || 0 }} {{ form.currency || store?.default_currency || 'EUR' }}</span>
-                    <span v-else>{{ perk.price || 0 }} {{ form.currency || store?.default_currency || 'EUR' }}</span>
-                  </p>
-                </div>
-              </div>
+      <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
+        <div class="p-6 md:p-8 space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h2 class="text-xl font-bold text-white">Perks</h2>
+            <div class="flex bg-gray-700/50 rounded-lg p-1 self-start sm:self-auto">
+              <button
+                type="button"
+                @click="perksViewMode = 'editor'"
+                :class="[
+                   'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                   perksViewMode === 'editor' 
+                     ? 'bg-gray-600 text-white shadow-sm' 
+                     : 'text-gray-400 hover:text-white hover:bg-gray-600/50'
+                 ]"
+              >
+                Editor
+              </button>
+              <button
+                type="button"
+                @click="perksViewMode = 'code'"
+                 :class="[
+                   'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                   perksViewMode === 'code' 
+                     ? 'bg-gray-600 text-white shadow-sm' 
+                     : 'text-gray-400 hover:text-white hover:bg-gray-600/50'
+                 ]"
+              >
+                Code
+              </button>
             </div>
           </div>
 
-          <button
-            type="button"
-            @click="addPerk"
-            class="mt-4 inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-          >
-            + Add Item
-          </button>
-        </div>
+          <!-- Editor View -->
+          <div v-if="perksViewMode === 'editor'">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div
+                v-for="(perk, index) in perks"
+                :key="index"
+                class="group relative bg-gray-900 border border-gray-700 rounded-xl p-4 cursor-pointer hover:border-indigo-500 hover:shadow-lg transition-all duration-200"
+                @click="editPerk(index)"
+              >
+                <div class="flex items-start gap-4">
+                  <div class="w-16 h-16 bg-gray-800 rounded-lg flex items-center justify-center flex-shrink-0 border border-gray-700 group-hover:border-indigo-500/30 transition-colors">
+                    <img
+                      v-if="perk.imageUrl"
+                      :src="perk.imageUrl"
+                      :alt="perk.title"
+                      class="w-full h-full object-cover rounded-lg"
+                    />
+                     <svg v-else class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <h3 class="font-bold text-white truncate pr-6">{{ perk.title || 'Custom' }}</h3>
+                    <p class="text-sm text-indigo-400 font-medium mt-1">
+                      <span v-if="perk.priceType === 'Minimum'">Min. {{ perk.price || 0 }} {{ form.currency || store?.default_currency || 'EUR' }}</span>
+                      <span v-else>{{ perk.price || 0 }} {{ form.currency || store?.default_currency || 'EUR' }}</span>
+                    </p>
+                    <p v-if="perk.description" class="text-xs text-gray-500 mt-2 line-clamp-2">{{ perk.description }}</p>
+                  </div>
+                   <!-- Remove Button (Top Right) -->
+                    <button 
+                        @click.stop="removePerk(index)"
+                        class="absolute top-2 right-2 p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                        title="Remove Perk"
+                    >
+                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+              </div>
+              
+              <!-- Add New Perk Card -->
+               <button
+                type="button"
+                @click="addPerk"
+                class="flex flex-col items-center justify-center gap-2 bg-gray-900 border border-gray-700 border-dashed rounded-xl p-4 cursor-pointer hover:border-indigo-500 hover:bg-gray-800/50 transition-all duration-200 min-h-[100px]"
+              >
+                  <div class="h-10 w-10 rounded-full bg-gray-800 flex items-center justify-center text-indigo-400 group-hover:text-indigo-300">
+                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                  </div>
+                  <span class="text-sm font-medium text-gray-300">Add Perk</span>
+              </button>
+            </div>
+          </div>
 
-        <!-- Code View -->
-        <div v-else>
-          <textarea
-            v-model="perksJson"
-            rows="10"
-            class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 font-mono text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            @blur="parsePerksJson"
-          ></textarea>
+          <!-- Code View -->
+          <div v-else>
+             <label for="perksJson" class="block text-sm font-medium text-gray-300 mb-2">
+                JSON Editor
+             </label>
+            <textarea
+              id="perksJson"
+              v-model="perksJson"
+              rows="12"
+              class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white font-mono text-xs placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              @blur="parsePerksJson"
+            ></textarea>
+             <p class="mt-2 text-xs text-gray-500">Edit raw JSON configuration for perks.</p>
+          </div>
         </div>
       </div>
 
@@ -408,8 +434,11 @@ const currentPerk = computed(() => {
 });
 
 function handleBrowseImage() {
-  // TODO: Implement image upload
-  console.log('Browse image');
+  // TODO: Implement image upload if needed globally or just use URL
+  // Ideally this would trigger a media picker or specialized upload modal
+  // For now we just focus the input
+  const input = document.querySelector('input[placeholder="https://example.com/image.jpg"]') as HTMLInputElement;
+  if(input) input.focus();
 }
 
 function addPerk() {
@@ -616,7 +645,9 @@ onMounted(() => {
         startDate = new Date(config.startDate);
       }
       if (!isNaN(startDate.getTime())) {
-        form.value.startDate = startDate.toISOString().slice(0, 16);
+        const offset = startDate.getTimezoneOffset() * 60000;
+        const localDate = new Date(startDate.getTime() - offset);
+        form.value.startDate = localDate.toISOString().slice(0, 16);
       }
     }
     if (config.endDate) {
@@ -628,7 +659,9 @@ onMounted(() => {
         endDate = new Date(config.endDate);
       }
       if (!isNaN(endDate.getTime())) {
-        form.value.endDate = endDate.toISOString().slice(0, 16);
+         const offset = endDate.getTimezoneOffset() * 60000;
+         const localDate = new Date(endDate.getTime() - offset);
+         form.value.endDate = localDate.toISOString().slice(0, 16);
       }
     }
 
@@ -732,4 +765,3 @@ defineExpose({
   success,
 });
 </script>
-

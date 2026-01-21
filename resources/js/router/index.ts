@@ -78,8 +78,9 @@ const router = createRouter({
         {
             path: '/stores/:id/settings',
             name: 'stores-settings',
-            component: () => import('../pages/stores/Settings.vue'),
-            meta: { requiresAuth: true },
+            redirect: to => {
+                return { name: 'stores-show', params: { id: to.params.id }, query: { section: 'settings' } }
+            }
         },
         {
             path: '/stores/:id/wallet-connection',
@@ -120,8 +121,9 @@ const router = createRouter({
         {
             path: '/stores/:id/invoices',
             name: 'stores-invoices',
-            component: () => import('../pages/stores/Invoices.vue'),
-            meta: { requiresAuth: true },
+            redirect: to => {
+                return { name: 'stores-show', params: { id: to.params.id }, query: { section: 'invoices' } }
+            }
         },
         {
             path: '/stores/:id/invoices/:invoiceId',
@@ -132,8 +134,9 @@ const router = createRouter({
         {
             path: '/stores/:id/exports',
             name: 'stores-exports',
-            component: () => import('../pages/stores/Exports.vue'),
-            meta: { requiresAuth: true },
+            redirect: to => {
+                return { name: 'stores-show', params: { id: to.params.id }, query: { section: 'exports' } }
+            }
         },
         {
             path: '/support',
@@ -159,7 +162,7 @@ const router = createRouter({
 // Navigation guards
 router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore();
-    
+
     // Fetch user info for all pages (except login/register/password-reset) to determine auth state
     // This is needed for landing page to show correct buttons
     if (!authStore.user && to.name !== 'login' && to.name !== 'register' && to.name !== 'password-reset') {
@@ -170,7 +173,7 @@ router.beforeEach(async (to, from, next) => {
             // This allows public pages to work correctly
         }
     }
-    
+
     // Skip auth check for public pages
     if (to.meta.public) {
         next();

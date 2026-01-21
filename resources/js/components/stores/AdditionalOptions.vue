@@ -1,109 +1,144 @@
 <template>
-  <div class="bg-white shadow rounded-lg space-y-6">
+  <div class="space-y-6">
     <!-- Contributions Section -->
-    <div class="p-6 space-y-4">
-      <h2 class="text-xl font-semibold text-gray-900">Contributions</h2>
-      
-      <div class="space-y-3">
-        <div class="flex items-center">
-          <input
-            id="sortByPopularity"
-            v-model="localContributions.sortByPopularity"
-            type="checkbox"
-            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-          />
-          <label for="sortByPopularity" class="ml-2 block text-sm text-gray-900">
-            Sort contribution perks by popularity
-          </label>
-        </div>
+    <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
+      <div class="p-6 md:p-8 space-y-6">
+        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+          <span>Contributions</span>
+        </h2>
+        
+        <div class="space-y-4">
+          <div class="flex items-start">
+            <div class="flex items-center h-5">
+              <input
+                id="sortByPopularity"
+                v-model="localContributions.sortByPopularity"
+                type="checkbox"
+                class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-700 rounded transition-colors"
+              />
+            </div>
+            <div class="ml-3 text-sm">
+              <label for="sortByPopularity" class="font-medium text-gray-200 cursor-pointer">
+                Sort contribution perks by popularity
+              </label>
+              <p class="text-gray-400 text-xs mt-0.5">Show most popular perks first</p>
+            </div>
+          </div>
 
-        <div class="flex items-center">
-          <input
-            id="displayRanking"
-            v-model="localContributions.displayRanking"
-            type="checkbox"
-            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-          />
-          <label for="displayRanking" class="ml-2 block text-sm text-gray-900">
-            Display contribution ranking
-          </label>
-        </div>
+          <div class="flex items-start">
+            <div class="flex items-center h-5">
+              <input
+                id="displayRanking"
+                v-model="localContributions.displayRanking"
+                type="checkbox"
+                class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-700 rounded transition-colors"
+              />
+            </div>
+            <div class="ml-3 text-sm">
+              <label for="displayRanking" class="font-medium text-gray-200 cursor-pointer">
+                Display contribution ranking
+              </label>
+            </div>
+          </div>
 
-        <div class="flex items-center">
-          <input
-            id="displayValue"
-            v-model="localContributions.displayValue"
-            type="checkbox"
-            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-          />
-          <label for="displayValue" class="ml-2 block text-sm text-gray-900">
-            Display contribution value
-          </label>
-        </div>
+          <div class="flex items-start">
+            <div class="flex items-center h-5">
+              <input
+                id="displayValue"
+                v-model="localContributions.displayValue"
+                type="checkbox"
+                class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-700 rounded transition-colors"
+              />
+            </div>
+            <div class="ml-3 text-sm">
+              <label for="displayValue" class="font-medium text-gray-200 cursor-pointer">
+                Display contribution value
+              </label>
+            </div>
+          </div>
 
-        <div class="flex items-center">
-          <input
-            id="noAdditionalAfterTarget"
-            v-model="localContributions.noAdditionalAfterTarget"
-            type="checkbox"
-            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-          />
-          <label for="noAdditionalAfterTarget" class="ml-2 block text-sm text-gray-900">
-            Do not allow additional contributions after target has been reached
-          </label>
+          <div class="flex items-start">
+            <div class="flex items-center h-5">
+              <input
+                id="noAdditionalAfterTarget"
+                v-model="localContributions.noAdditionalAfterTarget"
+                type="checkbox"
+                class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-700 rounded transition-colors"
+              />
+            </div>
+            <div class="ml-3 text-sm">
+              <label for="noAdditionalAfterTarget" class="font-medium text-gray-200 cursor-pointer">
+                Disable additional contributions after target reached
+              </label>
+              <p class="text-gray-400 text-xs mt-0.5">Prevent new payments once goal is met</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Crowdfund Behavior Section -->
-    <div class="px-6 pb-6 space-y-4">
-      <h2 class="text-xl font-semibold text-gray-900">Crowdfund Behavior</h2>
-      
-      <div class="flex items-center">
-        <input
-          id="countAllInvoices"
-          v-model="localCrowdfundBehavior.countAllInvoices"
-          type="checkbox"
-          class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-        />
-        <label for="countAllInvoices" class="ml-2 block text-sm text-gray-900">
-          Count all invoices created on the store as part of the goal
-        </label>
+    <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
+      <div class="p-6 md:p-8 space-y-4">
+        <h2 class="text-xl font-bold text-white">Crowdfund Behavior</h2>
+        
+        <div class="flex items-start">
+          <div class="flex items-center h-5">
+            <input
+              id="countAllInvoices"
+              v-model="localCrowdfundBehavior.countAllInvoices"
+              type="checkbox"
+              class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-700 rounded transition-colors"
+            />
+          </div>
+          <div class="ml-3 text-sm">
+            <label for="countAllInvoices" class="font-medium text-gray-200 cursor-pointer">
+              Count all store invoices towards goal
+            </label>
+             <p class="text-gray-400 text-xs mt-0.5">Include invoices created outside this crowdfund app</p>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Checkout Section -->
-    <div class="px-6 pb-6 space-y-4">
-      <h2 class="text-xl font-semibold text-gray-900">Checkout</h2>
-      
-      <div class="flex items-center">
-        <input
-          id="requestContributorData"
-          v-model="localCheckout.requestContributorData"
-          type="checkbox"
-          class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-        />
-        <label for="requestContributorData" class="ml-2 block text-sm text-gray-900">
-          Request contributor data on checkout
-        </label>
+    <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
+      <div class="p-6 md:p-8 space-y-4">
+        <h2 class="text-xl font-bold text-white">Checkout</h2>
+        
+        <div class="flex items-start">
+          <div class="flex items-center h-5">
+            <input
+              id="requestContributorData"
+              v-model="localCheckout.requestContributorData"
+              type="checkbox"
+              class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-700 rounded transition-colors"
+            />
+          </div>
+          <div class="ml-3 text-sm">
+            <label for="requestContributorData" class="font-medium text-gray-200 cursor-pointer">
+              Request contributor data
+            </label>
+             <p class="text-gray-400 text-xs mt-0.5">Ask for name/email during checkout</p>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Additional Options (Accordion) -->
-    <div class="px-6 pb-6">
-      <h2 class="text-xl font-semibold text-gray-900 mb-4">Additional Options</h2>
-      
-      <div class="space-y-2">
+     <div class="space-y-4">
+        <h3 class="text-xl font-bold text-white px-1">Advanced Options</h3>
+        
         <!-- HTML Headers -->
-        <div>
+        <div class="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
           <button
             type="button"
             @click="toggleSection('htmlHeaders')"
-            class="w-full flex items-center justify-between px-4 py-3 text-left bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
+            class="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-700/50 transition-colors"
           >
-            <span class="font-medium text-gray-900">HTML Headers</span>
+            <span class="font-medium text-white">HTML Headers</span>
             <svg
-              class="w-5 h-5 text-gray-500 transform transition-transform"
+              class="w-5 h-5 text-gray-400 transform transition-transform duration-200"
               :class="{ 'rotate-180': openSections.htmlHeaders }"
               fill="none"
               stroke="currentColor"
@@ -112,30 +147,32 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          <div v-show="openSections.htmlHeaders" class="mt-2 px-4 pb-4">
-            <label for="htmlLanguage" class="block text-sm font-medium text-gray-700">
-              Language
-            </label>
-            <input
-              id="htmlLanguage"
-              v-model="localAdvanced.htmlLanguage"
-              type="text"
-              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
-            <p class="mt-1 text-xs text-gray-500">Fix the HTML page language.</p>
+          <div v-show="openSections.htmlHeaders" class="bg-gray-900 border-t border-gray-700 px-6 py-6 space-y-4">
+            <div>
+                 <label for="htmlLanguage" class="block text-sm font-medium text-gray-300 mb-1">
+                HTML Language
+                </label>
+                <input
+                id="htmlLanguage"
+                v-model="localAdvanced.htmlLanguage"
+                type="text"
+                placeholder="en"
+                class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                />
+            </div>
           </div>
         </div>
 
         <!-- HTML Meta Tags -->
-        <div>
+        <div class="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
           <button
             type="button"
             @click="toggleSection('htmlMetaTags')"
-            class="w-full flex items-center justify-between px-4 py-3 text-left bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
+            class="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-700/50 transition-colors"
           >
-            <span class="font-medium text-gray-900">HTML Meta Tags</span>
+            <span class="font-medium text-white">HTML Meta Tags</span>
             <svg
-              class="w-5 h-5 text-gray-500 transform transition-transform"
+              class="w-5 h-5 text-gray-400 transform transition-transform duration-200"
               :class="{ 'rotate-180': openSections.htmlMetaTags }"
               fill="none"
               stroke="currentColor"
@@ -144,29 +181,32 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          <div v-show="openSections.htmlMetaTags" class="mt-2 px-4 pb-4">
+          <div v-show="openSections.htmlMetaTags" class="bg-gray-900 border-t border-gray-700 px-6 py-6 border border-t-0 border-gray-700">
+             <label for="htmlMetaTags" class="block text-sm font-medium text-gray-300 mb-1">
+                Meta Tags
+              </label>
             <textarea
+              id="htmlMetaTags"
               v-model="localAdvanced.htmlMetaTags"
               rows="6"
-              class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 font-mono text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white font-mono text-xs placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               placeholder='<meta name="description" content="Your description">
-<meta name="keywords" content="keyword1, keyword2, keyword3">
-<meta name="author" content="John Doe">'
+<meta name="keywords" content="keyword1, keyword2">'
             ></textarea>
-            <p class="mt-1 text-xs text-gray-500">Please insert valid HTML here. Only meta tags accepted.</p>
+            <p class="mt-2 text-xs text-gray-500">Must be valid HTML meta tags.</p>
           </div>
         </div>
 
         <!-- Sound -->
-        <div>
+        <div class="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
           <button
             type="button"
             @click="toggleSection('sound')"
-            class="w-full flex items-center justify-between px-4 py-3 text-left bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
+            class="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-700/50 transition-colors"
           >
-            <span class="font-medium text-gray-900">Sound</span>
+            <span class="font-medium text-white">Sound</span>
             <svg
-              class="w-5 h-5 text-gray-500 transform transition-transform"
+              class="w-5 h-5 text-gray-400 transform transition-transform duration-200"
               :class="{ 'rotate-180': openSections.sound }"
               fill="none"
               stroke="currentColor"
@@ -175,15 +215,15 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          <div v-show="openSections.sound" class="mt-2 px-4 pb-4">
+          <div v-show="openSections.sound" class="bg-gray-900 border-t border-gray-700 px-6 py-6">
             <div class="flex items-center">
               <input
                 id="enableSounds"
                 v-model="localAdvanced.enableSounds"
                 type="checkbox"
-                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-700 rounded transition-colors"
               />
-              <label for="enableSounds" class="ml-2 block text-sm text-gray-900">
+              <label for="enableSounds" class="ml-3 block text-sm font-medium text-white cursor-pointer">
                 Enable sounds on new payments
               </label>
             </div>
@@ -191,15 +231,15 @@
         </div>
 
         <!-- Animation -->
-        <div>
+        <div class="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
           <button
             type="button"
             @click="toggleSection('animation')"
-            class="w-full flex items-center justify-between px-4 py-3 text-left bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
+            class="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-700/50 transition-colors"
           >
-            <span class="font-medium text-gray-900">Animation</span>
+            <span class="font-medium text-white">Animation</span>
             <svg
-              class="w-5 h-5 text-gray-500 transform transition-transform"
+              class="w-5 h-5 text-gray-400 transform transition-transform duration-200"
               :class="{ 'rotate-180': openSections.animation }"
               fill="none"
               stroke="currentColor"
@@ -208,15 +248,15 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          <div v-show="openSections.animation" class="mt-2 px-4 pb-4">
+           <div v-show="openSections.animation" class="bg-gray-900 border-t border-gray-700 px-6 py-6">
             <div class="flex items-center">
               <input
                 id="enableAnimations"
                 v-model="localAdvanced.enableAnimations"
                 type="checkbox"
-                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                 class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-700 rounded transition-colors"
               />
-              <label for="enableAnimations" class="ml-2 block text-sm text-gray-900">
+              <label for="enableAnimations" class="ml-3 block text-sm font-medium text-white cursor-pointer">
                 Enable background animations on new payments
               </label>
             </div>
@@ -224,15 +264,15 @@
         </div>
 
         <!-- Discussion -->
-        <div>
+        <div class="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
           <button
             type="button"
             @click="toggleSection('discussion')"
-            class="w-full flex items-center justify-between px-4 py-3 text-left bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
+            class="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-700/50 transition-colors"
           >
-            <span class="font-medium text-gray-900">Discussion</span>
+            <span class="font-medium text-white">Discussion</span>
             <svg
-              class="w-5 h-5 text-gray-500 transform transition-transform"
+              class="w-5 h-5 text-gray-400 transform transition-transform duration-200"
               :class="{ 'rotate-180': openSections.discussion }"
               fill="none"
               stroke="currentColor"
@@ -241,31 +281,34 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          <div v-show="openSections.discussion" class="mt-2 px-4 pb-4">
+           <div v-show="openSections.discussion" class="bg-gray-900 border-t border-gray-700 px-6 py-6">
             <div class="flex items-center">
               <input
                 id="enableDiscussion"
                 v-model="localAdvanced.enableDiscussion"
                 type="checkbox"
-                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                 class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-700 rounded transition-colors"
               />
-              <label for="enableDiscussion" class="ml-2 block text-sm text-gray-900">
-                Enable Disqus Comments
-              </label>
+               <div class="ml-3 text-sm">
+                <label for="enableDiscussion" class="font-medium text-white cursor-pointer">
+                    Enable Disqus Comments
+                </label>
+                <p class="text-gray-400 text-xs mt-0.5">Requires Disqus shortname configuration</p>
+                </div>
             </div>
           </div>
         </div>
 
         <!-- Notification URL Callbacks -->
-        <div>
+        <div class="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
           <button
             type="button"
             @click="toggleSection('notification')"
-            class="w-full flex items-center justify-between px-4 py-3 text-left bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
+            class="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-700/50 transition-colors"
           >
-            <span class="font-medium text-gray-900">Notification URL Callbacks</span>
+            <span class="font-medium text-white">Notification URL Callbacks</span>
             <svg
-              class="w-5 h-5 text-gray-500 transform transition-transform"
+              class="w-5 h-5 text-gray-400 transform transition-transform duration-200"
               :class="{ 'rotate-180': openSections.notification }"
               fill="none"
               stroke="currentColor"
@@ -274,21 +317,20 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          <div v-show="openSections.notification" class="mt-2 px-4 pb-4">
-            <label for="callbackNotificationUrl" class="block text-sm font-medium text-gray-700">
+           <div v-show="openSections.notification" class="bg-gray-900 border-t border-gray-700 px-6 py-6">
+             <label for="callbackNotificationUrl" class="block text-sm font-medium text-gray-300 mb-1">
               Callback Notification URL
             </label>
             <input
               id="callbackNotificationUrl"
               v-model="localAdvanced.callbackNotificationUrl"
               type="url"
-              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               placeholder="https://example.com/webhook"
             />
           </div>
         </div>
       </div>
-    </div>
   </div>
 </template>
 
@@ -361,5 +403,3 @@ function toggleSection(section: string) {
   openSections.value[section as keyof typeof openSections] = !openSections.value[section as keyof typeof openSections];
 }
 </script>
-
-
