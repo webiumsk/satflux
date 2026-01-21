@@ -177,10 +177,23 @@ class SubscriptionController extends Controller
             // Get checkout details from BTCPay
             $checkoutDetails = $this->subscriptionService->getPlanCheckout($checkoutPlanId);
 
-            // Extract plan ID and subscription information
-            $planId = $checkoutDetails['planId'] ?? null;
-            $subscriptionId = $checkoutDetails['subscriptionId'] ?? null;
-            $customerEmail = $checkoutDetails['customerEmail']
+            // Extract plan ID from nested structure
+            // BTCPay returns plan ID in checkoutDetails['plan']['id'] or checkoutDetails['subscriber']['plan']['id']
+            $planId = $checkoutDetails['plan']['id']
+                ?? $checkoutDetails['subscriber']['plan']['id']
+                ?? $checkoutDetails['planId']
+                ?? null;
+
+            // Extract subscription/customer ID
+            $subscriptionId = $checkoutDetails['subscriber']['customer']['id']
+                ?? $checkoutDetails['subscriptionId']
+                ?? null;
+
+            // Extract customer email from nested structure
+            // BTCPay returns email in checkoutDetails['subscriber']['customer']['identities']['Email']
+            $customerEmail = $checkoutDetails['subscriber']['customer']['identities']['Email']
+                ?? $checkoutDetails['subscriber']['customer']['email']
+                ?? $checkoutDetails['customerEmail']
                 ?? $checkoutDetails['subscriberEmail']
                 ?? $checkoutDetails['email']
                 ?? null;
@@ -189,6 +202,7 @@ class SubscriptionController extends Controller
                 Log::warning('Subscription success - plan ID not found in checkout details', [
                     'checkout_id' => $checkoutPlanId,
                     'checkout_details' => $checkoutDetails,
+                    'checkout_keys' => array_keys($checkoutDetails),
                 ]);
                 return response()->json([
                     'message' => 'Plan information not found in checkout',
@@ -248,9 +262,15 @@ class SubscriptionController extends Controller
                 $user->btcpay_subscription_id = $subscriptionId;
             }
 
-            // Get expiration from checkout details or subscription
+            // Get expiration from checkout details (subscriber.periodEnd is Unix timestamp)
             $expiresAt = null;
-            if (isset($checkoutDetails['expiresAt'])) {
+            if (isset($checkoutDetails['subscriber']['periodEnd'])) {
+                // periodEnd is Unix timestamp
+                $periodEnd = $checkoutDetails['subscriber']['periodEnd'];
+                $expiresAt = is_numeric($periodEnd)
+                    ? now()->parse($periodEnd)
+                    : now()->parse($periodEnd);
+            } elseif (isset($checkoutDetails['expiresAt'])) {
                 $expiresAt = is_numeric($checkoutDetails['expiresAt'])
                     ? now()->parse($checkoutDetails['expiresAt'])
                     : now()->parse($checkoutDetails['expiresAt']);
