@@ -54,6 +54,18 @@
                 {{ supportCount > 99 ? '99+' : supportCount }}
               </span>
             </router-link>
+            <router-link
+              v-if="authStore.user?.role === 'admin'"
+              to="/admin/users"
+              class="px-3 py-2 rounded-lg text-sm font-medium transition-all"
+              :class="
+                $route.name === 'admin-users'
+                  ? 'text-white bg-indigo-600/20 text-indigo-300'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              "
+            >
+              Admin
+            </router-link>
           </nav>
         </div>
 
@@ -235,6 +247,22 @@
             >
               {{ supportCount > 99 ? '99+' : supportCount }}
             </span>
+          </router-link>
+          <router-link
+            v-if="authStore.user?.role === 'admin'"
+            to="/admin/users"
+            @click="closeMobileMenu"
+            class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors"
+            :class="
+              $route.name === 'admin-users'
+                ? 'bg-indigo-600/20 text-indigo-300'
+                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+            "
+          >
+            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            Admin
           </router-link>
         </nav>
       </div>

@@ -156,6 +156,12 @@ const router = createRouter({
             component: () => import('../pages/support/WalletConnections.vue'),
             meta: { requiresAuth: true },
         },
+        {
+            path: '/admin/users',
+            name: 'admin-users',
+            component: () => import('../pages/admin/Users.vue'),
+            meta: { requiresAuth: true, requiresAdmin: true },
+        },
     ],
 });
 
@@ -187,6 +193,9 @@ router.beforeEach(async (to, from, next) => {
         } else {
             next(); // Already on login page, allow it
         }
+    } else if (to.meta.requiresAdmin && authStore.user?.role !== 'admin') {
+        // Redirect to dashboard if not admin
+        next({ name: 'home' });
     } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
         next({ name: 'home' });
     } else {
