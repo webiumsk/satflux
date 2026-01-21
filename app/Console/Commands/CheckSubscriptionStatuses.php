@@ -21,7 +21,7 @@ class CheckSubscriptionStatuses extends Command
      *
      * @var string
      */
-    protected $description = 'Check subscription statuses and downgrade users whose grace period has ended';
+    protected $description = 'Check subscription statuses from BTCPay API and sync user roles. Also upgrades users with active subscriptions who still have "merchant" role.';
 
     protected SubscriptionService $subscriptionService;
 
@@ -36,18 +36,18 @@ class CheckSubscriptionStatuses extends Command
      */
     public function handle(): int
     {
-        $this->info('Checking subscription statuses...');
+        $this->info('Checking subscription statuses from BTCPay API...');
 
         $storeId = config('services.btcpay.subscription_store_id');
         
-        // Find users with active paid plans (pro or enterprise)
-        $usersWithSubscriptions = User::whereIn('role', ['pro', 'enterprise'])
-            ->whereNotNull('btcpay_subscription_id')
-            ->get();
+        // Find ALL users with subscription_id (regardless of role)
+        // This includes users who have active subscription in BTCPay but still "merchant" role in DB
+        $usersWithSubscriptions = User::whereNotNull('btcpay_subscription_id')->get();
 
-        $this->info("Found {$usersWithSubscriptions->count()} users with subscriptions");
+        $this->info("Found {$usersWithSubscriptions->count()} users with subscription IDs");
 
         $downgraded = 0;
+        $upgraded = 0;
         $checked = 0;
 
         foreach ($usersWithSubscriptions as $user) {
@@ -119,6 +119,12 @@ class CheckSubscriptionStatuses extends Command
                         if ($expectedRole && $user->role !== $expectedRole) {
                             $oldRole = $user->role;
                             $user->update(['role' => $expectedRole]);
+                            
+                            if (in_array($oldRole, ['merchant']) && in_array($expectedRole, ['pro', 'enterprise'])) {
+                                $upgraded++;
+                                $this->line("Upgraded {$user->email} from {$oldRole} to {$expectedRole} (subscription active in BTCPay)");
+                            }
+                            
                             Log::info('User role synced with subscription plan', [
                                 'user_id' => $user->id,
                                 'old_role' => $oldRole,
@@ -168,7 +174,13 @@ class CheckSubscriptionStatuses extends Command
             }
         }
 
-        $this->info("Checked {$checked} users, downgraded {$downgraded} users");
+        $this->info("Checked {$checked} users");
+        if ($downgraded > 0) {
+            $this->info("Downgraded {$downgraded} users");
+        }
+        if ($upgraded > 0) {
+            $this->info("Upgraded {$upgraded} users");
+        }
 
         return Command::SUCCESS;
     }
