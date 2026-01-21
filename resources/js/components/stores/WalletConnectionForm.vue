@@ -1,109 +1,154 @@
 <template>
-    <form @submit.prevent="handleSubmit" class="space-y-6">
+    <form @submit.prevent="handleSubmit" class="space-y-8">
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
+            <label class="block text-sm font-medium text-gray-300 mb-4 uppercase tracking-wider">
                 Wallet Type
             </label>
-            <div class="space-y-3">
-                <label class="flex items-start p-4 border-2 rounded-lg cursor-pointer"
-                    :class="form.type === 'blink' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200'">
-                    <input
-                        type="radio"
-                        v-model="form.type"
-                        value="blink"
-                        class="mt-1 mr-3"
-                        required
-                    />
-                    <div>
-                        <div class="font-medium text-gray-900">Blink</div>
-                        <div class="text-sm text-gray-500">Read+Receive only token</div>
+            <div class="space-y-4">
+                <label 
+                    class="flex items-start p-5 border rounded-xl cursor-pointer transition-all duration-200 group"
+                    :class="form.type === 'blink' 
+                        ? 'border-indigo-500 bg-indigo-900/10 shadow-lg shadow-indigo-900/20' 
+                        : 'border-gray-700 bg-gray-800 hover:bg-gray-700/50 hover:border-gray-600'"
+                >
+                    <div class="flex items-center h-5 mt-1">
+                        <input
+                            type="radio"
+                            v-model="form.type"
+                            value="blink"
+                            class="h-4 w-4 text-indigo-600 border-gray-600 focus:ring-indigo-500 bg-gray-700"
+                            required
+                        />
+                    </div>
+                    <div class="ml-4">
+                        <div class="font-bold text-white text-lg">Blink</div>
+                        <div class="text-sm text-gray-400 mt-1">Connect your Blink wallet using a read+receive API key. Best for speed and reliability.</div>
                     </div>
                 </label>
-                <label class="flex items-start p-4 border-2 rounded-lg cursor-pointer"
-                    :class="form.type === 'aqua_descriptor' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200'">
-                    <input
-                        type="radio"
-                        v-model="form.type"
-                        value="aqua_descriptor"
-                        class="mt-1 mr-3"
-                        required
-                    />
-                    <div>
-                        <div class="font-medium text-gray-900">Aqua</div>
-                        <div class="text-sm text-gray-500">Watch-only core descriptor</div>
+
+                <label 
+                    class="flex items-start p-5 border rounded-xl cursor-pointer transition-all duration-200 group"
+                    :class="form.type === 'aqua_descriptor' 
+                        ? 'border-indigo-500 bg-indigo-900/10 shadow-lg shadow-indigo-900/20' 
+                        : 'border-gray-700 bg-gray-800 hover:bg-gray-700/50 hover:border-gray-600'"
+                >
+                    <div class="flex items-center h-5 mt-1">
+                        <input
+                            type="radio"
+                            v-model="form.type"
+                            value="aqua_descriptor"
+                            class="h-4 w-4 text-indigo-600 border-gray-600 focus:ring-indigo-500 bg-gray-700"
+                            required
+                        />
+                    </div>
+                     <div class="ml-4">
+                        <div class="font-bold text-white text-lg">Aqua / Bitcoin Core</div>
+                        <div class="text-sm text-gray-400 mt-1">Connect a watch-only wallet using an output descriptor. Non-custodial Setup.</div>
                     </div>
                 </label>
             </div>
-            <p v-if="errors.type" class="mt-1 text-sm text-red-600">{{ errors.type }}</p>
+            <p v-if="errors.type" class="mt-2 text-sm text-red-400">{{ errors.type }}</p>
         </div>
 
         <div>
-            <label for="secret" class="block text-sm font-medium text-gray-700 mb-2">
+            <label for="secret" class="block text-sm font-medium text-indigo-300 mb-2 uppercase tracking-wider">
                 {{ form.type === 'blink' ? 'Connection String' : 'Descriptor' }}
             </label>
-            <textarea
-                id="secret"
-                v-model="form.secret"
-                rows="4"
-                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono text-sm"
-                :placeholder="form.type === 'blink' 
-                    ? 'type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx'
-                    : 'wpkh([fingerprint/hdpath]xpub...)'"
-                required
-            ></textarea>
-            <p class="mt-1 text-sm text-gray-500">
-                <span v-if="form.type === 'blink'">
-                    Format: <code class="bg-gray-100 px-1 py-0.5 rounded">type=blink;server=https://...;api-key=...;wallet-id=...</code><br>
-                    Paste your Blink connection string with server URL, API key, and wallet ID.
-                </span>
-                <span v-else>
-                    Paste your Bitcoin Core output descriptor (watch-only, no private keys).<br>
-                    Example formats: <code class="bg-gray-100 px-1 py-0.5 rounded">wpkh(...)</code>, <code class="bg-gray-100 px-1 py-0.5 rounded">tr(...)</code>
-                </span>
-            </p>
-            <p v-if="errors.secret" class="mt-1 text-sm text-red-600">{{ errors.secret }}</p>
+            <div class="relative rounded-xl shadow-sm">
+                <textarea
+                    id="secret"
+                    v-model="form.secret"
+                    rows="5"
+                    class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono p-4"
+                    :placeholder="form.type === 'blink' 
+                        ? 'type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx'
+                        : 'wpkh([fingerprint/hdpath]xpub...)'"
+                    required
+                ></textarea>
+            </div>
+            
+            <div class="mt-3 text-sm text-gray-400 bg-gray-900/30 p-4 rounded-xl border border-gray-700/50">
+                <p class="font-medium text-gray-300 mb-2">Format Help:</p>
+                <div v-if="form.type === 'blink'" class="space-y-1">
+                     <p>Format: <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">type=blink;server=...;api-key=...;wallet-id=...</code></p>
+                    <p>Paste your Blink connection string containing server URL, API key, and wallet ID.</p>
+                </div>
+                 <div v-else class="space-y-1">
+                    <p>Paste your Bitcoin Core output descriptor (watch-only, no private keys).</p>
+                    <p>Examples: <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">wpkh(...)</code>, <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">tr(...)</code></p>
+                </div>
+            </div>
+            <p v-if="errors.secret" class="mt-2 text-sm text-red-400">{{ errors.secret }}</p>
         </div>
 
-        <div v-if="testResult" class="rounded-md p-4" :class="testResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'">
-            <p class="text-sm font-medium" :class="testResult.success ? 'text-green-800' : 'text-red-800'">
-                {{ testResult.message }}
-            </p>
-            <p v-if="testResult.requires_manual_config" class="mt-1 text-sm text-gray-600">
-                Manual configuration by support team may be required.
-            </p>
+        <div v-if="testResult" class="rounded-xl p-4 border" :class="testResult.success ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg v-if="testResult.success" class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                    <svg v-else class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium" :class="testResult.success ? 'text-green-400' : 'text-red-400'">
+                        {{ testResult.message }}
+                    </p>
+                    <p v-if="testResult.requires_manual_config" class="mt-1 text-sm text-gray-400">
+                        Manual configuration by support team may be required.
+                    </p>
+                </div>
+            </div>
         </div>
 
-        <div v-if="existingConnection" class="bg-blue-50 border border-blue-200 rounded-md p-4">
-            <h3 class="text-sm font-medium text-blue-900 mb-2">Current Connection</h3>
-            <p class="text-sm text-blue-700">
-                <strong>Type:</strong> {{ existingConnection.type === 'blink' ? 'Blink' : 'Aqua' }}<br>
-                <strong>Status:</strong> {{ formatStatus(existingConnection.status) }}<br>
-                <strong>Masked:</strong> {{ existingConnection.masked_secret || 'N/A' }}
-            </p>
+        <div v-if="existingConnection" class="bg-blue-900/10 border border-blue-500/20 rounded-xl p-5">
+            <h3 class="text-sm font-bold text-blue-400 mb-3 uppercase tracking-wider">Current Connection</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                <div>
+                     <span class="block text-gray-500 text-xs uppercase">Type</span>
+                     <span class="font-medium text-white">{{ existingConnection.type === 'blink' ? 'Blink' : 'Aqua' }}</span>
+                </div>
+                 <div>
+                     <span class="block text-gray-500 text-xs uppercase">Status</span>
+                     <span class="font-medium" :class="getStatusColorClass(existingConnection.status)">{{ formatStatus(existingConnection.status) }}</span>
+                </div>
+                 <div class="sm:col-span-3">
+                     <span class="block text-gray-500 text-xs uppercase">Masked Secret</span>
+                     <span class="font-mono text-gray-300 break-all bg-gray-900/50 px-2 py-1 rounded border border-gray-700/50 inline-block mt-1">{{ existingConnection.masked_secret || 'N/A' }}</span>
+                </div>
+            </div>
         </div>
 
-        <div class="flex justify-between items-center">
-            <button
-                type="button"
-                @click="handleTestConnection"
-                :disabled="testing || !form.secret.trim()"
-                class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                {{ testing ? 'Testing...' : 'Test Connection' }}
-            </button>
-            <div class="flex space-x-3">
+        <div class="flex flex-col-reverse sm:flex-row justify-between items-center gap-4 pt-4 border-t border-gray-700">
+             <div class="flex w-full sm:w-auto gap-4">
+                 <button
+                    type="button"
+                    @click="handleTestConnection"
+                    :disabled="testing || !form.secret.trim()"
+                    class="w-full sm:w-auto px-6 py-3 border border-gray-600 rounded-xl shadow-sm text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                    <svg v-if="testing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {{ testing ? 'Testing...' : 'Test Connection' }}
+                </button>
+             </div>
+             
+            <div class="flex w-full sm:w-auto gap-4">
                 <button
                     type="button"
                     @click="$emit('cancel')"
-                    class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                    class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all"
                 >
                     Cancel
                 </button>
                 <button
                     type="submit"
                     :disabled="submitting"
-                    class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                    class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-xl shadow-lg shadow-indigo-600/20 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105"
                 >
+                    <svg v-if="submitting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
                     {{ submitting ? 'Saving...' : 'Save Connection' }}
                 </button>
             </div>
@@ -144,6 +189,15 @@ function formatStatus(status: string): string {
         connected: 'Connected',
     };
     return statusMap[status] || status;
+}
+
+function getStatusColorClass(status: string): string {
+    switch (status) {
+        case 'connected': return 'text-green-400';
+        case 'needs_support': return 'text-blue-400';
+        case 'pending': return 'text-yellow-400';
+        default: return 'text-gray-400';
+    }
 }
 
 // Client-side validation for Blink connection string format
@@ -286,5 +340,3 @@ async function handleSubmit() {
     }
 }
 </script>
-
-

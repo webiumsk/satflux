@@ -5,7 +5,7 @@
       <AppShowHeader
         :title="app.name || 'Point of Sale'"
         :subtitle="`PoS - ${store.name}`"
-        :app-url="app.btcpay_app_url"
+        :app-url="btcpayAppUrl"
         open-button-text="Open PoS"
         form-id="pos-settings-form"
         save-button-text="Save Settings"
@@ -17,735 +17,481 @@
 
       <!-- Content Container -->
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Settings Form -->
-        <div class="bg-white shadow rounded-lg">
-          <div class="px-6 py-5 border-b border-gray-200">
-            <h2 class="text-xl font-semibold text-gray-900">Settings</h2>
-          </div>
+        <form id="pos-settings-form" @submit.prevent="handleSubmit" class="space-y-6">
+          
+          <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
+            <div class="p-6 sm:p-8 space-y-6">
+              
+              <!-- App Name and Title -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label for="appName" class="block text-sm font-medium text-gray-300 mb-1">
+                    App Name <span class="text-red-400">*</span>
+                  </label>
+                  <input
+                    id="appName"
+                    v-model="form.appName"
+                    type="text"
+                    required
+                    class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  />
+                </div>
 
-          <form id="pos-settings-form" @submit.prevent="handleSubmit" class="px-6 py-5 space-y-6">
-            <!-- App Name and Title in one row -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label for="title" class="block text-sm font-medium text-gray-300 mb-1">
+                    Title display to customer
+                  </label>
+                  <input
+                    id="title"
+                    v-model="form.title"
+                    type="text"
+                    class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  />
+                </div>
+              </div>
+
+              <!-- Default View Selection -->
               <div>
-                <label for="appName" class="block text-sm font-medium text-gray-700">
-                  App Name
+                <label class="block text-sm font-medium text-gray-300 mb-3">
+                  Point of Sale Style
                 </label>
-                <input
-                  id="appName"
-                  v-model="form.appName"
-                  type="text"
-                  required
-                  class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label for="title" class="block text-sm font-medium text-gray-700">
-                  Title
-                </label>
-                <input
-                  id="title"
-                  v-model="form.title"
-                  type="text"
-                  class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                />
-              </div>
-            </div>
-
-            <!-- Default View -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-3">
-                Point of Sale Style
-              </label>
-              <div class="btcpay-list-select grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="relative">
-                  <input
-                    type="radio"
-                    value="Light"
-                    id="DefaultView_Light"
-                    v-model="form.defaultView"
-                    class="sr-only"
-                  />
-                  <label
-                    for="DefaultView_Light"
-                    class="btcpay-list-select-item flex flex-col items-center justify-center p-4 border-2 rounded-lg cursor-pointer transition-colors"
-                    :class="form.defaultView === 'Light' ? 'border-indigo-600 bg-indigo-100' : 'border-gray-200 hover:border-indigo-500 hover:bg-indigo-50'"
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <!-- Light (Keypad) -->
+                  <div 
+                    @click="form.defaultView = 'Light'"
+                    :class="[
+                      'relative rounded-xl border-2 p-4 cursor-pointer transition-all duration-200 flex flex-col items-center text-center gap-3',
+                      form.defaultView === 'Light' 
+                        ? 'border-indigo-500 bg-indigo-500/10' 
+                        : 'border-gray-700 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-800'
+                    ]"
                   >
-                    <svg role="img" class="icon icon-pos-light w-8 h-8 mb-2" :class="form.defaultView === 'Light' ? 'text-indigo-600' : 'text-gray-600'">
-                      <use href="/img/icon-sprite.svg#pos-light"></use>
-                    </svg>
-                    <span class="text-xs md:text-sm font-medium text-center">Keypad</span>
-                  </label>
-                </div>
-                
-                <div class="relative">
-                  <input
-                    type="radio"
-                    value="Static"
-                    id="DefaultView_Static"
-                    v-model="form.defaultView"
-                    class="sr-only"
-                  />
-                  <label
-                    for="DefaultView_Static"
-                    class="btcpay-list-select-item flex flex-col items-center justify-center p-4 border-2 rounded-lg cursor-pointer transition-colors"
-                    :class="form.defaultView === 'Static' ? 'border-indigo-600 bg-indigo-100' : 'border-gray-200 hover:border-indigo-500 hover:bg-indigo-50'"
-                  >
-                    <svg role="img" class="icon icon-pos-static w-8 h-8 mb-2" :class="form.defaultView === 'Static' ? 'text-indigo-600' : 'text-gray-600'">
-                      <use href="/img/icon-sprite.svg#pos-static"></use>
-                    </svg>
-                    <span class="text-xs md:text-sm font-medium text-center">Product list</span>
-                  </label>
-                </div>
+                    <div :class="[
+                      'p-3 rounded-full',
+                      form.defaultView === 'Light' ? 'bg-indigo-500 text-white' : 'bg-gray-700 text-gray-400'
+                    ]">
+                       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                    </div>
+                    <span class="text-sm font-medium text-white">Keypad</span>
+                    <div v-if="form.defaultView === 'Light'" class="absolute top-2 right-2 text-indigo-500">
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                    </div>
+                  </div>
 
-                <div class="relative">
-                  <input
-                    type="radio"
-                    value="Cart"
-                    id="DefaultView_Cart"
-                    v-model="form.defaultView"
-                    class="sr-only"
-                  />
-                  <label
-                    for="DefaultView_Cart"
-                    class="btcpay-list-select-item flex flex-col items-center justify-center p-4 border-2 rounded-lg cursor-pointer transition-colors"
-                    :class="form.defaultView === 'Cart' ? 'border-indigo-600 bg-indigo-100' : 'border-gray-200 hover:border-indigo-500 hover:bg-indigo-50'"
+                  <!-- Static (Product List) -->
+                  <div 
+                    @click="form.defaultView = 'Static'"
+                    :class="[
+                      'relative rounded-xl border-2 p-4 cursor-pointer transition-all duration-200 flex flex-col items-center text-center gap-3',
+                      form.defaultView === 'Static' 
+                        ? 'border-indigo-500 bg-indigo-500/10' 
+                        : 'border-gray-700 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-800'
+                    ]"
                   >
-                    <svg role="img" class="icon icon-pos-cart w-8 h-8 mb-2" :class="form.defaultView === 'Cart' ? 'text-indigo-600' : 'text-gray-600'">
-                      <use href="/img/icon-sprite.svg#pos-cart"></use>
-                    </svg>
-                    <span class="text-xs md:text-sm font-medium text-center">Product list with cart</span>
-                  </label>
-                </div>                
+                     <div :class="[
+                      'p-3 rounded-full',
+                      form.defaultView === 'Static' ? 'bg-indigo-500 text-white' : 'bg-gray-700 text-gray-400'
+                    ]">
+                       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+                    </div>
+                    <span class="text-sm font-medium text-white">Product list</span>
+                     <div v-if="form.defaultView === 'Static'" class="absolute top-2 right-2 text-indigo-500">
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                    </div>
+                  </div>
 
-                <div class="relative">
-                  <input
-                    type="radio"
-                    value="Print"
-                    id="DefaultView_Print"
-                    v-model="form.defaultView"
-                    class="sr-only"
-                  />
-                  <label
-                    for="DefaultView_Print"
-                    class="btcpay-list-select-item flex flex-col items-center justify-center p-4 border-2 rounded-lg cursor-pointer transition-colors"
-                    :class="form.defaultView === 'Print' ? 'border-indigo-600 bg-indigo-100' : 'border-gray-200 hover:border-indigo-500 hover:bg-indigo-50'"
+                  <!-- Cart (Product List + Cart) -->
+                  <div 
+                    @click="form.defaultView = 'Cart'"
+                    :class="[
+                      'relative rounded-xl border-2 p-4 cursor-pointer transition-all duration-200 flex flex-col items-center text-center gap-3',
+                      form.defaultView === 'Cart' 
+                        ? 'border-indigo-500 bg-indigo-500/10' 
+                        : 'border-gray-700 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-800'
+                    ]"
                   >
-                    <svg role="img" class="icon icon-pos-print w-8 h-8 mb-2" :class="form.defaultView === 'Print' ? 'text-indigo-600' : 'text-gray-600'">
-                      <use href="/img/icon-sprite.svg#pos-print"></use>
-                    </svg>
-                    <span class="text-xs md:text-sm font-medium text-center">Print Display</span>
-                  </label>
-                </div>
-              </div>
-            </div>
+                     <div :class="[
+                      'p-3 rounded-full',
+                      form.defaultView === 'Cart' ? 'bg-indigo-500 text-white' : 'bg-gray-700 text-gray-400'
+                    ]">
+                       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    </div>
+                    <span class="text-sm font-medium text-white">List with cart</span>
+                     <div v-if="form.defaultView === 'Cart'" class="absolute top-2 right-2 text-indigo-500">
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                    </div>
+                  </div>
 
-            <!-- Description - Only show for Product List and Product List with Cart -->
-            <div v-if="form.defaultView === 'Static' || form.defaultView === 'Cart'">
-              <label for="description" class="block text-sm font-medium text-gray-700">
-                Description
-              </label>
-              <textarea
-                id="description"
-                v-model="form.description"
-                rows="3"
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              ></textarea>
-            </div>
-
-            <!-- Products Editor - Show for: Static, Cart, Print, or Light (Keypad) with showItems enabled -->
-            <div v-if="shouldShowProductsEditor" class="mt-6">
-              <div class="border-b border-gray-200 mb-4">
-                <h3 class="text-lg font-medium text-gray-900 mb-2">Products</h3>
-                <!-- Tabs for Editor/Code view -->
-                <div class="flex space-x-4">
-                  <button
-                    type="button"
-                    @click="productsViewMode = 'editor'"
-                    :class="productsViewMode === 'editor' 
-                      ? 'border-b-2 border-indigo-600 text-indigo-600 font-medium' 
-                      : 'text-gray-500 hover:text-gray-700'"
-                    class="px-4 py-2 text-sm"
+                  <!-- Print -->
+                  <div 
+                    @click="form.defaultView = 'Print'"
+                    :class="[
+                      'relative rounded-xl border-2 p-4 cursor-pointer transition-all duration-200 flex flex-col items-center text-center gap-3',
+                      form.defaultView === 'Print' 
+                        ? 'border-indigo-500 bg-indigo-500/10' 
+                        : 'border-gray-700 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-800'
+                    ]"
                   >
-                    Editor
-                  </button>
-                  <button
-                    type="button"
-                    @click="productsViewMode = 'code'"
-                    :class="productsViewMode === 'code' 
-                      ? 'border-b-2 border-indigo-600 text-indigo-600 font-medium' 
-                      : 'text-gray-500 hover:text-gray-700'"
-                    class="px-4 py-2 text-sm"
-                  >
-                    Code
-                  </button>
+                     <div :class="[
+                      'p-3 rounded-full',
+                      form.defaultView === 'Print' ? 'bg-indigo-500 text-white' : 'bg-gray-700 text-gray-400'
+                    ]">
+                       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                    </div>
+                    <span class="text-sm font-medium text-white">Print Display</span>
+                     <div v-if="form.defaultView === 'Print'" class="absolute top-2 right-2 text-indigo-500">
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <!-- Editor View - Compact Table List -->
-              <div v-if="productsViewMode === 'editor'">
-                <div class="overflow-x-auto">
-                  <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                      <tr>
-                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
-                        
-                        </th>
-                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
-                        Title
-                        </th>
-                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                         Price 
-                        </th>
-                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                         Tax 
-                        </th>
-                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                         Status 
-                        </th>
-                        
-                        <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                      <tr
-                        v-for="(product, index) in products"
-                        :key="product.id || index"
-                        :draggable="true"
-                        :data-index="index"
-                        :class="[
-                          'hover:bg-gray-50 cursor-pointer transition-colors',
-                          draggedIndex === index ? 'opacity-50' : '',
-                          dragOverIndex === index ? 'bg-blue-50' : ''
-                        ]"
-                        @dragstart="handleDragStart($event, index)"
-                        @dragover.prevent="handleDragOver($event, index)"
-                        @dragenter.prevent="dragOverIndex = index"
-                        @dragleave="dragOverIndex = null"
-                        @drop="handleDrop($event, index)"
-                        @dragend="handleDragEnd"
-                        @click="editProduct(index)"
-                      >
-                        <td class="px-4 py-3 whitespace-nowrap">
-                          <div class="flex items-center">
-                            <div class="flex-shrink-0 mr-3 cursor-move" @click.stop @mousedown.stop>
-                              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                              </svg>
-                            </div>
-                          </div>
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap">
-                            <div v-if="product.image" class="flex-shrink-0 h-10 w-10 mr-3">
-                              <img :src="product.image" :alt="product.title" class="h-10 w-10 rounded object-cover" @error="product.image = ''" />
-                            </div>
-                            <div>
-                              <div class="text-sm font-medium text-gray-900">{{ product.title || 'Untitled' }}</div>
-                              <div v-if="product.id" class="text-xs text-gray-500">{{ product.id }}</div>
-                            </div>                          
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                          <span v-if="product.priceType === 'Free'">Free</span>
-                          <span v-else-if="product.priceType === 'Topup'">Any amount</span>
-                          <span v-else-if="product.priceType === 'Minimum'">Min. {{ product.price || 0 }} {{ form.currency || store?.default_currency || 'EUR' }}</span>
-                          <span v-else>{{ product.price || 0 }} {{ form.currency || store?.default_currency || 'EUR' }}</span>
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                          {{ product.taxRate !== null && product.taxRate !== undefined ? product.taxRate + '%' : '-' }}
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap">
-                          <span
-                            :class="product.disabled ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'"
-                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                          >
-                            {{ product.disabled ? 'Disabled' : 'Enabled' }}
-                          </span>
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium" @click.stop>
-                          <button
-                            type="button"
-                            @click.stop="editProduct(index)"
-                            class="text-indigo-600 hover:text-indigo-900 mr-4"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            @click.stop="removeProduct(index)"
-                            class="text-red-600 hover:text-red-900"
-                          >
-                            Remove
-                          </button>
-                        </td>
-                      </tr>
-                      <tr v-if="products.length === 0">
-                        <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">
-                          No products yet. Click "Add Item" to create one.
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                <div class="mt-4">
-                  <button
-                    type="button"
-                    @click="addProduct"
-                    class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  >
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Item
-                  </button>
-                </div>
-              </div>
-
-              <!-- Code View -->
-              <div v-if="productsViewMode === 'code'">
-                <label for="products-json" class="block text-sm font-medium text-gray-700 mb-2">
-                  Template JSON
+              <!-- Description -->
+              <div v-if="form.defaultView === 'Static' || form.defaultView === 'Cart'">
+                <label for="description" class="block text-sm font-medium text-gray-300 mb-1">
+                  Description
                 </label>
                 <textarea
-                  id="products-json"
-                  v-model="productsJson"
-                  rows="15"
-                  class="font-mono text-sm block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  @blur="parseProductsJson"
+                  id="description"
+                  v-model="form.description"
+                  rows="3"
+                  class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                 ></textarea>
-                <p class="mt-2 text-xs text-gray-500">
-                  Edit the JSON template directly. Changes are saved when you switch back to Editor view.
-                </p>
               </div>
-            </div>
 
-            <!-- Keypad Section - Only show for Keypad view (full width) -->
-            <div v-if="form.defaultView === 'Light'" class="mt-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-3">Keypad</h3>
-              <div class="flex items-center">
-                <input
-                  id="showItems"
-                  v-model="form.showItems"
-                  type="checkbox"
-                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              <!-- Products Editor -->
+              <div v-if="shouldShowProductsEditor">
+                <PointOfSaleProductsEditor
+                  v-model:products="products"
+                  :currency="form.currency || store?.default_currency || 'EUR'"
+                  @add="addProduct"
+                  @edit="editProduct"
                 />
-                <label for="showItems" class="ml-2 block text-sm text-gray-900">
-                  Display item selection for keypad
-                </label>
-              </div>
-            </div>
-
-            <!-- Settings Grid: Currency, Checkout, Tips, Taxes, Discounts, Custom Payments -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-              <!-- Currency -->
-               
-              <div>
-                <h3 class="text-sm font-medium text-gray-900 mb-2">Currency</h3>
-                <label for="currency" class="block text-xs font-medium text-gray-700 mb-1">
-                  PoS Currency
-                </label>
-                <input
-                  id="currency"
-                  v-model="form.currency"
-                  type="text"
-                  list="currency-selection-suggestion"
-                  placeholder="Select or type currency (e.g., USD, BTC, EUR)"
-                  class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                />
-                <datalist id="currency-selection-suggestion">
-                  <option v-for="currency in currencies" :key="currency.code" :value="currency.code">
-                    {{ currency.code }} - {{ currency.name }}
-                  </option>
-                </datalist>
-                <p class="mt-1 text-xs text-gray-500">Uses the store's default currency ({{ store?.default_currency || 'EUR' }}) if empty</p>
               </div>
 
-              <!-- Taxes Section -->
-              <div>
-                <h3 class="text-sm font-medium text-gray-900 mb-2">Taxes</h3>
-                <div>
-                  <label for="defaultTaxRate" class="block text-xs font-medium text-gray-700 mb-1">
-                    Default Tax Rate
-                  </label>
-                  <div class="mt-1 flex rounded-md shadow-sm">
-                    <input
-                      id="defaultTaxRate"
-                      v-model.number="form.defaultTaxRate"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      class="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-l-md border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      placeholder="0.00"
-                    />
-                    <span class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                      %
-                    </span>
-                  </div>
-                  <p class="mt-1 text-xs text-gray-500">This rate can also be overridden per item.</p>
-                </div>
-              </div>
-
-              <!-- Checkout Section -->
-              <div>
-                <h3 class="text-sm font-medium text-gray-900 mb-2">Checkout</h3>
-                <div>
-                  <label for="requestCustomerData" class="block text-xs font-medium text-gray-700 mb-1">
-                    Request customer data on checkout
-                  </label>
-                  <select
-                    id="requestCustomerData"
-                    v-model="form.requestCustomerData"
-                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  >
-                    <option value="">Do not request any information</option>
-                    <option value="email">Email</option>
-                    <option value="name">Name</option>
-                    <option value="email_name">Email and Name</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- Tips Section -->
-              <div>
-                <h3 class="text-sm font-medium text-gray-900 mb-2">Tips</h3>
-                <div class="flex items-center mb-2">
+              <!-- Keypad Settings -->
+              <div v-if="form.defaultView === 'Light'" class="mt-6">
+                <div class="flex items-center bg-gray-900 border border-gray-700 p-4 rounded-xl">
                   <input
-                    id="enableTips"
-                    v-model="form.enableTips"
+                    id="showItems"
+                    v-model="form.showItems"
                     type="checkbox"
-                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
                   />
-                  <label for="enableTips" class="ml-2 block text-sm text-gray-900">
-                    Enable tips
-                  </label>
-                </div>
-
-                <div v-if="form.enableTips">
-                  <label for="tipsMessage" class="block text-xs font-medium text-gray-700 mb-1">
-                    Text to display in the tip input <span class="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="tipsMessage"
-                    v-model="form.tipsMessage"
-                    type="text"
-                    required
-                    placeholder="Do you want to leave a tip?"
-                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  />
-                </div>
-              </div>              
-
-              <!-- Discounts Section -->
-              <div>
-                <h3 class="text-sm font-medium text-gray-900 mb-2">Discounts</h3>
-                <div class="flex items-center mb-1">
-                  <input
-                    id="showDiscount"
-                    v-model="form.showDiscount"
-                    type="checkbox"
-                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                  />
-                  <label for="showDiscount" class="ml-2 block text-sm text-gray-900">
-                    User can input discount in %
-                  </label>
-                </div>
-                <p class="text-xs text-gray-500">Not recommended for customer self-checkout.</p>
-              </div>
-
-              <!-- Custom Payments Section -->
-              <div>
-                <h3 class="text-sm font-medium text-gray-900 mb-2">Custom Payments</h3>
-                <div class="flex items-center mb-2">
-                  <input
-                    id="showCustomAmount"
-                    v-model="form.showCustomAmount"
-                    type="checkbox"
-                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                  />
-                  <label for="showCustomAmount" class="ml-2 block text-sm text-gray-900">
-                    User can input custom amount
-                  </label>
-                </div>
-
-                <div v-if="form.showCustomAmount">
-                  <label for="customAmountPayButtonText" class="block text-xs font-medium text-gray-700 mb-1">
-                    Text to display on buttons <span class="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="customAmountPayButtonText"
-                    v-model="form.customAmountPayButtonText"
-                    type="text"
-                    required
-                    placeholder="Pay"
-                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  />
-                </div>
-              </div>
-            </div>            
-
-            <!-- Cart Section - Only show for Product list with cart (full width) -->
-            <div v-if="form.defaultView === 'Cart'" class="mt-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-3">Cart</h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="flex items-center">
-                  <input
-                    id="showSearch"
-                    v-model="form.showSearch"
-                    type="checkbox"
-                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                  />
-                  <label for="showSearch" class="ml-2 block text-sm text-gray-900">
-                    Display the search bar
-                  </label>
-                </div>
-
-                <div class="flex items-center">
-                  <input
-                    id="showCategories"
-                    v-model="form.showCategories"
-                    type="checkbox"
-                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                  />
-                  <label for="showCategories" class="ml-2 block text-sm text-gray-900">
-                    Display the category list
+                  <label for="showItems" class="ml-3 block text-sm font-medium text-gray-200">
+                    Display item selection for keypad
                   </label>
                 </div>
               </div>
-            </div>
 
-            <!-- Button Text - Only show for Product List views -->
-            <div v-if="form.defaultView === 'Static' || form.defaultView === 'Cart'" class="mt-6">
-              <label for="fixedAmountPayButtonText" class="block text-sm font-medium text-gray-700">
-                Text to display on each button for items with a specific price <span class="text-red-500">*</span>
-              </label>
-              <input
-                id="fixedAmountPayButtonText"
-                v-model="form.fixedAmountPayButtonText"
-                type="text"
-                required
-                placeholder="Buy for {0}"
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              />
-            </div>
+              <div class="border-t border-gray-700/50 pt-6">
+                 <h3 class="text-lg font-medium text-white mb-4">Checkout Settings</h3>
+                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Currency -->
+                    <div>
+                        <label for="currency" class="block text-sm font-medium text-gray-300 mb-1">
+                          Currency
+                        </label>
+                         <input
+                          id="currency"
+                          v-model="form.currency"
+                          type="text"
+                          list="currency-selection-suggestion"
+                          placeholder="Select or type currency"
+                          class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                        />
+                        <datalist id="currency-selection-suggestion">
+                          <option v-for="currency in currencies" :key="currency.code" :value="currency.code">
+                            {{ currency.code }} - {{ currency.name }}
+                          </option>
+                        </datalist>
+                        <p class="mt-1 text-xs text-gray-500">Uses store default ({{ store?.default_currency || 'EUR' }}) if empty</p>
+                    </div>
 
-            <!-- Additional Options - Accordion -->
-            <div class="mt-8 space-y-4">
-              <h2 class="text-2xl font-bold text-gray-900">Additional Options</h2>
+                    <!-- Tax Rate -->
+                    <div>
+                        <label for="defaultTaxRate" class="block text-sm font-medium text-gray-300 mb-1">
+                          Default Tax Rate
+                        </label>
+                        <div class="flex rounded-xl shadow-sm">
+                          <input
+                            id="defaultTaxRate"
+                            v-model.number="form.defaultTaxRate"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            class="flex-1 min-w-0 block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-l-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                            placeholder="0.00"
+                          />
+                          <span class="inline-flex items-center px-4 rounded-r-xl border border-l-0 border-gray-600 bg-gray-700 text-gray-300 text-sm font-medium">
+                            %
+                          </span>
+                        </div>
+                    </div>
+
+                    <!-- Customer Data -->
+                    <div>
+                        <label for="requestCustomerData" class="block text-sm font-medium text-gray-300 mb-1">
+                           Request customer data
+                        </label>
+                        <select
+                          id="requestCustomerData"
+                          v-model="form.requestCustomerData"
+                          class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all appearance-none"
+                        >
+                          <option value="">Do not request</option>
+                          <option value="email">Email only</option>
+                          <option value="name">Name only</option>
+                          <option value="email_name">Email and Name</option>
+                        </select>
+                    </div>
+                 </div>
+              </div>
               
-              <!-- HTML Headers -->
-              <div class="border border-gray-200 rounded-lg">
-                <button
-                  type="button"
-                  @click="accordionSections.htmlHeaders = !accordionSections.htmlHeaders"
-                  class="w-full px-4 py-3 flex items-center justify-between text-left bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-inset rounded-t-lg"
-                  :class="{ 'rounded-b-lg': !accordionSections.htmlHeaders }"
-                >
-                  <span class="font-medium text-gray-900">HTML Headers</span>
-                  <svg
-                    class="h-5 w-5 text-gray-500 transition-transform duration-200"
-                    :class="{ 'transform rotate-180': accordionSections.htmlHeaders }"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                <div v-show="accordionSections.htmlHeaders" class="px-4 py-4 space-y-4 border-t border-gray-200">
-                  <div>
-                    <label for="htmlLang" class="block text-sm font-medium text-gray-700">
-                      HTML Lang
-                    </label>
-                    <input
-                      id="htmlLang"
-                      v-model="form.htmlLang"
-                      type="text"
-                      placeholder="en"
-                      class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label for="htmlMetaTags" class="block text-sm font-medium text-gray-700">
-                      HTML Meta Tags
-                    </label>
-                    <textarea
-                      id="htmlMetaTags"
-                      v-model="form.htmlMetaTags"
-                      rows="4"
-                      placeholder='<meta name="description" content="...">&#10;<meta name="keywords" content="...">&#10;<meta name="author" content="...">'
-                      class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-mono text-xs"
-                    ></textarea>
-                    <p class="mt-1 text-xs text-gray-500">Please insert valid HTML here. Only meta tags accepted.</p>
-                  </div>
-                </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <!-- Tips -->
+                 <div class="bg-gray-900 border border-gray-700 p-4 rounded-xl">
+                    <div class="flex items-center mb-4">
+                      <input
+                        id="enableTips"
+                        v-model="form.enableTips"
+                        type="checkbox"
+                        class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
+                      />
+                      <label for="enableTips" class="ml-3 block text-sm font-medium text-white">
+                        Enable tips
+                      </label>
+                    </div>
+                    
+                    <div v-if="form.enableTips">
+                      <label for="tipsMessage" class="block text-xs font-medium text-gray-400 mb-1">
+                        Tip Message <span class="text-red-400">*</span>
+                      </label>
+                      <input
+                        id="tipsMessage"
+                        v-model="form.tipsMessage"
+                        type="text"
+                        required
+                        class="block w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                      />
+                    </div>
+                 </div>
+
+                 <!-- Custom Payments -->
+                 <div class="bg-gray-900 border border-gray-700 p-4 rounded-xl">
+                    <div class="flex items-center mb-4">
+                      <input
+                        id="showCustomAmount"
+                        v-model="form.showCustomAmount"
+                        type="checkbox"
+                        class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
+                      />
+                      <label for="showCustomAmount" class="ml-3 block text-sm font-medium text-white">
+                        Allow custom amount
+                      </label>
+                    </div>
+                    
+                    <div v-if="form.showCustomAmount">
+                      <label for="customAmountPayButtonText" class="block text-xs font-medium text-gray-400 mb-1">
+                        Pay Button Text <span class="text-red-400">*</span>
+                      </label>
+                      <input
+                        id="customAmountPayButtonText"
+                        v-model="form.customAmountPayButtonText"
+                        type="text"
+                        required
+                        class="block w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                      />
+                    </div>
+                 </div>
+                 
+                 <!-- Discounts -->
+                 <div class="bg-gray-900 border border-gray-700 p-4 rounded-xl">
+                     <div class="flex items-center">
+                      <input
+                        id="showDiscount"
+                        v-model="form.showDiscount"
+                        type="checkbox"
+                        class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
+                      />
+                      <label for="showDiscount" class="ml-3 block text-sm font-medium text-white">
+                        Allow discount entry (%)
+                      </label>
+                    </div>
+                    <p class="mt-2 text-xs text-gray-500 ml-8">Not recommended for self-checkout.</p>
+                 </div>
               </div>
 
-              <!-- Redirects -->
-              <div class="border border-gray-200 rounded-lg">
-                <button
-                  type="button"
-                  @click="accordionSections.redirects = !accordionSections.redirects"
-                  class="w-full px-4 py-3 flex items-center justify-between text-left bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-inset rounded-t-lg"
-                  :class="{ 'rounded-b-lg': !accordionSections.redirects }"
-                >
-                  <span class="font-medium text-gray-900">Redirects</span>
-                  <svg
-                    class="h-5 w-5 text-gray-500 transition-transform duration-200"
-                    :class="{ 'transform rotate-180': accordionSections.redirects }"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                <div v-show="accordionSections.redirects" class="px-4 py-4 space-y-4 border-t border-gray-200">
-                  <div>
-                    <label for="redirectUrl" class="block text-sm font-medium text-gray-700">
-                      Redirect URL
-                    </label>
-                    <input
-                      id="redirectUrl"
-                      v-model="form.redirectUrl"
-                      type="url"
-                      placeholder="https://example.com/thankyou"
-                      class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label for="redirectAutomatically" class="block text-sm font-medium text-gray-700">
-                      Redirect invoice to redirect url automatically after paid
-                    </label>
-                    <select
-                      id="redirectAutomatically"
-                      v-model="form.redirectAutomatically"
-                      class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+
+              <!-- Cart Options -->
+              <div v-if="form.defaultView === 'Cart'" class="border-t border-gray-700/50 pt-6">
+                 <h3 class="text-lg font-medium text-white mb-4">Cart Settings</h3>
+                 <div class="flex flex-col sm:flex-row gap-6">
+                    <div class="flex items-center bg-gray-900 border border-gray-700 p-4 rounded-xl flex-1">
+                      <input
+                        id="showSearch"
+                        v-model="form.showSearch"
+                        type="checkbox"
+                        class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
+                      />
+                      <label for="showSearch" class="ml-3 block text-sm font-medium text-white">
+                        Display search bar
+                      </label>
+                    </div>
+
+                    <div class="flex items-center bg-gray-900 border border-gray-700 p-4 rounded-xl flex-1">
+                      <input
+                        id="showCategories"
+                        v-model="form.showCategories"
+                        type="checkbox"
+                        class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
+                      />
+                      <label for="showCategories" class="ml-3 block text-sm font-medium text-white">
+                        Display categories
+                      </label>
+                    </div>
+                 </div>
+              </div>
+
+               <!-- Button Text -->
+              <div v-if="form.defaultView === 'Static' || form.defaultView === 'Cart'" class="border-t border-gray-700/50 pt-6">
+                 <label for="fixedAmountPayButtonText" class="block text-sm font-medium text-gray-300 mb-1">
+                    Buy Button Text <span class="text-red-400">*</span>
+                 </label>
+                  <input
+                    id="fixedAmountPayButtonText"
+                    v-model="form.fixedAmountPayButtonText"
+                    type="text"
+                    required
+                    placeholder="Buy for {0}"
+                    class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  />
+                  <p class="mt-1 text-xs text-gray-500">Use {0} as placeholder for price.</p>
+              </div>
+
+
+              <!-- Additional Options (Accordion style) -->
+              <div class="border-t border-gray-700/50 pt-6 space-y-4">
+                  <h3 class="text-xl font-bold text-white mb-4">Advanced Options</h3>
+                  
+                  <!-- HTML Headers -->
+                 <div class="border border-gray-700 rounded-xl overflow-hidden">
+                    <button
+                      type="button"
+                      @click="accordionSections.htmlHeaders = !accordionSections.htmlHeaders"
+                      class="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-800 hover:bg-gray-700 transition-colors"
                     >
-                      <option value="">Use Store Settings</option>
-                      <option value="true">Yes</option>
-                      <option value="false">No</option>
-                    </select>
-                  </div>
-                </div>
+                      <span class="font-medium text-white">HTML Headers</span>
+                      <svg class="h-5 w-5 text-gray-400 transform transition-transform duration-200" :class="{ 'rotate-180': accordionSections.htmlHeaders }" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    <div v-show="accordionSections.htmlHeaders" class="px-6 py-6 bg-gray-900 border-t border-gray-700 space-y-4">
+                       <div>
+                        <label for="htmlLang" class="block text-sm font-medium text-gray-300 mb-1">HTML Lang</label>
+                        <input id="htmlLang" v-model="form.htmlLang" type="text" placeholder="en" class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                       </div>
+                       <div>
+                        <label for="htmlMetaTags" class="block text-sm font-medium text-gray-300 mb-1">Meta Tags</label>
+                        <textarea id="htmlMetaTags" v-model="form.htmlMetaTags" rows="3" class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                       </div>
+                    </div>
+                 </div>
+
+                 <!-- Redirects -->
+                 <div class="border border-gray-700 rounded-xl overflow-hidden">
+                    <button
+                      type="button"
+                      @click="accordionSections.redirects = !accordionSections.redirects"
+                      class="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-800 hover:bg-gray-700 transition-colors"
+                    >
+                      <span class="font-medium text-white">Redirects</span>
+                       <svg class="h-5 w-5 text-gray-400 transform transition-transform duration-200" :class="{ 'rotate-180': accordionSections.redirects }" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    <div v-show="accordionSections.redirects" class="px-6 py-6 bg-gray-900 border-t border-gray-700 space-y-4">
+                       <div>
+                        <label for="redirectUrl" class="block text-sm font-medium text-gray-300 mb-1">Redirect URL</label>
+                        <input id="redirectUrl" v-model="form.redirectUrl" type="url" placeholder="https://example.com/thanks" class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                       </div>
+                       <div>
+                        <label for="redirectAutomatically" class="block text-sm font-medium text-gray-300 mb-1">Redirect Automatically</label>
+                        <select id="redirectAutomatically" v-model="form.redirectAutomatically" class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                           <option value="">Use Store Settings</option>
+                           <option value="true">Yes</option>
+                           <option value="false">No</option>
+                        </select>
+                       </div>
+                    </div>
+                 </div>
+
+                 <!-- Notifications -->
+                 <div class="border border-gray-700 rounded-xl overflow-hidden">
+                    <button
+                      type="button"
+                      @click="accordionSections.notifications = !accordionSections.notifications"
+                      class="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-800 hover:bg-gray-700 transition-colors"
+                    >
+                      <span class="font-medium text-white">Notification URL Callbacks</span>
+                       <svg class="h-5 w-5 text-gray-400 transform transition-transform duration-200" :class="{ 'rotate-180': accordionSections.notifications }" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                     <div v-show="accordionSections.notifications" class="px-6 py-6 bg-gray-900 border-t border-gray-700 space-y-4">
+                        <div>
+                        <label for="notificationUrl" class="block text-sm font-medium text-gray-300 mb-1">Callback Notification URL</label>
+                        <input id="notificationUrl" v-model="form.notificationUrl" type="url" placeholder="https://example.com/callback" class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                       </div>
+                       <div class="bg-red-500/10 border border-red-500/20 p-4 rounded-xl">
+                          <p class="text-sm text-red-400 font-bold mb-2">⚠️ Security Warning</p>
+                          <p class="text-xs text-red-300">Never trust any field other than the invoice ID. Verify details with your backend.</p>
+                       </div>
+                    </div>
+                 </div>
+                 
+                 <!-- Embeds -->
+                 <div class="border border-gray-700 rounded-xl overflow-hidden">
+                    <button
+                      type="button"
+                      @click="accordionSections.embed = !accordionSections.embed"
+                      class="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-800 hover:bg-gray-700 transition-colors"
+                    >
+                      <span class="font-medium text-white">Embed Codes</span>
+                       <svg class="h-5 w-5 text-gray-400 transform transition-transform duration-200" :class="{ 'rotate-180': accordionSections.embed }" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    <div v-show="accordionSections.embed" class="px-6 py-6 bg-gray-900 border-t border-gray-700 space-y-6">
+                       <div>
+                          <p class="text-sm font-medium text-gray-300 mb-2">Button Embed Code</p>
+                          <div class="bg-gray-950 p-4 rounded-xl border border-gray-700 overflow-x-auto">
+                             <pre class="text-xs text-gray-400 font-mono">{{ embedFormCode }}</pre>
+                          </div>
+                       </div>
+                       <div>
+                          <p class="text-sm font-medium text-gray-300 mb-2">Iframe Embed Code</p>
+                           <div class="bg-gray-950 p-4 rounded-xl border border-gray-700 overflow-x-auto">
+                             <pre class="text-xs text-gray-400 font-mono">{{ embedIframeCode }}</pre>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
               </div>
 
-              <!-- Notification URL Callbacks -->
-              <div class="border border-gray-200 rounded-lg">
+
+              <!-- Delete Button -->
+              <div class="border-t border-gray-700/50 pt-6">
                 <button
                   type="button"
-                  @click="accordionSections.notifications = !accordionSections.notifications"
-                  class="w-full px-4 py-3 flex items-center justify-between text-left bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-inset rounded-t-lg"
-                  :class="{ 'rounded-b-lg': !accordionSections.notifications }"
+                  @click="showDeleteModal = true"
+                  :disabled="saving || deleting"
+                  class="inline-flex items-center px-4 py-2 border border-red-600 rounded-xl text-sm font-medium text-red-400 hover:bg-red-600 hover:text-white transition-colors"
                 >
-                  <span class="font-medium text-gray-900">Notification URL Callbacks</span>
-                  <svg
-                    class="h-5 w-5 text-gray-500 transition-transform duration-200"
-                    :class="{ 'transform rotate-180': accordionSections.notifications }"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                  </svg>
+                   <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  Delete App
                 </button>
-                <div v-show="accordionSections.notifications" class="px-4 py-4 space-y-4 border-t border-gray-200">
-                  <div>
-                    <label for="notificationUrl" class="block text-sm font-medium text-gray-700">
-                      Callback Notification URL
-                    </label>
-                    <input
-                      id="notificationUrl"
-                      v-model="form.notificationUrl"
-                      type="url"
-                      placeholder="https://example.com/callbacks"
-                      class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    />
-                    <p class="mt-2 text-sm text-gray-600">
-                      A POST callback will be sent to the specified notificationUrl (for on-chain transactions when there are sufficient confirmations):
-                    </p>
-                    <div class="mt-3 bg-gray-900 text-gray-100 p-4 rounded-md overflow-x-auto">
-                      <pre class="text-xs font-mono"><code>{
-  "id": "invoiceId",
-  "url": "https://btcpay.example.com/invoices/{invoiceId}",
-  "status": "paid",
-  "price": "10.00",
-  "currency": "EUR",
-  ...
-}</code></pre>
-                    </div>
-                    <div class="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
-                      <p class="text-sm font-semibold text-red-800 mb-2">⚠️ Important Security Warning:</p>
-                      <p class="text-xs text-red-700">
-                        Never trust anything but id, ignore the other fields completely, an attacker can spoof those, they are present only for backward compatibility reason:
-                      </p>
-                      <ul class="mt-2 text-xs text-red-700 list-disc list-inside space-y-1">
-                        <li>Send a GET request to <code class="bg-red-100 px-1 rounded">https://btcpay.example.com/invoices/{invoiceId}</code> with Content-Type: application/json; Authorization: Basic YourLegacyAPIkey</li>
-                        <li>Legacy API key can be created with Access Tokens in Store settings</li>
-                        <li>Verify that the order Id is from your backend, that the price is correct and that status is settled</li>
-                        <li>You can then ship your order</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
               </div>
 
-              <!-- Embed Codes -->
-              <div class="border border-gray-200 rounded-lg">
-                <button
-                  type="button"
-                  @click="accordionSections.embed = !accordionSections.embed"
-                  class="w-full px-4 py-3 flex items-center justify-between text-left bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-inset rounded-t-lg"
-                  :class="{ 'rounded-b-lg': !accordionSections.embed }"
-                >
-                  <span class="font-medium text-gray-900">Embed Codes</span>
-                  <svg
-                    class="h-5 w-5 text-gray-500 transition-transform duration-200"
-                    :class="{ 'transform rotate-180': accordionSections.embed }"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                <div v-show="accordionSections.embed" class="px-4 py-4 space-y-6 border-t border-gray-200">
-                  <div>
-                    <h4 class="text-sm font-medium text-gray-900 mb-2">Embed a payment button linking to POS item</h4>
-                    <p class="text-xs text-gray-600 mb-2">You can host point of sale buttons in an external website with the following code.</p>
-                    <p class="text-xs text-gray-600 mb-3">For a specific item of your template</p>
-                    <div class="bg-gray-900 text-gray-100 p-4 rounded-md overflow-x-auto">
-                      <pre class="text-xs font-mono"><code>{{ embedFormCode }}</code></pre>
-                    </div>
-                  </div>
-                  <div>
-                    <h4 class="text-sm font-medium text-gray-900 mb-2">Embed Point of Sale via iframe</h4>
-                    <p class="text-xs text-gray-600 mb-3">You can embed this POS via an iframe.</p>
-                    <div class="bg-gray-900 text-gray-100 p-4 rounded-md overflow-x-auto">
-                      <pre class="text-xs font-mono"><code>{{ embedIframeCode }}</code></pre>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
-
-            <!-- Submit and Delete Buttons -->
-            <div class="flex justify-between items-center pt-6 border-t border-gray-200">
-              <button
-                type="button"
-                @click="showDeleteModal = true"
-                :disabled="saving || deleting"
-                class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
-              >
-                Delete App
-              </button>
-              
-            </div>
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
+
     </template>
   </AppShowLayout>
 
@@ -776,6 +522,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAppsStore } from '../../store/apps';
 import { useStoresStore } from '../../store/stores';
 import ProductEditDrawer from '../../components/stores/ProductEditDrawer.vue';
+import PointOfSaleProductsEditor from '../../components/stores/PointOfSaleProductsEditor.vue';
 import AppShowLayout from '../../components/stores/AppShowLayout.vue';
 import AppShowHeader from '../../components/stores/AppShowHeader.vue';
 import DeleteAppModal from '../../components/stores/DeleteAppModal.vue';
@@ -793,30 +540,22 @@ const saving = ref(false);
 const error = ref('');
 const success = ref('');
 
-// Computed property for displayed error - never show error if we have success
+// Computed property for displayed error
 const displayedError = computed(() => {
-  // If we have success, don't show error even if it's set
   if (success.value) {
     return '';
   }
   return error.value;
 });
+
 const showDeleteModal = ref(false);
 const deleteError = ref('');
 const deleting = ref(false);
 
-// Computed property to determine if products editor should be shown
-const shouldShowProductsEditor = computed(() => {
-  // Always show for Static, Cart, and Print
-  if (form.value.defaultView === 'Static' || form.value.defaultView === 'Cart' || form.value.defaultView === 'Print') {
-    return true;
-  }
-  // For Light (Keypad), show only if "Display item selection for keypad" is enabled
-  if (form.value.defaultView === 'Light' && form.value.showItems) {
-    return true;
-  }
-  return false;
-});
+// Products editor state
+const products = ref<any[]>([]);
+const showProductDrawer = ref(false);
+const editingProductIndex = ref<number | null>(null);
 
 const form = ref({
   appName: '',
@@ -842,7 +581,6 @@ const form = ref({
   notificationUrl: '',
 });
 
-// Accordion state for Additional Options
 const accordionSections = ref({
   htmlHeaders: false,
   redirects: false,
@@ -850,36 +588,35 @@ const accordionSections = ref({
   embed: false,
 });
 
-// Computed property for BTCPay app URL (for embed codes only - not saved to BTCPay)
+// Computed property to determine if products editor should be shown
+const shouldShowProductsEditor = computed(() => {
+  if (form.value.defaultView === 'Static' || form.value.defaultView === 'Cart' || form.value.defaultView === 'Print') {
+    return true;
+  }
+  if (form.value.defaultView === 'Light' && form.value.showItems) {
+    return true;
+  }
+  return false;
+});
+
+// Computed property for BTCPay app URL
 const btcpayAppUrl = computed(() => {
   const app = layoutRef.value?.app;
   if (!app) return '';
   const baseUrl = import.meta.env.VITE_BTCPAY_BASE_URL || 'https://pay.dvadsatjeden.org';
-  // Try multiple ways to get BTCPay app ID
-  let appId = app.btcpay_app_id || 
+  let id = app.btcpay_app_id || 
               (app.config && app.config.id) ||
               (app.config && app.config.appId);
   
-  // If we have btcpay_app_url, extract ID from it
-  if (!appId && app.btcpay_app_url) {
+  if (!id && app.btcpay_app_url) {
     const urlParts = app.btcpay_app_url.split('/');
-    appId = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2];
+    id = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2];
   }
   
-  if (!appId) {
-    console.warn('BTCPay app ID not found for embed codes', {
-      app: app,
-      has_btcpay_app_id: !!app.btcpay_app_id,
-      has_config: !!app.config,
-      config_keys: app.config ? Object.keys(app.config) : [],
-      has_btcpay_app_url: !!app.btcpay_app_url,
-    });
-    return '';
-  }
-  return `${baseUrl}/apps/${appId}/pos`;
+  if (!id) return '';
+  return `${baseUrl}/apps/${id}/pos`;
 });
 
-// Computed properties for embed codes (dynamically generated, not saved to BTCPay)
 const embedFormCode = computed(() => {
   if (!btcpayAppUrl.value) return '';
   return `<form method="POST" action="${btcpayAppUrl.value}">
@@ -896,18 +633,7 @@ const embedIframeCode = computed(() => {
   return `<iframe src='${btcpayAppUrl.value}' style='max-width: 100%; border: 0;'></iframe>`;
 });
 
-// Products editor state
-const productsViewMode = ref<'editor' | 'code'>('editor');
-const products = ref<any[]>([]);
-const productsJson = ref('[]');
-const showProductDrawer = ref(false);
-const editingProductIndex = ref<number | null>(null);
-
-// Drag & drop state
-const draggedIndex = ref<number | null>(null);
-const dragOverIndex = ref<number | null>(null);
-
-// Helper function to generate product ID from title
+// Helper function to generate product ID
 function generateProductId(title: string): string {
   if (!title) return '';
   return title
@@ -916,187 +642,30 @@ function generateProductId(title: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
-// Add a new product
 function addProduct() {
   editingProductIndex.value = null;
   showProductDrawer.value = true;
 }
 
-// Edit a product
 function editProduct(index: number) {
   editingProductIndex.value = index;
   showProductDrawer.value = true;
 }
 
-// Handle product save from drawer
 function handleProductSave(product: any) {
   if (editingProductIndex.value !== null) {
-    // Update existing product
     products.value[editingProductIndex.value] = product;
   } else {
-    // Add new product
     products.value.push(product);
   }
   editingProductIndex.value = null;
 }
 
-// Current product being edited (for drawer)
 const currentProduct = computed(() => {
   if (editingProductIndex.value !== null && products.value[editingProductIndex.value]) {
     return products.value[editingProductIndex.value];
   }
   return null;
-});
-
-// Drag & drop handlers
-function handleDragStart(event: DragEvent, index: number) {
-  draggedIndex.value = index;
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/html', String(index));
-  }
-  // Add visual feedback
-  if (event.target instanceof HTMLElement) {
-    event.target.style.opacity = '0.5';
-  }
-}
-
-function handleDragOver(event: DragEvent, index: number) {
-  event.preventDefault();
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move';
-  }
-  dragOverIndex.value = index;
-}
-
-function handleDrop(event: DragEvent, dropIndex: number) {
-  event.preventDefault();
-  
-  if (draggedIndex.value === null || draggedIndex.value === dropIndex) {
-    dragOverIndex.value = null;
-    return;
-  }
-
-  // Move item in array
-  const draggedItem = products.value[draggedIndex.value];
-  products.value.splice(draggedIndex.value, 1);
-  products.value.splice(dropIndex, 0, draggedItem);
-
-  dragOverIndex.value = null;
-  draggedIndex.value = null;
-}
-
-function handleDragEnd(event: DragEvent) {
-  draggedIndex.value = null;
-  dragOverIndex.value = null;
-  // Reset opacity
-  if (event.target instanceof HTMLElement) {
-    event.target.style.opacity = '1';
-  }
-}
-
-// Remove a product
-function removeProduct(index: number) {
-  products.value.splice(index, 1);
-}
-
-  // Parse products from JSON
-  function parseProductsJson() {
-    // Don't set errors if we have a success message (preserve success state)
-    const hadSuccess = success.value;
-    
-    try {
-      const parsed = JSON.parse(productsJson.value);
-      if (Array.isArray(parsed)) {
-        products.value = parsed.map((p: any) => {
-          // Handle inventory - only convert to number if it exists and is valid
-          let inventory: number | null = null;
-          if (p.inventory !== null && p.inventory !== undefined && p.inventory !== '') {
-            const invNum = Number(p.inventory);
-            if (!isNaN(invNum) && invNum >= 0) {
-              inventory = invNum;
-            }
-          }
-          
-          return {
-            id: p.id || '',
-            title: p.title || '',
-            priceType: p.priceType || 'Fixed',
-            price: p.price ? parseFloat(String(p.price)) : 0,
-            taxRate: p.taxRate !== null && p.taxRate !== undefined && p.taxRate !== '' ? parseFloat(String(p.taxRate)) : null,
-            image: p.image || '',
-            description: p.description || '',
-            categories: p.categories ? (Array.isArray(p.categories) ? p.categories.join(', ') : String(p.categories)) : null,
-            inventory: inventory,
-            buyButtonText: p.buyButtonText || null,
-            disabled: p.disabled !== undefined ? p.disabled : false,
-          };
-        });
-        // Only clear error if we don't have success (preserve success state)
-        if (!hadSuccess) {
-          error.value = ''; // Clear error on successful parse
-        }
-      }
-    } catch (e) {
-      console.error('Failed to parse products JSON:', e);
-      // Only set error if we don't have success (preserve success state)
-      if (!hadSuccess) {
-        error.value = 'Invalid JSON format for products';
-      }
-    }
-  }
-
-// Convert products to JSON
-function productsToJson(): string {
-  return JSON.stringify(
-    products.value.map(p => {
-      // Handle inventory:
-      // - 0 = out of stock (keep as 0)
-      // - null/undefined/empty = unlimited (keep as null)
-      let inventory: number | null = null;
-      if (p.inventory !== null && p.inventory !== undefined && p.inventory !== '') {
-        const invNum = Number(p.inventory);
-        if (!isNaN(invNum) && invNum >= 0) {
-          inventory = invNum; // Keep 0 as 0 (out of stock)
-        }
-      }
-      // If inventory is null/undefined/empty string, leave it as null (unlimited)
-      
-      return {
-        id: p.id || generateProductId(p.title),
-        title: p.title,
-        priceType: p.priceType,
-        price: p.priceType !== 'Free' && p.priceType !== 'Topup' ? String(p.price || 0) : null,
-        taxRate: p.taxRate !== null && p.taxRate !== undefined && p.taxRate !== '' ? String(p.taxRate) : null,
-        image: p.image || null,
-        description: p.description || null,
-        categories: p.categories ? String(p.categories).split(',').map((c: string) => c.trim()).filter((c: string) => c) : null,
-        inventory: inventory,
-        buyButtonText: p.buyButtonText || null,
-        disabled: p.disabled || false,
-      };
-    }),
-    null,
-    2
-  );
-}
-
-// Watch for changes in products to update JSON
-watch(products, () => {
-  if (productsViewMode.value === 'editor') {
-    productsJson.value = productsToJson();
-  }
-}, { deep: true });
-
-// Watch for view mode changes
-watch(productsViewMode, (newMode) => {
-  if (newMode === 'editor') {
-    // When switching to editor, update JSON first
-    productsJson.value = productsToJson();
-  } else if (newMode === 'code') {
-    // When switching to code, parse current products to JSON
-    productsJson.value = productsToJson();
-  }
 });
 
 async function loadApp(clearErrors: boolean = true) {
@@ -1105,29 +674,21 @@ async function loadApp(clearErrors: boolean = true) {
   
   if (!app || !store) return;
   
-  // If we have a success message, don't clear it and don't set errors
   const hadSuccess = success.value;
-  
-  // Only clear errors if explicitly requested AND we don't have success
   if (clearErrors && !hadSuccess) {
     error.value = '';
   }
-  
-  // If we have success, skip this load to preserve the success message
   if (hadSuccess) {
     return;
   }
   
-  // Populate form with app data
   form.value.appName = app.name || '';
   
-  // Load config from app.config (BTCPay API response)
   if (app.config) {
     const config = app.config;
     form.value.title = config.title || '';
     form.value.description = config.description || '';
     form.value.defaultView = config.defaultView || 'Light';
-    // Use app currency if set, otherwise use store's default currency
     form.value.currency = config.currency || (store?.default_currency || 'EUR');
     form.value.showItems = config.showItems || false;
     form.value.showCustomAmount = config.showCustomAmount || false;
@@ -1146,23 +707,18 @@ async function loadApp(clearErrors: boolean = true) {
     form.value.redirectAutomatically = config.redirectAutomatically !== undefined ? String(config.redirectAutomatically) : '';
     form.value.notificationUrl = config.notificationUrl || '';
 
-    // Load products from template or items
-    // BTCPay API may return products in 'template' or 'items' field
-    // 'items' seems to be used in GET responses, 'template' in POST/PUT requests
     let templateArray: any[] = [];
     const productsSource = config.items || config.template;
     
     if (productsSource) {
       if (Array.isArray(productsSource)) {
-        // Already an array
         templateArray = productsSource;
       } else if (typeof productsSource === 'string') {
-        // It's a JSON string, parse it
         try {
           const parsed = JSON.parse(productsSource);
           templateArray = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.template) ? parsed.template : (Array.isArray(parsed.items) ? parsed.items : [parsed]));
         } catch (e) {
-          console.warn('Failed to parse products JSON string', e, productsSource);
+          console.warn('Failed to parse products', e);
           templateArray = [];
         }
       }
@@ -1170,17 +726,13 @@ async function loadApp(clearErrors: boolean = true) {
     
     if (templateArray && templateArray.length > 0) {
       products.value = templateArray.map((p: any) => {
-        // Handle inventory:
-        // - 0 = out of stock (keep as 0)
-        // - null/undefined/empty = unlimited (keep as null)
         let inventory: number | null = null;
         if (p.inventory !== null && p.inventory !== undefined && p.inventory !== '') {
           const invNum = Number(p.inventory);
           if (!isNaN(invNum) && invNum >= 0) {
-            inventory = invNum; // Keep 0 as 0 (out of stock)
+            inventory = invNum;
           }
         }
-        // If inventory is null/undefined/empty string, leave it as null (unlimited)
         
         return {
           id: p.id || '',
@@ -1196,129 +748,66 @@ async function loadApp(clearErrors: boolean = true) {
           disabled: p.disabled !== undefined ? p.disabled : false,
         };
       });
-      productsJson.value = productsToJson();
     } else {
       products.value = [];
-      productsJson.value = '[]';
     }
   } else {
-    // If no config, use store's default currency
     form.value.currency = store?.default_currency || 'EUR';
     products.value = [];
-    productsJson.value = '[]';
   }
 }
 
-// Flag to prevent watch from running during submit reload
 const isReloadingAfterSubmit = ref(false);
 
-// Watch for app changes
 watch(() => layoutRef.value?.app, () => {
-  // Skip watch if we're in the middle of reloading after submit
-  if (isReloadingAfterSubmit.value) {
-    return;
-  }
-  // Skip watch if we just had a successful save (preserve success message)
-  if (success.value) {
-    return;
-  }
+  if (isReloadingAfterSubmit.value) return;
+  if (success.value) return;
   loadApp();
 }, { immediate: true, deep: true });
 
-// Watch success - if success is set, clear any error
 watch(success, (newSuccess) => {
-  if (newSuccess) {
-    error.value = '';
-  }
+  if (newSuccess) error.value = '';
 });
 
-// Watch error - if error is set and we have success, clear error immediately
 watch(error, (newError) => {
   if (newError && success.value) {
-    // Use nextTick to ensure this runs after any other handlers
-    setTimeout(() => {
-      if (success.value) {
-        error.value = '';
-      }
-    }, 0);
+    setTimeout(() => { if (success.value) error.value = ''; }, 0);
   }
 }, { flush: 'post' });
 
-// Watch saving - when saving becomes false, ensure success is preserved
 watch(saving, (newSaving, oldSaving) => {
-  // When saving transitions from true to false
-  if (oldSaving && !newSaving) {
-    // If we have success, ensure error is cleared
-    if (success.value) {
-      // Use setTimeout to ensure this runs after any other handlers
-      setTimeout(() => {
+  if (oldSaving && !newSaving && success.value) {
+     setTimeout(() => {
         if (success.value) {
-          error.value = '';
-          // Re-enforce success message
-          success.value = 'Settings saved successfully';
+           error.value = '';
+           success.value = 'Settings saved successfully'; // Reinforce
         }
-      }, 0);
-    }
+     }, 0);
   }
 });
 
-// Flag to track if we should keep success message
-const shouldKeepSuccess = ref(false);
-
-// WatchEffect to continuously ensure error is cleared when we have success
-// and ensure success stays set
 watchEffect(() => {
-  if (success.value && error.value) {
-    error.value = '';
-  }
-  // If we should keep success but it's been cleared, restore it
-  if (shouldKeepSuccess.value && !success.value && !error.value && !saving.value) {
-    success.value = 'Settings saved successfully';
-  }
-  // If success is set, mark that we should keep it
-  if (success.value) {
-    shouldKeepSuccess.value = true;
-  }
+    if (success.value && error.value) error.value = '';
 });
+
 
 async function handleSubmit() {
   const app = layoutRef.value?.app;
-  const store = layoutRef.value?.store;
-  
-  if (!app || !store) return;
+  if (!app) return;
   
   saving.value = true;
   error.value = '';
-  // Clear success and flag when starting new submit
   success.value = '';
-  shouldKeepSuccess.value = false;
   
   try {
-    // If switching from code view, parse JSON first
-    if (productsViewMode.value === 'code') {
-      parseProductsJson();
-      // If parseProductsJson set an error, stop here
-      if (error.value) {
-        saving.value = false;
-        return;
-      }
-    }
-
-      // Prepare template array from products
-      const template = products.value
-        .filter(p => p.title) // Only include products with titles
+     const template = products.value
+        .filter(p => p.title)
         .map(p => {
-          // Handle inventory:
-          // - 0 = out of stock (should be kept as 0)
-          // - null/undefined/empty = unlimited (should be null, not sent to BTCPay)
           let inventory: number | null = null;
           if (p.inventory !== null && p.inventory !== undefined && p.inventory !== '') {
             const invNum = Number(p.inventory);
-            if (!isNaN(invNum) && invNum >= 0) {
-              inventory = invNum; // Keep 0 as 0 (out of stock), other numbers as-is
-            }
+            if (!isNaN(invNum) && invNum >= 0) inventory = invNum;
           }
-          // If inventory is null/undefined/empty string, leave it as null (unlimited)
           
           return {
             id: p.id || generateProductId(p.title),
@@ -1335,7 +824,6 @@ async function handleSubmit() {
           };
         });
 
-    // Build config object
     const config: any = {
       appName: form.value.appName,
       title: form.value.title,
@@ -1359,162 +847,54 @@ async function handleSubmit() {
       notificationUrl: form.value.notificationUrl || null,
     };
 
-    // Include description for Static/Cart views
     if (form.value.defaultView === 'Static' || form.value.defaultView === 'Cart') {
       config.description = form.value.description || null;
     }
 
-    // Include template for views that show products editor
     if (shouldShowProductsEditor.value) {
       config.template = template;
     }
 
-    // Update app via API
     await appsStore.updateApp(storeId.value, appId.value, {
       name: form.value.appName,
       config,
     });
     
-    // Set success and clear any existing error immediately
     success.value = 'Settings saved successfully';
     error.value = '';
-    
-    // Set flag to prevent watch from interfering
     isReloadingAfterSubmit.value = true;
     
     try {
-      // Reload app to get updated data from server
-      // Wait a bit to ensure BTCPay has processed the update
       await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Reload through layout component first
       if (layoutRef.value) {
         await (layoutRef.value as any).loadApp();
       }
-      
-      // Wait a tick to ensure watch has processed (if it ran)
       await new Promise(resolve => setTimeout(resolve, 0));
       
-      // Reload form data without clearing success message
-      // We need to manually load the form data from the updated app object
-      const updatedApp = layoutRef.value?.app;
-      const updatedStore = layoutRef.value?.store;
-    
-      if (updatedApp && updatedStore) {
-        // Update form from app config
-        if (updatedApp.config) {
-          const config = updatedApp.config;
-          form.value.title = config.title || '';
-          form.value.description = config.description || '';
-          form.value.defaultView = config.defaultView || 'Light';
-          form.value.currency = config.currency || (updatedStore?.default_currency || 'EUR');
-          form.value.showItems = config.showItems || false;
-          form.value.showCustomAmount = config.showCustomAmount || false;
-          form.value.showDiscount = config.showDiscount || false;
-          form.value.showSearch = config.showSearch ?? true;
-          form.value.showCategories = config.showCategories ?? true;
-          form.value.enableTips = config.enableTips || false;
-          form.value.tipsMessage = config.tipsMessage || 'Do you want to leave a tip?';
-          form.value.defaultTaxRate = config.defaultTaxRate ? parseFloat(String(config.defaultTaxRate)) : 0;
-          form.value.requestCustomerData = config.requestCustomerData || '';
-          form.value.fixedAmountPayButtonText = config.fixedAmountPayButtonText || 'Buy for {0}';
-          form.value.customAmountPayButtonText = config.customAmountPayButtonText || 'Pay';
-          form.value.htmlLang = config.htmlLang || '';
-          form.value.htmlMetaTags = config.htmlMetaTags || '';
-          form.value.redirectUrl = config.redirectUrl || '';
-          form.value.redirectAutomatically = config.redirectAutomatically !== undefined ? String(config.redirectAutomatically) : '';
-          form.value.notificationUrl = config.notificationUrl || '';
+      // Manually refresh form data from updated app
+       const updatedApp = layoutRef.value?.app;
+       // ... (logic to sync form data handled by loadApp potentially or we can re-run loadApp logic here if needed, 
+       // but strictly speaking, loadApp is reactive to layoutRef.app changes if we allow it or we can force it)
+       // Since we set isReloadingAfterSubmit=true, watcher didn't run. We updated layoutRef.app via loadApp(). 
+       // We should manually run loadApp(false) to sync form.
+       await loadApp(false);
 
-          // Load products from template or items
-          let templateArray: any[] = [];
-          const productsSource = config.items || config.template;
-          
-          if (productsSource) {
-            if (Array.isArray(productsSource)) {
-              templateArray = productsSource;
-            } else if (typeof productsSource === 'string') {
-              try {
-                const parsed = JSON.parse(productsSource);
-                templateArray = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.template) ? parsed.template : (Array.isArray(parsed.items) ? parsed.items : [parsed]));
-              } catch (e) {
-                console.warn('Failed to parse products JSON string', e, productsSource);
-                templateArray = [];
-              }
-            }
-          }
-          
-          if (templateArray && templateArray.length > 0) {
-            products.value = templateArray.map((p: any) => {
-              let inventory: number | null = null;
-              if (p.inventory !== null && p.inventory !== undefined && p.inventory !== '') {
-                const invNum = Number(p.inventory);
-                if (!isNaN(invNum) && invNum >= 0) {
-                  inventory = invNum;
-                }
-              }
-              
-              return {
-                id: p.id || '',
-                title: p.title || '',
-                priceType: p.priceType || 'Fixed',
-                price: p.price ? parseFloat(String(p.price)) : 0,
-                taxRate: p.taxRate !== null && p.taxRate !== undefined && p.taxRate !== '' ? parseFloat(String(p.taxRate)) : null,
-                image: p.image || '',
-                description: p.description || '',
-                categories: p.categories ? (Array.isArray(p.categories) ? p.categories.join(', ') : String(p.categories)) : null,
-                inventory: inventory,
-                buyButtonText: p.buyButtonText || null,
-                disabled: p.disabled !== undefined ? p.disabled : false,
-              };
-            });
-            productsJson.value = productsToJson();
-          }
-        }
-      }
-      
-      // Ensure success is still set and error is cleared after reload
-      // Use setTimeout to ensure this runs after any watch handlers
-      await new Promise(resolve => setTimeout(resolve, 100));
-      success.value = 'Settings saved successfully';
-      error.value = '';
     } finally {
-      // Reset flag after reload is complete
       isReloadingAfterSubmit.value = false;
-      // Final check: if we're in success state, ensure error is cleared
-      if (success.value) {
-        error.value = '';
-      }
     }
+
   } catch (err: any) {
     error.value = err.response?.data?.message || 'Failed to save settings';
-    success.value = ''; // Clear success on error
-    isReloadingAfterSubmit.value = false; // Reset flag on error too
+    success.value = '';
   } finally {
-    // Before setting saving to false, preserve success state and clear error
     const hadSuccess = success.value;
-    error.value = ''; // Clear error before setting saving to false
     saving.value = false;
-    
-    // Use multiple timeouts to ensure error stays cleared even if something sets it
-    await new Promise(resolve => setTimeout(resolve, 10));
     if (hadSuccess) {
-      error.value = '';
-      success.value = 'Settings saved successfully';
-    }
-    
-    await new Promise(resolve => setTimeout(resolve, 50));
-    if (hadSuccess) {
-      error.value = '';
-      success.value = 'Settings saved successfully';
-    }
-    
-    await new Promise(resolve => setTimeout(resolve, 100));
-    if (hadSuccess) {
-      error.value = '';
-      success.value = 'Settings saved successfully';
+        error.value = '';
     }
   }
 }
+
 
 async function handleDelete() {
   const app = layoutRef.value?.app;
@@ -1525,8 +905,6 @@ async function handleDelete() {
   
   try {
     await appsStore.deleteApp(storeId.value, appId.value);
-    
-    // Redirect to store page after successful deletion
     router.push({ name: 'stores-show', params: { id: storeId.value } });
   } catch (err: any) {
     deleteError.value = err.response?.data?.message || 'Failed to delete app';
@@ -1535,4 +913,3 @@ async function handleDelete() {
   }
 }
 </script>
-

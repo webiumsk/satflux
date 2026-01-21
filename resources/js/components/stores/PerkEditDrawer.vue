@@ -10,7 +10,7 @@
   >
     <div
       v-if="isOpen"
-      class="fixed inset-0 bg-gray-600 bg-opacity-75 z-40"
+      class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm z-40"
       @click="handleClose"
     ></div>
   </Transition>
@@ -26,24 +26,17 @@
   >
     <div
       v-if="isOpen"
-      class="fixed inset-y-0 right-0 max-w-2xl w-full bg-white shadow-xl z-50 flex flex-col"
+      class="fixed inset-y-0 right-0 max-w-2xl w-full bg-gray-900 border-l border-gray-700 shadow-2xl z-50 flex flex-col"
     >
       <!-- Drawer header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-900">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700 bg-gray-800/50">
+        <h2 class="text-xl font-bold text-white">
           {{ editingPerk ? 'Edit Item' : 'Add Item' }}
         </h2>
         <button
           type="button"
           @click="handleClose"
-          class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          Close
-        </button>
-        <button
-          type="button"
-          @click="handleClose"
-          class="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500"
+          class="text-gray-400 hover:text-white transition-colors focus:outline-none"
         >
           <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -52,34 +45,34 @@
       </div>
 
       <!-- Drawer content -->
-      <div class="flex-1 overflow-y-auto px-6 py-5">
+      <div class="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 font-light">
         <div class="space-y-6">
           <!-- Title -->
           <div>
-            <label for="product-title" class="block text-sm font-medium text-gray-700">
-              Title <span class="text-red-500">*</span>
+            <label for="product-title" class="block text-sm font-medium text-gray-300 mb-1">
+              Title <span class="text-red-400">*</span>
             </label>
             <input
               id="product-title"
               v-model="localProduct.title"
               type="text"
               required
-              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               @blur="generateIdFromTitle"
             />
           </div>
 
           <!-- ID -->
           <div>
-            <label for="product-id" class="block text-sm font-medium text-gray-700">
-              ID <span class="text-red-500">*</span>
+            <label for="product-id" class="block text-sm font-medium text-gray-300 mb-1">
+              ID <span class="text-red-400">*</span>
             </label>
             <input
               id="product-id"
               v-model="localProduct.id"
               type="text"
               required
-              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               placeholder="Auto-generated from title"
             />
             <p class="mt-1 text-xs text-gray-500">Leave blank to generate ID from title.</p>
@@ -88,35 +81,35 @@
           <!-- Price Type and Price -->
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label for="product-price-type" class="block text-sm font-medium text-gray-700">
-                Price
+              <label for="product-price-type" class="block text-sm font-medium text-gray-300 mb-1">
+                Price Type
               </label>
               <select
                 id="product-price-type"
                 v-model="localProduct.priceType"
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all appearance-none"
               >
-              <option value="Minimum">Minimum</option>
-              <option value="Fixed">Fixed</option>
-              <option value="Topup">Any amount</option>
-              <option value="Free">Free</option>
+                <option value="Minimum">Minimum</option>
+                <option value="Fixed">Fixed</option>
+                <option value="Topup">Any amount</option>
+                <option value="Free">Free</option>
               </select>
             </div>
 
             <div v-if="localProduct.priceType !== 'Free' && localProduct.priceType !== 'Topup'">
-              <label for="product-price" class="block text-sm font-medium text-gray-700">
+              <label for="product-price" class="block text-sm font-medium text-gray-300 mb-1">
                 Amount
               </label>
-              <div class="mt-1 flex rounded-md shadow-sm">
+              <div class="flex rounded-xl shadow-sm">
                 <input
                   id="product-price"
                   v-model.number="localProduct.price"
                   type="number"
                   step="0.01"
                   min="0"
-                  class="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-l-md border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  class="flex-1 min-w-0 block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-l-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                 />
-                <span class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                <span class="inline-flex items-center px-4 rounded-r-xl border border-l-0 border-gray-600 bg-gray-700 text-gray-300 text-sm font-medium">
                   {{ currency || 'EUR' }}
                 </span>
               </div>
@@ -125,10 +118,10 @@
 
           <!-- Tax rate -->
           <div>
-            <label for="product-tax-rate" class="block text-sm font-medium text-gray-700">
+            <label for="product-tax-rate" class="block text-sm font-medium text-gray-300 mb-1">
               Tax rate
             </label>
-            <div class="mt-1 flex rounded-md shadow-sm">
+            <div class="flex rounded-xl shadow-sm">
               <input
                 id="product-tax-rate"
                 v-model.number="localProduct.taxRate"
@@ -136,10 +129,10 @@
                 step="0.01"
                 min="0"
                 max="100"
-                class="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-l-md border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                class="flex-1 min-w-0 block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-l-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                 placeholder="0.00"
               />
-              <span class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+              <span class="inline-flex items-center px-4 rounded-r-xl border border-l-0 border-gray-600 bg-gray-700 text-gray-300 text-sm font-medium">
                 %
               </span>
             </div>
@@ -147,29 +140,31 @@
 
           <!-- Image Upload/URL -->
           <div>
-            <label for="product-image-url" class="block text-sm font-medium text-gray-700">
+            <label for="product-image-url" class="block text-sm font-medium text-gray-300 mb-1">
               Image Url
             </label>
-            <div class="mt-1 space-y-2">
+            <div class="space-y-3">
               <!-- Image preview -->
-              <div v-if="imagePreview || localProduct.image" class="flex items-center space-x-4">
-                <img
-                  :src="imagePreview || localProduct.image"
-                  alt="Product preview"
-                  class="h-20 w-20 object-cover rounded border border-gray-300"
-                  @error="imagePreview = null"
-                />
+              <div v-if="imagePreview || localProduct.image" class="flex items-center gap-4 bg-gray-800 p-3 rounded-xl border border-gray-700">
+                <div class="h-20 w-20 flex-shrink-0 bg-gray-700 rounded-lg overflow-hidden border border-gray-600">
+                   <img
+                    :src="imagePreview || localProduct.image"
+                    alt="Product preview"
+                    class="h-full w-full object-cover"
+                    @error="imagePreview = null"
+                  />
+                </div>
                 <button
                   type="button"
                   @click="clearImage"
-                  class="text-sm text-red-600 hover:text-red-800"
+                  class="text-sm text-red-400 hover:text-red-300 font-medium transition-colors"
                 >
                   Remove image
                 </button>
               </div>
               
               <!-- Upload button -->
-              <div class="flex items-center space-x-2">
+              <div class="flex items-center gap-3">
                 <input
                   ref="fileInput"
                   type="file"
@@ -180,70 +175,66 @@
                 <button
                   type="button"
                   @click="fileInput?.click()"
-                  class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  class="px-4 py-2 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 hover:text-white transition-all hover:scale-105 shadow-sm"
                 >
                   Browse...
                 </button>
-                <span v-if="!selectedFile && !localProduct.image" class="text-sm text-gray-500">
-                  No file selected.
-                </span>
-                <span v-else-if="selectedFile" class="text-sm text-gray-700">
-                  {{ selectedFile.name }}
-                </span>
-                <span v-else class="text-sm text-gray-500">
-                  Using URL: {{ localProduct.image }}
-                </span>
+                <div class="text-sm text-gray-400 truncate flex-1">
+                    <span v-if="!selectedFile && !localProduct.image">No file selected</span>
+                    <span v-else-if="selectedFile">{{ selectedFile.name }}</span>
+                    <span v-else>Using URL</span>
+                </div>
+                
+                 <!-- Upload button (if file selected) -->
+                <button
+                    v-if="selectedFile"
+                    type="button"
+                    @click="uploadImage"
+                    :disabled="uploading"
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg shadow-indigo-600/20 disabled:opacity-50 transition-all hover:scale-105"
+                >
+                    <svg v-if="uploading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {{ uploading ? 'Uploading...' : 'Upload' }}
+                </button>
               </div>
-              
-              <!-- Upload button (if file selected) -->
-              <button
-                v-if="selectedFile"
-                type="button"
-                @click="uploadImage"
-                :disabled="uploading"
-                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-              >
-                <svg v-if="uploading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                {{ uploading ? 'Uploading...' : 'Upload' }}
-              </button>
-              
-              <!-- URL input -->
+
+               <!-- URL input -->
               <input
                 id="product-image-url"
                 v-model="localProduct.image"
                 type="text"
-                class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="~/img/pos-sample/product.jpg"
+                class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm"
+                placeholder="https://example.com/image.jpg"
               />
             </div>
           </div>
 
           <!-- Description -->
           <div>
-            <label for="product-description" class="block text-sm font-medium text-gray-700">
+            <label for="product-description" class="block text-sm font-medium text-gray-300 mb-1">
               Description
             </label>
             <textarea
               id="product-description"
               v-model="localProduct.description"
               rows="4"
-              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             ></textarea>
           </div>
 
           <!-- Categories -->
           <div>
-            <label for="product-categories" class="block text-sm font-medium text-gray-700">
+            <label for="product-categories" class="block text-sm font-medium text-gray-300 mb-1">
               Categories
             </label>
             <input
               id="product-categories"
               v-model="localProduct.categories"
               type="text"
-              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               placeholder="Comma-separated categories"
             />
             <p class="mt-1 text-xs text-gray-500">Easily filter the different items using categories, used only in the product list with cart.</p>
@@ -251,7 +242,7 @@
 
           <!-- Inventory -->
           <div>
-            <label for="product-inventory" class="block text-sm font-medium text-gray-700">
+            <label for="product-inventory" class="block text-sm font-medium text-gray-300 mb-1">
               Inventory
             </label>
             <input
@@ -259,7 +250,7 @@
               :value="localProduct.inventory === null || localProduct.inventory === undefined ? '' : localProduct.inventory"
               type="number"
               min="0"
-              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               placeholder="Leave blank for unlimited, 0 = out of stock"
               @input="handleInventoryInput"
             />
@@ -268,48 +259,48 @@
 
           <!-- Buy Button Text -->
           <div>
-            <label for="product-buy-button-text" class="block text-sm font-medium text-gray-700">
+            <label for="product-buy-button-text" class="block text-sm font-medium text-gray-300 mb-1">
               Buy Button Text
             </label>
             <input
               id="product-buy-button-text"
               v-model="localProduct.buyButtonText"
               type="text"
-              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               placeholder="Buy now"
             />
           </div>
 
           <!-- Enable toggle -->
-          <div class="flex items-center">
+           <div class="flex items-center bg-gray-800 p-4 rounded-xl border border-gray-700">
             <input
               id="product-enabled"
               v-model="localProduct.disabled"
               type="checkbox"
               :true-value="false"
               :false-value="true"
-              class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-700 rounded transition-colors"
             />
-            <label for="product-enabled" class="ml-2 block text-sm text-gray-900">
-              Enable
+            <label for="product-enabled" class="ml-3 block text-sm font-medium text-white select-none cursor-pointer">
+              Enable Perk
             </label>
           </div>
         </div>
       </div>
 
       <!-- Drawer footer -->
-      <div class="flex items-center justify-end space-x-3 px-6 py-4 border-t border-gray-200">
+      <div class="flex items-center justify-end space-x-3 px-6 py-4 border-t border-gray-700 bg-gray-800/50">
         <button
           type="button"
           @click="handleClose"
-          class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          class="px-4 py-2 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700 transition-colors"
         >
           Cancel
         </button>
         <button
           type="button"
           @click="handleSave"
-          class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          class="px-6 py-2 border border-transparent rounded-xl shadow-lg shadow-indigo-600/20 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all hover:scale-105"
         >
           Save
         </button>
@@ -488,4 +479,3 @@ function handleSave() {
   emit('close');
 }
 </script>
-

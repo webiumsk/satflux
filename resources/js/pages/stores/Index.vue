@@ -1,64 +1,87 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <h1 class="text-3xl font-bold text-gray-900 mb-8">Stores</h1>
-
-    <div v-if="loading" class="text-center py-12">
-      <p class="text-gray-500">Loading...</p>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div class="flex justify-between items-center mb-10">
+      <div>
+        <h1 class="text-3xl font-bold text-white mb-2">Stores</h1>
+        <p class="text-gray-400">Manage your Bitcoin stores and wallets</p>
+      </div>
+      <router-link
+        to="/stores/create"
+        class="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 transition-all hover:scale-105"
+      >
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+        Create Store
+      </router-link>
     </div>
 
-    <div v-else class="space-y-6">
-      <div class="bg-white shadow rounded-lg p-6">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-semibold text-gray-900">Your Stores</h2>
-          <router-link
-            to="/stores/create"
-            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-          >
-            Create Store
-          </router-link>
-        </div>
+    <div v-if="loading" class="flex justify-center items-center py-24">
+       <svg class="animate-spin h-10 w-10 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+    </div>
 
-        <div v-if="stores.length === 0" class="text-center py-8">
-          <p class="text-gray-500 mb-4">No stores yet.</p>
-          <router-link
-            to="/stores/create"
-            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-          >
-            Create Your First Store
-          </router-link>
+    <div v-else>
+      <div v-if="stores.length === 0" class="text-center py-20 bg-gray-800/50 backdrop-blur-sm rounded-3xl border border-gray-700/50 border-dashed">
+        <div class="w-20 h-20 bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
+           <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
         </div>
-
-        <div
-          v-else
-          class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        <h3 class="text-xl font-medium text-white mb-2">No stores yet</h3>
+        <p class="text-gray-400 mb-8 max-w-md mx-auto">Create your first store to start accepting Bitcoin payments seamlessly.</p>
+        <router-link
+          to="/stores/create"
+          class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 transition-all hover:scale-105"
         >
-          <div
-            v-for="store in stores"
-            :key="store.id"
-            class="border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-indigo-500 hover:shadow-md transition relative"
-            @click="$router.push(`/stores/${store.id}`)"
-          >
-            <div class="flex items-start justify-between">
-              <div class="flex-1">
-                <h3 class="font-medium text-gray-900 mb-1">{{ store.name }}</h3>
-                <div class="space-y-1">
-                  <p class="text-sm text-gray-500">
-                    Wallet type: {{ store.wallet_type || "Not set" }}
-                  </p>                  
-                  <p class="text-sm" :class="getWalletConnectionStatusClass(store)">
-                    {{ getWalletConnectionStatusText(store) }}
-                  </p>
-                  <p class="text-xs text-gray-400 mt-2">
-                    Created: {{ formatDate(store.created_at) }}
-                  </p>
-                </div>
+          Create Your First Store
+        </router-link>
+      </div>
+
+      <div
+        v-else
+        class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
+      >
+        <div
+          v-for="store in stores"
+          :key="store.id"
+          class="group bg-gray-800 hover:bg-gray-750 border border-gray-700 hover:border-indigo-500/50 rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:shadow-2xl hover:shadow-indigo-900/10 hover:-translate-y-1 relative overflow-hidden"
+          @click="$router.push(`/stores/${store.id}`)"
+        >
+          <!-- Hover Gradient Glow -->
+          <div class="absolute inset-0 bg-gradient-to-br from-indigo-600/5 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          
+          <div class="flex items-start justify-between relative z-10">
+            <div class="flex-1">
+              <h3 class="text-xl font-bold text-white mb-2 group-hover:text-indigo-300 transition-colors">{{ store.name }}</h3>
+              
+              <div class="space-y-3 mt-4">
+                 <div class="flex items-center text-sm">
+                    <span class="text-gray-500 w-24">Wallet:</span>
+                    <span class="text-gray-300 font-medium">{{ store.wallet_type === 'blink' ? 'Blink' : (store.wallet_type === 'aqua_boltz' ? 'Aqua (Boltz)' : 'Not set') }}</span>
+                 </div>
+                 
+                 <div class="flex items-center text-sm">
+                    <span class="text-gray-500 w-24">Status:</span>
+                    <span class="px-2 py-0.5 rounded-md text-xs font-semibold" :class="getWalletConnectionStatusBadgeClass(store)">
+                      {{ getWalletConnectionStatusText(store) }}
+                    </span>
+                 </div>
+
+                 <div class="flex items-center text-xs text-gray-500 pt-2 border-t border-gray-700/50 mt-4">
+                    <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    Created {{ formatDate(store.created_at) }}
+                 </div>
               </div>
-              <img
-                v-if="store.logo_url"
-                :src="store.logo_url"
-                :alt="`${store.name} logo`"
-                class="ml-4 h-12 w-12 object-contain rounded"
-              />
+            </div>
+            
+            <div v-if="store.logo_url" class="ml-4 flex-shrink-0 bg-white/5 rounded-lg p-2 backdrop-blur-sm border border-white/10">
+                <img
+                  :src="store.logo_url"
+                  :alt="`${store.name} logo`"
+                  class="h-10 w-10 object-contain"
+                />
+            </div>
+            <div v-else class="ml-4 flex-shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center border border-gray-600 text-gray-400 font-bold text-lg">
+                {{ store.name.charAt(0).toUpperCase() }}
             </div>
           </div>
         </div>
@@ -75,38 +98,38 @@ import { useStoresStore } from "../../store/stores";
 const storesStore = useStoresStore();
 const { stores, loading } = storeToRefs(storesStore);
 
-function getWalletConnectionStatusClass(store: any): string {
+function getWalletConnectionStatusBadgeClass(store: any): string {
   if (!store.wallet_connection) {
-    return 'text-red-600'; // Non-existent - red
+    return 'bg-red-500/10 text-red-400 border border-red-500/20';
   }
   
   const status = store.wallet_connection.status;
   switch (status) {
     case 'connected':
-      return 'text-green-600 font-medium'; // Connected - green
+      return 'bg-green-500/10 text-green-400 border border-green-500/20';
     case 'needs_support':
-      return 'text-blue-600 font-medium'; // Needs support - blue
+      return 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
     case 'pending':
     default:
-      return 'text-gray-600'; // Pending/default - gray
+      return 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20';
   }
 }
 
 function getWalletConnectionStatusText(store: any): string {
   if (!store.wallet_connection) {
-    return '⚠ Wallet not configured';
+    return 'Not config';
   }
   
   const status = store.wallet_connection.status;
   switch (status) {
     case 'connected':
-      return '✓ Connected';
+      return 'Connected';
     case 'needs_support':
-      return 'ℹ Needs support';
+      return 'Support';
     case 'pending':
-      return '⏳ Pending';
+      return 'Pending';
     default:
-      return 'Unknown status';
+      return 'Unknown';
   }
 }
 
@@ -126,11 +149,3 @@ onMounted(() => {
   storesStore.fetchStores();
 });
 </script>
-
-
-
-
-
-
-
-

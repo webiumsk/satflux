@@ -1,231 +1,270 @@
 <template>
-  <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 class="text-3xl font-bold text-gray-900 mb-8">Create Store</h1>
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <h1 class="text-3xl font-bold text-white mb-8 text-center">Create Store</h1>
 
-      <div class="bg-white shadow rounded-lg p-6">
+      <div class="bg-gray-800 shadow-2xl rounded-2xl border border-gray-700 overflow-hidden">
         <!-- Step Indicator -->
-        <div class="mb-8">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <div :class="['w-8 h-8 rounded-full flex items-center justify-center', currentStep >= 1 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600']">
+        <div class="bg-gray-900/50 border-b border-gray-700 px-8 py-6">
+          <div class="flex items-center justify-between relative">
+             <!-- Connecting Line -->
+            <div class="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-gray-700 -z-0"></div>
+            <div class="absolute left-0 top-1/2 transform -translate-y-1/2 h-1 bg-indigo-600 transition-all duration-500 ease-in-out -z-0" :style="{ width: ((currentStep - 1) / 2) * 100 + '%' }"></div>
+            
+            <div class="flex flex-col items-center relative z-10 group cursor-pointer" @click="currentStep > 1 ? currentStep = 1 : null">
+              <div :class="['w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition-all', currentStep >= 1 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/40 ring-4 ring-gray-800' : 'bg-gray-700 text-gray-400 border-2 border-gray-600']">
                 1
               </div>
-              <span :class="['ml-2', currentStep >= 1 ? 'text-indigo-600' : 'text-gray-600']">Basic Info</span>
+              <span class="mt-2 text-xs font-semibold uppercase tracking-wider transition-colors bg-gray-800 px-2 rounded" :class="currentStep >= 1 ? 'text-indigo-400' : 'text-gray-500'">Basic Info</span>
             </div>
-            <div class="flex-1 h-1 mx-4" :class="currentStep >= 2 ? 'bg-indigo-600' : 'bg-gray-200'"></div>
-            <div class="flex items-center">
-              <div :class="['w-8 h-8 rounded-full flex items-center justify-center', currentStep >= 2 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600']">
+            
+            <div class="flex flex-col items-center relative z-10 group cursor-pointer" @click="currentStep > 2 ? currentStep = 2 : null">
+              <div :class="['w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition-all', currentStep >= 2 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/40 ring-4 ring-gray-800' : 'bg-gray-700 text-gray-400 border-2 border-gray-600']">
                 2
               </div>
-              <span :class="['ml-2', currentStep >= 2 ? 'text-indigo-600' : 'text-gray-600']">Wallet Type</span>
+               <span class="mt-2 text-xs font-semibold uppercase tracking-wider transition-colors bg-gray-800 px-2 rounded" :class="currentStep >= 2 ? 'text-indigo-400' : 'text-gray-500'">Wallet Type</span>
             </div>
-            <div class="flex-1 h-1 mx-4" :class="currentStep >= 3 ? 'bg-indigo-600' : 'bg-gray-200'"></div>
-            <div class="flex items-center">
-              <div :class="['w-8 h-8 rounded-full flex items-center justify-center', currentStep >= 3 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600']">
+            
+            <div class="flex flex-col items-center relative z-10">
+              <div :class="['w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition-all', currentStep >= 3 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/40 ring-4 ring-gray-800' : 'bg-gray-700 text-gray-400 border-2 border-gray-600']">
                 3
               </div>
-              <span :class="['ml-2', currentStep >= 3 ? 'text-indigo-600' : 'text-gray-600']">Confirm</span>
+               <span class="mt-2 text-xs font-semibold uppercase tracking-wider transition-colors bg-gray-800 px-2 rounded" :class="currentStep >= 3 ? 'text-indigo-400' : 'text-gray-500'">Confirm</span>
             </div>
           </div>
         </div>
 
-        <!-- Step 1: Basic Info -->
-        <div v-if="currentStep === 1" class="space-y-6">
-          <div>
-            <label for="name" class="block text-sm font-medium text-gray-700">Store Name</label>
-            <input
-              id="name"
-              v-model="form.name"
-              type="text"
-              required
-              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
-          </div>
-          <div>
-            <label for="default_currency" class="block text-sm font-medium text-gray-700">Default Currency</label>
-            <input
-              id="default_currency"
-              v-model="form.default_currency"
-              type="text"
-              list="currency-selection-suggestion"
-              required
-              placeholder="Select or type currency (e.g., USD, BTC, EUR)"
-              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
-            <datalist id="currency-selection-suggestion">
-              <option v-for="currency in currencies" :key="currency.code" :value="currency.code">
-                {{ currency.code }} - {{ currency.name }}
-              </option>
-            </datalist>
-          </div>
-          <div>
-            <label for="timezone" class="block text-sm font-medium text-gray-700">Timezone</label>
-            <select
-              id="timezone"
-              v-model="form.timezone"
-              required
-              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            >
-              <option v-for="tz in timezones" :key="tz" :value="tz">{{ tz }}</option>
-            </select>
-          </div>
-          <div>
-            <label for="preferred_exchange" class="block text-sm font-medium text-gray-700">
-              Preferred Price Source
-            </label>
-            <select
-              id="preferred_exchange"
-              v-model="form.preferred_exchange"
-              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            >
-              <option v-for="exchange in exchanges" :key="exchange.value" :value="exchange.value">
-                {{ exchange.label }}
-              </option>
-            </select>
-            <p class="mt-2 text-sm text-gray-500">The recommended price source gets chosen based on the default currency.</p>
-          </div>
-          <div class="flex justify-end">
-            <button
-              @click="currentStep = 2"
-              :disabled="!form.name || !form.default_currency || !form.timezone"
-              class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-
-        <!-- Step 2: Wallet Type -->
-        <div v-if="currentStep === 2" class="space-y-6">
-          <div>
-            <p class="text-sm text-gray-600 mb-4">Choose your Lightning wallet backend:</p>
-            <div class="space-y-4">
-              <label class="flex items-start p-4 border-2 rounded-lg cursor-pointer" :class="form.wallet_type === 'blink' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200'">
+        <div class="p-8 sm:p-10">
+            <!-- Step 1: Basic Info -->
+            <div v-if="currentStep === 1" class="space-y-6">
+              <div>
+                <label for="name" class="block text-sm font-medium text-gray-300 mb-1">Store Name</label>
                 <input
-                  type="radio"
-                  v-model="form.wallet_type"
-                  value="blink"
-                  class="mt-1 mr-3"
+                  id="name"
+                  v-model="form.name"
+                  type="text"
+                  required
+                  placeholder="My Awesome Store"
+                  class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                 />
-                <div>
-                  <div class="font-medium text-gray-900">Blink</div>
-                  <div class="text-sm text-gray-500">Use Blink wallet for Lightning payments</div>
-                </div>
-              </label>
-              <label class="flex items-start p-4 border-2 rounded-lg cursor-pointer" :class="form.wallet_type === 'aqua_boltz' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200'">
+              </div>
+              <div>
+                <label for="default_currency" class="block text-sm font-medium text-gray-300 mb-1">Default Currency</label>
                 <input
-                  type="radio"
-                  v-model="form.wallet_type"
-                  value="aqua_boltz"
-                  class="mt-1 mr-3"
+                  id="default_currency"
+                  v-model="form.default_currency"
+                  type="text"
+                  list="currency-selection-suggestion"
+                  required
+                  placeholder="Select or type currency (e.g., USD, BTC, EUR)"
+                 class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                 />
-                <div>
-                  <div class="font-medium text-gray-900">Aqua Wallet (via Boltz plugin)</div>
-                  <div class="text-sm text-gray-500">Use Aqua wallet with Boltz plugin</div>
-                </div>
-              </label>
+                <datalist id="currency-selection-suggestion">
+                  <option v-for="currency in currencies" :key="currency.code" :value="currency.code">
+                    {{ currency.code }} - {{ currency.name }}
+                  </option>
+                </datalist>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label for="timezone" class="block text-sm font-medium text-gray-300 mb-1">Timezone</label>
+                    <select
+                      id="timezone"
+                      v-model="form.timezone"
+                      required
+                      class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                    >
+                      <option v-for="tz in timezones" :key="tz" :value="tz">{{ tz }}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="preferred_exchange" class="block text-sm font-medium text-gray-300 mb-1">
+                      Preferred Price Source
+                    </label>
+                    <select
+                      id="preferred_exchange"
+                      v-model="form.preferred_exchange"
+                      class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                    >
+                      <option v-for="exchange in exchanges" :key="exchange.value" :value="exchange.value">
+                        {{ exchange.label }}
+                      </option>
+                    </select>
+                  </div>
+              </div>
+              <p class="text-xs text-gray-500">The recommended price source gets chosen based on the default currency.</p>
+              
+              <div class="flex justify-end pt-4">
+                <button
+                  @click="currentStep = 2"
+                  :disabled="!form.name || !form.default_currency || !form.timezone"
+                  class="inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  Next Step
+                  <svg class="ml-2 -mr-1 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                </button>
+              </div>
             </div>
-          </div>
-          
-          <!-- Connection String Input -->
-          <div v-if="form.wallet_type">
-            <label :for="form.wallet_type === 'blink' ? 'connection_string_blink' : 'connection_string_aqua'" class="block text-sm font-medium text-gray-700 mb-2">
-              {{ form.wallet_type === 'blink' ? 'Connection String' : 'Descriptor' }}
-            </label>
-            <textarea
-              :id="form.wallet_type === 'blink' ? 'connection_string_blink' : 'connection_string_aqua'"
-              v-model="form.connection_string"
-              rows="4"
-              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono text-sm"
-              :placeholder="form.wallet_type === 'blink' 
-                ? 'type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx'
-                : 'wpkh([fingerprint/hdpath]xpub...)'"
-            ></textarea>
-            <p class="mt-1 text-sm text-gray-500">
-              <span v-if="form.wallet_type === 'blink'">
-                Format: <code class="bg-gray-100 px-1 py-0.5 rounded">type=blink;server=https://...;api-key=...;wallet-id=...</code><br>
-                Paste your Blink connection string with server URL, API key, and wallet ID.
-              </span>
-              <span v-else>
-                Paste your Bitcoin Core output descriptor (watch-only, no private keys).<br>
-                Example formats: <code class="bg-gray-100 px-1 py-0.5 rounded">wpkh(...)</code>, <code class="bg-gray-100 px-1 py-0.5 rounded">tr(...)</code>
-              </span>
-            </p>
-            <p class="mt-1 text-sm text-gray-400">
-              You can also configure this later in Wallet Connection settings.
-            </p>
-          </div>
-          
-          <div class="flex justify-between">
-            <button
-              @click="currentStep = 1"
-              class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-            >
-              Back
-            </button>
-            <button
-              @click="currentStep = 3"
-              :disabled="!form.wallet_type"
-              class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        </div>
 
-        <!-- Step 3: Confirmation -->
-        <div v-if="currentStep === 3" class="space-y-6">
-          <div class="bg-gray-50 p-4 rounded-lg">
-            <h3 class="font-medium text-gray-900 mb-4">Review your store settings:</h3>
-            <dl class="space-y-2">
-              <div class="flex justify-between">
-                <dt class="text-sm text-gray-600">Store Name:</dt>
-                <dd class="text-sm font-medium text-gray-900">{{ form.name }}</dd>
+            <!-- Step 2: Wallet Type -->
+            <div v-if="currentStep === 2" class="space-y-6">
+              <div>
+                <p class="text-sm font-medium text-gray-300 mb-4 uppercase tracking-wider">Choose your Lightning wallet backend:</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <label 
+                    class="relative flex flex-col p-6 border-2 rounded-2xl cursor-pointer transition-all hover:bg-gray-700/50" 
+                    :class="form.wallet_type === 'blink' ? 'border-indigo-500 bg-indigo-900/10' : 'border-gray-600 bg-gray-800'"
+                  >
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-bold text-white text-lg">Blink</span>
+                        <div v-if="form.wallet_type === 'blink'" class="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-white">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+                        </div>
+                        <div v-else class="w-6 h-6 rounded-full border-2 border-gray-500"></div>
+                    </div>
+                    <p class="text-sm text-gray-400">Use Blink wallet for fast and reliable Lightning payments.</p>
+                    <input type="radio" v-model="form.wallet_type" value="blink" class="hidden" />
+                  </label>
+
+                  <label 
+                    class="relative flex flex-col p-6 border-2 rounded-2xl cursor-pointer transition-all hover:bg-gray-700/50" 
+                    :class="form.wallet_type === 'aqua_boltz' ? 'border-indigo-500 bg-indigo-900/10' : 'border-gray-600 bg-gray-800'"
+                  >
+                     <div class="flex items-center justify-between mb-2">
+                        <span class="font-bold text-white text-lg">Aqua Wallet</span>
+                         <div v-if="form.wallet_type === 'aqua_boltz'" class="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-white">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+                        </div>
+                        <div v-else class="w-6 h-6 rounded-full border-2 border-gray-500"></div>
+                    </div>
+                    <p class="text-sm text-gray-400">Use Aqua wallet with Boltz plugin for a non-custodial experience.</p>
+                    <input type="radio" v-model="form.wallet_type" value="aqua_boltz" class="hidden" />
+                  </label>
+                </div>
               </div>
-              <div class="flex justify-between">
-                <dt class="text-sm text-gray-600">Default Currency:</dt>
-                <dd class="text-sm font-medium text-gray-900">{{ form.default_currency }}</dd>
+              
+              <!-- Connection String Input -->
+              <transition
+                enter-active-class="transition ease-out duration-200"
+                enter-from-class="opacity-0 translate-y-2"
+                enter-to-class="opacity-100 translate-y-0"
+                leave-active-class="transition ease-in duration-150"
+                leave-from-class="opacity-100 translate-y-0"
+                leave-to-class="opacity-0 translate-y-2"
+              >
+                  <div v-if="form.wallet_type" class="bg-gray-900/50 rounded-xl p-6 border border-gray-700">
+                    <label :for="form.wallet_type === 'blink' ? 'connection_string_blink' : 'connection_string_aqua'" class="block text-sm font-medium text-indigo-300 mb-2">
+                      {{ form.wallet_type === 'blink' ? 'Connection String' : 'Descriptor' }}
+                    </label>
+                    <textarea
+                      :id="form.wallet_type === 'blink' ? 'connection_string_blink' : 'connection_string_aqua'"
+                      v-model="form.connection_string"
+                      rows="4"
+                      class="block w-full rounded-lg border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono text-sm placeholder-gray-600"
+                      :placeholder="form.wallet_type === 'blink' 
+                        ? 'type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx'
+                        : 'wpkh([fingerprint/hdpath]xpub...)'"
+                    ></textarea>
+                    <p class="mt-3 text-sm text-gray-400 leading-relaxed">
+                      <span v-if="form.wallet_type === 'blink'">
+                        Format: <code class="bg-gray-800 border border-gray-600 px-1 py-0.5 rounded text-indigo-300">type=blink;server=...;api-key=...;wallet-id=...</code><br>
+                        Paste your Blink connection string with server URL, API key, and wallet ID.
+                      </span>
+                      <span v-else>
+                        Paste your Bitcoin Core output descriptor (watch-only, no private keys).<br>
+                        Example: <code class="bg-gray-800 border border-gray-600 px-1 py-0.5 rounded text-indigo-300">wpkh(...)</code>
+                      </span>
+                    </p>
+                    <p class="mt-2 text-xs text-gray-500 italic">
+                      You can also configure this later in Wallet Connection settings.
+                    </p>
+                  </div>
+              </transition>
+              
+              <div class="flex justify-between pt-4">
+                <button
+                  @click="currentStep = 1"
+                  class="inline-flex justify-center py-3 px-6 border border-gray-600 shadow-sm text-sm font-medium rounded-xl text-gray-300 bg-gray-700 hover:bg-gray-600 transition-all"
+                >
+                  <svg class="mr-2 -ml-1 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                  Back
+                </button>
+                <button
+                  @click="currentStep = 3"
+                  :disabled="!form.wallet_type"
+                  class="inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  Next Step
+                   <svg class="ml-2 -mr-1 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                </button>
               </div>
-              <div class="flex justify-between">
-                <dt class="text-sm text-gray-600">Timezone:</dt>
-                <dd class="text-sm font-medium text-gray-900">{{ form.timezone }}</dd>
+            </div>
+
+            <!-- Step 3: Confirmation -->
+            <div v-if="currentStep === 3" class="space-y-6">
+              <div class="bg-gray-900/50 p-6 rounded-2xl border border-gray-700">
+                <h3 class="font-medium text-white mb-6 text-lg border-b border-gray-700 pb-2">Review Store Settings</h3>
+                <dl class="space-y-4">
+                  <div class="flex justify-between items-center">
+                    <dt class="text-sm text-gray-400">Store Name</dt>
+                    <dd class="text-sm font-bold text-white">{{ form.name }}</dd>
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <dt class="text-sm text-gray-400">Default Currency</dt>
+                    <dd class="text-sm font-medium text-white bg-gray-800 px-2 py-1 rounded border border-gray-600">{{ form.default_currency }}</dd>
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <dt class="text-sm text-gray-400">Timezone</dt>
+                    <dd class="text-sm font-medium text-white">{{ form.timezone }}</dd>
+                  </div>
+                  <div class="flex justify-between items-center" v-if="form.preferred_exchange">
+                    <dt class="text-sm text-gray-400">Price Source</dt>
+                    <dd class="text-sm font-medium text-white">{{ exchanges.find(e => e.value === form.preferred_exchange)?.label || form.preferred_exchange }}</dd>
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <dt class="text-sm text-gray-400">Wallet Type</dt>
+                    <dd class="text-sm font-bold text-indigo-300">{{ form.wallet_type === 'blink' ? 'Blink' : 'Aqua (Boltz)' }}</dd>
+                  </div>
+                  <div class="flex justify-between items-center" v-if="form.connection_string">
+                    <dt class="text-sm text-gray-400">Connection</dt>
+                    <dd class="text-sm font-medium text-white flex items-center">
+                      <span class="flex items-center text-green-400">
+                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                        Configured
+                      </span>
+                    </dd>
+                  </div>
+                </dl>
               </div>
-              <div class="flex justify-between" v-if="form.preferred_exchange">
-                <dt class="text-sm text-gray-600">Preferred Price Source:</dt>
-                <dd class="text-sm font-medium text-gray-900">{{ exchanges.find(e => e.value === form.preferred_exchange)?.label || form.preferred_exchange }}</dd>
+              
+              <div v-if="error" class="rounded-xl bg-red-500/10 border border-red-500/20 p-4">
+                <div class="flex">
+                   <svg class="h-5 w-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                   <div class="text-sm text-red-400">{{ error }}</div>
+                </div>
               </div>
-              <div class="flex justify-between">
-                <dt class="text-sm text-gray-600">Wallet Type:</dt>
-                <dd class="text-sm font-medium text-gray-900">{{ form.wallet_type === 'blink' ? 'Blink' : 'Aqua (Boltz)' }}</dd>
+              
+              <div class="flex justify-between pt-4">
+                <button
+                  @click="currentStep = 2"
+                  :disabled="loading"
+                  class="inline-flex justify-center py-3 px-6 border border-gray-600 shadow-sm text-sm font-medium rounded-xl text-gray-300 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 transition-all"
+                >
+                  <svg class="mr-2 -ml-1 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                  Back
+                </button>
+                <button
+                  @click="handleSubmit"
+                  :disabled="loading"
+                  class="inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-xl text-white bg-green-600 hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-green-600/20"
+                >
+                   <svg v-if="loading" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  {{ loading ? 'Creating...' : 'Create Store' }}
+                </button>
               </div>
-              <div class="flex justify-between" v-if="form.connection_string">
-                <dt class="text-sm text-gray-600">Connection:</dt>
-                <dd class="text-sm font-medium text-gray-900">
-                  <span class="text-green-600">Configured</span>
-                  <span class="text-gray-400 text-xs ml-2">({{ form.wallet_type === 'blink' ? 'Connection string' : 'Descriptor' }} provided)</span>
-                </dd>
-              </div>
-            </dl>
-          </div>
-          <div v-if="error" class="rounded-md bg-red-50 p-4">
-            <div class="text-sm text-red-800">{{ error }}</div>
-          </div>
-          <div class="flex justify-between">
-            <button
-              @click="currentStep = 2"
-              :disabled="loading"
-              class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-            >
-              Back
-            </button>
-            <button
-              @click="handleSubmit"
-              :disabled="loading"
-              class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
-              {{ loading ? 'Creating...' : 'Go to Store' }}
-            </button>
-          </div>
+            </div>
         </div>
       </div>
   </div>
@@ -327,11 +366,3 @@ async function handleSubmit() {
   }
 }
 </script>
-
-
-
-
-
-
-
-
