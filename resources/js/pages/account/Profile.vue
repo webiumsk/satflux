@@ -73,11 +73,17 @@
                     <span v-if="!isPaidPlan" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-600 text-gray-100">
                       Standard
                     </span>
-                    <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
+                    <span v-else-if="subscriber?.isActive" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-emerald-600 text-white">
                       Active
+                    </span>
+                    <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-600 text-white">
+                      Inactive
                     </span>
                   </h5>
                   <p class="text-gray-400 mt-2">{{ currentPlanDescription }}</p>
+                  <div v-if="subscriber && subscriber.periodEnd" class="text-sm text-gray-400 mt-2">
+                    Next billing: {{ formatDate(subscriber.periodEnd) }}
+                  </div>
                 </div>
                 <div class="mt-4 md:mt-0 md:text-right">
                   <div class="text-3xl font-bold text-white">{{ currentPlanPrice }}</div>
@@ -98,16 +104,62 @@
                 </ul>
               </div>
 
+              <!-- Billing Information -->
+              <div v-if="isPaidPlan" class="border-t border-gray-600 pt-6 mb-6">
+                <h6 class="text-sm font-medium text-gray-300 mb-4 uppercase tracking-wider">Billing Information</h6>
+                <div class="space-y-4">
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-400">Payment Method</span>
+                    <div class="flex items-center gap-2">
+                      <span class="px-3 py-1 rounded-full bg-gray-700 text-sm text-gray-300">Credit balance: {{ formatSats(creditBalance) }}</span>
+                      <button
+                        @click="showAddCreditModal = true"
+                        class="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Add credit
+                      </button>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-400">Notification Email</span>
+                    <span class="text-sm text-gray-300 flex items-center gap-1">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      {{ authStore.user?.email }}
+                    </span>
+                  </div>
+                  <div v-if="subscriber && subscriber.periodEnd" class="flex items-center justify-between">
+                    <span class="text-sm text-gray-400">Next charge on {{ formatDate(subscriber.periodEnd) }}</span>
+                    <span class="text-sm font-medium text-white">{{ currentPlanPrice }}</span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-400">Auto renewal</span>
+                    <div class="flex items-center gap-2">
+                      <span class="text-sm text-gray-300">{{ subscriber?.autoRenew ? 'On' : 'Off' }}</span>
+                      <div class="relative inline-block w-10 h-6 transition-colors duration-200 ease-in-out rounded-full"
+                           :class="subscriber?.autoRenew ? 'bg-indigo-600' : 'bg-gray-600'">
+                        <span class="absolute left-1 top-1 inline-block w-4 h-4 transform transition-transform duration-200 ease-in-out rounded-full bg-white"
+                              :class="subscriber?.autoRenew ? 'translate-x-4' : 'translate-x-0'"></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <!-- Upgrade Options -->
-              <div v-if="!isPaidPlan" class="border-t border-gray-600 pt-8 mt-8">
+              <div v-if="showUpgradeOptions" class="border-t border-gray-600 pt-8 mt-8">
                 <h6 class="text-lg font-medium text-white mb-6">Upgrade to unlock more power:</h6>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div :class="showProUpgrade ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'grid grid-cols-1 gap-6'">
                   <!-- Pro Plan Card -->
-                  <div class="border border-gray-600 rounded-xl p-6 bg-gray-800/80 hover:border-indigo-500 transition-colors relative group">
+                  <div v-if="showProUpgrade" class="border border-gray-600 rounded-xl p-6 bg-gray-800/80 hover:border-indigo-500 transition-colors relative group">
                     <div class="absolute inset-0 bg-gradient-to-br from-indigo-600/5 to-purple-600/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <div class="relative z-10">
                       <h6 class="text-lg font-bold text-white mb-2">Pro Plan</h6>
-                      <div class="text-2xl font-bold text-indigo-400 mb-4">50,000 sats<span class="text-base font-normal text-gray-500">/mo</span></div>
+                      <div class="text-2xl font-bold text-indigo-400 mb-4">100 sats<span class="text-base font-normal text-gray-500">/mo</span></div>
                       <ul class="text-sm text-gray-400 space-y-2 mb-6">
                         <li class="flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mr-2"></span>3 Lightning Addresses</li>
                         <li class="flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mr-2"></span>Unlimited stores</li>
@@ -125,11 +177,12 @@
                   </div>
 
                   <!-- Enterprise Plan Card -->
-                  <div class="border border-gray-600 rounded-xl p-6 bg-gray-800/80 hover:border-purple-500 transition-colors relative group">
+                  <div v-if="showEnterpriseUpgrade" class="border border-gray-600 rounded-xl p-6 bg-gray-800/80 hover:border-purple-500 transition-colors relative group"
+                       :class="!showProUpgrade ? 'md:max-w-md mx-auto' : ''">
                      <div class="absolute inset-0 bg-gradient-to-br from-purple-600/5 to-pink-600/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <div class="relative z-10">
                       <h6 class="text-lg font-bold text-white mb-2">Enterprise Plan</h6>
-                      <div class="text-2xl font-bold text-purple-400 mb-4">200,000 sats<span class="text-base font-normal text-gray-500">/mo</span></div>
+                      <div class="text-2xl font-bold text-purple-400 mb-4">1,000 sats<span class="text-base font-normal text-gray-500">/mo</span></div>
                       <ul class="text-sm text-gray-400 space-y-2 mb-6">
                         <li class="flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"></span>Unlimited Lightning Addresses</li>
                         <li class="flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"></span>Everything from Pro</li>
@@ -141,7 +194,7 @@
                         :disabled="upgrading"
                         class="w-full px-4 py-2 border border-purple-500 text-purple-400 hover:bg-purple-500/10 text-sm font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {{ upgrading ? 'Processing...' : 'Upgrade to Enterprise' }}
+                        {{ upgrading ? 'Processing...' : (isPaidPlan ? 'Upgrade to Enterprise' : 'Upgrade to Enterprise') }}
                       </button>
                     </div>
                   </div>
@@ -210,6 +263,48 @@
           </div>
         </div>
       </div>
+
+      <!-- Add Credit Modal -->
+      <div v-if="showAddCreditModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="showAddCreditModal = false">
+        <div class="bg-gray-800 rounded-xl border border-gray-700 max-w-md w-full p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h5 class="text-lg font-bold text-white">Add Credit</h5>
+            <button @click="showAddCreditModal = false" class="text-gray-400 hover:text-white">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Amount (SATS)</label>
+              <input
+                v-model.number="creditAmount"
+                type="number"
+                min="1"
+                step="1"
+                class="w-full px-4 py-3 border border-gray-600 rounded-lg text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Enter amount"
+              />
+            </div>
+            <div class="flex gap-3">
+              <button
+                @click="showAddCreditModal = false"
+                class="flex-1 px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                @click="handleAddCredit"
+                :disabled="!creditAmount || creditAmount < 1 || addingCredit"
+                class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {{ addingCredit ? 'Processing...' : 'Add Credit' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
   </div>
 </template>
 
@@ -234,6 +329,12 @@ const passwordForm = ref({
 const profileLoading = ref(false);
 const passwordLoading = ref(false);
 const upgrading = ref(false);
+const subscriber = ref<any>(null);
+const creditBalance = ref(0);
+const showAddCreditModal = ref(false);
+const creditAmount = ref<number | null>(null);
+const addingCredit = ref(false);
+const loadingSubscription = ref(false);
 
 // Plan information
 const currentPlanName = computed(() => {
@@ -245,8 +346,8 @@ const currentPlanName = computed(() => {
 
 const currentPlanPrice = computed(() => {
   const role = authStore.user?.role || 'merchant';
-  if (role === 'enterprise') return '200,000 sats';
-  if (role === 'pro') return '50,000 sats';
+  if (role === 'enterprise') return '1,000 sats';
+  if (role === 'pro') return '100 sats';
   return '0 sats';
 });
 
@@ -295,12 +396,93 @@ const isPaidPlan = computed(() => {
   return role === 'pro' || role === 'enterprise';
 });
 
-onMounted(() => {
+// Upgrade options logic
+const showUpgradeOptions = computed(() => {
+  const role = authStore.user?.role || 'merchant';
+  return role === 'merchant' || role === 'pro'; // Merchant sees both, Pro sees Enterprise only
+});
+
+const showProUpgrade = computed(() => {
+  const role = authStore.user?.role || 'merchant';
+  return role === 'merchant';
+});
+
+const showEnterpriseUpgrade = computed(() => {
+  const role = authStore.user?.role || 'merchant';
+  return role === 'merchant' || role === 'pro';
+});
+
+onMounted(async () => {
   if (authStore.user) {
     profileForm.value.name = authStore.user.name || '';
     profileForm.value.email = authStore.user.email || '';
   }
+  
+  // Load subscription details if user has paid plan
+  if (isPaidPlan.value) {
+    await loadSubscriptionDetails();
+  }
 });
+
+async function loadSubscriptionDetails() {
+  loadingSubscription.value = true;
+  try {
+    const response = await api.get('/subscriptions/details');
+    subscriber.value = response.data.subscriber;
+    creditBalance.value = response.data.creditBalance || 0;
+  } catch (error: any) {
+    console.error('Failed to load subscription details:', error);
+    // If 404, user doesn't have subscription yet - that's ok
+    if (error.response?.status !== 404) {
+      console.error('Error loading subscription:', error);
+    }
+  } finally {
+    loadingSubscription.value = false;
+  }
+}
+
+async function handleAddCredit() {
+  if (!creditAmount.value || creditAmount.value < 1) return;
+  
+  addingCredit.value = true;
+  try {
+    const response = await api.post('/subscriptions/credits', {
+      amount: creditAmount.value,
+      currency: 'SATS',
+    });
+
+    // If invoice URL is returned, redirect to payment
+    if (response.data.invoiceUrl) {
+      window.location.href = response.data.invoiceUrl;
+    } else {
+      // Credit added successfully, reload details
+      await loadSubscriptionDetails();
+      showAddCreditModal.value = false;
+      creditAmount.value = null;
+      alert('Credit added successfully');
+    }
+  } catch (error: any) {
+    console.error('Failed to add credit:', error);
+    alert(error.response?.data?.message || 'Failed to add credit. Please try again.');
+  } finally {
+    addingCredit.value = false;
+  }
+}
+
+function formatDate(timestamp: number | string): string {
+  if (!timestamp) return '';
+  const date = typeof timestamp === 'number' ? new Date(timestamp * 1000) : new Date(timestamp);
+  return date.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+}
+
+function formatSats(amount: number): string {
+  return new Intl.NumberFormat('en-US').format(amount) + ' sats';
+}
 
 async function upgradePlan(plan: string) {
   upgrading.value = true;

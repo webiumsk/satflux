@@ -321,5 +321,159 @@ class SubscriptionController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get user's subscription details.
+     * 
+     * GET /api/subscriptions/details
+     */
+    public function details(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+
+        $storeId = config('services.btcpay.subscription_store_id');
+        $offeringId = config('services.btcpay.subscription_offering_id');
+
+        try {
+            // Get subscriber details using email as selector
+            $subscriber = $this->subscriptionService->getSubscriber($storeId, $offeringId, $user->email);
+
+            // Get credit balance
+            $creditBalance = 0;
+            try {
+                $credits = $this->subscriptionService->getSubscriberCredits($storeId, $offeringId, $user->email, 'SATS');
+                $creditBalance = $credits['balance'] ?? $credits['amount'] ?? 0;
+            } catch (\Exception $e) {
+                // Credit endpoint might not be available or user might not have credits yet
+                Log::debug('Could not fetch credit balance', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            return response()->json([
+                'subscriber' => $subscriber,
+                'creditBalance' => $creditBalance,
+            ]);
+
+        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+            if ($e->getStatusCode() === 404) {
+                // User doesn't have a subscription yet
+                return response()->json([
+                    'subscriber' => null,
+                    'creditBalance' => 0,
+                ]);
+            }
+
+            Log::error('Failed to get subscription details', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to fetch subscription details',
+            ], 500);
+        }
+    }
+
+    /**
+     * Get subscriber credit balance.
+     * 
+     * GET /api/subscriptions/credits
+     */
+    public function getCredits(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+
+        $storeId = config('services.btcpay.subscription_store_id');
+        $offeringId = config('services.btcpay.subscription_offering_id');
+        $currency = $request->query('currency', 'SATS');
+
+        try {
+            $credits = $this->subscriptionService->getSubscriberCredits($storeId, $offeringId, $user->email, $currency);
+
+            return response()->json([
+                'balance' => $credits['balance'] ?? $credits['amount'] ?? 0,
+                'currency' => $currency,
+                'details' => $credits,
+            ]);
+
+        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+            Log::error('Failed to get credit balance', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to fetch credit balance',
+            ], 500);
+        }
+    }
+
+    /**
+     * Add credit to subscriber account.
+     * 
+     * POST /api/subscriptions/credits
+     * Body: { amount: number, currency?: string }
+     */
+    public function addCredits(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+
+        $request->validate([
+            'amount' => ['required', 'numeric', 'min:1'],
+            'currency' => ['nullable', 'string', 'in:SATS,BTC'],
+        ]);
+
+        $storeId = config('services.btcpay.subscription_store_id');
+        $offeringId = config('services.btcpay.subscription_offering_id');
+        $currency = $request->input('currency', 'SATS');
+        $amount = $request->input('amount');
+
+        try {
+            // Add credit via BTCPay API (this will create an invoice for the credit)
+            $result = $this->subscriptionService->addSubscriberCredits($storeId, $offeringId, $user->email, $currency, $amount);
+
+            return response()->json([
+                'message' => 'Credit added successfully',
+                'invoiceId' => $result['invoiceId'] ?? null,
+                'invoiceUrl' => $result['invoiceUrl'] ?? $result['url'] ?? null,
+                'details' => $result,
+            ]);
+
+        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+            Log::error('Failed to add credit', [
+                'user_id' => $user->id,
+                'amount' => $amount,
+                'currency' => $currency,
+                'error' => $e->getMessage(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+
+            return response()->json([
+                'message' => $e->getMessage() ?: 'Failed to add credit',
+            ], $e->getStatusCode() ?: 500);
+        }
+    }
 }
 

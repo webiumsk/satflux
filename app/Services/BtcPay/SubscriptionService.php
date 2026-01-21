@@ -265,5 +265,70 @@ class SubscriptionService
             throw $e;
         }
     }
+
+    /**
+     * Get subscriber credit balance.
+     * 
+     * @param string $storeId BTCPay store ID
+     * @param string $offeringId BTCPay offering ID
+     * @param string $customerSelector Customer selector (email, customer ID, or Email:email@example.com)
+     * @param string $currency Currency code (e.g., "SATS", "BTC")
+     * @return array Credit balance information
+     * @throws BtcPayException
+     */
+    public function getSubscriberCredits(string $storeId, string $offeringId, string $customerSelector, string $currency = 'SATS'): array
+    {
+        try {
+            $encodedSelector = rawurlencode($customerSelector);
+            $encodedCurrency = rawurlencode($currency);
+            $response = $this->client->get("/api/v1/stores/{$storeId}/offerings/{$offeringId}/subscribers/{$encodedSelector}/credits/{$encodedCurrency}");
+            return $response;
+        } catch (BtcPayException $e) {
+            Log::error('Failed to get subscriber credits', [
+                'store_id' => $storeId,
+                'offering_id' => $offeringId,
+                'customer_selector' => $customerSelector,
+                'currency' => $currency,
+                'error' => $e->getMessage(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Add credit to subscriber account.
+     * 
+     * @param string $storeId BTCPay store ID
+     * @param string $offeringId BTCPay offering ID
+     * @param string $customerSelector Customer selector (email, customer ID, or Email:email@example.com)
+     * @param string $currency Currency code (e.g., "SATS", "BTC")
+     * @param float|int|string $amount Amount to add
+     * @return array Result of credit addition
+     * @throws BtcPayException
+     */
+    public function addSubscriberCredits(string $storeId, string $offeringId, string $customerSelector, string $currency, $amount): array
+    {
+        try {
+            $encodedSelector = rawurlencode($customerSelector);
+            $encodedCurrency = rawurlencode($currency);
+            $payload = [
+                'amount' => $amount,
+            ];
+            $response = $this->client->post("/api/v1/stores/{$storeId}/offerings/{$offeringId}/subscribers/{$encodedSelector}/credits/{$encodedCurrency}", $payload);
+            return $response;
+        } catch (BtcPayException $e) {
+            Log::error('Failed to add subscriber credits', [
+                'store_id' => $storeId,
+                'offering_id' => $offeringId,
+                'customer_selector' => $customerSelector,
+                'currency' => $currency,
+                'amount' => $amount,
+                'error' => $e->getMessage(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+            throw $e;
+        }
+    }
 }
 
