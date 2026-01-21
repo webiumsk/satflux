@@ -1,9 +1,12 @@
 <template>
-  <footer class="bg-white border-t border-gray-200 mt-auto">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+  <footer class="bg-gray-900 border-t border-gray-800 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="text-center">
-        <p class="text-sm text-gray-500">
-          UZOL21 <span v-if="version">v{{ version }}</span>
+        <p class="text-sm text-gray-400">
+          UZOL21 <span v-if="version" class="text-gray-600">v{{ version }}</span>
+        </p>
+        <p class="text-xs text-gray-600 mt-2">
+          &copy; {{ new Date().getFullYear() }} UZOL21. All rights reserved.
         </p>
       </div>
     </div>
