@@ -1,29 +1,43 @@
 <template>
-  <div class="min-h-screen bg-white">
+  <div class="min-h-screen bg-gray-900 text-white font-sans selection:bg-indigo-500 selection:text-white">
     <!-- Public Header -->
     <PublicHeader />
 
     <!-- Hero Section -->
-    <section class="relative bg-gradient-to-br from-indigo-600 to-purple-700 text-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+    <section class="relative overflow-hidden">
+      <!-- Background Effects -->
+      <div class="absolute inset-0 bg-gray-900">
+        <div class="absolute top-0 -left-4 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+        <div class="absolute top-0 -right-4 w-72 h-72 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+        <div class="absolute -bottom-8 left-20 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+      </div>
+
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
         <div class="text-center">
-          <h1 class="text-4xl md:text-5xl font-bold mb-6">
-            BTCPay Server Control Panel
+          <div class="inline-flex items-center px-4 py-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-sm font-medium mb-8 backdrop-blur-sm">
+            <span class="flex h-2 w-2 rounded-full bg-indigo-400 mr-2"></span>
+            Payments for the Future
+          </div>
+          <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-indigo-400">
+            Accept Bitcoin <br class="hidden md:block" />
+            <span class="text-white">Without Limits</span>
           </h1>
-          <p class="text-xl md:text-2xl mb-8 text-indigo-100 max-w-3xl mx-auto">
-            Manage your BTCPay Server stores easily and efficiently.
-            Multi-tenant solution for all your Bitcoin businesses.
+          <p class="text-xl md:text-2xl mb-10 text-gray-400 max-w-3xl mx-auto leading-relaxed">
+            The ultimate control panel for your BTCPay Server. 
+            Manage multiple stores, automate reporting, and empower your business with non-custodial Bitcoin payments.
           </p>
-          <div class="flex flex-col sm:flex-row gap-4 justify-center" v-if="!authStore.isAuthenticated">
+          
+          <div class="flex flex-col sm:flex-row gap-5 justify-center" v-if="!authStore.isAuthenticated">
             <router-link
               to="/register"
-              class="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-indigo-600 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-colors"
+              class="inline-flex items-center justify-center px-8 py-4 text-lg font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20 hover:scale-105"
             >
-              Get Started Free
+              Start for Free
+              <svg class="ml-2 -mr-1 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
             </router-link>
             <router-link
               to="/login"
-              class="inline-flex items-center justify-center px-8 py-3 border-2 border-white text-base font-medium rounded-md text-white hover:bg-white hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-colors"
+              class="inline-flex items-center justify-center px-8 py-4 text-lg font-bold rounded-xl text-white border border-gray-700 hover:bg-gray-800 transition-all hover:border-gray-600"
             >
               Sign In
             </router-link>
@@ -31,383 +45,322 @@
           <div class="flex items-center justify-center gap-4" v-else>
             <router-link
               to="/dashboard"
-              class="inline-flex items-center justify-center px-6 py-3 border-2 border-white text-base font-medium rounded-md text-white hover:bg-white hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-colors"
+              class="inline-flex items-center justify-center px-8 py-4 text-lg font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20 hover:scale-105"
             >
               <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
-              Dashboard
+              Go to Dashboard
             </router-link>
+          </div>
+
+          <!-- Hero Image/Dashboard Preview -->
+          <div class="mt-16 relative mx-auto max-w-5xl">
+            <div class="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl blur opacity-20"></div>
+            <div class="relative bg-gray-800 rounded-2xl border border-gray-700 shadow-2xl overflow-hidden">
+               <!-- Abstract Dashboard UI Mockup -->
+               <div class="flex items-center px-4 py-2 border-b border-gray-700 bg-gray-900/50">
+                 <div class="flex space-x-2">
+                   <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                   <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                   <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                 </div>
+               </div>
+               <div class="p-4 md:p-8 bg-gray-900/80 backdrop-blur min-h-[300px] flex items-center justify-center">
+                 <div class="text-center">
+                   <p class="text-gray-500 mb-2 text-sm uppercase tracking-wider">Total Revenue</p>
+                   <p class="text-4xl md:text-6xl font-bold text-white mb-4">2.14502100 <span class="text-orange-500">BTC</span></p>
+                   <div class="h-16 w-full max-w-md mx-auto flex items-end gap-1">
+                     <div class="w-1/12 bg-indigo-500/20 h-1/3 rounded-t"></div>
+                     <div class="w-1/12 bg-indigo-500/40 h-1/2 rounded-t"></div>
+                     <div class="w-1/12 bg-indigo-500/30 h-1/4 rounded-t"></div>
+                     <div class="w-1/12 bg-indigo-500/60 h-2/3 rounded-t"></div>
+                     <div class="w-1/12 bg-indigo-500/40 h-1/2 rounded-t"></div>
+                     <div class="w-1/12 bg-indigo-500/80 h-3/4 rounded-t"></div>
+                     <div class="w-1/12 bg-indigo-500 h-full rounded-t shadow-[0_0_15px_rgba(99,102,241,0.5)]"></div>
+                     <div class="w-1/12 bg-indigo-500/70 h-5/6 rounded-t"></div>
+                     <div class="w-1/12 bg-indigo-500/50 h-2/3 rounded-t"></div>
+                     <div class="w-1/12 bg-indigo-500/30 h-1/3 rounded-t"></div>
+                     <div class="w-1/12 bg-indigo-500/20 h-1/4 rounded-t"></div>
+                     <div class="w-1/12 bg-indigo-500/10 h-1/6 rounded-t"></div>
+                   </div>
+                 </div>
+               </div>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- Key Points Section -->
-    <section class="py-16 bg-white border-b border-gray-200">
-      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <!-- Key Point 1 -->
-          <div class="flex items-start">
-            <div class="flex-shrink-0">
-              <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div class="ml-4">
-              <h3 class="text-lg font-semibold text-gray-900 mb-2">Direct to Your Wallet</h3>
-              <p class="text-gray-600">
-                Funds/sats go directly to merchant wallets. We don't hold any sats.
-              </p>
-            </div>
-          </div>
+    <section class="py-24 bg-gray-900 border-t border-gray-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+           <!-- Point 1 -->
+           <div class="p-6 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/50 transition-colors">
+             <div class="w-12 h-12 bg-green-500/20 text-green-400 rounded-lg flex items-center justify-center mb-4">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+             </div>
+             <h3 class="text-xl font-bold text-white mb-2">Non-Custodial</h3>
+             <p class="text-gray-400 text-sm">Funds go directly to your wallet. We never touch your sats.</p>
+           </div>
 
-          <!-- Key Point 2 -->
-          <div class="flex items-start">
-            <div class="flex-shrink-0">
-              <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
-            <div class="ml-4">
-              <h3 class="text-lg font-semibold text-gray-900 mb-2">Wallet Requirements</h3>
-              <p class="text-gray-600">
-                You need a Blink or Aqua wallet to use this service.
-              </p>
-            </div>
-          </div>
+           <!-- Point 2 -->
+           <div class="p-6 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/50 transition-colors">
+             <div class="w-12 h-12 bg-blue-500/20 text-blue-400 rounded-lg flex items-center justify-center mb-4">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+             </div>
+             <h3 class="text-xl font-bold text-white mb-2">Lightning Ready</h3>
+             <p class="text-gray-400 text-sm">Optimized for Blink & Aqua wallets. Instant settlement.</p>
+           </div>
 
-          <!-- Key Point 3 -->
-          <div class="flex items-start">
-            <div class="flex-shrink-0">
-              <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <div class="ml-4">
-              <h3 class="text-lg font-semibold text-gray-900 mb-2">CSV Exports</h3>
-              <p class="text-gray-600">
-                Export transaction movements to CSV. Additional formats coming soon.
-              </p>
-            </div>
-          </div>
+           <!-- Point 3 -->
+           <div class="p-6 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/50 transition-colors">
+             <div class="w-12 h-12 bg-purple-500/20 text-purple-400 rounded-lg flex items-center justify-center mb-4">
+               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+             </div>
+             <h3 class="text-xl font-bold text-white mb-2">Smart Exports</h3>
+             <p class="text-gray-400 text-sm">Automated CSV reports for accounting and tax compliance.</p>
+           </div>
 
-          <!-- Key Point 4 -->
-          <div class="flex items-start">
-            <div class="flex-shrink-0">
-              <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <div class="ml-4">
-              <h3 class="text-lg font-semibold text-gray-900 mb-2">Automatic Monthly Reports</h3>
-              <p class="text-gray-600">
-                Paid plans include automatic export + email message at the end of each month.
-              </p>
-            </div>
-          </div>
+           <!-- Point 4 -->
+           <div class="p-6 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/50 transition-colors">
+             <div class="w-12 h-12 bg-orange-500/20 text-orange-400 rounded-lg flex items-center justify-center mb-4">
+               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+             </div>
+             <h3 class="text-xl font-bold text-white mb-2">Monthly Recap</h3>
+             <p class="text-gray-400 text-sm">Get automated summaries delivered directly to your inbox.</p>
+           </div>
         </div>
       </div>
     </section>
 
     <!-- Features Section -->
-    <section id="features" class="py-20 bg-gray-50">
+    <section id="features" class="py-24 bg-gray-900">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
-          <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <h2 class="text-3xl md:text-5xl font-bold text-white mb-4">
             Everything You Need
           </h2>
-          <p class="text-xl text-gray-600 max-w-2xl mx-auto">
-            Complete control over your BTCPay Server stores in one place
+          <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+            A complete suite of tools to manage your Bitcoin business.
           </p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <!-- Feature 1 -->
-          <div class="bg-white rounded-lg shadow-md p-6">
-            <div class="flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-lg mb-4">
-              <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <!-- Multi-Store (Large Card) -->
+          <div class="md:col-span-2 bg-gradient-to-br from-gray-800 to-gray-900 rounded-3xl p-8 border border-gray-700 shadow-xl overflow-hidden relative group">
+            <div class="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+               <svg class="w-48 h-48 text-indigo-500" fill="currentColor" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
             </div>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">Multi-Store Management</h3>
-            <p class="text-gray-600">
-              Create and manage unlimited stores. Clear dashboard for all your businesses.
-            </p>
+            <div class="relative z-10">
+              <h3 class="text-2xl font-bold text-white mb-4">Multi-Store Management</h3>
+              <p class="text-gray-400 text-lg mb-6 max-w-md">Run multiple businesses from a single dashboard. Switch contexts instantly and keep your finances organized.</p>
+              <div class="inline-flex items-center text-indigo-400 font-semibold group-hover:translate-x-1 transition-transform cursor-pointer">
+                Learn more <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+              </div>
+            </div>
           </div>
 
-          <!-- Feature 2 -->
-          <div class="bg-white rounded-lg shadow-md p-6">
-            <div class="flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-lg mb-4">
-              <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">Point of Sale Apps</h3>
-            <p class="text-gray-600">
-              Create and configure PoS applications with products, categories, and custom design.
-            </p>
+          <!-- POS Apps -->
+          <div class="bg-gray-800 rounded-3xl p-8 border border-gray-700 shadow-xl relative group hover:bg-gray-750 transition-colors">
+             <div class="absolute inset-0 bg-indigo-600/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+             <div class="w-12 h-12 bg-indigo-500/20 rounded-xl flex items-center justify-center mb-6 text-indigo-400">
+               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+             </div>
+             <h3 class="text-xl font-bold text-white mb-2">Point of Sale</h3>
+             <p class="text-gray-400">Customizable PoS keypads for retail or mobile usage.</p>
           </div>
 
-          <!-- Feature 3 -->
-          <div class="bg-white rounded-lg shadow-md p-6">
-            <div class="flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-lg mb-4">
-              <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">Lightning Fast</h3>
-            <p class="text-gray-600">
-              Lightning Addresses, instant payments, and everything you need for modern Bitcoin business.
-            </p>
+          <!-- Invoice Management -->
+          <div class="bg-gray-800 rounded-3xl p-8 border border-gray-700 shadow-xl relative group hover:bg-gray-750 transition-colors">
+            <div class="absolute inset-0 bg-indigo-600/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+             <div class="w-12 h-12 bg-indigo-500/20 rounded-xl flex items-center justify-center mb-6 text-indigo-400">
+               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+             </div>
+             <h3 class="text-xl font-bold text-white mb-2">Invoicing</h3>
+             <p class="text-gray-400">Create, track, and export invoices securely.</p>
           </div>
 
-          <!-- Feature 4 -->
-          <div class="bg-white rounded-lg shadow-md p-6">
-            <div class="flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-lg mb-4">
-              <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">Secure & Private</h3>
-            <p class="text-gray-600">
-              Your BTCPay API key stays with you. No central storage of sensitive data.
-            </p>
-          </div>
-
-          <!-- Feature 5 -->
-          <div class="bg-white rounded-lg shadow-md p-6">
-            <div class="flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-lg mb-4">
-              <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">Invoice Management</h3>
-            <p class="text-gray-600">
-              Clear invoice list, filtering, CSV export, and complete payment transaction management.
-            </p>
-          </div>
-
-          <!-- Feature 6 -->
-          <div class="bg-white rounded-lg shadow-md p-6">
-            <div class="flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-lg mb-4">
-              <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">API Integration</h3>
-            <p class="text-gray-600">
-              API keys for e-shop integrations. Simple connection of your web stores.
-            </p>
+          <!-- API & Secure (Large Card) -->
+          <div class="md:col-span-2 bg-gradient-to-br from-indigo-900/50 to-gray-900 rounded-3xl p-8 border border-gray-700 shadow-xl relative overflow-hidden group">
+            <div class="absolute z-0 right-0 bottom-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl"></div>
+             <div class="relative z-10 flex flex-col md:flex-row items-center gap-8">
+               <div class="flex-1">
+                 <h3 class="text-2xl font-bold text-white mb-4">Developer Friendly API</h3>
+                 <p class="text-gray-400 text-lg mb-6">Seamlessly integrate with your e-shop or custom application. Your API keys stay with you, ensuring maximum security and privacy.</p>
+                 <div class="flex gap-2">
+                   <span class="px-3 py-1 rounded-md bg-gray-800 border border-gray-600 text-xs font-mono text-gray-300">REST API</span>
+                   <span class="px-3 py-1 rounded-md bg-gray-800 border border-gray-600 text-xs font-mono text-gray-300">Webhooks</span>
+                 </div>
+               </div>
+               <div class="w-16 h-16 bg-indigo-500/20 rounded-full flex items-center justify-center text-indigo-400 shrink-0 animation-pulse">
+                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+               </div>
+             </div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- Pricing Section -->
-    <section id="pricing" class="py-20 bg-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="pricing" class="py-24 bg-gray-900 relative">
+      <div class="absolute inset-0 bg-indigo-900/10 skew-y-3 transform origin-bottom-right"></div>
+      <div class=" max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div class="text-center mb-16">
-          <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Simple and Transparent Pricing
+          <h2 class="text-3xl md:text-5xl font-bold text-white mb-4">
+            Transparent Pricing
           </h2>
-          <p class="text-xl text-gray-600 max-w-2xl mx-auto">
-            Start free and upgrade when you need more features
+          <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+            Pay with sats. No credit card required.
           </p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto items-center">
           <!-- Free Plan -->
-          <div class="bg-white border-2 border-gray-200 rounded-lg p-8 relative">
-            <div class="text-center">
-              <h3 class="text-2xl font-bold text-gray-900 mb-2">Free</h3>
-              <div class="mb-6">
-                <span class="text-4xl font-bold text-gray-900">0</span>
-                <span class="text-gray-600"> sats/month</span>
-              </div>
-              <ul class="text-left space-y-3 mb-8">
-                <li class="flex items-start">
-                  <svg class="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span class="text-gray-700">1 Store</span>
-                </li>
-                <li class="flex items-start">
-                  <svg class="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span class="text-gray-700">Basic features</span>
-                </li>
-                <li class="flex items-start">
-                  <svg class="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span class="text-gray-700">Point of Sale apps</span>
-                </li>
-                <li class="flex items-start">
-                  <svg class="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span class="text-gray-700">Invoice management</span>
-                </li>
-              </ul>
-              <router-link
-                v-if="!authStore.isAuthenticated"
-                to="/register"
-                class="block w-full text-center px-6 py-3 border-2 border-indigo-600 text-indigo-600 font-medium rounded-md hover:bg-indigo-50 transition-colors"
-              >
-                Get Started Free
-              </router-link>
-              <router-link
-                v-else
-                to="/stores"
-                class="block w-full text-center px-6 py-3 border-2 border-indigo-600 text-indigo-600 font-medium rounded-md hover:bg-indigo-50 transition-colors"
-              >
-                View My Stores
-              </router-link>
-            </div>
+          <div class="bg-gray-800/80 backdrop-blur rounded-2xl p-8 border border-gray-700 hover:border-gray-500 transition-colors">
+             <h3 class="text-xl font-bold text-white mb-2">Free</h3>
+             <div class="flex items-baseline mb-6">
+                <span class="text-4xl font-extrabold text-white">0</span>
+                <span class="text-gray-400 ml-2">sats/month</span>
+             </div>
+             <p class="text-gray-400 text-sm mb-6">Perfect for testing and small personal projects.</p>
+             <ul class="space-y-4 mb-8">
+               <li class="flex items-center text-gray-300 text-sm">
+                 <svg class="w-4 h-4 text-green-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 1 Store
+               </li>
+               <li class="flex items-center text-gray-300 text-sm">
+                 <svg class="w-4 h-4 text-green-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 Basic Features
+               </li>
+               <li class="flex items-center text-gray-300 text-sm">
+                 <svg class="w-4 h-4 text-green-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 Community Support
+               </li>
+             </ul>
+             <router-link
+               v-if="!authStore.isAuthenticated"
+               to="/register"
+               class="block w-full text-center px-6 py-3 rounded-lg border border-gray-600 text-white hover:bg-gray-700 font-bold transition-colors"
+             >
+               Start Free
+             </router-link>
+             <router-link
+               v-else
+               to="/stores"
+               class="block w-full text-center px-6 py-3 rounded-lg border border-gray-600 text-white hover:bg-gray-700 font-bold transition-colors"
+             >
+               View Stores
+             </router-link>
           </div>
 
-          <!-- Pro Plan -->
-          <div class="bg-gradient-to-br from-indigo-600 to-purple-700 text-white rounded-lg p-8 relative transform scale-105 shadow-xl">
-            <div class="absolute top-0 right-0 bg-yellow-400 text-gray-900 text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg">
-              RECOMMENDED
-            </div>
-            <div class="text-center">
-              <h3 class="text-2xl font-bold mb-2">Pro</h3>
-              <div class="mb-6">
-                <span class="text-4xl font-bold">50,000</span>
-                <span class="text-indigo-200"> sats/month</span>
-              </div>
-              <ul class="text-left space-y-3 mb-8">
-                <li class="flex items-start">
-                  <svg class="w-5 h-5 text-green-300 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Unlimited stores</span>
-                </li>
-                <li class="flex items-start">
-                  <svg class="w-5 h-5 text-green-300 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>All Free features</span>
-                </li>
-                <li class="flex items-start">
-                  <svg class="w-5 h-5 text-green-300 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Priority support</span>
-                </li>
-                <li class="flex items-start">
-                  <svg class="w-5 h-5 text-green-300 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>CSV exports</span>
-                </li>
-                <li class="flex items-start">
-                  <svg class="w-5 h-5 text-green-300 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>API integrations</span>
-                </li>
-                <li class="flex items-start">
-                  <svg class="w-5 h-5 text-green-300 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Automatic monthly reports</span>
-                </li>
-              </ul>
-              <button
+          <!-- Pro Plan (Highlighted) -->
+          <div class="bg-gray-800 rounded-2xl p-8 border-2 border-indigo-500 shadow-2xl relative transform md:scale-105 z-10">
+             <div class="absolute top-0 right-0 -mt-4 mr-4 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">
+               Popular
+             </div>
+             <h3 class="text-2xl font-bold text-white mb-2">Pro</h3>
+             <div class="flex items-baseline mb-6">
+                <span class="text-5xl font-extrabold text-white">50k</span>
+                <span class="text-indigo-300 ml-2">sats/month</span>
+             </div>
+             <p class="text-gray-400 text-sm mb-6">For growing businesses that need more power.</p>
+             <ul class="space-y-4 mb-8">
+               <li class="flex items-center text-white font-medium text-sm">
+                 <svg class="w-5 h-5 text-indigo-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 Unlimited Stores
+               </li>
+               <li class="flex items-center text-white font-medium text-sm">
+                 <svg class="w-5 h-5 text-indigo-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 Priority Support
+               </li>
+               <li class="flex items-center text-white font-medium text-sm">
+                 <svg class="w-5 h-5 text-indigo-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 CSV Exports
+               </li>
+               <li class="flex items-center text-white font-medium text-sm">
+                 <svg class="w-5 h-5 text-indigo-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 API Integrations
+               </li>
+               <li class="flex items-center text-white font-medium text-sm">
+                 <svg class="w-5 h-5 text-indigo-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 Monthly Reports
+               </li>
+             </ul>
+             <button
                 v-if="authStore.isAuthenticated"
                 @click="handleUpgrade('pro')"
                 :disabled="subscribing"
-                class="block w-full text-center px-6 py-3 bg-white text-indigo-600 font-medium rounded-md hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                class="block w-full text-center px-6 py-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {{ subscribing ? 'Processing...' : 'Upgrade' }}
+                {{ subscribing ? 'Processing...' : 'Upgrade Now' }}
               </button>
               <router-link
                 v-else
                 to="/register"
-                class="block w-full text-center px-6 py-3 bg-white text-indigo-600 font-medium rounded-md hover:bg-indigo-50 transition-colors"
+                class="block w-full text-center px-6 py-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition-all"
               >
                 Get Started
               </router-link>
-            </div>
           </div>
 
           <!-- Enterprise Plan -->
-          <div class="bg-white border-2 border-gray-200 rounded-lg p-8 relative">
-            <div class="text-center">
-              <h3 class="text-2xl font-bold text-gray-900 mb-2">Enterprise</h3>
-              <div class="mb-6">
-                <span class="text-4xl font-bold text-gray-900">200,000</span>
-                <span class="text-gray-600"> sats/month</span>
-              </div>
-              <ul class="text-left space-y-3 mb-8">
-                <li class="flex items-start">
-                  <svg class="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span class="text-gray-700">Everything from Pro</span>
-                </li>
-                <li class="flex items-start">
-                  <svg class="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span class="text-gray-700">Dedicated support</span>
-                </li>
-                <li class="flex items-start">
-                  <svg class="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span class="text-gray-700">Custom integrations</span>
-                </li>
-                <li class="flex items-start">
-                  <svg class="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span class="text-gray-700">Automatic monthly reports</span>
-                </li>
-                <li class="flex items-start">
-                  <svg class="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span class="text-gray-700">SLA guarantees</span>
-                </li>
-              </ul>
-              <button
+          <div class="bg-gray-800/80 backdrop-blur rounded-2xl p-8 border border-gray-700 hover:border-gray-500 transition-colors">
+             <h3 class="text-xl font-bold text-white mb-2">Enterprise</h3>
+             <div class="flex items-baseline mb-6">
+                <span class="text-4xl font-extrabold text-white">200k</span>
+                <span class="text-gray-400 ml-2">sats/month</span>
+             </div>
+             <p class="text-gray-400 text-sm mb-6">Maximum performance and dedicated support.</p>
+             <ul class="space-y-4 mb-8">
+               <li class="flex items-center text-gray-300 text-sm">
+                 <svg class="w-4 h-4 text-green-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 Everything in Pro
+               </li>
+               <li class="flex items-center text-gray-300 text-sm">
+                 <svg class="w-4 h-4 text-green-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 Dedicated Agent
+               </li>
+               <li class="flex items-center text-gray-300 text-sm">
+                 <svg class="w-4 h-4 text-green-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 Custom Solutions
+               </li>
+               <li class="flex items-center text-gray-300 text-sm">
+                 <svg class="w-4 h-4 text-green-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 SLA Guarantees
+               </li>
+             </ul>
+             <button
                 v-if="authStore.isAuthenticated"
                 @click="handleUpgrade('enterprise')"
                 :disabled="subscribing"
-                class="block w-full text-center px-6 py-3 border-2 border-indigo-600 text-indigo-600 font-medium rounded-md hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                class="block w-full text-center px-6 py-3 rounded-lg border border-gray-600 text-white hover:bg-gray-700 font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {{ subscribing ? 'Processing...' : 'Upgrade' }}
               </button>
               <router-link
                 v-else
                 to="/register"
-                class="block w-full text-center px-6 py-3 border-2 border-indigo-600 text-indigo-600 font-medium rounded-md hover:bg-indigo-50 transition-colors"
+                class="block w-full text-center px-6 py-3 rounded-lg border border-gray-600 text-white hover:bg-gray-700 font-bold transition-colors"
               >
-                Get Started
+                Contact Sales
               </router-link>
-            </div>
           </div>
         </div>
-
-        <div class="text-center mt-12 text-gray-600">
-          <p class="text-lg">
-            All plans are paid with Bitcoin via BTCPay Server. Automatic monthly subscription.
-          </p>
-          <p class="text-sm mt-2">
-            For more information contact <router-link to="/support" class="text-indigo-600 hover:text-indigo-700">support</router-link>
-          </p>
-          
-          <!-- Error message for subscription -->
-          <div v-if="subscribeError" class="mt-6 max-w-2xl mx-auto">
-            <div class="bg-red-50 border border-red-200 rounded-md p-4">
-              <p class="text-sm text-red-800">{{ subscribeError }}</p>
-            </div>
+        
+        <!-- Error message -->
+        <div v-if="subscribeError" class="mt-8 max-w-md mx-auto">
+          <div class="bg-red-900/50 border border-red-500/50 rounded-lg p-4 text-center">
+            <p class="text-sm text-red-200">{{ subscribeError }}</p>
           </div>
         </div>
       </div>
