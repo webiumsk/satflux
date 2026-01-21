@@ -347,6 +347,25 @@ const localProduct = ref<any>({
   disabled: false,
 });
 
+// Reset function for new product
+function resetToDefaults() {
+  localProduct.value = {
+    id: '',
+    title: '',
+    priceType: 'Fixed',
+    price: 0,
+    taxRate: null,
+    image: '',
+    description: '',
+    categories: null,
+    inventory: null,
+    buyButtonText: null,
+    disabled: false,
+  };
+  imagePreview.value = null;
+  selectedFile.value = null;
+}
+
 // Watch for product changes
 watch(() => props.product, (newProduct) => {
   if (newProduct) {
@@ -355,23 +374,17 @@ watch(() => props.product, (newProduct) => {
     selectedFile.value = null;
   } else {
     // Reset to default values for new product
-    localProduct.value = {
-      id: '',
-      title: '',
-      priceType: 'Fixed',
-      price: 0,
-      taxRate: null,
-      image: '',
-      description: '',
-      categories: null,
-      inventory: null,
-      buyButtonText: null,
-      disabled: false,
-    };
-    imagePreview.value = null;
-    selectedFile.value = null;
+    resetToDefaults();
   }
 }, { immediate: true });
+
+// Watch for drawer open/close - reset when opening for new product
+watch(() => props.isOpen, (isOpen) => {
+  if (isOpen && !props.product) {
+    // Drawer opened for new product - ensure it's reset
+    resetToDefaults();
+  }
+});
 
 // Generate ID from title when user leaves the title field
 function generateIdFromTitle() {

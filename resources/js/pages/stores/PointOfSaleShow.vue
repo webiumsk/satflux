@@ -184,197 +184,212 @@
                 />
               </div>              
 
-              <div class="border-t border-gray-700/50 pt-6">
-                 <h3 class="text-lg font-medium text-white mb-4">Checkout Settings</h3>
-                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    
-                    <!-- Currency -->
+              <!-- Advanced Settings Accordion -->
+              <div class="">
+                <div class="">
+                  <button
+                    type="button"
+                    @click="showAdvancedSettings = !showAdvancedSettings"
+                    class="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-800 hover:bg-gray-700 transition-colors rounded-t-xl"
+                  >
+                    <span class="text-xl font-medium text-orange-500">Extra Settings</span>
+                    <svg class="h-5 w-5 text-orange-500 transform transition-transform duration-200" :class="{ 'rotate-180': showAdvancedSettings }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div v-show="showAdvancedSettings" class="border border-gray-700/50 pt-6 rounded-b-xl overflow-hidden p-6py-6 space-y-6">
+                    <div class="px-6">  
+                    <!-- Checkout Settings -->
                     <div>
-                        <label for="currency" class="block text-sm font-medium text-gray-300 mb-1">
-                          Currency
-                        </label>
-                         <input
-                          id="currency"
-                          v-model="form.currency"
+                      <h3 class="text-lg font-medium text-white mb-4">Checkout Settings</h3>
+                      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 py-4">
+
+                        <!-- Customer Data -->
+                        <div>
+                            <label for="requestCustomerData" class="block text-sm font-medium text-gray-300 mb-1">
+                               Request customer data
+                            </label>
+                            <select
+                              id="requestCustomerData"
+                              v-model="form.requestCustomerData"
+                              class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all appearance-none"
+                            >
+                              <option value="">Do not request</option>
+                              <option value="email">Email only</option>
+                              <option value="name">Name only</option>
+                              <option value="email_name">Email and Name</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Currency -->
+                        <div>
+                            <label for="currency" class="block text-sm font-medium text-gray-300 mb-1">
+                              Currency
+                            </label>
+                             <input
+                              id="currency"
+                              v-model="form.currency"
+                              type="text"
+                              list="currency-selection-suggestion"
+                              placeholder="Select or type currency"
+                              class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                            />
+                            <datalist id="currency-selection-suggestion">
+                              <option v-for="currency in currencies" :key="currency.code" :value="currency.code">
+                                {{ currency.code }} - {{ currency.name }}
+                              </option>
+                            </datalist>
+                            <p class="mt-1 text-xs text-gray-500">Uses store default ({{ store?.default_currency || 'EUR' }}) if empty</p>
+                        </div>
+
+                        <!-- Tax Rate -->
+                        <div>
+                            <label for="defaultTaxRate" class="block text-sm font-medium text-gray-300 mb-1">
+                              Default Tax Rate
+                            </label>
+                            <div class="flex rounded-xl shadow-sm">
+                              <input
+                                id="defaultTaxRate"
+                                v-model.number="form.defaultTaxRate"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="100"
+                                class="flex-1 min-w-0 block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-l-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                placeholder="0.00"
+                              />
+                              <span class="inline-flex items-center px-4 rounded-r-xl border border-l-0 border-gray-600 bg-gray-700 text-gray-300 text-sm font-medium">
+                                %
+                              </span>
+                            </div>
+                        </div>
+
+                      </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 py-4">
+                       <!-- Tips -->
+                       <div>
+                          <div class="flex items-center mb-4">
+                            <input
+                              id="enableTips"
+                              v-model="form.enableTips"
+                              type="checkbox"
+                              class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
+                            />
+                            <label for="enableTips" class="ml-3 block text-sm font-medium text-white">
+                              Enable tips
+                            </label>
+                          </div>
+                          
+                          <div v-if="form.enableTips">
+                            <label for="tipsMessage" class="block text-xs font-medium text-gray-400 mb-1">
+                              Tip Message <span class="text-red-400">*</span>
+                            </label>
+                            <input
+                              id="tipsMessage"
+                              v-model="form.tipsMessage"
+                              type="text"
+                              required
+                              class="block w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                            />
+                          </div>
+                       </div>
+
+                       <!-- Custom Payments - Only available for Static (Product list) and Print display -->
+                       <div v-if="form.defaultView === 'Static' || form.defaultView === 'Print'" class="p-4">
+                          <div class="flex items-center mb-4">
+                            <input
+                              id="showCustomAmount"
+                              v-model="form.showCustomAmount"
+                              type="checkbox"
+                              class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
+                            />
+                            <label for="showCustomAmount" class="ml-3 block text-sm font-medium text-white">
+                              Allow custom amount
+                            </label>
+                          </div>
+                          
+                          <div v-if="form.showCustomAmount">
+                            <label for="customAmountPayButtonText" class="block text-xs font-medium text-gray-400 mb-1">
+                              Pay Button Text <span class="text-red-400">*</span>
+                            </label>
+                            <input
+                              id="customAmountPayButtonText"
+                              v-model="form.customAmountPayButtonText"
+                              type="text"
+                              required
+                              class="block w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                            />
+                          </div>
+                       </div>
+                       
+                       <!-- Discounts - Only available for Light (Keypad) and Cart (Product list with cart) -->
+                       <div v-if="form.defaultView === 'Light' || form.defaultView === 'Cart'" class="p-4">
+                           <div class="flex items-center">
+                            <input
+                              id="showDiscount"
+                              v-model="form.showDiscount"
+                              type="checkbox"
+                              class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
+                            />
+                            <label for="showDiscount" class="ml-3 block text-sm font-medium text-white">
+                              Allow discount entry (%)
+                            </label>
+                          </div>
+                          <p class="mt-2 text-xs text-gray-500 ml-8">Not recommended for self-checkout.</p>
+                       </div>
+                    </div>
+
+                    <!-- Cart Options -->
+                    <div v-if="form.defaultView === 'Cart'" class="border-t border-gray-700/50 pt-6">
+                       <h3 class="text-lg font-medium text-white mb-4">Cart Settings</h3>
+                       <div class="flex flex-col sm:flex-row gap-6">
+                          <div class="flex items-center bg-gray-900 border border-gray-700 p-4 rounded-xl flex-1">
+                            <input
+                              id="showSearch"
+                              v-model="form.showSearch"
+                              type="checkbox"
+                              class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
+                            />
+                            <label for="showSearch" class="ml-3 block text-sm font-medium text-white">
+                              Display search bar
+                            </label>
+                          </div>
+
+                          <div class="flex items-center bg-gray-900 border border-gray-700 p-4 rounded-xl flex-1">
+                            <input
+                              id="showCategories"
+                              v-model="form.showCategories"
+                              type="checkbox"
+                              class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
+                            />
+                            <label for="showCategories" class="ml-3 block text-sm font-medium text-white">
+                              Display categories
+                            </label>
+                          </div>
+                       </div>
+                    </div>
+
+                     <!-- Button Text -->
+                    <div v-if="form.defaultView === 'Static' || form.defaultView === 'Cart'" class="border-t border-gray-700/50 pt-6">
+                       <label for="fixedAmountPayButtonText" class="block text-sm font-medium text-gray-300 mb-1">
+                          Buy Button Text <span class="text-red-400">*</span>
+                       </label>
+                        <input
+                          id="fixedAmountPayButtonText"
+                          v-model="form.fixedAmountPayButtonText"
                           type="text"
-                          list="currency-selection-suggestion"
-                          placeholder="Select or type currency"
+                          required
+                          placeholder="Buy for {0}"
                           class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                         />
-                        <datalist id="currency-selection-suggestion">
-                          <option v-for="currency in currencies" :key="currency.code" :value="currency.code">
-                            {{ currency.code }} - {{ currency.name }}
-                          </option>
-                        </datalist>
-                        <p class="mt-1 text-xs text-gray-500">Uses store default ({{ store?.default_currency || 'EUR' }}) if empty</p>
+                        <p class="mt-1 text-xs text-gray-500">Use {0} as placeholder for price.</p>
                     </div>
-
-                    <!-- Tax Rate -->
-                    <div>
-                        <label for="defaultTaxRate" class="block text-sm font-medium text-gray-300 mb-1">
-                          Default Tax Rate
-                        </label>
-                        <div class="flex rounded-xl shadow-sm">
-                          <input
-                            id="defaultTaxRate"
-                            v-model.number="form.defaultTaxRate"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            max="100"
-                            class="flex-1 min-w-0 block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-l-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                            placeholder="0.00"
-                          />
-                          <span class="inline-flex items-center px-4 rounded-r-xl border border-l-0 border-gray-600 bg-gray-700 text-gray-300 text-sm font-medium">
-                            %
-                          </span>
-                        </div>
-                    </div>
-
-                    <!-- Customer Data -->
-                    <div>
-                        <label for="requestCustomerData" class="block text-sm font-medium text-gray-300 mb-1">
-                           Request customer data
-                        </label>
-                        <select
-                          id="requestCustomerData"
-                          v-model="form.requestCustomerData"
-                          class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all appearance-none"
-                        >
-                          <option value="">Do not request</option>
-                          <option value="email">Email only</option>
-                          <option value="name">Name only</option>
-                          <option value="email_name">Email and Name</option>
-                        </select>
-                    </div>
-                 </div>
-              </div>
-              
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <!-- Tips -->
-                 <div class="bg-gray-900 border border-gray-700 p-4 rounded-xl">
-                    <div class="flex items-center mb-4">
-                      <input
-                        id="enableTips"
-                        v-model="form.enableTips"
-                        type="checkbox"
-                        class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
-                      />
-                      <label for="enableTips" class="ml-3 block text-sm font-medium text-white">
-                        Enable tips
-                      </label>
-                    </div>
-                    
-                    <div v-if="form.enableTips">
-                      <label for="tipsMessage" class="block text-xs font-medium text-gray-400 mb-1">
-                        Tip Message <span class="text-red-400">*</span>
-                      </label>
-                      <input
-                        id="tipsMessage"
-                        v-model="form.tipsMessage"
-                        type="text"
-                        required
-                        class="block w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-                      />
-                    </div>
-                 </div>
-
-                 <!-- Custom Payments -->
-                 <div class="bg-gray-900 border border-gray-700 p-4 rounded-xl">
-                    <div class="flex items-center mb-4">
-                      <input
-                        id="showCustomAmount"
-                        v-model="form.showCustomAmount"
-                        type="checkbox"
-                        class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
-                      />
-                      <label for="showCustomAmount" class="ml-3 block text-sm font-medium text-white">
-                        Allow custom amount
-                      </label>
-                    </div>
-                    
-                    <div v-if="form.showCustomAmount">
-                      <label for="customAmountPayButtonText" class="block text-xs font-medium text-gray-400 mb-1">
-                        Pay Button Text <span class="text-red-400">*</span>
-                      </label>
-                      <input
-                        id="customAmountPayButtonText"
-                        v-model="form.customAmountPayButtonText"
-                        type="text"
-                        required
-                        class="block w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-                      />
-                    </div>
-                 </div>
-                 
-                 <!-- Discounts -->
-                 <div class="bg-gray-900 border border-gray-700 p-4 rounded-xl">
-                     <div class="flex items-center">
-                      <input
-                        id="showDiscount"
-                        v-model="form.showDiscount"
-                        type="checkbox"
-                        class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
-                      />
-                      <label for="showDiscount" class="ml-3 block text-sm font-medium text-white">
-                        Allow discount entry (%)
-                      </label>
-                    </div>
-                    <p class="mt-2 text-xs text-gray-500 ml-8">Not recommended for self-checkout.</p>
-                 </div>
-              </div>
-
-
-              <!-- Cart Options -->
-              <div v-if="form.defaultView === 'Cart'" class="border-t border-gray-700/50 pt-6">
-                 <h3 class="text-lg font-medium text-white mb-4">Cart Settings</h3>
-                 <div class="flex flex-col sm:flex-row gap-6">
-                    <div class="flex items-center bg-gray-900 border border-gray-700 p-4 rounded-xl flex-1">
-                      <input
-                        id="showSearch"
-                        v-model="form.showSearch"
-                        type="checkbox"
-                        class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
-                      />
-                      <label for="showSearch" class="ml-3 block text-sm font-medium text-white">
-                        Display search bar
-                      </label>
-                    </div>
-
-                    <div class="flex items-center bg-gray-900 border border-gray-700 p-4 rounded-xl flex-1">
-                      <input
-                        id="showCategories"
-                        v-model="form.showCategories"
-                        type="checkbox"
-                        class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
-                      />
-                      <label for="showCategories" class="ml-3 block text-sm font-medium text-white">
-                        Display categories
-                      </label>
-                    </div>
-                 </div>
-              </div>
-
-               <!-- Button Text -->
-              <div v-if="form.defaultView === 'Static' || form.defaultView === 'Cart'" class="border-t border-gray-700/50 pt-6">
-                 <label for="fixedAmountPayButtonText" class="block text-sm font-medium text-gray-300 mb-1">
-                    Buy Button Text <span class="text-red-400">*</span>
-                 </label>
-                  <input
-                    id="fixedAmountPayButtonText"
-                    v-model="form.fixedAmountPayButtonText"
-                    type="text"
-                    required
-                    placeholder="Buy for {0}"
-                    class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                  />
-                  <p class="mt-1 text-xs text-gray-500">Use {0} as placeholder for price.</p>
-              </div>
-
-
-              <!-- Additional Options (Accordion style) -->
-              <div class="border-t border-gray-700/50 pt-6 space-y-4">
-                  <h3 class="text-xl font-bold text-white mb-4">Advanced Options</h3>
+</div>
+                    <!-- Additional Options (Accordion style) -->
+                    <div class="border-t border-gray-700/50 pt-6 px-6 space-y-4">
+                      <h3 class="text-xl font-bold text-white mb-4">Advanced Options</h3>
                   
                   <!-- HTML Headers -->
                  <div class="border border-gray-700 rounded-xl overflow-hidden">
@@ -470,9 +485,10 @@
                           </div>
                        </div>
                     </div>
-                 </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-
 
               <!-- Delete Button -->
               <div class="border-t border-gray-700/50 pt-6">
@@ -488,6 +504,7 @@
               </div>
 
             </div>
+          </div>
           </div>
         </form>
       </div>
@@ -551,6 +568,7 @@ const displayedError = computed(() => {
 const showDeleteModal = ref(false);
 const deleteError = ref('');
 const deleting = ref(false);
+const showAdvancedSettings = ref(false);
 
 // Products editor state
 const products = ref<any[]>([]);
@@ -668,6 +686,25 @@ const currentProduct = computed(() => {
   return null;
 });
 
+// Helper function to parse boolean values from BTCPay API response
+// BTCPay might return booleans, strings ("true"/"false"), numbers (1/0), or null/undefined
+function parseBoolean(value: any, defaultValue: boolean = false): boolean {
+  if (value === null || value === undefined) {
+    return defaultValue;
+  }
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const lower = value.toLowerCase().trim();
+    return lower === 'true' || lower === '1' || lower === 'yes';
+  }
+  if (typeof value === 'number') {
+    return value !== 0;
+  }
+  return Boolean(value);
+}
+
 async function loadApp(clearErrors: boolean = true) {
   const app = layoutRef.value?.app;
   const store = layoutRef.value?.store;
@@ -675,27 +712,43 @@ async function loadApp(clearErrors: boolean = true) {
   if (!app || !store) return;
   
   const hadSuccess = success.value;
-  if (clearErrors && !hadSuccess) {
+  // Don't clear errors if we're reloading after successful submit
+  if (clearErrors && !hadSuccess && !isReloadingAfterSubmit.value) {
     error.value = '';
   }
-  if (hadSuccess) {
+  // Don't reload form if we have success message (prevents overwriting with stale data)
+  if (hadSuccess && !isReloadingAfterSubmit.value) {
     return;
   }
   
+  // IMPORTANT: If we're reloading after successful submit, don't load form values from BTCPay
+  // because they might be stale (cached) and would overwrite the values we just saved
+  // Only update app name, and let the caller restore the saved form values
+  const skipFormLoad = isReloadingAfterSubmit.value && success.value;
+  
   form.value.appName = app.name || '';
   
-  if (app.config) {
+  // Only load form values if we're not reloading after successful save
+  if (!skipFormLoad && app.config) {
     const config = app.config;
     form.value.title = config.title || '';
     form.value.description = config.description || '';
-    form.value.defaultView = config.defaultView || 'Light';
+    // Ensure defaultView is always 'Light' for new apps or if not set
+    const savedDefaultView = config.defaultView;
+    if (savedDefaultView && ['Light', 'Static', 'Cart', 'Print'].includes(savedDefaultView)) {
+      form.value.defaultView = savedDefaultView;
+    } else {
+      // If no valid defaultView, use 'Light' as default
+      form.value.defaultView = 'Light';
+    }
     form.value.currency = config.currency || (store?.default_currency || 'EUR');
-    form.value.showItems = config.showItems || false;
-    form.value.showCustomAmount = config.showCustomAmount || false;
-    form.value.showDiscount = config.showDiscount || false;
-    form.value.showSearch = config.showSearch ?? true;
-    form.value.showCategories = config.showCategories ?? true;
-    form.value.enableTips = config.enableTips || false;
+    // Parse boolean values correctly - BTCPay might return strings or booleans
+    form.value.showItems = parseBoolean(config.showItems, false);
+    form.value.showCustomAmount = parseBoolean(config.showCustomAmount, false);
+    form.value.showDiscount = parseBoolean(config.showDiscount, false);
+    form.value.showSearch = parseBoolean(config.showSearch, true);
+    form.value.showCategories = parseBoolean(config.showCategories, true);
+    form.value.enableTips = parseBoolean(config.enableTips, false);
     form.value.tipsMessage = config.tipsMessage || 'Do you want to leave a tip?';
     form.value.defaultTaxRate = config.defaultTaxRate ? parseFloat(String(config.defaultTaxRate)) : 0;
     form.value.requestCustomerData = config.requestCustomerData || '';
@@ -759,35 +812,45 @@ async function loadApp(clearErrors: boolean = true) {
 
 const isReloadingAfterSubmit = ref(false);
 
-watch(() => layoutRef.value?.app, () => {
+// Track current app ID to detect when switching between apps
+const currentAppId = ref<string | null>(null);
+
+watch(() => layoutRef.value?.app, (newApp) => {
+  // If app ID changed, we're switching apps - clear success and reset reloading flag
+  if (newApp && newApp.id !== currentAppId.value) {
+    currentAppId.value = newApp.id;
+    success.value = ''; // Clear success when switching apps
+    isReloadingAfterSubmit.value = false; // Reset reloading flag
+    loadApp();
+    return;
+  }
+  
+  // Normal reload logic
   if (isReloadingAfterSubmit.value) return;
   if (success.value) return;
   loadApp();
 }, { immediate: true, deep: true });
 
+// Clear error when success is set
 watch(success, (newSuccess) => {
-  if (newSuccess) error.value = '';
+  if (newSuccess) {
+    error.value = '';
+  }
 });
 
+// Prevent error from showing if we have success message
 watch(error, (newError) => {
   if (newError && success.value) {
-    setTimeout(() => { if (success.value) error.value = ''; }, 0);
+    // Clear error immediately if success is set
+    error.value = '';
   }
-}, { flush: 'post' });
+}, { immediate: true });
 
-watch(saving, (newSaving, oldSaving) => {
-  if (oldSaving && !newSaving && success.value) {
-     setTimeout(() => {
-        if (success.value) {
-           error.value = '';
-           success.value = 'Settings saved successfully'; // Reinforce
-        }
-     }, 0);
-  }
-});
-
+// Additional safeguard: clear error if success is set
 watchEffect(() => {
-    if (success.value && error.value) error.value = '';
+  if (success.value && error.value) {
+    error.value = '';
+  }
 });
 
 
@@ -827,7 +890,7 @@ async function handleSubmit() {
     const config: any = {
       appName: form.value.appName,
       title: form.value.title,
-      defaultView: form.value.defaultView,
+      defaultView: form.value.defaultView, // This should be 'Light', 'Static', 'Cart', or 'Print'
       currency: form.value.currency,
       showItems: form.value.showItems,
       showCustomAmount: form.value.showCustomAmount,
@@ -851,8 +914,13 @@ async function handleSubmit() {
       config.description = form.value.description || null;
     }
 
-    if (shouldShowProductsEditor.value) {
+    // Always save template/products if they exist, regardless of whether editor is visible
+    // This ensures products are saved even if editor visibility changes
+    if (template && template.length > 0) {
       config.template = template;
+    } else if (shouldShowProductsEditor.value) {
+      // If no products but editor should be visible, set empty array
+      config.template = [];
     }
 
     await appsStore.updateApp(storeId.value, appId.value, {
@@ -860,37 +928,84 @@ async function handleSubmit() {
       config,
     });
     
+    // Set success and clear error immediately
     success.value = 'Settings saved successfully';
     error.value = '';
     isReloadingAfterSubmit.value = true;
     
     try {
+      // Reload app data after a short delay
       await new Promise(resolve => setTimeout(resolve, 500));
       if (layoutRef.value) {
-        await (layoutRef.value as any).loadApp();
+        try {
+          await (layoutRef.value as any).loadApp();
+        } catch (reloadError) {
+          // Silently ignore errors during reload after successful save
+          console.warn('Error reloading app after save:', reloadError);
+        }
       }
       await new Promise(resolve => setTimeout(resolve, 0));
       
       // Manually refresh form data from updated app
-       const updatedApp = layoutRef.value?.app;
-       // ... (logic to sync form data handled by loadApp potentially or we can re-run loadApp logic here if needed, 
-       // but strictly speaking, loadApp is reactive to layoutRef.app changes if we allow it or we can force it)
-       // Since we set isReloadingAfterSubmit=true, watcher didn't run. We updated layoutRef.app via loadApp(). 
-       // We should manually run loadApp(false) to sync form.
-       await loadApp(false);
+      // Only reload if we still have success (wasn't cleared by error)
+      // IMPORTANT: Save all form values AND products before reload to prevent overwriting with stale data
+      const savedFormValues = {
+        defaultView: form.value.defaultView,
+        showItems: form.value.showItems,
+        showCustomAmount: form.value.showCustomAmount,
+        showDiscount: form.value.showDiscount,
+        showSearch: form.value.showSearch,
+        showCategories: form.value.showCategories,
+        enableTips: form.value.enableTips,
+        tipsMessage: form.value.tipsMessage,
+        defaultTaxRate: form.value.defaultTaxRate,
+        requestCustomerData: form.value.requestCustomerData,
+        fixedAmountPayButtonText: form.value.fixedAmountPayButtonText,
+        customAmountPayButtonText: form.value.customAmountPayButtonText,
+        currency: form.value.currency,
+        title: form.value.title,
+        description: form.value.description,
+        htmlLang: form.value.htmlLang,
+        htmlMetaTags: form.value.htmlMetaTags,
+        redirectUrl: form.value.redirectUrl,
+        redirectAutomatically: form.value.redirectAutomatically,
+        notificationUrl: form.value.notificationUrl,
+      };
+      
+      // Also save products array (deep copy to prevent reference issues)
+      const savedProducts = JSON.parse(JSON.stringify(products.value));
+      
+      if (success.value) {
+        // Reload app data (but don't load form values - loadApp will skip form loading)
+        await loadApp(false);
+        // Restore ALL form values we just saved
+        // This is necessary because BTCPay API might return stale/cached data
+        Object.assign(form.value, savedFormValues);
+        // Restore products array
+        products.value = savedProducts;
+      }
 
     } finally {
       isReloadingAfterSubmit.value = false;
+      // Ensure error is cleared and success is maintained after successful save
+      if (success.value) {
+        error.value = '';
+        // Keep success message visible
+        success.value = 'Settings saved successfully';
+      }
     }
 
   } catch (err: any) {
-    error.value = err.response?.data?.message || 'Failed to save settings';
-    success.value = '';
+    // Only set error if we don't have success
+    if (!success.value) {
+      error.value = err.response?.data?.message || 'Failed to save settings';
+      success.value = '';
+    }
   } finally {
-    const hadSuccess = success.value;
     saving.value = false;
-    if (hadSuccess) {
-        error.value = '';
+    // Always clear error if we have success message
+    if (success.value) {
+      error.value = '';
     }
   }
 }

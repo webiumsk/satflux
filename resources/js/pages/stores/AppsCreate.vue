@@ -189,7 +189,7 @@ async function handleSubmit() {
   try {
     const response = await api.post(`/stores/${storeId.value}/apps`, {
       name: form.value.name,
-      appType: form.value.appType,
+      app_type: form.value.appType,
     });
     
     // Refresh apps list
@@ -216,6 +216,21 @@ function handleShowSection(section: string) {
 }
 
 onMounted(async () => {
+  // Check if type is provided in query params
+  const typeFromQuery = route.query.type as string;
+  if (typeFromQuery) {
+    // Map query param to app type
+    const typeMap: Record<string, 'PointOfSale' | 'Crowdfund' | 'PaymentButton' | 'LightningAddress'> = {
+      'PointOfSale': 'PointOfSale',
+      'Crowdfund': 'Crowdfund',
+      'PaymentButton': 'PaymentButton',
+      'LightningAddress': 'LightningAddress',
+    };
+    if (typeMap[typeFromQuery]) {
+      form.value.appType = typeMap[typeFromQuery];
+    }
+  }
+  
   await loadStore();
   await appsStore.fetchApps(storeId.value);
 });

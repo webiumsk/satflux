@@ -160,17 +160,20 @@
 
           <!-- Point of Sale -->
           <div class="mb-2">
-            <div class="flex items-center justify-between px-3 py-2">
-              <span class="text-sm font-medium text-gray-300">Point of Sale</span>
-              <button
-                @click="createApp('point_of_sale')"
-                class="text-gray-400 hover:text-white"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
-            </div>
+            <router-link
+              :to="{ name: 'stores-apps-create', params: { id: store.id }, query: { type: 'PointOfSale' } }"
+              class="flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer"
+              :class="
+                $route.name === 'stores-apps-create' && $route.query.type === 'PointOfSale'
+                  ? 'bg-gray-900 text-white'
+                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+              "
+            >
+              <span>Point of Sale</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+            </router-link>
             <div v-if="getAppsByType('PointOfSale').length > 0" class="ml-4 space-y-1">
               <router-link
                 v-for="app in getAppsByType('PointOfSale')"
@@ -191,17 +194,20 @@
 
           <!-- Crowdfund -->
           <div class="mb-2">
-            <div class="flex items-center justify-between px-3 py-2">
-              <span class="text-sm font-medium text-gray-300">Crowdfund</span>
-              <button
-                @click="createApp('crowdfund')"
-                class="text-gray-400 hover:text-white"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
-            </div>
+            <router-link
+              :to="{ name: 'stores-apps-create', params: { id: store.id }, query: { type: 'Crowdfund' } }"
+              class="flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer"
+              :class="
+                $route.name === 'stores-apps-create' && $route.query.type === 'Crowdfund'
+                  ? 'bg-gray-900 text-white'
+                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+              "
+            >
+              <span>Crowdfund</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+            </router-link>
             <div v-if="getAppsByType('Crowdfund').length > 0" class="ml-4 space-y-1">
               <router-link
                 v-for="app in getAppsByType('Crowdfund')"
@@ -399,37 +405,7 @@ function getAppsByType(type: string) {
   });
 }
 
-async function createApp(type: string) {
-  showMobileMenu.value = false; // Close mobile menu
-  if (!props.store) return;
-  
-  const appTypeMap: Record<string, string> = {
-    'lightning_address': 'LightningAddress',
-    'crowdfund': 'Crowdfund',
-    'point_of_sale': 'PointOfSale',
-    'payment_button': 'PaymentButton',
-  };
-  
-  const appType = appTypeMap[type];
-  if (!appType) return;
-
-  try {
-    const appTypeNames: Record<string, string> = {
-      'lightning_address': 'Lightning Address',
-      'crowdfund': 'Crowdfund',
-      'point_of_sale': 'Point of Sale',
-      'payment_button': 'Payment Button',
-    };
-    const appName = `New ${appTypeNames[type] || type}`;
-    
-    const app = await appsStore.createApp(props.store.id, appType, {
-      name: appName,
-    });
-    router.push(`/stores/${props.store.id}/apps/${app.id}`);
-  } catch (error) {
-    console.error('Failed to create app:', error);
-  }
-}
+// createApp function removed - now using router links directly
 
 function handleSectionClick(section: string) {
   showMobileMenu.value = false; // Close mobile menu on navigation
