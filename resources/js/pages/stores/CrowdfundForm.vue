@@ -1,6 +1,6 @@
 <template>
   <!-- Content Container -->
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <!-- Crowdfund Form -->
     <form id="crowdfund-form" @submit.prevent="handleSubmit" class="space-y-6">
       
@@ -98,11 +98,10 @@
               class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             ></textarea>
           </div>
-        </div>
-      </div>
+        </div>      
 
       <!-- Goal Section -->
-      <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
+      
         <div class="p-6 md:p-8 space-y-6">
           <h2 class="text-xl font-bold text-white mb-4">Goal</h2>
           
@@ -188,11 +187,10 @@
                   </svg>
                 </button>
               </div>
-            </div>
-          </div>
+            </div>          
 
           <!-- Recurring Goal -->
-          <div class="pt-6 border-t border-gray-700/50">
+          
              <div class="bg-gray-900 border border-gray-700 p-4 rounded-xl">
                 <div class="flex items-center">
                     <input
