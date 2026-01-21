@@ -307,14 +307,22 @@ class SubscriptionService
      * @return array Result of credit addition
      * @throws BtcPayException
      */
-    public function addSubscriberCredits(string $storeId, string $offeringId, string $customerSelector, string $currency, $amount): array
+    public function addSubscriberCredits(string $storeId, string $offeringId, string $customerSelector, string $currency, $amount, ?string $description = null): array
     {
         try {
             $encodedSelector = rawurlencode($customerSelector);
             $encodedCurrency = rawurlencode($currency);
+
+            // BTCPay API expects 'credit' as a string numeric value
+            // This will create an invoice for the credit amount
             $payload = [
-                'amount' => $amount,
+                'credit' => (string) $amount,
             ];
+
+            if ($description) {
+                $payload['description'] = $description;
+            }
+
             $response = $this->client->post("/api/v1/stores/{$storeId}/offerings/{$offeringId}/subscribers/{$encodedSelector}/credits/{$encodedCurrency}", $payload);
             return $response;
         } catch (BtcPayException $e) {

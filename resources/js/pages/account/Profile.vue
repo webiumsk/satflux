@@ -105,10 +105,10 @@
               </div>
 
               <!-- Billing Information -->
-              <div v-if="isPaidPlan" class="border-t border-gray-600 pt-6 mb-6">
+              <div v-if="isPaidPlan || creditBalance > 0" class="border-t border-gray-600 pt-6 mb-6">
                 <h6 class="text-sm font-medium text-gray-300 mb-4 uppercase tracking-wider">Billing Information</h6>
                 <div class="space-y-4">
-                  <div class="flex items-center justify-between">
+                  <div v-if="isPaidPlan" class="flex items-center justify-between">
                     <span class="text-sm text-gray-400">Payment Method</span>
                     <div class="flex items-center gap-2">
                       <span class="px-3 py-1 rounded-full bg-gray-700 text-sm text-gray-300">Credit balance: {{ formatSats(creditBalance) }}</span>
@@ -399,7 +399,9 @@ const isPaidPlan = computed(() => {
 // Upgrade options logic
 const showUpgradeOptions = computed(() => {
   const role = authStore.user?.role || 'merchant';
-  return role === 'merchant' || role === 'pro'; // Merchant sees both, Pro sees Enterprise only
+  // Show upgrades if user is merchant (free) or pro (can upgrade to enterprise)
+  // Don't show for enterprise (top tier) or admin/support (not applicable)
+  return role === 'merchant' || role === 'pro';
 });
 
 const showProUpgrade = computed(() => {
@@ -418,10 +420,8 @@ onMounted(async () => {
     profileForm.value.email = authStore.user.email || '';
   }
   
-  // Load subscription details if user has paid plan
-  if (isPaidPlan.value) {
-    await loadSubscriptionDetails();
-  }
+  // Load subscription details if user has paid plan or might have subscription
+  await loadSubscriptionDetails();
 });
 
 async function loadSubscriptionDetails() {
@@ -431,11 +431,13 @@ async function loadSubscriptionDetails() {
     subscriber.value = response.data.subscriber;
     creditBalance.value = response.data.creditBalance || 0;
   } catch (error: any) {
-    console.error('Failed to load subscription details:', error);
     // If 404, user doesn't have subscription yet - that's ok
     if (error.response?.status !== 404) {
-      console.error('Error loading subscription:', error);
+      console.error('Error loading subscription details:', error);
     }
+    // Reset values on error
+    subscriber.value = null;
+    creditBalance.value = 0;
   } finally {
     loadingSubscription.value = false;
   }
@@ -451,15 +453,18 @@ async function handleAddCredit() {
       currency: 'SATS',
     });
 
-    // If invoice URL is returned, redirect to payment
+    // Credit addition creates an invoice - redirect to payment
     if (response.data.invoiceUrl) {
       window.location.href = response.data.invoiceUrl;
+    } else if (response.data.invoiceId) {
+      // If only invoice ID is returned, construct URL
+      const baseUrl = response.data.baseUrl || 'https://pay.dvadsatjeden.org';
+      window.location.href = `${baseUrl}/i/${response.data.invoiceId}`;
     } else {
-      // Credit added successfully, reload details
-      await loadSubscriptionDetails();
+      // No invoice URL - this shouldn't happen, but handle gracefully
+      alert('Credit invoice created. Please check your email or BTCPay dashboard for payment instructions.');
       showAddCreditModal.value = false;
       creditAmount.value = null;
-      alert('Credit added successfully');
     }
   } catch (error: any) {
     console.error('Failed to add credit:', error);
