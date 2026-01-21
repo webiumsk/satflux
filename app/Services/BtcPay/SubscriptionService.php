@@ -142,7 +142,7 @@ class SubscriptionService
 
             // Handle expiration - BTCPay may return 'expiration' as Unix timestamp
             if (isset($response['expiration'])) {
-                $result['expiresAt'] = is_numeric($response['expiration']) 
+                $result['expiresAt'] = is_numeric($response['expiration'])
                     ? date('c', $response['expiration']) // Convert Unix timestamp to ISO 8601
                     : $response['expiration'];
             } elseif (isset($response['expiresAt'])) {
@@ -161,6 +161,75 @@ class SubscriptionService
                 'store_id' => $storeId,
                 'offering_id' => $offeringId,
                 'plan_id' => $planId,
+                'error' => $e->getMessage(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Get plan checkout details by checkout ID.
+     * 
+     * @param string $checkoutId BTCPay plan checkout ID
+     * @return array Checkout details including plan ID, subscription info, etc.
+     * @throws BtcPayException
+     */
+    public function getPlanCheckout(string $checkoutId): array
+    {
+        try {
+            $response = $this->client->get("/api/v1/plan-checkout/{$checkoutId}");
+            return $response;
+        } catch (BtcPayException $e) {
+            Log::error('Failed to get plan checkout details', [
+                'checkout_id' => $checkoutId,
+                'error' => $e->getMessage(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Get subscription details by subscription ID.
+     * 
+     * @param string $storeId BTCPay store ID
+     * @param string $subscriptionId BTCPay subscription ID
+     * @return array Subscription details including status, expiration, etc.
+     * @throws BtcPayException
+     */
+    public function getSubscription(string $storeId, string $subscriptionId): array
+    {
+        try {
+            $response = $this->client->get("/api/v1/stores/{$storeId}/subscriptions/{$subscriptionId}");
+            return $response;
+        } catch (BtcPayException $e) {
+            Log::error('Failed to get subscription details', [
+                'store_id' => $storeId,
+                'subscription_id' => $subscriptionId,
+                'error' => $e->getMessage(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * List subscriptions for a store.
+     * 
+     * @param string $storeId BTCPay store ID
+     * @param array $filters Optional filters (status, etc.)
+     * @return array List of subscriptions
+     * @throws BtcPayException
+     */
+    public function listSubscriptions(string $storeId, array $filters = []): array
+    {
+        try {
+            $response = $this->client->get("/api/v1/stores/{$storeId}/subscriptions", $filters);
+            return $response;
+        } catch (BtcPayException $e) {
+            Log::error('Failed to list subscriptions', [
+                'store_id' => $storeId,
                 'error' => $e->getMessage(),
                 'status_code' => $e->getStatusCode(),
             ]);

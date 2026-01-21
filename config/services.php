@@ -27,6 +27,7 @@ return [
             'pro' => env('SUBSCRIPTION_PLAN_PRO_ID', 'plan_9UQMqk4vbAFyQinRpL'),
             'enterprise' => env('SUBSCRIPTION_PLAN_ENTERPRISE_ID'),
         ],
+        // Note: Grace period is configured per plan in BTCPay Server, not here
     ],
 
 ];
