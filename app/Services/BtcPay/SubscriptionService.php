@@ -236,5 +236,30 @@ class SubscriptionService
             throw $e;
         }
     }
+
+    /**
+     * List subscribers for an offering.
+     * BTCPay may require accessing subscriptions via offerings/subscribers endpoint.
+     * 
+     * @param string $storeId BTCPay store ID
+     * @param string $offeringId BTCPay offering ID
+     * @return array List of subscribers/subscriptions
+     * @throws BtcPayException
+     */
+    public function listSubscribers(string $storeId, string $offeringId): array
+    {
+        try {
+            $response = $this->client->get("/api/v1/stores/{$storeId}/offerings/{$offeringId}/subscribers");
+            return $response;
+        } catch (BtcPayException $e) {
+            Log::error('Failed to list subscribers', [
+                'store_id' => $storeId,
+                'offering_id' => $offeringId,
+                'error' => $e->getMessage(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+            throw $e;
+        }
+    }
 }
 
