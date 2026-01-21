@@ -20,6 +20,17 @@
       </div>
       
       <div class="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-8 shadow-xl">
+        <div v-if="route.query.email_verified === '1'" class="mb-6 rounded-lg bg-green-500/10 border border-green-500/20 p-4">
+          <div class="flex items-start">
+            <svg class="w-5 h-5 text-green-400 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <p class="text-sm text-green-400">
+              Your email has been verified successfully. Please login to continue.
+            </p>
+          </div>
+        </div>
+        
         <form class="space-y-6" @submit.prevent="handleLogin">
           <div>
             <label for="email" class="block text-sm font-medium text-gray-300">Email address</label>
@@ -239,13 +250,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onUnmounted, nextTick } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "../../store/auth";
 import api from "../../services/api";
 import QRCode from "qrcode";
 import { bech32 } from "bech32";
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 
 const form = ref({

@@ -23,7 +23,7 @@
               <svg class="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
            </div>
           <p class="text-gray-300">
-            Your email has been verified successfully. Redirecting to dashboard...
+            Your email has been verified successfully. Redirecting...
           </p>
         </div>
         
@@ -102,7 +102,7 @@ onMounted(async () => {
     });
     
     const response = await api.get(`/auth/verify-email/${id}/${hash}?${queryParams.toString()}`, {
-      validateStatus: (status) => status < 500, // Accept all status codes except 5xx
+      validateStatus: (status: number) => status < 500, // Accept all status codes except 5xx
     });
 
     // Check if response indicates an error
@@ -116,18 +116,39 @@ onMounted(async () => {
     if (data.verified) {
       verified.value = true;
       
-      // Set user in auth store if user data is provided
+      // Check if user is already authenticated in this browser
+      // If backend returned user data, it means session was created
       if (data.user) {
         authStore.user = data.user;
+        
+        // Verify session is actually working by fetching user
+        try {
+          await authStore.fetchUser();
+          
+          // Session exists and works, redirect to dashboard
+          setTimeout(() => {
+            router.push({ name: 'home' });
+          }, 2000);
+        } catch (fetchError) {
+          // Session not working (e.g., link opened in different browser)
+          // Redirect to login with success message
+          setTimeout(() => {
+            router.push({ 
+              name: 'login', 
+              query: { email_verified: '1' } 
+            });
+          }, 2000);
+        }
       } else {
-        // Fallback: fetch user data from API
-        await authStore.fetchUser();
+        // No user data returned, likely no session created
+        // Redirect to login with success message
+        setTimeout(() => {
+          router.push({ 
+            name: 'login', 
+            query: { email_verified: '1' } 
+          });
+        }, 2000);
       }
-      
-      // Redirect to dashboard immediately after setting user
-      setTimeout(() => {
-          router.push({ name: 'home' });
-      }, 2000); // Small delay to show success message
     } else {
       error.value = data.message || "Failed to verify email.";
     }
