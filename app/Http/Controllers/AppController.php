@@ -168,15 +168,28 @@ class AppController extends Controller
             // If btcpay_app_id is missing, try to fetch it from apps list
             if (!$btcpayAppId) {
                 try {
+                    // Wait a bit for BTCPay to index the new app
+                    sleep(1);
+                    
                     $apps = $this->appService->listApps($store->btcpay_store_id, $userApiKey);
                     $appName = $request->name;
+                    $appType = $request->app_type;
                     
-                    // Find app with matching name
-                    $matchingApps = array_filter($apps, function($a) use ($appName) {
-                        return ($a['name'] ?? '') === $appName;
+                    // Find app with matching name and type (most recent first)
+                    $matchingApps = array_filter($apps, function($a) use ($appName, $appType) {
+                        $nameMatches = ($a['name'] ?? $a['appName'] ?? '') === $appName;
+                        $typeMatches = ($a['appType'] ?? $a['type'] ?? '') === $appType;
+                        return $nameMatches && $typeMatches;
                     });
                     
                     if (!empty($matchingApps)) {
+                        // Sort by created date (most recent first) to get the newly created app
+                        usort($matchingApps, function($a, $b) {
+                            $aCreated = $a['created'] ?? $a['createdTime'] ?? 0;
+                            $bCreated = $b['created'] ?? $b['createdTime'] ?? 0;
+                            return $bCreated <=> $aCreated; // Descending order
+                        });
+                        
                         $foundApp = reset($matchingApps);
                         $foundAppId = $foundApp['id'] ?? null;
                         if ($foundAppId) {
@@ -184,8 +197,24 @@ class AppController extends Controller
                             \Log::info('Updated app with BTCPay app ID from apps list', [
                                 'app_id' => $app->id,
                                 'btcpay_app_id' => $foundAppId,
+                                'app_name' => $appName,
+                                'app_type' => $appType,
+                            ]);
+                            // Update btcpayAppId for return value
+                            $btcpayAppId = $foundAppId;
+                        } else {
+                            \Log::warning('Found matching app but no ID in response', [
+                                'app_id' => $app->id,
+                                'found_app' => $foundApp,
                             ]);
                         }
+                    } else {
+                        \Log::warning('No matching app found in apps list', [
+                            'app_id' => $app->id,
+                            'app_name' => $appName,
+                            'app_type' => $appType,
+                            'total_apps' => count($apps),
+                        ]);
                     }
                 } catch (\Exception $e) {
                     \Log::warning('Failed to fetch app ID from apps list after creation', [
@@ -408,9 +437,54 @@ class AppController extends Controller
                 'app_id' => $app->id,
                 'store_id' => $store->id,
             ]);
-            return response()->json([
-                'message' => 'Cannot update app: BTCPay app ID is missing. Please contact support.',
-            ], 400);
+            
+            // Try to find the app in BTCPay by name and type before giving up
+            try {
+                $apps = $this->appService->listApps($store->btcpay_store_id, $userApiKey);
+                $appName = $app->name;
+                $appType = $app->app_type;
+                
+                // Find app with matching name and type
+                $matchingApps = array_filter($apps, function($a) use ($appName, $appType) {
+                    $nameMatches = ($a['name'] ?? $a['appName'] ?? '') === $appName;
+                    $typeMatches = ($a['appType'] ?? $a['type'] ?? '') === $appType;
+                    return $nameMatches && $typeMatches;
+                });
+                
+                if (!empty($matchingApps)) {
+                    // Get the most recent matching app
+                    usort($matchingApps, function($a, $b) {
+                        $aCreated = $a['created'] ?? $a['createdTime'] ?? 0;
+                        $bCreated = $b['created'] ?? $b['createdTime'] ?? 0;
+                        return $bCreated <=> $aCreated;
+                    });
+                    
+                    $foundApp = reset($matchingApps);
+                    $foundAppId = $foundApp['id'] ?? null;
+                    if ($foundAppId) {
+                        // Update local record with found btcpay_app_id
+                        $app->update(['btcpay_app_id' => $foundAppId]);
+                        \Log::info('Found and restored btcpay_app_id from BTCPay apps list', [
+                            'app_id' => $app->id,
+                            'btcpay_app_id' => $foundAppId,
+                        ]);
+                        // Continue with update using the found ID
+                        $app->refresh();
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::warning('Failed to find app in BTCPay apps list', [
+                    'app_id' => $app->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+            
+            // If still no btcpay_app_id after trying to find it, return error
+            if (!$app->btcpay_app_id) {
+                return response()->json([
+                    'message' => 'Cannot update app: BTCPay app ID is missing. Please contact support.',
+                ], 400);
+            }
         }
 
         $btcpayApp = $this->appService->updateApp(
@@ -421,9 +495,16 @@ class AppController extends Controller
             $userApiKey
         );
 
+        // CRITICAL: Preserve btcpay_app_id when updating local record
+        // Extract btcpay_app_id from BTCPay response if available, otherwise keep existing
+        $btcpayAppIdFromResponse = $btcpayApp['id'] ?? $btcpayApp['appId'] ?? $btcpayApp['app_id'] ?? null;
+        $finalBtcpayAppId = $btcpayAppIdFromResponse ?: $app->btcpay_app_id;
+        
         // Update local record with fresh data from BTCPay
+        // IMPORTANT: Always preserve btcpay_app_id - never let it be null or overwritten
         $app->update([
             'name' => $request->input('name', $app->name),
+            'btcpay_app_id' => $finalBtcpayAppId, // Explicitly preserve/update btcpay_app_id
             'config' => $btcpayApp,
         ]);
 
@@ -432,16 +513,20 @@ class AppController extends Controller
         try {
             $freshBtcpayApp = $this->appService->getApp(
                 $store->btcpay_store_id,
-                $app->btcpay_app_id,
+                $finalBtcpayAppId, // Use the preserved/updated btcpay_app_id
                 $app->app_type,
                 $userApiKey
             );
-            // Update local record again with fresh data
-            $app->update(['config' => $freshBtcpayApp]);
+            // Update local record again with fresh data, but preserve btcpay_app_id
+            $app->update([
+                'config' => $freshBtcpayApp,
+                'btcpay_app_id' => $finalBtcpayAppId, // Explicitly preserve btcpay_app_id
+            ]);
         } catch (\Exception $e) {
             // If reload fails, use the update response
             \Log::warning('Failed to reload app data after update', [
                 'app_id' => $app->id,
+                'btcpay_app_id' => $finalBtcpayAppId,
                 'error' => $e->getMessage(),
             ]);
             $freshBtcpayApp = $btcpayApp;
