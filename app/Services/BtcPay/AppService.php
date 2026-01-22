@@ -387,16 +387,17 @@ class AppService
             
             $endpoints = [];
             
-            // For Crowdfund apps, try multiple endpoints and methods
-            // BTCPay API behavior may vary - some versions support PUT, others require POST with id in body
+            // For Crowdfund apps, use generic PUT endpoint (same as PoS uses)
+            // POST /api/v1/stores/{storeId}/apps/crowdfund creates new app, not update
+            // PUT endpoints with crowdfund in path don't work (405/404)
+            // Solution: Use generic PUT endpoint like PoS does
             if ($appType && strtolower($appType) === 'crowdfund') {
-                // Try PUT endpoint first (if supported by BTCPay version)
+                // Use generic endpoint first (works for PoS, should work for Crowdfund too)
+                $endpoints[] = "/api/v1/stores/{$storeId}/apps/{$appId}";
+                // Try app-specific endpoint as fallback (if supported by BTCPay version)
                 $endpoints[] = "/api/v1/apps/crowdfund/{$appId}";
-                $endpoints[] = "/api/v1/stores/{$storeId}/apps/crowdfund/{$appId}";
-                // Fallback to POST with id in body
-                $endpoints[] = "/api/v1/stores/{$storeId}/apps/crowdfund";
             } else {
-                // For other app types, try app-specific endpoint first
+                // For other app types (PoS, etc.), try app-specific endpoint first
                 if ($appType) {
                     $appTypeLower = strtolower($appType);
                     $endpointPath = $appTypeMap[$appTypeLower] ?? $appTypeLower;
@@ -449,7 +450,8 @@ class AppService
                     ]);
                     throw new BtcPayException('Cannot update Crowdfund app: appId parameter is required. Without it, a new app would be created instead.', 400);
                 }
-                $filteredConfig['appType'] = 'Crowdfund'; // Keep as 'Crowdfund', not 'PointOfSale'
+                // CRITICAL: appType must be 'Crowdfund', not 'PointOfSale' (documentation has typo)
+                $filteredConfig['appType'] = 'Crowdfund';
             }
             
             // Map our field names to BTCPay API field names based on app type
@@ -858,7 +860,6 @@ class AppService
             }
             
             // Log what we're sending for debugging
-            $usePostForCrowdfund = ($appType && strtolower($appType) === 'crowdfund');
             $baseUrl = config('services.btcpay.base_url', env('BTCPAY_BASE_URL', 'https://pay.dvadsatjeden.org'));
             
             Log::info('BTCPay app update request', [
@@ -866,7 +867,7 @@ class AppService
                 'store_id' => $storeId,
                 'app_id' => $appId,
                 'app_type' => $appType,
-                'method' => $usePostForCrowdfund ? 'POST' : 'PUT',
+                'method' => 'PUT', // Always use PUT for updates (POST creates new apps)
                 'endpoints' => $endpoints,
                 'full_urls' => array_map(function($ep) use ($baseUrl, $storeId, $appId) {
                     return rtrim($baseUrl, '/') . str_replace(['{$storeId}', '{$appId}'], [$storeId, $appId], $ep);
@@ -876,145 +877,40 @@ class AppService
             ]);
             
             // Try endpoints in order
-            // For Crowdfund, try PUT first (if endpoint contains app ID in path), then POST as fallback
-            // For other app types, use PUT method
+            // For all app types (including Crowdfund), use PUT method
+            // POST creates new apps, so we never use it for updates
             $lastException = null;
             
             foreach ($endpoints as $endpointIndex => $endpoint) {
                 try {
-                    // For Crowdfund, determine method based on endpoint
-                    $isCrowdfundUpdate = ($appType && strtolower($appType) === 'crowdfund');
-                    // Check if endpoint contains app ID placeholder in path (indicates PUT endpoint)
-                    // PUT endpoints have format: /api/v1/apps/crowdfund/{appId} or /api/v1/stores/{storeId}/apps/crowdfund/{appId}
-                    // POST endpoints have format: /api/v1/stores/{storeId}/apps/crowdfund (no app ID in path)
-                    $shouldUsePut = $isCrowdfundUpdate && (strpos($endpoint, '{$appId}') !== false || strpos($endpoint, "/{$appId}") !== false);
+                    // For all app types (including Crowdfund), use PUT method
+                    // Replace placeholders in endpoint
+                    $endpointWithId = str_replace('{$appId}', $appId, $endpoint);
+                    $endpointWithId = str_replace('{$storeId}', $storeId, $endpointWithId);
                     
-                    if ($isCrowdfundUpdate && $shouldUsePut) {
-                        // Try PUT for Crowdfund if endpoint contains app ID in path
-                        // Replace placeholder in endpoint
-                        $endpointWithId = str_replace('{$appId}', $appId, $endpoint);
-                        $endpointWithId = str_replace('{$storeId}', $storeId, $endpointWithId);
-                        
-                        Log::info('Attempting Crowdfund update with PUT method', [
-                            'endpoint' => $endpoint,
-                            'endpoint_with_id' => $endpointWithId,
-                            'app_id_parameter' => $appId,
-                            'config_id' => $filteredConfig['id'] ?? null,
-                        ]);
-                        
-                        // Ensure id is in config for PUT requests too (some BTCPay versions might need it)
-                        if ($appId && !isset($filteredConfig['id'])) {
-                            $filteredConfig['id'] = $appId;
-                        }
-                        
-                        $response = $this->client->put($endpointWithId, $filteredConfig);
-                        Log::info('Crowdfund update with PUT succeeded', [
-                            'endpoint' => $endpointWithId,
-                            'app_id' => $appId,
-                        ]);
-                        return $response;
-                    } elseif ($usePostForCrowdfund) {
-                        // FINAL CHECK: Ensure id is always present and correct for updates
-                        // This is the last chance to catch any issues before sending to BTCPay
-                        if ($appId) {
-                            $filteredConfig['id'] = $appId; // Force correct id
-                            if (isset($filteredConfig['id']) && $filteredConfig['id'] !== $appId) {
-                                Log::error('Crowdfund update: id was incorrect in filtered config, fixed it', [
-                                    'appId_parameter' => $appId,
-                                    'filtered_config_id' => $filteredConfig['id'],
-                                ]);
-                                $filteredConfig['id'] = $appId;
-                            }
-                        }
-                        
-                        // Log the actual data being sent for debugging
-                        Log::info('Attempting Crowdfund update with POST', [
-                            'endpoint' => $endpoint,
-                            'app_id_parameter' => $appId,
-                            'config_id' => $filteredConfig['id'] ?? null,
-                            'config_dump' => json_encode($filteredConfig, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
-                            'resetEveryAmount_type' => gettype($filteredConfig['resetEveryAmount'] ?? null),
-                            'resetEveryAmount_value' => $filteredConfig['resetEveryAmount'] ?? null,
-                            'request_type' => gettype($filteredConfig['request'] ?? null),
-                            'request_value' => $filteredConfig['request'] ?? null,
-                        ]);
-                        
-                        // CRITICAL FINAL VALIDATION: if id is missing or empty, this will create a new app instead of updating
-                        if (empty($appId)) {
-                            Log::error('CRITICAL: Crowdfund update: appId parameter is missing or empty - cannot update!', [
-                                'appId_parameter' => $appId,
-                                'appId_type' => gettype($appId),
-                                'appId_empty' => empty($appId),
-                                'endpoint' => $endpoint,
-                            ]);
-                            throw new BtcPayException('Cannot update Crowdfund app: appId parameter is required and cannot be empty. Without it, a new app would be created.', 400);
-                        }
-                        
-                        // Final validation: if id is missing in config, this will create a new app instead of updating
-                        if (!isset($filteredConfig['id']) || empty($filteredConfig['id'])) {
-                            Log::error('CRITICAL: Crowdfund update: id is missing or empty in filtered config - this will create a new app!', [
-                                'appId_parameter' => $appId,
-                                'appId_type' => gettype($appId),
-                                'endpoint' => $endpoint,
-                                'filtered_config_keys' => array_keys($filteredConfig),
-                                'filtered_config_id' => $filteredConfig['id'] ?? 'NOT_SET',
-                                'filtered_config_id_type' => gettype($filteredConfig['id'] ?? null),
-                            ]);
-                            // Force set it one more time as last resort
-                            $filteredConfig['id'] = $appId;
-                            Log::warning('Forced id into filteredConfig as last resort', [
-                                'forced_id' => $filteredConfig['id'],
-                            ]);
-                        }
-                        
-                        // Verify id matches the appId parameter
-                        if ($filteredConfig['id'] !== $appId) {
-                            Log::error('CRITICAL: Crowdfund update: id mismatch - this will create a new app instead of updating!', [
-                                'appId_parameter' => $appId,
-                                'appId_parameter_type' => gettype($appId),
-                                'filtered_config_id' => $filteredConfig['id'],
-                                'filtered_config_id_type' => gettype($filteredConfig['id']),
-                                'endpoint' => $endpoint,
-                            ]);
-                            // Force correct id
-                            $filteredConfig['id'] = $appId;
-                            Log::warning('Forced correct id into filteredConfig', [
-                                'corrected_id' => $filteredConfig['id'],
-                            ]);
-                        }
-                        
-                        // Log final config before sending
-                        Log::info('CRITICAL: Sending Crowdfund update request to BTCPay', [
-                            'endpoint' => $endpoint,
-                            'appId_parameter' => $appId,
-                            'config_id' => $filteredConfig['id'] ?? 'MISSING',
-                            'config_id_matches' => ($filteredConfig['id'] ?? null) === $appId,
-                            'config_keys_count' => count($filteredConfig),
-                        ]);
-                        
-                        $response = $this->client->post($endpoint, $filteredConfig);
-                        
-                        // Verify response contains the same ID
-                        $responseId = $response['id'] ?? $response['appId'] ?? $response['app_id'] ?? null;
-                        if ($responseId && $responseId !== $appId) {
-                            Log::error('CRITICAL: BTCPay returned different ID after update - new app may have been created!', [
-                                'expected_id' => $appId,
-                                'returned_id' => $responseId,
-                            ]);
-                        }
-                        
-                        return $response;
-                    } else {
-                        return $this->client->put($endpoint, $filteredConfig);
-                    }
+                    Log::info('Attempting app update with PUT method', [
+                        'endpoint' => $endpoint,
+                        'endpoint_with_id' => $endpointWithId,
+                        'app_id' => $appId,
+                        'app_type' => $appType,
+                        'config_has_id' => isset($filteredConfig['id']),
+                        'config_appType' => $filteredConfig['appType'] ?? null,
+                    ]);
+                    
+                    $response = $this->client->put($endpointWithId, $filteredConfig);
+                    
+                    Log::info('App update with PUT succeeded', [
+                        'endpoint' => $endpointWithId,
+                        'app_id' => $appId,
+                        'app_type' => $appType,
+                    ]);
+                    
+                    return $response;
                 } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
                     $lastException = $e;
                     
-                    // Determine the method used for logging
-                    $methodUsed = $usePostForCrowdfund ? 'POST' : 'PUT';
-                    if (isset($shouldUsePut) && $shouldUsePut) {
-                        $methodUsed = 'PUT';
-                    }
+                    // Method used for logging
+                    $methodUsed = 'PUT';
                     
                     // Get status code - use getStatusCode() method, not getCode()
                     $statusCode = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : $e->getCode();
