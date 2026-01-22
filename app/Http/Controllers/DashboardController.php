@@ -77,8 +77,58 @@ class DashboardController extends Controller
             })->values();
         }
         
+        // Calculate total revenue from all invoices across all stores
+        $totalRevenue = 0;
+        if ($stores->isNotEmpty()) {
+            try {
+                if ($user->btcpay_api_key) {
+                    $invoiceService = app(\App\Services\BtcPay\InvoiceService::class);
+                    foreach ($stores as $store) {
+                        try {
+                            // Get store ID from local store's btcpay_store_id
+                            $localStore = Store::find($store['id']);
+                            if ($localStore && $localStore->btcpay_store_id) {
+                                $invoices = $invoiceService->listInvoices($user->btcpay_api_key, $localStore->btcpay_store_id);
+                                
+                                // Sum up paid invoices (status: Paid, Complete, or Settled)
+                                foreach ($invoices as $invoice) {
+                                    $status = strtolower($invoice['status'] ?? '');
+                                    if (in_array($status, ['paid', 'complete', 'settled'])) {
+                                        // Convert amount to sats if needed
+                                        $amount = floatval($invoice['amount'] ?? 0);
+                                        $currency = strtoupper($invoice['currency'] ?? 'BTC');
+                                        
+                                        if ($currency === 'BTC') {
+                                            $amount = $amount * 100000000; // Convert BTC to sats
+                                        } elseif ($currency === 'SATS') {
+                                            // Already in sats
+                                        }
+                                        
+                                        $totalRevenue += $amount;
+                                    }
+                                }
+                            }
+                        } catch (\Exception $e) {
+                            // Skip this store if invoice fetch fails
+                            Log::debug('Failed to fetch invoices for store on dashboard', [
+                                'store_id' => $store['id'] ?? null,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to calculate total revenue on dashboard', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+        
         return response()->json([
             'stores' => $stores,
+            'store_count' => $stores->count(),
+            'total_revenue' => round($totalRevenue), // Round to nearest sat
         ]);
     }
 }
