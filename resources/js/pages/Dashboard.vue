@@ -14,10 +14,13 @@
         </div>
         <div class="relative z-10">
           <p class="text-gray-400 text-sm font-medium mb-1">Active Stores</p>
-          <h3 class="text-3xl font-bold text-white">0</h3>
+          <h3 class="text-3xl font-bold text-white">{{ loading ? '...' : storeCount }}</h3>
           <div class="mt-4">
-             <router-link to="/stores/create" class="text-sm font-medium text-indigo-400 hover:text-indigo-300 flex items-center">
+             <router-link v-if="storeCount === 0" to="/stores/create" class="text-sm font-medium text-indigo-400 hover:text-indigo-300 flex items-center">
                Create Store <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+             </router-link>
+             <router-link v-else to="/stores" class="text-sm font-medium text-indigo-400 hover:text-indigo-300 flex items-center">
+               View Stores <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
              </router-link>
           </div>
         </div>
@@ -30,10 +33,13 @@
         </div>
         <div class="relative z-10">
           <p class="text-gray-400 text-sm font-medium mb-1">Total Revenue</p>
-          <h3 class="text-3xl font-bold text-white">0 <span class="text-base font-normal text-gray-500">sats</span></h3>
+          <h3 class="text-3xl font-bold text-white">{{ loading ? '...' : formatSats(totalRevenue) }} <span class="text-base font-normal text-gray-500">sats</span></h3>
           <div class="mt-4">
-             <span class="text-sm font-medium text-gray-500 flex items-center">
+             <span v-if="totalRevenue === 0" class="text-sm font-medium text-gray-500 flex items-center">
                No transactions yet
+             </span>
+             <span v-else class="text-sm font-medium text-gray-400 flex items-center">
+               All-time total
              </span>
           </div>
         </div>
@@ -60,7 +66,7 @@
     </div>
 
     <!-- Quick Actions / Placeholder -->
-    <div class="bg-gray-800 rounded-xl border border-gray-700 shadow-lg p-8 text-center">
+    <div v-if="storeCount === 0" class="bg-gray-800 rounded-xl border border-gray-700 shadow-lg p-8 text-center">
       <div class="max-w-md mx-auto">
         <div class="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
@@ -76,8 +82,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '../store/auth';
+import api from '../services/api';
 
 const authStore = useAuthStore();
 
@@ -86,5 +93,33 @@ const userName = computed(() => {
     return authStore.user.email.split('@')[0];
   }
   return 'User';
+});
+
+const loading = ref(true);
+const storeCount = ref(0);
+const totalRevenue = ref(0);
+
+async function loadDashboardData() {
+  loading.value = true;
+  try {
+    const response = await api.get('/dashboard');
+    storeCount.value = response.data.store_count || 0;
+    totalRevenue.value = response.data.total_revenue || 0;
+  } catch (error: any) {
+    console.error('Failed to load dashboard data:', error);
+    // Keep defaults (0) on error
+  } finally {
+    loading.value = false;
+  }
+}
+
+function formatSats(sats: number): string {
+  return new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: 0,
+  }).format(sats);
+}
+
+onMounted(() => {
+  loadDashboardData();
 });
 </script>

@@ -132,7 +132,7 @@
                       {{ authStore.user?.email }}
                     </span>
                   </div>
-                  <div v-if="subscriber && subscriber.periodEnd" class="flex items-center justify-between">
+                  <div v-if="isPaidPlan && subscriber && subscriber.periodEnd" class="flex items-center justify-between">
                     <span class="text-sm text-gray-400">Next charge on {{ formatDate(subscriber.periodEnd) }}</span>
                     <span class="text-sm font-medium text-white">{{ currentPlanPrice }}</span>
                   </div>
