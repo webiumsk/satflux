@@ -3,19 +3,19 @@
     <template #default="{ app, store }">
       <!-- Header -->
       <AppShowHeader
-        :title="app.name || 'Crowdfund'"
-        :subtitle="`Crowdfund - ${store.name}`"
+        :title="app.name || 'Pay Button'"
+        :subtitle="`Pay Button - ${store.name}`"
         :app-url="btcpayAppUrl"
-        open-button-text="Open Crowdfund"
-        form-id="crowdfund-form"
-        save-button-text="Save Settings"
-        saving-text="Saving..."
-        :saving="formRef?.saving"
+        open-button-text="Open Pay Button"
+        form-id="paybutton-form"
+        save-button-text="Generate Code"
+        saving-text="Generating..."
+        :saving="formRef?.generating"
         :error="formRef?.error"
         :success="formRef?.success"
       />
 
-      <CrowdfundForm
+      <PayButtonForm
         v-if="app"
         ref="formRef"
         :app="app"
@@ -43,7 +43,7 @@ import { useAppsStore } from '../../store/apps';
 import AppShowLayout from '../../components/stores/AppShowLayout.vue';
 import AppShowHeader from '../../components/stores/AppShowHeader.vue';
 import DeleteAppModal from '../../components/stores/DeleteAppModal.vue';
-import CrowdfundForm from './CrowdfundForm.vue';
+import PayButtonForm from './PayButtonForm.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -53,7 +53,7 @@ const storeId = computed(() => route.params.id as string);
 const appId = computed(() => route.params.appId as string);
 
 const layoutRef = ref<InstanceType<typeof AppShowLayout> | null>(null);
-const formRef = ref<InstanceType<typeof CrowdfundForm> | null>(null);
+const formRef = ref<InstanceType<typeof PayButtonForm> | null>(null);
 
 const showDeleteModal = ref(false);
 const deleteError = ref('');
@@ -74,7 +74,7 @@ const btcpayAppUrl = computed(() => {
   }
 
   if (!id) return '';
-  return `${baseUrl}/apps/${id}/crowdfund`;
+  return `${baseUrl}/apps/${id}/payment-button`;
 });
 
 async function handleDelete() {
@@ -94,3 +94,4 @@ async function handleDelete() {
   }
 }
 </script>
+

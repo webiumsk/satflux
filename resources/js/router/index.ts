@@ -107,6 +107,12 @@ const router = createRouter({
             meta: { requiresAuth: true },
         },
         {
+            path: '/stores/:id/pay-button',
+            name: 'stores-pay-button',
+            component: () => import('../pages/stores/PayButton.vue'),
+            meta: { requiresAuth: true },
+        },
+        {
             path: '/stores/:id/api-keys',
             name: 'stores-api-keys',
             component: () => import('../pages/stores/ApiKeys.vue'),

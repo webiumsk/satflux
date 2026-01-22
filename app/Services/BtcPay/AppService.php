@@ -167,9 +167,11 @@ class AppService
                         'response_data' => $response,
                         'location_header' => $locationHeader,
                         'status_code' => $responseObj->status(),
+                        'response_has_id' => isset($response['id']),
                     ]);
                     
-                    // If we have Location header, extract app ID from URL
+                    // CRITICAL: Always try to extract app ID from Location header first
+                    // For crowdfunds, BTCPay often returns the ID only in Location header, not in response body
                     if ($locationHeader && preg_match('#/apps/([^/]+)#', $locationHeader, $matches)) {
                         $appId = $matches[1];
                         Log::info('Extracted app ID from Location header', [
@@ -177,43 +179,66 @@ class AppService
                             'app_id' => $appId,
                             'location' => $locationHeader,
                         ]);
-                        return array_merge($response, ['id' => $appId]);
+                        // Merge Location header ID into response (overwrites if response already has id)
+                        $response['id'] = $appId;
+                        return $response;
                     }
                     
-                    // BTCPay may return empty array, but app ID might be in Location header
-                    // Or we may need to fetch apps list to find the newly created one
-                    // If response is empty, try to get app ID from Location header or fetch apps
-                    if (empty($response)) {
-                        // Try to get from headers (if BtcPayClient exposes response object)
-                        // For now, we'll fetch apps list and find the most recent one with matching name
-                        Log::info('BTCPay app creation returned empty response, fetching apps list', [
+                    // If no Location header but response has id, use it
+                    if (isset($response['id']) && !empty($response['id'])) {
+                        Log::info('Using app ID from response body', [
+                            'store_id' => $storeId,
+                            'app_id' => $response['id'],
+                        ]);
+                        return $response;
+                    }
+                    
+                    // If response doesn't have ID (even if not empty), try to fetch from apps list
+                    // This is important for crowdfunds where BTCPay might not return ID in response
+                    if (empty($response) || !isset($response['id']) || empty($response['id'])) {
+                        Log::info('BTCPay app creation response missing ID, fetching apps list', [
                             'store_id' => $storeId,
                             'app_type' => $appType,
+                            'response_empty' => empty($response),
+                            'response_has_id' => isset($response['id']),
                         ]);
                         
-                        // Wait a bit longer for app to be created and indexed
+                        // Wait a bit for app to be created and indexed
                         usleep(1000000); // 1 second
                         
                         // Fetch apps list to find the newly created app
                         $apps = $this->listApps($storeId, $userApiKey);
-                        $appName = $requestBody['name'] ?? 'New ' . $appType;
+                        $appName = $requestBody['appName'] ?? $requestBody['name'] ?? 'New ' . $appType;
                         
                         // Find app with matching name and type (most recent)
                         $matchingApps = array_filter($apps, function($app) use ($appType, $appName) {
                             $appAppType = $app['appType'] ?? $app['type'] ?? null;
-                            $nameMatches = ($app['name'] ?? '') === $appName;
+                            $appNameFromApp = $app['name'] ?? $app['appName'] ?? '';
+                            $nameMatches = $appNameFromApp === $appName;
                             $typeMatches = $appAppType === $appType || strtolower($appAppType ?? '') === strtolower($appType);
                             return $nameMatches && $typeMatches;
                         });
                         
                         if (!empty($matchingApps)) {
-                            // Get the first matching app (should be the newly created one)
+                            // Sort by created date (most recent first) to get the newly created app
+                            usort($matchingApps, function($a, $b) {
+                                $aCreated = $a['created'] ?? $a['createdTime'] ?? 0;
+                                $bCreated = $b['created'] ?? $b['createdTime'] ?? 0;
+                                return $bCreated <=> $aCreated; // Descending order
+                            });
+                            
                             $createdApp = reset($matchingApps);
-                            Log::info('Found newly created app in apps list', [
-                                'store_id' => $storeId,
-                                'app_id' => $createdApp['id'] ?? null,
-                            ]);
-                            return $createdApp;
+                            $foundAppId = $createdApp['id'] ?? null;
+                            
+                            if ($foundAppId) {
+                                Log::info('Found newly created app in apps list', [
+                                    'store_id' => $storeId,
+                                    'app_id' => $foundAppId,
+                                    'app_name' => $appName,
+                                ]);
+                                // Merge found app data with original response (if any)
+                                return array_merge($response ?? [], $createdApp);
+                            }
                         }
                         
                         Log::warning('Could not find newly created app in apps list', [

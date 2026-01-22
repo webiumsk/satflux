@@ -33,6 +33,9 @@
         </div>
         
         <div class="flex items-center gap-3">
+          <!-- Actions slot for custom buttons (e.g., Delete App) -->
+          <slot name="actions"></slot>
+          
           <a
             v-if="appUrl"
             :href="appUrl"

@@ -278,7 +278,7 @@ const success = ref('');
 
 const settingsForm = ref({
   name: '',
-  default_currency: 'USD',
+  default_currency: 'EUR',
   timezone: 'UTC',
   preferred_exchange: '',
 });
@@ -362,7 +362,7 @@ async function fetchSettings() {
     const response = await api.get(`/stores/${props.store.id}/settings`);
     settings.value = response.data.data;
     settingsForm.value.name = settings.value.name;
-    settingsForm.value.default_currency = settings.value.default_currency || 'USD';
+    settingsForm.value.default_currency = settings.value.default_currency || 'EUR';
     settingsForm.value.timezone = settings.value.timezone || 'UTC';
     settingsForm.value.preferred_exchange = settings.value.preferred_exchange || '';
     storeLogoUrl.value = settings.value.logo_url || null;

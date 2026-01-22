@@ -365,7 +365,7 @@ class StoreController extends Controller
 
     /**
      * Format store from BTCPay data merged with local Store model.
-     * Never expose btcpay_store_id to frontend.
+     * Note: btcpay_store_id is included for Pay Button generation.
      */
     protected function formatStoreFromBtcPay(array $btcpayStore, Store $localStore): array
     {
@@ -413,6 +413,9 @@ class StoreController extends Controller
             $data['preferred_exchange'] = $localStore->preferred_exchange ?? ($btcpayStore['preferredExchange'] ?? 'kraken');
         }
 
+        // Add btcpay_store_id for Pay Button generation
+        $data['btcpay_store_id'] = $localStore->btcpay_store_id;
+        
         // Add BTCPay-specific fields that are safe to expose
         if (isset($btcpayStore['website'])) {
             $data['website'] = $btcpayStore['website'];
@@ -577,7 +580,8 @@ class StoreController extends Controller
     }
 
     /**
-     * Format store for API response (never expose btcpay_store_id).
+     * Format store for API response.
+     * Note: btcpay_store_id is included for Pay Button generation.
      */
     protected function formatStore(Store $store): array
     {
@@ -587,6 +591,7 @@ class StoreController extends Controller
         return [
             'id' => $store->id,
             'name' => $store->name,
+            'btcpay_store_id' => $store->btcpay_store_id,
             'default_currency' => $store->default_currency ?? 'EUR',
             'timezone' => $store->timezone ?? 'Europe/Vienna',
             'preferred_exchange' => $store->preferred_exchange ?? 'kraken',

@@ -286,7 +286,7 @@ const error = ref('');
 
 const form = ref({
   name: '',
-  default_currency: 'USD',
+  default_currency: 'EUR',
   timezone: 'UTC',
   preferred_exchange: '',
   wallet_type: '' as 'blink' | 'aqua_boltz' | '',

@@ -1,6 +1,7 @@
 <template>
   <PointOfSaleShow v-if="appType === 'PointOfSale'" />
   <CrowdfundShow v-else-if="appType === 'Crowdfund'" />
+  <PayButtonShow v-else-if="appType === 'PaymentButton'" />
   <div v-else class="flex items-center justify-center h-full bg-gray-100">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="bg-white shadow rounded-lg p-6">
@@ -19,6 +20,7 @@ import { useAppsStore } from '../../store/apps';
 import { useStoresStore } from '../../store/stores';
 import PointOfSaleShow from './PointOfSaleShow.vue';
 import CrowdfundShow from './CrowdfundShow.vue';
+import PayButtonShow from './PayButtonShow.vue';
 
 const route = useRoute();
 const appsStore = useAppsStore();
