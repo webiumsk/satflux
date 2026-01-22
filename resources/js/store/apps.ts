@@ -5,7 +5,7 @@ import api from '../services/api';
 export interface App {
     id: string;
     name: string;
-    app_type: 'Crowdfund' | 'PointOfSale' | 'PaymentButton' | 'LightningAddress';
+    app_type: 'PointOfSale' | 'PaymentButton' | 'LightningAddress';
     config?: any;
     metadata?: any;
     btcpay_app_url?: string;
