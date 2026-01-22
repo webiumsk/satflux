@@ -387,15 +387,12 @@ class AppService
             
             $endpoints = [];
             
-            // For Crowdfund apps, use generic PUT endpoint (same as PoS uses)
-            // POST /api/v1/stores/{storeId}/apps/crowdfund creates new app, not update
-            // PUT endpoints with crowdfund in path don't work (405/404)
-            // Solution: Use generic PUT endpoint like PoS does
+            // For Crowdfund apps, BTCPay API doesn't support PUT - must use POST with id in body
+            // POST /api/v1/stores/{storeId}/apps/crowdfund with id in body should update existing app
+            // PUT endpoints return 404/405, so we can't use them
             if ($appType && strtolower($appType) === 'crowdfund') {
-                // Use generic endpoint first (works for PoS, should work for Crowdfund too)
-                $endpoints[] = "/api/v1/stores/{$storeId}/apps/{$appId}";
-                // Try app-specific endpoint as fallback (if supported by BTCPay version)
-                $endpoints[] = "/api/v1/apps/crowdfund/{$appId}";
+                // Use POST endpoint with id in body (BTCPay may update if id matches existing app)
+                $endpoints[] = "/api/v1/stores/{$storeId}/apps/crowdfund";
             } else {
                 // For other app types (PoS, etc.), try app-specific endpoint first
                 if ($appType) {
@@ -437,8 +434,11 @@ class AppService
                 // This prevents accidentally creating a new app if config contains wrong or missing id
                 if ($appId) {
                     $filteredConfig['id'] = $appId;
-                    Log::info('Setting Crowdfund id from appId parameter (this MUST be used, not from config)', [
+                    // CRITICAL: Also add storeId to body (required by BTCPay API for POST requests)
+                    $filteredConfig['storeId'] = $storeId;
+                    Log::info('Setting Crowdfund id and storeId from parameters (required for POST update)', [
                         'id' => $appId,
+                        'storeId' => $storeId,
                         'appId_parameter_type' => gettype($appId),
                         'appId_parameter_length' => strlen($appId),
                     ]);
@@ -877,8 +877,8 @@ class AppService
             ]);
             
             // Try endpoints in order
-            // For all app types (including Crowdfund), use PUT method
-            // POST creates new apps, so we never use it for updates
+            // For Crowdfund: use POST with id and storeId in body (PUT doesn't work - 404/405)
+            // For other app types: use PUT method
             $lastException = null;
             
             foreach ($endpoints as $endpointIndex => $endpoint) {
@@ -910,7 +910,8 @@ class AppService
                     $lastException = $e;
                     
                     // Method used for logging
-                    $methodUsed = 'PUT';
+                    $isCrowdfund = ($appType && strtolower($appType) === 'crowdfund');
+                    $methodUsed = $isCrowdfund ? 'POST' : 'PUT';
                     
                     // Get status code - use getStatusCode() method, not getCode()
                     $statusCode = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : $e->getCode();
