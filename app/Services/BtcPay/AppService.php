@@ -939,27 +939,71 @@ class AppService
                             'request_value' => $filteredConfig['request'] ?? null,
                         ]);
                         
-                        // Final validation: if id is missing, this will create a new app instead of updating
-                        if (!isset($filteredConfig['id']) || !$filteredConfig['id']) {
-                            Log::error('Crowdfund update: id is missing in filtered config - this will create a new app!', [
+                        // CRITICAL FINAL VALIDATION: if id is missing or empty, this will create a new app instead of updating
+                        if (empty($appId)) {
+                            Log::error('CRITICAL: Crowdfund update: appId parameter is missing or empty - cannot update!', [
                                 'appId_parameter' => $appId,
+                                'appId_type' => gettype($appId),
+                                'appId_empty' => empty($appId),
+                                'endpoint' => $endpoint,
+                            ]);
+                            throw new BtcPayException('Cannot update Crowdfund app: appId parameter is required and cannot be empty. Without it, a new app would be created.', 400);
+                        }
+                        
+                        // Final validation: if id is missing in config, this will create a new app instead of updating
+                        if (!isset($filteredConfig['id']) || empty($filteredConfig['id'])) {
+                            Log::error('CRITICAL: Crowdfund update: id is missing or empty in filtered config - this will create a new app!', [
+                                'appId_parameter' => $appId,
+                                'appId_type' => gettype($appId),
                                 'endpoint' => $endpoint,
                                 'filtered_config_keys' => array_keys($filteredConfig),
+                                'filtered_config_id' => $filteredConfig['id'] ?? 'NOT_SET',
+                                'filtered_config_id_type' => gettype($filteredConfig['id'] ?? null),
                             ]);
-                            throw new BtcPayException('Cannot update Crowdfund app: id is missing. This would create a new app instead of updating.', 400);
+                            // Force set it one more time as last resort
+                            $filteredConfig['id'] = $appId;
+                            Log::warning('Forced id into filteredConfig as last resort', [
+                                'forced_id' => $filteredConfig['id'],
+                            ]);
                         }
                         
                         // Verify id matches the appId parameter
                         if ($filteredConfig['id'] !== $appId) {
-                            Log::error('Crowdfund update: id mismatch - this will create a new app instead of updating!', [
+                            Log::error('CRITICAL: Crowdfund update: id mismatch - this will create a new app instead of updating!', [
                                 'appId_parameter' => $appId,
+                                'appId_parameter_type' => gettype($appId),
                                 'filtered_config_id' => $filteredConfig['id'],
+                                'filtered_config_id_type' => gettype($filteredConfig['id']),
                                 'endpoint' => $endpoint,
                             ]);
-                            throw new BtcPayException("Cannot update Crowdfund app: id mismatch. Expected {$appId}, got {$filteredConfig['id']}. This would create a new app.", 400);
+                            // Force correct id
+                            $filteredConfig['id'] = $appId;
+                            Log::warning('Forced correct id into filteredConfig', [
+                                'corrected_id' => $filteredConfig['id'],
+                            ]);
                         }
                         
-                        return $this->client->post($endpoint, $filteredConfig);
+                        // Log final config before sending
+                        Log::info('CRITICAL: Sending Crowdfund update request to BTCPay', [
+                            'endpoint' => $endpoint,
+                            'appId_parameter' => $appId,
+                            'config_id' => $filteredConfig['id'] ?? 'MISSING',
+                            'config_id_matches' => ($filteredConfig['id'] ?? null) === $appId,
+                            'config_keys_count' => count($filteredConfig),
+                        ]);
+                        
+                        $response = $this->client->post($endpoint, $filteredConfig);
+                        
+                        // Verify response contains the same ID
+                        $responseId = $response['id'] ?? $response['appId'] ?? $response['app_id'] ?? null;
+                        if ($responseId && $responseId !== $appId) {
+                            Log::error('CRITICAL: BTCPay returned different ID after update - new app may have been created!', [
+                                'expected_id' => $appId,
+                                'returned_id' => $responseId,
+                            ]);
+                        }
+                        
+                        return $response;
                     } else {
                         return $this->client->put($endpoint, $filteredConfig);
                     }
