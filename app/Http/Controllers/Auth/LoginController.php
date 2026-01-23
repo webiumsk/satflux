@@ -32,7 +32,7 @@ class LoginController extends Controller
         }
 
         return response()->json([
-            'message' => 'Login successful',
+            'message' => __('messages.login_successful'),
             'user' => Auth::user(),
         ]);
     }
@@ -47,7 +47,7 @@ class LoginController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return response()->json(['message' => 'Logout successful']);
+        return response()->json(['message' => __('messages.logout_successful')]);
     }
 }
 

@@ -493,7 +493,7 @@ class StoreController extends Controller
             
             return response()->json([
                 'data' => $this->formatStore($store),
-                'message' => 'Store created successfully',
+                'message' => __('messages.store_created'),
             ], 201);
         });
     }
@@ -613,7 +613,7 @@ class StoreController extends Controller
 
         // Ensure user owns the store
         if ($store->user_id !== $user->id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('messages.unauthorized')], 403);
         }
 
         $btcpayStoreId = $store->btcpay_store_id;
@@ -658,7 +658,7 @@ class StoreController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Store deleted successfully',
+                'message' => __('messages.store_deleted'),
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to delete store', [
@@ -682,7 +682,7 @@ class StoreController extends Controller
 
         // Ensure user owns the store
         if ($store->user_id !== $user->id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('messages.unauthorized')], 403);
         }
 
         $request->validate([
@@ -700,7 +700,7 @@ class StoreController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Logo uploaded successfully',
+                'message' => __('messages.logo_uploaded'),
                 'data' => $result,
             ]);
         } catch (\Exception $e) {
@@ -711,7 +711,7 @@ class StoreController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
-            return response()->json(['message' => 'Failed to upload logo: ' . $e->getMessage()], 500);
+            return response()->json(['message' => __('messages.logo_upload_failed', ['error' => $e->getMessage()])], 500);
         }
     }
 
@@ -724,7 +724,7 @@ class StoreController extends Controller
 
         // Ensure user owns the store
         if ($store->user_id !== $user->id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json(['message' => __('messages.unauthorized')], 403);
         }
 
         try {
@@ -737,7 +737,7 @@ class StoreController extends Controller
                 'user_id' => $user->id,
             ]);
 
-            return response()->json(['message' => 'Logo deleted successfully']);
+            return response()->json(['message' => __('messages.logo_deleted')]);
         } catch (\Exception $e) {
             Log::error('Failed to delete store logo', [
                 'store_id' => $store->id,
@@ -746,7 +746,7 @@ class StoreController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
-            return response()->json(['message' => 'Failed to delete logo: ' . $e->getMessage()], 500);
+            return response()->json(['message' => __('messages.logo_delete_failed', ['error' => $e->getMessage()])], 500);
         }
     }
 

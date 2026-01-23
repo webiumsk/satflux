@@ -90,7 +90,7 @@ class RegisterController extends Controller
             // User will be logged in after email verification
 
             return response()->json([
-                'message' => 'Registration successful. Please check your email to verify your account.',
+                'message' => __('messages.registration_successful'),
                 'user' => $user->fresh(),
             ], 201);
         });
