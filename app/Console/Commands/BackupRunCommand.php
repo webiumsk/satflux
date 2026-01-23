@@ -59,7 +59,41 @@ class BackupRunCommand extends Command
             $env['BACKUP_ENV'] = 'false';
         }
 
-        // Run backup script
+        // Check if we're running in Docker container
+        // If so, we need to execute backup.sh on the host system
+        $isDocker = file_exists('/.dockerenv') || getenv('DOCKER_CONTAINER') === 'true';
+        
+        if ($isDocker) {
+            // Running in Docker - backup.sh needs docker compose which is on host
+            // We need to execute backup.sh on the host system, not in container
+            // The simplest solution: tell user to run it on host, or use a scheduled task
+            $this->warn('Running in Docker container.');
+            $this->info('Backup script requires docker compose which is only available on host system.');
+            $this->newLine();
+            $this->info('Please run backup on host system using one of these methods:');
+            $this->newLine();
+            
+            $command = './backup.sh';
+            if ($this->option('redis')) {
+                $command = 'BACKUP_REDIS=true ./backup.sh';
+            }
+            if ($this->option('no-files')) {
+                $command .= ($this->option('redis') ? ' ' : '') . 'BACKUP_FILES=false';
+            }
+            if ($this->option('no-env')) {
+                $command .= ' BACKUP_ENV=false';
+            }
+            
+            $this->line('  1. Direct: ' . $command);
+            $this->line('  2. Via cron: Add to crontab');
+            $this->line('  3. Via Laravel scheduler: Already configured for 2:30 AM daily');
+            $this->newLine();
+            $this->info('Note: Laravel scheduler will automatically run backups when scheduled.');
+            
+            return Command::FAILURE;
+        }
+
+        // Running on host system - execute backup.sh directly
         $process = new Process(
             [$backupScript],
             base_path(),
