@@ -31,7 +31,7 @@ class AccountController extends Controller
         $request->user()->update($validated);
 
         return response()->json([
-            'message' => 'Profile updated successfully',
+            'message' => __('messages.profile_updated'),
             'user' => $request->user()->fresh(),
         ]);
     }
@@ -50,7 +50,7 @@ class AccountController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
-        return response()->json(['message' => 'Password updated successfully']);
+        return response()->json(['message' => __('messages.password_updated')]);
     }
 }
 

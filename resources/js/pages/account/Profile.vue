@@ -3,8 +3,8 @@
       <div class="space-y-6">
         <!-- Header -->
         <div>
-          <h3 class="text-2xl font-bold text-white">Account Settings</h3>
-          <p class="mt-1 text-sm text-gray-400">Manage your profile, password, and subscription plan.</p>
+          <h3 class="text-2xl font-bold text-white">{{ t('account.title') }}</h3>
+          <p class="mt-1 text-sm text-gray-400">{{ t('account.manage_profile') }}</p>
         </div>
 
         <!-- Profile Information -->
@@ -12,12 +12,12 @@
           <div class="px-6 py-8 sm:p-10">
             <h4 class="text-lg font-semibold text-white mb-6 flex items-center">
                <svg class="w-5 h-5 mr-2 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-               Profile Information
+               {{ t('account.profile_information') }}
             </h4>
             <form @submit.prevent="handleUpdateProfile">
               <div class="grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-2">
                 <div>
-                  <label for="name" class="block text-sm font-medium text-gray-300">Name</label>
+                  <label for="name" class="block text-sm font-medium text-gray-300">{{ t('account.name') }}</label>
                   <div class="mt-1">
                     <input
                       id="name"
@@ -29,7 +29,7 @@
                   </div>
                 </div>
                 <div>
-                  <label for="email" class="block text-sm font-medium text-gray-300">Email</label>
+                  <label for="email" class="block text-sm font-medium text-gray-300">{{ t('account.email') }}</label>
                   <div class="mt-1">
                     <input
                       id="email"
@@ -47,7 +47,7 @@
                   :disabled="profileLoading"
                   class="inline-flex justify-center py-2.5 px-6 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20"
                 >
-                  {{ profileLoading ? 'Saving...' : 'Save Profile' }}
+                  {{ profileLoading ? t('auth.saving') : t('account.update_profile') }}
                 </button>
               </div>
             </form>
@@ -209,12 +209,12 @@
           <div class="px-6 py-8 sm:p-10">
             <h4 class="text-lg font-semibold text-white mb-6 flex items-center">
               <svg class="w-5 h-5 mr-2 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-              Change Password
+              {{ t('account.password_settings') }}
             </h4>
             <form @submit.prevent="handleUpdatePassword">
               <div class="space-y-6">
                 <div>
-                  <label for="current_password" class="block text-sm font-medium text-gray-300">Current Password</label>
+                  <label for="current_password" class="block text-sm font-medium text-gray-300">{{ t('account.current_password') }}</label>
                   <div class="mt-1">
                     <input
                       id="current_password"
@@ -226,7 +226,7 @@
                   </div>
                 </div>
                 <div>
-                  <label for="password" class="block text-sm font-medium text-gray-300">New Password</label>
+                  <label for="password" class="block text-sm font-medium text-gray-300">{{ t('account.new_password') }}</label>
                   <div class="mt-1">
                     <input
                       id="password"
@@ -238,7 +238,7 @@
                   </div>
                 </div>
                 <div>
-                  <label for="password_confirmation" class="block text-sm font-medium text-gray-300">Confirm New Password</label>
+                  <label for="password_confirmation" class="block text-sm font-medium text-gray-300">{{ t('account.confirm_new_password') }}</label>
                   <div class="mt-1">
                     <input
                       id="password_confirmation"
@@ -256,7 +256,7 @@
                   :disabled="passwordLoading"
                   class="inline-flex justify-center py-2.5 px-6 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20"
                 >
-                  {{ passwordLoading ? 'Saving...' : 'Change Password' }}
+                  {{ passwordLoading ? t('auth.saving') : t('account.update_password') }}
                 </button>
               </div>
             </form>

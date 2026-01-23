@@ -49,6 +49,16 @@ api.interceptors.response.use(
     }
 );
 
+// Locale management
+export const setLocale = async (locale: string): Promise<void> => {
+    try {
+        await api.post('/locale', { locale });
+    } catch (error) {
+        console.error('Failed to set locale:', error);
+        throw error;
+    }
+};
+
 export default api;
 
 

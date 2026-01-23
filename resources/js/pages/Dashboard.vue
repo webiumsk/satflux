@@ -1,8 +1,8 @@
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="mb-8">
-      <h1 class="text-3xl font-bold text-white">Dashboard</h1>
-      <p class="text-gray-400 mt-1">Welcome back, {{ userName }}</p>
+      <h1 class="text-3xl font-bold text-white">{{ t('dashboard.title') }}</h1>
+      <p class="text-gray-400 mt-1">{{ t('dashboard.welcome_back', { name: userName }) }}</p>
     </div>
     
     <!-- Dashboard Stats / Placeholder -->
@@ -13,14 +13,14 @@
            <svg class="w-24 h-24 text-indigo-500" fill="currentColor" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
         </div>
         <div class="relative z-10">
-          <p class="text-gray-400 text-sm font-medium mb-1">Active Stores</p>
+          <p class="text-gray-400 text-sm font-medium mb-1">{{ t('dashboard.active_stores') }}</p>
           <h3 class="text-3xl font-bold text-white">{{ loading ? '...' : storeCount }}</h3>
           <div class="mt-4">
              <router-link v-if="storeCount === 0" to="/stores/create" class="text-sm font-medium text-indigo-400 hover:text-indigo-300 flex items-center">
-               Create Store <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+               {{ t('dashboard.create_store') }} <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
              </router-link>
              <router-link v-else to="/stores" class="text-sm font-medium text-indigo-400 hover:text-indigo-300 flex items-center">
-               View Stores <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+               {{ t('dashboard.view_stores') }} <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
              </router-link>
           </div>
         </div>
@@ -32,14 +32,14 @@
            <svg class="w-24 h-24 text-green-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
         </div>
         <div class="relative z-10">
-          <p class="text-gray-400 text-sm font-medium mb-1">Total Revenue</p>
+          <p class="text-gray-400 text-sm font-medium mb-1">{{ t('dashboard.total_revenue') }}</p>
           <h3 class="text-3xl font-bold text-white">{{ loading ? '...' : formatSats(totalRevenue) }} <span class="text-base font-normal text-gray-500">sats</span></h3>
           <div class="mt-4">
              <span v-if="totalRevenue === 0" class="text-sm font-medium text-gray-500 flex items-center">
-               No transactions yet
+               {{ t('dashboard.no_transactions_yet') }}
              </span>
              <span v-else class="text-sm font-medium text-gray-400 flex items-center">
-               All-time total
+               {{ t('dashboard.all_time_total') }}
              </span>
           </div>
         </div>
@@ -51,14 +51,14 @@
            <svg class="w-24 h-24 text-purple-500" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
         </div>
         <div class="relative z-10">
-          <p class="text-gray-400 text-sm font-medium mb-1">System Status</p>
+          <p class="text-gray-400 text-sm font-medium mb-1">{{ t('dashboard.system_status') }}</p>
           <h3 class="text-3xl font-bold text-white flex items-center">
              <span class="flex h-3 w-3 rounded-full bg-green-500 mr-3"></span>
-             Online
+             {{ t('dashboard.online') }}
           </h3>
           <div class="mt-4">
              <router-link to="/support" class="text-sm font-medium text-purple-400 hover:text-purple-300 flex items-center">
-               Help Center <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+               {{ t('dashboard.help_center') }} <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
              </router-link>
           </div>
         </div>
@@ -71,10 +71,10 @@
         <div class="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
         </div>
-        <h3 class="text-xl font-bold text-white mb-2">Get Started</h3>
-        <p class="text-gray-400 mb-6">Create a store to start accepting Bitcoin payments.</p>
+        <h3 class="text-xl font-bold text-white mb-2">{{ t('dashboard.get_started') }}</h3>
+        <p class="text-gray-400 mb-6">{{ t('dashboard.get_started_description') }}</p>
         <router-link to="/stores/create" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors shadow-lg shadow-indigo-600/20">
-           Create New Store
+           {{ t('dashboard.create_new_store') }}
         </router-link>
       </div>
     </div>
@@ -83,8 +83,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../store/auth';
 import api from '../services/api';
+
+const { t } = useI18n();
 
 const authStore = useAuthStore();
 

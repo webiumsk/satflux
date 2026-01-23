@@ -20,6 +20,7 @@ use App\Http\Controllers\EshopIntegrationController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\LocaleController;
 use App\Http\Middleware\AuditLog;
 use App\Http\Middleware\EnsureAdminRole;
 use App\Http\Middleware\EnsureStoreOwnership;
@@ -30,6 +31,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/health', function () {
     return response()->json(['status' => 'ok']);
 });
+
+// Locale endpoints (public - no auth required)
+Route::get('/locale', [LocaleController::class, 'index']);
+Route::post('/locale', [LocaleController::class, 'setLocale']);
 
 // Version endpoint (public - no auth required)
 Route::get('/version', function () {

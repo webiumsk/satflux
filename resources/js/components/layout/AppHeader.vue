@@ -23,7 +23,7 @@
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               "
             >
-              Dashboard
+              {{ t('header.dashboard') }}
             </router-link>
             <router-link
               to="/stores"
@@ -34,7 +34,7 @@
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               "
             >
-              Stores
+              {{ t('header.stores') }}
             </router-link>
             <router-link
               v-if="authStore.user?.role === 'support' || authStore.user?.role === 'admin'"
@@ -64,7 +64,7 @@
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               "
             >
-              Admin
+              {{ t('header.admin') }}
             </router-link>
           </nav>
         </div>
@@ -81,16 +81,19 @@
 
         <!-- Right side: Mobile menu button (mobile) / User button (desktop) -->
         <div class="flex items-center ml-auto md:ml-0 gap-4">
+           <!-- Language Switcher -->
+           <LanguageSwitcher />
+           
            <!-- Links visible on desktop right side -->
            <a href="https://docs.btcpayserver.org/" target="_blank" class="hidden md:block text-gray-500 hover:text-gray-300 text-sm font-medium transition-colors">
-             Docs
+             {{ t('header.docs') }}
            </a>
            
           <!-- Mobile menu button (right side, mobile only) -->
           <button
             @click="showMobileMenu = !showMobileMenu"
             class="md:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            aria-label="Open menu"
+            :aria-label="t('header.open_menu')"
           >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path v-if="!showMobileMenu" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -127,7 +130,7 @@
                 class="absolute right-0 mt-2 w-56 rounded-xl shadow-2xl bg-gray-800 border border-gray-700 ring-1 ring-black ring-opacity-5 z-50 overflow-hidden"
               >
                 <div class="px-4 py-3 border-b border-gray-700 bg-gray-800/50">
-                   <p class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Signed in as</p>
+                   <p class="text-xs text-gray-400 uppercase tracking-wider font-semibold">{{ t('header.signed_in_as') }}</p>
                    <p class="text-sm font-medium text-white truncate mt-1">
                     {{ authStore.user?.email }}
                    </p>
@@ -141,7 +144,7 @@
                      <svg class="mr-3 h-5 w-5 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                      </svg>
-                    Profile Settings
+                    {{ t('header.profile_settings') }}
                   </router-link>
                   <a href="#" class="group flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">
                       <svg class="mr-3 h-5 w-5 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -157,7 +160,7 @@
                     <svg class="mr-3 h-5 w-5 text-red-500/70 group-hover:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
-                    Sign out
+                    {{ t('auth.sign_out') }}
                   </button>
                 </div>
               </div>
@@ -182,11 +185,11 @@
       <div class="flex-1 overflow-y-auto">
         <!-- Header -->
         <div class="flex items-center justify-between p-4 border-b border-gray-800">
-          <h2 class="text-lg font-bold text-white">Menu</h2>
+          <h2 class="text-lg font-bold text-white">{{ t('header.menu') }}</h2>
           <button
             @click="showMobileMenu = false"
             class="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            aria-label="Close menu"
+            :aria-label="t('header.close_menu')"
           >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -209,7 +212,7 @@
             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
-            Dashboard
+            {{ t('header.dashboard') }}
           </router-link>
           <router-link
             to="/stores"
@@ -224,7 +227,7 @@
             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
-            Stores
+            {{ t('header.stores') }}
           </router-link>
           <router-link
             v-if="authStore.user?.role === 'support' || authStore.user?.role === 'admin'"
@@ -262,7 +265,7 @@
             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
             </svg>
-            Admin
+            {{ t('header.admin') }}
           </router-link>
         </nav>
       </div>
@@ -270,7 +273,7 @@
       <!-- User Menu at bottom -->
       <div class="border-t border-gray-800 p-4 bg-gray-900/50">
         <div class="px-4 py-3 mb-2">
-          <p class="text-xs text-gray-500 uppercase font-semibold tracking-wider">Signed in as</p>
+          <p class="text-xs text-gray-500 uppercase font-semibold tracking-wider">{{ t('header.signed_in_as') }}</p>
           <p class="text-sm font-medium text-white truncate">
             {{ authStore.user?.email }}
           </p>
@@ -283,7 +286,7 @@
           <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
-          Profile
+          {{ t('header.profile_settings') }}
         </router-link>
         <button
           @click="handleLogout"
@@ -292,7 +295,7 @@
           <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
-          Sign out
+          {{ t('auth.sign_out') }}
         </button>
       </div>
     </aside>
@@ -302,8 +305,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../../store/auth';
+import LanguageSwitcher from '../LanguageSwitcher.vue';
 import api from '../../services/api';
+
+const { t } = useI18n();
 
 const router = useRouter();
 const authStore = useAuthStore();

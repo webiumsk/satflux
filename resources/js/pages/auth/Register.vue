@@ -12,17 +12,17 @@
           <span class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500 tracking-tight">UZOL21</span>
         </router-link>
         <h2 class="mt-6 text-center text-3xl font-extrabold text-white">
-          Create account
+          {{ t('auth.create_account') }}
         </h2>
         <p class="mt-2 text-center text-sm text-gray-400">
-          Join the future of payments
+          {{ t('auth.join_future_payments') }}
         </p>
       </div>
 
       <div class="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-8 shadow-xl">
         <form class="space-y-6" @submit.prevent="handleRegister">
           <div>
-            <label for="email" class="block text-sm font-medium text-gray-300">Email address</label>
+            <label for="email" class="block text-sm font-medium text-gray-300">{{ t('auth.email') }}</label>
             <div class="mt-1">
               <input
                 id="email"
@@ -32,13 +32,13 @@
                 autocomplete="email"
                 required
                 class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
-                placeholder="you@example.com"
+                :placeholder="t('auth.email_placeholder')"
               />
             </div>
           </div>
 
           <div>
-            <label for="password" class="block text-sm font-medium text-gray-300">Password</label>
+            <label for="password" class="block text-sm font-medium text-gray-300">{{ t('auth.password') }}</label>
             <div class="mt-1">
               <input
                 id="password"
@@ -54,7 +54,7 @@
           </div>
 
           <div>
-            <label for="password_confirmation" class="block text-sm font-medium text-gray-300">Confirm Password</label>
+            <label for="password_confirmation" class="block text-sm font-medium text-gray-300">{{ t('auth.confirm_password') }}</label>
             <div class="mt-1">
               <input
                 id="password_confirmation"
@@ -83,7 +83,7 @@
               :disabled="loading"
               class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20"
             >
-              {{ loading ? "Creating account..." : "Create account" }}
+              {{ loading ? t('auth.creating_account') : t('auth.create_account') }}
             </button>
             
             <div v-if="lnurlAuthEnabled">
@@ -92,7 +92,7 @@
                   <div class="w-full border-t border-gray-600"></div>
                 </div>
                 <div class="relative flex justify-center text-sm">
-                  <span class="px-2 bg-gray-800 text-gray-400">Or continue with</span>
+                  <span class="px-2 bg-gray-800 text-gray-400">{{ t('auth.or_continue_with') }}</span>
                 </div>
               </div>
               
@@ -103,18 +103,18 @@
                 class="group relative w-full flex justify-center items-center py-3 px-4 border border-gray-600 text-sm font-bold rounded-xl text-white bg-gray-700/50 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all"
               >
                  <svg class="w-5 h-5 mr-2 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                {{ lnurlLoading ? "Generating..." : "Lightning Login" }}
+                {{ lnurlLoading ? t('auth.generating') : t('auth.lightning_login') }}
               </button>
             </div>
           </div>
 
           <div class="text-center text-sm">
-            <span class="text-gray-400">Already have an account?</span>
+            <span class="text-gray-400">{{ t('auth.already_have_account') }}</span>
             <router-link
               to="/login"
               class="font-medium text-indigo-400 hover:text-indigo-300 ml-1 transition-colors"
             >
-              Sign in
+              {{ t('auth.sign_in') }}
             </router-link>
           </div>
         </form>
@@ -143,7 +143,7 @@
                 <!-- QR Code Step -->
                 <div v-if="!showEmailStep">
                   <h3 class="text-lg leading-6 font-bold text-white mb-4">
-                    Scan with Lightning Wallet
+                    {{ t('auth.scan_with_lightning_wallet') }}
                   </h3>
                   <div class="flex justify-center mb-6">
                      <div class="p-4 bg-white rounded-xl">
@@ -154,11 +154,10 @@
                      </div>
                   </div>
                   <p class="text-sm text-gray-400 mb-4 text-center">
-                    Scan this QR code with a Lightning wallet that supports
-                    LNURL-auth (e.g., Breez, Phoenix, Alby).
+                    {{ t('auth.scan_qr_code') }}
                   </p>
                   <div v-if="lnurlPolling" class="text-sm text-indigo-400 text-center animate-pulse">
-                    Waiting for authentication...
+                    {{ t('auth.waiting_for_authentication') }}
                   </div>
                   <div v-if="lnurlError" class="text-sm text-red-400 mb-4 text-center">
                     {{ lnurlError }}
@@ -168,10 +167,10 @@
                 <!-- Email Input Step -->
                 <div v-else>
                   <h3 class="text-lg leading-6 font-bold text-white mb-4">
-                    Complete Registration
+                    {{ t('auth.complete_registration') }}
                   </h3>
                   <p class="text-sm text-gray-400 mb-6">
-                    Please provide your email address to complete registration.
+                    {{ t('auth.provide_email_to_complete') }}
                   </p>
                   <form @submit.prevent="handleCompleteRegistration">
                     <div class="mb-6">
@@ -179,7 +178,7 @@
                         for="lnurl-email"
                         class="block text-sm font-medium text-gray-300 mb-2"
                       >
-                        Email address
+                        {{ t('auth.email') }}
                       </label>
                       <input
                         id="lnurl-email"
@@ -188,7 +187,7 @@
                         required
                         autocomplete="email"
                         class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
-                        placeholder="your@email.com"
+                        :placeholder="t('auth.email_placeholder')"
                       />
                       <div v-if="emailError" class="mt-2 text-sm text-red-400">
                         {{ emailError }}
@@ -200,14 +199,14 @@
                         @click="closeLnurlModal"
                         class="inline-flex justify-center rounded-lg border border-gray-600 px-4 py-2 bg-gray-700 text-base font-medium text-white hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm transition-colors"
                       >
-                        Cancel
+                        {{ t('common.cancel') }}
                       </button>
                       <button
                         type="submit"
                         :disabled="emailLoading"
                         class="inline-flex justify-center rounded-lg border border-transparent px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 sm:text-sm transition-colors"
                       >
-                        {{ emailLoading ? "Saving..." : "Continue" }}
+                        {{ emailLoading ? t('auth.saving') : t('common.continue') }}
                       </button>
                     </div>
                   </form>
@@ -224,7 +223,7 @@
               @click="closeLnurlModal"
               class="w-full inline-flex justify-center rounded-lg border border-gray-600 px-4 py-2 bg-gray-700 text-base font-medium text-white hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors"
             >
-              Cancel
+              {{ t('common.cancel') }}
             </button>
           </div>
         </div>
@@ -236,10 +235,13 @@
 <script setup lang="ts">
 import { ref, computed, onUnmounted, nextTick } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
 import api from "../../services/api";
 import QRCode from "qrcode";
 import { bech32 } from "bech32";
+
+const { t } = useI18n();
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -285,11 +287,10 @@ async function handleRegister() {
       form.value.password,
       form.value.password_confirmation
     );
-    success.value =
-      "Registration successful! Please check your email to verify your account.";
+    success.value = t('auth.registration_successful');
   } catch (err: any) {
-    error.value =
-      err.response?.data?.message || "Registration failed. Please try again.";
+      error.value =
+      err.response?.data?.message || t('auth.registration_failed');
     if (err.response?.data?.errors) {
       const errors = Object.values(err.response.data.errors).flat();
       error.value = errors.join(", ");
@@ -329,7 +330,7 @@ async function handleLnurlAuth() {
     startPolling(k1);
   } catch (err: any) {
     lnurlError.value =
-      err.response?.data?.error || "Failed to generate challenge";
+      err.response?.data?.error || t('auth.failed_to_generate_challenge');
     lnurlLoading.value = false;
   }
 }
@@ -365,7 +366,7 @@ function startPolling(k1: string) {
         lnurlError.value = "Challenge expired. Please try again.";
         stopPolling();
       } else if (status === "error") {
-        lnurlError.value = "An error occurred. Please try again.";
+        lnurlError.value = t('auth.error_occurred');
         stopPolling();
       }
     } catch (err: any) {
@@ -376,7 +377,7 @@ function startPolling(k1: string) {
 
 async function handleCompleteRegistration() {
   if (!emailForm.value.user_id) {
-    emailError.value = "Invalid session. Please try again.";
+    emailError.value = t('auth.invalid_session');
     return;
   }
 
@@ -390,16 +391,14 @@ async function handleCompleteRegistration() {
     });
 
     closeLnurlModal();
-    alert(
-      "Registration successful! Please check your email to verify your account."
-    );
+    alert(t('auth.registration_successful'));
   } catch (err: any) {
     if (err.response?.data?.errors?.email) {
       emailError.value = err.response.data.errors.email[0];
     } else {
       emailError.value =
         err.response?.data?.message ||
-        "Failed to complete registration. Please try again.";
+        t('auth.failed_to_complete_registration');
     }
   } finally {
     emailLoading.value = false;
