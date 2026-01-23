@@ -15,6 +15,7 @@ Tento dokument popisuje, ako nastaviť SSH Deploy Key pre automatické deployova
 ### 1.1 Prihlásiť sa na server
 
 Najprv sa prihlási na produkčný server:
+
 ```bash
 ssh uzivatel@tvoj-server.sk
 # alebo ak máš priamy prístup k serveru
@@ -23,23 +24,26 @@ ssh uzivatel@tvoj-server.sk
 ### 1.2 Rozhodnúť sa, ako používateľ spúšťa deploy
 
 **Otázka:** Ako používateľ beží deploy script na serveri?
+
 - Ak ako **root** (cez `sudo`): vytvor kľúč pre root
 - Ak ako **iný používateľ** (napr. `peterhorvath`): vytvor kľúč pre toho používateľa
 
 ### 1.3 Vygenerovať SSH kľúč
 
 Na serveri spustite (ako používateľ, ktorý bude spúšťať deploy):
+
 ```bash
 # Pre root používateľa:
-sudo ssh-keygen -t ed25519 -C "uzol21-deploy@server" -f ~/.ssh/github_deploy_key -N ""
+sudo ssh-keygen -t ed25519 -C "satflux.io-deploy@server" -f ~/.ssh/github_deploy_key -N ""
 
 # Alebo pre iného používateľa (napr. peterhorvath):
-ssh-keygen -t ed25519 -C "uzol21-deploy@server" -f ~/.ssh/github_deploy_key -N ""
+ssh-keygen -t ed25519 -C "satflux.io-deploy@server" -f ~/.ssh/github_deploy_key -N ""
 ```
 
 ### 1.4 Zobraziť verejný kľúč
 
 **Na serveri** zobraz verejný kľúč:
+
 ```bash
 # Pre root:
 sudo cat ~/.ssh/github_deploy_key.pub
@@ -93,13 +97,14 @@ ROOTSCRIPT
 2. Prejdite na **Settings** → **Deploy keys**
 3. Kliknite na **Add deploy key**
 4. Vyplňte:
-   - **Title**: `uzol21-production-server` (alebo ľubovoľný názov)
+   - **Title**: `satflux.io-production-server` (alebo ľubovoľný názov)
    - **Key**: Vložte skopírovaný verejný kľúč
    - ✅ **Allow write access** - **ZAŠKRKNITE** ak chcete pushovať zmeny z servera
      - Len čítanie je bezpečnejšie, ale ak chcete automaticky pushnúť deploy commity, musíte povoliť write access
 5. Kliknite na **Add key**
 
 **Poznámka:** Ak ste už vytvorili deploy key bez write access a chcete pridať push možnosti:
+
 1. Choďte na Settings → Deploy keys
 2. Nájdite váš kľúč a kliknite na **Edit**
 3. Zaškrtnite **Allow write access**
@@ -108,6 +113,7 @@ ROOTSCRIPT
 ### 2.2 Overenie
 
 Na serveri spustite (ako používateľ, ktorý má kľúč):
+
 ```bash
 # Pre root:
 ssh -T git@github.com
@@ -117,6 +123,7 @@ ssh -T git@github.com
 ```
 
 Mali by ste vidieť:
+
 ```
 Hi webiumsk/D21Panel! You've successfully authenticated...
 ```
@@ -136,6 +143,7 @@ Ak funguje bez chýb, SSH kľúč je správne nastavený! 🎉
 ## Krok 4: Použitie v deploy.sh
 
 `deploy.sh` automaticky používa SSH, ak je remote URL nastavený na SSH formát:
+
 ```bash
 git remote -v
 # Malo by ukázať:
@@ -144,6 +152,7 @@ git remote -v
 ```
 
 Ak stále vidíte HTTPS URL, zmeňte ho:
+
 ```bash
 git remote set-url origin git@github.com:webiumsk/D21Panel.git
 ```
@@ -151,11 +160,13 @@ git remote set-url origin git@github.com:webiumsk/D21Panel.git
 ## Riešenie problémov
 
 ### Problém: "Host key verification failed"
+
 ```bash
 ssh-keyscan github.com >> ~/.ssh/known_hosts
 ```
 
 ### Problém: "Permission denied (publickey)"
+
 - Skontrolujte, či je kľúč pridaný v GitHub → Settings → Deploy keys
 - Overte, či máte správne oprávnenia na `~/.ssh/github_deploy_key`:
   ```bash
@@ -163,6 +174,7 @@ ssh-keyscan github.com >> ~/.ssh/known_hosts
   ```
 
 ### Problém: "Could not read Username for 'https://github.com'"
+
 - Zmeňte remote URL na SSH formát (pozri Krok 3)
 
 ## Alternatíva: Personal Access Token (PAT)
@@ -178,4 +190,3 @@ Ak preferujete PAT namiesto SSH:
    ```
 
 **Poznámka:** PAT je menej bezpečný (prístup k všetkým repozitárom), odporúčame SSH Deploy Key.
-

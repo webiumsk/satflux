@@ -1,7 +1,7 @@
 services:
   nginx:
     image: nginx:alpine
-    container_name: uzol21_nginx
+    container_name: satflux.io_nginx
     ports:
       - "8080:80"
     volumes:
@@ -11,13 +11,13 @@ services:
     depends_on:
       - php
     networks:
-      - uzol21
+      - satflux.io
 
   php:
     build:
       context: ./docker/php
       dockerfile: Dockerfile
-    container_name: uzol21_php
+    container_name: satflux.io_php
     volumes:
       - .:/var/www
       - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini
@@ -26,50 +26,50 @@ services:
       - postgres
       - redis
     networks:
-      - uzol21
+      - satflux.io
     environment:
       - PHP_OPCACHE_ENABLE=1
 
   postgres:
     image: postgres:16-alpine
-    container_name: uzol21_postgres
+    container_name: satflux.io_postgres
     environment:
-      POSTGRES_DB: ${DB_DATABASE:-uzol21}
-      POSTGRES_USER: ${DB_USERNAME:-uzol21}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-uzol21}
+      POSTGRES_DB: ${DB_DATABASE:-satflux.io}
+      POSTGRES_USER: ${DB_USERNAME:-satflux.io}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-satflux.io}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     networks:
-      - uzol21
+      - satflux.io
 
   redis:
     image: redis:7-alpine
-    container_name: uzol21_redis
+    container_name: satflux.io_redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
-      - uzol21
+      - satflux.io
       
   mailpit:
     image: axllent/mailpit
-    container_name: uzol21_mailpit
+    container_name: satflux.io_mailpit
     ports:
       - "1025:1025"  # SMTP server
       - "8025:8025"  # Web UI
     networks:
-      - uzol21
+      - satflux.io
 
   adminer:
     image: adminer
-    container_name: uzol21_adminer
+    container_name: satflux.io_adminer
     ports:
       - "8081:8080"
     networks:
-      - uzol21
+      - satflux.io
     depends_on:
       - postgres
 
@@ -78,7 +78,7 @@ volumes:
   redis_data:
 
 networks:
-  uzol21:
+  satflux.io:
     driver: bridge
 
 

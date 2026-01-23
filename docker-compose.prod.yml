@@ -1,7 +1,7 @@
 services:
   nginx:
     image: nginx:alpine
-    container_name: uzol21_nginx_prod
+    container_name: satflux.io_nginx_prod
     volumes:
       - ./docker/nginx/prod.conf:/etc/nginx/conf.d/default.conf:ro
       - ./public:/var/www/public:ro
@@ -10,16 +10,16 @@ services:
       php:
         condition: service_healthy
     networks:
-      - uzol21
+      - satflux.io
       - passbolt_default
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.uzol21-https.entrypoints=websecure"
-      - "traefik.http.routers.uzol21-https.rule=Host(`uzol.dvadsatjeden.org`)"
-      - "traefik.http.routers.uzol21-https.tls=true"
-      - "traefik.http.routers.uzol21-https.tls.certresolver=letsencrypt"
-      - "traefik.http.services.uzol21.loadbalancer.server.port=80"
+      - "traefik.http.routers.satflux.io-https.entrypoints=websecure"
+      - "traefik.http.routers.satflux.io-https.rule=Host(`satflux.io`)"
+      - "traefik.http.routers.satflux.io-https.tls=true"
+      - "traefik.http.routers.satflux.io-https.tls.certresolver=letsencrypt"
+      - "traefik.http.services.satflux.io.loadbalancer.server.port=80"
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost/health || curl -f http://localhost/health || exit 1"]
       interval: 30s
@@ -31,7 +31,7 @@ services:
     build:
       context: ./docker/php
       dockerfile: Dockerfile
-    container_name: uzol21_php_prod
+    container_name: satflux.io_php_prod
     volumes:
       - .:/var/www:rw
       - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
@@ -42,7 +42,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - uzol21
+      - satflux.io
     restart: unless-stopped
     env_file:
       - .env.production
@@ -57,7 +57,7 @@ services:
 
   postgres:
     image: postgres:16-alpine
-    container_name: uzol21_postgres_prod
+    container_name: satflux.io_postgres_prod
     env_file:
       - .env.production
     environment:
@@ -68,7 +68,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - uzol21
+      - satflux.io
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
@@ -79,7 +79,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: uzol21_redis_prod
+    container_name: satflux.io_redis_prod
     env_file:
       - .env.production
     command: >
@@ -93,7 +93,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - uzol21
+      - satflux.io
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ${REDIS_PASSWORD:+-a \"$REDIS_PASSWORD\"} ping | grep -q PONG"]
@@ -109,8 +109,8 @@ volumes:
     driver: local
 
 networks:
-  uzol21:
+  satflux.io:
     driver: bridge
-    name: uzol21_prod
+    name: satflux.io_prod
   passbolt_default:
     external: true

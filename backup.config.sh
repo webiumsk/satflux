@@ -1,7 +1,7 @@
 # backup.config.sh
 COMPOSE_FILE="docker-compose.prod.yml"
-POSTGRES_CONTAINER="uzol21_postgres_prod"
-REDIS_CONTAINER="uzol21_redis_prod"
+POSTGRES_CONTAINER="satflux.io_postgres_prod"
+REDIS_CONTAINER="satflux.io_redis_prod"
 BACKUP_DIR="./backups"
 RETENTION_DAYS=7
 RETENTION_WEEKS=4
@@ -13,4 +13,4 @@ BACKUP_ENV=true
 
 # Vzdialené úložisko - AWS S3
 REMOTE_STORAGE_TYPE="s3"
-REMOTE_STORAGE_PATH="s3://uzol21/backups"
+REMOTE_STORAGE_PATH="s3://satflux.io/backups"

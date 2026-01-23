@@ -1,4 +1,4 @@
-# UZOL21 - BTCPay Server Control Panel
+# satflux.io - BTCPay Server Control Panel
 
 A production-ready multi-tenant control panel for managing BTCPay Server stores via Greenfield API.
 
@@ -18,6 +18,7 @@ A production-ready multi-tenant control panel for managing BTCPay Server stores 
 1. **Clone the repository**
 
 2. **Copy environment file**:
+
    ```bash
    cp .env.example .env
    ```
@@ -26,10 +27,11 @@ A production-ready multi-tenant control panel for managing BTCPay Server stores 
    - Database credentials
    - BTCPay Server API configuration (see BTCPay API Key Permissions below)
    - Session and Sanctum settings:
+
      ```
      # Sanctum SPA authentication (for localhost development)
      SANCTUM_STATEFUL_DOMAINS=localhost,localhost:8080,127.0.0.1,127.0.0.1:8080
-     
+
      # Session configuration for localhost (HTTP, not HTTPS)
      SESSION_DOMAIN=
      SESSION_SECURE_COOKIE=false
@@ -37,46 +39,54 @@ A production-ready multi-tenant control panel for managing BTCPay Server stores 
      ```
 
 4. **Start Docker containers**:
+
    ```bash
    docker-compose up -d
    ```
 
 5. **Install PHP dependencies**:
+
    ```bash
    docker-compose exec php composer install
    ```
 
 6. **Generate application key**:
+
    ```bash
    docker-compose exec php php artisan key:generate
    ```
 
 7. **Run migrations**:
+
    ```bash
    docker-compose exec php php artisan migrate
    ```
 
 8. **Install Node dependencies**:
+
    ```bash
    npm install
    ```
 
 9. **Build frontend assets** (development):
+
    ```bash
    npm run dev
    ```
 
    Or build for production:
+
    ```bash
    npm run build
    ```
 
 10. **Clear configuration cache** (if you modify `.env` or config files):
-   ```bash
-   docker-compose exec php php artisan optimize:clear
-   ```
-   
-   This is especially important for local troubleshooting when changing session or Sanctum settings.
+
+```bash
+docker-compose exec php php artisan optimize:clear
+```
+
+This is especially important for local troubleshooting when changing session or Sanctum settings.
 
 ## Development
 
@@ -90,22 +100,25 @@ A production-ready multi-tenant control panel for managing BTCPay Server stores 
 Pre detailný návod na nasadenie aplikácie na produkčný server pozri [DEPLOYMENT.md](DEPLOYMENT.md).
 
 Aplikácia je nakonfigurovaná na beh za Cloudflare proxy s:
+
 - TrustProxies middleware pre proxy headers
 - Secure session cookies
 - Sanctum SPA cookie authentication
 - Rate limiting na auth endpoints
 
 Kľúčové environment variables pre produkciu:
-- `APP_URL=https://uzol.dvadsatjeden.org`
-- `SESSION_DOMAIN=uzol.dvadsatjeden.org`
+
+- `APP_URL=https://satflux.io`
+- `SESSION_DOMAIN=satflux.io`
 - `SESSION_SECURE_COOKIE=true`
 - `SESSION_SAME_SITE=lax`
-- `SANCTUM_STATEFUL_DOMAINS=uzol.dvadsatjeden.org`
-- `LNURL_AUTH_DOMAIN=https://uzol.dvadsatjeden.org`
+- `SANCTUM_STATEFUL_DOMAINS=satflux.io`
+- `LNURL_AUTH_DOMAIN=https://satflux.io`
 
 ## BTCPay API Key Permissions
 
 The server-level API key (`BTCPAY_API_KEY`) should have the following permissions:
+
 - **Store Management**: Create stores, read/store update (safe fields only)
 - **Invoice Management**: List and read invoices
 - **Webhook Access**: Receive webhook events (if webhooks are configured)
@@ -132,12 +145,14 @@ The API key is stored server-side only and all store access is enforced at the a
 After store creation, merchants complete a dynamic checklist based on their chosen wallet type:
 
 ### Blink Checklist:
+
 1. Connect Blink wallet in BTCPay Store → Wallet settings
 2. Confirm Lightning payments enabled
 3. Test invoice payment (link to test invoice)
 4. Optional: Set payout/withdrawal policy in Blink
 
 ### Aqua (Boltz) Checklist:
+
 1. Open store in BTCPay
 2. Enable Boltz plugin for the store
 3. Connect Aqua wallet via Boltz
@@ -151,10 +166,12 @@ The checklist is informational only and does not validate wallet state automatic
 The system provides two CSV export formats:
 
 ### Standard CSV Format
+
 - Columns: invoiceId, createdTime, status, amount, currency, paidAmount, paymentMethod, buyerEmail, orderId, checkoutLink
 - Suitable for general invoice management
 
 ### Accounting-Friendly CSV Format
+
 - Columns: invoice_id, issue_date, settlement_date, gross_amount, currency, payment_method, status, external_reference
 - Snake_case column names
 - Date formatting (YYYY-MM-DD)
@@ -186,11 +203,13 @@ Classic email/password authentication always works regardless of LNURL-auth stat
 ## Testing
 
 Run tests:
+
 ```bash
 docker-compose exec php php artisan test
 ```
 
 Key test suites:
+
 - Authentication flows
 - Store creation (uses Http::fake() for BTCPay)
 - Authorization (users cannot access other users' stores)

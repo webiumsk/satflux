@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# UZOL21 Restore Script
+# satflux.io Restore Script
 # This script restores backups created by backup.sh
 
 set -e  # Exit on any error
@@ -14,13 +14,13 @@ NC='\033[0m' # No Color
 
 # Configuration
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
-POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-uzol21_postgres_prod}"
-REDIS_CONTAINER="${REDIS_CONTAINER:-uzol21_redis_prod}"
+POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux.io_postgres_prod}"
+REDIS_CONTAINER="${REDIS_CONTAINER:-satflux.io_redis_prod}"
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 
 # Get database credentials from environment
-DB_NAME="${DB_DATABASE:-uzol21}"
-DB_USER="${DB_USERNAME:-uzol21}"
+DB_NAME="${DB_DATABASE:-satflux.io}"
+DB_USER="${DB_USERNAME:-satflux.io}"
 
 # Detect docker compose command
 if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
@@ -79,7 +79,7 @@ list_backups() {
     while IFS= read -r metadata_file; do
         if [ -f "$metadata_file" ]; then
             count=$((count + 1))
-            timestamp=$(basename "$metadata_file" | sed 's/uzol21_backup_\(.*\)\.json/\1/')
+            timestamp=$(basename "$metadata_file" | sed 's/satflux.io_backup_\(.*\)\.json/\1/')
             created_at=$(grep -o '"created_at": "[^"]*"' "$metadata_file" | cut -d'"' -f4 || echo "unknown")
             components=$(grep -o '"components": \[[^]]*\]' "$metadata_file" | sed 's/"components": \[\(.*\)\]/\1/' || echo "unknown")
             
@@ -90,7 +90,7 @@ list_backups() {
             
             backups+=("$metadata_file")
         fi
-    done < <(find "$BACKUP_DIR/metadata" -name "uzol21_backup_*.json" -type f | sort -r)
+    done < <(find "$BACKUP_DIR/metadata" -name "satflux.io_backup_*.json" -type f | sort -r)
     
     if [ $count -eq 0 ]; then
         log_error "No backups found in $BACKUP_DIR/metadata"
@@ -340,7 +340,7 @@ restore_redis() {
 
 # Main restore process
 main() {
-    echo -e "${GREEN}=== UZOL21 Restore ===${NC}"
+    echo -e "${GREEN}=== satflux.io Restore ===${NC}"
     echo ""
     
     # Check for dry-run mode

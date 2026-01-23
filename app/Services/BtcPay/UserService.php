@@ -159,7 +159,7 @@ class UserService
      * @return array Created API key data (contains 'apiKey' field with the actual key)
      * @throws \App\Services\BtcPay\Exceptions\BtcPayException
      */
-    public function createApiKey(string $userId, array $permissions = [], array $specificStores = [], string $label = 'UZOL21 API Key'): array
+    public function createApiKey(string $userId, array $permissions = [], array $specificStores = [], string $label = 'satflux.io API Key'): array
     {
         try {
             // Default permissions if none provided
@@ -349,7 +349,7 @@ class UserService
                 $response = \Illuminate\Support\Facades\Http::baseUrl($baseUrl)
                     ->withHeaders([
                         'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                        'User-Agent' => 'BTCPay-UZOL21/1.0',
+                        'User-Agent' => 'BTCPay-satflux.io/1.0',
                     ])
                     ->timeout(30)
                     ->get($invitationPath);
@@ -403,10 +403,10 @@ class UserService
                 foreach ($possibleEndpoints as $endpoint) {
                     try {
                         $response = $this->client->get($endpoint);
-                        
+
                         // Extract user ID from response
                         $userId = $response['id'] ?? $response['userId'] ?? $response['user']['id'] ?? null;
-                        
+
                         if ($userId) {
                             \Illuminate\Support\Facades\Log::info('Retrieved admin BTCPay user ID', [
                                 'user_id' => $userId,

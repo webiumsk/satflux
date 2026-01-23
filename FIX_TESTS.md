@@ -1,17 +1,20 @@
 # Riešenie problémov s testami
 
 ## Problém 1: PHP verzia ✅ VYRIEŠENÉ
+
 - **Chyba:** Composer vyžaduje PHP >= 8.3.0, ale máte 8.1.2
 - **Riešenie:** Aktualizovať PHP na 8.3 (pozri UPGRADE_PHP.md)
 
 ## Problém 2: Unit testy ✅ VYRIEŠENÉ
+
 - **Chyba:** `WalletConnectionValidatorTest` zlyhával kvôli nesprávnemu formátu connection stringu
-- **Riešenie:** 
+- **Riešenie:**
   - Opravený test aby používal správny formát: `type=blink;server=...;api-key=...;wallet-id=...`
   - Opravený `validate()` aby vracal správny formát s `type` a `error` kľúčmi
   - Opravený typ z `aqua_boltz` na `aqua_descriptor`
 
 ## Problém 3: Feature testy - SQLite driver
+
 - **Chyba:** `could not find driver (Connection: sqlite)`
 - **Riešenie:** Nainštalujte SQLite extension pre PHP:
 
@@ -27,6 +30,7 @@ php -m | grep sqlite
 ```
 
 ## Problém 4: Feature testy - Databáza
+
 - **Chyba:** Testy sa pokúšajú pripojiť k PostgreSQL, ale databáza nie je dostupná
 - **Riešenie:** PHPUnit je už nakonfigurovaný na SQLite in-memory databázu v `phpunit.xml`:
   ```xml
@@ -35,11 +39,13 @@ php -m | grep sqlite
   ```
 
 ## Problém 5: Chýbajúce migrácie
+
 - **Riešenie:** TestCase automaticky spúšťa migrácie pomocou `RefreshDatabase` trait
 
 ## Postup opravy
 
 1. **Aktualizujte PHP na 8.3:**
+
    ```bash
    sudo add-apt-repository ppa:ondrej/php -y
    sudo apt update
@@ -48,6 +54,7 @@ php -m | grep sqlite
    ```
 
 2. **Nainštalujte SQLite extension:**
+
    ```bash
    sudo apt install php8.3-sqlite3 -y
    ```
@@ -62,26 +69,28 @@ php -m | grep sqlite
 Ak chcete použiť PostgreSQL namiesto SQLite (napr. kvôli špecifickým PostgreSQL funkciám):
 
 1. **Zmeňte phpunit.xml:**
+
    ```xml
    <env name="DB_CONNECTION" value="pgsql"/>
    <env name="DB_HOST" value="127.0.0.1"/>
    <env name="DB_PORT" value="5432"/>
-   <env name="DB_DATABASE" value="uzol21_testing"/>
-   <env name="DB_USERNAME" value="uzol21"/>
+   <env name="DB_DATABASE" value="satflux.io_testing"/>
+   <env name="DB_USERNAME" value="satflux.io"/>
    <env name="DB_PASSWORD" value="password"/>
    ```
 
 2. **Vytvorte testovaciu databázu:**
    ```bash
    sudo -u postgres psql
-   CREATE DATABASE uzol21_testing;
-   GRANT ALL PRIVILEGES ON DATABASE uzol21_testing TO uzol21;
+   CREATE DATABASE satflux.io_testing;
+   GRANT ALL PRIVILEGES ON DATABASE satflux.io_testing TO satflux.io;
    \q
    ```
 
 ## Verifikácia
 
 Po oprave by ste mali vidieť:
+
 ```bash
 $ php artisan test
 
@@ -101,4 +110,3 @@ PASS  Tests\Feature\AuthTest
 
 Tests: XX passed
 ```
-

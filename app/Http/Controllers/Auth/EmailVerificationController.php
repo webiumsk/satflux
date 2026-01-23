@@ -141,10 +141,10 @@ class EmailVerificationController extends Controller
         // Get query parameters for signature validation
         // Password is now stored in cache, not in URL query params
         $queryParams = $request->query();
-        
+
         // Build query string for signature validation
         $queryStringForValidation = http_build_query($queryParams);
-        
+
         // Create a proper request with correct URL for validation (without password)
         $validationRequest = Request::create($correctUrl . '?' . $queryStringForValidation, 'GET');
 
@@ -244,7 +244,7 @@ class EmailVerificationController extends Controller
                         // In this case, we need to accept the invitation to activate the user
                         if (!empty($btcpayUser['invitationUrl'] ?? null)) {
                             Log::info('Created new BTCPay user but invitation URL present, attempting to accept invitation', $logData);
-                            
+
                             // Try to accept invitation programmatically
                             $invitationAccepted = $this->userService->acceptInvitation($btcpayUser['invitationUrl']);
                             if ($invitationAccepted) {
@@ -289,7 +289,7 @@ class EmailVerificationController extends Controller
                                 $user->btcpay_user_id,
                                 [], // Empty array will trigger default permissions in UserService
                                 [], // Allow access to all user's stores (empty = no restriction)
-                                'UZOL21 API Key - ' . $user->email
+                                'satflux.io API Key - ' . $user->email
                             );
 
                             $apiKey = $apiKeyData['apiKey'] ?? null;
@@ -327,7 +327,7 @@ class EmailVerificationController extends Controller
                     ]);
 
                     // Continue even if BTCPay user creation fails
-                    // User can still use UZOL21, BTCPay user can be created later
+                    // User can still use satflux.io, BTCPay user can be created later
                 }
             }
 

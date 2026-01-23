@@ -15,7 +15,7 @@ class StoreChecklistService
 
     /**
      * Get all checklist item definitions.
-     * Note: All configuration should be done via UZOL21 UI, not BTCPay UI.
+     * Note: All configuration should be done via satflux.io UI, not BTCPay UI.
      * Links to BTCPay UI are removed as merchants should not access BTCPay directly.
      */
     public static function getAllChecklistItems(): array
@@ -25,7 +25,7 @@ class StoreChecklistService
                 'connect_wallet' => [
                     'key' => 'connect_wallet',
                     'description' => 'Connect Blink wallet via Wallet Connection settings',
-                    'link' => null, // No direct BTCPay UI links - configure via UZOL21
+                    'link' => null, // No direct BTCPay UI links - configure via satflux.io
                     'order' => 1,
                 ],
                 'enable_lightning' => [

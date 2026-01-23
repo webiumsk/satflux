@@ -34,7 +34,7 @@ if [ -r /home/peterhorvath/.ssh/github_deploy_key ]; then
 else
     echo "⚠ Warning: Cannot access private key at /home/peterhorvath/.ssh/github_deploy_key"
     echo "You may need to generate a new key for root:"
-    echo "  ssh-keygen -t ed25519 -C 'uzol21-deploy@server' -f /root/.ssh/github_deploy_key -N ''"
+    echo "  ssh-keygen -t ed25519 -C 'satflux.io-deploy@server' -f /root/.ssh/github_deploy_key -N ''"
     echo "Then add the NEW public key to GitHub:"
     echo "  cat /root/.ssh/github_deploy_key.pub"
 fi
