@@ -13,3 +13,12 @@ Schedule::command('subscriptions:check-statuses')
     ->dailyAt('02:00')
     ->withoutOverlapping()
     ->runInBackground();
+
+// Run daily backups at 2:30 AM (30 minutes after subscription check)
+Schedule::command('backup:run')
+    ->dailyAt('02:30')
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('Scheduled backup failed');
+    });
