@@ -174,10 +174,8 @@ DB_BACKUP_FILE="$BACKUP_DIR/database/${BACKUP_PREFIX}.sql"
 DB_BACKUP_COMPRESSED="${DB_BACKUP_FILE}.gz"
 
 # Use service name instead of container name for docker compose exec
+# Service name is always "postgres" in both compose files
 POSTGRES_SERVICE="postgres"
-if [ "$COMPOSE_FILE" = "docker-compose.prod.yml" ]; then
-    POSTGRES_SERVICE="postgres"
-fi
 
 $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" exec -T "$POSTGRES_SERVICE" pg_dump -U "$DB_USER" -d "$DB_NAME" > "$DB_BACKUP_FILE"
 
@@ -272,20 +270,23 @@ if [ "$BACKUP_REDIS" = "true" ]; then
             REDIS_AUTH="-a \"$REDIS_PASSWORD\""
         fi
         
+        # Use service name "redis" for docker compose exec (not container name)
+        REDIS_SERVICE="redis"
+        
         # Create Redis dump using SAVE command
         if [ -n "$REDIS_PASSWORD" ] && [ "$REDIS_PASSWORD" != "null" ]; then
-            $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" exec -T "$REDIS_CONTAINER" redis-cli -a "$REDIS_PASSWORD" SAVE > /dev/null 2>&1 || {
+            $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" exec -T "$REDIS_SERVICE" redis-cli -a "$REDIS_PASSWORD" SAVE > /dev/null 2>&1 || {
                 log_error "Failed to create Redis dump"
                 exit 1
             }
         else
-            $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" exec -T "$REDIS_CONTAINER" redis-cli SAVE > /dev/null 2>&1 || {
+            $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" exec -T "$REDIS_SERVICE" redis-cli SAVE > /dev/null 2>&1 || {
                 log_error "Failed to create Redis dump"
                 exit 1
             }
         fi
         
-        # Copy RDB file from container
+        # Copy RDB file from container (use container name for cp command)
         # Redis stores RDB in /data/dump.rdb by default
         $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" cp "$REDIS_CONTAINER:/data/dump.rdb" "$REDIS_BACKUP_FILE" 2>/dev/null || {
             log_error "Failed to copy Redis dump file"
