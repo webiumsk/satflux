@@ -148,8 +148,8 @@ else
 fi
 
 # Check if postgres container is running
-# Try both possible container names if default doesn't work
-if ! $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" ps 2>/dev/null | grep -q "$POSTGRES_CONTAINER.*Up"; then
+# Use docker ps for accurate container name detection (not docker compose ps which shows service names)
+if ! docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^${POSTGRES_CONTAINER}$"; then
     # Try alternative container name (dev vs prod)
     if [ "$POSTGRES_CONTAINER" = "uzol21_postgres_prod" ]; then
         POSTGRES_CONTAINER="uzol21_postgres"
@@ -160,9 +160,10 @@ if ! $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" ps 2>/dev/null | grep -q "$POSTGRES_
     fi
     
     # Check again with alternative name
-    if ! $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" ps 2>/dev/null | grep -q "$POSTGRES_CONTAINER.*Up"; then
+    if ! docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^${POSTGRES_CONTAINER}$"; then
         log_error "PostgreSQL container is not running!"
-        log_error "Tried: $POSTGRES_CONTAINER with $COMPOSE_FILE"
+        log_error "Tried: $POSTGRES_CONTAINER"
+        log_error "Available containers: $(docker ps --format '{{.Names}}' | grep postgres | tr '\n' ' ')"
         exit 1
     fi
 fi
@@ -259,7 +260,8 @@ if [ "$BACKUP_REDIS" = "true" ]; then
     echo -e "${YELLOW}[3/4] Creating Redis backup...${NC}"
     
     # Check if redis container is running
-    if $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" ps 2>/dev/null | grep -q "$REDIS_CONTAINER.*Up"; then
+    # Use docker ps for accurate container name detection
+    if docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^${REDIS_CONTAINER}$"; then
         REDIS_BACKUP_FILE="$BACKUP_DIR/redis/${BACKUP_PREFIX}.rdb"
         REDIS_BACKUP_COMPRESSED="${REDIS_BACKUP_FILE}.gz"
         
