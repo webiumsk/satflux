@@ -332,12 +332,22 @@ if [ -f "$REDIS_BACKUP_FILE" ]; then
 fi
 
 # Create metadata JSON
+# Build components array without jq (bash alternative)
+COMPONENTS_JSON="["
+for i in "${!COMPONENTS[@]}"; do
+    if [ $i -gt 0 ]; then
+        COMPONENTS_JSON+=", "
+    fi
+    COMPONENTS_JSON+="\"${COMPONENTS[$i]}\""
+done
+COMPONENTS_JSON+="]"
+
 cat > "$METADATA_FILE" <<EOF
 {
   "timestamp": "$TIMESTAMP",
   "backup_prefix": "$BACKUP_PREFIX",
   "created_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-  "components": $(echo "${COMPONENTS[@]}" | jq -R -s -c 'split(" ")'),
+  "components": $COMPONENTS_JSON,
   "database": {
     "file": "$(basename $DB_BACKUP_FILE)",
     "size": "$DB_SIZE",
@@ -376,10 +386,28 @@ if [ -n "$REMOTE_STORAGE_TYPE" ]; then
     case "$REMOTE_STORAGE_TYPE" in
         s3)
             if command -v aws >/dev/null 2>&1; then
-                aws s3 cp "$DB_BACKUP_FILE" "s3://${REMOTE_STORAGE_PATH}/database/" || log_error "S3 upload failed for database"
-                [ -f "$FILES_BACKUP_FILE" ] && aws s3 cp "$FILES_BACKUP_FILE" "s3://${REMOTE_STORAGE_PATH}/files/" || log_error "S3 upload failed for files"
-                [ -f "$REDIS_BACKUP_FILE" ] && aws s3 cp "$REDIS_BACKUP_FILE" "s3://${REMOTE_STORAGE_PATH}/redis/" || log_error "S3 upload failed for redis"
-                aws s3 cp "$METADATA_FILE" "s3://${REMOTE_STORAGE_PATH}/metadata/" || log_error "S3 upload failed for metadata"
+                # Remove s3:// prefix if present and extract bucket and path
+                S3_PATH="${REMOTE_STORAGE_PATH#s3://}"
+                S3_BUCKET=$(echo "$S3_PATH" | cut -d'/' -f1)
+                S3_PREFIX=$(echo "$S3_PATH" | cut -d'/' -f2-)
+                
+                # Build full S3 paths
+                if [ -n "$S3_PREFIX" ]; then
+                    S3_DB_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/database/$(basename $DB_BACKUP_FILE)"
+                    S3_FILES_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/files/$(basename $FILES_BACKUP_FILE)"
+                    S3_REDIS_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/redis/$(basename $REDIS_BACKUP_FILE)"
+                    S3_META_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/metadata/$(basename $METADATA_FILE)"
+                else
+                    S3_DB_PATH="s3://${S3_BUCKET}/database/$(basename $DB_BACKUP_FILE)"
+                    S3_FILES_PATH="s3://${S3_BUCKET}/files/$(basename $FILES_BACKUP_FILE)"
+                    S3_REDIS_PATH="s3://${S3_BUCKET}/redis/$(basename $REDIS_BACKUP_FILE)"
+                    S3_META_PATH="s3://${S3_BUCKET}/metadata/$(basename $METADATA_FILE)"
+                fi
+                
+                aws s3 cp "$DB_BACKUP_FILE" "$S3_DB_PATH" || log_error "S3 upload failed for database"
+                [ -f "$FILES_BACKUP_FILE" ] && aws s3 cp "$FILES_BACKUP_FILE" "$S3_FILES_PATH" || log_error "S3 upload failed for files"
+                [ -f "$REDIS_BACKUP_FILE" ] && aws s3 cp "$REDIS_BACKUP_FILE" "$S3_REDIS_PATH" || log_error "S3 upload failed for redis"
+                aws s3 cp "$METADATA_FILE" "$S3_META_PATH" || log_error "S3 upload failed for metadata"
                 echo -e "${GREEN}✓ Remote upload completed${NC}"
             else
                 log_error "AWS CLI not found. Install it to use S3 storage."
