@@ -493,12 +493,16 @@ async function handleSubmit() {
     data.min = form.value.min && form.value.min.trim() ? form.value.min.trim() : null;
     data.max = form.value.max && form.value.max.trim() ? form.value.max.trim() : null;
     
-    // Parse invoiceMetadata JSON string
+    // Parse invoiceMetadata JSON string - only include if provided and not empty
     if (form.value.invoiceMetadata && form.value.invoiceMetadata.trim()) {
       try {
         const parsed = JSON.parse(form.value.invoiceMetadata.trim());
         if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-          data.invoiceMetadata = parsed;
+          // Only include if the object has properties
+          if (Object.keys(parsed).length > 0) {
+            data.invoiceMetadata = parsed;
+          }
+          // If empty object, don't include it in the request
         } else {
           error.value = 'Invoice Metadata must be a valid JSON object (not an array or primitive value)';
           saving.value = false;
@@ -509,10 +513,8 @@ async function handleSubmit() {
         saving.value = false;
         return;
       }
-    } else {
-      // Send empty object if no metadata provided
-      data.invoiceMetadata = {};
     }
+    // If no metadata provided, don't include it in the request
 
     await api.post(`/stores/${storeId}/lightning-addresses/${form.value.username}`, data);
 
