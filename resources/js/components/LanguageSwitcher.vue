@@ -93,19 +93,25 @@ async function changeLocale(localeCode: SupportedLocale) {
   }
 
   try {
+    // Update localStorage first (immediate UI update)
+    localStorage.setItem('locale', localeCode);
+    
+    // Update frontend locale immediately
+    await setI18nLocale(localeCode);
+    
     // Update backend session
     await setApiLocale(localeCode);
     
-    // Update frontend locale
-    await setI18nLocale(localeCode);
-    
     closeDropdown();
     
-    // Reload page to ensure all components use new locale
-    // This is simpler than reactive updates for all components
-    window.location.reload();
+    // Small delay to ensure session is saved, then reload
+    // This ensures backend middleware will use the correct locale
+    setTimeout(() => {
+      window.location.reload();
+    }, 200);
   } catch (error) {
     console.error('Failed to change locale:', error);
+    // Even if backend fails, keep the frontend change
   }
 }
 

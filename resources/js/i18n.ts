@@ -1,5 +1,6 @@
 import { createI18n } from 'vue-i18n';
 import en from './locales/en.json';
+import api from './services/api';
 
 // Supported locales
 export const supportedLocales = ['en', 'cz', 'de', 'es', 'fr', 'hu', 'pl', 'sk'] as const;
@@ -15,6 +16,51 @@ function getLocale(): SupportedLocale {
         return stored as SupportedLocale;
     }
     return defaultLocale;
+}
+
+// Function to initialize locale from backend (syncs backend session with localStorage)
+export async function initLocaleFromBackend(): Promise<void> {
+    try {
+        const localStorageLocale = getLocale();
+        
+        // First, ensure backend session matches localStorage (if localStorage has a value)
+        if (localStorageLocale && localStorageLocale !== defaultLocale) {
+            // Sync backend session with localStorage
+            try {
+                await api.post('/locale', { locale: localStorageLocale });
+            } catch (error) {
+                // If sync fails, continue with localStorage value
+                console.warn('Failed to sync locale to backend:', error);
+            }
+        }
+        
+        // Then check backend and use it only if localStorage is not set
+        const response = await api.get('/locale');
+        const backendLocale = response.data.current;
+        
+        if (backendLocale && supportedLocales.includes(backendLocale as SupportedLocale)) {
+            const locale = backendLocale as SupportedLocale;
+            
+            // Only use backend locale if localStorage doesn't have a preference
+            if (!localStorage.getItem('locale')) {
+                // No localStorage preference, use backend
+                await setLocale(locale);
+                localStorage.setItem('locale', locale);
+            } else {
+                // localStorage has preference, ensure locale is loaded
+                if (!i18n.global.availableLocales.includes(localStorageLocale)) {
+                    await setLocale(localStorageLocale);
+                }
+            }
+        }
+    } catch (error) {
+        console.warn('Failed to fetch locale from backend, using localStorage:', error);
+        // Fallback to localStorage if backend request fails
+        const locale = getLocale();
+        if (!i18n.global.availableLocales.includes(locale)) {
+            await setLocale(locale);
+        }
+    }
 }
 
 // Create i18n instance
