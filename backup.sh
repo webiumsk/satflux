@@ -19,14 +19,14 @@ fi
 
 # Configuration - auto-detect which compose file is being used
 if [ -z "$COMPOSE_FILE" ]; then
-    # Check which compose file is actually being used
-    # First check for prod (more common in production)
-    if docker compose -f docker-compose.prod.yml ps 2>/dev/null | grep -q "uzol21_postgres_prod"; then
+    # Check which containers are actually running (use docker ps for accurate detection)
+    # First check for prod containers (priority in production)
+    if docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^uzol21_postgres_prod$"; then
         # Prod environment is running
         COMPOSE_FILE="docker-compose.prod.yml"
         POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-uzol21_postgres_prod}"
         REDIS_CONTAINER="${REDIS_CONTAINER:-uzol21_redis_prod}"
-    elif docker compose ps 2>/dev/null | grep -q "uzol21_postgres[^_]"; then
+    elif docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^uzol21_postgres$"; then
         # Dev environment (docker-compose.yml) is running
         COMPOSE_FILE="docker-compose.yml"
         POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-uzol21_postgres}"
