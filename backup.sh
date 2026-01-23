@@ -17,10 +17,36 @@ if [ -f "backup.config.sh" ]; then
     source backup.config.sh
 fi
 
-# Configuration
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
-POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-uzol21_postgres_prod}"
-REDIS_CONTAINER="${REDIS_CONTAINER:-uzol21_redis_prod}"
+# Configuration - auto-detect which compose file is being used
+if [ -z "$COMPOSE_FILE" ]; then
+    # Check which compose file is actually being used
+    if docker compose ps 2>/dev/null | grep -q "uzol21_postgres[^_]"; then
+        # Dev environment (docker-compose.yml) is running
+        COMPOSE_FILE="docker-compose.yml"
+        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-uzol21_postgres}"
+        REDIS_CONTAINER="${REDIS_CONTAINER:-uzol21_redis}"
+    elif docker compose -f docker-compose.prod.yml ps 2>/dev/null | grep -q "uzol21_postgres_prod"; then
+        # Prod environment is running
+        COMPOSE_FILE="docker-compose.prod.yml"
+        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-uzol21_postgres_prod}"
+        REDIS_CONTAINER="${REDIS_CONTAINER:-uzol21_redis_prod}"
+    else
+        # Default to prod
+        COMPOSE_FILE="docker-compose.prod.yml"
+        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-uzol21_postgres_prod}"
+        REDIS_CONTAINER="${REDIS_CONTAINER:-uzol21_redis_prod}"
+    fi
+else
+    # COMPOSE_FILE is set, use defaults for container names
+    POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-uzol21_postgres_prod}"
+    REDIS_CONTAINER="${REDIS_CONTAINER:-uzol21_redis_prod}"
+    
+    # If using docker-compose.yml, adjust container names
+    if [ "$COMPOSE_FILE" = "docker-compose.yml" ]; then
+        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-uzol21_postgres}"
+        REDIS_CONTAINER="${REDIS_CONTAINER:-uzol21_redis}"
+    fi
+fi
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 RETENTION_DAYS="${RETENTION_DAYS:-7}"
 RETENTION_WEEKS="${RETENTION_WEEKS:-4}"
@@ -31,6 +57,17 @@ BACKUP_FILES="${BACKUP_FILES:-true}"
 BACKUP_ENV="${BACKUP_ENV:-true}"
 
 # Get database credentials from environment
+# Try to load from .env file if exists
+if [ -f ".env" ]; then
+    # Simple approach: read values directly
+    if grep -q "^DB_DATABASE=" .env; then
+        DB_DATABASE=$(grep "^DB_DATABASE=" .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
+    fi
+    if grep -q "^DB_USERNAME=" .env; then
+        DB_USERNAME=$(grep "^DB_USERNAME=" .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
+    fi
+fi
+
 DB_NAME="${DB_DATABASE:-uzol21}"
 DB_USER="${DB_USERNAME:-uzol21}"
 
@@ -110,9 +147,23 @@ else
 fi
 
 # Check if postgres container is running
+# Try both possible container names if default doesn't work
 if ! $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" ps 2>/dev/null | grep -q "$POSTGRES_CONTAINER.*Up"; then
-    log_error "PostgreSQL container is not running!"
-    exit 1
+    # Try alternative container name (dev vs prod)
+    if [ "$POSTGRES_CONTAINER" = "uzol21_postgres_prod" ]; then
+        POSTGRES_CONTAINER="uzol21_postgres"
+        COMPOSE_FILE="docker-compose.yml"
+    elif [ "$POSTGRES_CONTAINER" = "uzol21_postgres" ]; then
+        POSTGRES_CONTAINER="uzol21_postgres_prod"
+        COMPOSE_FILE="docker-compose.prod.yml"
+    fi
+    
+    # Check again with alternative name
+    if ! $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" ps 2>/dev/null | grep -q "$POSTGRES_CONTAINER.*Up"; then
+        log_error "PostgreSQL container is not running!"
+        log_error "Tried: $POSTGRES_CONTAINER with $COMPOSE_FILE"
+        exit 1
+    fi
 fi
 
 # 1. Database Backup
@@ -120,7 +171,13 @@ echo -e "${YELLOW}[1/4] Creating database backup...${NC}"
 DB_BACKUP_FILE="$BACKUP_DIR/database/${BACKUP_PREFIX}.sql"
 DB_BACKUP_COMPRESSED="${DB_BACKUP_FILE}.gz"
 
-$DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" exec -T "$POSTGRES_CONTAINER" pg_dump -U "$DB_USER" -d "$DB_NAME" > "$DB_BACKUP_FILE"
+# Use service name instead of container name for docker compose exec
+POSTGRES_SERVICE="postgres"
+if [ "$COMPOSE_FILE" = "docker-compose.prod.yml" ]; then
+    POSTGRES_SERVICE="postgres"
+fi
+
+$DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" exec -T "$POSTGRES_SERVICE" pg_dump -U "$DB_USER" -d "$DB_NAME" > "$DB_BACKUP_FILE"
 
 # Compress database backup
 gzip "$DB_BACKUP_FILE"
