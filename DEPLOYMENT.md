@@ -144,11 +144,38 @@ Script automaticky:
 
 #### 3.1 Manuálny backup
 
+**Základný backup (databáza + súbory):**
 ```bash
 ./backup.sh
 ```
 
-#### 3.2 Automatizované backupy (cron)
+**Backup s Redis:**
+```bash
+BACKUP_REDIS=true ./backup.sh
+```
+
+**Backup cez Laravel Artisan:**
+```bash
+docker compose -f docker-compose.prod.yml exec php php artisan backup:run
+```
+
+**Backup s Redis cez Laravel:**
+```bash
+docker compose -f docker-compose.prod.yml exec php php artisan backup:run --redis
+```
+
+#### 3.2 Automatizované backupy
+
+**Možnosť A: Laravel Scheduler (odporúčané)**
+
+Laravel scheduler automaticky spúšťa backupy každý deň o 2:30. Uistite sa, že Laravel scheduler beží:
+
+```bash
+# V docker-compose.prod.yml pridajte scheduler service alebo spustite manuálne:
+docker compose -f docker-compose.prod.yml exec php php artisan schedule:work
+```
+
+**Možnosť B: Cron (alternatíva)**
 
 Pridajte do crontab:
 
@@ -161,6 +188,97 @@ Pridajte riadok pre denné backupy o 2:00:
 ```
 0 2 * * * cd /opt/uzol21 && ./backup.sh >> /var/log/uzol21_backup.log 2>&1
 ```
+
+#### 3.3 Zoznam a verifikácia záloh
+
+**Zoznam záloh:**
+```bash
+docker compose -f docker-compose.prod.yml exec php php artisan backup:list
+```
+
+**Verifikácia záloh:**
+```bash
+# Verifikovať najnovšiu zálohu
+docker compose -f docker-compose.prod.yml exec php php artisan backup:verify
+
+# Verifikovať konkrétnu zálohu
+docker compose -f docker-compose.prod.yml exec php php artisan backup:verify 20240101_020000
+
+# Verifikovať všetky zálohy
+docker compose -f docker-compose.prod.yml exec php php artisan backup:verify --all
+```
+
+#### 3.4 Obnova zálohy
+
+**Interaktívna obnova:**
+```bash
+./restore.sh
+```
+
+Skript vás prevedie procesom:
+1. Zobrazí zoznam dostupných záloh
+2. Vyberiete zálohu podľa čísla
+3. Overí integritu zálohy
+4. Požiada o potvrdenie
+5. Obnoví databázu, súbory a voliteľne Redis
+
+**Dry-run (testovanie bez zmien):**
+```bash
+./restore.sh --dry-run
+```
+
+**Po obnove:**
+```bash
+# Reštartujte kontajnery
+docker compose -f docker-compose.prod.yml restart
+```
+
+#### 3.5 Konfigurácia zálohovania
+
+Vytvorte voliteľný konfiguračný súbor `backup.config.sh`:
+
+```bash
+# backup.config.sh
+COMPOSE_FILE="docker-compose.prod.yml"
+POSTGRES_CONTAINER="uzol21_postgres_prod"
+REDIS_CONTAINER="uzol21_redis_prod"
+BACKUP_DIR="./backups"
+RETENTION_DAYS=7
+RETENTION_WEEKS=4
+
+# Voliteľné nastavenia
+BACKUP_REDIS=false  # true pre zálohovanie Redis
+BACKUP_FILES=true    # false pre preskočenie súborov
+BACKUP_ENV=true      # false pre preskočenie env súborov
+
+# Vzdialené úložisko (voliteľné)
+# REMOTE_STORAGE_TYPE="s3"
+# REMOTE_STORAGE_PATH="s3://my-bucket/backups"
+```
+
+#### 3.6 Štruktúra záloh
+
+Zálohy sú uložené v `./backups/` adresári:
+
+```
+backups/
+├── database/          # PostgreSQL dumpy (.sql.gz)
+├── files/             # Súbory a env (.tar.gz)
+├── redis/             # Redis dumpy (.rdb.gz, voliteľné)
+└── metadata/           # Metadata JSON súbory
+```
+
+Každá záloha obsahuje:
+- `database_YYYYMMDD_HHMMSS.sql.gz` - databázový dump
+- `files_YYYYMMDD_HHMMSS.tar.gz` - súbory (storage + env)
+- `redis_YYYYMMDD_HHMMSS.rdb.gz` - Redis dump (voliteľné)
+- `metadata_YYYYMMDD_HHMMSS.json` - informácie o zálohovaní
+
+#### 3.7 Retention policy
+
+- **Denné zálohy**: Uchovávajú sa 7 dní
+- **Týždenné zálohy**: Jeden backup za týždeň sa uchováva 4 týždne
+- Staršie zálohy sa automaticky odstraňujú
 
 ### Fáza 4: Monitoring a logy
 
@@ -660,7 +778,7 @@ LOG_LEVEL=debug
 2. **Použite silné heslá** pre databázu a API kľúče
 3. **Udržujte aplikáciu aktuálnu** (composer update, npm update)
 4. **Nastavte firewall** (iba potrebné porty)
-5. **Pravidelné backupy** databázy
+5. **Pravidelné backupy** - používajte `./backup.sh` alebo Laravel scheduler (`backup:run`)
 6. **Monitorujte logy** pre podezrivé aktivity
 7. **Použite HTTPS** (povinné pre LNURL-auth)
 
