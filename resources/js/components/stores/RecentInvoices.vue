@@ -5,14 +5,14 @@
         <svg class="h-5 w-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
         </svg>
-        Recent Invoices
+        {{ t('stores.recent_invoices') }}
       </h3>
       <a
         href="#"
         @click.prevent="emit('view-all')"
         class="text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1"
       >
-        View All
+        {{ t('stores.view_all') }}
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
       </a>
     </div>
@@ -21,16 +21,16 @@
         <thead class="bg-gray-900/50">
           <tr>
             <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">
-              Date
+              {{ t('stores.date') }}
             </th>
             <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">
-              Invoice ID
+              {{ t('stores.invoice_id') }}
             </th>
             <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">
-              Status
+              {{ t('stores.status') }}
             </th>
             <th scope="col" class="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-widest">
-              Amount
+              {{ t('stores.amount') }}
             </th>
           </tr>
         </thead>
@@ -39,7 +39,7 @@
             <td colspan="4" class="px-6 py-12 text-center">
               <div class="flex flex-col items-center justify-center text-gray-500">
                 <svg class="w-12 h-12 mb-2 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                <p class="font-medium">No invoices yet</p>
+                <p class="font-medium">{{ t('stores.no_invoices_yet') }}</p>
               </div>
             </td>
           </tr>
@@ -78,6 +78,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
+
 interface Invoice {
   id: string;
   invoice_id: string;
@@ -122,16 +126,16 @@ function formatDate(dateString: string | number): string {
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffMins < 1) return t('stores.just_now');
+  if (diffMins < 60) return t('stores.minutes_ago', { minutes: diffMins });
+  if (diffHours < 24) return t('stores.hours_ago', { hours: diffHours });
+  if (diffDays < 7) return t('stores.days_ago', { days: diffDays });
   
-  return date.toLocaleDateString('sk-SK');
+  return date.toLocaleDateString();
 }
 
 function formatStatus(status: string): string {
-  return status || 'Unknown';
+  return status || t('stores.unknown');
 }
 
 function getStatusClass(status: string): string {

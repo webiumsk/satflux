@@ -4,15 +4,15 @@
       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
     </svg>
-    <p class="text-gray-400 mt-4">Loading invoices...</p>
+    <p class="text-gray-400 mt-4">{{ t('stores.loading_invoices') }}</p>
   </div>
 
   <div v-else class="space-y-6">
     <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
       <div class="px-6 py-5 border-b border-gray-700 bg-gray-800/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-           <h1 class="text-2xl font-bold text-white">Invoices</h1>
-           <p class="text-sm text-gray-400 mt-1">View and manage your store transactions.</p>
+           <h1 class="text-2xl font-bold text-white">{{ t('stores.invoices') }}</h1>
+           <p class="text-sm text-gray-400 mt-1">{{ t('stores.view_manage_transactions') }}</p>
         </div>
         
         <div class="flex items-center gap-3">
@@ -26,7 +26,7 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              {{ exportingInvoices ? 'Exporting...' : 'Export to CSV' }}
+              {{ exportingInvoices ? t('stores.exporting') : t('stores.export_to_csv') }}
             </button>
              
              <!-- Create Invoice Button (Future implementation) -->
@@ -43,7 +43,7 @@
           <!-- Status Filter -->
           <div class="md:col-span-1">
             <label for="invoice-status-filter" class="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider">
-              Status
+              {{ t('stores.status') }}
             </label>
             <select
               id="invoice-status-filter"
@@ -51,19 +51,19 @@
               @change="fetchInvoices"
               class="block w-full border border-gray-600 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-gray-700 text-white"
             >
-              <option value="">All Statuses</option>
-              <option value="New">New</option>
-              <option value="Paid">Paid (Partially)</option>
-              <option value="Settled">Settled</option>
-              <option value="Invalid">Invalid</option>
-              <option value="Expired">Expired</option>
+              <option value="">{{ t('stores.all_statuses') }}</option>
+              <option value="New">{{ t('stores.new') }}</option>
+              <option value="Paid">{{ t('stores.paid_partially') }}</option>
+              <option value="Settled">{{ t('stores.settled') }}</option>
+              <option value="Invalid">{{ t('stores.invalid') }}</option>
+              <option value="Expired">{{ t('stores.expired') }}</option>
             </select>
           </div>
 
           <!-- Date From -->
           <div class="md:col-span-1">
             <label for="invoice-date-from" class="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider">
-              From Date
+              {{ t('stores.from_date') }}
             </label>
             <input
               id="invoice-date-from"
@@ -77,7 +77,7 @@
           <!-- Date To -->
           <div class="md:col-span-1">
             <label for="invoice-date-to" class="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider">
-              To Date
+              {{ t('stores.to_date') }}
             </label>
             <input
               id="invoice-date-to"
@@ -95,7 +95,7 @@
                   @click="clearFilters"
                   class="w-full py-2 px-4 border border-gray-600 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700 transition-colors"
                 >
-                  Clear Filters
+                  {{ t('stores.clear_filters') }}
                 </button>
            </div>
         </div>
@@ -125,18 +125,18 @@
           <svg class="mx-auto h-12 w-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <h3 class="mt-2 text-sm font-medium text-white">No invoices found</h3>
-          <p class="mt-1 text-sm text-gray-400">Try adjusting your filters or create a new invoice.</p>
+          <h3 class="mt-2 text-sm font-medium text-white">{{ t('stores.no_invoices_found') }}</h3>
+          <p class="mt-1 text-sm text-gray-400">{{ t('stores.adjust_filters_create_invoice') }}</p>
         </div>
 
         <div v-else class="overflow-x-auto rounded-xl border border-gray-700">
           <table class="min-w-full divide-y divide-gray-700">
             <thead class="bg-gray-700/50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Invoice ID</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Date</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Amount</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">{{ t('stores.invoice_id') }}</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">{{ t('stores.date') }}</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">{{ t('stores.status') }}</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">{{ t('stores.amount') }}</th>
               </tr>
             </thead>
             <tbody class="bg-gray-800 divide-y divide-gray-700">
@@ -162,7 +162,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
+
+const { t } = useI18n();
 
 const props = defineProps({
   store: {
@@ -213,7 +216,7 @@ async function fetchInvoices() {
     const response = await api.get(`/stores/${props.store.id}/invoices`, { params });
     invoices.value = response.data.data || [];
   } catch (err: any) {
-    error.value = err.response?.data?.message || 'Failed to load invoices.';
+    error.value = err.response?.data?.message || t('stores.failed_to_load_invoices');
     invoices.value = [];
   } finally {
     loading.value = false;

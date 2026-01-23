@@ -4,14 +4,14 @@
       <svg class="h-5 w-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
       </svg>
-      Top Items
+      {{ t('stores.top_items') }}
     </h2>
     
     <div v-if="items.length === 0" class="flex-1 flex flex-col items-center justify-center text-gray-400 bg-gray-900/30 rounded-xl border border-gray-700/50 border-dashed py-12">
       <svg class="w-12 h-12 mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
       </svg>
-      <p>No items sold yet</p>
+      <p>{{ t('stores.no_items_sold') }}</p>
     </div>
     
     <div v-else class="space-y-4 flex-1">
@@ -39,7 +39,7 @@
           </div>
           <div class="flex justify-between items-center mt-1">
             <p class="text-xs text-gray-500">
-              {{ item.count }} {{ item.count === 1 ? 'sale' : 'sales' }}
+              {{ item.count }} {{ item.count === 1 ? t('stores.sale') : t('stores.sales') }}
             </p>
             <div class="h-1.5 w-24 bg-gray-700 rounded-full overflow-hidden">
                 <div 
@@ -59,6 +59,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 interface Item {
   name: string;
