@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreCreateRequest;
 use App\Models\Store;
+use App\Services\BtcPay\LightningService;
 use App\Services\BtcPay\StoreService;
 use App\Services\BtcPay\UserService;
 use App\Services\StoreChecklistService;
@@ -16,11 +17,13 @@ class StoreController extends Controller
 {
     protected StoreService $storeService;
     protected UserService $userService;
+    protected LightningService $lightningService;
 
-    public function __construct(StoreService $storeService, UserService $userService)
+    public function __construct(StoreService $storeService, UserService $userService, LightningService $lightningService)
     {
         $this->storeService = $storeService;
         $this->userService = $userService;
+        $this->lightningService = $lightningService;
     }
 
     /**
@@ -156,8 +159,21 @@ class StoreController extends Controller
      */
     public function store(StoreCreateRequest $request)
     {
+        Log::info('StoreController::store called - starting store creation', [
+            'user_id' => $request->user()->id,
+            'store_name' => $request->name,
+            'wallet_type' => $request->wallet_type,
+            'has_connection_string' => $request->filled('connection_string'),
+            'connection_string_length' => $request->filled('connection_string') ? strlen($request->connection_string) : 0,
+        ]);
+        
         return DB::transaction(function () use ($request) {
             $user = $request->user();
+            
+            Log::info('Inside DB transaction - starting store creation', [
+                'user_id' => $user->id,
+                'store_name' => $request->name,
+            ]);
             
             // Get server-level API key (unrestricted - has all permissions)
             $serverApiKey = config('services.btcpay.api_key', env('BTCPAY_API_KEY'));
@@ -191,8 +207,10 @@ class StoreController extends Controller
             $btcpayStore = $this->storeService->createStore($storeData, null); // null = use server-level key (current client state)
             
             Log::info('Store created in BTCPay', [
-                'store_id' => $btcpayStore['id'] ?? null,
-                'btcpay_store' => $btcpayStore,
+                'user_id' => $user->id,
+                'store_name' => $request->name,
+                'btcpay_store_id' => $btcpayStore['id'] ?? null,
+                'btcpay_store_keys' => is_array($btcpayStore) ? array_keys($btcpayStore) : 'NOT_ARRAY',
             ]);
 
             $btcpayStoreId = $btcpayStore['id'] ?? $btcpayStore['storeId'] ?? null;
@@ -292,33 +310,186 @@ class StoreController extends Controller
             ]);
 
             // Create wallet connection if connection_string is provided
+            $walletConnection = null;
             if ($request->filled('connection_string')) {
+                Log::info('Starting wallet connection creation during store creation', [
+                    'store_id' => $store->id,
+                    'btcpay_store_id' => $store->btcpay_store_id,
+                    'wallet_type' => $request->wallet_type,
+                    'connection_string_length' => strlen($request->connection_string),
+                    'connection_string_preview' => substr($request->connection_string, 0, 50) . '...',
+                ]);
+                
                 try {
                     $connectionType = $request->wallet_type === 'blink' ? 'blink' : 'aqua_descriptor';
+                    Log::info('Determined connection type', [
+                        'store_id' => $store->id,
+                        'wallet_type' => $request->wallet_type,
+                        'connection_type' => $connectionType,
+                    ]);
+                    
                     $walletConnectionService = app(\App\Services\WalletConnectionService::class);
-                    $walletConnectionService->createOrUpdate(
+                    
+                    // For Aqua/Boltz descriptors, check for duplicates BEFORE creating the connection
+                    // This prevents creating a store if the descriptor is already in use
+                    if ($connectionType === 'aqua_descriptor') {
+                        $duplicateCheck = $walletConnectionService->checkDescriptorDuplicate(
+                            $request->connection_string,
+                            $store->id
+                        );
+                        if ($duplicateCheck['exists']) {
+                            Log::warning('Aqua descriptor already in use during store creation', [
+                                'store_id' => $store->id,
+                                'existing_store_id' => $duplicateCheck['existing_store_id'],
+                                'existing_store_name' => $duplicateCheck['existing_store_name'],
+                            ]);
+                            // Rollback transaction by throwing validation exception
+                            throw \Illuminate\Validation\ValidationException::withMessages([
+                                'connection_string' => [
+                                    'This descriptor is already in use by another store. ' .
+                                    'BTCPay allows each descriptor to be used only once. ' .
+                                    ($duplicateCheck['existing_store_name'] 
+                                        ? "It is currently used by store: {$duplicateCheck['existing_store_name']}"
+                                        : 'Please use a different wallet/descriptor.'),
+                                ],
+                            ]);
+                        }
+                    }
+                    
+                    Log::info('Calling WalletConnectionService::createOrUpdate', [
+                        'store_id' => $store->id,
+                        'connection_type' => $connectionType,
+                        'user_id' => $request->user()->id,
+                    ]);
+                    
+                    $walletConnection = $walletConnectionService->createOrUpdate(
                         $store,
                         $connectionType,
                         $request->connection_string,
                         $request->user()
                     );
-                    Log::info('Wallet connection created during store creation', [
+                    
+                    Log::info('Wallet connection created successfully during store creation', [
                         'store_id' => $store->id,
+                        'wallet_connection_id' => $walletConnection->id ?? 'NULL',
                         'wallet_type' => $request->wallet_type,
                         'connection_type' => $connectionType,
+                        'status' => $walletConnection->status ?? 'NULL',
                     ]);
+
+                    // Try to automatically connect to BTCPay
+                    // Wait a moment after store creation to ensure store is fully initialized
+                    try {
+                        Log::info('Attempting to automatically connect wallet to BTCPay', [
+                            'store_id' => $store->id,
+                            'btcpay_store_id' => $store->btcpay_store_id,
+                            'wallet_connection_id' => $walletConnection->id ?? 'NULL',
+                            'user_id' => $user->id,
+                        ]);
+                        
+                        // Small delay to ensure store is fully initialized in BTCPay
+                        sleep(1);
+                        
+                        // Get user API key for BTCPay API call
+                        $userApiKey = $user->getBtcPayApiKeyOrFail();
+                        Log::info('User API key retrieved successfully', [
+                            'store_id' => $store->id,
+                            'user_id' => $user->id,
+                            'api_key_length' => strlen($userApiKey),
+                        ]);
+                        
+                        $cryptoCode = 'BTC'; // Default to BTC for Lightning
+                        Log::info('Calling LightningService::connectLightningNode', [
+                            'store_id' => $store->id,
+                            'btcpay_store_id' => $store->btcpay_store_id,
+                            'crypto_code' => $cryptoCode,
+                            'connection_string_length' => strlen($request->connection_string),
+                        ]);
+                        
+                        $result = $this->lightningService->connectLightningNode(
+                            $store->btcpay_store_id,
+                            $cryptoCode,
+                            $request->connection_string,
+                            $userApiKey
+                        );
+                        
+                        Log::info('LightningService::connectLightningNode returned result', [
+                            'store_id' => $store->id,
+                            'success' => $result['success'] ?? 'NOT_SET',
+                            'message' => $result['message'] ?? 'NOT_SET',
+                            'requires_manual_config' => $result['requires_manual_config'] ?? 'NOT_SET',
+                        ]);
+
+                        if ($result['success'] ?? false) {
+                            // Connection successful - update status to connected
+                            $walletConnectionService->markConnected($walletConnection, $user);
+                            Log::info('Wallet connection automatically connected to BTCPay', [
+                                'store_id' => $store->id,
+                                'wallet_connection_id' => $walletConnection->id,
+                                'wallet_type' => $request->wallet_type,
+                            ]);
+                        } else {
+                            // Connection failed - keep needs_support status
+                            Log::info('Wallet connection could not be automatically connected to BTCPay', [
+                                'store_id' => $store->id,
+                                'wallet_connection_id' => $walletConnection->id,
+                                'wallet_type' => $request->wallet_type,
+                                'message' => $result['message'] ?? 'Unknown error',
+                                'requires_manual_config' => $result['requires_manual_config'] ?? false,
+                            ]);
+                        }
+                    } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+                        // BTCPay API error - log but don't fail store creation
+                        Log::warning('Failed to automatically connect wallet to BTCPay', [
+                            'store_id' => $store->id,
+                            'wallet_connection_id' => $walletConnection->id ?? null,
+                            'wallet_type' => $request->wallet_type,
+                            'error' => $e->getMessage(),
+                            'error_code' => $e->getCode(),
+                        ]);
+                        // Status remains 'needs_support'
+                    } catch (\Exception $e) {
+                        // Other errors (e.g., no API key) - log but don't fail
+                        Log::warning('Failed to automatically connect wallet to BTCPay (non-API error)', [
+                            'store_id' => $store->id,
+                            'wallet_connection_id' => $walletConnection->id ?? null,
+                            'wallet_type' => $request->wallet_type,
+                            'error' => $e->getMessage(),
+                            'error_class' => get_class($e),
+                        ]);
+                        // Status remains 'needs_support'
+                    }
                 } catch (\Exception $e) {
                     // Log error but don't fail store creation
                     Log::error('Failed to create wallet connection during store creation', [
                         'store_id' => $store->id,
+                        'btcpay_store_id' => $store->btcpay_store_id ?? 'NULL',
                         'wallet_type' => $request->wallet_type,
+                        'connection_string_length' => $request->filled('connection_string') ? strlen($request->connection_string) : 0,
                         'error' => $e->getMessage(),
+                        'error_class' => get_class($e),
+                        'error_trace' => $e->getTraceAsString(),
                     ]);
                 }
+            } else {
+                Log::info('No connection_string provided, skipping wallet connection creation', [
+                    'store_id' => $store->id,
+                    'btcpay_store_id' => $store->btcpay_store_id,
+                ]);
             }
 
             // Ensure checklistItems relationship is loaded
             $store->load('checklistItems', 'walletConnection');
+            
+            // Check if wallet connection was created
+            $walletConnectionCheck = \App\Models\WalletConnection::where('store_id', $store->id)->first();
+            Log::info('Store creation completed - final check', [
+                'store_id' => $store->id,
+                'btcpay_store_id' => $store->btcpay_store_id,
+                'wallet_connection_exists' => $walletConnectionCheck !== null,
+                'wallet_connection_id' => $walletConnectionCheck->id ?? 'NULL',
+                'wallet_connection_status' => $walletConnectionCheck->status ?? 'NULL',
+            ]);
             
             return response()->json([
                 'data' => $this->formatStore($store),

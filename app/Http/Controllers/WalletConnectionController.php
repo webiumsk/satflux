@@ -48,6 +48,85 @@ class WalletConnectionController extends Controller
     }
 
     /**
+     * Check if a descriptor is already in use by another store.
+     * Used for frontend validation before submission.
+     * Works for both existing stores and new stores (when store ID is 'new' or doesn't exist).
+     */
+    public function checkDuplicate(Request $request)
+    {
+        $request->validate([
+            'descriptor' => 'required|string',
+            'type' => 'required|in:aqua_descriptor',
+        ]);
+
+        // Only check for aqua_descriptor type
+        if ($request->type !== 'aqua_descriptor') {
+            return response()->json([
+                'duplicate' => false,
+                'message' => null,
+            ]);
+        }
+
+        // Get store from route, but handle case where store doesn't exist yet (for new stores)
+        $store = $request->route('store');
+        $storeId = null;
+        
+        // If store is 'new' or doesn't exist, use null to check against all stores
+        if ($store && $store !== 'new' && is_object($store) && isset($store->id)) {
+            $storeId = $store->id;
+        }
+
+        $result = $this->service->checkDescriptorDuplicate(
+            $request->descriptor,
+            $storeId ?? 'new' // Use 'new' as placeholder for non-existent stores
+        );
+
+        return response()->json([
+            'duplicate' => $result['exists'],
+            'existing_store_id' => $result['existing_store_id'],
+            'existing_store_name' => $result['existing_store_name'],
+            'message' => $result['exists'] 
+                ? "This descriptor is already in use by store: {$result['existing_store_name']}. BTCPay allows each descriptor to be used only once. Please use a different wallet/descriptor."
+                : null,
+        ]);
+    }
+
+    /**
+     * Check if a descriptor is already in use by another store (for new stores).
+     * Used for frontend validation before store creation.
+     */
+    public function checkDuplicateNew(Request $request)
+    {
+        $request->validate([
+            'descriptor' => 'required|string',
+            'type' => 'required|in:aqua_descriptor',
+        ]);
+
+        // Only check for aqua_descriptor type
+        if ($request->type !== 'aqua_descriptor') {
+            return response()->json([
+                'duplicate' => false,
+                'message' => null,
+            ]);
+        }
+
+        // For new stores, check against all existing stores
+        $result = $this->service->checkDescriptorDuplicate(
+            $request->descriptor,
+            null // No current store ID for new stores
+        );
+
+        return response()->json([
+            'duplicate' => $result['exists'],
+            'existing_store_id' => $result['existing_store_id'],
+            'existing_store_name' => $result['existing_store_name'],
+            'message' => $result['exists'] 
+                ? "This descriptor is already in use by store: {$result['existing_store_name']}. BTCPay allows each descriptor to be used only once. Please use a different wallet/descriptor."
+                : null,
+        ]);
+    }
+
+    /**
      * Create or update wallet connection.
      */
     public function store(WalletConnectionStoreRequest $request)
@@ -288,7 +367,9 @@ class WalletConnectionController extends Controller
      * Configure Lightning node in BTCPay.
      * 
      * Attempts to configure Lightning node via BTCPay API.
+     * If successful, updates wallet connection status to 'connected'.
      * If API doesn't support custom connection strings, stores in DB with 'needs_support' status.
+     * This method can be used to retry connection if automatic connection failed during store creation.
      */
     public function configureLightning(Request $request)
     {
@@ -304,59 +385,117 @@ class WalletConnectionController extends Controller
         // Get merchant API key
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
+        // Find or create wallet connection in DB
+        $connection = WalletConnection::where('store_id', $store->id)->first();
+        if (!$connection) {
+            // Determine type from connection string
+            $type = 'blink'; // Default
+            if (strpos($request->connection_string, 'ct(') !== false ||
+                strpos($request->connection_string, 'wpkh') !== false ||
+                strpos($request->connection_string, 'tr(') !== false ||
+                strpos($request->connection_string, 'slip77') !== false) {
+                $type = 'aqua_descriptor';
+            }
+
+            $connection = $this->service->createOrUpdate(
+                $store,
+                $type,
+                $request->connection_string,
+                $user
+            );
+        }
+
         // Try to configure via BTCPay API
-        $result = $this->lightningService->connectLightningNode(
-            $store->btcpay_store_id,
-            $cryptoCode,
-            $request->connection_string,
-            $userApiKey
-        );
+        try {
+            $result = $this->lightningService->connectLightningNode(
+                $store->btcpay_store_id,
+                $cryptoCode,
+                $request->connection_string,
+                $userApiKey
+            );
 
-        // If API doesn't support it, ensure connection is stored in DB
-        if (isset($result['requires_manual_config']) && $result['requires_manual_config']) {
-            // Find or create wallet connection in DB
-            $connection = WalletConnection::where('store_id', $store->id)->first();
-            if (!$connection) {
-                // Determine type from connection string
-                $type = 'blink'; // Default, could be improved to detect type
-                if (strpos($request->connection_string, 'descriptor') !== false || 
-                    strpos($request->connection_string, 'wpkh') !== false ||
-                    strpos($request->connection_string, 'tr(') !== false) {
-                    $type = 'aqua_descriptor';
+            // If connection successful, update status
+            if ($result['success'] ?? false) {
+                $this->service->markConnected($connection, $user);
+                $result['status'] = 'connected';
+                $result['message'] = 'Lightning node connected successfully to BTCPay.';
+                
+                Log::info('Lightning node connected successfully via configureLightning', [
+                    'store_id' => $store->id,
+                    'wallet_connection_id' => $connection->id,
+                    'crypto_code' => $cryptoCode,
+                ]);
+            } else {
+                // Connection failed - ensure status is needs_support
+                if ($connection->status !== 'needs_support') {
+                    $connection->update(['status' => 'needs_support']);
                 }
-
-                $connection = $this->service->createOrUpdate(
-                    $store,
-                    $type,
-                    $request->connection_string,
-                    $user
-                );
+                $result['status'] = $connection->status;
+                $result['message'] = $result['message'] ?? 'Failed to connect Lightning node. Support will configure it manually.';
+                
+                Log::info('Lightning node connection failed via configureLightning', [
+                    'store_id' => $store->id,
+                    'wallet_connection_id' => $connection->id,
+                    'crypto_code' => $cryptoCode,
+                    'message' => $result['message'] ?? 'Unknown error',
+                ]);
             }
 
             $result['connection_id'] = $connection->id;
-            $result['status'] = $connection->status;
+        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+            // BTCPay API error
+            $connection->update(['status' => 'needs_support']);
+            
+            $result = [
+                'success' => false,
+                'message' => 'Failed to connect Lightning node: ' . $e->getMessage(),
+                'requires_manual_config' => true,
+                'connection_id' => $connection->id,
+                'status' => 'needs_support',
+            ];
+
+            Log::error('BTCPay API error when configuring Lightning node', [
+                'store_id' => $store->id,
+                'wallet_connection_id' => $connection->id,
+                'crypto_code' => $cryptoCode,
+                'error' => $e->getMessage(),
+                'error_code' => $e->getCode(),
+            ]);
+        } catch (\Exception $e) {
+            // Other errors
+            $connection->update(['status' => 'needs_support']);
+            
+            $result = [
+                'success' => false,
+                'message' => 'An error occurred while connecting Lightning node: ' . $e->getMessage(),
+                'requires_manual_config' => true,
+                'connection_id' => $connection->id,
+                'status' => 'needs_support',
+            ];
+
+            Log::error('Unexpected error when configuring Lightning node', [
+                'store_id' => $store->id,
+                'wallet_connection_id' => $connection->id,
+                'crypto_code' => $cryptoCode,
+                'error' => $e->getMessage(),
+                'error_class' => get_class($e),
+            ]);
         }
 
         // Audit log
         AuditLog::log(
             'wallet_connection.configured',
             'wallet_connection',
-            $result['connection_id'] ?? null,
+            $connection->id,
             [
                 'store_id' => $store->id,
                 'crypto_code' => $cryptoCode,
                 'success' => $result['success'] ?? false,
                 'requires_manual_config' => $result['requires_manual_config'] ?? false,
+                'status' => $result['status'] ?? 'needs_support',
             ],
             $user->id
         );
-
-        Log::info('Lightning node configuration attempted', [
-            'store_id' => $store->id,
-            'crypto_code' => $cryptoCode,
-            'success' => $result['success'] ?? false,
-            'requires_manual_config' => $result['requires_manual_config'] ?? false,
-        ]);
 
         return response()->json($result);
     }

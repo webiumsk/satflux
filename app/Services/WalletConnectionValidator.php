@@ -164,25 +164,48 @@ class WalletConnectionValidator
             return false;
         }
 
+        // Should contain xpub, ypub, zpub, or similar extended public keys
+        // But NOT xprv, yprv, zprv (private keys)
+        if (preg_match('/(xprv|yprv|zprv)/i', $descriptor)) {
+            return false;
+        }
+
         // Must be a valid output descriptor format
         // Common formats: wpkh(), wsh(), tr(), pkh(), sh(), etc.
-        $validPrefixes = ['wpkh', 'wsh', 'tr', 'pkh', 'sh', 'addr', 'raw'];
-        $hasValidPrefix = false;
-
-        foreach ($validPrefixes as $prefix) {
-            if (str_starts_with(strtolower($descriptor), $prefix . '(')) {
-                $hasValidPrefix = true;
+        // Also supports complex nested formats like ct(slip77(...),elsh(wpkh(...)))
+        // Check if descriptor contains at least one valid descriptor function
+        $validFunctions = [
+            'wpkh', 'wsh', 'tr', 'pkh', 'sh', 'addr', 'raw',  // Basic functions
+            'ct', 'elsh', 'slip77',  // Complex nested functions (for Boltz/Aqua)
+        ];
+        
+        $hasValidFunction = false;
+        $descriptorLower = strtolower($descriptor);
+        
+        foreach ($validFunctions as $func) {
+            // Check if function appears in the descriptor (not just at start)
+            // Pattern: function name followed by opening parenthesis
+            if (preg_match('/\b' . preg_quote($func, '/') . '\s*\(/', $descriptorLower)) {
+                $hasValidFunction = true;
                 break;
             }
         }
 
-        if (!$hasValidPrefix) {
+        if (!$hasValidFunction) {
             return false;
         }
 
-        // Should contain xpub, ypub, zpub, or similar extended public keys
-        // But NOT xprv, yprv, zprv (private keys)
-        if (preg_match('/(xprv|yprv|zprv)/i', $descriptor)) {
+        // Basic structure validation: should have balanced parentheses
+        // This is a simple check - full validation would require a parser
+        $openParens = substr_count($descriptor, '(');
+        $closeParens = substr_count($descriptor, ')');
+        if ($openParens !== $closeParens || $openParens === 0) {
+            return false;
+        }
+
+        // Should contain at least one xpub/ypub/zpub (extended public key)
+        // This is required for watch-only descriptors
+        if (!preg_match('/(xpub|ypub|zpub|tpub|upub|vpub)/i', $descriptor)) {
             return false;
         }
 
@@ -198,13 +221,30 @@ class WalletConnectionValidator
      */
     public function validate(string $type, string $value): array
     {
+        \Illuminate\Support\Facades\Log::info('WalletConnectionValidator::validate called', [
+            'type' => $type,
+            'value_length' => strlen($value),
+            'value_preview' => substr($value, 0, 100) . '...',
+        ]);
+        
         $errors = [];
         $returnType = null;
 
         if ($type === 'blink') {
             $returnType = 'blink';
+            \Illuminate\Support\Facades\Log::info('Validating Blink connection string', [
+                'type' => $type,
+            ]);
+            
             // Validate Blink connection string format
             $parsed = $this->parseBlinkConnectionString($value);
+            \Illuminate\Support\Facades\Log::info('Blink connection string parsed', [
+                'type' => $type,
+                'parsed_errors' => $parsed['errors'] ?? [],
+                'parsed_type' => $parsed['type'] ?? 'NULL',
+                'parsed_server' => $parsed['server'] ?? 'NULL',
+            ]);
+            
             if (!empty($parsed['errors'])) {
                 $errors = array_merge($errors, $parsed['errors']);
             } elseif (!$this->validateBlinkToken($value)) {
@@ -212,19 +252,41 @@ class WalletConnectionValidator
             }
         } elseif ($type === 'aqua_descriptor') {
             $returnType = 'aqua_descriptor';
-            if (!$this->validateAquaDescriptor($value)) {
-                $errors[] = 'Invalid descriptor format. Must be a valid Bitcoin Core output descriptor and must not contain private keys (prv).';
+            \Illuminate\Support\Facades\Log::info('Validating Aqua descriptor', [
+                'type' => $type,
+            ]);
+            
+            $isValid = $this->validateAquaDescriptor($value);
+            \Illuminate\Support\Facades\Log::info('Aqua descriptor validation result', [
+                'type' => $type,
+                'is_valid' => $isValid,
+            ]);
+            
+            if (!$isValid) {
+                $errors[] = 'Invalid descriptor format. Must be a valid Bitcoin Core output descriptor (e.g., wpkh(), tr(), wsh(), or complex formats like ct(slip77(...),elsh(wpkh(...)))) and must not contain private keys (prv).';
             }
         } else {
+            \Illuminate\Support\Facades\Log::error('Unsupported wallet connection type', [
+                'type' => $type,
+            ]);
             throw new \InvalidArgumentException("Unsupported wallet connection type: {$type}");
         }
 
-        return [
+        $result = [
             'valid' => empty($errors),
             'type' => $returnType,
             'errors' => $errors,
             'error' => !empty($errors) ? implode('; ', $errors) : null,
         ];
+        
+        \Illuminate\Support\Facades\Log::info('WalletConnectionValidator::validate result', [
+            'type' => $type,
+            'valid' => $result['valid'],
+            'errors_count' => count($errors),
+            'errors' => $errors,
+        ]);
+        
+        return $result;
     }
 }
 
