@@ -12,17 +12,17 @@
           <span class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500 tracking-tight">UZOL21</span>
         </router-link>
         <h2 class="mt-6 text-center text-3xl font-extrabold text-white">
-          Reset password
+          {{ t('auth.reset_password') }}
         </h2>
         <p class="mt-2 text-center text-sm text-gray-400">
-          Enter your email to receive a reset link
+          {{ t('auth.enter_email_reset') }}
         </p>
       </div>
 
       <div class="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-8 shadow-xl">
         <form class="space-y-6" @submit.prevent="handleReset">
           <div>
-            <label for="email" class="block text-sm font-medium text-gray-300">Email address</label>
+            <label for="email" class="block text-sm font-medium text-gray-300">{{ t('auth.email') }}</label>
             <div class="mt-1">
               <input
                 id="email"
@@ -51,13 +51,13 @@
               :disabled="loading"
               class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20"
             >
-              {{ loading ? 'Sending...' : 'Send reset link' }}
+              {{ loading ? t('auth.sending') : t('auth.send_reset_link') }}
             </button>
           </div>
 
           <div class="text-center text-sm">
             <router-link to="/login" class="font-medium text-indigo-400 hover:text-indigo-300 transition-colors">
-              <span aria-hidden="true"> &larr;</span> Back to login
+              <span aria-hidden="true"> &larr;</span> {{ t('auth.back_to_login') }}
             </router-link>
           </div>
         </form>
@@ -68,7 +68,10 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
+
+const { t } = useI18n();
 
 const form = ref({
   email: '',
@@ -87,9 +90,9 @@ async function handleReset() {
     await api.post('/auth/password/reset-link', {
       email: form.value.email,
     });
-    success.value = 'Password reset link sent to your email.';
+    success.value = t('auth.password_reset_sent');
   } catch (err: any) {
-    error.value = err.response?.data?.message || 'Failed to send reset link. Please try again.';
+    error.value = err.response?.data?.message || t('auth.failed_send_reset');
   } finally {
     loading.value = false;
   }

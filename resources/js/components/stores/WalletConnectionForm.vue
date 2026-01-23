@@ -2,7 +2,7 @@
     <form @submit.prevent="handleSubmit" class="space-y-8">
         <div>
             <label class="block text-sm font-medium text-gray-300 mb-4 uppercase tracking-wider">
-                Wallet Type
+                {{ t('stores.wallet_type') }}
             </label>
             <div class="space-y-4">
                 <label 
@@ -21,8 +21,8 @@
                         />
                     </div>
                     <div class="ml-4">
-                        <div class="font-bold text-white text-lg">Blink</div>
-                        <div class="text-sm text-gray-400 mt-1">Connect your Blink wallet using a read+receive API key. Best for speed and reliability.</div>
+                        <div class="font-bold text-white text-lg">{{ t('stores.blink_wallet') }}</div>
+                        <div class="text-sm text-gray-400 mt-1">{{ t('stores.blink_connection_description') }}</div>
                     </div>
                 </label>
 
@@ -42,8 +42,8 @@
                         />
                     </div>
                      <div class="ml-4">
-                        <div class="font-bold text-white text-lg">Aqua / Bitcoin Core</div>
-                        <div class="text-sm text-gray-400 mt-1">Connect a watch-only wallet using an output descriptor. Non-custodial Setup.</div>
+                        <div class="font-bold text-white text-lg">{{ t('stores.aqua_bitcoin_core') }}</div>
+                        <div class="text-sm text-gray-400 mt-1">{{ t('stores.aqua_connection_description') }}</div>
                     </div>
                 </label>
             </div>
@@ -52,7 +52,7 @@
 
         <div>
             <label for="secret" class="block text-sm font-medium text-indigo-300 mb-2 uppercase tracking-wider">
-                {{ form.type === 'blink' ? 'Connection String' : 'Descriptor' }}
+                {{ form.type === 'blink' ? t('stores.connection_string') : t('stores.descriptor') }}
             </label>
             <div class="relative rounded-xl shadow-sm">
                 <textarea
@@ -75,14 +75,14 @@
             </div>
             
             <div class="mt-3 text-sm text-gray-400 bg-gray-900/30 p-4 rounded-xl border border-gray-700/50">
-                <p class="font-medium text-gray-300 mb-2">Format Help:</p>
+                <p class="font-medium text-gray-300 mb-2">{{ t('stores.format_help') }}:</p>
                 <div v-if="form.type === 'blink'" class="space-y-1">
-                     <p>Format: <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">type=blink;server=...;api-key=...;wallet-id=...</code></p>
-                    <p>Paste your Blink connection string containing server URL, API key, and wallet ID.</p>
+                     <p>{{ t('stores.blink_format') }} <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">type=blink;server=...;api-key=...;wallet-id=...</code></p>
+                    <p>{{ t('stores.blink_paste') }}</p>
                 </div>
                  <div v-else class="space-y-1">
-                    <p>Paste your Bitcoin Core output descriptor (watch-only, no private keys).</p>
-                    <p>Examples: <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">ct(slip77(...),elsh(wpkh(...)))</code>, <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">tr(...)</code></p>
+                    <p>{{ t('stores.descriptor_paste') }}</p>
+                    <p>{{ t('stores.descriptor_examples') }}: <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">ct(slip77(...),elsh(wpkh(...)))</code>, <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">tr(...)</code></p>
                 </div>
             </div>
             <p v-if="errors.secret" class="mt-2 text-sm text-red-400">{{ errors.secret }}</p>
@@ -97,13 +97,13 @@
                     </div>
                     <div class="ml-3">
                         <p class="text-sm font-medium text-yellow-400">
-                            This descriptor is already in use
+                            {{ t('stores.descriptor_already_in_use') }}
                         </p>
                         <p class="mt-1 text-sm text-yellow-300">
                             {{ duplicateWarning.message }}
                         </p>
                         <p class="mt-2 text-xs text-yellow-400/80">
-                            BTCPay allows each descriptor to be used only once. Please use a different wallet/descriptor.
+                            {{ t('stores.descriptor_btcpay_once') }}
                         </p>
                     </div>
                 </div>
@@ -121,25 +121,25 @@
                         {{ testResult.message }}
                     </p>
                     <p v-if="testResult.requires_manual_config" class="mt-1 text-sm text-gray-400">
-                        Manual configuration by support team may be required.
+                        {{ t('stores.manual_config_required') }}
                     </p>
                 </div>
             </div>
         </div>
 
         <div v-if="existingConnection" class="bg-blue-900/10 border border-blue-500/20 rounded-xl p-5">
-            <h3 class="text-sm font-bold text-blue-400 mb-3 uppercase tracking-wider">Current Connection</h3>
+            <h3 class="text-sm font-bold text-blue-400 mb-3 uppercase tracking-wider">{{ t('stores.current_connection') }}</h3>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                 <div>
-                     <span class="block text-gray-500 text-xs uppercase">Type</span>
-                     <span class="font-medium text-white">{{ existingConnection.type === 'blink' ? 'Blink' : 'Aqua' }}</span>
+                     <span class="block text-gray-500 text-xs uppercase">{{ t('stores.type') }}</span>
+                     <span class="font-medium text-white">{{ existingConnection.type === 'blink' ? t('stores.blink_wallet') : t('stores.aqua_wallet') }}</span>
                 </div>
                  <div>
-                     <span class="block text-gray-500 text-xs uppercase">Status</span>
+                     <span class="block text-gray-500 text-xs uppercase">{{ t('stores.status') }}</span>
                      <span class="font-medium" :class="getStatusColorClass(existingConnection.status)">{{ formatStatus(existingConnection.status) }}</span>
                 </div>
                  <div class="sm:col-span-3">
-                     <span class="block text-gray-500 text-xs uppercase">Masked Secret</span>
+                     <span class="block text-gray-500 text-xs uppercase">{{ t('stores.masked_secret') }}</span>
                      <span class="font-mono text-gray-300 break-all bg-gray-900/50 px-2 py-1 rounded border border-gray-700/50 inline-block mt-1">{{ existingConnection.masked_secret || 'N/A' }}</span>
                 </div>
             </div>
@@ -157,7 +157,7 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    {{ testing ? 'Testing...' : 'Test Connection' }}
+                    {{ testing ? t('stores.testing') : t('stores.test_connection') }}
                 </button>
              </div>
              
@@ -167,7 +167,7 @@
                     @click="$emit('cancel')"
                     class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all"
                 >
-                    Cancel
+                    {{ t('common.cancel') }}
                 </button>
                 <button
                     type="submit"
@@ -178,7 +178,7 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    {{ submitting ? 'Saving...' : 'Save Connection' }}
+                    {{ submitting ? t('auth.saving') : t('stores.save_connection') }}
                 </button>
             </div>
         </div>
@@ -187,7 +187,10 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
+
+const { t } = useI18n();
 
 interface Props {
     storeId: string;
@@ -215,9 +218,9 @@ const form = reactive({
 
 function formatStatus(status: string): string {
     const statusMap: Record<string, string> = {
-        pending: 'Pending',
-        needs_support: 'Needs Support',
-        connected: 'Connected',
+        pending: t('stores.pending'),
+        needs_support: t('stores.needs_support'),
+        connected: t('stores.connected'),
     };
     return statusMap[status] || status;
 }

@@ -4,14 +4,14 @@
       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
     </svg>
-    <p class="text-gray-400 mt-4">Loading exports...</p>
+    <p class="text-gray-400 mt-4">{{ t('stores.loading_exports') }}</p>
   </div>
 
   <div v-else class="space-y-6">
     <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
       <div class="px-6 py-5 border-b border-gray-700 bg-gray-800/50">
-        <h1 class="text-2xl font-bold text-white">Exports</h1>
-        <p class="text-sm text-gray-400 mt-1">Download your data exports.</p>
+        <h1 class="text-2xl font-bold text-white">{{ t('stores.exports') }}</h1>
+        <p class="text-sm text-gray-400 mt-1">{{ t('stores.download_data_exports') }}</p>
       </div>
 
       <div class="px-6 py-5">
@@ -26,19 +26,19 @@
           <svg class="mx-auto h-12 w-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <h3 class="mt-2 text-sm font-medium text-white">No exports yet</h3>
-          <p class="mt-1 text-sm text-gray-400">Exports generated from Invoices section will appear here.</p>
+          <h3 class="mt-2 text-sm font-medium text-white">{{ t('stores.no_exports_yet') }}</h3>
+          <p class="mt-1 text-sm text-gray-400">{{ t('stores.exports_will_appear_here') }}</p>
         </div>
 
         <div v-else class="overflow-x-auto rounded-xl border border-gray-700">
           <table class="min-w-full divide-y divide-gray-700">
             <thead class="bg-gray-700/50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Export ID</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Created</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Format</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">{{ t('stores.export_id') }}</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">{{ t('stores.created') }}</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">{{ t('stores.status') }}</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">{{ t('stores.format') }}</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">{{ t('common.actions') }}</th>
               </tr>
             </thead>
             <tbody class="bg-gray-800 divide-y divide-gray-700">
@@ -61,7 +61,7 @@
                     :disabled="downloadingExportId === exportItem.id"
                     class="text-indigo-400 hover:text-indigo-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    {{ downloadingExportId === exportItem.id ? 'Downloading...' : 'Download' }}
+                    {{ downloadingExportId === exportItem.id ? t('stores.downloading') : t('stores.download') }}
                   </button>
                   <button
                     v-else-if="exportItem.status === 'failed'"
@@ -69,14 +69,14 @@
                     :disabled="retryingExportId === exportItem.id"
                     class="text-orange-400 hover:text-orange-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    {{ retryingExportId === exportItem.id ? 'Retrying...' : 'Retry' }}
+                    {{ retryingExportId === exportItem.id ? t('stores.retrying') : t('common.retry') }}
                   </button>
                   <span v-else-if="exportItem.status === 'pending' || exportItem.status === 'running'" class="text-gray-500 flex items-center">
                     <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    {{ exportItem.status === 'running' ? 'Processing...' : 'Waiting...' }}
+                    {{ exportItem.status === 'running' ? t('stores.processing') : t('stores.waiting') }}
                   </span>
                 </td>
               </tr>
@@ -90,7 +90,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
+
+const { t } = useI18n();
 
 const props = defineProps({
   store: {

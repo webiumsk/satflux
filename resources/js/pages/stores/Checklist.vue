@@ -10,7 +10,7 @@
           <svg class="w-4 h-4 mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
-          Back to Store Dashboard
+          {{ t('common.back') }} {{ t('dashboard.title') }}
         </router-link>
       </div>
 
@@ -19,15 +19,15 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <p class="text-gray-400">Loading checklist...</p>
+        <p class="text-gray-400">{{ t('common.loading') }}</p>
       </div>
 
       <div v-else-if="store" class="bg-gray-800/50 backdrop-blur-sm border border-gray-700 shadow-2xl rounded-3xl p-8 md:p-10">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
             <div>
-                <h1 class="text-3xl font-extrabold text-white mb-2 tracking-tight">Wallet Onboarding</h1>
+                <h1 class="text-3xl font-extrabold text-white mb-2 tracking-tight">{{ t('stores.wallet_onboarding') }}</h1>
                 <p class="text-gray-400">
-                  Complete these steps to set up your <span class="text-indigo-400 font-semibold">{{ store.wallet_type === 'blink' ? 'Blink' : 'Aqua (Boltz)' }}</span> wallet.
+                  {{ t('stores.complete_steps_setup') }} <span class="text-indigo-400 font-semibold">{{ store.wallet_type === 'blink' ? t('stores.blink_wallet') : t('stores.aqua_wallet') }}</span> {{ t('stores.wallet') }}
                 </p>
             </div>
             <div class="flex-shrink-0">
@@ -38,8 +38,8 @@
                         </svg>
                     </div>
                     <div>
-                        <div class="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Progress</div>
-                        <div class="text-sm font-bold text-white">Setup in progress</div>
+                        <div class="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{{ t('stores.progress') }}</div>
+                        <div class="text-sm font-bold text-white">{{ t('stores.setup_in_progress') }}</div>
                     </div>
                 </div>
             </div>
@@ -51,7 +51,7 @@
         
         <div class="mt-12 pt-8 border-t border-gray-700 flex justify-center">
              <p class="text-sm text-gray-500 italic">
-                 All steps are required unless marked as optional.
+                 {{ t('stores.all_steps_required') }}
              </p>
         </div>
       </div>
@@ -62,8 +62,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
 import WalletChecklist from '../../components/stores/WalletChecklist.vue';
+
+const { t } = useI18n();
 
 const route = useRoute();
 const storesStore = useStoresStore();

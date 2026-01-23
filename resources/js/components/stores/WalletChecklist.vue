@@ -38,12 +38,12 @@
           :class="item.is_completed ? 'text-gray-400 line-through' : 'text-gray-200 group-hover:text-white'"
         >
           {{ item.description }}
-          <span v-if="item.optional" class="ml-2 text-xs font-medium text-gray-500 group-hover:text-gray-400 uppercase tracking-wider">(Optional)</span>
+          <span v-if="item.optional" class="ml-2 text-xs font-medium text-gray-500 group-hover:text-gray-400 uppercase tracking-wider">({{ t('common.optional') }})</span>
         </label>
         
         <div v-if="item.link && !item.is_completed" class="mt-2">
             <a :href="item.link" target="_blank" class="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center">
-                Documentation
+                {{ t('common.documentation') }}
                 <svg class="ml-1 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
             </a>
         </div>
@@ -57,7 +57,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
+
+const { t } = useI18n();
 
 interface ChecklistItem {
   key: string;

@@ -14,7 +14,7 @@
           </div>
           <div class="ml-5 w-0 flex-1">
             <dl>
-              <dt class="text-sm font-medium text-gray-400 truncate">Paid Invoices (7d)</dt>
+              <dt class="text-sm font-medium text-gray-400 truncate">{{ t('stores.paid_invoices_7d') }}</dt>
               <dd class="text-3xl font-bold text-white mt-1">{{ stats.paid_invoices_last_7d }}</dd>
             </dl>
           </div>
@@ -23,11 +23,11 @@
       <div class="bg-gray-900/50 px-6 py-3 border-t border-gray-700 flex justify-between items-center group-hover:bg-gray-900/80 transition-colors">
         <span class="text-xs text-orange-500 font-medium flex items-center">
            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
-           Recent activity
+           {{ t('stores.recent_activity') }}
         </span>
         <div class="text-sm">
           <a href="#" class="font-medium text-indigo-400 hover:text-indigo-300 transition-colors" @click.prevent="emit('view-invoices', { filter: 'paid', days: 7 })">
-            View details &rarr;
+            {{ t('stores.view_details') }} &rarr;
           </a>
         </div>
       </div>
@@ -47,17 +47,17 @@
           </div>
           <div class="ml-5 w-0 flex-1">
             <dl>
-              <dt class="text-sm font-medium text-gray-400 truncate">Total Invoices</dt>
+              <dt class="text-sm font-medium text-gray-400 truncate">{{ t('stores.total_invoices') }}</dt>
               <dd class="text-3xl font-bold text-white mt-1">{{ stats.total_invoices }}</dd>
             </dl>
           </div>
         </div>
       </div>
       <div class="bg-gray-900/50 px-6 py-3 border-t border-gray-700 flex justify-between items-center group-hover:bg-gray-900/80 transition-colors">
-        <span class="text-xs text-gray-500 font-medium">All time</span>
+        <span class="text-xs text-gray-500 font-medium">{{ t('stores.all_time') }}</span>
         <div class="text-sm">
           <a href="#" class="font-medium text-indigo-400 hover:text-indigo-300 transition-colors" @click.prevent="emit('view-invoices')">
-            View history &rarr;
+            {{ t('stores.view_history') }} &rarr;
           </a>
         </div>
       </div>
@@ -74,15 +74,15 @@
           </div>
           <div class="ml-5 w-0 flex-1">
             <dl>
-              <dt class="text-sm font-medium text-gray-500 truncate">Lightning Volume</dt>
-              <dd class="text-3xl font-bold text-gray-600 mt-1">Coming Soon</dd>
+              <dt class="text-sm font-medium text-gray-500 truncate">{{ t('stores.lightning_volume') }}</dt>
+              <dd class="text-3xl font-bold text-gray-600 mt-1">{{ t('stores.coming_soon') }}</dd>
             </dl>
           </div>
         </div>
       </div>
        <div class="bg-gray-900/30 px-6 py-3 border-t border-gray-700/50">
         <div class="text-sm text-gray-600">
-           Tracking unavailable
+           {{ t('stores.tracking_unavailable') }}
         </div>
       </div>
     </div>
@@ -90,6 +90,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
+
 interface Props {
   stats: {
     paid_invoices_last_7d: number;

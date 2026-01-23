@@ -1,7 +1,7 @@
 <template>
   <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 p-6 flex flex-col">
     <div class="flex items-center justify-between mb-6">
-      <h2 class="text-xl font-bold text-white">{{ storeName }} Sales</h2>
+      <h2 class="text-xl font-bold text-white">{{ storeName }} {{ t('stores.sales') }}</h2>
       <div class="flex items-center gap-3">
         <div class="flex bg-gray-700/50 rounded-lg p-1">
             <button
@@ -22,14 +22,14 @@
           :to="manageUrl"
           class="text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
         >
-          Manage
+          {{ t('stores.manage') }}
         </router-link>
       </div>
     </div>
     
     <div class="mb-6">
-      <p class="text-3xl font-bold text-white">{{ totalSales }} <span class="text-lg font-normal text-gray-400">Total Sales</span></p>
-      <p class="text-sm text-gray-500 mt-1">Sales volume in the selected period</p>
+      <p class="text-3xl font-bold text-white">{{ totalSales }} <span class="text-lg font-normal text-gray-400">{{ t('stores.total_sales') }}</span></p>
+      <p class="text-sm text-gray-500 mt-1">{{ t('stores.sales_volume_period') }}</p>
     </div>
     
     <div class="h-64 flex items-end space-x-2 mt-auto" v-if="chartData.length > 0">
@@ -45,7 +45,7 @@
            <!-- Tooltip -->
           <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-max opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 border border-gray-700 text-white text-xs px-2 py-1 rounded-md shadow-lg pointer-events-none z-10">
             <p class="font-bold border-b border-gray-700 pb-1 mb-1">{{ item.date }}</p>
-            <p>{{ item.count }} Sales</p>
+            <p>{{ item.count }} {{ t('stores.sales') }}</p>
           </div>
         </div>
         <!-- X Axis Label -->
@@ -57,7 +57,7 @@
     
     <div v-else class="h-64 flex flex-col items-center justify-center text-gray-500 bg-gray-900/30 rounded-xl border border-gray-700/50 border-dashed">
       <svg class="w-12 h-12 mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-      <p>No sales data available</p>
+      <p>{{ t('stores.no_sales_data') }}</p>
     </div>
 
     <!-- X Axis Dates (Simplified) -->
@@ -71,6 +71,9 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 interface Props {
   storeName: string;

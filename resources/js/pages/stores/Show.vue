@@ -56,19 +56,19 @@
                   </div>
                   <div>
                     <h1 class="text-3xl font-bold text-white mb-1">{{ store.name }}</h1>
-                    <p class="text-sm text-gray-400">Store ID: <span class="font-mono text-gray-500">{{ store.id }}</span></p>
+                    <p class="text-sm text-gray-400">{{ t('stores.store_id') }}: <span class="font-mono text-gray-500">{{ store.id }}</span></p>
                   </div>
               </div>
               
               <div class="flex flex-col items-end gap-2">
                  <div class="flex items-center bg-gray-800/80 rounded-lg px-3 py-1.5 border border-gray-700">
-                    <span class="text-xs text-gray-500 uppercase tracking-wider mr-2 font-semibold">Wallet Type</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wider mr-2 font-semibold">{{ t('stores.wallet_type') }}</span>
                     <span class="text-sm font-bold text-indigo-400">
-                       {{ store.wallet_type === 'blink' ? 'Blink' : store.wallet_type === 'aqua_boltz' ? 'Aqua (Boltz)' : 'Not configured' }}
+                       {{ store.wallet_type === 'blink' ? t('stores.blink_wallet') : store.wallet_type === 'aqua_boltz' ? t('stores.aqua_wallet') : t('stores.not_configured') }}
                     </span>
                  </div>
                  <div class="flex items-center bg-gray-800/80 rounded-lg px-3 py-1.5 border border-gray-700">
-                    <span class="text-xs text-gray-500 uppercase tracking-wider mr-2 font-semibold">Connection</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wider mr-2 font-semibold">{{ t('stores.connection') }}</span>
                     <span class="text-sm font-bold" :class="getWalletConnectionStatusClass(store)">
                        {{ getWalletConnectionStatusText(store) }}
                     </span>
@@ -92,8 +92,8 @@
             <div v-if="store.wallet_connection?.status === 'connected'" class="bg-green-500/10 border border-green-500/20 rounded-xl p-4 flex items-start">
               <svg class="h-5 w-5 text-green-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
               <div>
-                <h3 class="text-sm font-medium text-green-400">Connection Active</h3>
-                <p class="text-sm text-green-500/80 mt-1">This store is ready to accept transactions. Good job!</p>
+                <h3 class="text-sm font-medium text-green-400">{{ t('stores.connection_active') }}</h3>
+                <p class="text-sm text-green-500/80 mt-1">{{ t('stores.connection_active_description') }}</p>
               </div>
             </div>
             
@@ -101,8 +101,8 @@
             <div v-else-if="store.wallet_connection?.status === 'needs_support'" class="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex items-start">
               <svg class="h-5 w-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
                <div>
-                <h3 class="text-sm font-medium text-blue-400">Configuration in Progress</h3>
-                <p class="text-sm text-blue-500/80 mt-1">Your wallet connection is being configured by our support team. You'll be notified when it's ready.</p>
+                <h3 class="text-sm font-medium text-blue-400">{{ t('stores.configuration_in_progress') }}</h3>
+                <p class="text-sm text-blue-500/80 mt-1">{{ t('stores.configuration_in_progress_description') }}</p>
               </div>
             </div>
             
@@ -110,8 +110,8 @@
             <div v-else-if="store.wallet_connection?.status === 'pending'" class="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 flex items-start">
               <svg class="h-5 w-5 text-yellow-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
                <div>
-                <h3 class="text-sm font-medium text-yellow-400">Connection Pending</h3>
-                <p class="text-sm text-yellow-500/80 mt-1">Please wait while we process your wallet connection request.</p>
+                <h3 class="text-sm font-medium text-yellow-400">{{ t('stores.connection_pending') }}</h3>
+                <p class="text-sm text-yellow-500/80 mt-1">{{ t('stores.connection_pending_description') }}</p>
               </div>
             </div>
             
@@ -119,8 +119,8 @@
             <div v-else class="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start">
               <svg class="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>
                <div>
-                <h3 class="text-sm font-medium text-red-400">Wallet Not Configured</h3>
-                <p class="text-sm text-red-500/80 mt-1">To start accepting payments, please configure your wallet connection in <router-link :to="`/stores/${store.id}/wallet-connection`" class="underline hover:text-red-300">Wallet Connection</router-link>.</p>
+                <h3 class="text-sm font-medium text-red-400">{{ t('stores.wallet_not_configured') }}</h3>
+                <p class="text-sm text-red-500/80 mt-1">{{ t('stores.wallet_not_configured_description') }} <router-link :to="`/stores/${store.id}/wallet-connection`" class="underline hover:text-red-300">{{ t('stores.wallet_connection') }}</router-link>.</p>
               </div>
             </div>
 
@@ -162,8 +162,8 @@
               <div class="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
                  <svg class="h-8 w-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
               </div>
-              <h3 class="text-lg font-medium text-white mb-2">No invoices yet</h3>
-              <p class="text-gray-400 mb-6">Create your first invoice to start accepting payments.</p>
+              <h3 class="text-lg font-medium text-white mb-2">{{ t('stores.no_invoices_yet') }}</h3>
+              <p class="text-gray-400 mb-6">{{ t('stores.create_first_invoice') }}</p>
               <!-- <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-500">
                 Create Invoice
               </button> -->
@@ -172,12 +172,12 @@
           
           <!-- Dashboard load failed -->
           <div v-else-if="!loading" class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 p-12 text-center">
-            <p class="text-red-400 mb-2 font-medium">Failed to load dashboard data.</p>
+            <p class="text-red-400 mb-2 font-medium">{{ t('stores.failed_to_load_dashboard') }}</p>
             <button 
               @click="storesStore.fetchDashboard(store.id)" 
               class="mt-4 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
             >
-              Retry
+              {{ t('common.retry') }}
             </button>
           </div>
         </div>
@@ -188,8 +188,8 @@
 
   <div v-else class="flex items-center justify-center h-full bg-gray-900">
     <div class="text-center">
-        <h2 class="text-xl font-bold text-white mb-2">Store not found</h2>
-        <router-link to="/stores" class="text-indigo-400 hover:text-indigo-300">Return to Stores</router-link>
+        <h2 class="text-xl font-bold text-white mb-2">{{ t('stores.store_not_found') }}</h2>
+        <router-link to="/stores" class="text-indigo-400 hover:text-indigo-300">{{ t('stores.return_to_stores') }}</router-link>
     </div>
   </div>
 </template>
@@ -197,6 +197,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
 import { useAppsStore } from '../../store/apps';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
@@ -207,6 +208,8 @@ import TopItems from '../../components/stores/TopItems.vue';
 import StoreSettings from '../../components/stores/StoreSettings.vue';
 import StoreInvoices from '../../components/stores/StoreInvoices.vue';
 import StoreExports from '../../components/stores/StoreExports.vue';
+
+const { t } = useI18n();
 
 const route = useRoute();
 const router = useRouter();
@@ -338,19 +341,19 @@ function getWalletConnectionStatusClass(store: any): string {
 
 function getWalletConnectionStatusText(store: any): string {
   if (!store.wallet_connection) {
-    return 'Not config';
+    return t('stores.not_config');
   }
   
   const status = store.wallet_connection.status;
   switch (status) {
     case 'connected':
-      return 'Connected';
+      return t('stores.connected');
     case 'needs_support':
-      return 'Support';
+      return t('stores.support');
     case 'pending':
-      return 'Pending';
+      return t('stores.pending');
     default:
-      return 'Unknown';
+      return t('stores.unknown');
   }
 }
 </script>
