@@ -396,19 +396,23 @@ if [ -n "$REMOTE_STORAGE_TYPE" ]; then
                     S3_PATH="${REMOTE_STORAGE_PATH#s3://}"
                     S3_BUCKET=$(echo "$S3_PATH" | cut -d'/' -f1)
                     S3_PREFIX=$(echo "$S3_PATH" | cut -d'/' -f2-)
-                
-                # Build full S3 paths (only for files that exist)
-                if [ -n "$S3_PREFIX" ]; then
-                    S3_DB_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/database/$(basename "$DB_BACKUP_FILE")"
-                    [ -f "$FILES_BACKUP_FILE" ] && S3_FILES_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/files/$(basename "$FILES_BACKUP_FILE")"
-                    [ -f "$REDIS_BACKUP_FILE" ] && S3_REDIS_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/redis/$(basename "$REDIS_BACKUP_FILE")"
-                    S3_META_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/metadata/$(basename "$METADATA_FILE")"
-                else
-                    S3_DB_PATH="s3://${S3_BUCKET}/database/$(basename "$DB_BACKUP_FILE")"
-                    [ -f "$FILES_BACKUP_FILE" ] && S3_FILES_PATH="s3://${S3_BUCKET}/files/$(basename "$FILES_BACKUP_FILE")"
-                    [ -f "$REDIS_BACKUP_FILE" ] && S3_REDIS_PATH="s3://${S3_BUCKET}/redis/$(basename "$REDIS_BACKUP_FILE")"
-                    S3_META_PATH="s3://${S3_BUCKET}/metadata/$(basename "$METADATA_FILE")"
-                fi
+                    
+                    # Extract date from timestamp (YYYYMMDD_HHMMSS -> YYYY-MM-DD)
+                    BACKUP_DATE=$(echo "$TIMESTAMP" | cut -d'_' -f1)
+                    BACKUP_DATE_FORMATTED="${BACKUP_DATE:0:4}-${BACKUP_DATE:4:2}-${BACKUP_DATE:6:2}"
+                    
+                    # Build full S3 paths with date folder (only for files that exist)
+                    if [ -n "$S3_PREFIX" ]; then
+                        S3_DB_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/${BACKUP_DATE_FORMATTED}/database/$(basename "$DB_BACKUP_FILE")"
+                        [ -f "$FILES_BACKUP_FILE" ] && S3_FILES_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/${BACKUP_DATE_FORMATTED}/files/$(basename "$FILES_BACKUP_FILE")"
+                        [ -f "$REDIS_BACKUP_FILE" ] && S3_REDIS_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/${BACKUP_DATE_FORMATTED}/redis/$(basename "$REDIS_BACKUP_FILE")"
+                        S3_META_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/${BACKUP_DATE_FORMATTED}/metadata/$(basename "$METADATA_FILE")"
+                    else
+                        S3_DB_PATH="s3://${S3_BUCKET}/${BACKUP_DATE_FORMATTED}/database/$(basename "$DB_BACKUP_FILE")"
+                        [ -f "$FILES_BACKUP_FILE" ] && S3_FILES_PATH="s3://${S3_BUCKET}/${BACKUP_DATE_FORMATTED}/files/$(basename "$FILES_BACKUP_FILE")"
+                        [ -f "$REDIS_BACKUP_FILE" ] && S3_REDIS_PATH="s3://${S3_BUCKET}/${BACKUP_DATE_FORMATTED}/redis/$(basename "$REDIS_BACKUP_FILE")"
+                        S3_META_PATH="s3://${S3_BUCKET}/${BACKUP_DATE_FORMATTED}/metadata/$(basename "$METADATA_FILE")"
+                    fi
                 
                 # Track upload success
                 UPLOAD_SUCCESS=true
