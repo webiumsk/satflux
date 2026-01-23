@@ -391,22 +391,22 @@ if [ -n "$REMOTE_STORAGE_TYPE" ]; then
                 S3_BUCKET=$(echo "$S3_PATH" | cut -d'/' -f1)
                 S3_PREFIX=$(echo "$S3_PATH" | cut -d'/' -f2-)
                 
-                # Build full S3 paths
+                # Build full S3 paths (only for files that exist)
                 if [ -n "$S3_PREFIX" ]; then
-                    S3_DB_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/database/$(basename $DB_BACKUP_FILE)"
-                    S3_FILES_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/files/$(basename $FILES_BACKUP_FILE)"
-                    S3_REDIS_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/redis/$(basename $REDIS_BACKUP_FILE)"
-                    S3_META_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/metadata/$(basename $METADATA_FILE)"
+                    S3_DB_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/database/$(basename "$DB_BACKUP_FILE")"
+                    [ -f "$FILES_BACKUP_FILE" ] && S3_FILES_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/files/$(basename "$FILES_BACKUP_FILE")"
+                    [ -f "$REDIS_BACKUP_FILE" ] && S3_REDIS_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/redis/$(basename "$REDIS_BACKUP_FILE")"
+                    S3_META_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/metadata/$(basename "$METADATA_FILE")"
                 else
-                    S3_DB_PATH="s3://${S3_BUCKET}/database/$(basename $DB_BACKUP_FILE)"
-                    S3_FILES_PATH="s3://${S3_BUCKET}/files/$(basename $FILES_BACKUP_FILE)"
-                    S3_REDIS_PATH="s3://${S3_BUCKET}/redis/$(basename $REDIS_BACKUP_FILE)"
-                    S3_META_PATH="s3://${S3_BUCKET}/metadata/$(basename $METADATA_FILE)"
+                    S3_DB_PATH="s3://${S3_BUCKET}/database/$(basename "$DB_BACKUP_FILE")"
+                    [ -f "$FILES_BACKUP_FILE" ] && S3_FILES_PATH="s3://${S3_BUCKET}/files/$(basename "$FILES_BACKUP_FILE")"
+                    [ -f "$REDIS_BACKUP_FILE" ] && S3_REDIS_PATH="s3://${S3_BUCKET}/redis/$(basename "$REDIS_BACKUP_FILE")"
+                    S3_META_PATH="s3://${S3_BUCKET}/metadata/$(basename "$METADATA_FILE")"
                 fi
                 
                 aws s3 cp "$DB_BACKUP_FILE" "$S3_DB_PATH" || log_error "S3 upload failed for database"
-                [ -f "$FILES_BACKUP_FILE" ] && aws s3 cp "$FILES_BACKUP_FILE" "$S3_FILES_PATH" || log_error "S3 upload failed for files"
-                [ -f "$REDIS_BACKUP_FILE" ] && aws s3 cp "$REDIS_BACKUP_FILE" "$S3_REDIS_PATH" || log_error "S3 upload failed for redis"
+                [ -f "$FILES_BACKUP_FILE" ] && [ -n "$S3_FILES_PATH" ] && aws s3 cp "$FILES_BACKUP_FILE" "$S3_FILES_PATH" || log_error "S3 upload failed for files"
+                [ -f "$REDIS_BACKUP_FILE" ] && [ -n "$S3_REDIS_PATH" ] && aws s3 cp "$REDIS_BACKUP_FILE" "$S3_REDIS_PATH" || log_error "S3 upload failed for redis"
                 aws s3 cp "$METADATA_FILE" "$S3_META_PATH" || log_error "S3 upload failed for metadata"
                 echo -e "${GREEN}✓ Remote upload completed${NC}"
             else
