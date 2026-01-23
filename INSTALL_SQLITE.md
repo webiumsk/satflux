@@ -1,7 +1,9 @@
 # Inštalácia SQLite extensionu pre PHP 8.3
 
 ## Problém
+
 Všetky Feature testy zlyhávajú s chybou:
+
 ```
 could not find driver (Connection: sqlite, SQL: PRAGMA foreign_keys = ON;)
 ```
@@ -56,8 +58,8 @@ Ak nechcete inštalovať SQLite, môžete upraviť `phpunit.xml` aby používal 
     <env name="DB_CONNECTION" value="pgsql"/>
     <env name="DB_HOST" value="127.0.0.1"/>
     <env name="DB_PORT" value="5432"/>
-    <env name="DB_DATABASE" value="uzol21_testing"/>
-    <env name="DB_USERNAME" value="uzol21"/>
+    <env name="DB_DATABASE" value="satflux.io_testing"/>
+    <env name="DB_USERNAME" value="satflux.io"/>
     <env name="DB_PASSWORD" value="your_password"/>
     <env name="MAIL_MAILER" value="array"/>
     <env name="QUEUE_CONNECTION" value="sync"/>
@@ -66,15 +68,16 @@ Ak nechcete inštalovať SQLite, môžete upraviť `phpunit.xml` aby používal 
 ```
 
 Potom vytvorte testovaciu databázu:
+
 ```bash
 sudo -u postgres psql
-CREATE DATABASE uzol21_testing;
-GRANT ALL PRIVILEGES ON DATABASE uzol21_testing TO uzol21;
+CREATE DATABASE satflux.io_testing;
+GRANT ALL PRIVILEGES ON DATABASE satflux.io_testing TO satflux.io;
 \q
 ```
 
 **Poznámka:** SQLite je odporúčané pre testy, pretože:
+
 - Je rýchlejší (in-memory databáza)
 - Nevyžaduje externý server
 - Automaticky sa vyčistí po každom teste
-

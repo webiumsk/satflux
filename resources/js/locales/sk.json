@@ -144,7 +144,7 @@
     "settings_updated": "Nastavenia boli úspešne aktualizované",
     "failed_to_update_settings": "Zlyhala aktualizácia nastavení. Prosím, skúste to znova.",
     "additional_settings": "Ďalšie nastavenia",
-    "additional_settings_description": "Ďalšie voľby konfigurácie obchodu spravujú prostredníctvom rozhrania UZOL21. Všetky nastavenia, ktoré je možné nakonfigurovať, sú uvedené vyššie alebo v iných sekciách UZOL21.",
+    "additional_settings_description": "Ďalšie voľby konfigurácie obchodu spravujú prostredníctvom rozhrania satflux.io. Všetky nastavenia, ktoré je možné nakonfigurovať, sú uvedené vyššie alebo v iných sekciách satflux.io.",
     "payments": "PLATBY",
     "plugins": "PLUGINY",
     "wallet_section": "PEŇAŽENKA",

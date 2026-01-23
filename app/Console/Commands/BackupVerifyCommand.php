@@ -44,7 +44,7 @@ class BackupVerifyCommand extends Command
 
         if (!$timestamp) {
             // Find latest backup
-            $files = glob($metadataDir . '/uzol21_backup_*.json');
+            $files = glob($metadataDir . '/satflux.io_backup_*.json');
             if (empty($files)) {
                 $this->error('No backups found.');
                 return Command::FAILURE;
@@ -75,7 +75,7 @@ class BackupVerifyCommand extends Command
      */
     protected function verifyAll(string $metadataDir): int
     {
-        $files = glob($metadataDir . '/uzol21_backup_*.json');
+        $files = glob($metadataDir . '/satflux.io_backup_*.json');
 
         if (empty($files)) {
             $this->error('No backups found.');
@@ -231,7 +231,7 @@ class BackupVerifyCommand extends Command
                 return trim(explode(' ', $process->getOutput())[0]);
             }
         }
-        
+
         $process = new \Symfony\Component\Process\Process(['which', 'shasum']);
         $process->run();
         if ($process->isSuccessful()) {

@@ -1,12 +1,14 @@
-# UZOL21 - Testing Plan
+# satflux.io - Testing Plan
 
 ## Current Test Coverage
 
 **Backend (PHP/Laravel):**
+
 - ✅ `tests/Feature/AuthTest.php` - Basic authentication (register, login)
 - ✅ `tests/Feature/StoreAuthorizationTest.php` - Store access authorization
 
 **Frontend (Vue.js/TypeScript):**
+
 - ❌ No tests currently
 
 ---
@@ -16,7 +18,9 @@
 ### 1. Backend Feature Tests (PHPUnit)
 
 #### 1.1 Authentication & Authorization
+
 **File: `tests/Feature/AuthTest.php` (extend existing)**
+
 - [x] User can register
 - [x] User can login
 - [ ] User cannot login with invalid credentials
@@ -26,7 +30,9 @@
 - [ ] Password reset flow
 
 #### 1.2 Store Management
+
 **File: `tests/Feature/StoreTest.php` (new)**
+
 - [ ] User can create store
 - [ ] User can view own stores
 - [ ] User can update own store settings
@@ -37,7 +43,9 @@
 - [ ] Store list filtering
 
 #### 1.3 App Management
+
 **File: `tests/Feature/AppTest.php` (new)**
+
 - [ ] User can create PoS app
 - [ ] User can create Crowdfund app
 - [ ] User can create Payment Button app
@@ -48,7 +56,9 @@
 - [ ] App cannot be accessed by other users
 
 #### 1.4 Wallet Connections
+
 **File: `tests/Feature/WalletConnectionTest.php` (new)**
+
 - [ ] User can submit wallet connection string
 - [ ] Blink connection string validation
 - [ ] Boltz descriptor validation
@@ -59,14 +69,18 @@
 - [ ] Email notification sent when connection ready
 
 #### 1.5 Dashboard & Statistics
+
 **File: `tests/Feature/DashboardTest.php` (new)**
+
 - [ ] Dashboard shows store statistics
 - [ ] Sales over time calculation (7d, 30d)
 - [ ] Top items calculation
 - [ ] Dashboard only accessible to store owner
 
 #### 1.6 Support Features
+
 **File: `tests/Feature/SupportTest.php` (new)**
+
 - [ ] Support can list wallet connections needing support
 - [ ] Support can filter by status
 - [ ] Support can search connections
@@ -75,7 +89,9 @@
 - [ ] Admin users can access support endpoints
 
 #### 1.7 Audit Logging
+
 **File: `tests/Feature/AuditLogTest.php` (new)**
+
 - [ ] Store creation is logged
 - [ ] Store deletion is logged
 - [ ] App creation is logged
@@ -83,7 +99,9 @@
 - [ ] Wallet connection configuration is logged
 
 #### 1.8 API Integration (BTCPay)
+
 **File: `tests/Feature/BtcPayIntegrationTest.php` (new)**
+
 - [ ] Mock BTCPay API responses
 - [ ] Store creation in BTCPay
 - [ ] App creation in BTCPay
@@ -95,9 +113,11 @@
 ### 2. Backend Unit Tests (PHPUnit)
 
 #### 2.1 Services
+
 **Directory: `tests/Unit/Services/`**
 
 **`WalletConnectionValidatorTest.php`**
+
 - [ ] Valid Blink connection string parsing
 - [ ] Invalid Blink connection string rejection
 - [ ] Valid Boltz descriptor parsing
@@ -105,18 +125,22 @@
 - [ ] Connection string type detection
 
 **`WalletConnectionServiceTest.php`**
+
 - [ ] Connection status update logic
 - [ ] Email notification dispatch on status change
 - [ ] Connection encryption/decryption
 
 **`StoreChecklistServiceTest.php`**
+
 - [ ] Checklist initialization
 - [ ] Checklist item updates
 
 #### 2.2 Request Validation
+
 **Directory: `tests/Unit/Requests/`**
 
 **`StoreCreateRequestTest.php`**
+
 - [ ] Required fields validation
 - [ ] Currency format validation
 - [ ] Timezone validation
@@ -124,10 +148,12 @@
 - [ ] Connection string validation
 
 **`StoreUpdateRequestTest.php`**
+
 - [ ] Field validation
 - [ ] Optional fields handling
 
 **`AppCreateRequestTest.php`**
+
 - [ ] App name validation
 - [ ] App type validation
 - [ ] Config validation
@@ -137,7 +163,9 @@
 ### 3. Frontend Unit Tests (Vitest)
 
 #### 3.1 Setup
+
 **Add to `package.json`:**
+
 ```json
 {
   "devDependencies": {
@@ -153,24 +181,27 @@
 ```
 
 **Create `vitest.config.ts`:**
+
 ```typescript
-import { defineConfig } from 'vitest/config';
-import vue from '@vitejs/plugin-vue';
+import { defineConfig } from "vitest/config";
+import vue from "@vitejs/plugin-vue";
 
 export default defineConfig({
   plugins: [vue()],
   test: {
     globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./tests/setup.ts'],
+    environment: "jsdom",
+    setupFiles: ["./tests/setup.ts"],
   },
 });
 ```
 
 #### 3.2 Store Tests
+
 **Directory: `tests/unit/stores/`**
 
 **`stores.spec.ts`**
+
 - [ ] Store store (Pinia) actions
 - [ ] Store fetching
 - [ ] Store creation
@@ -179,9 +210,11 @@ export default defineConfig({
 - [ ] Dashboard data fetching
 
 #### 3.3 Component Tests
+
 **Directory: `tests/unit/components/`**
 
 **`StoreSidebar.spec.ts`**
+
 - [ ] Store list rendering
 - [ ] App list rendering
 - [ ] Wallet connection status display
@@ -189,27 +222,32 @@ export default defineConfig({
 - [ ] Settings button click
 
 **`WalletConnectionForm.spec.ts`**
+
 - [ ] Connection string input
 - [ ] Validation errors display
 - [ ] Test connection button
 - [ ] Form submission
 
 **`RevealSecretModal.spec.ts`**
+
 - [ ] Password input
 - [ ] Secret reveal
 - [ ] Copy to clipboard
 - [ ] Auto-hide countdown
 
 #### 3.4 Page Tests
+
 **Directory: `tests/unit/pages/`**
 
 **`Dashboard.spec.ts`**
+
 - [ ] Store list rendering
 - [ ] Empty state
 - [ ] Wallet connection status display
 - [ ] Logo display
 
 **`Show.spec.ts` (Store Detail)**
+
 - [ ] Store info display
 - [ ] Settings form
 - [ ] Logo upload/delete
@@ -217,6 +255,7 @@ export default defineConfig({
 - [ ] Dashboard statistics display
 
 **`AppsShow.spec.ts`**
+
 - [ ] App settings form
 - [ ] Default view radio buttons
 - [ ] Currency datalist
@@ -230,6 +269,7 @@ export default defineConfig({
 **Framework: Playwright or Cypress**
 
 **Scenarios:**
+
 1. **User Registration & Store Creation**
    - User registers
    - User creates store
@@ -254,22 +294,26 @@ export default defineConfig({
 ## Implementation Priority
 
 ### Phase 1: Critical Backend Tests (Week 1)
+
 1. ✅ Extend `AuthTest.php`
 2. ✅ Create `StoreTest.php`
 3. ✅ Create `AppTest.php`
 4. ✅ Create `WalletConnectionTest.php`
 
 ### Phase 2: Backend Service Tests (Week 2)
+
 1. ✅ Create `WalletConnectionValidatorTest.php`
 2. ✅ Create `WalletConnectionServiceTest.php`
 3. ✅ Create request validation tests
 
 ### Phase 3: Frontend Tests Setup (Week 3)
+
 1. ✅ Setup Vitest
 2. ✅ Create store tests (Pinia)
 3. ✅ Create basic component tests
 
 ### Phase 4: Frontend Component Tests (Week 4)
+
 1. ✅ Test all major components
 2. ✅ Test page components
 3. ✅ Test forms and validation
@@ -279,6 +323,7 @@ export default defineConfig({
 ## Running Tests
 
 ### Backend
+
 ```bash
 # All tests
 php artisan test
@@ -291,6 +336,7 @@ php artisan test --coverage
 ```
 
 ### Frontend
+
 ```bash
 # All tests
 npm run test
@@ -321,11 +367,13 @@ npm run test:ui
 ## Mocking Strategy
 
 ### Backend
+
 - Use `Http::fake()` for BTCPay API calls
 - Use factories for model creation
 - Use `Event::fake()` for testing notifications
 
 ### Frontend
+
 - Mock API calls with `vi.mock()`
 - Mock Pinia stores
 - Mock router navigation
@@ -335,6 +383,7 @@ npm run test:ui
 ## Continuous Integration
 
 Add to `.github/workflows/tests.yml`:
+
 ```yaml
 name: Tests
 

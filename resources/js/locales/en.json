@@ -155,7 +155,7 @@
     "settings_updated": "Settings updated successfully",
     "failed_to_update_settings": "Failed to update settings. Please try again.",
     "additional_settings": "Additional Settings",
-    "additional_settings_description": "Additional store configuration options are managed through the UZOL21 interface. All settings that can be configured are available above or through other UZOL21 sections.",
+    "additional_settings_description": "Additional store configuration options are managed through the satflux.io interface. All settings that can be configured are available above or through other satflux.io sections.",
     "payments": "PAYMENTS",
     "plugins": "PLUGINS",
     "wallet_section": "WALLET",

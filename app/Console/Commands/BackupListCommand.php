@@ -75,7 +75,7 @@ class BackupListCommand extends Command
     {
         $backups = collect();
 
-        $files = glob($metadataDir . '/uzol21_backup_*.json');
+        $files = glob($metadataDir . '/satflux.io_backup_*.json');
 
         foreach ($files as $file) {
             try {

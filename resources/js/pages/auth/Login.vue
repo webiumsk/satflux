@@ -1,39 +1,67 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-900 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+  <div
+    class="min-h-screen flex items-center justify-center bg-gray-900 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden"
+  >
     <!-- Background Effects -->
     <div class="absolute inset-0 bg-gray-900">
-      <div class="absolute top-0 -left-4 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"></div>
-      <div class="absolute bottom-0 -right-4 w-72 h-72 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"></div>
+      <div
+        class="absolute top-0 -left-4 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"
+      ></div>
+      <div
+        class="absolute bottom-0 -right-4 w-72 h-72 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"
+      ></div>
     </div>
 
     <div class="max-w-md w-full space-y-8 relative z-10">
       <div class="text-center">
         <router-link to="/" class="inline-block">
-          <span class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500 tracking-tight">UZOL21</span>
+          <span
+            class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500 tracking-tight"
+            >satflux.io</span
+          >
         </router-link>
         <h2 class="mt-6 text-center text-3xl font-extrabold text-white">
-          {{ t('auth.welcome_back') }}
+          {{ t("auth.welcome_back") }}
         </h2>
         <p class="mt-2 text-center text-sm text-gray-400">
-          {{ t('auth.sign_in_to_account') }}
+          {{ t("auth.sign_in_to_account") }}
         </p>
       </div>
-      
-      <div class="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-8 shadow-xl">
-        <div v-if="route.query.email_verified === '1'" class="mb-6 rounded-lg bg-green-500/10 border border-green-500/20 p-4">
+
+      <div
+        class="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-8 shadow-xl"
+      >
+        <div
+          v-if="route.query.email_verified === '1'"
+          class="mb-6 rounded-lg bg-green-500/10 border border-green-500/20 p-4"
+        >
           <div class="flex items-start">
-            <svg class="w-5 h-5 text-green-400 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            <svg
+              class="w-5 h-5 text-green-400 mt-0.5 mr-3 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M5 13l4 4L19 7"
+              ></path>
             </svg>
             <p class="text-sm text-green-400">
-              {{ t('auth.email_verified') }}
+              {{ t("auth.email_verified") }}
             </p>
           </div>
         </div>
-        
+
         <form class="space-y-6" @submit.prevent="handleLogin">
           <div>
-            <label for="email" class="block text-sm font-medium text-gray-300">{{ t('auth.email') }}</label>
+            <label
+              for="email"
+              class="block text-sm font-medium text-gray-300"
+              >{{ t("auth.email") }}</label
+            >
             <div class="mt-1">
               <input
                 id="email"
@@ -49,7 +77,11 @@
           </div>
 
           <div>
-            <label for="password" class="block text-sm font-medium text-gray-300">{{ t('auth.password') }}</label>
+            <label
+              for="password"
+              class="block text-sm font-medium text-gray-300"
+              >{{ t("auth.password") }}</label
+            >
             <div class="mt-1">
               <input
                 id="password"
@@ -74,7 +106,7 @@
                 class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-600 rounded bg-gray-700"
               />
               <label for="remember-me" class="ml-2 block text-sm text-gray-300">
-                {{ t('auth.remember_me') }}
+                {{ t("auth.remember_me") }}
               </label>
             </div>
 
@@ -83,12 +115,15 @@
                 to="/password/reset"
                 class="font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
               >
-                {{ t('auth.forgot_password') }}
+                {{ t("auth.forgot_password") }}
               </router-link>
             </div>
           </div>
 
-          <div v-if="error" class="rounded-md bg-red-900/30 border border-red-500/30 p-4">
+          <div
+            v-if="error"
+            class="rounded-md bg-red-900/30 border border-red-500/30 p-4"
+          >
             <div class="text-sm text-red-200">{{ error }}</div>
           </div>
 
@@ -98,38 +133,56 @@
               :disabled="loading"
               class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20"
             >
-              {{ loading ? t('auth.signing_in') : t('auth.sign_in') }}
+              {{ loading ? t("auth.signing_in") : t("auth.sign_in") }}
             </button>
-            
+
             <div v-if="lnurlAuthEnabled">
               <div class="relative mb-4">
                 <div class="absolute inset-0 flex items-center">
                   <div class="w-full border-t border-gray-600"></div>
                 </div>
                 <div class="relative flex justify-center text-sm">
-                  <span class="px-2 bg-gray-800 text-gray-400">{{ t('auth.or_continue_with') }}</span>
+                  <span class="px-2 bg-gray-800 text-gray-400">{{
+                    t("auth.or_continue_with")
+                  }}</span>
                 </div>
               </div>
-              
+
               <button
                 type="button"
                 @click="handleLnurlAuth"
                 :disabled="lnurlLoading"
                 class="group relative w-full flex justify-center items-center py-3 px-4 border border-gray-600 text-sm font-bold rounded-xl text-white bg-gray-700/50 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all"
               >
-                <svg class="w-5 h-5 mr-2 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                {{ lnurlLoading ? t('auth.generating') : t('auth.lightning_login') }}
+                <svg
+                  class="w-5 h-5 mr-2 text-yellow-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                  />
+                </svg>
+                {{
+                  lnurlLoading
+                    ? t("auth.generating")
+                    : t("auth.lightning_login")
+                }}
               </button>
             </div>
           </div>
 
           <div class="text-center text-sm">
-            <span class="text-gray-400">{{ t('auth.dont_have_account') }}</span>
+            <span class="text-gray-400">{{ t("auth.dont_have_account") }}</span>
             <router-link
               to="/register"
               class="font-medium text-indigo-400 hover:text-indigo-300 ml-1 transition-colors"
             >
-              {{ t('auth.sign_up') }}
+              {{ t("auth.sign_up") }}
             </router-link>
           </div>
         </form>
@@ -158,23 +211,26 @@
                 <!-- QR Code Step -->
                 <div v-if="!showEmailStep">
                   <h3 class="text-lg leading-6 font-bold text-white mb-4">
-                    {{ t('auth.scan_with_lightning_wallet') }}
+                    {{ t("auth.scan_with_lightning_wallet") }}
                   </h3>
                   <div class="flex justify-center mb-6">
-                     <div class="p-4 bg-white rounded-xl">
-                        <canvas
-                          ref="qrCanvas"
-                          class="block"
-                        ></canvas>
-                     </div>
+                    <div class="p-4 bg-white rounded-xl">
+                      <canvas ref="qrCanvas" class="block"></canvas>
+                    </div>
                   </div>
                   <p class="text-sm text-gray-400 mb-4 text-center">
-                    {{ t('auth.scan_qr_code') }}
+                    {{ t("auth.scan_qr_code") }}
                   </p>
-                  <div v-if="lnurlPolling" class="text-sm text-indigo-400 text-center animate-pulse">
-                    {{ t('auth.waiting_for_authentication') }}
+                  <div
+                    v-if="lnurlPolling"
+                    class="text-sm text-indigo-400 text-center animate-pulse"
+                  >
+                    {{ t("auth.waiting_for_authentication") }}
                   </div>
-                  <div v-if="lnurlError" class="text-sm text-red-400 mb-4 text-center">
+                  <div
+                    v-if="lnurlError"
+                    class="text-sm text-red-400 mb-4 text-center"
+                  >
                     {{ lnurlError }}
                   </div>
                 </div>
@@ -182,10 +238,10 @@
                 <!-- Email Input Step -->
                 <div v-else>
                   <h3 class="text-lg leading-6 font-bold text-white mb-4">
-                    {{ t('auth.complete_registration') }}
+                    {{ t("auth.complete_registration") }}
                   </h3>
                   <p class="text-sm text-gray-400 mb-6">
-                    {{ t('auth.provide_email_to_complete') }}
+                    {{ t("auth.provide_email_to_complete") }}
                   </p>
                   <form @submit.prevent="handleCompleteRegistration">
                     <div class="mb-6">
@@ -193,7 +249,7 @@
                         for="lnurl-email"
                         class="block text-sm font-medium text-gray-300 mb-2"
                       >
-                        {{ t('auth.email') }}
+                        {{ t("auth.email") }}
                       </label>
                       <input
                         id="lnurl-email"
@@ -214,14 +270,16 @@
                         @click="closeLnurlModal"
                         class="inline-flex justify-center rounded-lg border border-gray-600 px-4 py-2 bg-gray-700 text-base font-medium text-white hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm transition-colors"
                       >
-                        {{ t('common.cancel') }}
+                        {{ t("common.cancel") }}
                       </button>
                       <button
                         type="submit"
                         :disabled="emailLoading"
                         class="inline-flex justify-center rounded-lg border border-transparent px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 sm:text-sm transition-colors"
                       >
-                        {{ emailLoading ? t('auth.saving') : t('common.continue') }}
+                        {{
+                          emailLoading ? t("auth.saving") : t("common.continue")
+                        }}
                       </button>
                     </div>
                   </form>
@@ -238,7 +296,7 @@
               @click="closeLnurlModal"
               class="w-full inline-flex justify-center rounded-lg border border-gray-600 px-4 py-2 bg-gray-700 text-base font-medium text-white hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors"
             >
-              {{ t('common.cancel') }}
+              {{ t("common.cancel") }}
             </button>
           </div>
         </div>
@@ -299,7 +357,7 @@ async function handleLogin() {
     await authStore.login(
       form.value.email,
       form.value.password,
-      form.value.remember
+      form.value.remember,
     );
     // Redirect to dashboard after login
     const redirect = router.currentRoute.value.query.redirect as string;
@@ -363,7 +421,7 @@ function startPolling(k1: string) {
     try {
       // Poll challenge status endpoint
       const statusResponse = await api.get(
-        `/lnurl-auth/challenge-status/${k1}`
+        `/lnurl-auth/challenge-status/${k1}`,
       );
       const { status, user_id } = statusResponse.data;
 
@@ -382,7 +440,7 @@ function startPolling(k1: string) {
         lnurlError.value = "Challenge expired. Please try again.";
         stopPolling();
       } else if (status === "error") {
-        lnurlError.value = t('auth.error_occurred');
+        lnurlError.value = t("auth.error_occurred");
         stopPolling();
       }
       // status === "pending" means challenge not yet consumed, continue polling
@@ -395,7 +453,7 @@ function startPolling(k1: string) {
 
 async function handleCompleteRegistration() {
   if (!emailForm.value.user_id) {
-    emailError.value = t('auth.invalid_session');
+    emailError.value = t("auth.invalid_session");
     return;
   }
 
@@ -410,7 +468,7 @@ async function handleCompleteRegistration() {
 
     // Registration completed, show success message and close modal
     closeLnurlModal();
-    alert(t('auth.registration_successful'));
+    alert(t("auth.registration_successful"));
   } catch (err: any) {
     if (err.response?.data?.errors?.email) {
       emailError.value = err.response.data.errors.email[0];

@@ -1,6 +1,6 @@
-# UZOL21 - Architecture & Technical Documentation
+# satflux.io - Architecture & Technical Documentation
 
-**For AI Agents & Developers**: This document provides a comprehensive overview of how the UZOL21 application works, including data flows, component relationships, and implementation details.
+**For AI Agents & Developers**: This document provides a comprehensive overview of how the satflux.io application works, including data flows, component relationships, and implementation details.
 
 ---
 
@@ -22,7 +22,7 @@
 
 ## System Overview
 
-**UZOL21** is a multi-tenant control panel for managing BTCPay Server stores. It acts as a bridge between merchants (UZOL21 users) and BTCPay Server, providing a simplified interface while maintaining security and isolation.
+**satflux.io** is a multi-tenant control panel for managing BTCPay Server stores. It acts as a bridge between merchants (satflux.io users) and BTCPay Server, providing a simplified interface while maintaining security and isolation.
 
 ### Tech Stack
 
@@ -325,7 +325,7 @@ public function someMethod(string $storeId, ?string $userApiKey = null): array
            $user->btcpay_user_id,
            [], // Default permissions
            [], // All stores (no restriction)
-           'UZOL21 API Key - ' . $user->email
+           'satflux.io API Key - ' . $user->email
        );
        $user->btcpay_api_key = $apiKeyData['apiKey']; // Encrypted automatically
    }
@@ -1092,10 +1092,10 @@ SESSION_SAME_SITE=lax
 ### Production
 
 ```env
-APP_URL=https://uzol.dvadsatjeden.org
-SESSION_DOMAIN=uzol.dvadsatjeden.org
+APP_URL=https://satflux.io
+SESSION_DOMAIN=satflux.io
 SESSION_SECURE_COOKIE=true
-SANCTUM_STATEFUL_DOMAINS=uzol.dvadsatjeden.org
+SANCTUM_STATEFUL_DOMAINS=satflux.io
 ```
 
 ---

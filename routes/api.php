@@ -57,7 +57,7 @@ Route::get('/version', function () {
 
     return response()->json([
         'version' => $version,
-        'name' => 'UZOL21',
+        'name' => 'satflux.io',
     ]);
 });
 

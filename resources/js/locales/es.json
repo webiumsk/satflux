@@ -137,7 +137,7 @@
     "settings_updated": "Ajustes actualizados con éxito",
     "failed_to_update_settings": "Fallo al actualizar ajustes. Por favor, intenta nuevamente.",
     "additional_settings": "Configuraciones Adicionales",
-    "additional_settings_description": "Opciones adicionales de configuración de la tienda se gestionan a través de la interfaz UZOL21. Todos los ajustes que se pueden configurar están disponibles arriba o en otras secciones de UZOL21.",
+    "additional_settings_description": "Opciones adicionales de configuración de la tienda se gestionan a través de la interfaz satflux.io. Todos los ajustes que se pueden configurar están disponibles arriba o en otras secciones de satflux.io.",
     "payments": "PAGOS",
     "plugins": "COMPLEMENTOS",
     "wallet_section": "MONEDERO",

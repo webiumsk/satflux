@@ -6,10 +6,14 @@
         <div class="hidden md:flex items-center space-x-8">
           <!-- Logo -->
           <router-link to="/dashboard" class="flex items-center gap-3">
-             <div class="w-8 h-8 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
-                U21
-             </div>
-             <span class="text-xl font-bold text-white tracking-tight">UZOL21</span>
+            <div
+              class="w-8 h-8 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg"
+            >
+              SF
+            </div>
+            <span class="text-xl font-bold text-white tracking-tight"
+              >satflux.io</span
+            >
           </router-link>
 
           <!-- Navigation Menu (Desktop only) -->
@@ -23,7 +27,7 @@
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               "
             >
-              {{ t('header.dashboard') }}
+              {{ t("header.dashboard") }}
             </router-link>
             <router-link
               to="/stores"
@@ -34,10 +38,13 @@
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               "
             >
-              {{ t('header.stores') }}
+              {{ t("header.stores") }}
             </router-link>
             <router-link
-              v-if="authStore.user?.role === 'support' || authStore.user?.role === 'admin'"
+              v-if="
+                authStore.user?.role === 'support' ||
+                authStore.user?.role === 'admin'
+              "
               to="/support/wallet-connections"
               class="px-3 py-2 rounded-lg text-sm font-medium transition-all relative"
               :class="
@@ -51,7 +58,7 @@
                 v-if="supportCount > 0"
                 class="absolute top-1 -right-1 inline-flex items-center justify-center px-1 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-500 rounded-full min-w-[18px] shadow-sm"
               >
-                {{ supportCount > 99 ? '99+' : supportCount }}
+                {{ supportCount > 99 ? "99+" : supportCount }}
               </span>
             </router-link>
             <router-link
@@ -64,7 +71,7 @@
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               "
             >
-              {{ t('header.admin') }}
+              {{ t("header.admin") }}
             </router-link>
           </nav>
         </div>
@@ -72,32 +79,57 @@
         <!-- Center: Logo on mobile only -->
         <div class="md:hidden absolute left-1/2 transform -translate-x-1/2">
           <router-link to="/dashboard" class="flex items-center gap-2">
-             <div class="w-7 h-7 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                U21
-             </div>
-             <span class="text-lg font-bold text-white tracking-tight">UZOL21</span>
+            <div
+              class="w-7 h-7 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm"
+            >
+              SF
+            </div>
+            <span class="text-lg font-bold text-white tracking-tight"
+              >satflux.io</span
+            >
           </router-link>
         </div>
 
         <!-- Right side: Mobile menu button (mobile) / User button (desktop) -->
         <div class="flex items-center ml-auto md:ml-0 gap-4">
-           <!-- Language Switcher -->
-           <LanguageSwitcher />
-           
-           <!-- Links visible on desktop right side -->
-           <a href="https://docs.btcpayserver.org/" target="_blank" class="hidden md:block text-gray-500 hover:text-gray-300 text-sm font-medium transition-colors">
-             {{ t('header.docs') }}
-           </a>
-           
+          <!-- Language Switcher -->
+          <LanguageSwitcher />
+
+          <!-- Links visible on desktop right side -->
+          <a
+            href="https://docs.btcpayserver.org/"
+            target="_blank"
+            class="hidden md:block text-gray-500 hover:text-gray-300 text-sm font-medium transition-colors"
+          >
+            {{ t("header.docs") }}
+          </a>
+
           <!-- Mobile menu button (right side, mobile only) -->
           <button
             @click="showMobileMenu = !showMobileMenu"
             class="md:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             :aria-label="t('header.open_menu')"
           >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path v-if="!showMobileMenu" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-              <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                v-if="!showMobileMenu"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 6h16M4 12h16M4 18h16"
+              />
+              <path
+                v-else
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
 
@@ -108,7 +140,9 @@
               class="flex items-center space-x-3 p-1.5 pl-3 rounded-full hover:bg-gray-800 border border-transparent hover:border-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900"
               aria-label="User menu"
             >
-               <span class="text-sm font-medium text-gray-300">{{ userName }}</span>
+              <span class="text-sm font-medium text-gray-300">{{
+                userName
+              }}</span>
               <div
                 class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-indigo-500/20"
               >
@@ -130,10 +164,14 @@
                 class="absolute right-0 mt-2 w-56 rounded-xl shadow-2xl bg-gray-800 border border-gray-700 ring-1 ring-black ring-opacity-5 z-50 overflow-hidden"
               >
                 <div class="px-4 py-3 border-b border-gray-700 bg-gray-800/50">
-                   <p class="text-xs text-gray-400 uppercase tracking-wider font-semibold">{{ t('header.signed_in_as') }}</p>
-                   <p class="text-sm font-medium text-white truncate mt-1">
+                  <p
+                    class="text-xs text-gray-400 uppercase tracking-wider font-semibold"
+                  >
+                    {{ t("header.signed_in_as") }}
+                  </p>
+                  <p class="text-sm font-medium text-white truncate mt-1">
                     {{ authStore.user?.email }}
-                   </p>
+                  </p>
                 </div>
                 <div class="py-1">
                   <router-link
@@ -141,26 +179,59 @@
                     @click="closeUserMenu"
                     class="group flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
                   >
-                     <svg class="mr-3 h-5 w-5 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                     </svg>
-                    {{ t('header.profile_settings') }}
+                    <svg
+                      class="mr-3 h-5 w-5 text-gray-400 group-hover:text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                    {{ t("header.profile_settings") }}
                   </router-link>
-                  <a href="#" class="group flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">
-                      <svg class="mr-3 h-5 w-5 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
-                     </svg>
-                     Support
+                  <a
+                    href="#"
+                    class="group flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+                  >
+                    <svg
+                      class="mr-3 h-5 w-5 text-gray-400 group-hover:text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"
+                      />
+                    </svg>
+                    Support
                   </a>
                   <div class="border-t border-gray-700 my-1"></div>
                   <button
                     @click="handleLogout"
                     class="group flex w-full items-center px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors"
                   >
-                    <svg class="mr-3 h-5 w-5 text-red-500/70 group-hover:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    <svg
+                      class="mr-3 h-5 w-5 text-red-500/70 group-hover:text-red-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                      />
                     </svg>
-                    {{ t('auth.sign_out') }}
+                    {{ t("auth.sign_out") }}
                   </button>
                 </div>
               </div>
@@ -180,19 +251,34 @@
     <!-- Mobile drawer (right side) -->
     <aside
       class="fixed right-0 top-0 z-50 w-72 bg-gray-900 border-l border-gray-800 h-full shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col md:hidden"
-      :class="{ 'translate-x-full': !showMobileMenu, 'translate-x-0': showMobileMenu }"
+      :class="{
+        'translate-x-full': !showMobileMenu,
+        'translate-x-0': showMobileMenu,
+      }"
     >
       <div class="flex-1 overflow-y-auto">
         <!-- Header -->
-        <div class="flex items-center justify-between p-4 border-b border-gray-800">
-          <h2 class="text-lg font-bold text-white">{{ t('header.menu') }}</h2>
+        <div
+          class="flex items-center justify-between p-4 border-b border-gray-800"
+        >
+          <h2 class="text-lg font-bold text-white">{{ t("header.menu") }}</h2>
           <button
             @click="showMobileMenu = false"
             class="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             :aria-label="t('header.close_menu')"
           >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -209,10 +295,20 @@
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
             "
           >
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            <svg
+              class="w-5 h-5 mr-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+              />
             </svg>
-            {{ t('header.dashboard') }}
+            {{ t("header.dashboard") }}
           </router-link>
           <router-link
             to="/stores"
@@ -224,13 +320,26 @@
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
             "
           >
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            <svg
+              class="w-5 h-5 mr-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+              />
             </svg>
-            {{ t('header.stores') }}
+            {{ t("header.stores") }}
           </router-link>
           <router-link
-            v-if="authStore.user?.role === 'support' || authStore.user?.role === 'admin'"
+            v-if="
+              authStore.user?.role === 'support' ||
+              authStore.user?.role === 'admin'
+            "
             to="/support/wallet-connections"
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors relative"
@@ -240,15 +349,25 @@
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
             "
           >
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+            <svg
+              class="w-5 h-5 mr-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"
+              />
             </svg>
             Support
             <span
               v-if="supportCount > 0"
               class="ml-auto inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-500 rounded-full min-w-[20px]"
             >
-              {{ supportCount > 99 ? '99+' : supportCount }}
+              {{ supportCount > 99 ? "99+" : supportCount }}
             </span>
           </router-link>
           <router-link
@@ -262,10 +381,20 @@
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
             "
           >
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            <svg
+              class="w-5 h-5 mr-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+              />
             </svg>
-            {{ t('header.admin') }}
+            {{ t("header.admin") }}
           </router-link>
         </nav>
       </div>
@@ -273,7 +402,11 @@
       <!-- User Menu at bottom -->
       <div class="border-t border-gray-800 p-4 bg-gray-900/50">
         <div class="px-4 py-3 mb-2">
-          <p class="text-xs text-gray-500 uppercase font-semibold tracking-wider">{{ t('header.signed_in_as') }}</p>
+          <p
+            class="text-xs text-gray-500 uppercase font-semibold tracking-wider"
+          >
+            {{ t("header.signed_in_as") }}
+          </p>
           <p class="text-sm font-medium text-white truncate">
             {{ authStore.user?.email }}
           </p>
@@ -283,19 +416,39 @@
           @click="closeMobileMenu"
           class="flex items-center px-4 py-3 rounded-xl text-base font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
         >
-          <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          <svg
+            class="w-5 h-5 mr-3"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+            />
           </svg>
-          {{ t('header.profile_settings') }}
+          {{ t("header.profile_settings") }}
         </router-link>
         <button
           @click="handleLogout"
           class="flex items-center w-full px-4 py-3 rounded-xl text-base font-medium text-red-400 hover:bg-red-900/10 hover:text-red-300 transition-colors text-left"
         >
-          <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          <svg
+            class="w-5 h-5 mr-3"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+            />
           </svg>
-          {{ t('auth.sign_out') }}
+          {{ t("auth.sign_out") }}
         </button>
       </div>
     </aside>
@@ -303,12 +456,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { useI18n } from 'vue-i18n';
-import { useAuthStore } from '../../store/auth';
-import LanguageSwitcher from '../LanguageSwitcher.vue';
-import api from '../../services/api';
+import { ref, computed, onMounted, onUnmounted } from "vue";
+import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
+import { useAuthStore } from "../../store/auth";
+import LanguageSwitcher from "../LanguageSwitcher.vue";
+import api from "../../services/api";
 
 const { t } = useI18n();
 
@@ -320,7 +473,7 @@ const supportCount = ref(0);
 let supportCountInterval: ReturnType<typeof setInterval> | null = null;
 
 const userInitials = computed(() => {
-  if (!authStore.user?.email) return '?';
+  if (!authStore.user?.email) return "?";
   const email = authStore.user.email;
   const firstChar = email.charAt(0).toUpperCase();
   // Try to get a second character if available
@@ -333,9 +486,9 @@ const userInitials = computed(() => {
 
 const userName = computed(() => {
   if (authStore.user?.email) {
-    return authStore.user.email.split('@')[0];
+    return authStore.user.email.split("@")[0];
   }
-  return '';
+  return "";
 });
 
 const closeUserMenu = () => {
@@ -356,24 +509,24 @@ const handleLogout = async () => {
   closeMobileMenu();
   try {
     await authStore.logout();
-    router.push({ name: 'login' });
+    router.push({ name: "login" });
   } catch (error) {
-    console.error('Logout error:', error);
+    console.error("Logout error:", error);
     // Still redirect to login even if logout API call fails
-    router.push({ name: 'login' });
+    router.push({ name: "login" });
   }
 };
 
 const loadSupportCount = async () => {
-  if (authStore.user?.role !== 'support' && authStore.user?.role !== 'admin') {
+  if (authStore.user?.role !== "support" && authStore.user?.role !== "admin") {
     return;
   }
 
   try {
-    const response = await api.get('/support/count');
+    const response = await api.get("/support/count");
     supportCount.value = response.data.data?.total || 0;
   } catch (error) {
-    console.error('Failed to load support count:', error);
+    console.error("Failed to load support count:", error);
     supportCount.value = 0;
   }
 };
@@ -382,8 +535,8 @@ const loadSupportCount = async () => {
 router.afterEach(() => {
   // Close mobile menu on navigation
   closeMobileMenu();
-  
-  if (authStore.user?.role === 'support' || authStore.user?.role === 'admin') {
+
+  if (authStore.user?.role === "support" || authStore.user?.role === "admin") {
     // Small delay to ensure any status changes are saved
     setTimeout(() => {
       loadSupportCount();
@@ -393,7 +546,7 @@ router.afterEach(() => {
 
 onMounted(() => {
   // Load support count if user has support/admin role
-  if (authStore.user?.role === 'support' || authStore.user?.role === 'admin') {
+  if (authStore.user?.role === "support" || authStore.user?.role === "admin") {
     loadSupportCount();
     // Refresh count every 30 seconds
     supportCountInterval = setInterval(loadSupportCount, 30000);
@@ -414,11 +567,11 @@ const vClickOutside = {
         binding.value();
       }
     };
-    document.addEventListener('click', el.clickOutsideEvent);
+    document.addEventListener("click", el.clickOutsideEvent);
   },
   unmounted(el: HTMLElement) {
     if (el.clickOutsideEvent) {
-      document.removeEventListener('click', el.clickOutsideEvent);
+      document.removeEventListener("click", el.clickOutsideEvent);
     }
   },
 };

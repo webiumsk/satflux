@@ -1,18 +1,27 @@
 <template>
-  <header class="bg-gray-900 border-b border-gray-800 sticky top-0 z-50 backdrop-blur-md bg-opacity-90">
+  <header
+    class="bg-gray-900 border-b border-gray-800 sticky top-0 z-50 backdrop-blur-md bg-opacity-90"
+  >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between items-center h-20">
         <!-- Logo -->
         <router-link to="/" class="flex items-center gap-3">
           <!-- Simple Logo Placeholder or SVG -->
-          <div class="w-8 h-8 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
-            U
+          <div
+            class="w-8 h-8 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg"
+          >
+            SF
           </div>
-          <span class="text-2xl font-bold text-white tracking-tight">UZOL21</span>
+          <span class="text-2xl font-bold text-white tracking-tight"
+            >satflux.io</span
+          >
         </router-link>
 
         <!-- Desktop Navigation -->
-        <nav class="hidden md:flex items-center space-x-8" v-if="!authStore.isAuthenticated">
+        <nav
+          class="hidden md:flex items-center space-x-8"
+          v-if="!authStore.isAuthenticated"
+        >
           <router-link
             to="/#features"
             @click="handleAnchorClick('/#features')"
@@ -91,7 +100,12 @@
           class="md:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           aria-label="Open menu"
         >
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path
               v-if="!showMobileMenu"
               stroke-linecap="round"
@@ -119,18 +133,30 @@
         leave-from-class="opacity-100 transform translate-y-0"
         leave-to-class="opacity-0 transform -translate-y-2"
       >
-        <div v-if="showMobileMenu" class="md:hidden py-4 border-t border-gray-800 bg-gray-900 absolute top-20 left-0 right-0 px-4 shadow-xl">
-          <nav class="flex flex-col space-y-4" v-if="!authStore.isAuthenticated">
+        <div
+          v-if="showMobileMenu"
+          class="md:hidden py-4 border-t border-gray-800 bg-gray-900 absolute top-20 left-0 right-0 px-4 shadow-xl"
+        >
+          <nav
+            class="flex flex-col space-y-4"
+            v-if="!authStore.isAuthenticated"
+          >
             <router-link
               to="/#features"
-              @click="handleAnchorClick('/#features'); showMobileMenu = false"
+              @click="
+                handleAnchorClick('/#features');
+                showMobileMenu = false;
+              "
               class="text-gray-300 hover:text-white text-lg font-medium transition-colors"
             >
               Features
             </router-link>
             <router-link
               to="/#pricing"
-              @click="handleAnchorClick('/#pricing'); showMobileMenu = false"
+              @click="
+                handleAnchorClick('/#pricing');
+                showMobileMenu = false;
+              "
               class="text-gray-300 hover:text-white text-lg font-medium transition-colors"
             >
               Pricing
@@ -162,14 +188,20 @@
           <nav class="flex flex-col space-y-4" v-else>
             <router-link
               to="/#features"
-              @click="handleAnchorClick('/#features'); showMobileMenu = false"
+              @click="
+                handleAnchorClick('/#features');
+                showMobileMenu = false;
+              "
               class="text-gray-300 hover:text-white text-lg font-medium transition-colors"
             >
               Features
             </router-link>
             <router-link
               to="/#pricing"
-              @click="handleAnchorClick('/#pricing'); showMobileMenu = false"
+              @click="
+                handleAnchorClick('/#pricing');
+                showMobileMenu = false;
+              "
               class="text-gray-300 hover:text-white text-lg font-medium transition-colors"
             >
               Pricing
@@ -208,9 +240,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { useAuthStore } from '../../store/auth';
+import { ref, computed } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { useAuthStore } from "../../store/auth";
 
 const router = useRouter();
 const route = useRoute();
@@ -218,7 +250,7 @@ const showMobileMenu = ref(false);
 const authStore = useAuthStore();
 
 const userInitials = computed(() => {
-  if (!authStore.user?.email) return '?';
+  if (!authStore.user?.email) return "?";
   const email = authStore.user.email;
   const firstChar = email.charAt(0).toUpperCase();
   // Try to get a second character if available
@@ -230,12 +262,12 @@ const userInitials = computed(() => {
 });
 
 function handleAnchorClick(href: string) {
-  const hash = href.split('#')[1];
-  if (route.path === '/') {
+  const hash = href.split("#")[1];
+  if (route.path === "/") {
     // Already on landing page, just scroll
     const target = document.querySelector(`#${hash}`);
     if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   } else {
     // Navigate to landing page with hash
@@ -243,4 +275,3 @@ function handleAnchorClick(href: string) {
   }
 }
 </script>
-

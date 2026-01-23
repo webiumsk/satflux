@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# UZOL21 Comprehensive Backup Script
+# satflux.io Comprehensive Backup Script
 # This script creates automated backups of PostgreSQL database, files, and optionally Redis
 
 set -e  # Exit on any error
@@ -21,31 +21,31 @@ fi
 if [ -z "$COMPOSE_FILE" ]; then
     # Check which containers are actually running (use docker ps for accurate detection)
     # First check for prod containers (priority in production)
-    if docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^uzol21_postgres_prod$"; then
+    if docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^satflux.io_postgres_prod$"; then
         # Prod environment is running
         COMPOSE_FILE="docker-compose.prod.yml"
-        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-uzol21_postgres_prod}"
-        REDIS_CONTAINER="${REDIS_CONTAINER:-uzol21_redis_prod}"
-    elif docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^uzol21_postgres$"; then
+        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux.io_postgres_prod}"
+        REDIS_CONTAINER="${REDIS_CONTAINER:-satflux.io_redis_prod}"
+    elif docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^satflux.io_postgres$"; then
         # Dev environment (docker-compose.yml) is running
         COMPOSE_FILE="docker-compose.yml"
-        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-uzol21_postgres}"
-        REDIS_CONTAINER="${REDIS_CONTAINER:-uzol21_redis}"
+        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux.io_postgres}"
+        REDIS_CONTAINER="${REDIS_CONTAINER:-satflux.io_redis}"
     else
         # Default to prod
         COMPOSE_FILE="docker-compose.prod.yml"
-        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-uzol21_postgres_prod}"
-        REDIS_CONTAINER="${REDIS_CONTAINER:-uzol21_redis_prod}"
+        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux.io_postgres_prod}"
+        REDIS_CONTAINER="${REDIS_CONTAINER:-satflux.io_redis_prod}"
     fi
 else
     # COMPOSE_FILE is set, use defaults for container names
-    POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-uzol21_postgres_prod}"
-    REDIS_CONTAINER="${REDIS_CONTAINER:-uzol21_redis_prod}"
+    POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux.io_postgres_prod}"
+    REDIS_CONTAINER="${REDIS_CONTAINER:-satflux.io_redis_prod}"
     
     # If using docker-compose.yml, adjust container names
     if [ "$COMPOSE_FILE" = "docker-compose.yml" ]; then
-        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-uzol21_postgres}"
-        REDIS_CONTAINER="${REDIS_CONTAINER:-uzol21_redis}"
+        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux.io_postgres}"
+        REDIS_CONTAINER="${REDIS_CONTAINER:-satflux.io_redis}"
     fi
 fi
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
@@ -69,8 +69,8 @@ if [ -f ".env" ]; then
     fi
 fi
 
-DB_NAME="${DB_DATABASE:-uzol21}"
-DB_USER="${DB_USERNAME:-uzol21}"
+DB_NAME="${DB_DATABASE:-satflux.io}"
+DB_USER="${DB_USERNAME:-satflux.io}"
 
 # Create backup directory structure
 mkdir -p "$BACKUP_DIR/database"
@@ -80,7 +80,7 @@ mkdir -p "$BACKUP_DIR/metadata"
 
 # Generate backup filename with timestamp
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_PREFIX="uzol21_backup_$TIMESTAMP"
+BACKUP_PREFIX="satflux.io_backup_$TIMESTAMP"
 
 # Initialize metadata
 METADATA_FILE="$BACKUP_DIR/metadata/${BACKUP_PREFIX}.json"
@@ -132,7 +132,7 @@ verify_backup() {
     return 0
 }
 
-echo -e "${GREEN}=== Starting UZOL21 Backup ===${NC}"
+echo -e "${GREEN}=== Starting satflux.io Backup ===${NC}"
 echo "Timestamp: $TIMESTAMP"
 echo "Backup directory: $BACKUP_DIR"
 echo ""
@@ -151,11 +151,11 @@ fi
 # Use docker ps for accurate container name detection (not docker compose ps which shows service names)
 if ! docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^${POSTGRES_CONTAINER}$"; then
     # Try alternative container name (dev vs prod)
-    if [ "$POSTGRES_CONTAINER" = "uzol21_postgres_prod" ]; then
-        POSTGRES_CONTAINER="uzol21_postgres"
+    if [ "$POSTGRES_CONTAINER" = "satflux.io_postgres_prod" ]; then
+        POSTGRES_CONTAINER="satflux.io_postgres"
         COMPOSE_FILE="docker-compose.yml"
-    elif [ "$POSTGRES_CONTAINER" = "uzol21_postgres" ]; then
-        POSTGRES_CONTAINER="uzol21_postgres_prod"
+    elif [ "$POSTGRES_CONTAINER" = "satflux.io_postgres" ]; then
+        POSTGRES_CONTAINER="satflux.io_postgres_prod"
         COMPOSE_FILE="docker-compose.prod.yml"
     fi
     
@@ -472,13 +472,13 @@ find "$BACKUP_DIR/metadata" -name "${BACKUP_PREFIX%_*}_*.json" -type f -mtime +$
 # Keep only weekly backups for longer retention
 if [ -d "$BACKUP_DIR" ]; then
     # Find all backup prefixes
-    BACKUP_PREFIXES=$(find "$BACKUP_DIR/metadata" -name "uzol21_backup_*.json" -type f -exec basename {} \; | sed 's/uzol21_backup_\([0-9]\{8\}\).*/\1/' | sort -u)
+    BACKUP_PREFIXES=$(find "$BACKUP_DIR/metadata" -name "satflux.io_backup_*.json" -type f -exec basename {} \; | sed 's/satflux.io_backup_\([0-9]\{8\}\).*/\1/' | sort -u)
     
     # Group by week and keep only the latest in each week
     CURRENT_WEEK=""
     for prefix in $BACKUP_PREFIXES; do
         # Get the first backup file with this date prefix
-        BACKUP_DATE=$(find "$BACKUP_DIR/metadata" -name "uzol21_backup_${prefix}_*.json" -type f | head -1)
+        BACKUP_DATE=$(find "$BACKUP_DIR/metadata" -name "satflux.io_backup_${prefix}_*.json" -type f | head -1)
         if [ -n "$BACKUP_DATE" ]; then
             BACKUP_DATE=$(stat -c %Y "$BACKUP_DATE" 2>/dev/null || stat -f %m "$BACKUP_DATE" 2>/dev/null)
             BACKUP_WEEK=$(date -d "@$BACKUP_DATE" +%Y-W%V 2>/dev/null || date -r "$BACKUP_DATE" +%Y-W%V 2>/dev/null)
@@ -486,15 +486,15 @@ if [ -d "$BACKUP_DIR" ]; then
             if [ "$BACKUP_WEEK" != "$CURRENT_WEEK" ]; then
                 CURRENT_WEEK="$BACKUP_WEEK"
                 # Keep this backup - find all files with this prefix and keep the latest
-                LATEST=$(find "$BACKUP_DIR" -name "uzol21_backup_${prefix}_*" -type f | sort | tail -1)
+                LATEST=$(find "$BACKUP_DIR" -name "satflux.io_backup_${prefix}_*" -type f | sort | tail -1)
                 if [ -n "$LATEST" ]; then
-                    LATEST_PREFIX=$(basename "$LATEST" | sed 's/\(uzol21_backup_[0-9]\{8\}_[0-9]\{6\}\).*/\1/')
+                    LATEST_PREFIX=$(basename "$LATEST" | sed 's/\(satflux.io_backup_[0-9]\{8\}_[0-9]\{6\}\).*/\1/')
                     # Keep all files with this prefix
                     continue
                 fi
             else
                 # Remove older backups from same week (keep only latest)
-                find "$BACKUP_DIR" -name "uzol21_backup_${prefix}_*" -type f -delete 2>/dev/null || true
+                find "$BACKUP_DIR" -name "satflux.io_backup_${prefix}_*" -type f -delete 2>/dev/null || true
             fi
         fi
     done

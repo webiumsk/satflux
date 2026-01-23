@@ -1,6 +1,6 @@
 # Production Deployment Guide
 
-Tento dokument popisuje postup nasadenia UZOL21 aplikácie na produkčný server.
+Tento dokument popisuje postup nasadenia satflux.io aplikácie na produkčný server.
 
 ## Deployment Možnosti
 
@@ -27,8 +27,8 @@ Táto metóda je odporúčaná pre VPS servery s Dockerom, kde už bežia iné a
 
 ```bash
 cd /opt  # alebo iný vhodný adresár
-git clone <repository-url> uzol21
-cd uzol21
+git clone <repository-url> satflux.io
+cd satflux.io
 ```
 
 **Dôležité:** Ak používate Git v kontajneri a nastane problém s ownership, spustite:
@@ -102,13 +102,13 @@ Ak už máte Nginx alebo iný reverse proxy na hoste, pridajte konfiguráciu:
 ```nginx
 server {
     listen 80;
-    server_name uzol.dvadsatjeden.org;
+    server_name satflux.io;
     return 301 https://$server_name$request_uri;
 }
 
 server {
     listen 443 ssl http2;
-    server_name uzol.dvadsatjeden.org;
+    server_name satflux.io;
 
     ssl_certificate /path/to/ssl/cert.pem;
     ssl_certificate_key /path/to/ssl/key.pem;
@@ -195,7 +195,7 @@ crontab -e
 Pridajte riadok pre denné backupy o 2:00:
 
 ```
-0 2 * * * cd /opt/uzol21 && ./backup.sh >> /var/log/uzol21_backup.log 2>&1
+0 2 * * * cd /opt/satflux.io && ./backup.sh >> /var/log/satflux.io_backup.log 2>&1
 ```
 
 #### 3.3 Zoznam a verifikácia záloh
@@ -255,8 +255,8 @@ Vytvorte voliteľný konfiguračný súbor `backup.config.sh`:
 ```bash
 # backup.config.sh
 COMPOSE_FILE="docker-compose.prod.yml"
-POSTGRES_CONTAINER="uzol21_postgres_prod"
-REDIS_CONTAINER="uzol21_redis_prod"
+POSTGRES_CONTAINER="satflux.io_postgres_prod"
+REDIS_CONTAINER="satflux.io_redis_prod"
 BACKUP_DIR="./backups"
 RETENTION_DAYS=7
 RETENTION_WEEKS=4
@@ -396,9 +396,9 @@ Ak používate FTP/SFTP, nahrajte všetky súbory okrem:
 Vytvorte PostgreSQL databázu cez hosting panel alebo SSH:
 
 ```sql
-CREATE DATABASE uzol21;
-CREATE USER uzol21 WITH PASSWORD 'strong_password_here';
-GRANT ALL PRIVILEGES ON DATABASE uzol21 TO uzol21;
+CREATE DATABASE satflux.io;
+CREATE USER satflux.io WITH PASSWORD 'strong_password_here';
+GRANT ALL PRIVILEGES ON DATABASE satflux.io TO satflux.io;
 ```
 
 Poznačte si:
@@ -463,20 +463,20 @@ nano .env  # alebo vim .env
 Upravte nasledujúce hodnoty:
 
 ```env
-APP_NAME="UZOL21"
+APP_NAME="satflux.io"
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://uzol.dvadsatjeden.org
+APP_URL=https://satflux.io
 
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
 DB_PORT=5432
-DB_DATABASE=uzol21
-DB_USERNAME=uzol21
+DB_DATABASE=satflux.io
+DB_USERNAME=satflux.io
 DB_PASSWORD=your_database_password
 
 SESSION_DRIVER=file
-SESSION_DOMAIN=uzol.dvadsatjeden.org
+SESSION_DOMAIN=satflux.io
 SESSION_SECURE_COOKIE=true
 SESSION_SAME_SITE=lax
 
@@ -488,7 +488,7 @@ BTCPAY_API_KEY=your_btcpay_api_key
 BTCPAY_WEBHOOK_SECRET=your_webhook_secret
 
 LNURL_AUTH_ENABLED=true
-LNURL_AUTH_DOMAIN=https://uzol.dvadsatjeden.org
+LNURL_AUTH_DOMAIN=https://satflux.io
 
 MAIL_MAILER=smtp  # alebo log pre testovanie
 MAIL_HOST=your_smtp_host
@@ -496,8 +496,8 @@ MAIL_PORT=587
 MAIL_USERNAME=your_smtp_username
 MAIL_PASSWORD=your_smtp_password
 MAIL_ENCRYPTION=tls
-MAIL_FROM_ADDRESS="noreply@uzol.dvadsatjeden.org"
-MAIL_FROM_NAME="UZOL21"
+MAIL_FROM_ADDRESS="noreply@satflux.io"
+MAIL_FROM_NAME="satflux.io"
 ```
 
 ### 4.2 Nastavenie oprávnení
@@ -547,13 +547,13 @@ php artisan view:cache
 
 ### 5.1 Nginx konfigurácia
 
-Vytvorte virtual host súbor (napr. `/etc/nginx/sites-available/uzol.dvadsatjeden.org`):
+Vytvorte virtual host súbor (napr. `/etc/nginx/sites-available/satflux.io`):
 
 ```nginx
 server {
     listen 80;
     listen [::]:80;
-    server_name uzol.dvadsatjeden.org;
+    server_name satflux.io;
 
     # Redirect HTTP to HTTPS
     return 301 https://$server_name$request_uri;
@@ -562,7 +562,7 @@ server {
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name uzol.dvadsatjeden.org;
+    server_name satflux.io;
 
     root /path/to/panel/public;
     index index.php;
@@ -601,23 +601,23 @@ server {
 Aktivujte konfiguráciu:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/uzol.dvadsatjeden.org /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/satflux.io /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
 ### 5.2 Apache konfigurácia
 
-Vytvorte virtual host súbor (napr. `/etc/apache2/sites-available/uzol.dvadsatjeden.org.conf`):
+Vytvorte virtual host súbor (napr. `/etc/apache2/sites-available/satflux.io.conf`):
 
 ```apache
 <VirtualHost *:80>
-    ServerName uzol.dvadsatjeden.org
-    Redirect permanent / https://uzol.dvadsatjeden.org/
+    ServerName satflux.io
+    Redirect permanent / https://satflux.io/
 </VirtualHost>
 
 <VirtualHost *:443>
-    ServerName uzol.dvadsatjeden.org
+    ServerName satflux.io
     DocumentRoot /path/to/panel/public
 
     SSLEngine on
@@ -637,7 +637,7 @@ Vytvorte virtual host súbor (napr. `/etc/apache2/sites-available/uzol.dvadsatje
 Aktivujte konfiguráciu:
 
 ```bash
-sudo a2ensite uzol.dvadsatjeden.org
+sudo a2ensite satflux.io
 sudo a2enmod ssl rewrite
 sudo apache2ctl configtest
 sudo systemctl reload apache2
@@ -654,17 +654,17 @@ sudo apt-get install certbot python3-certbot-nginx
 sudo apt-get install certbot python3-certbot-apache
 
 # Pre Nginx:
-sudo certbot --nginx -d uzol.dvadsatjeden.org
+sudo certbot --nginx -d satflux.io
 
 # Pre Apache:
-sudo certbot --apache -d uzol.dvadsatjeden.org
+sudo certbot --apache -d satflux.io
 ```
 
 **Možnosť B: Cloudflare Origin Certificate**
 
 1. Prihláste sa do Cloudflare
 2. SSL/TLS → Origin Server → Create Certificate
-3. Nastavte doménu: `uzol.dvadsatjeden.org`
+3. Nastavte doménu: `satflux.io`
 4. Stiahnite certifikát a privátny kľúč
 5. Uložte ich na server (napr. `/etc/ssl/cloudflare/`)
 6. Upravte Nginx/Apache konfiguráciu, aby používali tieto súbory
@@ -677,8 +677,8 @@ Niektorí hostitelia poskytujú SSL certifikáty cez hosting panel. Postupujte p
 
 ### 6.1 Základné testy
 
-1. **HTTPS prístup**: Otvorte `https://uzol.dvadsatjeden.org` v prehliadači
-2. **API health check**: `https://uzol.dvadsatjeden.org/api/health`
+1. **HTTPS prístup**: Otvorte `https://satflux.io` v prehliadači
+2. **API health check**: `https://satflux.io/api/health`
 3. **Registrácia**: Vyskúšajte vytvorenie nového účtu
 4. **Login**: Prihláste sa
 5. **LNURL-auth**: Vyskúšajte Lightning autentifikáciu (teraz by mal fungovať s HTTPS)
@@ -728,7 +728,7 @@ php artisan view:cache
 ### Backup databázy
 
 ```bash
-pg_dump -h localhost -U uzol21 uzol21 > backup_$(date +%Y%m%d).sql
+pg_dump -h localhost -U satflux.io satflux.io > backup_$(date +%Y%m%d).sql
 ```
 
 ### Aktualizácia aplikácie
@@ -765,12 +765,12 @@ php artisan view:cache
 
 - Overte certifikát je na správnom mieste
 - Overte Nginx/Apache konfiguráciu
-- Overte DNS propagáciu: `dig uzol.dvadsatjeden.org`
+- Overte DNS propagáciu: `dig satflux.io`
 
 **4. LNURL-auth nefunguje**
 
 - Overte `LNURL_AUTH_ENABLED=true` v `.env`
-- Overte `LNURL_AUTH_DOMAIN=https://uzol.dvadsatjeden.org` (HTTPS!)
+- Overte `LNURL_AUTH_DOMAIN=https://satflux.io` (HTTPS!)
 - Overte SSL certifikát je platný
 
 **5. Frontend assets chýbajú**

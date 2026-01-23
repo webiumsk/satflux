@@ -1,10 +1,11 @@
 # Translation Guide
 
-This document explains how to add and maintain translations for the UZOL21 application.
+This document explains how to add and maintain translations for the satflux.io application.
 
 ## Overview
 
 The application supports multiple languages:
+
 - **Backend (Laravel)**: PHP translation files in `lang/` directory
 - **Frontend (Vue.js)**: JSON translation files in `resources/js/locales/` directory
 
@@ -26,6 +27,7 @@ The application supports multiple languages:
 1. Create a new directory in `lang/` with the language code (e.g., `lang/sk/`)
 
 2. Copy the English translation files as a template:
+
    ```bash
    cp lang/en/auth.php lang/sk/auth.php
    cp lang/en/validation.php lang/sk/validation.php
@@ -33,9 +35,10 @@ The application supports multiple languages:
    ```
 
 3. Translate all strings in the PHP files. The structure is:
+
    ```php
    <?php
-   
+
    return [
        'key' => 'Translated text',
        'nested' => [
@@ -58,11 +61,13 @@ The application supports multiple languages:
 ### Frontend Translations (Vue.js)
 
 1. Copy the English translation file:
+
    ```bash
    cp resources/js/locales/en.json resources/js/locales/sk.json
    ```
 
 2. Translate all strings in the JSON file. Maintain the same structure:
+
    ```json
    {
      "common": {
@@ -88,6 +93,7 @@ The application supports multiple languages:
 ### Frontend (`resources/js/locales/{locale}.json`)
 
 Organized by feature areas:
+
 - **common**: Common UI elements (buttons, labels, etc.)
 - **auth**: Authentication pages
 - **dashboard**: Dashboard page
@@ -102,6 +108,7 @@ Organized by feature areas:
 ### Backend (PHP)
 
 Use the `__()` helper function:
+
 ```php
 return response()->json([
     'message' => __('messages.login_successful'),
@@ -109,6 +116,7 @@ return response()->json([
 ```
 
 With parameters:
+
 ```php
 __('messages.logo_upload_failed', ['error' => $errorMessage])
 ```
@@ -116,28 +124,31 @@ __('messages.logo_upload_failed', ['error' => $errorMessage])
 ### Frontend (Vue)
 
 Use the `useI18n` composable:
+
 ```vue
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
+import { useI18n } from "vue-i18n";
 
 const { t } = useI18n();
 </script>
 
 <template>
-  <button>{{ t('auth.sign_in') }}</button>
+  <button>{{ t("auth.sign_in") }}</button>
 </template>
 ```
 
 Or use the `$t` function directly in templates:
+
 ```vue
 <template>
-  <button>{{ $t('auth.sign_in') }}</button>
+  <button>{{ $t("auth.sign_in") }}</button>
 </template>
 ```
 
 With parameters:
+
 ```vue
-{{ t('dashboard.welcome_back', { name: userName }) }}
+{{ t("dashboard.welcome_back", { name: userName }) }}
 ```
 
 ## Best Practices
@@ -161,6 +172,7 @@ To ensure all translations are complete:
 ## Language Switcher
 
 The language switcher is available in the application header. Users can:
+
 - Select their preferred language
 - The preference is saved in the session (backend) and localStorage (frontend)
 - The page reloads after language change to ensure all components use the new locale
@@ -178,9 +190,9 @@ When contributing translations:
 ## Questions?
 
 If you have questions about translations, please:
+
 - Check existing translation files for examples
 - Review this documentation
 - Open an issue on GitHub
 
-Thank you for contributing to UZOL21!
-
+Thank you for contributing to satflux.io!
