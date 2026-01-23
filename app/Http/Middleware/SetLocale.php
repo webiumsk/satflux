@@ -19,8 +19,12 @@ class SetLocale
         $supportedLocales = ['en', 'cz', 'de', 'es', 'fr', 'hu', 'pl', 'sk'];
         $defaultLocale = 'en';
 
-        // Get locale from session (set by API endpoint)
-        $locale = $request->session()->get('locale');
+        $locale = null;
+
+        // Get locale from session (set by API endpoint) - only if session is available
+        if ($request->hasSession()) {
+            $locale = $request->session()->get('locale');
+        }
 
         // If no locale in session, try to get from Accept-Language header
         if (!$locale && $request->hasHeader('Accept-Language')) {

@@ -70,7 +70,7 @@
     "password_placeholder": "••••••••"
   },
   "dashboard": {
-    "title": "Plocha s ovládaciemi prvkami",
+    "title": "Nástenka",
     "welcome_back": "Vitajte späť, {name}",
     "active_stores": "Aktívne obchody",
     "total_revenue": "Celkový zisk",
@@ -174,7 +174,7 @@
     "password_updated": "Heslo bolo úspešne zmenené"
   },
   "header": {
-    "dashboard": "Plocha s ovládaciemi prvkami",
+    "dashboard": "Nástenka",
     "stores": "Obchody",
     "support": "Podpora",
     "admin": "Admin",
