@@ -84,30 +84,31 @@ class LightningAddressService
             // The endpoint is: POST /api/v1/stores/{storeId}/lightning-addresses/{username}
             // According to docs: "Add or update store configured lightning address"
             // 
-            // Ensure invoiceMetadata is an object, not an array
-            if (isset($data['invoiceMetadata'])) {
-                // If it's an indexed array, convert to associative array/object
-                if (is_array($data['invoiceMetadata']) && !empty($data['invoiceMetadata']) && array_keys($data['invoiceMetadata']) === range(0, count($data['invoiceMetadata']) - 1)) {
-                    // It's an indexed array, BTCPay needs an object - convert to associative
-                    $data['invoiceMetadata'] = (object) [];
-                } elseif (is_array($data['invoiceMetadata']) && empty($data['invoiceMetadata'])) {
-                    // Empty array, convert to empty object
-                    $data['invoiceMetadata'] = (object) [];
-                } elseif (!is_object($data['invoiceMetadata'])) {
-                    // Ensure it's an object
-                    $data['invoiceMetadata'] = (object) $data['invoiceMetadata'];
-                }
-            } else {
-                // If invoiceMetadata is not provided, set it to empty object
-                $data['invoiceMetadata'] = (object) [];
-            }
-            
             // Build final data - only include fields that have non-empty values
             // BTCPay expects fields to be either provided with value or not provided at all
             $finalData = [
                 'username' => $data['username'],
-                'invoiceMetadata' => $data['invoiceMetadata'],
             ];
+            
+            // Only include invoiceMetadata if it's provided and not empty
+            if (isset($data['invoiceMetadata'])) {
+                // Ensure invoiceMetadata is an object, not an array
+                if (is_array($data['invoiceMetadata']) && !empty($data['invoiceMetadata']) && array_keys($data['invoiceMetadata']) === range(0, count($data['invoiceMetadata']) - 1)) {
+                    // It's an indexed array, BTCPay needs an object - skip it (don't send empty object)
+                    // Don't include invoiceMetadata in request
+                } elseif (is_array($data['invoiceMetadata']) && empty($data['invoiceMetadata'])) {
+                    // Empty array - don't include invoiceMetadata in request
+                } elseif (is_object($data['invoiceMetadata']) && empty((array)$data['invoiceMetadata'])) {
+                    // Empty object - don't include invoiceMetadata in request
+                } else {
+                    // Valid non-empty metadata - ensure it's an object
+                    if (!is_object($data['invoiceMetadata'])) {
+                        $data['invoiceMetadata'] = (object) $data['invoiceMetadata'];
+                    }
+                    $finalData['invoiceMetadata'] = $data['invoiceMetadata'];
+                }
+            }
+            // If invoiceMetadata is not provided at all, don't include it in the request
             
             // Add optional fields only if they have non-empty values
             foreach (['currencyCode', 'min', 'max'] as $field) {
@@ -121,7 +122,7 @@ class LightningAddressService
                 'username' => $username,
                 'original_data' => $data,
                 'final_data' => $finalData,
-                'invoiceMetadata_type' => gettype($finalData['invoiceMetadata']),
+                'invoiceMetadata_type' => isset($finalData['invoiceMetadata']) ? gettype($finalData['invoiceMetadata']) : 'not provided',
             ]);
             
             return $this->client->post("/api/v1/stores/{$storeId}/lightning-addresses/{$username}", $finalData);
