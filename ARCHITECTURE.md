@@ -161,7 +161,7 @@ api.interceptors.response.use(
       window.location.href = "/login";
     }
     return Promise.reject(error);
-  }
+  },
 );
 ```
 
@@ -180,7 +180,6 @@ api.interceptors.response.use(
 The system uses **two types of BTCPay API keys**:
 
 1. **Server-level API key** (`BTCPAY_API_KEY` in `.env`):
-
    - Unrestricted permissions
    - Used for: user creation, API key creation, store user assignment (admin provisioning)
    - **Never** used for merchant store operations after provisioning
@@ -211,13 +210,11 @@ HTTP client wrapper with:
 #### Services
 
 1. **UserService** (`UserService.php`):
-
    - `createUser()`: Create BTCPay user (uses server-level key)
    - `createApiKey()`: Create merchant API key (uses server-level key)
    - `getAdminBtcPayUserId()`: Get admin user ID for store provisioning
 
 2. **StoreService** (`StoreService.php`):
-
    - `createStore()`: Create store (accepts optional `$userApiKey`)
    - `getStore()`: Get store details (accepts optional `$userApiKey`)
    - `updateStore()`: Update store (accepts optional `$userApiKey`)
@@ -225,7 +222,6 @@ HTTP client wrapper with:
    - All methods support token override pattern
 
 3. **InvoiceService** (`InvoiceService.php`):
-
    - `listInvoices()`: List invoices with pagination (accepts optional `$userApiKey`)
    - `getInvoice()`: Get single invoice (accepts optional `$userApiKey`)
    - Cache keys include API key hash to prevent cross-merchant cache pollution
@@ -601,11 +597,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 ### Middleware Stack
 
 1. **TrustProxies** (`app/Http/Middleware/TrustProxies.php`):
-
    - Handles X-Forwarded-\* headers (for Cloudflare/proxy)
 
 2. **Sanctum** (via `statefulApi()`):
-
    - Validates session cookie
    - Sets `auth()->user()` for authenticated requests
 
@@ -984,13 +978,11 @@ All authenticated requests include:
 ### Flow
 
 1. **Merchant submits** (`POST /api/stores/{uuid}/wallet-connection`):
-
    - Validates connection string format
    - Encrypts and stores in `wallet_connections.secret_encrypted`
    - Status: `needs_support`
 
 2. **Support reveals** (`POST /api/support/wallet-connections/{id}/reveal`):
-
    - Requires password/2FA confirmation
    - Returns decrypted value (temporary display)
    - Logs audit entry
@@ -1087,7 +1079,7 @@ DB_USERNAME=panel
 DB_PASSWORD=panel
 
 # BTCPay Server
-BTCPAY_BASE_URL=https://pay.dvadsatjeden.org
+BTCPAY_BASE_URL=https://satflux.org
 BTCPAY_API_KEY=your_server_level_key
 
 # Sanctum & Session (for localhost)

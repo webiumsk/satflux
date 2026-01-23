@@ -32,6 +32,7 @@ cd uzol21
 ```
 
 **Dôležité:** Ak používate Git v kontajneri a nastane problém s ownership, spustite:
+
 ```bash
 docker compose -f docker-compose.prod.yml exec --user root php git config --global --add safe.directory /var/www
 ```
@@ -44,6 +45,7 @@ nano .env.production  # alebo vim .env.production
 ```
 
 Upravte všetky potrebné hodnoty v `.env.production`, najmä:
+
 - `APP_KEY` - vygenerujte cez `docker compose -f docker-compose.prod.yml exec --user root php php artisan key:generate` (po prvom spustení kontajnerov)
 - `POSTGRES_PASSWORD` - silné heslo pre PostgreSQL databázu (**povinné!**)
   - **Dôležité:** Docker Compose expanduje `${VAR}` z shell prostredia, nie z `env_file`. Preto musíte nastaviť `POSTGRES_PASSWORD` priamo v `.env.production` (nie len `DB_PASSWORD`).
@@ -55,6 +57,7 @@ Upravte všetky potrebné hodnoty v `.env.production`, najmä:
 - Mail nastavenia
 
 **Príklad v `.env.production`:**
+
 ```bash
 DB_PASSWORD=TUyRjtv47HIjfeMt      # Pre Laravel aplikáciu
 POSTGRES_PASSWORD=TUyRjtv47HIjfeMt # Pre Docker Compose (rovnaká hodnota!)
@@ -95,6 +98,7 @@ docker compose -f docker-compose.prod.yml exec --user root php chmod -R 775 /var
 Ak už máte Nginx alebo iný reverse proxy na hoste, pridajte konfiguráciu:
 
 **Nginx na hoste:**
+
 ```nginx
 server {
     listen 80;
@@ -105,10 +109,10 @@ server {
 server {
     listen 443 ssl http2;
     server_name uzol.dvadsatjeden.org;
-    
+
     ssl_certificate /path/to/ssl/cert.pem;
     ssl_certificate_key /path/to/ssl/key.pem;
-    
+
     location / {
         proxy_pass http://127.0.0.1:8080;
         proxy_set_header Host $host;
@@ -130,6 +134,7 @@ Pre časté updatovanie použite automatizovaný deployment script:
 ```
 
 Script automaticky:
+
 1. Stiahne najnovšie zmeny z Gitu
 2. Aktualizuje PHP a Node dependencies (správne oprávnenia)
 3. Zostaví frontend assets
@@ -145,21 +150,25 @@ Script automaticky:
 #### 3.1 Manuálny backup
 
 **Základný backup (databáza + súbory):**
+
 ```bash
 ./backup.sh
 ```
 
 **Backup s Redis:**
+
 ```bash
 BACKUP_REDIS=true ./backup.sh
 ```
 
 **Backup cez Laravel Artisan:**
+
 ```bash
 docker compose -f docker-compose.prod.yml exec php php artisan backup:run
 ```
 
 **Backup s Redis cez Laravel:**
+
 ```bash
 docker compose -f docker-compose.prod.yml exec php php artisan backup:run --redis
 ```
@@ -192,11 +201,13 @@ Pridajte riadok pre denné backupy o 2:00:
 #### 3.3 Zoznam a verifikácia záloh
 
 **Zoznam záloh:**
+
 ```bash
 docker compose -f docker-compose.prod.yml exec php php artisan backup:list
 ```
 
 **Verifikácia záloh:**
+
 ```bash
 # Verifikovať najnovšiu zálohu
 docker compose -f docker-compose.prod.yml exec php php artisan backup:verify
@@ -211,11 +222,13 @@ docker compose -f docker-compose.prod.yml exec php php artisan backup:verify --a
 #### 3.4 Obnova zálohy
 
 **Interaktívna obnova:**
+
 ```bash
 ./restore.sh
 ```
 
 Skript vás prevedie procesom:
+
 1. Zobrazí zoznam dostupných záloh
 2. Vyberiete zálohu podľa čísla
 3. Overí integritu zálohy
@@ -223,11 +236,13 @@ Skript vás prevedie procesom:
 5. Obnoví databázu, súbory a voliteľne Redis
 
 **Dry-run (testovanie bez zmien):**
+
 ```bash
 ./restore.sh --dry-run
 ```
 
 **Po obnove:**
+
 ```bash
 # Reštartujte kontajnery
 docker compose -f docker-compose.prod.yml restart
@@ -269,6 +284,7 @@ backups/
 ```
 
 Každá záloha obsahuje:
+
 - `database_YYYYMMDD_HHMMSS.sql.gz` - databázový dump
 - `files_YYYYMMDD_HHMMSS.tar.gz` - súbory (storage + env)
 - `redis_YYYYMMDD_HHMMSS.rdb.gz` - Redis dump (voliteľné)
@@ -386,6 +402,7 @@ GRANT ALL PRIVILEGES ON DATABASE uzol21 TO uzol21;
 ```
 
 Poznačte si:
+
 - Host (zvyčajne `localhost` alebo `127.0.0.1`)
 - Port (zvyčajne `5432`)
 - Databázu názov
@@ -403,6 +420,7 @@ Poznačte si:
 4. Počkajte na propagáciu DNS (zvyčajne 1-5 minút)
 
 **SSL/TLS nastavenie**:
+
 - Ak používate Cloudflare Proxy (Proxied): SSL/TLS encryption mode = **Full (strict)**
 - Ak používate DNS only: Potrebujete SSL certifikát na serveri (Let's Encrypt)
 
@@ -465,7 +483,7 @@ SESSION_SAME_SITE=lax
 CACHE_STORE=file
 QUEUE_CONNECTION=sync
 
-BTCPAY_BASE_URL=https://pay.dvadsatjeden.org
+BTCPAY_BASE_URL=https://satflux.org
 BTCPAY_API_KEY=your_btcpay_api_key
 BTCPAY_WEBHOOK_SECRET=your_webhook_secret
 
@@ -536,7 +554,7 @@ server {
     listen 80;
     listen [::]:80;
     server_name uzol.dvadsatjeden.org;
-    
+
     # Redirect HTTP to HTTPS
     return 301 https://$server_name$request_uri;
 }
@@ -545,7 +563,7 @@ server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
     server_name uzol.dvadsatjeden.org;
-    
+
     root /path/to/panel/public;
     index index.php;
 
@@ -785,11 +803,7 @@ LOG_LEVEL=debug
 ## Kontakt a podpora
 
 Pre problémy s nasadením skontrolujte:
+
 - Laravel dokumentáciu: https://laravel.com/docs
 - PostgreSQL dokumentáciu: https://www.postgresql.org/docs/
 - Nginx dokumentáciu: https://nginx.org/en/docs/
-
-
-
-
-

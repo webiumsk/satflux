@@ -15,7 +15,7 @@ return [
     */
 
     'btcpay' => [
-        'base_url' => env('BTCPAY_BASE_URL', 'https://pay.dvadsatjeden.org'),
+        'base_url' => env('BTCPAY_BASE_URL', 'https://satflux.org'),
         'api_key' => env('BTCPAY_API_KEY'),
         'webhook_secret' => env('BTCPAY_WEBHOOK_SECRET'),
         'subscription_success_url' => env('SUBSCRIPTION_SUCCESS_URL'),
