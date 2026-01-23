@@ -31,6 +31,42 @@ class StoreCreateRequest extends FormRequest
             'connection_string' => ['nullable', 'string', 'max:2000'], // Connection string or descriptor
         ];
     }
+
+    /**
+     * Configure the validator instance.
+     */
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            // If connection_string is provided, validate it matches the wallet_type
+            if ($this->filled('connection_string') && $this->filled('wallet_type')) {
+                $connectionString = $this->connection_string;
+                $walletType = $this->wallet_type;
+
+                $connectionValidator = app(\App\Services\WalletConnectionValidator::class);
+
+                if ($walletType === 'blink') {
+                    // Validate Blink connection string format
+                    $validation = $connectionValidator->validate('blink', $connectionString);
+                    if (!$validation['valid']) {
+                        $errors = $validation['errors'] ?? ['Invalid Blink connection string format. Expected: type=blink;server=https://...;api-key=...;wallet-id=...'];
+                        foreach ($errors as $error) {
+                            $validator->errors()->add('connection_string', $error);
+                        }
+                    }
+                } elseif ($walletType === 'aqua_boltz') {
+                    // Validate Aqua descriptor format
+                    $validation = $connectionValidator->validate('aqua_descriptor', $connectionString);
+                    if (!$validation['valid']) {
+                        $errors = $validation['errors'] ?? ['Invalid descriptor format. Must be a valid Bitcoin Core output descriptor (e.g., wpkh(), tr(), wsh(), or complex formats like ct(slip77(...),elsh(wpkh(...)))) and must not contain private keys.'];
+                        foreach ($errors as $error) {
+                            $validator->errors()->add('connection_string', $error);
+                        }
+                    }
+                }
+            }
+        });
+    }
 }
 
 

@@ -60,11 +60,18 @@
                     v-model="form.secret"
                     rows="5"
                     class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono p-4"
+                    :class="duplicateWarning?.exists && form.type === 'aqua_descriptor' ? 'border-yellow-500' : ''"
                     :placeholder="form.type === 'blink' 
                         ? 'type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx'
                         : 'wpkh([fingerprint/hdpath]xpub...)'"
                     required
                 ></textarea>
+                <div v-if="checkingDuplicate" class="absolute top-2 right-2">
+                    <svg class="animate-spin h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
             </div>
             
             <div class="mt-3 text-sm text-gray-400 bg-gray-900/30 p-4 rounded-xl border border-gray-700/50">
@@ -75,10 +82,32 @@
                 </div>
                  <div v-else class="space-y-1">
                     <p>Paste your Bitcoin Core output descriptor (watch-only, no private keys).</p>
-                    <p>Examples: <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">wpkh(...)</code>, <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">tr(...)</code></p>
+                    <p>Examples: <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">ct(slip77(...),elsh(wpkh(...)))</code>, <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">tr(...)</code></p>
                 </div>
             </div>
             <p v-if="errors.secret" class="mt-2 text-sm text-red-400">{{ errors.secret }}</p>
+            
+            <!-- Duplicate descriptor warning for Aqua -->
+            <div v-if="duplicateWarning?.exists && form.type === 'aqua_descriptor'" class="mt-3 rounded-xl p-4 border border-yellow-500/20 bg-yellow-500/10">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-yellow-400">
+                            This descriptor is already in use
+                        </p>
+                        <p class="mt-1 text-sm text-yellow-300">
+                            {{ duplicateWarning.message }}
+                        </p>
+                        <p class="mt-2 text-xs text-yellow-400/80">
+                            BTCPay allows each descriptor to be used only once. Please use a different wallet/descriptor.
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div v-if="testResult" class="rounded-xl p-4 border" :class="testResult.success ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'">
@@ -157,7 +186,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, watch } from 'vue';
 import api from '../../services/api';
 
 interface Props {
@@ -174,8 +203,10 @@ const emit = defineEmits<{
 
 const submitting = ref(false);
 const testing = ref(false);
+const checkingDuplicate = ref(false);
 const errors = reactive<Record<string, string>>({});
 const testResult = ref<{ success: boolean; message: string; requires_manual_config?: boolean } | null>(null);
+const duplicateWarning = ref<{ exists: boolean; message: string | null; existing_store_name: string | null } | null>(null);
 
 const form = reactive({
     type: props.existingConnection?.type || 'blink',
@@ -236,18 +267,118 @@ function validateDescriptor(descriptor: string): boolean {
     const trimmed = descriptor.trim();
     if (!trimmed) return false;
 
-    // Check for common descriptor prefixes
-    const validPrefixes = ['wpkh', 'wsh', 'tr', 'pkh', 'sh', 'addr', 'raw'];
-    const lower = trimmed.toLowerCase();
+    // Must NOT contain private keys
+    if (/prv/i.test(trimmed)) {
+        return false;
+    }
+
+    // Must NOT contain private key prefixes
+    if (/(xprv|yprv|zprv)/i.test(trimmed)) {
+        return false;
+    }
+
+    // Check if descriptor contains at least one valid descriptor function
+    // Supports both simple formats (wpkh(), tr(), etc.) and complex nested formats (ct(slip77(...),elsh(wpkh(...))))
+    const validFunctions = [
+        'wpkh', 'wsh', 'tr', 'pkh', 'sh', 'addr', 'raw',  // Basic functions
+        'ct', 'elsh', 'slip77',  // Complex nested functions (for Boltz/Aqua)
+    ];
     
-    for (const prefix of validPrefixes) {
-        if (lower.startsWith(prefix + '(')) {
-            return true;
+    const lower = trimmed.toLowerCase();
+    let hasValidFunction = false;
+    
+    for (const func of validFunctions) {
+        // Check if function appears in the descriptor (not just at start)
+        // Pattern: function name followed by opening parenthesis
+        if (new RegExp(`\\b${func}\\s*\\(`).test(lower)) {
+            hasValidFunction = true;
+            break;
         }
     }
 
-    return false;
+    if (!hasValidFunction) {
+        return false;
+    }
+
+    // Basic structure validation: should have balanced parentheses
+    const openParens = (trimmed.match(/\(/g) || []).length;
+    const closeParens = (trimmed.match(/\)/g) || []).length;
+    if (openParens !== closeParens || openParens === 0) {
+        return false;
+    }
+
+    // Should contain at least one xpub/ypub/zpub (extended public key)
+    if (!/(xpub|ypub|zpub|tpub|upub|vpub)/i.test(trimmed)) {
+        return false;
+    }
+
+    return true;
 }
+
+// Check for duplicate descriptor (for Aqua/Boltz)
+async function checkDuplicateDescriptor() {
+    if (form.type !== 'aqua_descriptor' || !form.secret.trim()) {
+        duplicateWarning.value = null;
+        return;
+    }
+
+    // Only check if descriptor is valid format
+    if (!validateDescriptor(form.secret)) {
+        duplicateWarning.value = null;
+        return;
+    }
+
+    checkingDuplicate.value = true;
+    duplicateWarning.value = null;
+
+    try {
+        const response = await api.post(`/stores/${props.storeId}/wallet-connection/check-duplicate`, {
+            descriptor: form.secret.trim(),
+            type: 'aqua_descriptor',
+        });
+
+        duplicateWarning.value = {
+            exists: response.data.duplicate || false,
+            message: response.data.message || null,
+            existing_store_name: response.data.existing_store_name || null,
+        };
+    } catch (err: any) {
+        // If check fails, don't show warning (let backend handle it)
+        duplicateWarning.value = null;
+    } finally {
+        checkingDuplicate.value = false;
+    }
+}
+
+// Watch for changes in descriptor to check for duplicates
+let duplicateCheckTimeout: ReturnType<typeof setTimeout> | null = null;
+watch(() => form.secret, () => {
+    if (duplicateCheckTimeout) {
+        clearTimeout(duplicateCheckTimeout);
+    }
+    
+    if (form.type === 'aqua_descriptor') {
+        // Debounce the check
+        duplicateCheckTimeout = setTimeout(() => {
+            checkDuplicateDescriptor();
+        }, 500);
+    } else {
+        duplicateWarning.value = null;
+    }
+});
+
+// Watch for type changes
+watch(() => form.type, () => {
+    duplicateWarning.value = null;
+    if (duplicateCheckTimeout) {
+        clearTimeout(duplicateCheckTimeout);
+    }
+    if (form.type === 'aqua_descriptor' && form.secret.trim()) {
+        duplicateCheckTimeout = setTimeout(() => {
+            checkDuplicateDescriptor();
+        }, 500);
+    }
+});
 
 async function handleTestConnection() {
     if (!form.secret.trim()) {
@@ -270,7 +401,7 @@ async function handleTestConnection() {
     if (form.type === 'aqua_descriptor' && !validateDescriptor(form.secret)) {
         testResult.value = {
             success: false,
-            message: 'Invalid descriptor format. Must start with wpkh(), tr(), wsh(), etc.',
+            message: 'Invalid descriptor format. Must be a valid Bitcoin Core output descriptor (e.g., wpkh(), tr(), wsh(), or complex formats like ct(slip77(...),elsh(wpkh(...)))) and must not contain private keys.',
         };
         return;
     }
@@ -312,7 +443,7 @@ async function handleSubmit() {
     }
 
     if (form.type === 'aqua_descriptor' && !validateDescriptor(form.secret)) {
-        errors.secret = 'Invalid descriptor format. Must start with wpkh(), tr(), wsh(), etc.';
+        errors.secret = 'Invalid descriptor format. Must be a valid Bitcoin Core output descriptor (e.g., wpkh(), tr(), wsh(), or complex formats like ct(slip77(...),elsh(wpkh(...)))) and must not contain private keys.';
         submitting.value = false;
         return;
     }
@@ -340,3 +471,4 @@ async function handleSubmit() {
     }
 }
 </script>
+

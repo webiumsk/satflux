@@ -266,6 +266,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->middleware([EnsureStoreOwnership::class]);
     Route::post('/stores/{store}/wallet-connection', [WalletConnectionController::class, 'store'])
         ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':wallet_connection.created']);
+    Route::post('/stores/{store}/wallet-connection/check-duplicate', [WalletConnectionController::class, 'checkDuplicate'])
+        ->middleware([EnsureStoreOwnership::class]);
+    // Endpoint for checking duplicates when creating new stores (no store ID yet)
+    Route::post('/wallet-connection/check-duplicate', [WalletConnectionController::class, 'checkDuplicateNew'])
+        ->middleware('auth:sanctum');
     Route::post('/stores/{store}/wallet-connection/test', [WalletConnectionController::class, 'testConnection'])
         ->middleware([EnsureStoreOwnership::class]);
     Route::post('/stores/{store}/wallet-connection/configure', [WalletConnectionController::class, 'configureLightning'])

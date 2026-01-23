@@ -20,7 +20,7 @@ class WalletConnection extends Model
     protected $fillable = [
         'store_id',
         'type',
-        'encrypted_secret',
+        'secret_encrypted',
         'status',
         'submitted_by_user_id',
         'revealed_last_at',
@@ -69,7 +69,7 @@ class WalletConnection extends Model
      */
     public function getMaskedSecretAttribute(): string
     {
-        $encrypted = $this->attributes['encrypted_secret'] ?? '';
+        $encrypted = $this->attributes['secret_encrypted'] ?? '';
         if (empty($encrypted)) {
             return '';
         }
@@ -94,7 +94,7 @@ class WalletConnection extends Model
      */
     public function reveal(): string
     {
-        return Crypt::decryptString($this->encrypted_secret);
+        return Crypt::decryptString($this->secret_encrypted);
     }
 }
 

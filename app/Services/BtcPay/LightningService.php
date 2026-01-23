@@ -28,12 +28,14 @@ class LightningService
     /**
      * Connect a Lightning node to a store.
      * 
-     * Tries multiple endpoint variants. If API doesn't support custom connection strings,
-     * returns information about the workaround (DB storage).
+     * Tries multiple endpoint variants and request body formats. For Blink and Boltz plugins,
+     * BTCPay accepts connection strings/descriptors directly.
      * 
      * @param string $storeId BTCPay store ID
      * @param string $cryptoCode Cryptocurrency code (e.g., 'BTC')
      * @param string $connectionString Connection string or descriptor
+     *   - Blink: type=blink;server=...;api-key=...;wallet-id=...
+     *   - Boltz: ct(slip77(...),elsh(wpkh([...]xpub...)))
      * @param string|null $userApiKey User-level API key (optional)
      * @return array Response data with success status and message
      * @throws BtcPayException
@@ -47,30 +49,90 @@ class LightningService
         }
 
         try {
-            // Try different endpoint variants
-            $endpoints = [
-                "/api/v1/stores/{$storeId}/lightning/{$cryptoCode}/connect",
-                "/api/v1/stores/{$storeId}/lightning/{$cryptoCode}/connect/custom",
-            ];
-
-            $requestBody = [
-                'connectionString' => $connectionString,
-            ];
-
-            foreach ($endpoints as $endpoint) {
-                try {
-                    Log::info('Trying BTCPay Lightning connect endpoint', [
+            // First, try to get Lightning node info to see if it exists
+            // If it doesn't exist, we might need to create it first
+            try {
+                $lightningInfo = $this->client->get("/api/v1/stores/{$storeId}/lightning/{$cryptoCode}");
+                Log::info('Lightning node already exists, proceeding with connection', [
+                    'store_id' => $storeId,
+                    'crypto_code' => $cryptoCode,
+                ]);
+            } catch (BtcPayException $e) {
+                if ($e->getStatusCode() === 404) {
+                    Log::info('Lightning node does not exist yet, will try to create/connect it', [
                         'store_id' => $storeId,
                         'crypto_code' => $cryptoCode,
-                        'endpoint' => $endpoint,
                     ]);
+                } else {
+                    Log::warning('Error checking Lightning node existence', [
+                        'store_id' => $storeId,
+                        'crypto_code' => $cryptoCode,
+                        'error' => $e->getMessage(),
+                        'status_code' => $e->getStatusCode(),
+                    ]);
+                }
+            }
+            
+            // Try different endpoints, HTTP methods, and request body formats
+            // BTCPay documentation says nodeURI, but plugins may accept connectionString or connection_string
+            // Also try PUT/PATCH methods as some APIs use them for updates
+            // Note: Some endpoints might require Lightning node to exist first
+            $endpoints = [
+                ["/api/v1/stores/{$storeId}/lightning/{$cryptoCode}/connect", 'POST'],
+                ["/api/v1/stores/{$storeId}/lightning/{$cryptoCode}", 'PUT'], // Update Lightning settings
+                ["/api/v1/stores/{$storeId}/lightning/{$cryptoCode}/connect", 'PUT'],
+                ["/api/v1/stores/{$storeId}/lightning/{$cryptoCode}/setup", 'POST'],
+            ];
+            
+            $requestBodyVariants = [
+                ['ConnectionString' => $connectionString], // BTCPay UI uses "ConnectionString" (capital C and S)
+                ['connectionString' => $connectionString], // camelCase variant
+                ['connection_string' => $connectionString], // snake_case variant
+                ['nodeURI' => $connectionString], // Standard format per documentation
+            ];
+            
+            // Try each endpoint with each request body variant
+            foreach ($endpoints as $endpointIndex => $endpointConfig) {
+                $endpoint = is_array($endpointConfig) ? $endpointConfig[0] : $endpointConfig;
+                $method = is_array($endpointConfig) ? ($endpointConfig[1] ?? 'POST') : 'POST';
+                
+                foreach ($requestBodyVariants as $index => $requestBody) {
+                    try {
+                        $bodyKey = array_keys($requestBody)[0];
+                        $bodyValuePreview = strlen($connectionString) > 100 
+                            ? substr($connectionString, 0, 100) . '...' 
+                            : $connectionString;
+                        
+                        Log::info('Trying BTCPay Lightning connect with request body variant', [
+                            'store_id' => $storeId,
+                            'crypto_code' => $cryptoCode,
+                            'endpoint' => $endpoint,
+                            'method' => $method,
+                            'endpoint_index' => $endpointIndex + 1,
+                            'variant_index' => $index + 1,
+                            'total_endpoints' => count($endpoints),
+                            'total_variants' => count($requestBodyVariants),
+                            'body_key' => $bodyKey,
+                            'body_value_length' => strlen($connectionString),
+                            'body_value_preview' => $bodyValuePreview,
+                        ]);
 
-                    $response = $this->client->post($endpoint, $requestBody);
+                        // Use appropriate HTTP method
+                        if ($method === 'PUT') {
+                            $response = $this->client->put($endpoint, $requestBody);
+                        } elseif ($method === 'PATCH') {
+                            $response = $this->client->patch($endpoint, $requestBody);
+                        } else {
+                            $response = $this->client->post($endpoint, $requestBody);
+                        }
 
                     Log::info('BTCPay Lightning node connected successfully', [
                         'store_id' => $storeId,
                         'crypto_code' => $cryptoCode,
                         'endpoint' => $endpoint,
+                        'body_key' => $bodyKey,
+                        'response_keys' => is_array($response) ? array_keys($response) : 'NOT_ARRAY',
+                        'response_preview' => is_array($response) ? json_encode($response) : $response,
                     ]);
 
                     return [
@@ -79,24 +141,77 @@ class LightningService
                         'data' => $response,
                     ];
                 } catch (BtcPayException $e) {
-                    // If endpoint doesn't exist (404) or method not allowed (405), try next
-                    if ($e->getCode() === 404 || $e->getCode() === 405) {
-                        Log::info('Endpoint not available, trying next', [
+                    $bodyKey = array_keys($requestBody)[0];
+                    $statusCode = $e->getStatusCode(); // Use getStatusCode() instead of getCode()
+                    
+                    // If validation error (422), try next body format
+                    if ($statusCode === 422) {
+                        Log::info('Request body format not accepted (422), trying next variant', [
+                            'store_id' => $storeId,
+                            'crypto_code' => $cryptoCode,
                             'endpoint' => $endpoint,
-                            'error_code' => $e->getCode(),
+                            'error_code' => $statusCode,
+                            'body_key' => $bodyKey,
+                            'variant_index' => $index + 1,
+                            'error_message' => $e->getMessage(),
+                            'will_try_next' => ($index + 1) < count($requestBodyVariants),
                         ]);
                         continue;
                     }
 
-                    // Other errors (validation, auth, etc.) - throw
+                    // If endpoint doesn't exist (404) or method not allowed (405), check error message
+                    if ($statusCode === 404 || $statusCode === 405) {
+                        $errorMessage = $e->getMessage();
+                        // If 404 with "lightning node is not set up", it might be a validation error, try next variant
+                        if ($statusCode === 404 && stripos($errorMessage, 'lightning node is not set up') !== false) {
+                            Log::info('BTCPay Lightning node not set up (404), trying next variant', [
+                                'store_id' => $storeId,
+                                'crypto_code' => $cryptoCode,
+                                'endpoint' => $endpoint,
+                                'error_code' => $statusCode,
+                                'error_message' => $errorMessage,
+                                'body_key' => $bodyKey,
+                                'variant_index' => $index + 1,
+                                'will_try_next' => ($index + 1) < count($requestBodyVariants),
+                            ]);
+                            continue; // Try next body format
+                        }
+                        
+                        // Real endpoint not found - try next endpoint (but continue with other body formats first)
+                        Log::info('BTCPay Lightning connect endpoint not available, will try next endpoint after all body variants', [
+                            'store_id' => $storeId,
+                            'crypto_code' => $cryptoCode,
+                            'endpoint' => $endpoint,
+                            'error_code' => $statusCode,
+                            'error_message' => $errorMessage,
+                            'body_key' => $bodyKey,
+                        ]);
+                        break; // Break out of inner loop (body variants), continue with next endpoint
+                    }
+
+                    // Other errors (auth, etc.) - log and throw
+                    Log::error('BTCPay API error when connecting Lightning node', [
+                        'store_id' => $storeId,
+                        'crypto_code' => $cryptoCode,
+                        'endpoint' => $endpoint,
+                        'error_code' => $statusCode,
+                        'error_message' => $e->getMessage(),
+                        'body_key' => $bodyKey,
+                    ]);
                     throw $e;
                 }
-            }
+                } // End of requestBodyVariants loop
+            } // End of endpoints loop
 
-            // If all endpoints failed, return workaround info
-            Log::warning('BTCPay API does not support custom Lightning connection strings', [
+            // If all endpoints and request body variants failed, return workaround info
+            Log::warning('All BTCPay Lightning connect endpoints and request body variants failed', [
                 'store_id' => $storeId,
                 'crypto_code' => $cryptoCode,
+                'endpoints_tried' => count($endpoints),
+                'variants_per_endpoint' => count($requestBodyVariants),
+                'total_attempts' => count($endpoints) * count($requestBodyVariants),
+                'connection_string_length' => strlen($connectionString),
+                'connection_string_preview' => substr($connectionString, 0, 100) . '...',
             ]);
 
             return [
