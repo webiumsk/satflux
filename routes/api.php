@@ -32,9 +32,11 @@ Route::get('/health', function () {
     return response()->json(['status' => 'ok']);
 });
 
-// Locale endpoints (public - no auth required)
-Route::get('/locale', [LocaleController::class, 'index']);
-Route::post('/locale', [LocaleController::class, 'setLocale']);
+// Locale endpoints (public - no auth required, but need session)
+Route::middleware([\Illuminate\Session\Middleware\StartSession::class])->group(function () {
+    Route::get('/locale', [LocaleController::class, 'index']);
+    Route::post('/locale', [LocaleController::class, 'setLocale']);
+});
 
 // Version endpoint (public - no auth required)
 Route::get('/version', function () {

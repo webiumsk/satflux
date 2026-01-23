@@ -17,6 +17,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->web(prepend: [
             \App\Http\Middleware\TrustProxies::class,
+        ]);
+        $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
         ]);
         $middleware->statefulApi();

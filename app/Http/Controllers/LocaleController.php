@@ -55,9 +55,11 @@ class LocaleController extends Controller
 
         $locale = $request->input('locale');
         
-        // Store locale in session and save immediately
-        $request->session()->put('locale', $locale);
-        $request->session()->save(); // Force save to ensure it's persisted
+        // Store locale in session if session is available
+        if ($request->hasSession()) {
+            $request->session()->put('locale', $locale);
+            $request->session()->save(); // Force save to ensure it's persisted
+        }
         
         // Set application locale
         app()->setLocale($locale);
