@@ -17,17 +17,17 @@ class SubscriptionTest extends TestCase
 
         // Mock BTCPay API responses
         Http::fake([
-            'pay.dvadsatjeden.org/api/v1/stores/*/offerings/*' => Http::response([
+            'satflux.org/api/v1/stores/*/offerings/*' => Http::response([
                 'id' => 'offering_GpWCnNRm6W9qqmgwdC',
                 'name' => 'Test Offering',
             ]),
-            'pay.dvadsatjeden.org/api/v1/stores/*/offerings/*/plans/*' => Http::response([
+            'satflux.org/api/v1/stores/*/offerings/*/plans/*' => Http::response([
                 'id' => 'plan_9UQMqk4vbAFyQinRpL',
                 'name' => 'Pro Plan',
             ]),
-            'pay.dvadsatjeden.org/api/v1/plan-checkout' => Http::response([
+            'satflux.org/api/v1/plan-checkout' => Http::response([
                 'checkoutId' => 'checkout_test123',
-                'checkoutUrl' => 'https://pay.dvadsatjeden.org/plan-checkout/checkout_test123',
+                'checkoutUrl' => 'https://satflux.org/plan-checkout/checkout_test123',
                 'expiresAt' => now()->addHours(24)->toIso8601String(),
             ]),
         ]);
@@ -54,7 +54,7 @@ class SubscriptionTest extends TestCase
                 'expiresAt',
             ])
             ->assertJson([
-                'checkoutUrl' => 'https://pay.dvadsatjeden.org/plan-checkout/checkout_test123',
+                'checkoutUrl' => 'https://satflux.org/plan-checkout/checkout_test123',
                 'checkoutId' => 'checkout_test123',
             ]);
 
@@ -74,7 +74,7 @@ class SubscriptionTest extends TestCase
 
         // Mock BTCPay to return 404 for invalid plan
         Http::fake([
-            'pay.dvadsatjeden.org/api/v1/stores/*/offerings/*' => Http::response([], 404),
+            'satflux.org/api/v1/stores/*/offerings/*' => Http::response([], 404),
         ]);
 
         $response = $this->actingAs($user)->postJson('/api/subscriptions/checkout', [
@@ -123,11 +123,11 @@ class SubscriptionTest extends TestCase
         config(['services.btcpay.subscription_plans.pro' => 'plan_9UQMqk4vbAFyQinRpL']);
 
         Http::fake([
-            'pay.dvadsatjeden.org/api/v1/stores/*/offerings/*' => Http::response(['id' => 'offering_GpWCnNRm6W9qqmgwdC']),
-            'pay.dvadsatjeden.org/api/v1/stores/*/offerings/*/plans/*' => Http::response(['id' => 'plan_9UQMqk4vbAFyQinRpL']),
-            'pay.dvadsatjeden.org/api/v1/plan-checkout' => Http::response([
+            'satflux.org/api/v1/stores/*/offerings/*' => Http::response(['id' => 'offering_GpWCnNRm6W9qqmgwdC']),
+            'satflux.org/api/v1/stores/*/offerings/*/plans/*' => Http::response(['id' => 'plan_9UQMqk4vbAFyQinRpL']),
+            'satflux.org/api/v1/plan-checkout' => Http::response([
                 'checkoutId' => 'checkout_test123',
-                'checkoutUrl' => 'https://pay.dvadsatjeden.org/plan-checkout/checkout_test123',
+                'checkoutUrl' => 'https://satflux.org/plan-checkout/checkout_test123',
             ]),
         ]);
 
@@ -149,9 +149,9 @@ class SubscriptionTest extends TestCase
 
         // Mock BTCPay API error
         Http::fake([
-            'pay.dvadsatjeden.org/api/v1/stores/*/offerings/*' => Http::response(['id' => 'offering_GpWCnNRm6W9qqmgwdC']),
-            'pay.dvadsatjeden.org/api/v1/stores/*/offerings/*/plans/*' => Http::response(['id' => 'plan_9UQMqk4vbAFyQinRpL']),
-            'pay.dvadsatjeden.org/api/v1/plan-checkout' => Http::response([
+            'satflux.org/api/v1/stores/*/offerings/*' => Http::response(['id' => 'offering_GpWCnNRm6W9qqmgwdC']),
+            'satflux.org/api/v1/stores/*/offerings/*/plans/*' => Http::response(['id' => 'plan_9UQMqk4vbAFyQinRpL']),
+            'satflux.org/api/v1/plan-checkout' => Http::response([
                 'message' => 'Invalid request',
             ], 422),
         ]);

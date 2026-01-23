@@ -17,15 +17,22 @@
 
       <!-- Content Container -->
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <form id="pos-settings-form" @submit.prevent="handleSubmit" class="space-y-6">
-          
-          <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
+        <form
+          id="pos-settings-form"
+          @submit.prevent="handleSubmit"
+          class="space-y-6"
+        >
+          <div
+            class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
+          >
             <div class="p-6 sm:p-8 space-y-6">
-              
               <!-- App Name and Title -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label for="appName" class="block text-sm font-medium text-gray-300 mb-1">
+                  <label
+                    for="appName"
+                    class="block text-sm font-medium text-gray-300 mb-1"
+                  >
                     App Name <span class="text-red-400">*</span>
                   </label>
                   <input
@@ -38,7 +45,10 @@
                 </div>
 
                 <div>
-                  <label for="title" class="block text-sm font-medium text-gray-300 mb-1">
+                  <label
+                    for="title"
+                    class="block text-sm font-medium text-gray-300 mb-1"
+                  >
                     Title display to customer
                   </label>
                   <input
@@ -57,98 +67,227 @@
                 </label>
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <!-- Light (Keypad) -->
-                  <div 
+                  <div
                     @click="form.defaultView = 'Light'"
                     :class="[
                       'relative rounded-xl border-2 p-4 cursor-pointer transition-all duration-200 flex flex-col items-center text-center gap-3',
-                      form.defaultView === 'Light' 
-                        ? 'border-indigo-500 bg-indigo-500/10' 
-                        : 'border-gray-700 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-800'
+                      form.defaultView === 'Light'
+                        ? 'border-indigo-500 bg-indigo-500/10'
+                        : 'border-gray-700 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-800',
                     ]"
                   >
-                    <div :class="[
-                      'p-3 rounded-full',
-                      form.defaultView === 'Light' ? 'bg-indigo-500 text-white' : 'bg-gray-700 text-gray-400'
-                    ]">
-                       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                    <div
+                      :class="[
+                        'p-3 rounded-full',
+                        form.defaultView === 'Light'
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-gray-700 text-gray-400',
+                      ]"
+                    >
+                      <svg
+                        class="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                        />
+                      </svg>
                     </div>
                     <span class="text-sm font-medium text-white">Keypad</span>
-                    <div v-if="form.defaultView === 'Light'" class="absolute top-2 right-2 text-indigo-500">
-                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                    <div
+                      v-if="form.defaultView === 'Light'"
+                      class="absolute top-2 right-2 text-indigo-500"
+                    >
+                      <svg
+                        class="w-4 h-4"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fill-rule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clip-rule="evenodd"
+                        />
+                      </svg>
                     </div>
                   </div>
 
                   <!-- Static (Product List) -->
-                  <div 
+                  <div
                     @click="form.defaultView = 'Static'"
                     :class="[
                       'relative rounded-xl border-2 p-4 cursor-pointer transition-all duration-200 flex flex-col items-center text-center gap-3',
-                      form.defaultView === 'Static' 
-                        ? 'border-indigo-500 bg-indigo-500/10' 
-                        : 'border-gray-700 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-800'
+                      form.defaultView === 'Static'
+                        ? 'border-indigo-500 bg-indigo-500/10'
+                        : 'border-gray-700 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-800',
                     ]"
                   >
-                     <div :class="[
-                      'p-3 rounded-full',
-                      form.defaultView === 'Static' ? 'bg-indigo-500 text-white' : 'bg-gray-700 text-gray-400'
-                    ]">
-                       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+                    <div
+                      :class="[
+                        'p-3 rounded-full',
+                        form.defaultView === 'Static'
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-gray-700 text-gray-400',
+                      ]"
+                    >
+                      <svg
+                        class="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M4 6h16M4 10h16M4 14h16M4 18h16"
+                        />
+                      </svg>
                     </div>
-                    <span class="text-sm font-medium text-white">Product list</span>
-                     <div v-if="form.defaultView === 'Static'" class="absolute top-2 right-2 text-indigo-500">
-                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                    <span class="text-sm font-medium text-white"
+                      >Product list</span
+                    >
+                    <div
+                      v-if="form.defaultView === 'Static'"
+                      class="absolute top-2 right-2 text-indigo-500"
+                    >
+                      <svg
+                        class="w-4 h-4"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fill-rule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clip-rule="evenodd"
+                        />
+                      </svg>
                     </div>
                   </div>
 
                   <!-- Cart (Product List + Cart) -->
-                  <div 
+                  <div
                     @click="form.defaultView = 'Cart'"
                     :class="[
                       'relative rounded-xl border-2 p-4 cursor-pointer transition-all duration-200 flex flex-col items-center text-center gap-3',
-                      form.defaultView === 'Cart' 
-                        ? 'border-indigo-500 bg-indigo-500/10' 
-                        : 'border-gray-700 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-800'
+                      form.defaultView === 'Cart'
+                        ? 'border-indigo-500 bg-indigo-500/10'
+                        : 'border-gray-700 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-800',
                     ]"
                   >
-                     <div :class="[
-                      'p-3 rounded-full',
-                      form.defaultView === 'Cart' ? 'bg-indigo-500 text-white' : 'bg-gray-700 text-gray-400'
-                    ]">
-                       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    <div
+                      :class="[
+                        'p-3 rounded-full',
+                        form.defaultView === 'Cart'
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-gray-700 text-gray-400',
+                      ]"
+                    >
+                      <svg
+                        class="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                        />
+                      </svg>
                     </div>
-                    <span class="text-sm font-medium text-white">List with cart</span>
-                     <div v-if="form.defaultView === 'Cart'" class="absolute top-2 right-2 text-indigo-500">
-                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                    <span class="text-sm font-medium text-white"
+                      >List with cart</span
+                    >
+                    <div
+                      v-if="form.defaultView === 'Cart'"
+                      class="absolute top-2 right-2 text-indigo-500"
+                    >
+                      <svg
+                        class="w-4 h-4"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fill-rule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clip-rule="evenodd"
+                        />
+                      </svg>
                     </div>
                   </div>
 
                   <!-- Print -->
-                  <div 
+                  <div
                     @click="form.defaultView = 'Print'"
                     :class="[
                       'relative rounded-xl border-2 p-4 cursor-pointer transition-all duration-200 flex flex-col items-center text-center gap-3',
-                      form.defaultView === 'Print' 
-                        ? 'border-indigo-500 bg-indigo-500/10' 
-                        : 'border-gray-700 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-800'
+                      form.defaultView === 'Print'
+                        ? 'border-indigo-500 bg-indigo-500/10'
+                        : 'border-gray-700 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-800',
                     ]"
                   >
-                     <div :class="[
-                      'p-3 rounded-full',
-                      form.defaultView === 'Print' ? 'bg-indigo-500 text-white' : 'bg-gray-700 text-gray-400'
-                    ]">
-                       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                    <div
+                      :class="[
+                        'p-3 rounded-full',
+                        form.defaultView === 'Print'
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-gray-700 text-gray-400',
+                      ]"
+                    >
+                      <svg
+                        class="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                        />
+                      </svg>
                     </div>
-                    <span class="text-sm font-medium text-white">Print Display</span>
-                     <div v-if="form.defaultView === 'Print'" class="absolute top-2 right-2 text-indigo-500">
-                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                    <span class="text-sm font-medium text-white"
+                      >Print Display</span
+                    >
+                    <div
+                      v-if="form.defaultView === 'Print'"
+                      class="absolute top-2 right-2 text-indigo-500"
+                    >
+                      <svg
+                        class="w-4 h-4"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fill-rule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clip-rule="evenodd"
+                        />
+                      </svg>
                     </div>
                   </div>
                 </div>
               </div>
 
               <!-- Description -->
-              <div v-if="form.defaultView === 'Static' || form.defaultView === 'Cart'">
-                <label for="description" class="block text-sm font-medium text-gray-300 mb-1">
+              <div
+                v-if="
+                  form.defaultView === 'Static' || form.defaultView === 'Cart'
+                "
+              >
+                <label
+                  for="description"
+                  class="block text-sm font-medium text-gray-300 mb-1"
+                >
                   Description
                 </label>
                 <textarea
@@ -161,14 +300,19 @@
 
               <!-- Keypad Settings -->
               <div v-if="form.defaultView === 'Light'" class="mt-6">
-                <div class="flex items-center bg-gray-900 border border-gray-700 p-4 rounded-xl">
+                <div
+                  class="flex items-center bg-gray-900 border border-gray-700 p-4 rounded-xl"
+                >
                   <input
                     id="showItems"
                     v-model="form.showItems"
                     type="checkbox"
                     class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
                   />
-                  <label for="showItems" class="ml-3 block text-sm font-medium text-gray-200">
+                  <label
+                    for="showItems"
+                    class="ml-3 block text-sm font-medium text-gray-200"
+                  >
                     Display item selection for keypad
                   </label>
                 </div>
@@ -182,7 +326,7 @@
                   @add="addProduct"
                   @edit="editProduct"
                 />
-              </div>              
+              </div>
 
               <!-- Advanced Settings Accordion -->
               <div class="">
@@ -192,22 +336,44 @@
                     @click="showAdvancedSettings = !showAdvancedSettings"
                     class="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-800 hover:bg-gray-700 transition-colors rounded-t-xl"
                   >
-                    <span class="text-xl font-medium text-orange-500">Extra Settings</span>
-                    <svg class="h-5 w-5 text-orange-500 transform transition-transform duration-200" :class="{ 'rotate-180': showAdvancedSettings }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    <span class="text-xl font-medium text-orange-500"
+                      >Extra Settings</span
+                    >
+                    <svg
+                      class="h-5 w-5 text-orange-500 transform transition-transform duration-200"
+                      :class="{ 'rotate-180': showAdvancedSettings }"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 9l-7 7-7-7"
+                      />
                     </svg>
                   </button>
-                  <div v-show="showAdvancedSettings" class="border border-gray-700/50 pt-6 rounded-b-xl overflow-hidden p-6py-6 space-y-6">
-                    <div class="px-6">  
-                    <!-- Checkout Settings -->
-                    <div>
-                      <h3 class="text-lg font-medium text-white mb-4">Checkout Settings</h3>
-                      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 py-4">
-
-                        <!-- Customer Data -->
-                        <div>
-                            <label for="requestCustomerData" class="block text-sm font-medium text-gray-300 mb-1">
-                               Request customer data
+                  <div
+                    v-show="showAdvancedSettings"
+                    class="border border-gray-700/50 pt-6 rounded-b-xl overflow-hidden p-6py-6 space-y-6"
+                  >
+                    <div class="px-6">
+                      <!-- Checkout Settings -->
+                      <div>
+                        <h3 class="text-lg font-medium text-white mb-4">
+                          Checkout Settings
+                        </h3>
+                        <div
+                          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 py-4"
+                        >
+                          <!-- Customer Data -->
+                          <div>
+                            <label
+                              for="requestCustomerData"
+                              class="block text-sm font-medium text-gray-300 mb-1"
+                            >
+                              Request customer data
                             </label>
                             <select
                               id="requestCustomerData"
@@ -219,14 +385,17 @@
                               <option value="name">Name only</option>
                               <option value="email_name">Email and Name</option>
                             </select>
-                        </div>
-                        
-                        <!-- Currency -->
-                        <div>
-                            <label for="currency" class="block text-sm font-medium text-gray-300 mb-1">
+                          </div>
+
+                          <!-- Currency -->
+                          <div>
+                            <label
+                              for="currency"
+                              class="block text-sm font-medium text-gray-300 mb-1"
+                            >
                               Currency
                             </label>
-                             <input
+                            <input
                               id="currency"
                               v-model="form.currency"
                               type="text"
@@ -235,16 +404,27 @@
                               class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                             />
                             <datalist id="currency-selection-suggestion">
-                              <option v-for="currency in currencies" :key="currency.code" :value="currency.code">
+                              <option
+                                v-for="currency in currencies"
+                                :key="currency.code"
+                                :value="currency.code"
+                              >
                                 {{ currency.code }} - {{ currency.name }}
                               </option>
                             </datalist>
-                            <p class="mt-1 text-xs text-gray-500">Uses store default ({{ store?.default_currency || 'EUR' }}) if empty</p>
-                        </div>
+                            <p class="mt-1 text-xs text-gray-500">
+                              Uses store default ({{
+                                store?.default_currency || "EUR"
+                              }}) if empty
+                            </p>
+                          </div>
 
-                        <!-- Tax Rate -->
-                        <div>
-                            <label for="defaultTaxRate" class="block text-sm font-medium text-gray-300 mb-1">
+                          <!-- Tax Rate -->
+                          <div>
+                            <label
+                              for="defaultTaxRate"
+                              class="block text-sm font-medium text-gray-300 mb-1"
+                            >
                               Default Tax Rate
                             </label>
                             <div class="flex rounded-xl shadow-sm">
@@ -258,18 +438,19 @@
                                 class="flex-1 min-w-0 block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-l-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                                 placeholder="0.00"
                               />
-                              <span class="inline-flex items-center px-4 rounded-r-xl border border-l-0 border-gray-600 bg-gray-700 text-gray-300 text-sm font-medium">
+                              <span
+                                class="inline-flex items-center px-4 rounded-r-xl border border-l-0 border-gray-600 bg-gray-700 text-gray-300 text-sm font-medium"
+                              >
                                 %
                               </span>
                             </div>
+                          </div>
                         </div>
-
                       </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 py-4">
-                       <!-- Tips -->
-                       <div>
+
+                      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 py-4">
+                        <!-- Tips -->
+                        <div>
                           <div class="flex items-center mb-4">
                             <input
                               id="enableTips"
@@ -277,13 +458,19 @@
                               type="checkbox"
                               class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
                             />
-                            <label for="enableTips" class="ml-3 block text-sm font-medium text-white">
+                            <label
+                              for="enableTips"
+                              class="ml-3 block text-sm font-medium text-white"
+                            >
                               Enable tips
                             </label>
                           </div>
-                          
+
                           <div v-if="form.enableTips">
-                            <label for="tipsMessage" class="block text-xs font-medium text-gray-400 mb-1">
+                            <label
+                              for="tipsMessage"
+                              class="block text-xs font-medium text-gray-400 mb-1"
+                            >
                               Tip Message <span class="text-red-400">*</span>
                             </label>
                             <input
@@ -294,10 +481,16 @@
                               class="block w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                             />
                           </div>
-                       </div>
+                        </div>
 
-                       <!-- Custom Payments - Only available for Static (Product list) and Print display -->
-                       <div v-if="form.defaultView === 'Static' || form.defaultView === 'Print'" class="p-4">
+                        <!-- Custom Payments - Only available for Static (Product list) and Print display -->
+                        <div
+                          v-if="
+                            form.defaultView === 'Static' ||
+                            form.defaultView === 'Print'
+                          "
+                          class="p-4"
+                        >
                           <div class="flex items-center mb-4">
                             <input
                               id="showCustomAmount"
@@ -305,14 +498,21 @@
                               type="checkbox"
                               class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
                             />
-                            <label for="showCustomAmount" class="ml-3 block text-sm font-medium text-white">
+                            <label
+                              for="showCustomAmount"
+                              class="ml-3 block text-sm font-medium text-white"
+                            >
                               Allow custom amount
                             </label>
                           </div>
-                          
+
                           <div v-if="form.showCustomAmount">
-                            <label for="customAmountPayButtonText" class="block text-xs font-medium text-gray-400 mb-1">
-                              Pay Button Text <span class="text-red-400">*</span>
+                            <label
+                              for="customAmountPayButtonText"
+                              class="block text-xs font-medium text-gray-400 mb-1"
+                            >
+                              Pay Button Text
+                              <span class="text-red-400">*</span>
                             </label>
                             <input
                               id="customAmountPayButtonText"
@@ -322,60 +522,95 @@
                               class="block w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                             />
                           </div>
-                       </div>
-                       
-                       <!-- Discounts - Only available for Light (Keypad) and Cart (Product list with cart) -->
-                       <div v-if="form.defaultView === 'Light' || form.defaultView === 'Cart'" class="p-4">
-                           <div class="flex items-center">
+                        </div>
+
+                        <!-- Discounts - Only available for Light (Keypad) and Cart (Product list with cart) -->
+                        <div
+                          v-if="
+                            form.defaultView === 'Light' ||
+                            form.defaultView === 'Cart'
+                          "
+                          class="p-4"
+                        >
+                          <div class="flex items-center">
                             <input
                               id="showDiscount"
                               v-model="form.showDiscount"
                               type="checkbox"
                               class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
                             />
-                            <label for="showDiscount" class="ml-3 block text-sm font-medium text-white">
+                            <label
+                              for="showDiscount"
+                              class="ml-3 block text-sm font-medium text-white"
+                            >
                               Allow discount entry (%)
                             </label>
                           </div>
-                          <p class="mt-2 text-xs text-gray-500 ml-8">Not recommended for self-checkout.</p>
-                       </div>
-                    </div>
+                          <p class="mt-2 text-xs text-gray-500 ml-8">
+                            Not recommended for self-checkout.
+                          </p>
+                        </div>
+                      </div>
 
-                    <!-- Cart Options -->
-                    <div v-if="form.defaultView === 'Cart'" class="border-t border-gray-700/50 pt-6">
-                       <h3 class="text-lg font-medium text-white mb-4">Cart Settings</h3>
-                       <div class="flex flex-col sm:flex-row gap-6">
-                          <div class="flex items-center bg-gray-900 border border-gray-700 p-4 rounded-xl flex-1">
+                      <!-- Cart Options -->
+                      <div
+                        v-if="form.defaultView === 'Cart'"
+                        class="border-t border-gray-700/50 pt-6"
+                      >
+                        <h3 class="text-lg font-medium text-white mb-4">
+                          Cart Settings
+                        </h3>
+                        <div class="flex flex-col sm:flex-row gap-6">
+                          <div
+                            class="flex items-center bg-gray-900 border border-gray-700 p-4 rounded-xl flex-1"
+                          >
                             <input
                               id="showSearch"
                               v-model="form.showSearch"
                               type="checkbox"
                               class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
                             />
-                            <label for="showSearch" class="ml-3 block text-sm font-medium text-white">
+                            <label
+                              for="showSearch"
+                              class="ml-3 block text-sm font-medium text-white"
+                            >
                               Display search bar
                             </label>
                           </div>
 
-                          <div class="flex items-center bg-gray-900 border border-gray-700 p-4 rounded-xl flex-1">
+                          <div
+                            class="flex items-center bg-gray-900 border border-gray-700 p-4 rounded-xl flex-1"
+                          >
                             <input
                               id="showCategories"
                               v-model="form.showCategories"
                               type="checkbox"
                               class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
                             />
-                            <label for="showCategories" class="ml-3 block text-sm font-medium text-white">
+                            <label
+                              for="showCategories"
+                              class="ml-3 block text-sm font-medium text-white"
+                            >
                               Display categories
                             </label>
                           </div>
-                       </div>
-                    </div>
+                        </div>
+                      </div>
 
-                     <!-- Button Text -->
-                    <div v-if="form.defaultView === 'Static' || form.defaultView === 'Cart'" class="border-t border-gray-700/50 pt-6">
-                       <label for="fixedAmountPayButtonText" class="block text-sm font-medium text-gray-300 mb-1">
+                      <!-- Button Text -->
+                      <div
+                        v-if="
+                          form.defaultView === 'Static' ||
+                          form.defaultView === 'Cart'
+                        "
+                        class="border-t border-gray-700/50 pt-6"
+                      >
+                        <label
+                          for="fixedAmountPayButtonText"
+                          class="block text-sm font-medium text-gray-300 mb-1"
+                        >
                           Buy Button Text <span class="text-red-400">*</span>
-                       </label>
+                        </label>
                         <input
                           id="fixedAmountPayButtonText"
                           v-model="form.fixedAmountPayButtonText"
@@ -384,131 +619,308 @@
                           placeholder="Buy for {0}"
                           class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                         />
-                        <p class="mt-1 text-xs text-gray-500">Use {0} as placeholder for price.</p>
+                        <p class="mt-1 text-xs text-gray-500">
+                          Use {0} as placeholder for price.
+                        </p>
+                      </div>
                     </div>
-</div>
                     <!-- Additional Options (Accordion style) -->
-                    <div class="border-t border-gray-700/50 pt-6 px-6 space-y-4">
-                      <h3 class="text-xl font-bold text-white mb-4">Advanced Options</h3>
-                  
-                  <!-- HTML Headers -->
-                 <div class="border border-gray-700 rounded-xl overflow-hidden">
-                    <button
-                      type="button"
-                      @click="accordionSections.htmlHeaders = !accordionSections.htmlHeaders"
-                      class="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-800 hover:bg-gray-700 transition-colors"
+                    <div
+                      class="border-t border-gray-700/50 pt-6 px-6 space-y-4"
                     >
-                      <span class="font-medium text-white">HTML Headers</span>
-                      <svg class="h-5 w-5 text-gray-400 transform transition-transform duration-200" :class="{ 'rotate-180': accordionSections.htmlHeaders }" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-                    <div v-show="accordionSections.htmlHeaders" class="px-6 py-6 bg-gray-900 border-t border-gray-700 space-y-4">
-                       <div>
-                        <label for="htmlLang" class="block text-sm font-medium text-gray-300 mb-1">HTML Lang</label>
-                        <input id="htmlLang" v-model="form.htmlLang" type="text" placeholder="en" class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                       </div>
-                       <div>
-                        <label for="htmlMetaTags" class="block text-sm font-medium text-gray-300 mb-1">Meta Tags</label>
-                        <textarea id="htmlMetaTags" v-model="form.htmlMetaTags" rows="3" class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
-                       </div>
-                    </div>
-                 </div>
+                      <h3 class="text-xl font-bold text-white mb-4">
+                        Advanced Options
+                      </h3>
 
-                 <!-- Redirects -->
-                 <div class="border border-gray-700 rounded-xl overflow-hidden">
-                    <button
-                      type="button"
-                      @click="accordionSections.redirects = !accordionSections.redirects"
-                      class="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-800 hover:bg-gray-700 transition-colors"
-                    >
-                      <span class="font-medium text-white">Redirects</span>
-                       <svg class="h-5 w-5 text-gray-400 transform transition-transform duration-200" :class="{ 'rotate-180': accordionSections.redirects }" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-                    <div v-show="accordionSections.redirects" class="px-6 py-6 bg-gray-900 border-t border-gray-700 space-y-4">
-                       <div>
-                        <label for="redirectUrl" class="block text-sm font-medium text-gray-300 mb-1">Redirect URL</label>
-                        <input id="redirectUrl" v-model="form.redirectUrl" type="url" placeholder="https://example.com/thanks" class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                       </div>
-                       <div>
-                        <label for="redirectAutomatically" class="block text-sm font-medium text-gray-300 mb-1">Redirect Automatically</label>
-                        <select id="redirectAutomatically" v-model="form.redirectAutomatically" class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                           <option value="">Use Store Settings</option>
-                           <option value="true">Yes</option>
-                           <option value="false">No</option>
-                        </select>
-                       </div>
-                    </div>
-                 </div>
+                      <!-- HTML Headers -->
+                      <div
+                        class="border border-gray-700 rounded-xl overflow-hidden"
+                      >
+                        <button
+                          type="button"
+                          @click="
+                            accordionSections.htmlHeaders =
+                              !accordionSections.htmlHeaders
+                          "
+                          class="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-800 hover:bg-gray-700 transition-colors"
+                        >
+                          <span class="font-medium text-white"
+                            >HTML Headers</span
+                          >
+                          <svg
+                            class="h-5 w-5 text-gray-400 transform transition-transform duration-200"
+                            :class="{
+                              'rotate-180': accordionSections.htmlHeaders,
+                            }"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </button>
+                        <div
+                          v-show="accordionSections.htmlHeaders"
+                          class="px-6 py-6 bg-gray-900 border-t border-gray-700 space-y-4"
+                        >
+                          <div>
+                            <label
+                              for="htmlLang"
+                              class="block text-sm font-medium text-gray-300 mb-1"
+                              >HTML Lang</label
+                            >
+                            <input
+                              id="htmlLang"
+                              v-model="form.htmlLang"
+                              type="text"
+                              placeholder="en"
+                              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <div>
+                            <label
+                              for="htmlMetaTags"
+                              class="block text-sm font-medium text-gray-300 mb-1"
+                              >Meta Tags</label
+                            >
+                            <textarea
+                              id="htmlMetaTags"
+                              v-model="form.htmlMetaTags"
+                              rows="3"
+                              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            ></textarea>
+                          </div>
+                        </div>
+                      </div>
 
-                 <!-- Notifications -->
-                 <div class="border border-gray-700 rounded-xl overflow-hidden">
-                    <button
-                      type="button"
-                      @click="accordionSections.notifications = !accordionSections.notifications"
-                      class="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-800 hover:bg-gray-700 transition-colors"
-                    >
-                      <span class="font-medium text-white">Notification URL Callbacks</span>
-                       <svg class="h-5 w-5 text-gray-400 transform transition-transform duration-200" :class="{ 'rotate-180': accordionSections.notifications }" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-                     <div v-show="accordionSections.notifications" class="px-6 py-6 bg-gray-900 border-t border-gray-700 space-y-4">
-                        <div>
-                        <label for="notificationUrl" class="block text-sm font-medium text-gray-300 mb-1">Callback Notification URL</label>
-                        <input id="notificationUrl" v-model="form.notificationUrl" type="url" placeholder="https://example.com/callback" class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                       </div>
-                       <div class="bg-red-500/10 border border-red-500/20 p-4 rounded-xl">
-                          <p class="text-sm text-red-400 font-bold mb-2">⚠️ Security Warning</p>
-                          <p class="text-xs text-red-300">Never trust any field other than the invoice ID. Verify details with your backend.</p>
-                       </div>
-                    </div>
-                 </div>
-                 
-                 <!-- Embeds -->
-                 <div class="border border-gray-700 rounded-xl overflow-hidden">
-                    <button
-                      type="button"
-                      @click="accordionSections.embed = !accordionSections.embed"
-                      class="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-800 hover:bg-gray-700 transition-colors"
-                    >
-                      <span class="font-medium text-white">Embed Codes</span>
-                       <svg class="h-5 w-5 text-gray-400 transform transition-transform duration-200" :class="{ 'rotate-180': accordionSections.embed }" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-                    <div v-show="accordionSections.embed" class="px-6 py-6 bg-gray-900 border-t border-gray-700 space-y-6">
-                       <div>
-                          <p class="text-sm font-medium text-gray-300 mb-2">Button Embed Code</p>
-                          <div class="bg-gray-950 p-4 rounded-xl border border-gray-700 overflow-x-auto">
-                             <pre class="text-xs text-gray-400 font-mono">{{ embedFormCode }}</pre>
+                      <!-- Redirects -->
+                      <div
+                        class="border border-gray-700 rounded-xl overflow-hidden"
+                      >
+                        <button
+                          type="button"
+                          @click="
+                            accordionSections.redirects =
+                              !accordionSections.redirects
+                          "
+                          class="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-800 hover:bg-gray-700 transition-colors"
+                        >
+                          <span class="font-medium text-white">Redirects</span>
+                          <svg
+                            class="h-5 w-5 text-gray-400 transform transition-transform duration-200"
+                            :class="{
+                              'rotate-180': accordionSections.redirects,
+                            }"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </button>
+                        <div
+                          v-show="accordionSections.redirects"
+                          class="px-6 py-6 bg-gray-900 border-t border-gray-700 space-y-4"
+                        >
+                          <div>
+                            <label
+                              for="redirectUrl"
+                              class="block text-sm font-medium text-gray-300 mb-1"
+                              >Redirect URL</label
+                            >
+                            <input
+                              id="redirectUrl"
+                              v-model="form.redirectUrl"
+                              type="url"
+                              placeholder="https://example.com/thanks"
+                              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
                           </div>
-                       </div>
-                       <div>
-                          <p class="text-sm font-medium text-gray-300 mb-2">Iframe Embed Code</p>
-                           <div class="bg-gray-950 p-4 rounded-xl border border-gray-700 overflow-x-auto">
-                             <pre class="text-xs text-gray-400 font-mono">{{ embedIframeCode }}</pre>
+                          <div>
+                            <label
+                              for="redirectAutomatically"
+                              class="block text-sm font-medium text-gray-300 mb-1"
+                              >Redirect Automatically</label
+                            >
+                            <select
+                              id="redirectAutomatically"
+                              v-model="form.redirectAutomatically"
+                              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                              <option value="">Use Store Settings</option>
+                              <option value="true">Yes</option>
+                              <option value="false">No</option>
+                            </select>
                           </div>
-                       </div>
-                    </div>
+                        </div>
+                      </div>
+
+                      <!-- Notifications -->
+                      <div
+                        class="border border-gray-700 rounded-xl overflow-hidden"
+                      >
+                        <button
+                          type="button"
+                          @click="
+                            accordionSections.notifications =
+                              !accordionSections.notifications
+                          "
+                          class="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-800 hover:bg-gray-700 transition-colors"
+                        >
+                          <span class="font-medium text-white"
+                            >Notification URL Callbacks</span
+                          >
+                          <svg
+                            class="h-5 w-5 text-gray-400 transform transition-transform duration-200"
+                            :class="{
+                              'rotate-180': accordionSections.notifications,
+                            }"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </button>
+                        <div
+                          v-show="accordionSections.notifications"
+                          class="px-6 py-6 bg-gray-900 border-t border-gray-700 space-y-4"
+                        >
+                          <div>
+                            <label
+                              for="notificationUrl"
+                              class="block text-sm font-medium text-gray-300 mb-1"
+                              >Callback Notification URL</label
+                            >
+                            <input
+                              id="notificationUrl"
+                              v-model="form.notificationUrl"
+                              type="url"
+                              placeholder="https://example.com/callback"
+                              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <div
+                            class="bg-red-500/10 border border-red-500/20 p-4 rounded-xl"
+                          >
+                            <p class="text-sm text-red-400 font-bold mb-2">
+                              ⚠️ Security Warning
+                            </p>
+                            <p class="text-xs text-red-300">
+                              Never trust any field other than the invoice ID.
+                              Verify details with your backend.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Embeds -->
+                      <div
+                        class="border border-gray-700 rounded-xl overflow-hidden"
+                      >
+                        <button
+                          type="button"
+                          @click="
+                            accordionSections.embed = !accordionSections.embed
+                          "
+                          class="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-800 hover:bg-gray-700 transition-colors"
+                        >
+                          <span class="font-medium text-white"
+                            >Embed Codes</span
+                          >
+                          <svg
+                            class="h-5 w-5 text-gray-400 transform transition-transform duration-200"
+                            :class="{ 'rotate-180': accordionSections.embed }"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </button>
+                        <div
+                          v-show="accordionSections.embed"
+                          class="px-6 py-6 bg-gray-900 border-t border-gray-700 space-y-6"
+                        >
+                          <div>
+                            <p class="text-sm font-medium text-gray-300 mb-2">
+                              Button Embed Code
+                            </p>
+                            <div
+                              class="bg-gray-950 p-4 rounded-xl border border-gray-700 overflow-x-auto"
+                            >
+                              <pre class="text-xs text-gray-400 font-mono">{{
+                                embedFormCode
+                              }}</pre>
+                            </div>
+                          </div>
+                          <div>
+                            <p class="text-sm font-medium text-gray-300 mb-2">
+                              Iframe Embed Code
+                            </p>
+                            <div
+                              class="bg-gray-950 p-4 rounded-xl border border-gray-700 overflow-x-auto"
+                            >
+                              <pre class="text-xs text-gray-400 font-mono">{{
+                                embedIframeCode
+                              }}</pre>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <!-- Delete Button -->
-              <div class="border-t border-gray-700/50 pt-6">
-                <button
-                  type="button"
-                  @click="showDeleteModal = true"
-                  :disabled="saving || deleting"
-                  class="inline-flex items-center px-4 py-2 border border-red-600 rounded-xl text-sm font-medium text-red-400 hover:bg-red-600 hover:text-white transition-colors"
-                >
-                   <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  Delete App
-                </button>
+                <!-- Delete Button -->
+                <div class="border-t border-gray-700/50 pt-6">
+                  <button
+                    type="button"
+                    @click="showDeleteModal = true"
+                    :disabled="saving || deleting"
+                    class="inline-flex items-center px-4 py-2 border border-red-600 rounded-xl text-sm font-medium text-red-400 hover:bg-red-600 hover:text-white transition-colors"
+                  >
+                    <svg
+                      class="w-4 h-4 mr-2"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                    Delete App
+                  </button>
+                </div>
               </div>
-
             </div>
-          </div>
           </div>
         </form>
       </div>
-
     </template>
   </AppShowLayout>
 
@@ -534,16 +946,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, watchEffect, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useAppsStore } from '../../store/apps';
-import { useStoresStore } from '../../store/stores';
-import ProductEditDrawer from '../../components/stores/ProductEditDrawer.vue';
-import PointOfSaleProductsEditor from '../../components/stores/PointOfSaleProductsEditor.vue';
-import AppShowLayout from '../../components/stores/AppShowLayout.vue';
-import AppShowHeader from '../../components/stores/AppShowHeader.vue';
-import DeleteAppModal from '../../components/stores/DeleteAppModal.vue';
-import { currencies } from '../../data/currencies';
+import { ref, computed, watch, watchEffect, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useAppsStore } from "../../store/apps";
+import { useStoresStore } from "../../store/stores";
+import ProductEditDrawer from "../../components/stores/ProductEditDrawer.vue";
+import PointOfSaleProductsEditor from "../../components/stores/PointOfSaleProductsEditor.vue";
+import AppShowLayout from "../../components/stores/AppShowLayout.vue";
+import AppShowHeader from "../../components/stores/AppShowHeader.vue";
+import DeleteAppModal from "../../components/stores/DeleteAppModal.vue";
+import { currencies } from "../../data/currencies";
 
 const route = useRoute();
 const router = useRouter();
@@ -554,19 +966,19 @@ const storeId = computed(() => route.params.id as string);
 const appId = computed(() => route.params.appId as string);
 const layoutRef = ref<InstanceType<typeof AppShowLayout> | null>(null);
 const saving = ref(false);
-const error = ref('');
-const success = ref('');
+const error = ref("");
+const success = ref("");
 
 // Computed property for displayed error
 const displayedError = computed(() => {
   if (success.value) {
-    return '';
+    return "";
   }
   return error.value;
 });
 
 const showDeleteModal = ref(false);
-const deleteError = ref('');
+const deleteError = ref("");
 const deleting = ref(false);
 const showAdvancedSettings = ref(false);
 
@@ -576,27 +988,27 @@ const showProductDrawer = ref(false);
 const editingProductIndex = ref<number | null>(null);
 
 const form = ref({
-  appName: '',
-  title: '',
-  description: '',
-  defaultView: 'Light',
-  currency: '',
+  appName: "",
+  title: "",
+  description: "",
+  defaultView: "Light",
+  currency: "",
   showItems: false,
   showCustomAmount: false,
   showDiscount: false,
   showSearch: false,
   showCategories: false,
   enableTips: false,
-  tipsMessage: 'Do you want to leave a tip?',
+  tipsMessage: "Do you want to leave a tip?",
   defaultTaxRate: 0,
-  requestCustomerData: '',
-  fixedAmountPayButtonText: 'Buy for {0}',
-  customAmountPayButtonText: 'Pay',
-  htmlLang: '',
-  htmlMetaTags: '',
-  redirectUrl: '',
-  redirectAutomatically: '',
-  notificationUrl: '',
+  requestCustomerData: "",
+  fixedAmountPayButtonText: "Buy for {0}",
+  customAmountPayButtonText: "Pay",
+  htmlLang: "",
+  htmlMetaTags: "",
+  redirectUrl: "",
+  redirectAutomatically: "",
+  notificationUrl: "",
 });
 
 const accordionSections = ref({
@@ -608,10 +1020,14 @@ const accordionSections = ref({
 
 // Computed property to determine if products editor should be shown
 const shouldShowProductsEditor = computed(() => {
-  if (form.value.defaultView === 'Static' || form.value.defaultView === 'Cart' || form.value.defaultView === 'Print') {
+  if (
+    form.value.defaultView === "Static" ||
+    form.value.defaultView === "Cart" ||
+    form.value.defaultView === "Print"
+  ) {
     return true;
   }
-  if (form.value.defaultView === 'Light' && form.value.showItems) {
+  if (form.value.defaultView === "Light" && form.value.showItems) {
     return true;
   }
   return false;
@@ -620,23 +1036,24 @@ const shouldShowProductsEditor = computed(() => {
 // Computed property for BTCPay app URL
 const btcpayAppUrl = computed(() => {
   const app = layoutRef.value?.app;
-  if (!app) return '';
-  const baseUrl = import.meta.env.VITE_BTCPAY_BASE_URL || 'https://pay.dvadsatjeden.org';
-  let id = app.btcpay_app_id || 
-              (app.config && app.config.id) ||
-              (app.config && app.config.appId);
-  
+  if (!app) return "";
+  const baseUrl = import.meta.env.VITE_BTCPAY_BASE_URL || "https://satflux.org";
+  let id =
+    app.btcpay_app_id ||
+    (app.config && app.config.id) ||
+    (app.config && app.config.appId);
+
   if (!id && app.btcpay_app_url) {
-    const urlParts = app.btcpay_app_url.split('/');
+    const urlParts = app.btcpay_app_url.split("/");
     id = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2];
   }
-  
-  if (!id) return '';
+
+  if (!id) return "";
   return `${baseUrl}/apps/${id}/pos`;
 });
 
 const embedFormCode = computed(() => {
-  if (!btcpayAppUrl.value) return '';
+  if (!btcpayAppUrl.value) return "";
   return `<form method="POST" action="${btcpayAppUrl.value}">
   <input type="hidden" name="email" value="customer@example.com" />
   <input type="hidden" name="orderId" value="CustomOrderId" />
@@ -647,17 +1064,17 @@ const embedFormCode = computed(() => {
 });
 
 const embedIframeCode = computed(() => {
-  if (!btcpayAppUrl.value) return '';
+  if (!btcpayAppUrl.value) return "";
   return `<iframe src='${btcpayAppUrl.value}' style='max-width: 100%; border: 0;'></iframe>`;
 });
 
 // Helper function to generate product ID
 function generateProductId(title: string): string {
-  if (!title) return '';
+  if (!title) return "";
   return title
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 function addProduct() {
@@ -680,7 +1097,10 @@ function handleProductSave(product: any) {
 }
 
 const currentProduct = computed(() => {
-  if (editingProductIndex.value !== null && products.value[editingProductIndex.value]) {
+  if (
+    editingProductIndex.value !== null &&
+    products.value[editingProductIndex.value]
+  ) {
     return products.value[editingProductIndex.value];
   }
   return null;
@@ -692,14 +1112,14 @@ function parseBoolean(value: any, defaultValue: boolean = false): boolean {
   if (value === null || value === undefined) {
     return defaultValue;
   }
-  if (typeof value === 'boolean') {
+  if (typeof value === "boolean") {
     return value;
   }
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const lower = value.toLowerCase().trim();
-    return lower === 'true' || lower === '1' || lower === 'yes';
+    return lower === "true" || lower === "1" || lower === "yes";
   }
-  if (typeof value === 'number') {
+  if (typeof value === "number") {
     return value !== 0;
   }
   return Boolean(value);
@@ -708,40 +1128,43 @@ function parseBoolean(value: any, defaultValue: boolean = false): boolean {
 async function loadApp(clearErrors: boolean = true) {
   const app = layoutRef.value?.app;
   const store = layoutRef.value?.store;
-  
+
   if (!app || !store) return;
-  
+
   const hadSuccess = success.value;
   // Don't clear errors if we're reloading after successful submit
   if (clearErrors && !hadSuccess && !isReloadingAfterSubmit.value) {
-    error.value = '';
+    error.value = "";
   }
   // Don't reload form if we have success message (prevents overwriting with stale data)
   if (hadSuccess && !isReloadingAfterSubmit.value) {
     return;
   }
-  
+
   // IMPORTANT: If we're reloading after successful submit, don't load form values from BTCPay
   // because they might be stale (cached) and would overwrite the values we just saved
   // Only update app name, and let the caller restore the saved form values
   const skipFormLoad = isReloadingAfterSubmit.value && success.value;
-  
-  form.value.appName = app.name || '';
-  
+
+  form.value.appName = app.name || "";
+
   // Only load form values if we're not reloading after successful save
   if (!skipFormLoad && app.config) {
     const config = app.config;
-    form.value.title = config.title || '';
-    form.value.description = config.description || '';
+    form.value.title = config.title || "";
+    form.value.description = config.description || "";
     // Ensure defaultView is always 'Light' for new apps or if not set
     const savedDefaultView = config.defaultView;
-    if (savedDefaultView && ['Light', 'Static', 'Cart', 'Print'].includes(savedDefaultView)) {
+    if (
+      savedDefaultView &&
+      ["Light", "Static", "Cart", "Print"].includes(savedDefaultView)
+    ) {
       form.value.defaultView = savedDefaultView;
     } else {
       // If no valid defaultView, use 'Light' as default
-      form.value.defaultView = 'Light';
+      form.value.defaultView = "Light";
     }
-    form.value.currency = config.currency || (store?.default_currency || 'EUR');
+    form.value.currency = config.currency || store?.default_currency || "EUR";
     // Parse boolean values correctly - BTCPay might return strings or booleans
     form.value.showItems = parseBoolean(config.showItems, false);
     form.value.showCustomAmount = parseBoolean(config.showCustomAmount, false);
@@ -749,53 +1172,78 @@ async function loadApp(clearErrors: boolean = true) {
     form.value.showSearch = parseBoolean(config.showSearch, true);
     form.value.showCategories = parseBoolean(config.showCategories, true);
     form.value.enableTips = parseBoolean(config.enableTips, false);
-    form.value.tipsMessage = config.tipsMessage || 'Do you want to leave a tip?';
-    form.value.defaultTaxRate = config.defaultTaxRate ? parseFloat(String(config.defaultTaxRate)) : 0;
-    form.value.requestCustomerData = config.requestCustomerData || '';
-    form.value.fixedAmountPayButtonText = config.fixedAmountPayButtonText || 'Buy for {0}';
-    form.value.customAmountPayButtonText = config.customAmountPayButtonText || 'Pay';
-    form.value.htmlLang = config.htmlLang || '';
-    form.value.htmlMetaTags = config.htmlMetaTags || '';
-    form.value.redirectUrl = config.redirectUrl || '';
-    form.value.redirectAutomatically = config.redirectAutomatically !== undefined ? String(config.redirectAutomatically) : '';
-    form.value.notificationUrl = config.notificationUrl || '';
+    form.value.tipsMessage =
+      config.tipsMessage || "Do you want to leave a tip?";
+    form.value.defaultTaxRate = config.defaultTaxRate
+      ? parseFloat(String(config.defaultTaxRate))
+      : 0;
+    form.value.requestCustomerData = config.requestCustomerData || "";
+    form.value.fixedAmountPayButtonText =
+      config.fixedAmountPayButtonText || "Buy for {0}";
+    form.value.customAmountPayButtonText =
+      config.customAmountPayButtonText || "Pay";
+    form.value.htmlLang = config.htmlLang || "";
+    form.value.htmlMetaTags = config.htmlMetaTags || "";
+    form.value.redirectUrl = config.redirectUrl || "";
+    form.value.redirectAutomatically =
+      config.redirectAutomatically !== undefined
+        ? String(config.redirectAutomatically)
+        : "";
+    form.value.notificationUrl = config.notificationUrl || "";
 
     let templateArray: any[] = [];
     const productsSource = config.items || config.template;
-    
+
     if (productsSource) {
       if (Array.isArray(productsSource)) {
         templateArray = productsSource;
-      } else if (typeof productsSource === 'string') {
+      } else if (typeof productsSource === "string") {
         try {
           const parsed = JSON.parse(productsSource);
-          templateArray = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.template) ? parsed.template : (Array.isArray(parsed.items) ? parsed.items : [parsed]));
+          templateArray = Array.isArray(parsed)
+            ? parsed
+            : Array.isArray(parsed.template)
+              ? parsed.template
+              : Array.isArray(parsed.items)
+                ? parsed.items
+                : [parsed];
         } catch (e) {
-          console.warn('Failed to parse products', e);
+          console.warn("Failed to parse products", e);
           templateArray = [];
         }
       }
     }
-    
+
     if (templateArray && templateArray.length > 0) {
       products.value = templateArray.map((p: any) => {
         let inventory: number | null = null;
-        if (p.inventory !== null && p.inventory !== undefined && p.inventory !== '') {
+        if (
+          p.inventory !== null &&
+          p.inventory !== undefined &&
+          p.inventory !== ""
+        ) {
           const invNum = Number(p.inventory);
           if (!isNaN(invNum) && invNum >= 0) {
             inventory = invNum;
           }
         }
-        
+
         return {
-          id: p.id || '',
-          title: p.title || '',
-          priceType: p.priceType || 'Fixed',
+          id: p.id || "",
+          title: p.title || "",
+          priceType: p.priceType || "Fixed",
           price: p.price ? parseFloat(String(p.price)) : 0,
-          taxRate: p.taxRate !== null && p.taxRate !== undefined && p.taxRate !== '' ? parseFloat(String(p.taxRate)) : null,
-          image: p.image || '',
-          description: p.description || '',
-          categories: p.categories ? (Array.isArray(p.categories) ? p.categories.join(', ') : String(p.categories)) : null,
+          taxRate:
+            p.taxRate !== null && p.taxRate !== undefined && p.taxRate !== ""
+              ? parseFloat(String(p.taxRate))
+              : null,
+          image: p.image || "",
+          description: p.description || "",
+          categories: p.categories
+            ? Array.isArray(p.categories)
+              ? p.categories.join(", ")
+              : String(p.categories)
+            : null,
           inventory: inventory,
           buyButtonText: p.buyButtonText || null,
           disabled: p.disabled !== undefined ? p.disabled : false,
@@ -805,7 +1253,7 @@ async function loadApp(clearErrors: boolean = true) {
       products.value = [];
     }
   } else {
-    form.value.currency = store?.default_currency || 'EUR';
+    form.value.currency = store?.default_currency || "EUR";
     products.value = [];
   }
 }
@@ -815,77 +1263,99 @@ const isReloadingAfterSubmit = ref(false);
 // Track current app ID to detect when switching between apps
 const currentAppId = ref<string | null>(null);
 
-watch(() => layoutRef.value?.app, (newApp) => {
-  // If app ID changed, we're switching apps - clear success and reset reloading flag
-  if (newApp && newApp.id !== currentAppId.value) {
-    currentAppId.value = newApp.id;
-    success.value = ''; // Clear success when switching apps
-    isReloadingAfterSubmit.value = false; // Reset reloading flag
+watch(
+  () => layoutRef.value?.app,
+  (newApp) => {
+    // If app ID changed, we're switching apps - clear success and reset reloading flag
+    if (newApp && newApp.id !== currentAppId.value) {
+      currentAppId.value = newApp.id;
+      success.value = ""; // Clear success when switching apps
+      isReloadingAfterSubmit.value = false; // Reset reloading flag
+      loadApp();
+      return;
+    }
+
+    // Normal reload logic
+    if (isReloadingAfterSubmit.value) return;
+    if (success.value) return;
     loadApp();
-    return;
-  }
-  
-  // Normal reload logic
-  if (isReloadingAfterSubmit.value) return;
-  if (success.value) return;
-  loadApp();
-}, { immediate: true, deep: true });
+  },
+  { immediate: true, deep: true },
+);
 
 // Clear error when success is set
 watch(success, (newSuccess) => {
   if (newSuccess) {
-    error.value = '';
+    error.value = "";
   }
 });
 
 // Prevent error from showing if we have success message
-watch(error, (newError) => {
-  if (newError && success.value) {
-    // Clear error immediately if success is set
-    error.value = '';
-  }
-}, { immediate: true });
+watch(
+  error,
+  (newError) => {
+    if (newError && success.value) {
+      // Clear error immediately if success is set
+      error.value = "";
+    }
+  },
+  { immediate: true },
+);
 
 // Additional safeguard: clear error if success is set
 watchEffect(() => {
   if (success.value && error.value) {
-    error.value = '';
+    error.value = "";
   }
 });
-
 
 async function handleSubmit() {
   const app = layoutRef.value?.app;
   if (!app) return;
-  
+
   saving.value = true;
-  error.value = '';
-  success.value = '';
-  
+  error.value = "";
+  success.value = "";
+
   try {
-     const template = products.value
-        .filter(p => p.title)
-        .map(p => {
-          let inventory: number | null = null;
-          if (p.inventory !== null && p.inventory !== undefined && p.inventory !== '') {
-            const invNum = Number(p.inventory);
-            if (!isNaN(invNum) && invNum >= 0) inventory = invNum;
-          }
-          
-          return {
-            id: p.id || generateProductId(p.title),
-            title: p.title,
-            disabled: p.disabled || false,
-            description: p.description || null,
-            categories: p.categories ? String(p.categories).split(',').map((c: string) => c.trim()).filter((c: string) => c) : null,
-            image: p.image || null,
-            priceType: p.priceType || 'Fixed',
-            price: p.priceType !== 'Free' && p.priceType !== 'Topup' ? String(p.price || 0) : null,
-            buyButtonText: p.buyButtonText || null,
-            inventory: inventory,
-            taxRate: p.taxRate !== null && p.taxRate !== undefined && p.taxRate !== '' ? String(p.taxRate) : null,
-          };
-        });
+    const template = products.value
+      .filter((p) => p.title)
+      .map((p) => {
+        let inventory: number | null = null;
+        if (
+          p.inventory !== null &&
+          p.inventory !== undefined &&
+          p.inventory !== ""
+        ) {
+          const invNum = Number(p.inventory);
+          if (!isNaN(invNum) && invNum >= 0) inventory = invNum;
+        }
+
+        return {
+          id: p.id || generateProductId(p.title),
+          title: p.title,
+          disabled: p.disabled || false,
+          description: p.description || null,
+          categories: p.categories
+            ? String(p.categories)
+                .split(",")
+                .map((c: string) => c.trim())
+                .filter((c: string) => c)
+            : null,
+          image: p.image || null,
+          priceType: p.priceType || "Fixed",
+          price:
+            p.priceType !== "Free" && p.priceType !== "Topup"
+              ? String(p.price || 0)
+              : null,
+          buyButtonText: p.buyButtonText || null,
+          inventory: inventory,
+          taxRate:
+            p.taxRate !== null && p.taxRate !== undefined && p.taxRate !== ""
+              ? String(p.taxRate)
+              : null,
+        };
+      });
 
     const config: any = {
       appName: form.value.appName,
@@ -899,18 +1369,29 @@ async function handleSubmit() {
       showCategories: form.value.showCategories,
       enableTips: form.value.enableTips,
       tipsMessage: form.value.tipsMessage || null,
-      defaultTaxRate: form.value.defaultTaxRate ? String(form.value.defaultTaxRate) : null,
+      defaultTaxRate: form.value.defaultTaxRate
+        ? String(form.value.defaultTaxRate)
+        : null,
       requestCustomerData: form.value.requestCustomerData || null,
       fixedAmountPayButtonText: form.value.fixedAmountPayButtonText,
       customAmountPayButtonText: form.value.customAmountPayButtonText,
       htmlLang: form.value.htmlLang || null,
       htmlMetaTags: form.value.htmlMetaTags || null,
       redirectUrl: form.value.redirectUrl || null,
-      redirectAutomatically: form.value.redirectAutomatically ? (form.value.redirectAutomatically === 'true' ? true : (form.value.redirectAutomatically === 'false' ? false : null)) : null,
+      redirectAutomatically: form.value.redirectAutomatically
+        ? form.value.redirectAutomatically === "true"
+          ? true
+          : form.value.redirectAutomatically === "false"
+            ? false
+            : null
+        : null,
       notificationUrl: form.value.notificationUrl || null,
     };
 
-    if (form.value.defaultView === 'Static' || form.value.defaultView === 'Cart') {
+    if (
+      form.value.defaultView === "Static" ||
+      form.value.defaultView === "Cart"
+    ) {
       config.description = form.value.description || null;
     }
 
@@ -927,25 +1408,25 @@ async function handleSubmit() {
       name: form.value.appName,
       config,
     });
-    
+
     // Set success and clear error immediately
-    success.value = 'Settings saved successfully';
-    error.value = '';
+    success.value = "Settings saved successfully";
+    error.value = "";
     isReloadingAfterSubmit.value = true;
-    
+
     try {
       // Reload app data after a short delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       if (layoutRef.value) {
         try {
           await (layoutRef.value as any).loadApp();
         } catch (reloadError) {
           // Silently ignore errors during reload after successful save
-          console.warn('Error reloading app after save:', reloadError);
+          console.warn("Error reloading app after save:", reloadError);
         }
       }
-      await new Promise(resolve => setTimeout(resolve, 0));
-      
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
       // Manually refresh form data from updated app
       // Only reload if we still have success (wasn't cleared by error)
       // IMPORTANT: Save all form values AND products before reload to prevent overwriting with stale data
@@ -971,10 +1452,10 @@ async function handleSubmit() {
         redirectAutomatically: form.value.redirectAutomatically,
         notificationUrl: form.value.notificationUrl,
       };
-      
+
       // Also save products array (deep copy to prevent reference issues)
       const savedProducts = JSON.parse(JSON.stringify(products.value));
-      
+
       if (success.value) {
         // Reload app data (but don't load form values - loadApp will skip form loading)
         await loadApp(false);
@@ -984,45 +1465,42 @@ async function handleSubmit() {
         // Restore products array
         products.value = savedProducts;
       }
-
     } finally {
       isReloadingAfterSubmit.value = false;
       // Ensure error is cleared and success is maintained after successful save
       if (success.value) {
-        error.value = '';
+        error.value = "";
         // Keep success message visible
-        success.value = 'Settings saved successfully';
+        success.value = "Settings saved successfully";
       }
     }
-
   } catch (err: any) {
     // Only set error if we don't have success
     if (!success.value) {
-      error.value = err.response?.data?.message || 'Failed to save settings';
-      success.value = '';
+      error.value = err.response?.data?.message || "Failed to save settings";
+      success.value = "";
     }
   } finally {
     saving.value = false;
     // Always clear error if we have success message
     if (success.value) {
-      error.value = '';
+      error.value = "";
     }
   }
 }
 
-
 async function handleDelete() {
   const app = layoutRef.value?.app;
   if (!app) return;
-  
+
   deleting.value = true;
-  deleteError.value = '';
-  
+  deleteError.value = "";
+
   try {
     await appsStore.deleteApp(storeId.value, appId.value);
-    router.push({ name: 'stores-show', params: { id: storeId.value } });
+    router.push({ name: "stores-show", params: { id: storeId.value } });
   } catch (err: any) {
-    deleteError.value = err.response?.data?.message || 'Failed to delete app';
+    deleteError.value = err.response?.data?.message || "Failed to delete app";
   } finally {
     deleting.value = false;
   }
