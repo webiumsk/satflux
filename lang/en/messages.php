@@ -92,5 +92,24 @@ return [
     'server_error' => 'Server error',
     'try_again_later' => 'Please try again later',
     'contact_support' => 'Please contact support',
+
+    // Documentation
+    'documentation_article_created' => 'Documentation article created successfully',
+    'documentation_article_updated' => 'Documentation article updated successfully',
+    'documentation_article_deleted' => 'Documentation article deleted successfully',
+    'documentation_category_created' => 'Documentation category created successfully',
+    'documentation_category_updated' => 'Documentation category updated successfully',
+    'documentation_category_deleted' => 'Documentation category deleted successfully',
+    'documentation_category_has_articles' => 'Cannot delete category with articles',
+
+    // FAQ
+    'faq_item_created' => 'FAQ item created successfully',
+    'faq_item_updated' => 'FAQ item updated successfully',
+    'faq_item_deleted' => 'FAQ item deleted successfully',
+    'faq_category_created' => 'FAQ category created successfully',
+    'faq_category_updated' => 'FAQ category updated successfully',
+    'faq_category_deleted' => 'FAQ category deleted successfully',
+    'faq_category_has_items' => 'Cannot delete category with items',
+    'faq_marked_helpful' => 'Thank you for your feedback!',
 ];
 

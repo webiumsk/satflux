@@ -21,10 +21,17 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\DocumentationController;
+use App\Http\Controllers\FaqController;
+use App\Http\Controllers\Admin\DocumentationArticleController;
+use App\Http\Controllers\Admin\DocumentationCategoryController;
+use App\Http\Controllers\Admin\FaqItemController;
+use App\Http\Controllers\Admin\FaqCategoryController;
 use App\Http\Middleware\AuditLog;
 use App\Http\Middleware\EnsureAdminRole;
 use App\Http\Middleware\EnsureStoreOwnership;
 use App\Http\Middleware\EnsureSupportRole;
+use App\Http\Middleware\EnsureSupportOrAdminRole;
 use Illuminate\Support\Facades\Route;
 
 // Health check endpoint
@@ -313,3 +320,58 @@ Route::get('/subscriptions/success', [SubscriptionController::class, 'success'])
 Route::get('/subscriptions/details', [SubscriptionController::class, 'details'])->middleware('auth:sanctum');
 Route::get('/subscriptions/credits', [SubscriptionController::class, 'getCredits'])->middleware('auth:sanctum');
 Route::post('/subscriptions/credits', [SubscriptionController::class, 'addCredits'])->middleware('auth:sanctum');
+
+// Documentation (public - no auth required)
+Route::get('/documentation', [DocumentationController::class, 'index']);
+Route::get('/documentation/{slug}', [DocumentationController::class, 'show']);
+
+// FAQ (public - no auth required)
+Route::get('/faq', [FaqController::class, 'index']);
+Route::get('/faq/{slug}', [FaqController::class, 'show']);
+Route::post('/faq/{slug}/helpful', [FaqController::class, 'markHelpful']);
+
+// Admin Documentation (requires support or admin role)
+Route::middleware(['auth:sanctum', EnsureSupportOrAdminRole::class])->prefix('admin/documentation')->group(function () {
+    // Articles
+    Route::get('/articles', [DocumentationArticleController::class, 'index']);
+    Route::post('/articles', [DocumentationArticleController::class, 'store'])
+        ->middleware(AuditLog::class . ':documentation_article.created');
+    Route::get('/articles/{article}', [DocumentationArticleController::class, 'show']);
+    Route::put('/articles/{article}', [DocumentationArticleController::class, 'update'])
+        ->middleware(AuditLog::class . ':documentation_article.updated');
+    Route::delete('/articles/{article}', [DocumentationArticleController::class, 'destroy'])
+        ->middleware(AuditLog::class . ':documentation_article.deleted');
+    
+    // Categories
+    Route::get('/categories', [DocumentationCategoryController::class, 'index']);
+    Route::post('/categories', [DocumentationCategoryController::class, 'store'])
+        ->middleware(AuditLog::class . ':documentation_category.created');
+    Route::get('/categories/{category}', [DocumentationCategoryController::class, 'show']);
+    Route::put('/categories/{category}', [DocumentationCategoryController::class, 'update'])
+        ->middleware(AuditLog::class . ':documentation_category.updated');
+    Route::delete('/categories/{category}', [DocumentationCategoryController::class, 'destroy'])
+        ->middleware(AuditLog::class . ':documentation_category.deleted');
+});
+
+// Admin FAQ (requires support or admin role)
+Route::middleware(['auth:sanctum', EnsureSupportOrAdminRole::class])->prefix('admin/faq')->group(function () {
+    // Items
+    Route::get('/items', [FaqItemController::class, 'index']);
+    Route::post('/items', [FaqItemController::class, 'store'])
+        ->middleware(AuditLog::class . ':faq_item.created');
+    Route::get('/items/{item}', [FaqItemController::class, 'show']);
+    Route::put('/items/{item}', [FaqItemController::class, 'update'])
+        ->middleware(AuditLog::class . ':faq_item.updated');
+    Route::delete('/items/{item}', [FaqItemController::class, 'destroy'])
+        ->middleware(AuditLog::class . ':faq_item.deleted');
+    
+    // Categories
+    Route::get('/categories', [FaqCategoryController::class, 'index']);
+    Route::post('/categories', [FaqCategoryController::class, 'store'])
+        ->middleware(AuditLog::class . ':faq_category.created');
+    Route::get('/categories/{category}', [FaqCategoryController::class, 'show']);
+    Route::put('/categories/{category}', [FaqCategoryController::class, 'update'])
+        ->middleware(AuditLog::class . ':faq_category.updated');
+    Route::delete('/categories/{category}', [FaqCategoryController::class, 'destroy'])
+        ->middleware(AuditLog::class . ':faq_category.deleted');
+});
