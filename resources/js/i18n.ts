@@ -92,7 +92,34 @@ export async function setLocale(locale: SupportedLocale) {
 
     // Otherwise, load locale dynamically
     try {
-        const messages = await import(`./locales/${locale}.json`);
+        // Use explicit imports for better Vite compatibility in production
+        // Only import locales that actually exist
+        let messages;
+        switch (locale) {
+            case 'en':
+                messages = await import('./locales/en.json');
+                break;
+            case 'sk':
+                messages = await import('./locales/sk.json');
+                break;
+            case 'es':
+                messages = await import('./locales/es.json');
+                break;
+            // For locales that don't exist yet, fallback to English
+            case 'cz':
+            case 'de':
+            case 'fr':
+            case 'hu':
+            case 'pl':
+            default:
+                console.warn(`Locale ${locale} not yet implemented, falling back to English`);
+                messages = await import('./locales/en.json');
+                // Still set the locale value, but use English messages
+                i18n.global.setLocaleMessage(locale, messages.default);
+                i18n.global.locale.value = locale;
+                localStorage.setItem('locale', locale);
+                return;
+        }
         i18n.global.setLocaleMessage(locale, messages.default);
         i18n.global.locale.value = locale;
         localStorage.setItem('locale', locale);
