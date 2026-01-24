@@ -35,10 +35,10 @@
             {{ t('support.technical_support_description') }}
           </p>
           <a
-            href="mailto:support@satflux.io.org"
+            href="mailto:support@satflux.io"
             class="text-indigo-600 hover:text-indigo-700 font-medium"
           >
-            support@satflux.io.org
+            support@satflux.io
           </a>
         </div>
 
