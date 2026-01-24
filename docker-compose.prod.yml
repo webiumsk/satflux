@@ -104,13 +104,12 @@ services:
 
 volumes:
   postgres_data:
-    driver: local
     external: true
     name: satflux_prod_postgres_data
   redis_data:
-    driver: local
     external: true
     name: satflux_prod_redis_data
+
 networks:
   satflux:
     external: true
