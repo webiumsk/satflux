@@ -42,6 +42,7 @@
           >
             Support
           </router-link>
+          <LanguageSwitcher />
           <router-link
             to="/login"
             class="text-white hover:text-indigo-400 font-medium transition-colors"
@@ -76,6 +77,7 @@
           >
             Support
           </router-link>
+          <LanguageSwitcher />
           <router-link
             to="/stores"
             class="text-gray-300 hover:text-white font-medium transition-colors"
@@ -168,6 +170,9 @@
             >
               Support
             </router-link>
+            <div class="pt-2 pb-2">
+              <LanguageSwitcher />
+            </div>
             <div class="pt-4 flex flex-col gap-3">
               <router-link
                 to="/login"
@@ -213,6 +218,9 @@
             >
               Support
             </router-link>
+            <div class="pt-2 pb-2">
+              <LanguageSwitcher />
+            </div>
             <router-link
               to="/stores"
               @click="showMobileMenu = false"
@@ -243,6 +251,7 @@
 import { ref, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "../../store/auth";
+import LanguageSwitcher from "../LanguageSwitcher.vue";
 
 const router = useRouter();
 const route = useRoute();
