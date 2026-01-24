@@ -6,15 +6,17 @@ export default defineConfig({
     build: {
         outDir: 'public/build',
         emptyOutDir: true,
-        minify: 'esbuild', // Use esbuild instead of terser for better compatibility
-        sourcemap: false, // Disable source maps in production for smaller files
+        minify: false, // Temporarily disable minification to debug the issue
+        sourcemap: false,
+        target: 'es2020',
+        cssCodeSplit: true,
         rollupOptions: {
             output: {
                 // Use simpler chunk names for better compatibility
                 chunkFileNames: 'assets/[name]-[hash].js',
                 entryFileNames: 'assets/[name]-[hash].js',
                 assetFileNames: 'assets/[name]-[hash].[ext]',
-                // Ensure proper format for chunks
+                // Ensure proper encoding
                 format: 'es',
             },
         },
