@@ -63,7 +63,7 @@
             </router-link>
             <router-link
               v-if="authStore.user?.role === 'admin'"
-              to="/admin/users"
+              to="/admin"
               class="px-3 py-2 rounded-lg text-sm font-medium transition-all"
               :class="
                 $route.name === 'admin-users'
@@ -340,7 +340,7 @@
               authStore.user?.role === 'support' ||
               authStore.user?.role === 'admin'
             "
-            to="/support/wallet-connections"
+            to="/admin"
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors relative"
             :class="
@@ -372,7 +372,7 @@
           </router-link>
           <router-link
             v-if="authStore.user?.role === 'admin'"
-            to="/admin/users"
+            to="/admin"
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors"
             :class="

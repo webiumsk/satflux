@@ -59,6 +59,80 @@ export const setLocale = async (locale: string): Promise<void> => {
     }
 };
 
+// Documentation API
+export const documentationApi = {
+    index: (params?: { category_id?: string; search?: string }) => 
+        api.get('/documentation', { params }),
+    show: (slug: string) => 
+        api.get(`/documentation/${slug}`),
+};
+
+// FAQ API
+export const faqApi = {
+    index: (params?: { category_id?: string; search?: string }) => 
+        api.get('/faq', { params }),
+    show: (slug: string) => 
+        api.get(`/faq/${slug}`),
+    markHelpful: (slug: string) => 
+        api.post(`/faq/${slug}/helpful`),
+};
+
+// Admin Documentation API
+export const adminDocumentationApi = {
+    articles: {
+        index: (params?: { category_id?: string; is_published?: boolean; search?: string }) => 
+            api.get('/admin/documentation/articles', { params }),
+        show: (id: string) => 
+            api.get(`/admin/documentation/articles/${id}`),
+        create: (data: any) => 
+            api.post('/admin/documentation/articles', data),
+        update: (id: string, data: any) => 
+            api.put(`/admin/documentation/articles/${id}`, data),
+        delete: (id: string) => 
+            api.delete(`/admin/documentation/articles/${id}`),
+    },
+    categories: {
+        index: () => 
+            api.get('/admin/documentation/categories'),
+        show: (id: string) => 
+            api.get(`/admin/documentation/categories/${id}`),
+        create: (data: any) => 
+            api.post('/admin/documentation/categories', data),
+        update: (id: string, data: any) => 
+            api.put(`/admin/documentation/categories/${id}`, data),
+        delete: (id: string) => 
+            api.delete(`/admin/documentation/categories/${id}`),
+    },
+};
+
+// Admin FAQ API
+export const adminFaqApi = {
+    items: {
+        index: (params?: { category_id?: string; is_published?: boolean; search?: string }) => 
+            api.get('/admin/faq/items', { params }),
+        show: (id: string) => 
+            api.get(`/admin/faq/items/${id}`),
+        create: (data: any) => 
+            api.post('/admin/faq/items', data),
+        update: (id: string, data: any) => 
+            api.put(`/admin/faq/items/${id}`, data),
+        delete: (id: string) => 
+            api.delete(`/admin/faq/items/${id}`),
+    },
+    categories: {
+        index: () => 
+            api.get('/admin/faq/categories'),
+        show: (id: string) => 
+            api.get(`/admin/faq/categories/${id}`),
+        create: (data: any) => 
+            api.post('/admin/faq/categories', data),
+        update: (id: string, data: any) => 
+            api.put(`/admin/faq/categories/${id}`, data),
+        delete: (id: string) => 
+            api.delete(`/admin/faq/categories/${id}`),
+    },
+};
+
 export default api;
 
 

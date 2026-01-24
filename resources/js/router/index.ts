@@ -169,10 +169,76 @@ const router = createRouter({
             meta: { requiresAuth: true },
         },
         {
+            path: '/admin',
+            name: 'admin-dashboard',
+            component: () => import('../pages/admin/Dashboard.vue'),
+            meta: { requiresAuth: true, requiresSupportOrAdmin: true },
+        },
+        {
             path: '/admin/users',
             name: 'admin-users',
             component: () => import('../pages/admin/Users.vue'),
             meta: { requiresAuth: true, requiresAdmin: true },
+        },
+        {
+            path: '/documentation',
+            name: 'documentation',
+            component: () => import('../pages/documentation/Index.vue'),
+            meta: { public: true },
+        },
+        {
+            path: '/documentation/:slug',
+            name: 'documentation-show',
+            component: () => import('../pages/documentation/Show.vue'),
+            meta: { public: true },
+        },
+        {
+            path: '/faq',
+            name: 'faq',
+            component: () => import('../pages/faq/Index.vue'),
+            meta: { public: true },
+        },
+        {
+            path: '/admin/documentation',
+            name: 'admin-documentation',
+            component: () => import('../pages/admin/documentation/Articles.vue'),
+            meta: { requiresAuth: true, requiresSupportOrAdmin: true },
+        },
+        {
+            path: '/admin/documentation/articles/create',
+            name: 'admin-documentation-articles-create',
+            component: () => import('../pages/admin/documentation/ArticleForm.vue'),
+            meta: { requiresAuth: true, requiresSupportOrAdmin: true },
+        },
+        {
+            path: '/admin/documentation/articles/:id/edit',
+            name: 'admin-documentation-articles-edit',
+            component: () => import('../pages/admin/documentation/ArticleForm.vue'),
+            meta: { requiresAuth: true, requiresSupportOrAdmin: true },
+        },
+        {
+            path: '/admin/documentation/categories',
+            name: 'admin-documentation-categories',
+            component: () => import('../pages/admin/documentation/Categories.vue'),
+            meta: { requiresAuth: true, requiresSupportOrAdmin: true },
+        },
+        {
+            path: '/admin/faq',
+            name: 'admin-faq',
+            component: () => import('../pages/admin/faq/Items.vue'),
+            meta: { requiresAuth: true, requiresSupportOrAdmin: true },
+        },
+        {
+            path: '/admin/faq/items/create',
+            name: 'admin-faq-items-create',
+            component: () => import('../pages/admin/faq/ItemForm.vue'),
+            meta: { requiresAuth: true, requiresSupportOrAdmin: true },
+        },
+        {
+            path: '/admin/faq/items/:id/edit',
+            name: 'admin-faq-items-edit',
+            component: () => import('../pages/admin/faq/ItemForm.vue'),
+            meta: { requiresAuth: true, requiresSupportOrAdmin: true },
         },
     ],
 });
@@ -207,6 +273,9 @@ router.beforeEach(async (to, from, next) => {
         }
     } else if (to.meta.requiresAdmin && authStore.user?.role !== 'admin') {
         // Redirect to dashboard if not admin
+        next({ name: 'home' });
+    } else if (to.meta.requiresSupportOrAdmin && (!authStore.user || (authStore.user.role !== 'support' && authStore.user.role !== 'admin'))) {
+        // Redirect to dashboard if not support or admin
         next({ name: 'home' });
     } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
         next({ name: 'home' });
