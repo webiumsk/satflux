@@ -1,5 +1,7 @@
 import { createI18n } from 'vue-i18n';
 import en from './locales/en.json';
+import sk from './locales/sk.json';
+import es from './locales/es.json';
 import api from './services/api';
 
 // Supported locales
@@ -70,7 +72,9 @@ const i18n = createI18n({
     fallbackLocale: defaultLocale,
     messages: {
         en,
-        // Other locales will be loaded dynamically
+        sk,
+        es,
+        // Other locales will be loaded dynamically or fallback to English
     },
     missingWarn: false, // Disable warnings for missing translations in development
     fallbackWarn: false,
@@ -90,20 +94,20 @@ export async function setLocale(locale: SupportedLocale) {
         return;
     }
 
-    // Otherwise, load locale dynamically
+    // Otherwise, load locale dynamically (only for locales that don't exist yet)
     try {
-        // Use explicit imports for better Vite compatibility in production
-        // Only import locales that actually exist
+        // Use static imports for existing locales, dynamic for others
         let messages;
+        
         switch (locale) {
             case 'en':
-                messages = await import('./locales/en.json');
+                messages = { default: en };
                 break;
             case 'sk':
-                messages = await import('./locales/sk.json');
+                messages = { default: sk };
                 break;
             case 'es':
-                messages = await import('./locales/es.json');
+                messages = { default: es };
                 break;
             // For locales that don't exist yet, fallback to English
             case 'cz':
@@ -113,13 +117,9 @@ export async function setLocale(locale: SupportedLocale) {
             case 'pl':
             default:
                 console.warn(`Locale ${locale} not yet implemented, falling back to English`);
-                messages = await import('./locales/en.json');
-                // Still set the locale value, but use English messages
-                i18n.global.setLocaleMessage(locale, messages.default);
-                i18n.global.locale.value = locale;
-                localStorage.setItem('locale', locale);
-                return;
+                messages = { default: en };
         }
+        
         i18n.global.setLocaleMessage(locale, messages.default);
         i18n.global.locale.value = locale;
         localStorage.setItem('locale', locale);
