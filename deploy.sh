@@ -13,11 +13,11 @@ NC='\033[0m' # No Color
 
 # Configuration
 COMPOSE_FILE="docker-compose.prod.yml"
-PROJECT_NAME="satflux.io_prod"
+PROJECT_NAME="uzol21_prod"
 PHP_SERVICE="php"  # Service name in docker-compose.prod.yml
-PHP_CONTAINER="satflux.io_php_prod"  # Container name (from container_name in docker-compose.prod.yml)
+PHP_CONTAINER="uzol21_php_prod"  # Container name (from container_name in docker-compose.prod.yml)
 
-echo -e "${GREEN}Starting satflux.io deployment...${NC}"
+echo -e "${GREEN}Starting uzol21 deployment...${NC}"
 
 # Check if .env.production exists
 if [ ! -f .env.production ]; then
