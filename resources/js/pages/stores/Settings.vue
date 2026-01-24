@@ -5,26 +5,26 @@
           :to="`/stores/${storeId}`"
           class="text-indigo-600 hover:text-indigo-500 text-sm"
         >
-          ← {{ t('common.back') }} {{ t('stores.title') }}
+          {{ t('settings.back_to_store') }}
         </router-link>
       </div>
 
       <div v-if="loading && !settings" class="text-center py-12">
-        <p class="text-gray-500">{{ t('common.loading') }}</p>
+        <p class="text-gray-500">{{ t('settings.loading_settings') }}</p>
       </div>
 
       <div v-else-if="settings" class="bg-white shadow rounded-lg">
         <div class="px-6 py-5 border-b border-gray-200">
-          <h1 class="text-3xl font-bold text-gray-900">{{ t('stores.store_settings') }}</h1>
+          <h1 class="text-3xl font-bold text-gray-900">{{ t('settings.title') }}</h1>
         </div>
 
         <div class="px-6 py-5 space-y-8">
           <!-- Editable Fields -->
           <div>
-            <h2 class="text-lg font-medium text-gray-900 mb-4">{{ t('stores.store_information') }}</h2>
+            <h2 class="text-lg font-medium text-gray-900 mb-4">{{ t('settings.store_information') }}</h2>
             <form @submit.prevent="handleSubmit" class="space-y-6">
               <div>
-                <label for="name" class="block text-sm font-medium text-gray-700">{{ t('stores.store_name') }}</label>
+                <label for="name" class="block text-sm font-medium text-gray-700">{{ t('settings.store_name') }}</label>
                 <input
                   id="name"
                   v-model="form.name"
@@ -35,14 +35,14 @@
               </div>
 
               <div>
-                <label for="default_currency" class="block text-sm font-medium text-gray-700">{{ t('stores.default_currency') }}</label>
+                <label for="default_currency" class="block text-sm font-medium text-gray-700">{{ t('settings.default_currency') }}</label>
                 <input
                   id="default_currency"
                   v-model="form.default_currency"
                   type="text"
                   list="currency-selection-suggestion"
                   required
-                  :placeholder="t('stores.currency_placeholder')"
+                  :placeholder="t('settings.currency_placeholder')"
                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 />
                 <datalist id="currency-selection-suggestion">
@@ -53,7 +53,7 @@
               </div>
 
               <div>
-                <label for="timezone" class="block text-sm font-medium text-gray-700">{{ t('stores.timezone') }}</label>
+                <label for="timezone" class="block text-sm font-medium text-gray-700">{{ t('settings.timezone') }}</label>
                 <select
                   id="timezone"
                   v-model="form.timezone"
@@ -66,7 +66,7 @@
 
               <div>
                 <label for="preferred_exchange" class="block text-sm font-medium text-gray-700">
-                  {{ t('stores.preferred_price_source') }}
+                  {{ t('settings.preferred_price_source') }}
                 </label>
                 <select
                   id="preferred_exchange"
@@ -77,7 +77,7 @@
                     {{ exchange.label }}
                   </option>
                 </select>
-                <p class="mt-2 text-sm text-gray-500">{{ t('stores.recommended_price_source') }}</p>
+                <p class="mt-2 text-sm text-gray-500">{{ t('settings.price_source_description') }}</p>
               </div>
 
               <div v-if="error" class="rounded-md bg-red-50 p-4">
@@ -94,7 +94,7 @@
                   :disabled="saving"
                   class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
                 >
-                  {{ saving ? t('auth.saving') : t('stores.save_changes') }}
+                  {{ saving ? t('settings.saving') : t('settings.save_changes') }}
                 </button>
               </div>
             </form>
@@ -102,9 +102,9 @@
 
           <!-- Read-only Fields -->
           <div class="border-t border-gray-200 pt-8">
-            <h2 class="text-lg font-medium text-gray-900 mb-4">{{ t('stores.additional_settings') }}</h2>
+            <h2 class="text-lg font-medium text-gray-900 mb-4">{{ t('settings.additional_settings') }}</h2>
             <p class="text-sm text-gray-600 mb-4">
-              {{ t('stores.additional_settings_description') }}
+              {{ t('settings.additional_settings_description') }}
             </p>
           </div>
         </div>
@@ -212,10 +212,10 @@ async function handleSubmit() {
 
   try {
     await api.put(`/stores/${storeId}/settings`, form.value);
-    success.value = t('stores.settings_updated');
+    success.value = t('settings.settings_updated');
     await fetchSettings();
   } catch (err: any) {
-    error.value = err.response?.data?.message || t('stores.failed_to_update_settings');
+    error.value = err.response?.data?.message || t('settings.failed_to_update');
     if (err.response?.data?.errors) {
       const errors = Object.values(err.response.data.errors).flat();
       error.value = errors.join(', ');

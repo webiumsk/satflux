@@ -4,8 +4,8 @@
 
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
       <div class="text-center mb-12">
-        <h1 class="text-4xl font-bold text-gray-900 mb-4">Contact & Support</h1>
-        <p class="text-xl text-gray-600">Need help? We're here for you.</p>
+        <h1 class="text-4xl font-bold text-gray-900 mb-4">{{ t('support.title') }}</h1>
+        <p class="text-xl text-gray-600">{{ t('support.subtitle') }}</p>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
@@ -29,11 +29,10 @@
             </svg>
           </div>
           <h3 class="text-xl font-semibold text-gray-900 mb-2">
-            Technical Support
+            {{ t('support.technical_support') }}
           </h3>
           <p class="text-gray-600 mb-4">
-            For technical issues or questions about the service, contact our
-            support team.
+            {{ t('support.technical_support_description') }}
           </p>
           <a
             href="mailto:support@satflux.io.org"
@@ -63,39 +62,39 @@
             </svg>
           </div>
           <h3 class="text-xl font-semibold text-gray-900 mb-2">
-            Pricing & Subscriptions
+            {{ t('support.pricing_subscriptions') }}
           </h3>
           <p class="text-gray-600 mb-4">
-            Questions about pricing, plans, or subscription upgrades.
+            {{ t('support.pricing_description') }}
           </p>
           <router-link
             to="/#pricing"
             class="text-indigo-600 hover:text-indigo-700 font-medium"
           >
-            View Pricing →
+            {{ t('support.view_pricing') }}
           </router-link>
         </div>
       </div>
 
       <div class="bg-gray-50 rounded-lg p-8 text-center">
         <h2 class="text-2xl font-bold text-gray-900 mb-4">
-          Are you logged in?
+          {{ t('support.are_you_logged_in') }}
         </h2>
         <p class="text-gray-600 mb-6">
-          To access support tools, please log in to your account.
+          {{ t('support.login_description') }}
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
           <router-link
             to="/login"
             class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
           >
-            Sign In
+            {{ t('auth.sign_in') }}
           </router-link>
           <router-link
             to="/register"
             class="inline-flex items-center justify-center px-6 py-3 border-2 border-indigo-600 text-base font-medium rounded-md text-indigo-600 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
           >
-            Create Account
+            {{ t('support.create_account') }}
           </router-link>
         </div>
       </div>
@@ -106,6 +105,9 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
 import PublicHeader from "../components/layout/PublicHeader.vue";
 import AppFooter from "../components/layout/AppFooter.vue";
+
+const { t } = useI18n();
 </script>
