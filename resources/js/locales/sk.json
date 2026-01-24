@@ -391,7 +391,7 @@
     "sign_in": "Prihlásiť sa",
     "go_to_dashboard": "Prejsť na nástenku",
     "total_revenue": "Celkový príjem",
-    "non_custodial": "Platby do vašej peňaženky",
+    "non_custodial": "Priamo do peňaženky",
     "non_custodial_description": "Platby prichádzajú priamo k vám, bez sprostredkovateľov. Nikdy sa nedotkneme vašich satov.",
     "lightning_ready": "Pripravené pre Lightning",
     "lightning_ready_description": "Optimalizované pre Blink a Aqua peňaženky. Okamžité vyrovnanie.",
