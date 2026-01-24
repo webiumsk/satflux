@@ -102,7 +102,7 @@ services:
       retries: 5
       start_period: 10s
 
-  volumes:  postgres_data:    driver: local    external: true    name: satflux_prod_postgres_data  redis_data:    driver: local    external: true    name: satflux_prod_redis_datanetworks:  satflux:    external: true    name: satflux_prod  passbolt_default:    external: true
+  volumes:  
     postgres_data:
       driver: local
       external: true
