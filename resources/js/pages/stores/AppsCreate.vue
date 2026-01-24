@@ -19,8 +19,8 @@
                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
               </button>
               <div>
-                <h1 class="text-2xl font-bold text-white mb-1">Create App</h1>
-                <p class="text-sm text-gray-400">Create a new application for <span class="text-indigo-400">{{ store?.name }}</span></p>
+                <h1 class="text-2xl font-bold text-white mb-1">{{ t('apps.create_app_title') }}</h1>
+                <p class="text-sm text-gray-400">{{ t('apps.create_app_description') }} <span class="text-indigo-400">{{ store?.name }}</span></p>
               </div>
             </div>
           </div>
@@ -37,7 +37,7 @@
                 
                 <div>
                   <label class="block text-sm font-medium text-gray-300 mb-2">
-                    App Type <span class="text-red-400">*</span>
+                    {{ t('apps.app_type') }} <span class="text-red-400">*</span>
                   </label>
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <!-- Point of Sale Option -->
@@ -57,8 +57,8 @@
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                       </div>
                       <div>
-                        <h3 class="font-medium text-white mb-1">Point of Sale</h3>
-                        <p class="text-xs text-gray-400">Virtual terminal for in-person payments</p>
+                        <h3 class="font-medium text-white mb-1">{{ t('apps.point_of_sale') }}</h3>
+                        <p class="text-xs text-gray-400">{{ t('apps.point_of_sale_description') }}</p>
                       </div>
                       
                       <div v-if="form.appType === 'PointOfSale'" class="absolute top-3 right-3 text-indigo-500">
@@ -70,7 +70,7 @@
 
                 <div>
                   <label for="appName" class="block text-sm font-medium text-gray-300 mb-1">
-                    App Name <span class="text-red-400">*</span>
+                    {{ t('apps.app_name') }} <span class="text-red-400">*</span>
                   </label>
                   <input
                     id="appName"
@@ -78,7 +78,7 @@
                     type="text"
                     required
                     class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="e.g., Main Store POS or Project Fundraiser"
+                    :placeholder="t('apps.app_name_placeholder')"
                   />
                 </div>
 
@@ -94,7 +94,7 @@
                     :to="`/stores/${storeId}/apps`"
                     class="px-4 py-2 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700 transition-colors"
                   >
-                    Cancel
+                    {{ t('common.cancel') }}
                   </router-link>
                   <button
                     type="submit"
@@ -105,7 +105,7 @@
                           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                    {{ saving ? 'Creating...' : 'Create App' }}
+                    {{ saving ? t('apps.creating') : t('apps.create_app') }}
                   </button>
                 </div>
 
@@ -122,10 +122,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useAppsStore } from '../../store/apps';
 import { useStoresStore } from '../../store/stores';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
 import api from '../../services/api';
+
+const { t } = useI18n();
 
 const route = useRoute();
 const router = useRouter();
@@ -175,7 +178,7 @@ async function handleSubmit() {
     
   } catch (err: any) {
     console.error('Failed to create app:', err);
-    error.value = err.response?.data?.message || 'Failed to create app';
+    error.value = err.response?.data?.message || t('apps.failed_to_create');
   } finally {
     saving.value = false;
   }

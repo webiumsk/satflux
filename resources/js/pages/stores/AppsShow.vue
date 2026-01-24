@@ -4,18 +4,18 @@
   <div v-else-if="appType === 'Crowdfund'" class="flex items-center justify-center h-full bg-gray-900">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="bg-gray-800 shadow rounded-lg p-6 border border-gray-700">
-        <h1 class="text-3xl font-bold text-white mb-4">Crowdfund Not Available</h1>
+        <h1 class="text-3xl font-bold text-white mb-4">{{ t('apps.crowdfund_not_available') }}</h1>
         <p class="text-sm text-gray-400">Type: {{ appType }}</p>
-        <p class="mt-4 text-gray-300">Crowdfund apps are temporarily unavailable. Update functionality is not yet supported by BTCPay API.</p>
+        <p class="mt-4 text-gray-300">{{ t('apps.crowdfund_unavailable_description') }}</p>
       </div>
     </div>
   </div>
   <div v-else class="flex items-center justify-center h-full bg-gray-100">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="bg-white shadow rounded-lg p-6">
-        <h1 class="text-3xl font-bold text-gray-900 mb-4">App Type Not Supported</h1>
+        <h1 class="text-3xl font-bold text-gray-900 mb-4">{{ t('apps.app_type_not_supported') }}</h1>
         <p class="text-sm text-gray-500">Type: {{ appType }}</p>
-        <p class="mt-4 text-gray-600">Settings for this app type are not yet implemented.</p>
+        <p class="mt-4 text-gray-600">{{ t('apps.app_type_not_supported_description') }}</p>
       </div>
     </div>
   </div>
@@ -24,10 +24,13 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useAppsStore } from '../../store/apps';
 import { useStoresStore } from '../../store/stores';
 import PointOfSaleShow from './PointOfSaleShow.vue';
 import PayButtonShow from './PayButtonShow.vue';
+
+const { t } = useI18n();
 
 const route = useRoute();
 const appsStore = useAppsStore();

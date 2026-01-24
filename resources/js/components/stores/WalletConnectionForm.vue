@@ -2,7 +2,7 @@
     <form @submit.prevent="handleSubmit" class="space-y-8">
         <div>
             <label class="block text-sm font-medium text-gray-300 mb-4 uppercase tracking-wider">
-                {{ t('stores.wallet_type') }}
+                Wallet Type
             </label>
             <div class="space-y-4">
                 <label 
@@ -21,8 +21,8 @@
                         />
                     </div>
                     <div class="ml-4">
-                        <div class="font-bold text-white text-lg">{{ t('stores.blink_wallet') }}</div>
-                        <div class="text-sm text-gray-400 mt-1">{{ t('stores.blink_connection_description') }}</div>
+                        <div class="font-bold text-white text-lg">Blink</div>
+                        <div class="text-sm text-gray-400 mt-1">Connect your Blink wallet using a read+receive API key. Best for speed and reliability.</div>
                     </div>
                 </label>
 
@@ -42,8 +42,8 @@
                         />
                     </div>
                      <div class="ml-4">
-                        <div class="font-bold text-white text-lg">{{ t('stores.aqua_bitcoin_core') }}</div>
-                        <div class="text-sm text-gray-400 mt-1">{{ t('stores.aqua_connection_description') }}</div>
+                        <div class="font-bold text-white text-lg">Aqua / Bitcoin Core</div>
+                        <div class="text-sm text-gray-400 mt-1">Connect a watch-only wallet using an output descriptor. Non-custodial Setup.</div>
                     </div>
                 </label>
             </div>
@@ -52,7 +52,7 @@
 
         <div>
             <label for="secret" class="block text-sm font-medium text-indigo-300 mb-2 uppercase tracking-wider">
-                {{ form.type === 'blink' ? t('stores.connection_string') : t('stores.descriptor') }}
+                {{ form.type === 'blink' ? 'Connection String' : 'Descriptor' }}
             </label>
             <div class="relative rounded-xl shadow-sm">
                 <textarea
@@ -60,54 +60,25 @@
                     v-model="form.secret"
                     rows="5"
                     class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono p-4"
-                    :class="duplicateWarning?.exists && form.type === 'aqua_descriptor' ? 'border-yellow-500' : ''"
                     :placeholder="form.type === 'blink' 
                         ? 'type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx'
                         : 'wpkh([fingerprint/hdpath]xpub...)'"
                     required
                 ></textarea>
-                <div v-if="checkingDuplicate" class="absolute top-2 right-2">
-                    <svg class="animate-spin h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                </div>
             </div>
             
             <div class="mt-3 text-sm text-gray-400 bg-gray-900/30 p-4 rounded-xl border border-gray-700/50">
-                <p class="font-medium text-gray-300 mb-2">{{ t('stores.format_help') }}:</p>
+                <p class="font-medium text-gray-300 mb-2">Format Help:</p>
                 <div v-if="form.type === 'blink'" class="space-y-1">
-                     <p>{{ t('stores.blink_format') }} <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">type=blink;server=...;api-key=...;wallet-id=...</code></p>
-                    <p>{{ t('stores.blink_paste') }}</p>
+                     <p>Format: <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">type=blink;server=...;api-key=...;wallet-id=...</code></p>
+                    <p>Paste your Blink connection string containing server URL, API key, and wallet ID.</p>
                 </div>
                  <div v-else class="space-y-1">
-                    <p>{{ t('stores.descriptor_paste') }}</p>
-                    <p>{{ t('stores.descriptor_examples') }}: <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">ct(slip77(...),elsh(wpkh(...)))</code>, <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">tr(...)</code></p>
+                    <p>Paste your Bitcoin Core output descriptor (watch-only, no private keys).</p>
+                    <p>Examples: <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">wpkh(...)</code>, <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">tr(...)</code></p>
                 </div>
             </div>
             <p v-if="errors.secret" class="mt-2 text-sm text-red-400">{{ errors.secret }}</p>
-            
-            <!-- Duplicate descriptor warning for Aqua -->
-            <div v-if="duplicateWarning?.exists && form.type === 'aqua_descriptor'" class="mt-3 rounded-xl p-4 border border-yellow-500/20 bg-yellow-500/10">
-                <div class="flex">
-                    <div class="flex-shrink-0">
-                        <svg class="h-5 w-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                    <div class="ml-3">
-                        <p class="text-sm font-medium text-yellow-400">
-                            {{ t('stores.descriptor_already_in_use') }}
-                        </p>
-                        <p class="mt-1 text-sm text-yellow-300">
-                            {{ duplicateWarning.message }}
-                        </p>
-                        <p class="mt-2 text-xs text-yellow-400/80">
-                            {{ t('stores.descriptor_btcpay_once') }}
-                        </p>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <div v-if="testResult" class="rounded-xl p-4 border" :class="testResult.success ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'">
@@ -121,25 +92,25 @@
                         {{ testResult.message }}
                     </p>
                     <p v-if="testResult.requires_manual_config" class="mt-1 text-sm text-gray-400">
-                        {{ t('stores.manual_config_required') }}
+                        Manual configuration by support team may be required.
                     </p>
                 </div>
             </div>
         </div>
 
         <div v-if="existingConnection" class="bg-blue-900/10 border border-blue-500/20 rounded-xl p-5">
-            <h3 class="text-sm font-bold text-blue-400 mb-3 uppercase tracking-wider">{{ t('stores.current_connection') }}</h3>
+            <h3 class="text-sm font-bold text-blue-400 mb-3 uppercase tracking-wider">Current Connection</h3>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                 <div>
-                     <span class="block text-gray-500 text-xs uppercase">{{ t('stores.type') }}</span>
-                     <span class="font-medium text-white">{{ existingConnection.type === 'blink' ? t('stores.blink_wallet') : t('stores.aqua_wallet') }}</span>
+                     <span class="block text-gray-500 text-xs uppercase">Type</span>
+                     <span class="font-medium text-white">{{ existingConnection.type === 'blink' ? 'Blink' : 'Aqua' }}</span>
                 </div>
                  <div>
-                     <span class="block text-gray-500 text-xs uppercase">{{ t('stores.status') }}</span>
+                     <span class="block text-gray-500 text-xs uppercase">Status</span>
                      <span class="font-medium" :class="getStatusColorClass(existingConnection.status)">{{ formatStatus(existingConnection.status) }}</span>
                 </div>
                  <div class="sm:col-span-3">
-                     <span class="block text-gray-500 text-xs uppercase">{{ t('stores.masked_secret') }}</span>
+                     <span class="block text-gray-500 text-xs uppercase">Masked Secret</span>
                      <span class="font-mono text-gray-300 break-all bg-gray-900/50 px-2 py-1 rounded border border-gray-700/50 inline-block mt-1">{{ existingConnection.masked_secret || 'N/A' }}</span>
                 </div>
             </div>
@@ -157,7 +128,7 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    {{ testing ? t('stores.testing') : t('stores.test_connection') }}
+                    {{ testing ? 'Testing...' : 'Test Connection' }}
                 </button>
              </div>
              
@@ -167,7 +138,7 @@
                     @click="$emit('cancel')"
                     class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all"
                 >
-                    {{ t('common.cancel') }}
+                    Cancel
                 </button>
                 <button
                     type="submit"
@@ -178,7 +149,7 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    {{ submitting ? t('auth.saving') : t('stores.save_connection') }}
+                    {{ submitting ? 'Saving...' : 'Save Connection' }}
                 </button>
             </div>
         </div>
@@ -186,11 +157,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { ref, reactive } from 'vue';
 import api from '../../services/api';
-
-const { t } = useI18n();
 
 interface Props {
     storeId: string;
@@ -206,10 +174,8 @@ const emit = defineEmits<{
 
 const submitting = ref(false);
 const testing = ref(false);
-const checkingDuplicate = ref(false);
 const errors = reactive<Record<string, string>>({});
 const testResult = ref<{ success: boolean; message: string; requires_manual_config?: boolean } | null>(null);
-const duplicateWarning = ref<{ exists: boolean; message: string | null; existing_store_name: string | null } | null>(null);
 
 const form = reactive({
     type: props.existingConnection?.type || 'blink',
@@ -218,9 +184,9 @@ const form = reactive({
 
 function formatStatus(status: string): string {
     const statusMap: Record<string, string> = {
-        pending: t('stores.pending'),
-        needs_support: t('stores.needs_support'),
-        connected: t('stores.connected'),
+        pending: 'Pending',
+        needs_support: 'Needs Support',
+        connected: 'Connected',
     };
     return statusMap[status] || status;
 }
@@ -270,118 +236,19 @@ function validateDescriptor(descriptor: string): boolean {
     const trimmed = descriptor.trim();
     if (!trimmed) return false;
 
-    // Must NOT contain private keys
-    if (/prv/i.test(trimmed)) {
-        return false;
-    }
-
-    // Must NOT contain private key prefixes
-    if (/(xprv|yprv|zprv)/i.test(trimmed)) {
-        return false;
-    }
-
-    // Check if descriptor contains at least one valid descriptor function
-    // Supports both simple formats (wpkh(), tr(), etc.) and complex nested formats (ct(slip77(...),elsh(wpkh(...))))
-    const validFunctions = [
-        'wpkh', 'wsh', 'tr', 'pkh', 'sh', 'addr', 'raw',  // Basic functions
-        'ct', 'elsh', 'slip77',  // Complex nested functions (for Boltz/Aqua)
-    ];
-    
+    // Check for common descriptor prefixes
+    const validPrefixes = ['wpkh', 'wsh', 'tr', 'pkh', 'sh', 'addr', 'raw'];
     const lower = trimmed.toLowerCase();
-    let hasValidFunction = false;
     
-    for (const func of validFunctions) {
-        // Check if function appears in the descriptor (not just at start)
-        // Pattern: function name followed by opening parenthesis
-        if (new RegExp(`\\b${func}\\s*\\(`).test(lower)) {
-            hasValidFunction = true;
-            break;
+    for (const prefix of validPrefixes) {
+        if (lower.startsWith(prefix + '(')) {
+            return true;
         }
+
     }
 
-    if (!hasValidFunction) {
-        return false;
-    }
-
-    // Basic structure validation: should have balanced parentheses
-    const openParens = (trimmed.match(/\(/g) || []).length;
-    const closeParens = (trimmed.match(/\)/g) || []).length;
-    if (openParens !== closeParens || openParens === 0) {
-        return false;
-    }
-
-    // Should contain at least one xpub/ypub/zpub (extended public key)
-    if (!/(xpub|ypub|zpub|tpub|upub|vpub)/i.test(trimmed)) {
-        return false;
-    }
-
-    return true;
+    return false;
 }
-
-// Check for duplicate descriptor (for Aqua/Boltz)
-async function checkDuplicateDescriptor() {
-    if (form.type !== 'aqua_descriptor' || !form.secret.trim()) {
-        duplicateWarning.value = null;
-        return;
-    }
-
-    // Only check if descriptor is valid format
-    if (!validateDescriptor(form.secret)) {
-        duplicateWarning.value = null;
-        return;
-    }
-
-    checkingDuplicate.value = true;
-    duplicateWarning.value = null;
-
-    try {
-        const response = await api.post(`/stores/${props.storeId}/wallet-connection/check-duplicate`, {
-            descriptor: form.secret.trim(),
-            type: 'aqua_descriptor',
-        });
-
-        duplicateWarning.value = {
-            exists: response.data.duplicate || false,
-            message: response.data.message || null,
-            existing_store_name: response.data.existing_store_name || null,
-        };
-    } catch (err: any) {
-        // If check fails, don't show warning (let backend handle it)
-        duplicateWarning.value = null;
-    } finally {
-        checkingDuplicate.value = false;
-    }
-}
-
-// Watch for changes in descriptor to check for duplicates
-let duplicateCheckTimeout: ReturnType<typeof setTimeout> | null = null;
-watch(() => form.secret, () => {
-    if (duplicateCheckTimeout) {
-        clearTimeout(duplicateCheckTimeout);
-    }
-    
-    if (form.type === 'aqua_descriptor') {
-        // Debounce the check
-        duplicateCheckTimeout = setTimeout(() => {
-            checkDuplicateDescriptor();
-        }, 500);
-    } else {
-        duplicateWarning.value = null;
-    }
-});
-
-// Watch for type changes
-watch(() => form.type, () => {
-    duplicateWarning.value = null;
-    if (duplicateCheckTimeout) {
-        clearTimeout(duplicateCheckTimeout);
-    }
-    if (form.type === 'aqua_descriptor' && form.secret.trim()) {
-        duplicateCheckTimeout = setTimeout(() => {
-            checkDuplicateDescriptor();
-        }, 500);
-    }
-});
 
 async function handleTestConnection() {
     if (!form.secret.trim()) {
@@ -404,7 +271,7 @@ async function handleTestConnection() {
     if (form.type === 'aqua_descriptor' && !validateDescriptor(form.secret)) {
         testResult.value = {
             success: false,
-            message: 'Invalid descriptor format. Must be a valid Bitcoin Core output descriptor (e.g., wpkh(), tr(), wsh(), or complex formats like ct(slip77(...),elsh(wpkh(...)))) and must not contain private keys.',
+            message: 'Invalid descriptor format. Must start with wpkh(), tr(), wsh(), etc.',
         };
         return;
     }
@@ -446,7 +313,7 @@ async function handleSubmit() {
     }
 
     if (form.type === 'aqua_descriptor' && !validateDescriptor(form.secret)) {
-        errors.secret = 'Invalid descriptor format. Must be a valid Bitcoin Core output descriptor (e.g., wpkh(), tr(), wsh(), or complex formats like ct(slip77(...),elsh(wpkh(...)))) and must not contain private keys.';
+        errors.secret = 'Invalid descriptor format. Must start with wpkh(), tr(), wsh(), etc.';
         submitting.value = false;
         return;
     }
