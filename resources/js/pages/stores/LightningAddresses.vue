@@ -66,12 +66,12 @@
                       <div class="flex items-center">
                         <div class="relative flex-grow max-w-sm">
                             <input
-                            :value="`${address.username}@dvadsatjeden.org`"
+                            :value="`${address.username}@satflux.org`"
                             readonly
                             class="block w-full border-gray-600 rounded-lg bg-gray-900/50 text-white font-mono text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 pr-10"
                             />
                              <button
-                            @click="copyToClipboard(`${address.username}@dvadsatjeden.org`)"
+                            @click="copyToClipboard(`${address.username}@satflux.org`)"
                             class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-white"
                             title="Copy to clipboard"
                             >
@@ -178,10 +178,10 @@
                       placeholder="username"
                     />
                   <span class="inline-flex items-center px-4 rounded-r-xl border border-l-0 border-gray-600 bg-gray-700 text-gray-400 text-sm font-medium">
-                    @dvadsatjeden.org
+                    @satflux.org
                   </span>
                 </div>
-                <p class="mt-2 text-sm text-gray-400">Full address: <span class="text-white font-mono">{{ form.username || 'username' }}@dvadsatjeden.org</span></p>
+                <p class="mt-2 text-sm text-gray-400">Full address: <span class="text-white font-mono">{{ form.username || 'username' }}@satflux.org</span></p>
               </div>
 
               <!-- Advanced Settings Accordion -->
@@ -327,7 +327,7 @@
                     <h3 class="text-lg leading-6 font-bold text-white mb-2" id="modal-title">Remove Lightning Address</h3>
                     <div class="mt-2">
                        <p class="text-sm text-gray-400">
-                          Are you sure you want to remove <strong class="text-white">{{ addressToDelete?.username }}@dvadsatjeden.org</strong>?
+                          Are you sure you want to remove <strong class="text-white">{{ addressToDelete?.username }}@satflux.org</strong>?
                           This action cannot be undone.
                        </p>
                     </div>

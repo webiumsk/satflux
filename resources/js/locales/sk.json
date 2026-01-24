@@ -151,9 +151,9 @@
     "invoices": "Faktúry",
     "exports": "Exporty",
     "ln_address": "LN Adresa",
-    "point_of_sale": "Punto predajne",
-    "no_pos": "Bez PoS",
-    "pay_button": "Tlačidlo na platbu",
+    "point_of_sale": "PoS Terminál",
+    "no_pos": "Žiadny PoS",
+    "pay_button": "Pay Button",
     "eshop_integration": "Integrácia e-shopu",
     "wallet_connection": "Pripojenie peňaženky",
     "currency_placeholder": "Vyberte alebo zadajte menu (napr. USD, BTC, EUR)"
