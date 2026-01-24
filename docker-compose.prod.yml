@@ -16,7 +16,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.satflux-https.entrypoints=websecure"
-      - "traefik.http.routers.satflux-https.rule=Host(`satflux.io`)"
+      - "traefik.http.routers.satflux-https.rule=Host(`uzol.dvadsatjeden.org`)"
       - "traefik.http.routers.satflux-https.tls=true"
       - "traefik.http.routers.satflux-https.tls.certresolver=letsencrypt"
       - "traefik.http.services.satflux.loadbalancer.server.port=80"
