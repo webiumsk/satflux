@@ -8,6 +8,22 @@
 
     <title><?php echo e(config('app.name', 'satflux.io')); ?></title>
 
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="<?php echo e(config('app.url')); ?>">
+    <meta property="og:title" content="<?php echo e(config('app.name', 'satflux.io')); ?> - Bitcoin Payment Control Panel">
+    <meta property="og:description" content="Accept Bitcoin & Lightning payments without limits. Non-custodial BTCPay Server control panel with multi-store management, PoS terminals, and advanced analytics.">
+    <meta property="og:image" content="<?php echo e(config('app.url')); ?>/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="<?php echo e(config('app.url')); ?>">
+    <meta name="twitter:title" content="<?php echo e(config('app.name', 'satflux.io')); ?> - Bitcoin Payment Control Panel">
+    <meta name="twitter:description" content="Accept Bitcoin & Lightning payments without limits. Non-custodial BTCPay Server control panel with multi-store management, PoS terminals, and advanced analytics.">
+    <meta name="twitter:image" content="<?php echo e(config('app.url')); ?>/og-image.png">
+
     <?php echo app('Illuminate\Foundation\Vite')(['resources/css/app.css', 'resources/js/app.ts']); ?>
 
     <!-- Fonts -->
