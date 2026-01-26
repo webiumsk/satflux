@@ -99,7 +99,7 @@
   },
   "stores": {
     "title": "Stores",
-    "manage_stores": "Manage your Bitcoin stores and wallets",
+    "manage_stores": "Manage your stores",
     "create_store": "Create Store",
     "creating": "Creating...",
     "no_stores_yet": "No stores yet",
@@ -282,7 +282,12 @@
     "profile_settings": "Profile Settings",
     "menu": "Menu",
     "open_menu": "Open menu",
-    "close_menu": "Close menu"
+    "close_menu": "Close menu",
+    "start_for_free": "Start for Free",
+    "sign_in": "Sign In",
+    "pricing": "Pricing",
+    "features": "Features",
+    "my_stores": "My Stores"
   },
   "errors": {
     "generic": "An error occurred",
@@ -312,7 +317,7 @@
     "preferred_price_source": "Preferred Price Source",
     "price_source_description": "The recommended price source gets chosen based on the default currency.",
     "additional_settings": "Additional Settings",
-    "additional_settings_description": "Additional store configuration options are managed through the UZOL21 interface. All settings that can be configured are available above or through other UZOL21 sections.",
+    "additional_settings_description": "Additional store configuration options are managed through the SATFLUX interface. All settings that can be configured are available above or through other SATFLUX sections.",
     "save_changes": "Save Changes",
     "saving": "Saving...",
     "settings_updated": "Settings updated successfully",

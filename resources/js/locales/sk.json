@@ -99,7 +99,7 @@
   },
   "stores": {
     "title": "Obchody",
-    "manage_stores": "Spravujte svoje Bitcoin obchody a peňaženky",
+    "manage_stores": "Spravujte svoje obchody",
     "create_store": "Vytvoriť obchod",
     "creating": "Vytváram...",
     "no_stores_yet": "Zatiaľ žiadne obchody",
@@ -283,7 +283,12 @@
     "profile_settings": "Nastavenia profilu",
     "menu": "Menu",
     "open_menu": "Otvoriť menu",
-    "close_menu": "Zatvoriť menu"
+    "close_menu": "Zatvoriť menu",
+    "start_for_free": "Začať",
+    "sign_in": "Prihlásiť sa",
+    "pricing": "Cenník",
+    "features": "Features",
+    "my_stores": "Moje obchody"  
   },
   "errors": {
     "generic": "Vyskytla sa chyba",
@@ -313,7 +318,7 @@
     "preferred_price_source": "Preferovaný zdroj cien",
     "price_source_description": "Odporúčaný zdroj cien sa vyberie na základe predvolenej meny.",
     "additional_settings": "Ďalšie nastavenia",
-    "additional_settings_description": "Ďalšie možnosti konfigurácie obchodu sa spravujú prostredníctvom rozhrania UZOL21. Všetky nastavenia, ktoré je možné nakonfigurovať, sú k dispozícii vyššie alebo v iných sekciách UZOL21.",
+    "additional_settings_description": "Ďalšie možnosti konfigurácie obchodu sa spravujú prostredníctvom rozhrania SATFLUX. Všetky nastavenia, ktoré je možné nakonfigurovať, sú k dispozícii vyššie alebo v iných sekciách SATFLUX.",
     "save_changes": "Uložiť zmeny",
     "saving": "Ukladám...",
     "settings_updated": "Nastavenia boli úspešne aktualizované",
