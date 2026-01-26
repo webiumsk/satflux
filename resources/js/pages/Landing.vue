@@ -308,7 +308,7 @@
                 to="/register"
                 class="block w-full text-center px-6 py-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition-all"
               >
-                {{ t('landing.get_started_free') }}
+                {{ t('landing.start_for_free') }}
               </router-link>
           </div>
 
@@ -351,7 +351,7 @@
                 to="/register"
                 class="block w-full text-center px-6 py-3 rounded-lg border border-gray-600 text-white hover:bg-gray-700 font-bold transition-colors"
               >
-                {{ t('landing.contact_sales') }}
+                {{ t('landing.start_free') }}
               </router-link>
           </div>
         </div>
