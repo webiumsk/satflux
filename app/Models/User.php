@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -136,6 +137,72 @@ class User extends Authenticatable
     public function stores(): HasMany
     {
         return $this->hasMany(Store::class);
+    }
+
+    /**
+     * Get the subscriptions for the user.
+     */
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    /**
+     * Get the current active subscription for the user.
+     * Returns the most recent active subscription, or null if none exists.
+     * 
+     * @return \App\Models\Subscription|null
+     */
+    public function currentSubscription(): ?\App\Models\Subscription
+    {
+        return $this->subscriptions()
+            ->whereIn('status', ['active', 'grace'])
+            ->orderBy('expires_at', 'desc')
+            ->first();
+    }
+
+    /**
+     * Get the current subscription plan for the user.
+     * Returns the plan for the current subscription, or FREE plan if no subscription.
+     * 
+     * @return \App\Models\SubscriptionPlan|null
+     */
+    public function currentSubscriptionPlan(): ?\App\Models\SubscriptionPlan
+    {
+        $subscription = $this->currentSubscription();
+        if ($subscription) {
+            return $subscription->plan;
+        }
+
+        // Return FREE plan as default
+        return SubscriptionPlan::where('name', 'free')->first();
+    }
+
+    /**
+     * Check if user has an active subscription (not expired).
+     */
+    public function hasActiveSubscription(): bool
+    {
+        $subscription = $this->currentSubscription();
+        return $subscription && $subscription->isActive();
+    }
+
+    /**
+     * Check if user's subscription is in grace period.
+     */
+    public function isSubscriptionInGracePeriod(): bool
+    {
+        $subscription = $this->currentSubscription();
+        return $subscription && $subscription->isInGracePeriod();
+    }
+
+    /**
+     * Check if user's subscription is expired.
+     */
+    public function isSubscriptionExpired(): bool
+    {
+        $subscription = $this->currentSubscription();
+        return !$subscription || $subscription->isExpired();
     }
 
     /**

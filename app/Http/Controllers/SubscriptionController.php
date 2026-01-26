@@ -3,17 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Services\BtcPay\SubscriptionService;
+use App\Services\BtcPay\SubscriptionService as BtcPaySubscriptionService;
+use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class SubscriptionController extends Controller
 {
+    protected BtcPaySubscriptionService $btcpaySubscriptionService;
     protected SubscriptionService $subscriptionService;
 
-    public function __construct(SubscriptionService $subscriptionService)
+    public function __construct(BtcPaySubscriptionService $btcpaySubscriptionService, SubscriptionService $subscriptionService)
     {
+        $this->btcpaySubscriptionService = $btcpaySubscriptionService;
         $this->subscriptionService = $subscriptionService;
     }
 
@@ -88,7 +91,7 @@ class SubscriptionController extends Controller
 
             // Create checkout via BTCPay
             // Use BTCPay Store ID directly from config (no local Store record needed)
-            $checkout = $this->subscriptionService->createPlanCheckout(
+            $checkout = $this->btcpaySubscriptionService->createPlanCheckout(
                 $storeId, // BTCPay Store ID from config
                 $offeringId,
                 $planId,
@@ -175,7 +178,7 @@ class SubscriptionController extends Controller
 
         try {
             // Get checkout details from BTCPay
-            $checkoutDetails = $this->subscriptionService->getPlanCheckout($checkoutPlanId);
+            $checkoutDetails = $this->btcpaySubscriptionService->getPlanCheckout($checkoutPlanId);
 
             // Extract plan ID from nested structure
             // BTCPay returns plan ID in checkoutDetails['plan']['id'] or checkoutDetails['subscriber']['plan']['id']
@@ -209,17 +212,17 @@ class SubscriptionController extends Controller
                 ], 400);
             }
 
-            // Map plan ID to role
+            // Map plan ID to plan name
             $subscriptionPlans = config('services.btcpay.subscription_plans', []);
-            $planRole = null;
+            $planName = null;
 
             if ($planId === ($subscriptionPlans['pro'] ?? null)) {
-                $planRole = 'pro';
+                $planName = 'pro';
             } elseif ($planId === ($subscriptionPlans['enterprise'] ?? null)) {
-                $planRole = 'enterprise';
+                $planName = 'enterprise';
             }
 
-            if (!$planRole) {
+            if (!$planName) {
                 Log::warning('Subscription success - unknown plan ID', [
                     'checkout_id' => $checkoutPlanId,
                     'plan_id' => $planId,
@@ -253,49 +256,41 @@ class SubscriptionController extends Controller
                 ], 200);
             }
 
-            // Update user role and subscription tracking
-            $oldRole = $user->role;
-            $user->role = $planRole;
+            // Activate or extend subscription using SubscriptionService
+            // This creates/updates subscription record and handles 1-year extension
+            $subscription = $this->subscriptionService->activateSubscription(
+                $user,
+                $planName,
+                $subscriptionId
+            );
 
-            // Store subscription ID and expiration if available
+            // Update user role for backward compatibility (legacy field)
+            $oldRole = $user->role;
+            $user->role = $planName;
             if ($subscriptionId) {
                 $user->btcpay_subscription_id = $subscriptionId;
             }
-
-            // Get expiration from checkout details (subscriber.periodEnd is Unix timestamp)
-            $expiresAt = null;
-            if (isset($checkoutDetails['subscriber']['periodEnd'])) {
-                // periodEnd is Unix timestamp
-                $periodEnd = $checkoutDetails['subscriber']['periodEnd'];
-                $expiresAt = is_numeric($periodEnd)
-                    ? now()->parse($periodEnd)
-                    : now()->parse($periodEnd);
-            } elseif (isset($checkoutDetails['expiresAt'])) {
-                $expiresAt = is_numeric($checkoutDetails['expiresAt'])
-                    ? now()->parse($checkoutDetails['expiresAt'])
-                    : now()->parse($checkoutDetails['expiresAt']);
-            }
-
-            if ($expiresAt) {
-                $user->subscription_expires_at = $expiresAt;
-                $user->subscription_grace_period_ends_at = null; // BTCPay handles grace period
-            }
-
             $user->save();
 
-            Log::info('User role updated after subscription checkout success', [
+            Log::info('Subscription activated after checkout success', [
                 'user_id' => $user->id,
                 'user_email' => $user->email,
                 'old_role' => $oldRole,
-                'new_role' => $planRole,
+                'new_role' => $planName,
                 'checkout_id' => $checkoutPlanId,
                 'plan_id' => $planId,
-                'subscription_id' => $subscriptionId,
+                'subscription_id' => $subscription->id,
+                'expires_at' => $subscription->expires_at,
             ]);
 
             return response()->json([
                 'message' => 'Subscription activated successfully',
-                'role' => $planRole,
+                'plan' => $planName,
+                'subscription' => [
+                    'id' => $subscription->id,
+                    'status' => $subscription->status,
+                    'expires_at' => $subscription->expires_at,
+                ],
                 'user' => $user->makeVisible('role'),
             ]);
 
@@ -342,12 +337,12 @@ class SubscriptionController extends Controller
 
         try {
             // Get subscriber details using email as selector
-            $subscriber = $this->subscriptionService->getSubscriber($storeId, $offeringId, $user->email);
+            $subscriber = $this->btcpaySubscriptionService->getSubscriber($storeId, $offeringId, $user->email);
 
             // Get credit balance
             $creditBalance = 0;
             try {
-                $credits = $this->subscriptionService->getSubscriberCredits($storeId, $offeringId, $user->email, 'SATS');
+                $credits = $this->btcpaySubscriptionService->getSubscriberCredits($storeId, $offeringId, $user->email, 'SATS');
                 $creditBalance = $credits['balance'] ?? $credits['amount'] ?? 0;
             } catch (\Exception $e) {
                 // Credit endpoint might not be available or user might not have credits yet
@@ -403,7 +398,7 @@ class SubscriptionController extends Controller
         $currency = $request->query('currency', 'SATS');
 
         try {
-            $credits = $this->subscriptionService->getSubscriberCredits($storeId, $offeringId, $user->email, $currency);
+            $credits = $this->btcpaySubscriptionService->getSubscriberCredits($storeId, $offeringId, $user->email, $currency);
 
             return response()->json([
                 'balance' => $credits['balance'] ?? $credits['amount'] ?? 0,
@@ -453,7 +448,7 @@ class SubscriptionController extends Controller
         try {
             // Add credit via BTCPay API (this will create an invoice for the credit)
             $description = $request->input('description', 'Credit purchase');
-            $result = $this->subscriptionService->addSubscriberCredits($storeId, $offeringId, $user->email, $currency, $amount, $description);
+            $result = $this->btcpaySubscriptionService->addSubscriberCredits($storeId, $offeringId, $user->email, $currency, $amount, $description);
 
             // BTCPay returns invoice information in the response
             $invoiceId = $result['invoiceId'] ?? null;
