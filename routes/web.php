@@ -1,7 +1,14 @@
 <?php
 
 use App\Http\Controllers\Auth\EmailVerificationController;
+use App\Http\Controllers\OgImageController;
 use Illuminate\Support\Facades\Route;
+
+// OG Image for social media sharing
+Route::get('/og-image.png', [OgImageController::class, 'generate']);
+
+// OG Image for social media sharing (must be before catch-all route)
+Route::get('/og-image.png', [OgImageController::class, 'generate']);
 
 // Named route for authentication redirects (used by Laravel auth middleware)
 // Redirects to SPA login page (handled by Vue Router)
