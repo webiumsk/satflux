@@ -223,27 +223,39 @@
           </p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto items-center">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto items-start">
           <!-- Free Plan -->
           <div class="bg-gray-800/80 backdrop-blur rounded-2xl p-8 border border-gray-700 hover:border-gray-500 transition-colors">
-             <h3 class="text-xl font-bold text-white mb-2">{{ t('landing.free') }}</h3>
+             <h3 class="text-xl font-bold text-white mb-2">Free</h3>
              <div class="flex items-baseline mb-6">
-                <span class="text-4xl font-extrabold text-white">{{ t('landing.free_price') }}</span>
-                <span class="text-gray-400 ml-2">{{ t('landing.free_price_unit') }}</span>
+                <span class="text-4xl font-extrabold text-white">€0</span>
+                <span class="text-gray-400 ml-2">/ year</span>
              </div>
-             <p class="text-gray-400 text-sm mb-6">{{ t('landing.free_description') }}</p>
-             <ul class="space-y-4 mb-8">
-               <li class="flex items-center text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 {{ t('landing.free_store') }}
+             <p class="text-gray-400 text-sm mb-6">Perfect for getting started with Bitcoin payments</p>
+             <ul class="space-y-3 mb-8">
+               <li class="flex items-start text-gray-300 text-sm">
+                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 <span>1 store</span>
                </li>
-               <li class="flex items-center text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 {{ t('landing.basic_features') }}
+               <li class="flex items-start text-gray-300 text-sm">
+                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 <span>Unlimited PoS terminals per store</span>
                </li>
-               <li class="flex items-center text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 {{ t('landing.community_support') }}
+               <li class="flex items-start text-gray-300 text-sm">
+                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 <span>Unlimited Lightning addresses</span>
+               </li>
+               <li class="flex items-start text-gray-300 text-sm">
+                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 <span>1 API key</span>
+               </li>
+               <li class="flex items-start text-gray-300 text-sm">
+                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 <span>Manual CSV exports</span>
+               </li>
+               <li class="flex items-start text-gray-300 text-sm">
+                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 <span>Basic payment overview</span>
                </li>
              </ul>
              <router-link
@@ -251,48 +263,52 @@
                to="/register"
                class="block w-full text-center px-6 py-3 rounded-lg border border-gray-600 text-white hover:bg-gray-700 font-bold transition-colors"
              >
-               {{ t('landing.start_free') }}
+               Start Free
              </router-link>
              <router-link
                v-else
                to="/stores"
                class="block w-full text-center px-6 py-3 rounded-lg border border-gray-600 text-white hover:bg-gray-700 font-bold transition-colors"
              >
-               {{ t('landing.view_stores') }}
+               View Stores
              </router-link>
           </div>
 
           <!-- Pro Plan (Highlighted) -->
           <div class="bg-gray-800 rounded-2xl p-8 border-2 border-indigo-500 shadow-2xl relative transform md:scale-105 z-10">
              <div class="absolute top-0 right-0 -mt-4 mr-4 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">
-               {{ t('landing.popular') }}
+               Popular
              </div>
-             <h3 class="text-2xl font-bold text-white mb-2">{{ t('landing.pro') }}</h3>
+             <h3 class="text-2xl font-bold text-white mb-2">Pro</h3>
              <div class="flex items-baseline mb-6">
-                <span class="text-5xl font-extrabold text-white">{{ t('landing.pro_price') }}</span>
-                <span class="text-indigo-300 ml-2">{{ t('landing.pro_price_unit') }}</span>
+                <span class="text-5xl font-extrabold text-white">€99</span>
+                <span class="text-indigo-300 ml-2">/ year</span>
              </div>
-             <p class="text-gray-400 text-sm mb-6">{{ t('landing.pro_description') }}</p>
-             <ul class="space-y-4 mb-8">
-               <li class="flex items-center text-white font-medium text-sm">
-                 <svg class="w-5 h-5 text-indigo-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 {{ t('landing.unlimited_stores') }}
+             <p class="text-gray-400 text-sm mb-6">For growing businesses with multiple stores</p>
+             <ul class="space-y-3 mb-8">
+               <li class="flex items-start text-white font-medium text-sm">
+                 <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 <span>3 stores</span>
                </li>
-               <li class="flex items-center text-white font-medium text-sm">
-                 <svg class="w-5 h-5 text-indigo-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 {{ t('landing.priority_support') }}
+               <li class="flex items-start text-white font-medium text-sm">
+                 <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 <span>Unlimited PoS terminals per store</span>
                </li>
-               <li class="flex items-center text-white font-medium text-sm">
-                 <svg class="w-5 h-5 text-indigo-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 {{ t('landing.csv_exports') }}
+               <li class="flex items-start text-white font-medium text-sm">
+                 <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 <span>3 API keys</span>
                </li>
-               <li class="flex items-center text-white font-medium text-sm">
-                 <svg class="w-5 h-5 text-indigo-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 {{ t('landing.api_integrations') }}
+               <li class="flex items-start text-white font-medium text-sm">
+                 <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 <span>Manual + automatic monthly CSV exports</span>
                </li>
-               <li class="flex items-center text-white font-medium text-sm">
-                 <svg class="w-5 h-5 text-indigo-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 {{ t('landing.monthly_reports') }}
+               <li class="flex items-start text-white font-medium text-sm">
+                 <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 <span>Advanced statistics (per store, per PoS, overall)</span>
+               </li>
+               <li class="flex items-start text-white font-medium text-sm">
+                 <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 <span>Basic payment overview</span>
                </li>
              </ul>
              <button
@@ -301,41 +317,45 @@
                 :disabled="subscribing"
                 class="block w-full text-center px-6 py-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {{ subscribing ? t('landing.processing') : t('landing.upgrade_now') }}
+                {{ subscribing ? 'Processing...' : 'Upgrade Now' }}
               </button>
               <router-link
                 v-else
                 to="/register"
                 class="block w-full text-center px-6 py-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition-all"
               >
-                {{ t('landing.start_for_free') }}
+                Start Free
               </router-link>
           </div>
 
           <!-- Enterprise Plan -->
           <div class="bg-gray-800/80 backdrop-blur rounded-2xl p-8 border border-gray-700 hover:border-gray-500 transition-colors">
-             <h3 class="text-xl font-bold text-white mb-2">{{ t('landing.enterprise') }}</h3>
+             <h3 class="text-xl font-bold text-white mb-2">Enterprise</h3>
              <div class="flex items-baseline mb-6">
-                <span class="text-4xl font-extrabold text-white">{{ t('landing.enterprise_price') }}</span>
-                <span class="text-gray-400 ml-2">{{ t('landing.enterprise_price_unit') }}</span>
+                <span class="text-4xl font-extrabold text-white">€299</span>
+                <span class="text-gray-400 ml-2">/ year</span>
              </div>
-             <p class="text-gray-400 text-sm mb-6">{{ t('landing.enterprise_description') }}</p>
-             <ul class="space-y-4 mb-8">
-               <li class="flex items-center text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 {{ t('landing.everything_in_pro') }}
+             <p class="text-gray-400 text-sm mb-6">For businesses that need unlimited scale</p>
+             <ul class="space-y-3 mb-8">
+               <li class="flex items-start text-gray-300 text-sm">
+                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 <span>Unlimited stores</span>
                </li>
-               <li class="flex items-center text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 {{ t('landing.dedicated_agent') }}
+               <li class="flex items-start text-gray-300 text-sm">
+                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 <span>Unlimited API keys</span>
                </li>
-               <li class="flex items-center text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 {{ t('landing.custom_solutions') }}
+               <li class="flex items-start text-gray-300 text-sm">
+                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 <span>All Pro features</span>
                </li>
-               <li class="flex items-center text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 {{ t('landing.sla_guarantees') }}
+               <li class="flex items-start text-gray-300 text-sm">
+                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 <span>Per-store user management (roles)</span>
+               </li>
+               <li class="flex items-start text-gray-300 text-sm">
+                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                 <span>Priority support</span>
                </li>
              </ul>
              <button
@@ -344,14 +364,14 @@
                 :disabled="subscribing"
                 class="block w-full text-center px-6 py-3 rounded-lg border border-gray-600 text-white hover:bg-gray-700 font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {{ subscribing ? t('landing.processing') : t('landing.upgrade') }}
+                {{ subscribing ? 'Processing...' : 'Upgrade' }}
               </button>
               <router-link
                 v-else
                 to="/register"
                 class="block w-full text-center px-6 py-3 rounded-lg border border-gray-600 text-white hover:bg-gray-700 font-bold transition-colors"
               >
-                {{ t('landing.start_free') }}
+                Start Free
               </router-link>
           </div>
         </div>
@@ -360,6 +380,23 @@
         <div v-if="subscribeError" class="mt-8 max-w-md mx-auto">
           <div class="bg-red-900/50 border border-red-500/50 rounded-lg p-4 text-center">
             <p class="text-sm text-red-200">{{ subscribeError }}</p>
+          </div>
+        </div>
+
+        <!-- Important Note -->
+        <div class="mt-12 max-w-3xl mx-auto">
+          <div class="bg-indigo-900/20 border border-indigo-500/30 rounded-xl p-6 text-center">
+            <div class="flex items-center justify-center mb-3">
+              <svg class="w-6 h-6 text-indigo-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <h3 class="text-lg font-bold text-white">Non-Custodial & Payment Guarantee</h3>
+            </div>
+            <p class="text-gray-300 text-sm leading-relaxed">
+              <strong class="text-white">Payments are NEVER blocked.</strong> Subscription plans only affect management features and limits. 
+              Your existing stores, PoS terminals, Lightning addresses, and payment acceptance continue to work regardless of your plan status. 
+              This is a non-custodial system - you always maintain full control of your funds.
+            </p>
           </div>
         </div>
       </div>

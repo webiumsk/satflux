@@ -29,6 +29,9 @@ use App\Http\Controllers\Admin\FaqItemController;
 use App\Http\Controllers\Admin\FaqCategoryController;
 use App\Http\Middleware\AuditLog;
 use App\Http\Middleware\EnsureAdminRole;
+use App\Http\Middleware\EnsureApiKeyLimit;
+use App\Http\Middleware\EnsureActiveSubscription;
+use App\Http\Middleware\EnsureStoreLimit;
 use App\Http\Middleware\EnsureStoreOwnership;
 use App\Http\Middleware\EnsureSupportRole;
 use App\Http\Middleware\EnsureSupportOrAdminRole;
@@ -188,7 +191,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Stores
     Route::get('/stores', [StoreController::class, 'index']);
     Route::post('/stores', [StoreController::class, 'store'])
-        ->middleware(AuditLog::class . ':store.created');
+        ->middleware([EnsureStoreLimit::class, AuditLog::class . ':store.created']);
     Route::get('/stores/{store}', [StoreController::class, 'show'])
         ->middleware(EnsureStoreOwnership::class);
 
@@ -261,7 +264,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/stores/{store}/api-keys', [\App\Http\Controllers\StoreApiKeyController::class, 'index'])
         ->middleware(EnsureStoreOwnership::class);
     Route::post('/stores/{store}/api-keys', [\App\Http\Controllers\StoreApiKeyController::class, 'store'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':api-key.created']);
+        ->middleware([EnsureStoreOwnership::class, EnsureApiKeyLimit::class, AuditLog::class . ':api-key.created']);
     Route::get('/stores/{store}/api-keys/{apiKey}', [\App\Http\Controllers\StoreApiKeyController::class, 'show'])
         ->middleware(EnsureStoreOwnership::class);
     Route::delete('/stores/{store}/api-keys/{apiKey}', [\App\Http\Controllers\StoreApiKeyController::class, 'destroy'])
