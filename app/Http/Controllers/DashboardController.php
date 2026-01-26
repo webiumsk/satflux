@@ -24,13 +24,13 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        
+
         // Get local stores first - these are the source of truth for what stores belong to this user
         $localStores = Store::where('user_id', $user->id)
             ->with(['checklistItems'])
             ->get()
             ->keyBy('btcpay_store_id');
-        
+
         // Try to load stores from BTCPay API if merchant has API key
         $btcpayStores = [];
         try {
@@ -45,7 +45,7 @@ class DashboardController extends Controller
                 'error' => $e->getMessage(),
             ]);
         }
-        
+
         // Only return stores that exist in BOTH local DB AND BTCPay Server
         // Store must be in local DB (metadata) AND merchant must have access via BTCPay API
         if (empty($btcpayStores)) {
@@ -57,7 +57,7 @@ class DashboardController extends Controller
             $btcpayStoreIds = collect($btcpayStores)->map(function ($bs) {
                 return $bs['id'] ?? $bs['storeId'] ?? null;
             })->filter()->values()->toArray();
-            
+
             $stores = $localStores->filter(function ($localStore) use ($btcpayStoreIds) {
                 // Only include if local store's btcpay_store_id exists in BTCPay API response
                 return in_array($localStore->btcpay_store_id, $btcpayStoreIds);
@@ -67,7 +67,7 @@ class DashboardController extends Controller
                     $btcpayStoreId = $bs['id'] ?? $bs['storeId'] ?? null;
                     return $btcpayStoreId === $localStore->btcpay_store_id;
                 });
-                
+
                 return [
                     'id' => $localStore->id,
                     'name' => $btcpayStore['name'] ?? $localStore->name,
@@ -76,7 +76,7 @@ class DashboardController extends Controller
                 ];
             })->values();
         }
-        
+
         // Calculate total revenue from all invoices across all stores
         $totalRevenue = 0;
         if ($stores->isNotEmpty()) {
@@ -88,8 +88,8 @@ class DashboardController extends Controller
                             // Get store ID from local store's btcpay_store_id
                             $localStore = Store::find($store['id']);
                             if ($localStore && $localStore->btcpay_store_id) {
-                                $invoices = $invoiceService->listInvoices($user->btcpay_api_key, $localStore->btcpay_store_id);
-                                
+                                $invoices = $invoiceService->listInvoices($localStore->btcpay_store_id, userApiKey: $user->btcpay_api_key);
+
                                 // Sum up paid invoices (status: Paid, Complete, or Settled)
                                 foreach ($invoices as $invoice) {
                                     $status = strtolower($invoice['status'] ?? '');
@@ -97,13 +97,13 @@ class DashboardController extends Controller
                                         // Convert amount to sats if needed
                                         $amount = floatval($invoice['amount'] ?? 0);
                                         $currency = strtoupper($invoice['currency'] ?? 'BTC');
-                                        
+
                                         if ($currency === 'BTC') {
                                             $amount = $amount * 100000000; // Convert BTC to sats
                                         } elseif ($currency === 'SATS') {
                                             // Already in sats
                                         }
-                                        
+
                                         $totalRevenue += $amount;
                                     }
                                 }
@@ -124,7 +124,7 @@ class DashboardController extends Controller
                 ]);
             }
         }
-        
+
         return response()->json([
             'stores' => $stores,
             'store_count' => $stores->count(),

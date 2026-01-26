@@ -59,7 +59,7 @@
     "registration_failed": "El registro falló. Por favor, intenta nuevamente.",
     "failed_to_complete_registration": "No se pudo completar el registro. Por favor, intenta nuevamente.",
     "failed_to_generate_challenge": "Fallo al generar desafío",
-    "email_placeholder": "tu@email.com",
+    "email_placeholder": "tu{'@'}email.com",
     "password_placeholder": "••••••••"
   },
   "dashboard": {
