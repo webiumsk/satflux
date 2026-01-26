@@ -1,93 +1,99 @@
 <template>
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center items-center py-24">
-      <svg
-        class="animate-spin h-10 w-10 text-indigo-500"
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-      >
-        <circle
-          class="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          stroke-width="4"
-        ></circle>
-        <path
-          class="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-        ></path>
-      </svg>
-    </div>
+  <div class="min-h-screen bg-gray-900">
+    <PublicHeader />
 
-    <!-- Article Content -->
-    <article v-else-if="article" class="bg-gray-800 border border-gray-700 rounded-2xl p-8">
-      <!-- Back Button -->
-      <router-link
-        to="/documentation"
-        class="inline-flex items-center text-sm text-gray-400 hover:text-indigo-400 mb-6 transition-colors"
-      >
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <!-- Loading State -->
+      <div v-if="loading" class="flex justify-center items-center py-24">
         <svg
-          class="w-4 h-4 mr-2"
+          class="animate-spin h-10 w-10 text-indigo-500"
+          xmlns="http://www.w3.org/2000/svg"
           fill="none"
-          stroke="currentColor"
           viewBox="0 0 24 24"
         >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          ></circle>
           <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M10 19l-7-7m0 0l7-7m-7 7h18"
-          />
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          ></path>
         </svg>
-        {{ t('documentation.back_to_documentation') }}
-      </router-link>
+      </div>
 
-      <!-- Category Badge -->
-      <div v-if="article.category" class="mb-4">
-        <span
-          class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+      <!-- Article Content -->
+      <article v-else-if="article" class="bg-gray-800 border border-gray-700 rounded-2xl p-8">
+        <!-- Back Button -->
+        <router-link
+          to="/documentation"
+          class="inline-flex items-center text-sm text-gray-400 hover:text-indigo-400 mb-6 transition-colors"
         >
-          {{ article.category.name }}
-        </span>
+          <svg
+            class="w-4 h-4 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
+          {{ t('documentation.back_to_documentation') }}
+        </router-link>
+
+        <!-- Category Badge -->
+        <div v-if="article.category" class="mb-4">
+          <span
+            class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+          >
+            {{ article.category.name }}
+          </span>
+        </div>
+
+        <!-- Title -->
+        <h1 class="text-4xl font-bold text-white mb-4">
+          {{ article.title }}
+        </h1>
+
+        <!-- Meta -->
+        <div class="flex items-center text-sm text-gray-400 mb-8 pb-8 border-b border-gray-700">
+          <span>{{ formatDate(article.created_at) }}</span>
+          <span v-if="article.updated_at !== article.created_at" class="ml-4">
+            {{ t('documentation.updated') }}: {{ formatDate(article.updated_at) }}
+          </span>
+        </div>
+
+        <!-- Content -->
+        <div
+          class="prose prose-invert prose-lg max-w-none"
+          v-html="formatContent(article.content)"
+        ></div>
+      </article>
+
+      <!-- Not Found -->
+      <div v-else class="text-center py-20">
+        <h2 class="text-2xl font-bold text-white mb-4">
+          {{ t('documentation.article_not_found') }}
+        </h2>
+        <router-link
+          to="/documentation"
+          class="text-indigo-400 hover:text-indigo-300"
+        >
+          {{ t('documentation.back_to_documentation') }}
+        </router-link>
       </div>
-
-      <!-- Title -->
-      <h1 class="text-4xl font-bold text-white mb-4">
-        {{ article.title }}
-      </h1>
-
-      <!-- Meta -->
-      <div class="flex items-center text-sm text-gray-400 mb-8 pb-8 border-b border-gray-700">
-        <span>{{ formatDate(article.created_at) }}</span>
-        <span v-if="article.updated_at !== article.created_at" class="ml-4">
-          {{ t('documentation.updated') }}: {{ formatDate(article.updated_at) }}
-        </span>
-      </div>
-
-      <!-- Content -->
-      <div
-        class="prose prose-invert prose-lg max-w-none"
-        v-html="formatContent(article.content)"
-      ></div>
-    </article>
-
-    <!-- Not Found -->
-    <div v-else class="text-center py-20">
-      <h2 class="text-2xl font-bold text-white mb-4">
-        {{ t('documentation.article_not_found') }}
-      </h2>
-      <router-link
-        to="/documentation"
-        class="text-indigo-400 hover:text-indigo-300"
-      >
-        {{ t('documentation.back_to_documentation') }}
-      </router-link>
     </div>
+
+    <AppFooter />
   </div>
 </template>
 
@@ -96,6 +102,8 @@ import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { documentationApi } from '../../services/api';
+import PublicHeader from "../../components/layout/PublicHeader.vue";
+import AppFooter from "../../components/layout/AppFooter.vue";
 
 const route = useRoute();
 const { t } = useI18n();
@@ -200,4 +208,3 @@ onMounted(() => {
   color: #a5b4fc;
 }
 </style>
-
