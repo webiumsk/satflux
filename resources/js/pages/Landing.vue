@@ -308,7 +308,7 @@
                 to="/register"
                 class="block w-full text-center px-6 py-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition-all"
               >
-                {{ t('landing.get_started') }}
+                {{ t('landing.get_started_free') }}
               </router-link>
           </div>
 
@@ -381,7 +381,7 @@ import api from '../services/api';
 
 const { t } = useI18n();
 
-const router = useRouter();
+//const router = useRouter();
 const authStore = useAuthStore();
 const subscribing = ref(false);
 const subscribeError = ref('');

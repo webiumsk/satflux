@@ -27,33 +27,33 @@
             @click="handleAnchorClick('/#features')"
             class="text-gray-300 hover:text-white font-medium transition-colors"
           >
-            Features
+            {{ t("header.features") }}
           </router-link>
           <router-link
             to="/#pricing"
             @click="handleAnchorClick('/#pricing')"
             class="text-gray-300 hover:text-white font-medium transition-colors"
           >
-            Pricing
+            {{ t("header.pricing") }}
           </router-link>
           <router-link
             to="/support"
             class="text-gray-300 hover:text-white font-medium transition-colors"
           >
-            Support
+            {{ t("header.support") }}
           </router-link>
           <LanguageSwitcher />
           <router-link
             to="/login"
             class="text-white hover:text-indigo-400 font-medium transition-colors"
           >
-            Sign In
+            {{ t("header.sign_in") }}
           </router-link>
           <router-link
             to="/register"
             class="inline-flex items-center px-6 py-2.5 border border-transparent text-sm font-bold rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 transition-all shadow-lg shadow-indigo-500/20"
           >
-            Get Started
+            {{ t("header.start_for_free") }}
           </router-link>
         </nav>
         <nav class="hidden md:flex items-center space-x-8" v-else>
@@ -62,27 +62,27 @@
             @click="handleAnchorClick('/#features')"
             class="text-gray-300 hover:text-white font-medium transition-colors"
           >
-            Features
+            {{ t("header.features") }}
           </router-link>
           <router-link
             to="/#pricing"
             @click="handleAnchorClick('/#pricing')"
             class="text-gray-300 hover:text-white font-medium transition-colors"
           >
-            Pricing
+            {{ t("header.pricing") }}
           </router-link>
           <router-link
             to="/support"
             class="text-gray-300 hover:text-white font-medium transition-colors"
           >
-            Support
+            {{ t("header.support") }}
           </router-link>
           <LanguageSwitcher />
           <router-link
             to="/stores"
             class="text-gray-300 hover:text-white font-medium transition-colors"
           >
-            My Stores
+            {{ t("header.my_stores") }}
           </router-link>
           <router-link
             to="/dashboard"
@@ -151,7 +151,7 @@
               "
               class="text-gray-300 hover:text-white text-lg font-medium transition-colors"
             >
-              Features
+              {{ t("header.features") }}
             </router-link>
             <router-link
               to="/#pricing"
@@ -161,14 +161,14 @@
               "
               class="text-gray-300 hover:text-white text-lg font-medium transition-colors"
             >
-              Pricing
+              {{ t("header.pricing") }}
             </router-link>
             <router-link
               to="/support"
               @click="showMobileMenu = false"
               class="text-gray-300 hover:text-white text-lg font-medium transition-colors"
             >
-              Support
+              {{ t("header.support") }}
             </router-link>
             <div class="pt-2 pb-2">
               <LanguageSwitcher />
@@ -179,14 +179,14 @@
                 @click="showMobileMenu = false"
                 class="text-center px-4 py-3 rounded-lg text-white bg-gray-800 hover:bg-gray-700 font-medium transition-colors"
               >
-                Sign In
+                {{ t("header.sign_in") }}
               </router-link>
               <router-link
                 to="/register"
                 @click="showMobileMenu = false"
                 class="text-center px-4 py-3 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 font-bold transition-colors"
               >
-                Get Started Free
+                {{ t("header.start_for_free") }}
               </router-link>
             </div>
           </nav>
@@ -199,7 +199,7 @@
               "
               class="text-gray-300 hover:text-white text-lg font-medium transition-colors"
             >
-              Features
+              {{ t("header.features") }}
             </router-link>
             <router-link
               to="/#pricing"
@@ -209,14 +209,14 @@
               "
               class="text-gray-300 hover:text-white text-lg font-medium transition-colors"
             >
-              Pricing
+              {{ t("header.pricing") }}
             </router-link>
             <router-link
               to="/support"
               @click="showMobileMenu = false"
               class="text-gray-300 hover:text-white text-lg font-medium transition-colors"
             >
-              Support
+              {{ t("header.support") }}
             </router-link>
             <div class="pt-2 pb-2">
               <LanguageSwitcher />
@@ -226,7 +226,7 @@
               @click="showMobileMenu = false"
               class="text-gray-300 hover:text-white text-lg font-medium transition-colors"
             >
-              My Stores
+              {{ t("header.my_stores") }}
             </router-link>
             <router-link
               to="/dashboard"
@@ -238,7 +238,7 @@
               >
                 {{ userInitials }}
               </div>
-              <span>Dashboard</span>
+              <span>{{ t("header.dashboard") }}</span>
             </router-link>
           </nav>
         </div>
@@ -252,6 +252,9 @@ import { ref, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "../../store/auth";
 import LanguageSwitcher from "../LanguageSwitcher.vue";
+import { useI18n } from "vue-i18n";
+
+const { t } = useI18n();
 
 const router = useRouter();
 const route = useRoute();
