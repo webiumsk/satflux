@@ -148,7 +148,7 @@ class WalletConnectionValidator
     /**
      * Validate Aqua watch-only descriptor.
      *
-     * @param string $descriptor Bitcoin Core output descriptor
+     * @param string $descriptor Aqua wallet output descriptor
      * @return bool True if valid
      */
     public function validateAquaDescriptor(string $descriptor): bool
@@ -263,7 +263,7 @@ class WalletConnectionValidator
             ]);
             
             if (!$isValid) {
-                $errors[] = 'Invalid descriptor format. Must be a valid Bitcoin Core output descriptor (e.g., wpkh(), tr(), wsh(), or complex formats like ct(slip77(...),elsh(wpkh(...)))) and must not contain private keys (prv).';
+                $errors[] = 'Invalid descriptor format. Must be a valid Aqua wallet output descriptor (e.g., wpkh(), tr(), wsh(), or complex formats like ct(slip77(...),elsh(wpkh(...)))) and must not contain private keys (prv).';
             }
         } else {
             \Illuminate\Support\Facades\Log::error('Unsupported wallet connection type', [

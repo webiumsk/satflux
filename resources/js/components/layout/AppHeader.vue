@@ -92,8 +92,10 @@
 
         <!-- Right side: Mobile menu button (mobile) / User button (desktop) -->
         <div class="flex items-center ml-auto md:ml-0 gap-4">
-          <!-- Language Switcher -->
-          <LanguageSwitcher />
+          <div class="hidden md:block">
+            <!-- Language Switcher -->
+            <LanguageSwitcher />
+          </div>
 
           <!-- Links visible on desktop right side -->
           <a
@@ -194,8 +196,9 @@
                     </svg>
                     {{ t("header.profile_settings") }}
                   </router-link>
-                  <a
-                    href="#"
+                  <router-link
+                    to="/support"
+                    @click="closeUserMenu"
                     class="group flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
                   >
                     <svg
@@ -211,8 +214,8 @@
                         d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"
                       />
                     </svg>
-                    Support
-                  </a>
+                    {{ t("header.support") }}
+                  </router-link>                  
                   <div class="border-t border-gray-700 my-1"></div>
                   <button
                     @click="handleLogout"
@@ -256,12 +259,13 @@
         'translate-x-0': showMobileMenu,
       }"
     >
-      <div class="flex-1 overflow-y-auto">
+      <div class="flex-1">
         <!-- Header -->
         <div
           class="flex items-center justify-between p-4 border-b border-gray-800"
         >
           <h2 class="text-lg font-bold text-white">{{ t("header.menu") }}</h2>
+          <LanguageSwitcher />
           <button
             @click="showMobileMenu = false"
             class="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -334,6 +338,31 @@
               />
             </svg>
             {{ t("header.stores") }}
+          </router-link>
+          <router-link            
+            to="/support"
+            @click="closeMobileMenu"
+            class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors relative"
+            :class="
+              $route.name === 'support-wallet-connections'
+                ? 'bg-indigo-600/20 text-indigo-300'
+                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+            "
+          >
+            <svg
+              class="w-5 h-5 mr-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"
+              />
+            </svg>
+            {{ t("header.support") }}
           </router-link>
           <router-link
             v-if="

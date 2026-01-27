@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
  * 
  * Connection string formats:
  * - Blink: type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx
- * - Boltz/Aqua: Uses watch-only Bitcoin Core output descriptor
+ * - Boltz/Aqua: Uses watch-only Aqua wallet output descriptor
  * 
  * Note: BTCPay Greenfield API may not support custom Lightning connection strings.
  * If API endpoints fail, connection strings are stored in DB with 'needs_support' status
@@ -35,7 +35,7 @@ class LightningService
      * @param string $cryptoCode Cryptocurrency code (e.g., 'BTC')
      * @param string $connectionString Connection string or descriptor
      *   - Blink: type=blink;server=...;api-key=...;wallet-id=...
-     *   - Boltz: ct(slip77(...),elsh(wpkh([...]xpub...)))
+     *   - Boltz/Aqua: ct(slip77(...),elsh(wpkh([...]xpub...)))
      * @param string|null $userApiKey User-level API key (optional)
      * @return array Response data with success status and message
      * @throws BtcPayException

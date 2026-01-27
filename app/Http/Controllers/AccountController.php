@@ -24,8 +24,9 @@ class AccountController extends Controller
      */
     public function updateProfile(Request $request)
     {
-        $validated = $request->validate([            
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,'.$request->user()->id],
+        $validated = $request->validate([
+            'name' => ['nullable', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $request->user()->id],
         ]);
 
         $request->user()->update($validated);

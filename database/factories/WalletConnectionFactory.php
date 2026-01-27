@@ -45,7 +45,7 @@ class WalletConnectionFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'type' => 'aqua_descriptor',
-            'encrypted_secret' => encrypt('wpkh([fingerprint/0/0]xpub.../0/*)'),
+            'encrypted_secret' => encrypt('ct(slip77(...),elsh(wpkh(...))))'),
         ]);
     }
 
