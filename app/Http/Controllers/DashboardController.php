@@ -88,23 +88,27 @@ class DashboardController extends Controller
                             // Get store ID from local store's btcpay_store_id
                             $localStore = Store::find($store['id']);
                             if ($localStore && $localStore->btcpay_store_id) {
-                                $invoices = $invoiceService->listInvoices($localStore->btcpay_store_id, userApiKey: $user->btcpay_api_key);
+                                $invoices = $invoiceService->listInvoices(
+                                    $localStore->btcpay_store_id,
+                                    take: 1000,
+                                    userApiKey: $user->btcpay_api_key
+                                );
 
                                 // Sum up paid invoices (status: Paid, Complete, or Settled)
                                 foreach ($invoices as $invoice) {
                                     $status = strtolower($invoice['status'] ?? '');
                                     if (in_array($status, ['paid', 'complete', 'settled'])) {
-                                        // Convert amount to sats if needed
                                         $amount = floatval($invoice['amount'] ?? 0);
                                         $currency = strtoupper($invoice['currency'] ?? 'BTC');
 
+                                        // We only sum up BTC/SATS for the dashboard 'sats' total
                                         if ($currency === 'BTC') {
-                                            $amount = $amount * 100000000; // Convert BTC to sats
+                                            $totalRevenue += round($amount * 100000000);
                                         } elseif ($currency === 'SATS') {
-                                            // Already in sats
+                                            $totalRevenue += round($amount);
                                         }
-
-                                        $totalRevenue += $amount;
+                                        // Skip other currencies (like EUR, USD) for now 
+                                        // as we don't have a reliable rate service here yet
                                     }
                                 }
                             }

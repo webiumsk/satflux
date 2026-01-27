@@ -102,36 +102,26 @@ const emit = defineEmits<{
   'view-invoice': [invoice: Invoice];
 }>();
 
-function formatDate(dateString: string | number): string {
-  if (!dateString) return 'N/A';
+function formatDate(dateInput: string | number): string {
+  if (!dateInput) return '-';
   
   let date: Date;
-  
-  if (typeof dateString === 'number') {
-    date = dateString < 946684800000 ? new Date(dateString * 1000) : new Date(dateString);
+  if (typeof dateInput === 'number' || !isNaN(Number(dateInput))) {
+    const timestamp = typeof dateInput === 'number' ? dateInput : Number(dateInput);
+    // BTCPay uses seconds for createdTime, JS needs milliseconds
+    date = new Date(timestamp < 10000000000 ? timestamp * 1000 : timestamp);
   } else {
-    const parsed = parseFloat(dateString);
-    if (!isNaN(parsed) && parsed < 946684800000) {
-      date = new Date(parsed * 1000);
-    } else {
-      date = new Date(dateString);
-    }
+    date = new Date(dateInput);
   }
   
-  if (isNaN(date.getTime())) return 'N/A';
+  if (isNaN(date.getTime())) return '-';
   
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return t('stores.just_now');
-  if (diffMins < 60) return t('stores.minutes_ago', { minutes: diffMins });
-  if (diffHours < 24) return t('stores.hours_ago', { hours: diffHours });
-  if (diffDays < 7) return t('stores.days_ago', { days: diffDays });
-  
-  return date.toLocaleDateString();
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${day}.${month}.${year} ${hours}:${minutes}`;
 }
 
 function formatStatus(status: string): string {
