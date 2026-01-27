@@ -10,8 +10,20 @@
       <!-- Card 1 -->
       <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg relative overflow-hidden group">
         <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-           <svg class="w-24 h-24 text-indigo-500" fill="currentColor" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-        </div>
+           <svg
+                class="w-24 h-24 text-indigo-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                />
+              </svg>
+            </div>
         <div class="relative z-10">
           <p class="text-gray-400 text-sm font-medium mb-1">{{ t('dashboard.active_stores') }}</p>
           <h3 class="text-3xl font-bold text-white">{{ loading ? '...' : storeCount }}</h3>
@@ -27,18 +39,23 @@
       </div>
 
        <!-- Card 2 -->
-      <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg relative overflow-hidden group">
-        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-           <svg class="w-24 h-24 text-green-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-3xl p-8 border border-gray-700/50 shadow-2xl relative overflow-hidden group transition-all hover:scale-[1.02] duration-300">
+        <div class="absolute -top-12 -right-12 w-32 h-32 bg-green-500 rounded-full mix-blend-screen filter blur-3xl opacity-5 group-hover:opacity-10 transition-opacity"></div>
+        <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
+           <svg class="w-20 h-20 text-green-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
         </div>
         <div class="relative z-10">
-          <p class="text-gray-400 text-sm font-medium mb-1">{{ t('dashboard.total_revenue') }}</p>
-          <h3 class="text-3xl font-bold text-white">{{ loading ? '...' : formatSats(totalRevenue) }} <span class="text-base font-normal text-gray-500">sats</span></h3>
-          <div class="mt-4">
-             <span v-if="totalRevenue === 0" class="text-sm font-medium text-gray-500 flex items-center">
+          <p class="text-xs font-black text-gray-500 uppercase tracking-widest mb-2">{{ t('dashboard.total_revenue') }}</p>
+          <div class="flex items-baseline gap-2">
+            <h3 class="text-4xl font-black text-white tracking-tighter">{{ loading ? '...' : formatSats(totalRevenue) }}</h3>
+            <span class="text-sm font-bold text-gray-400 uppercase tracking-widest">sats</span>
+          </div>
+          <div class="mt-6 pt-4 border-t border-gray-700/50">
+             <span v-if="totalRevenue === 0" class="text-xs font-bold text-gray-500 flex items-center uppercase tracking-wider">
                {{ t('dashboard.no_transactions_yet') }}
              </span>
-             <span v-else class="text-sm font-medium text-gray-400 flex items-center">
+             <span v-else class="text-xs font-bold text-green-500/80 flex items-center uppercase tracking-wider">
+               <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
                {{ t('dashboard.all_time_total') }}
              </span>
           </div>

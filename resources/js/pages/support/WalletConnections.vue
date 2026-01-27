@@ -44,87 +44,148 @@
             <p class="text-gray-400">{{ connections.length === 0 ? 'No wallet connections need support at this time.' : 'No connections match your filters.' }}</p>
         </div>
 
-        <div v-else class="bg-gray-800 border border-gray-700 shadow-lg rounded-lg overflow-hidden">
+        <div v-else>
             <!-- Results count -->
-            <div class="px-6 py-3 bg-gray-700/50 border-b border-gray-600">
+            <div class="px-6 py-3 bg-gray-800 border-x border-t border-gray-700 rounded-t-lg">
                 <p class="text-sm text-gray-400">
                     Showing {{ filteredConnections.length }} of {{ connections.length }} connection(s)
                 </p>
             </div>
-            <table class="min-w-full divide-y divide-gray-700">
-                <thead class="bg-gray-700/50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                            Store
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                            Type
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                            Status
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                            Secret (Masked)
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                            Submitted
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                            Actions
-                        </th>
-                    </tr>
-                </thead>
-                <tbody class="bg-gray-800 divide-y divide-gray-700">
-                    <tr v-for="connection in filteredConnections" :key="connection.id">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-white">{{ connection.store_name }}</div>
+
+            <!-- Desktop Table View -->
+            <div class="hidden md:block bg-gray-800 border border-gray-700 shadow-lg rounded-b-lg overflow-hidden">
+                <table class="min-w-full divide-y divide-gray-700">
+                    <thead class="bg-gray-700/50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                Store
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                Type
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                Status
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                Secret (Masked)
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                Submitted
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-gray-800 divide-y divide-gray-700">
+                        <tr v-for="connection in filteredConnections" :key="connection.id">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-white">{{ connection.store_name }}</div>
+                                <div class="text-sm text-gray-400">{{ connection.submitted_by }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                                    :class="connection.type === 'blink' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'">
+                                    {{ connection.type === 'blink' ? 'Blink' : 'Aqua' }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                                    :class="getStatusBadgeClass(connection.status)">
+                                    {{ formatStatus(connection.status) }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <code class="text-sm text-gray-300 font-mono bg-gray-700/50 px-2 py-1 rounded">{{ connection.masked_secret }}</code>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                                {{ formatDate(connection.submitted_at) }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div class="flex items-center space-x-3">
+                                    <button
+                                        @click="revealSecret(connection)"
+                                        class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-800"
+                                    >
+                                        <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                        Reveal & Configure
+                                    </button>
+                                    <button
+                                        v-if="connection.status === 'needs_support'"
+                                        @click="markConnected(connection)"
+                                        class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 focus:ring-offset-gray-800"
+                                    >
+                                        <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Mark Connected
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile Card View -->
+            <div class="md:hidden space-y-4">
+                <div v-for="connection in filteredConnections" :key="connection.id" class="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-lg">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <div class="text-lg font-bold text-white">{{ connection.store_name }}</div>
                             <div class="text-sm text-gray-400">{{ connection.submitted_by }}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
+                        </div>
+                        <div class="flex flex-col items-end space-y-2">
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
                                 :class="connection.type === 'blink' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'">
                                 {{ connection.type === 'blink' ? 'Blink' : 'Aqua' }}
                             </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
                                 :class="getStatusBadgeClass(connection.status)">
                                 {{ formatStatus(connection.status) }}
                             </span>
-                        </td>
-                        <td class="px-6 py-4">
-                            <code class="text-sm text-gray-300 font-mono bg-gray-700/50 px-2 py-1 rounded">{{ connection.masked_secret }}</code>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                            {{ formatDate(connection.submitted_at) }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div class="flex items-center space-x-3">
-                                <button
-                                    @click="revealSecret(connection)"
-                                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-800"
-                                >
-                                    <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                    Reveal & Configure
-                                </button>
-                                <button
-                                    v-if="connection.status === 'needs_support'"
-                                    @click="markConnected(connection)"
-                                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 focus:ring-offset-gray-800"
-                                >
-                                    <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    Mark Connected
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <div class="flex flex-col">
+                            <span class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Secret (Masked)</span>
+                            <code class="text-sm text-gray-300 font-mono bg-gray-700/50 px-2 py-1 rounded w-full break-all">{{ connection.masked_secret }}</code>
+                        </div>
+                        
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-gray-500">Submitted:</span>
+                            <span class="text-gray-400">{{ formatDate(connection.submitted_at) }}</span>
+                        </div>
+
+                        <div class="pt-3 border-t border-gray-700 flex flex-col space-y-3">
+                            <button
+                                @click="revealSecret(connection)"
+                                class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-800"
+                            >
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                Reveal & Configure
+                            </button>
+                            <button
+                                v-if="connection.status === 'needs_support'"
+                                @click="markConnected(connection)"
+                                class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 focus:ring-offset-gray-800"
+                            >
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Mark Connected
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <RevealSecretModal
