@@ -63,7 +63,7 @@
               <!-- Default View Selection -->
               <div>
                 <label class="block text-sm font-medium text-gray-300 mb-3">
-                  Point of Sale Style
+                  {{ $t('apps.pos_style') }}
                 </label>
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <!-- Light (Keypad) -->
@@ -98,7 +98,7 @@
                         />
                       </svg>
                     </div>
-                    <span class="text-sm font-medium text-white">Keypad</span>
+                    <span class="text-sm font-medium text-white">{{ $t('apps.pos_style_light') }}</span>
                     <div
                       v-if="form.defaultView === 'Light'"
                       class="absolute top-2 right-2 text-indigo-500"
@@ -150,7 +150,7 @@
                       </svg>
                     </div>
                     <span class="text-sm font-medium text-white"
-                      >Product list</span
+                      >{{ $t('apps.pos_style_static') }}</span
                     >
                     <div
                       v-if="form.defaultView === 'Static'"
@@ -203,7 +203,7 @@
                       </svg>
                     </div>
                     <span class="text-sm font-medium text-white"
-                      >List with cart</span
+                      >{{ $t('apps.pos_style_cart') }}</span
                     >
                     <div
                       v-if="form.defaultView === 'Cart'"
@@ -256,7 +256,7 @@
                       </svg>
                     </div>
                     <span class="text-sm font-medium text-white"
-                      >Print Display</span
+                      >{{ $t('apps.pos_style_print') }}</span
                     >
                     <div
                       v-if="form.defaultView === 'Print'"
@@ -946,10 +946,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, watchEffect, onMounted } from "vue";
+import { ref, computed, watch, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAppsStore } from "../../store/apps";
-import { useStoresStore } from "../../store/stores";
 import ProductEditDrawer from "../../components/stores/ProductEditDrawer.vue";
 import PointOfSaleProductsEditor from "../../components/stores/PointOfSaleProductsEditor.vue";
 import AppShowLayout from "../../components/stores/AppShowLayout.vue";
@@ -960,7 +959,6 @@ import { currencies } from "../../data/currencies";
 const route = useRoute();
 const router = useRouter();
 const appsStore = useAppsStore();
-const storesStore = useStoresStore();
 
 const storeId = computed(() => route.params.id as string);
 const appId = computed(() => route.params.appId as string);

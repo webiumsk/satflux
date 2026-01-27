@@ -9,7 +9,7 @@
     </div>
   </div>
 
-  <div v-else-if="store" class="flex h-screen bg-gray-900 overflow-hidden">
+  <div v-else-if="store" class="flex bg-gray-900 overflow-hidden">
     <!-- Sidebar -->
     <StoreSidebar
       :store="store"

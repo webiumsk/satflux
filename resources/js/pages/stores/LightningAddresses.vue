@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-screen bg-gray-900 overflow-hidden">
+  <div class="flex bg-gray-900 overflow-hidden">
     <!-- Sidebar -->
     <StoreSidebar
       :store="store"
