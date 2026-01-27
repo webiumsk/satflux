@@ -7,7 +7,7 @@
     <p class="text-gray-400 ml-4">Loading app...</p>
   </div>
 
-  <div v-else-if="store && app" class="flex h-screen bg-gray-900 overflow-hidden">
+  <div v-else-if="store && app" class="flex bg-gray-900 overflow-hidden">
     <!-- Sidebar -->
     <StoreSidebar
       :store="store"

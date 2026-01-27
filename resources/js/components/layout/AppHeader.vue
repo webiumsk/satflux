@@ -97,7 +97,7 @@
 
           <!-- Links visible on desktop right side -->
           <a
-            href="https://docs.btcpayserver.org/"
+            href="https://satflux.io/documentation"
             target="_blank"
             class="hidden md:block text-gray-500 hover:text-gray-300 text-sm font-medium transition-colors"
           >

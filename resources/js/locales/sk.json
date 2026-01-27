@@ -288,7 +288,7 @@
     "sign_in": "Prihlásiť sa",
     "pricing": "Cenník",
     "features": "Features",
-    "my_stores": "Moje obchody"  
+    "my_stores": "Moje obchody"
   },
   "errors": {
     "generic": "Vyskytla sa chyba",
@@ -380,6 +380,11 @@
     "app_name_placeholder": "napr. Hlavný obchod POS alebo Projektový fundraiser",
     "point_of_sale": "Terminál",
     "point_of_sale_description": "Virtuálny terminál pre platby na osobu",
+    "pos_style": "Štýl terminálu",
+    "pos_style_light": "Klávesnica (Light)",
+    "pos_style_static": "Zoznam produktov (Static)",
+    "pos_style_cart": "Zoznam s košíkom (Cart)",
+    "pos_style_print": "Zobrazenie pre tlač (Print)",
     "creating": "Vytváram...",
     "failed_to_create": "Zlyhalo vytvorenie aplikácie",
     "crowdfund_not_available": "Crowdfunding nie je dostupný",
