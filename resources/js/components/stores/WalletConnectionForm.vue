@@ -42,7 +42,7 @@
                         />
                     </div>
                      <div class="ml-4">
-                        <div class="font-bold text-white text-lg">Aqua / Bitcoin Core</div>
+                        <div class="font-bold text-white text-lg">Aqua</div>
                         <div class="text-sm text-gray-400 mt-1">Connect a watch-only wallet using an output descriptor. Non-custodial Setup.</div>
                     </div>
                 </label>
@@ -62,7 +62,7 @@
                     class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono p-4"
                     :placeholder="form.type === 'blink' 
                         ? 'type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx'
-                        : 'wpkh([fingerprint/hdpath]xpub...)'"
+                        : 'ct(slip77(...),elsh(wpkh(...))))'"
                     required
                 ></textarea>
             </div>
@@ -74,8 +74,8 @@
                     <p>Paste your Blink connection string containing server URL, API key, and wallet ID.</p>
                 </div>
                  <div v-else class="space-y-1">
-                    <p>Paste your Bitcoin Core output descriptor (watch-only, no private keys).</p>
-                    <p>Examples: <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">wpkh(...)</code>, <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">tr(...)</code></p>
+                    <p>Paste your Aqua wallet output descriptor (watch-only, no private keys).</p>
+                    <p>Examples: <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">ct(slip77(...),elsh(wpkh(...))))</code></p>
                 </div>
             </div>
             <p v-if="errors.secret" class="mt-2 text-sm text-red-400">{{ errors.secret }}</p>

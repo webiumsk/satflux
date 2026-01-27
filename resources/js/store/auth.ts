@@ -9,6 +9,7 @@ export interface User {
     email: string;
     email_verified_at?: string;
     role?: string;
+    name?: string;
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -31,7 +32,7 @@ export const useAuthStore = defineStore('auth', () => {
         try {
             // Ensure CSRF cookie is set before login
             await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
-            
+
             const response = await api.post('/auth/login', {
                 email,
                 password,
@@ -49,7 +50,7 @@ export const useAuthStore = defineStore('auth', () => {
         try {
             // Ensure CSRF cookie is set before register
             await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
-            
+
             const response = await api.post('/auth/register', {
                 email,
                 password,

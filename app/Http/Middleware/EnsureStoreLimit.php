@@ -29,6 +29,11 @@ class EnsureStoreLimit
             abort(401, 'Unauthenticated');
         }
 
+        // Admin, Support and Enterprise users have unlimited access
+        if ($user->hasUnlimitedAccess()) {
+            return $next($request);
+        }
+
         // Get user's current subscription plan
         $plan = $user->currentSubscriptionPlan();
 

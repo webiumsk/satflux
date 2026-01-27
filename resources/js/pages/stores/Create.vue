@@ -162,7 +162,7 @@
                       class="block w-full rounded-lg border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono text-sm placeholder-gray-600"
                       :placeholder="form.wallet_type === 'blink' 
                         ? 'type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx'
-                        : 'wpkh([fingerprint/hdpath]xpub...)'"
+                        : 'ct(slip77(...),elsh(wpkh(...))))'"
                     ></textarea>
                     <p class="mt-3 text-sm text-gray-400 leading-relaxed">
                       <span v-if="form.wallet_type === 'blink'">

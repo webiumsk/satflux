@@ -49,8 +49,8 @@ class WalletConnectionValidatorTest extends TestCase
 
     public function test_valid_boltz_descriptor(): void
     {
-        // Example Bitcoin Core output descriptor
-        $descriptor = 'wpkh([fingerprint/0/0]xpub1234567890abcdef/0/*)';
+        // Example Aqua wallet output descriptor
+        $descriptor = 'ct(slip77(...),elsh(wpkh(...))))';
         
         $result = $this->validator->validate('aqua_descriptor', $descriptor);
         

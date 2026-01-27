@@ -19,6 +19,7 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
+        'name',
         'email',
         'password',
         'lightning_public_key',
@@ -63,6 +64,14 @@ class User extends Authenticatable
     public function isSupport(): bool
     {
         return $this->role === 'support' || $this->role === 'admin';
+    }
+
+    /**
+     * Check if user has unlimited access (admin, support, or enterprise).
+     */
+    public function hasUnlimitedAccess(): bool
+    {
+        return $this->isAdmin() || $this->isSupport() || $this->isEnterprise();
     }
 
     /**
@@ -112,8 +121,8 @@ class User extends Authenticatable
      */
     public function getMaxLightningAddresses(): ?int
     {
-        // Support and admin users have unlimited
-        if ($this->isSupport() || $this->isAdmin()) {
+        // Support, admin and enterprise users have unlimited
+        if ($this->hasUnlimitedAccess()) {
             return null; // unlimited
         }
 

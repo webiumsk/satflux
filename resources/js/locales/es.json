@@ -117,7 +117,7 @@
     "descriptor": "Descriptor",
     "blink_format": "Formato: type=blink;server=...;api-key=...;wallet-id=...",
     "blink_paste": "Pega tu cadena de conexión Blink con URL del servidor, clave API e ID de monedero.",
-    "descriptor_paste": "Pega tu descriptor de salida de Bitcoin Core (solo para seguimiento, sin claves privadas).",
+    "descriptor_paste": "Pega tu descriptor de salida de Aqua wallet (solo para seguimiento, sin claves privadas).",
     "descriptor_example": "Ejemplo: ct(slip77(...),elsh(wpkh(...)))",
     "configure_later": "También puedes configurar esto más tarde en los ajustes de conexión de monedero.",
     "descriptor_already_in_use": "Este descriptor ya está en uso",

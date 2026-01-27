@@ -58,7 +58,7 @@ class StoreCreateRequest extends FormRequest
                     // Validate Aqua descriptor format
                     $validation = $connectionValidator->validate('aqua_descriptor', $connectionString);
                     if (!$validation['valid']) {
-                        $errors = $validation['errors'] ?? ['Invalid descriptor format. Must be a valid Bitcoin Core output descriptor (e.g., wpkh(), tr(), wsh(), or complex formats like ct(slip77(...),elsh(wpkh(...)))) and must not contain private keys.'];
+                        $errors = $validation['errors'] ?? ['Invalid descriptor format. Must be a valid Aqua wallet output descriptor (e.g., wpkh(), tr(), wsh(), or complex formats like ct(slip77(...),elsh(wpkh(...)))) and must not contain private keys.'];
                         foreach ($errors as $error) {
                             $validator->errors()->add('connection_string', $error);
                         }
