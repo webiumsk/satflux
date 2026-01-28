@@ -21,8 +21,13 @@ fi
 if [ -z "$COMPOSE_FILE" ]; then
     # Check which containers are actually running (use docker ps for accurate detection)
     # First check for prod containers (priority in production)
-    if docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^satflux.io_postgres_prod$"; then
-        # Prod environment is running
+    if docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^satflux_postgres_prod$"; then
+        # Prod environment with underscore
+        COMPOSE_FILE="docker-compose.prod.yml"
+        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux_postgres_prod}"
+        REDIS_CONTAINER="${REDIS_CONTAINER:-satflux_redis_prod}"
+    elif docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^satflux.io_postgres_prod$"; then
+        # Prod environment with dot
         COMPOSE_FILE="docker-compose.prod.yml"
         POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux.io_postgres_prod}"
         REDIS_CONTAINER="${REDIS_CONTAINER:-satflux.io_redis_prod}"
@@ -32,15 +37,15 @@ if [ -z "$COMPOSE_FILE" ]; then
         POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux.io_postgres}"
         REDIS_CONTAINER="${REDIS_CONTAINER:-satflux.io_redis}"
     else
-        # Default to prod
+        # Default to prod (underscore)
         COMPOSE_FILE="docker-compose.prod.yml"
-        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux.io_postgres_prod}"
-        REDIS_CONTAINER="${REDIS_CONTAINER:-satflux.io_redis_prod}"
+        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux_postgres_prod}"
+        REDIS_CONTAINER="${REDIS_CONTAINER:-satflux_redis_prod}"
     fi
 else
     # COMPOSE_FILE is set, use defaults for container names
-    POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux.io_postgres_prod}"
-    REDIS_CONTAINER="${REDIS_CONTAINER:-satflux.io_redis_prod}"
+    POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux_postgres_prod}"
+    REDIS_CONTAINER="${REDIS_CONTAINER:-satflux_redis_prod}"
     
     # If using docker-compose.yml, adjust container names
     if [ "$COMPOSE_FILE" = "docker-compose.yml" ]; then
@@ -151,12 +156,19 @@ fi
 # Use docker ps for accurate container name detection (not docker compose ps which shows service names)
 if ! docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^${POSTGRES_CONTAINER}$"; then
     # Try alternative container name (dev vs prod)
-    if [ "$POSTGRES_CONTAINER" = "satflux.io_postgres_prod" ]; then
+    # Try alternative container names (dev vs prod, dot vs underscore)
+    if [ "$POSTGRES_CONTAINER" = "satflux_postgres_prod" ] || [ "$POSTGRES_CONTAINER" = "satflux.io_postgres_prod" ]; then
         POSTGRES_CONTAINER="satflux.io_postgres"
         COMPOSE_FILE="docker-compose.yml"
     elif [ "$POSTGRES_CONTAINER" = "satflux.io_postgres" ]; then
-        POSTGRES_CONTAINER="satflux.io_postgres_prod"
-        COMPOSE_FILE="docker-compose.prod.yml"
+        # Last resort - try both prod naming styles
+        if docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^satflux_postgres_prod$"; then
+            POSTGRES_CONTAINER="satflux_postgres_prod"
+            COMPOSE_FILE="docker-compose.prod.yml"
+        else
+            POSTGRES_CONTAINER="satflux.io_postgres_prod"
+            COMPOSE_FILE="docker-compose.prod.yml"
+        fi
     fi
     
     # Check again with alternative name

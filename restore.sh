@@ -12,10 +12,15 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Load configuration if exists
+if [ -f "backup.config.sh" ]; then
+    source backup.config.sh
+fi
+
 # Configuration
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
-POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux.io_postgres_prod}"
-REDIS_CONTAINER="${REDIS_CONTAINER:-satflux.io_redis_prod}"
+POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux_postgres_prod}"
+REDIS_CONTAINER="${REDIS_CONTAINER:-satflux_redis_prod}"
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 
 # Get database credentials from environment
@@ -202,8 +207,24 @@ restore_database() {
     log_info "Restoring database..."
     
     if ! $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" ps 2>/dev/null | grep -q "$POSTGRES_CONTAINER.*Up"; then
-        log_error "PostgreSQL container is not running!"
-        return 1
+        # Try alternative container names
+        if [ "$POSTGRES_CONTAINER" = "satflux_postgres_prod" ] || [ "$POSTGRES_CONTAINER" = "satflux.io_postgres_prod" ]; then
+            if $DOCKER_COMPOSE_CMD -f "docker-compose.yml" ps 2>/dev/null | grep -q "satflux.io_postgres.*Up"; then
+                POSTGRES_CONTAINER="satflux.io_postgres"
+                COMPOSE_FILE="docker-compose.yml"
+            fi
+        elif [ "$POSTGRES_CONTAINER" = "satflux.io_postgres" ]; then
+             if $DOCKER_COMPOSE_CMD -f "docker-compose.prod.yml" ps 2>/dev/null | grep -q "satflux_postgres_prod.*Up"; then
+                POSTGRES_CONTAINER="satflux_postgres_prod"
+                COMPOSE_FILE="docker-compose.prod.yml"
+            fi
+        fi
+        
+        # Check again
+        if ! $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" ps 2>/dev/null | grep -q "$POSTGRES_CONTAINER.*Up" && ! docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^${POSTGRES_CONTAINER}$"; then
+            log_error "PostgreSQL container is not running!"
+            return 1
+        fi
     fi
     
     # Ask for confirmation
