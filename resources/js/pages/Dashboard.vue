@@ -42,7 +42,9 @@
       <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-3xl p-8 border border-gray-700/50 shadow-2xl relative overflow-hidden group transition-all hover:scale-[1.02] duration-300">
         <div class="absolute -top-12 -right-12 w-32 h-32 bg-green-500 rounded-full mix-blend-screen filter blur-3xl opacity-5 group-hover:opacity-10 transition-opacity"></div>
         <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
-           <svg class="w-20 h-20 text-green-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+           <svg class="h-20 w-20 text-orange-500" xmlns="http://www.w3.org/2000/svg" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" image-rendering="optimizeQuality" fill-rule="evenodd" clip-rule="evenodd" viewBox="0 0 512 512.001">
+            <path fill="currentColor" d="M256 0c141.385 0 256 114.615 256 256 0 141.386-114.615 256.001-256 256.001S0 397.386 0 256C0 114.615 114.615 0 256 0zm84.612 201.62c-3.88-31.345-29.619-40.265-62.659-42.711l-.517-27.705-25.587.077 1.033 26.815-20.994.354-.33-27.003-26.29.266 1.41 28.22-16.4.628-35.288.417 1.158 26.805 17.994-.304c10.59.175 14.582 6.637 14.495 11.934 1.162 41.42 1.777 70.56 2.62 113.775-.464 3.892-2.146 8.86-9.739 8.637l-17.994.302-4.602 30.607 50.985-.858 1.596 28.923 24.696-.592-.518-27.707 19.399-.679 1.222 27.518 25.587-.077-.706-28.41c42.828-3.191 72.804-14.988 75.663-54.919 1.929-32.15-13.13-46.189-37.927-51.596 14.518-7.655 23.639-21.398 21.693-42.717zm-33.774 90.39c-.008 30.881-53.854 29.493-71.146 29.608l-.77-56.279c17.291-.115 71.363-6.318 71.916 26.671zm-14.386-78.993c1.018 29.102-43.315 26.671-58.312 26.922l-.858-50.983c14.997-.253 59.556-5.415 59.17 24.061zM256.002 48.49c114.604 0 207.51 92.906 207.51 207.513 0 114.604-92.906 207.509-207.51 207.509-114.606 0-207.512-92.905-207.512-207.509 0-114.607 92.906-207.513 207.512-207.513z"></path>
+          </svg>        
         </div>
         <div class="relative z-10">
           <p class="text-xs font-black text-gray-500 uppercase tracking-widest mb-2">{{ t('dashboard.total_revenue') }}</p>
@@ -77,6 +79,25 @@
              <router-link to="/support" class="text-sm font-medium text-purple-400 hover:text-purple-300 flex items-center">
                {{ t('dashboard.help_center') }} <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
              </router-link>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Other Currencies Stats -->
+    <div v-if="!loading && revenueBreakdown.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div v-for="item in revenueBreakdown" :key="item.currency" 
+           class="bg-gray-800/80 backdrop-blur-sm rounded-2xl p-5 border border-gray-700 shadow-xl relative overflow-hidden group transition-all hover:border-gray-600">
+        <div class="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity">
+           <svg class="h-20 w-20 text-orange-500" xmlns="http://www.w3.org/2000/svg" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" image-rendering="optimizeQuality" fill-rule="evenodd" clip-rule="evenodd" viewBox="0 0 512 512.001">
+            <path fill="currentColor" d="M256 0c141.385 0 256 114.615 256 256 0 141.386-114.615 256.001-256 256.001S0 397.386 0 256C0 114.615 114.615 0 256 0zm84.612 201.62c-3.88-31.345-29.619-40.265-62.659-42.711l-.517-27.705-25.587.077 1.033 26.815-20.994.354-.33-27.003-26.29.266 1.41 28.22-16.4.628-35.288.417 1.158 26.805 17.994-.304c10.59.175 14.582 6.637 14.495 11.934 1.162 41.42 1.777 70.56 2.62 113.775-.464 3.892-2.146 8.86-9.739 8.637l-17.994.302-4.602 30.607 50.985-.858 1.596 28.923 24.696-.592-.518-27.707 19.399-.679 1.222 27.518 25.587-.077-.706-28.41c42.828-3.191 72.804-14.988 75.663-54.919 1.929-32.15-13.13-46.189-37.927-51.596 14.518-7.655 23.639-21.398 21.693-42.717zm-33.774 90.39c-.008 30.881-53.854 29.493-71.146 29.608l-.77-56.279c17.291-.115 71.363-6.318 71.916 26.671zm-14.386-78.993c1.018 29.102-43.315 26.671-58.312 26.922l-.858-50.983c14.997-.253 59.556-5.415 59.17 24.061zM256.002 48.49c114.604 0 207.51 92.906 207.51 207.513 0 114.604-92.906 207.509-207.51 207.509-114.606 0-207.512-92.905-207.512-207.509 0-114.607 92.906-207.513 207.512-207.513z"></path>
+          </svg>
+        </div>
+        <div class="relative z-10">
+          <p class="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">{{ t('dashboard.total_revenue') }} ({{ item.currency }})</p>
+          <div class="flex items-baseline gap-2">
+            <h3 class="text-2xl font-black text-white tracking-tighter">{{ formatCurrencyValue(item.amount, item.currency) }}</h3>
+            <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">{{ item.currency }}</span>
           </div>
         </div>
       </div>
@@ -118,6 +139,7 @@ const userName = computed(() => {
 const loading = ref(true);
 const storeCount = ref(0);
 const totalRevenue = ref(0);
+const revenueBreakdown = ref<Array<{ currency: string; amount: number }>>([]);
 
 async function loadDashboardData() {
   loading.value = true;
@@ -125,6 +147,7 @@ async function loadDashboardData() {
     const response = await api.get('/dashboard');
     storeCount.value = response.data.store_count || 0;
     totalRevenue.value = response.data.total_revenue || 0;
+    revenueBreakdown.value = response.data.revenue_breakdown || [];
   } catch (error: any) {
     console.error('Failed to load dashboard data:', error);
     // Keep defaults (0) on error
@@ -137,6 +160,14 @@ function formatSats(sats: number): string {
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
   }).format(sats);
+}
+
+function formatCurrencyValue(amount: number, currency: string): string {
+  const isFiat = ['USD', 'EUR', 'CZK', 'GBP', 'PLN'].includes(currency);
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: isFiat ? 2 : 0,
+    maximumFractionDigits: isFiat ? 2 : 0,
+  }).format(amount);
 }
 
 onMounted(() => {

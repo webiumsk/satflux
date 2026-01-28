@@ -5,7 +5,7 @@
         <!-- Left side: Empty on mobile, Logo + Navigation on desktop -->
         <div class="hidden md:flex items-center space-x-8">
           <!-- Logo -->
-          <router-link to="/dashboard" class="flex items-center gap-3">
+          <router-link to="/" class="flex items-center gap-3">
             <div
               class="w-8 h-8 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg"
             >
@@ -78,7 +78,7 @@
 
         <!-- Center: Logo on mobile only -->
         <div class="md:hidden absolute left-1/2 transform -translate-x-1/2">
-          <router-link to="/dashboard" class="flex items-center gap-2">
+          <router-link to="/" class="flex items-center gap-2">
             <div
               class="w-7 h-7 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm"
             >
@@ -98,13 +98,17 @@
           </div>
 
           <!-- Links visible on desktop right side -->
-          <a
-            href="https://satflux.io/documentation"
-            target="_blank"
-            class="hidden md:block text-gray-500 hover:text-gray-300 text-sm font-medium transition-colors"
-          >
-            {{ t("header.docs") }}
-          </a>
+          <router-link
+              to="/documentation"
+              class="hidden md:block text-gray-500 hover:text-gray-300 text-sm font-medium transition-colors"
+              :class="
+                $route.name === 'home'
+                  ? 'text-white bg-indigo-600/20 text-indigo-300'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              "
+            >
+              {{ t("header.docs") }}
+            </router-link> 
 
           <!-- Mobile menu button (right side, mobile only) -->
           <button

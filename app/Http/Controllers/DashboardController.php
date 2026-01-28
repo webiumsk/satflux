@@ -79,6 +79,8 @@ class DashboardController extends Controller
 
         // Calculate total revenue from all invoices across all stores
         $totalRevenue = 0;
+        $revenueByCurrency = [];
+
         if ($stores->isNotEmpty()) {
             try {
                 if ($user->btcpay_api_key) {
@@ -101,14 +103,18 @@ class DashboardController extends Controller
                                         $amount = floatval($invoice['amount'] ?? 0);
                                         $currency = strtoupper($invoice['currency'] ?? 'BTC');
 
-                                        // We only sum up BTC/SATS for the dashboard 'sats' total
+                                        // We sum up BTC/SATS for the dashboard 'sats' total
                                         if ($currency === 'BTC') {
                                             $totalRevenue += round($amount * 100000000);
                                         } elseif ($currency === 'SATS') {
                                             $totalRevenue += round($amount);
+                                        } else {
+                                            // Sum up other currencies (EUR, USD, etc.)
+                                            if (!isset($revenueByCurrency[$currency])) {
+                                                $revenueByCurrency[$currency] = 0;
+                                            }
+                                            $revenueByCurrency[$currency] += $amount;
                                         }
-                                        // Skip other currencies (like EUR, USD) for now 
-                                        // as we don't have a reliable rate service here yet
                                     }
                                 }
                             }
@@ -129,14 +135,21 @@ class DashboardController extends Controller
             }
         }
 
+        // Format other currencies as a simple list of objects
+        $formattedBreakdown = [];
+        foreach ($revenueByCurrency as $currency => $amount) {
+            $formattedBreakdown[] = [
+                'currency' => $currency,
+                'amount' => $amount,
+            ];
+        }
+
         return response()->json([
             'stores' => $stores,
             'store_count' => $stores->count(),
             'total_revenue' => round($totalRevenue), // Round to nearest sat
+            'revenue_breakdown' => $formattedBreakdown,
         ]);
     }
 }
-
-
-
 
