@@ -22,7 +22,7 @@ PROJECT_NAME="${PROJECT_NAME:-satflux_prod}"
 
 # Try to detect COMPOSE_FILE from .env.production if not set
 if [ "$COMPOSE_FILE" = "docker-compose.prod.yml" ] && [ -f .env.production ]; then
-    ENV_COMPOSE=$(grep "^COMPOSE_FILE=" .env.production | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
+    ENV_COMPOSE=$(grep "^COMPOSE_FILE=" .env.production | cut -d '=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
     if [ -n "$ENV_COMPOSE" ]; then
         COMPOSE_FILE="$ENV_COMPOSE"
     fi
