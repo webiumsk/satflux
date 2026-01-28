@@ -9,7 +9,7 @@
 
   <div v-else-if="settings" class="space-y-6">
     <!-- Main Settings -->
-    <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
+    <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700">
       <div class="px-6 py-5 border-b border-gray-700 bg-gray-800/50">
         <h1 class="text-2xl font-bold text-white">{{ t('stores.store_settings') }}</h1>
         <p class="text-sm text-gray-400 mt-1">{{ t('stores.manage_store_config') }}</p>
@@ -104,7 +104,7 @@
     </div>
 
     <!-- Logo Management -->
-    <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
+    <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700">
       <div class="px-6 py-5 border-b border-gray-700 bg-gray-800/50">
         <h2 class="text-lg font-bold text-white">{{ t('stores.store_logo') }}</h2>
       </div>

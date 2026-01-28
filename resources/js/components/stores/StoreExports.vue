@@ -25,7 +25,7 @@
 
   <div v-else class="space-y-6">
     <div
-      class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
+      class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700"
     >
       <div class="px-6 py-5 border-b border-gray-700 bg-gray-800/50">
         <h1 class="text-2xl font-bold text-white">{{ t("stores.exports") }}</h1>

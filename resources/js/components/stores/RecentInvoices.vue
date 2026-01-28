@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
+  <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700">
     <div class="px-6 py-5 border-b border-gray-700 flex justify-between items-center bg-gray-800/50 backdrop-blur-sm">
       <h3 class="text-xl font-bold text-white flex items-center gap-2">
         <svg class="h-5 w-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

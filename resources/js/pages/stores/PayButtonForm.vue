@@ -57,7 +57,7 @@
 
       <!-- General Settings -->
       <div
-        class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
+        class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700"
       >
         <div class="p-6 md:p-8 space-y-6">
           <h2 class="text-xl font-bold text-white mb-4">General Settings</h2>
