@@ -31,26 +31,21 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">{{ t('admin.documentation.articles.category') }}</label>
-          <select
+          <Select
             v-model="selectedCategory"
-            class="block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700/50 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            :options="categoryOptions"
+            :placeholder="t('admin.documentation.articles.all_categories')"
             @change="loadArticles"
-          >
-            <option value="">{{ t('admin.documentation.articles.all_categories') }}</option>
-            <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name?.en || cat.name }}</option>
-          </select>
+          />
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">{{ t('admin.documentation.articles.status') }}</label>
-          <select
+          <Select
             v-model="publishedFilter"
-            class="block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700/50 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            :options="publishOptions"
+            :placeholder="t('admin.documentation.articles.all')"
             @change="loadArticles"
-          >
-            <option value="">{{ t('admin.documentation.articles.all') }}</option>
-            <option value="true">{{ t('admin.documentation.articles.published') }}</option>
-            <option value="false">{{ t('admin.documentation.articles.unpublished') }}</option>
-          </select>
+          />
         </div>
       </div>
     </div>
@@ -120,11 +115,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { adminDocumentationApi } from '../../../services/api';
+import Select from '../../../components/ui/Select.vue';
+import { computed } from 'vue';
 
-const router = useRouter();
 const { t } = useI18n();
 
 const loading = ref(false);
@@ -133,6 +128,20 @@ const categories = ref<any[]>([]);
 const searchQuery = ref('');
 const selectedCategory = ref('');
 const publishedFilter = ref('');
+
+const categoryOptions = computed(() => [
+  { label: t('admin.documentation.articles.all_categories'), value: '' },
+  ...categories.value.map(cat => ({
+    label: cat.name?.en || cat.name,
+    value: cat.id
+  }))
+]);
+
+const publishOptions = [
+  { label: t('admin.documentation.articles.all'), value: '' },
+  { label: t('admin.documentation.articles.published'), value: 'true' },
+  { label: t('admin.documentation.articles.unpublished'), value: 'false' },
+];
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 

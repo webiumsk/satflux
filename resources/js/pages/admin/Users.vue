@@ -21,19 +21,13 @@
         </div>
         <div>
           <label for="role-filter" class="block text-sm font-medium text-gray-300 mb-2">Filter by Role</label>
-          <select
+          <Select
             id="role-filter"
             v-model="selectedRole"
-            class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            :options="roleOptions"
+            placeholder="All Roles"
             @change="loadUsers"
-          >
-            <option value="all">All Roles</option>
-            <option value="merchant">Merchant</option>
-            <option value="pro">Pro</option>
-            <option value="enterprise">Enterprise</option>
-            <option value="support">Support</option>
-            <option value="admin">Admin</option>
-          </select>
+          />
         </div>
       </div>
     </div>
@@ -162,18 +156,12 @@
 
           <div>
             <label for="edit-role" class="block text-sm font-medium text-gray-300 mb-2">Role</label>
-            <select
+            <Select
               id="edit-role"
               v-model="editForm.role"
-              required
-              class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            >
-              <option value="merchant">Merchant</option>
-              <option value="pro">Pro</option>
-              <option value="enterprise">Enterprise</option>
-              <option value="support">Support</option>
-              <option value="admin">Admin</option>
-            </select>
+              :options="roleEditOptions"
+              placeholder="Select role"
+            />
           </div>
 
           <div v-if="editError" class="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
@@ -238,6 +226,7 @@
 import { ref, computed, onMounted } from 'vue';
 import api from '../../services/api';
 import { useAuthStore } from '../../store/auth';
+import Select from '../../components/ui/Select.vue';
 
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
@@ -247,6 +236,18 @@ const meta = ref<any>(null);
 const loading = ref(false);
 const searchQuery = ref('');
 const selectedRole = ref('all');
+
+const roleOptions = [
+  { label: 'All Roles', value: 'all' },
+  { label: 'Merchant', value: 'merchant' },
+  { label: 'Pro', value: 'pro' },
+  { label: 'Enterprise', value: 'enterprise' },
+  { label: 'Support', value: 'support' },
+  { label: 'Admin', value: 'admin' },
+];
+
+const roleEditOptions = roleOptions.filter(o => o.value !== 'all');
+
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const showEditModal = ref(false);

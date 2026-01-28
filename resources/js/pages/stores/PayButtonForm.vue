@@ -86,19 +86,12 @@
               >
                 Currency
               </label>
-              <select
+              <Select
                 id="currency"
                 v-model="form.currency"
-                class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-              >
-                <option
-                  v-for="curr in currencies"
-                  :key="curr.code"
-                  :value="curr.code"
-                >
-                  {{ curr.code }} - {{ curr.name }}
-                </option>
-              </select>
+                :options="currencyOptions"
+                placeholder="Select currency"
+              />
             </div>
           </div>
 
@@ -110,17 +103,12 @@
               >
                 Default Payment Method
               </label>
-              <select
+              <Select
                 id="defaultPaymentMethod"
                 v-model="form.defaultPaymentMethod"
-                class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-              >
-                <option value="">Use the store's default</option>
-                <option value="BTC-OnChain">Bitcoin On-Chain</option>
-                <option value="BTC-LightningNetwork">
-                  Bitcoin Lightning Network
-                </option>
-              </select>
+                :options="paymentMethodOptions"
+                placeholder="Use the store's default"
+              />
             </div>
 
             <div>
@@ -638,8 +626,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, computed } from "vue";
 import { currencies } from "../../data/currencies";
+import Select from "../../components/ui/Select.vue";
 
 const props = defineProps<{
   store: any;
@@ -648,6 +637,14 @@ const props = defineProps<{
 const showWarning = ref(true);
 const copied = ref(false);
 const alternativeType = ref<"link" | "lnurl">("link");
+
+const currencyOptions = currencies.map(c => ({ label: `${c.code} - ${c.name}`, value: c.code }));
+
+const paymentMethodOptions = [
+  { label: "Use the store's default", value: "" },
+  { label: "Bitcoin On-Chain", value: "BTC-OnChain" },
+  { label: "Bitcoin Lightning Network", value: "BTC-LightningNetwork" },
+];
 
 const form = ref({
   price: "",
@@ -678,7 +675,7 @@ const imageSizes = [
   { value: "209x57", label: "209 x 57 px" },
 ];
 
-const baseUrl = import.meta.env.VITE_BTCPAY_BASE_URL || "https://satflux.org";
+const baseUrl = (import.meta as any).env.VITE_BTCPAY_BASE_URL || "https://satflux.org";
 const storeId = computed(() => props.store?.btcpay_store_id || "");
 
 const alternativeUrl = computed(() => {
@@ -705,7 +702,7 @@ const qrCodeUrl = computed(() => {
 });
 
 function getImageHeight() {
-  const [, height] = form.value.imageSize.split("x");
+  const height = form.value.imageSize.split("x")[1];
   return `${height}px`;
 }
 
@@ -901,7 +898,7 @@ function generateHtmlCode(): string {
 
   // Add submit button
   if (form.value.customizeButtonText && form.value.buttonImageUrl) {
-    const [width, height] = form.value.imageSize.split("x");
+    const [width] = form.value.imageSize.split("x");
     html += `  <input type="image" class="submit" name="submit" src="${form.value.buttonImageUrl}" style="width:${width}px" alt="${form.value.buttonText || "Pay with BTCPay Server"}" />
 `;
   } else {

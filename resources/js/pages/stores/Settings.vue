@@ -54,29 +54,24 @@
 
               <div>
                 <label for="timezone" class="block text-sm font-medium text-gray-700">{{ t('settings.timezone') }}</label>
-                <select
+                <Select
                   id="timezone"
                   v-model="form.timezone"
-                  required
-                  class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                >
-                  <option v-for="tz in timezones" :key="tz" :value="tz">{{ tz }}</option>
-                </select>
+                  :options="timezoneOptions"
+                  placeholder="Select timezone"
+                />
               </div>
 
               <div>
                 <label for="preferred_exchange" class="block text-sm font-medium text-gray-700">
                   {{ t('settings.preferred_price_source') }}
                 </label>
-                <select
+                <Select
                   id="preferred_exchange"
                   v-model="form.preferred_exchange"
-                  class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                >
-                  <option v-for="exchange in exchanges" :key="exchange.value" :value="exchange.value">
-                    {{ exchange.label }}
-                  </option>
-                </select>
+                  :options="exchanges"
+                  placeholder="Select preferred exchange"
+                />
                 <p class="mt-2 text-sm text-gray-500">{{ t('settings.price_source_description') }}</p>
               </div>
 
@@ -119,6 +114,7 @@ import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
 import { currencies } from '../../data/currencies';
 import { exchanges } from '../../data/exchanges';
+import Select from '../../components/ui/Select.vue';
 
 const { t } = useI18n();
 
@@ -190,6 +186,8 @@ const timezones = [
   'Pacific/Auckland',
   'Pacific/Honolulu',
 ];
+
+const timezoneOptions = timezones.map(tz => ({ label: tz, value: tz }));
 
 async function fetchSettings() {
   loading.value = true;
