@@ -11,11 +11,25 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Load configuration if exists
+if [ -f "deploy.config.sh" ]; then
+    source deploy.config.sh
+fi
+
 # Configuration
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
 PROJECT_NAME="${PROJECT_NAME:-satflux_prod}"
-PHP_SERVICE="php"  # Service name in docker-compose.prod.yml
-PHP_CONTAINER="satflux_php_prod"  # Container name (from container_name in docker-compose.prod.yml)
+
+# Try to detect COMPOSE_FILE from .env.production if not set
+if [ "$COMPOSE_FILE" = "docker-compose.prod.yml" ] && [ -f .env.production ]; then
+    ENV_COMPOSE=$(grep "^COMPOSE_FILE=" .env.production | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
+    if [ -n "$ENV_COMPOSE" ]; then
+        COMPOSE_FILE="$ENV_COMPOSE"
+    fi
+fi
+
+PHP_SERVICE="php"  # Service name
+PHP_CONTAINER="${PHP_CONTAINER:-satflux_php_prod}"
 
 echo -e "${GREEN}Starting satflux deployment...${NC}"
 
@@ -129,9 +143,13 @@ docker exec --user root "$PHP_CONTAINER" mkdir -p /var/www/storage/framework/vie
 docker exec --user root "$PHP_CONTAINER" chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 docker exec --user root "$PHP_CONTAINER" chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
-# Step 7: Restart PHP and Nginx containers
+# Step 7: Restart relevant containers
 echo -e "${YELLOW}Step 7: Restarting containers...${NC}"
-docker compose -f "$COMPOSE_FILE" --project-name "$PROJECT_NAME" restart php nginx
+RESTART_SERVICES="php nginx"
+if grep -q "caddy:" "$COMPOSE_FILE"; then
+    RESTART_SERVICES="$RESTART_SERVICES caddy"
+fi
+docker compose -f "$COMPOSE_FILE" --project-name "$PROJECT_NAME" restart $RESTART_SERVICES
 
 # Step 8: Verify deployment
 echo -e "${YELLOW}Step 8: Verifying deployment...${NC}"
@@ -146,8 +164,13 @@ else
     exit 1
 fi
 
-# Health check (skip if using Traefik, as nginx doesn't expose ports)
-echo -e "${YELLOW}Note: Health check skipped (using Traefik reverse proxy)${NC}"
+# Health check
+if [ "$COMPOSE_FILE" = "docker-compose.standalone.yml" ] || grep -q "caddy:" "$COMPOSE_FILE"; then
+    echo -e "${YELLOW}Checking health via local proxy...${NC}"
+    # Add health check logic here if needed
+else
+    echo -e "${YELLOW}Note: Health check skipped (using external reverse proxy)${NC}"
+fi
 
 echo -e "${GREEN}Deployment completed successfully!${NC}"
 echo ""

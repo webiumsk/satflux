@@ -19,26 +19,26 @@ V súbore `.env.production` nastavte nasledujúce premenné:
 APP_DOMAIN=vassa-domena.sk
 ACME_EMAIL=vas@email.sk
 
-# Porty (ak máte na 80/443 Passbolt, nechajte tieto alebo zmeňte)
+# Porty
 STANDALONE_HTTP_PORT=8080
 STANDALONE_HTTPS_PORT=8443
+
+# Automatická voľba standalone režimu pre deploy.sh
+COMPOSE_FILE=docker-compose.standalone.yml
 ```
 
-### 2. Spustenie aplikácie
+### 2. Trvalé nastavenie (Sticky configuration)
 
-Pre prvé spustenie alebo aktualizáciu použite:
-
-```bash
-COMPOSE_FILE=docker-compose.standalone.yml ./deploy.sh
-```
-
-### 3. Konfigurácia zálohovania
-
-Aby fungovali skripty `backup.sh` a `restore.sh` automaticky so standalone verziou:
+Ak nechcete upravovať `.env.production`, môžete použiť konfiguračný súbor:
 
 ```bash
+ln -sf deploy.config.standalone.sh deploy.config.sh
 ln -sf backup.config.standalone.sh backup.config.sh
 ```
+
+Po tomto prelinkovaní bude stačiť spustiť `./deploy.sh` a automaticky sa použije standalone verzia.
+
+### 3. Spustenie aplikácie
 
 ## Troubleshooting
 
