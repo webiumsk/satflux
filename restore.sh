@@ -24,6 +24,11 @@ REDIS_CONTAINER="${REDIS_CONTAINER:-satflux_redis_prod}"
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 
 # Get database credentials from environment
+if [ -f ".env" ]; then
+    DB_DATABASE=$(grep "^DB_DATABASE=" .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+    DB_USERNAME=$(grep "^DB_USERNAME=" .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+fi
+
 DB_NAME="${DB_DATABASE:-satflux.io}"
 DB_USER="${DB_USERNAME:-satflux.io}"
 

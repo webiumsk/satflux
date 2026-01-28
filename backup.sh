@@ -67,10 +67,10 @@ BACKUP_ENV="${BACKUP_ENV:-true}"
 if [ -f ".env" ]; then
     # Simple approach: read values directly
     if grep -q "^DB_DATABASE=" .env; then
-        DB_DATABASE=$(grep "^DB_DATABASE=" .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
+        DB_DATABASE=$(grep "^DB_DATABASE=" .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
     fi
     if grep -q "^DB_USERNAME=" .env; then
-        DB_USERNAME=$(grep "^DB_USERNAME=" .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
+        DB_USERNAME=$(grep "^DB_USERNAME=" .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
     fi
 fi
 
