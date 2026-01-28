@@ -12,8 +12,8 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-COMPOSE_FILE="docker-compose.prod.yml"
-PROJECT_NAME="satflux_prod"
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
+PROJECT_NAME="${PROJECT_NAME:-satflux_prod}"
 PHP_SERVICE="php"  # Service name in docker-compose.prod.yml
 PHP_CONTAINER="satflux_php_prod"  # Container name (from container_name in docker-compose.prod.yml)
 
