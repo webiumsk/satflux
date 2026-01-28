@@ -84,16 +84,12 @@
               <label for="product-price-type" class="block text-sm font-medium text-gray-300 mb-1">
                 Price Type
               </label>
-              <select
+              <Select
                 id="product-price-type"
                 v-model="localProduct.priceType"
-                class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all appearance-none"
-              >
-                <option value="Fixed">Fixed</option>
-                <option value="Minimum">Minimum</option>
-                <option value="Topup">Any amount</option>
-                <option value="Free">Free</option>
-              </select>
+                :options="priceTypeOptions"
+                placeholder="Select Price Type"
+              />
             </div>
 
             <div v-if="localProduct.priceType !== 'Free' && localProduct.priceType !== 'Topup'">
@@ -313,6 +309,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
 import api from '../../services/api';
+import Select from '../ui/Select.vue';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -330,6 +327,13 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const selectedFile = ref<File | null>(null);
 const imagePreview = ref<string | null>(null);
 const uploading = ref(false);
+
+const priceTypeOptions = [
+  { label: 'Fixed', value: 'Fixed' },
+  { label: 'Minimum', value: 'Minimum' },
+  { label: 'Any amount', value: 'Topup' },
+  { label: 'Free', value: 'Free' },
+];
 
 const editingProduct = computed(() => props.product !== null);
 

@@ -67,28 +67,23 @@
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label for="timezone" class="block text-sm font-medium text-gray-300 mb-1">{{ t('create_store.timezone') }}</label>
-                    <select
+                    <Select
                       id="timezone"
                       v-model="form.timezone"
-                      required
-                      class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                    >
-                      <option v-for="tz in timezones" :key="tz" :value="tz">{{ tz }}</option>
-                    </select>
+                      :options="timezoneOptions"
+                      placeholder="Select timezone"
+                    />
                   </div>
                   <div>
                     <label for="preferred_exchange" class="block text-sm font-medium text-gray-300 mb-1">
                       {{ t('create_store.preferred_price_source') }}
                     </label>
-                    <select
+                    <Select
                       id="preferred_exchange"
                       v-model="form.preferred_exchange"
-                      class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                    >
-                      <option v-for="exchange in exchanges" :key="exchange.value" :value="exchange.value">
-                        {{ exchange.label }}
-                      </option>
-                    </select>
+                      :options="exchanges"
+                      placeholder="Select preferred exchange"
+                    />
                   </div>
               </div>
               <p class="text-xs text-gray-500">{{ t('create_store.price_source_description') }}</p>
@@ -271,12 +266,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
 import { currencies } from '../../data/currencies';
 import { exchanges } from '../../data/exchanges';
+import Select from '../../components/ui/Select.vue';
 
 const { t } = useI18n();
 
@@ -349,14 +345,14 @@ const timezones = [
   'Pacific/Honolulu',
 ];
 
-const currencyOptions = computed(() => currencies.map(c => `${c.code} - ${c.name}`));
+const timezoneOptions = timezones.map(tz => ({ label: tz, value: tz }));
 
 async function handleSubmit() {
   error.value = '';
   loading.value = true;
 
   try {
-    const store = await storesStore.createStore(form.value);
+    const store = await storesStore.createStore(form.value as any);
     router.push(`/stores/${store.id}`);
   } catch (err: any) {
     error.value = err.response?.data?.message || t('create_store.failed_to_create');

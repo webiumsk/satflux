@@ -8,7 +8,7 @@
   </div>
 
   <div v-else class="space-y-6">
-    <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
+    <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700">
       <div class="px-6 py-5 border-b border-gray-700 bg-gray-800/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
            <h1 class="text-2xl font-bold text-white">{{ t('stores.invoices') }}</h1>
@@ -45,19 +45,13 @@
             <label for="invoice-status-filter" class="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider">
               {{ t('stores.status') }}
             </label>
-            <select
+            <Select
               id="invoice-status-filter"
               v-model="filters.status"
+              :options="statusOptions"
               @change="fetchInvoices"
-              class="block w-full border border-gray-600 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-gray-700 text-white"
-            >
-              <option value="">{{ t('stores.all_statuses') }}</option>
-              <option value="New">{{ t('stores.new') }}</option>
-              <option value="Paid">{{ t('stores.paid_partially') }}</option>
-              <option value="Settled">{{ t('stores.settled') }}</option>
-              <option value="Invalid">{{ t('stores.invalid') }}</option>
-              <option value="Expired">{{ t('stores.expired') }}</option>
-            </select>
+              :placeholder="t('stores.all_statuses')"
+            />
           </div>
 
           <!-- Date From -->
@@ -65,12 +59,11 @@
             <label for="invoice-date-from" class="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider">
               {{ t('stores.from_date') }}
             </label>
-            <input
+            <DatePicker
               id="invoice-date-from"
               v-model="filters.date_from"
-              type="date"
               @change="fetchInvoices"
-              class="block w-full border border-gray-600 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-gray-700 text-white placeholder-gray-500"
+              :placeholder="t('stores.from_date')"
             />
           </div>
 
@@ -79,12 +72,12 @@
             <label for="invoice-date-to" class="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider">
               {{ t('stores.to_date') }}
             </label>
-            <input
+            <DatePicker
               id="invoice-date-to"
               v-model="filters.date_to"
-              type="date"
               @change="fetchInvoices"
-             class="block w-full border border-gray-600 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-gray-700 text-white placeholder-gray-500"
+              :placeholder="t('stores.to_date')"
+              position="right"
             />
           </div>
           
@@ -223,6 +216,8 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
+import DatePicker from '../ui/DatePicker.vue';
+import Select from '../ui/Select.vue';
 
 const { t } = useI18n();
 
@@ -241,6 +236,15 @@ const exportSuccess = ref('');
 const exportError = ref('');
 
 const expandedInvoiceId = ref<string | null>(null);
+
+const statusOptions = computed(() => [
+  { label: t('stores.all_statuses'), value: '' },
+  { label: t('stores.new'), value: 'New' },
+  { label: t('stores.paid_partially'), value: 'Paid' },
+  { label: t('stores.settled'), value: 'Settled' },
+  { label: t('stores.invalid'), value: 'Invalid' },
+  { label: t('stores.expired'), value: 'Expired' },
+]);
 
 const filters = ref({
   status: '',

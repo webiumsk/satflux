@@ -30,15 +30,12 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">{{ t('admin.faq.items.status') }}</label>
-          <select
+          <Select
             v-model="publishedFilter"
-            class="block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700/50 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            :options="publishOptions"
+            :placeholder="t('admin.faq.items.all')"
             @change="loadItems"
-          >
-            <option value="">{{ t('admin.faq.items.all') }}</option>
-            <option value="true">{{ t('admin.faq.items.published') }}</option>
-            <option value="false">{{ t('admin.faq.items.unpublished') }}</option>
-          </select>
+          />
         </div>
       </div>
     </div>
@@ -106,17 +103,22 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { adminFaqApi } from '../../../services/api';
+import Select from '../../../components/ui/Select.vue';
 
-const router = useRouter();
 const { t } = useI18n();
 
 const loading = ref(false);
 const items = ref<any[]>([]);
 const searchQuery = ref('');
 const publishedFilter = ref('');
+
+const publishOptions = [
+  { label: t('admin.faq.items.all'), value: '' },
+  { label: t('admin.faq.items.published'), value: 'true' },
+  { label: t('admin.faq.items.unpublished'), value: 'false' },
+];
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 

@@ -43,15 +43,11 @@
         <label class="block text-sm font-medium text-gray-300 mb-2">
           {{ t('admin.faq.items.category') }}
         </label>
-        <select
+        <Select
           v-model="form.category_id"
-          class="block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700/50 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <option :value="null">{{ t('admin.faq.items.no_category') }}</option>
-          <option v-for="cat in categories" :key="cat.id" :value="cat.id">
-            {{ cat.name?.en || cat.name }}
-          </option>
-        </select>
+          :options="categoryOptions"
+          :placeholder="t('admin.faq.items.no_category')"
+        />
       </div>
 
       <!-- Order -->
@@ -106,6 +102,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { adminFaqApi } from '../../../services/api';
 import MultilanguageEditor from '../../../components/admin/MultilanguageEditor.vue';
+import Select from '../../../components/ui/Select.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -114,6 +111,14 @@ const { t } = useI18n();
 const isEdit = computed(() => !!route.params.id);
 const saving = ref(false);
 const categories = ref<any[]>([]);
+
+const categoryOptions = computed(() => [
+  { label: t('admin.faq.items.no_category'), value: null },
+  ...categories.value.map(cat => ({ 
+    label: cat.name?.en || cat.name, 
+    value: cat.id 
+  }))
+]);
 
 const form = ref({
   slug: '',

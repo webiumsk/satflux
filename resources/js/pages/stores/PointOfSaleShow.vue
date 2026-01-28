@@ -375,16 +375,12 @@
                             >
                               Request customer data
                             </label>
-                            <select
+                            <Select
                               id="requestCustomerData"
                               v-model="form.requestCustomerData"
-                              class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all appearance-none"
-                            >
-                              <option value="">Do not request</option>
-                              <option value="email">Email only</option>
-                              <option value="name">Name only</option>
-                              <option value="email_name">Email and Name</option>
-                            </select>
+                              :options="customerDataOptions"
+                              placeholder="Do not request"
+                            />
                           </div>
 
                           <!-- Currency -->
@@ -752,15 +748,12 @@
                               class="block text-sm font-medium text-gray-300 mb-1"
                               >Redirect Automatically</label
                             >
-                            <select
+                            <Select
                               id="redirectAutomatically"
                               v-model="form.redirectAutomatically"
-                              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            >
-                              <option value="">Use Store Settings</option>
-                              <option value="true">Yes</option>
-                              <option value="false">No</option>
-                            </select>
+                              :options="redirectOptions"
+                              placeholder="Use Store Settings"
+                            />
                           </div>
                         </div>
                       </div>
@@ -952,10 +945,10 @@ import { useAppsStore } from "../../store/apps";
 import ProductEditDrawer from "../../components/stores/ProductEditDrawer.vue";
 import PointOfSaleProductsEditor from "../../components/stores/PointOfSaleProductsEditor.vue";
 import AppShowLayout from "../../components/stores/AppShowLayout.vue";
+import Select from "../../components/ui/Select.vue";
 import AppShowHeader from "../../components/stores/AppShowHeader.vue";
 import DeleteAppModal from "../../components/stores/DeleteAppModal.vue";
 import { currencies } from "../../data/currencies";
-
 const route = useRoute();
 const router = useRouter();
 const appsStore = useAppsStore();
@@ -974,6 +967,19 @@ const displayedError = computed(() => {
   }
   return error.value;
 });
+
+const customerDataOptions = [
+  { label: 'Do not request', value: '' },
+  { label: 'Email only', value: 'email' },
+  { label: 'Name only', value: 'name' },
+  { label: 'Email and Name', value: 'email_name' },
+];
+
+const redirectOptions = [
+  { label: 'Use Store Settings', value: '' },
+  { label: 'Yes', value: 'true' },
+  { label: 'No', value: 'false' },
+];
 
 const showDeleteModal = ref(false);
 const deleteError = ref("");
@@ -1035,7 +1041,7 @@ const shouldShowProductsEditor = computed(() => {
 const btcpayAppUrl = computed(() => {
   const app = layoutRef.value?.app;
   if (!app) return "";
-  const baseUrl = import.meta.env.VITE_BTCPAY_BASE_URL || "https://satflux.org";
+  const baseUrl = (import.meta as any).env.VITE_BTCPAY_BASE_URL || "https://satflux.org";
   let id =
     app.btcpay_app_id ||
     (app.config && app.config.id) ||

@@ -19,15 +19,12 @@
                 </div>
                 <!-- Status Filter -->
                 <div>
-                    <select
+                    <Select
                         v-model="statusFilter"
-                        class="block w-full sm:w-auto rounded-lg border border-gray-600 bg-gray-700/50 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2"
-                    >
-                        <option value="">All Statuses</option>
-                        <option value="needs_support">Needs Support</option>
-                        <option value="pending">Pending</option>
-                        <option value="connected">Connected</option>
-                    </select>
+                        :options="statusOptions"
+                        placeholder="All Statuses"
+                        class="min-w-[160px]"
+                    />
                 </div>
             </div>
         </div>
@@ -200,6 +197,7 @@
 import { ref, onMounted, computed } from 'vue';
 import api from '../../services/api';
 import RevealSecretModal from '../../components/support/RevealSecretModal.vue';
+import Select from '../../components/ui/Select.vue';
 
 const loading = ref(true);
 const error = ref<string | null>(null);
@@ -208,6 +206,13 @@ const showRevealModal = ref(false);
 const selectedConnection = ref<any>(null);
 const searchQuery = ref('');
 const statusFilter = ref('');
+
+const statusOptions = [
+    { label: 'All Statuses', value: '' },
+    { label: 'Needs Support', value: 'needs_support' },
+    { label: 'Pending', value: 'pending' },
+    { label: 'Connected', value: 'connected' },
+];
 
 async function loadConnections() {
     loading.value = true;

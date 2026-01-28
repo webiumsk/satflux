@@ -124,16 +124,12 @@
               <label for="currency" class="block text-sm font-medium text-gray-300 mb-1">
                 Currency
               </label>
-              <select
+              <Select
                 id="currency"
                 v-model="form.currency"
-                class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all appearance-none"
-              >
-                <option value="">Use store default ({{ store?.default_currency || 'EUR' }})</option>
-                <option v-for="currency in currencies" :key="currency.code" :value="currency.code">
-                  {{ currency.code }} - {{ currency.name }}
-                </option>
-              </select>
+                :options="currencyOptions"
+                :placeholder="`Use store default (${store?.default_currency || 'EUR'})`"
+              />
             </div>
           </div>
 
@@ -142,51 +138,25 @@
               <label for="startDate" class="block text-sm font-medium text-gray-300 mb-1">
                 Start date
               </label>
-              <div class="relative">
-                <input
-                  id="startDate"
-                  v-model="form.startDate"
-                  type="datetime-local"
-                  class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark-calendar-icon"
-                />
-                 <button
-                  v-if="form.startDate"
-                  type="button"
-                  @click="form.startDate = ''"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
-                  title="Clear date"
-                >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+              <DatePicker
+                id="startDate"
+                v-model="form.startDate"
+                type="datetime"
+                placeholder="Select start date..."
+              />
             </div>
 
             <div>
               <label for="endDate" class="block text-sm font-medium text-gray-300 mb-1">
                 End date
               </label>
-              <div class="relative">
-                <input
-                  id="endDate"
-                  v-model="form.endDate"
-                  type="datetime-local"
-                  :placeholder="form.endDate ? '' : 'No end date has been set'"
-                  class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark-calendar-icon"
-                />
-                <button
-                  v-if="form.endDate"
-                  type="button"
-                  @click="form.endDate = ''"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
-                  title="Clear date"
-                >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+              <DatePicker
+                id="endDate"
+                v-model="form.endDate"
+                type="datetime"
+                placeholder="No end date set"
+                position="right"
+              />
             </div>          
 
           <!-- Recurring Goal -->
@@ -221,16 +191,11 @@
                              min="1"
                             class="block w-24 px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
-                         <select
+                         <Select
                             v-model="form.resetEveryUnit"
-                            class="block px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        >
-                            <option value="Hour">Hour</option>
-                            <option value="Day">Day</option>
-                            <option value="Week">Week</option>
-                            <option value="Month">Month</option>
-                            <option value="Year">Year</option>
-                        </select>
+                            :options="unitOptions"
+                            class="min-w-[120px]"
+                        />
                      </div>
                 </div>
              </div>
@@ -384,6 +349,8 @@ import { useAppsStore } from '../../store/apps';
 import { currencies } from '../../data/currencies';
 import PerkEditDrawer from '../../components/stores/PerkEditDrawer.vue';
 import AdditionalOptions from '../../components/stores/AdditionalOptions.vue';
+import DatePicker from '../../components/ui/DatePicker.vue';
+import Select from '../../components/ui/Select.vue';
 
 const props = defineProps<{
   app: any;
@@ -440,6 +407,19 @@ const error = ref('');
 const success = ref('');
 const appsStore = useAppsStore();
 const router = useRouter();
+
+const currencyOptions = computed(() => [
+  { label: `Use store default (${props.store?.default_currency || 'EUR'})`, value: '' },
+  ...currencies.map(c => ({ label: `${c.code} - ${c.name}`, value: c.code }))
+]);
+
+const unitOptions = [
+  { label: 'Hour', value: 'Hour' },
+  { label: 'Day', value: 'Day' },
+  { label: 'Week', value: 'Week' },
+  { label: 'Month', value: 'Month' },
+  { label: 'Year', value: 'Year' },
+];
 
 const currentPerk = computed(() => {
   if (editingPerkIndex.value !== null && perks.value[editingPerkIndex.value]) {
