@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-6">
     <!-- Contributions Section -->
-    <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
+    <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700">
       <div class="p-6 md:p-8 space-y-6">
         <h2 class="text-xl font-bold text-white flex items-center gap-2">
           <span>Contributions</span>
@@ -78,7 +78,7 @@
     </div>
 
     <!-- Crowdfund Behavior Section -->
-    <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
+    <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700">
       <div class="p-6 md:p-8 space-y-4">
         <h2 class="text-xl font-bold text-white">Crowdfund Behavior</h2>
         
@@ -102,7 +102,7 @@
     </div>
 
     <!-- Checkout Section -->
-    <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
+    <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700">
       <div class="p-6 md:p-8 space-y-4">
         <h2 class="text-xl font-bold text-white">Checkout</h2>
         
