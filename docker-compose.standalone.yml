@@ -4,7 +4,7 @@ services:
     container_name: satflux_caddy_standalone
     restart: unless-stopped
     ports:
-      - "${STANDALONE_HTTP_PORT:-8080}:80"
+      - "${STANDALONE_HTTP_PORT:-8090}:80"
       - "${STANDALONE_HTTPS_PORT:-8443}:443"
     volumes:
       - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile

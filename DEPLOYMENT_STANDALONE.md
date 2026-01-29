@@ -20,7 +20,7 @@ APP_DOMAIN=vassa-domena.sk
 ACME_EMAIL=vas@email.sk
 
 # Porty
-STANDALONE_HTTP_PORT=8080
+STANDALONE_HTTP_PORT=8090
 STANDALONE_HTTPS_PORT=8443
 
 # Automatická voľba standalone režimu pre deploy.sh
@@ -39,6 +39,12 @@ ln -sf backup.config.standalone.sh backup.config.sh
 Po tomto prelinkovaní bude stačiť spustiť `./deploy.sh` a automaticky sa použije standalone verzia.
 
 ### 3. Spustenie aplikácie
+
+Pre spustenie alebo aktualizáciu stačí spustiť:
+```bash
+./deploy.sh
+```
+(Ak ste v kroku 2 nastavili `deploy.config.sh`, skript automaticky použije standalone verziu.)
 
 ## Troubleshooting
 
