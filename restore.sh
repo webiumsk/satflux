@@ -24,13 +24,24 @@ REDIS_CONTAINER="${REDIS_CONTAINER:-satflux_redis_prod}"
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 
 # Get database credentials from environment
-if [ -f ".env" ]; then
-    DB_DATABASE=$(grep "^DB_DATABASE=" .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
-    DB_USERNAME=$(grep "^DB_USERNAME=" .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+# Try to load from .env.production first, then .env
+if [ -f ".env.production" ]; then
+    ENV_FILE=".env.production"
+elif [ -f ".env" ]; then
+    ENV_FILE=".env"
 fi
 
-DB_NAME="${DB_DATABASE:-satflux.io}"
-DB_USER="${DB_USERNAME:-satflux.io}"
+if [ -n "$ENV_FILE" ]; then
+    if grep -q "^DB_DATABASE=" "$ENV_FILE"; then
+        DB_DATABASE=$(grep "^DB_DATABASE=" "$ENV_FILE" | cut -d '=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+    fi
+    if grep -q "^DB_USERNAME=" "$ENV_FILE"; then
+        DB_USERNAME=$(grep "^DB_USERNAME=" "$ENV_FILE" | cut -d '=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+    fi
+fi
+
+DB_NAME="${DB_DATABASE:-satflux}"
+DB_USER="${DB_USERNAME:-satflux}"
 
 # Detect docker compose command
 if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
@@ -211,25 +222,9 @@ verify_backup() {
 restore_database() {
     log_info "Restoring database..."
     
-    if ! $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" ps 2>/dev/null | grep -q "$POSTGRES_CONTAINER.*Up"; then
-        # Try alternative container names
-        if [ "$POSTGRES_CONTAINER" = "satflux_postgres_prod" ] || [ "$POSTGRES_CONTAINER" = "satflux.io_postgres_prod" ]; then
-            if $DOCKER_COMPOSE_CMD -f "docker-compose.yml" ps 2>/dev/null | grep -q "satflux.io_postgres.*Up"; then
-                POSTGRES_CONTAINER="satflux.io_postgres"
-                COMPOSE_FILE="docker-compose.yml"
-            fi
-        elif [ "$POSTGRES_CONTAINER" = "satflux.io_postgres" ]; then
-             if $DOCKER_COMPOSE_CMD -f "docker-compose.prod.yml" ps 2>/dev/null | grep -q "satflux_postgres_prod.*Up"; then
-                POSTGRES_CONTAINER="satflux_postgres_prod"
-                COMPOSE_FILE="docker-compose.prod.yml"
-            fi
-        fi
-        
-        # Check again
-        if ! $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" ps 2>/dev/null | grep -q "$POSTGRES_CONTAINER.*Up" && ! docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^${POSTGRES_CONTAINER}$"; then
-            log_error "PostgreSQL container is not running!"
-            return 1
-        fi
+    if ! docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^${POSTGRES_CONTAINER}$"; then
+        log_error "PostgreSQL container is not running!"
+        return 1
     fi
     
     # Ask for confirmation
