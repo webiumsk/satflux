@@ -235,7 +235,7 @@ restore_database() {
     
     # Restore database
     echo -e "${YELLOW}Restoring database from $DB_FILE...${NC}"
-    gunzip -c "$DB_PATH" | $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" exec -T "$POSTGRES_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" > /dev/null 2>&1
+    gunzip -c "$DB_PATH" | docker exec -i "$POSTGRES_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME"
     
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✓ Database restored successfully${NC}"
@@ -327,7 +327,7 @@ restore_redis() {
     
     # Stop Redis (gracefully)
     echo -e "${YELLOW}Stopping Redis container...${NC}"
-    $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" stop "$REDIS_CONTAINER" || true
+    docker stop "$REDIS_CONTAINER" || true
     
     # Extract Redis dump
     TMP_RDB=$(mktemp)
@@ -335,19 +335,19 @@ restore_redis() {
     
     # Copy RDB file to container
     echo -e "${YELLOW}Copying Redis dump to container...${NC}"
-    $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" cp "$TMP_RDB" "$REDIS_CONTAINER:/data/dump.rdb" || {
+    docker cp "$TMP_RDB" "$REDIS_CONTAINER:/data/dump.rdb" || {
         log_error "Failed to copy Redis dump to container"
         rm -f "$TMP_RDB"
-        $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" start "$REDIS_CONTAINER" || true
+        docker start "$REDIS_CONTAINER" || true
         return 1
     }
     
     # Set correct permissions
-    $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" exec --user root "$REDIS_CONTAINER" chown redis:redis /data/dump.rdb 2>/dev/null || true
+    docker exec --user root "$REDIS_CONTAINER" chown redis:redis /data/dump.rdb 2>/dev/null || true
     
     # Start Redis
     echo -e "${YELLOW}Starting Redis container...${NC}"
-    $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" start "$REDIS_CONTAINER"
+    docker start "$REDIS_CONTAINER"
     
     # Wait for Redis to be ready
     sleep 2
