@@ -17,12 +17,17 @@ if [ -f "deploy.config.sh" ]; then
 fi
 
 # Configuration
+ENV_FILE=".env.production"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
 PROJECT_NAME="${PROJECT_NAME:-satflux_prod}"
 
+# Sanitize variables (remove CR and extra whitespace)
+COMPOSE_FILE=$(echo "$COMPOSE_FILE" | tr -d '\r' | xargs)
+PROJECT_NAME=$(echo "$PROJECT_NAME" | tr -d '\r' | xargs)
+
 # Try to detect COMPOSE_FILE from .env.production if not set
-if [ "$COMPOSE_FILE" = "docker-compose.prod.yml" ] && [ -f .env.production ]; then
-    ENV_COMPOSE=$(grep "^COMPOSE_FILE=" .env.production | cut -d '=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+if [ "$COMPOSE_FILE" = "docker-compose.prod.yml" ] && [ -f "$ENV_FILE" ]; then
+    ENV_COMPOSE=$(grep "^COMPOSE_FILE=" "$ENV_FILE" | cut -d '=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
     if [ -n "$ENV_COMPOSE" ]; then
         COMPOSE_FILE="$ENV_COMPOSE"
     fi
@@ -30,6 +35,9 @@ fi
 
 PHP_SERVICE="php"  # Service name
 PHP_CONTAINER="${PHP_CONTAINER:-satflux_php_prod}"
+
+# Define the base docker compose command
+DC_CMD="docker compose -f $COMPOSE_FILE --env-file $ENV_FILE --project-name $PROJECT_NAME"
 
 echo -e "${GREEN}Starting satflux deployment...${NC}"
 
@@ -80,9 +88,9 @@ fi
 
 echo -e "${GREEN}✓ Git pull completed${NC}"
 
-# Step 2: Ensure containers are running
-echo -e "${YELLOW}Step 2: Ensuring containers are running...${NC}"
-docker compose -f "$COMPOSE_FILE" --project-name "$PROJECT_NAME" up -d
+# Step 2: Ensuring containers are running
+echo -e "${YELLOW}Step 2: Ensuring containers are running ($COMPOSE_FILE)...${NC}"
+$DC_CMD up -d
 
 # Wait for services to be healthy
 echo -e "${YELLOW}Waiting for services to be healthy...${NC}"
@@ -100,7 +108,7 @@ for i in {1..30}; do
     fi
     if [ $i -eq 30 ]; then
         echo -e "${RED}✗ PHP container failed to start!${NC}"
-        docker compose -f "$COMPOSE_FILE" --project-name "$PROJECT_NAME" ps
+        $DC_CMD ps
         docker logs "$PHP_CONTAINER" 2>&1 | tail -20
         exit 1
     fi
@@ -149,18 +157,18 @@ RESTART_SERVICES="php nginx"
 if grep -q "caddy:" "$COMPOSE_FILE"; then
     RESTART_SERVICES="$RESTART_SERVICES caddy"
 fi
-docker compose -f "$COMPOSE_FILE" --project-name "$PROJECT_NAME" restart $RESTART_SERVICES
+$DC_CMD restart $RESTART_SERVICES
 
 # Step 8: Verify deployment
 echo -e "${YELLOW}Step 8: Verifying deployment...${NC}"
 sleep 3
 
 # Check if containers are running
-if docker compose -f "$COMPOSE_FILE" --project-name "$PROJECT_NAME" ps | grep -q "Up"; then
+if $DC_CMD ps | grep -q "Up"; then
     echo -e "${GREEN}✓ Containers are running${NC}"
 else
     echo -e "${RED}✗ Some containers are not running!${NC}"
-    docker compose -f "$COMPOSE_FILE" --project-name "$PROJECT_NAME" ps
+    $DC_CMD ps
     exit 1
 fi
 
