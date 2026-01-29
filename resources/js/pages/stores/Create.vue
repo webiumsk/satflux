@@ -2,7 +2,7 @@
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <h1 class="text-3xl font-bold text-white mb-8 text-center">{{ t('create_store.title') }}</h1>
 
-      <div class="bg-gray-800 shadow-2xl rounded-2xl border border-gray-700 overflow-hidden">
+      <div class="bg-gray-800 shadow-2xl rounded-2xl border border-gray-700">
         <!-- Step Indicator -->
         <div class="bg-gray-900/50 border-b border-gray-700 px-8 py-6">
           <div class="flex items-center justify-between relative">
