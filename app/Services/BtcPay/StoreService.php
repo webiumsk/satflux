@@ -71,26 +71,21 @@ class StoreService
      */
     public function listStores(?string $userApiKey = null): array
     {
-        $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
-        $cacheKey = "btcpay:stores:list:{$apiKeyHash}";
+        $originalApiKey = null;
+        if ($userApiKey) {
+            // Temporarily use user-level API key
+            $originalApiKey = $this->client->getApiKey();
+            $this->client->setApiKey($userApiKey);
+        }
 
-        return Cache::remember($cacheKey, 300, function () use ($userApiKey) {
-            $originalApiKey = null;
-            if ($userApiKey) {
-                // Temporarily use user-level API key
-                $originalApiKey = $this->client->getApiKey();
-                $this->client->setApiKey($userApiKey);
+        try {
+            return $this->client->get('/api/v1/stores');
+        } finally {
+            // Restore original API key if we changed it
+            if ($userApiKey && $originalApiKey) {
+                $this->client->setApiKey($originalApiKey);
             }
-
-            try {
-                return $this->client->get('/api/v1/stores');
-            } finally {
-                // Restore original API key if we changed it
-                if ($userApiKey && $originalApiKey) {
-                    $this->client->setApiKey($originalApiKey);
-                }
-            }
-        });
+        }
     }
 
     /**

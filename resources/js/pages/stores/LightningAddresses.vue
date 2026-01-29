@@ -123,7 +123,7 @@
                 <svg class="h-8 w-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
              </div>
             <h3 class="text-lg font-medium text-white mb-2">No lightning addresses yet</h3>
-            <p class="text-gray-400 mb-6 max-w-sm mx-auto">Create a Lightning Address to receive payments easily via a reusable address format (username@domain.com).</p>
+            <p class="text-gray-400 mb-6 max-w-sm mx-auto">Create a Lightning Address to receive payments easily via a reusable address format your-username@satflux.org.</p>
             <button
               @click="openAddForm"
               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg shadow-indigo-600/20 transition-all hover:scale-105"
