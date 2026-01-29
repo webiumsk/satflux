@@ -3,7 +3,7 @@
     email {$ACME_EMAIL}
 }
 
-{$APP_DOMAIN} {
+:80 {
     # Proxy all traffic to the nginx container
     reverse_proxy nginx:80
 
@@ -11,7 +11,4 @@
     log {
         output file /var/log/caddy/access.log
     }
-
-    # Security headers are already handled by Nginx in prod.conf, 
-    # but we can add more here if needed.
 }
