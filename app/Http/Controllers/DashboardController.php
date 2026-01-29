@@ -46,48 +46,43 @@ class DashboardController extends Controller
             ]);
         }
 
-        // Only return stores that exist in BOTH local DB AND BTCPay Server
-        // Store must be in local DB (metadata) AND merchant must have access via BTCPay API
-        if (empty($btcpayStores)) {
-            // If no BTCPay stores returned (no API key or API failed), return empty array
-            // Store must exist on BTCPay server to be visible
-            $stores = collect([]);
-        } else {
-            // Filter local stores to only include those that exist in BTCPay API response
-            $btcpayStoreIds = collect($btcpayStores)->map(function ($bs) {
-                return $bs['id'] ?? $bs['storeId'] ?? null;
-            })->filter()->values()->toArray();
+        // Cache the entire dashboard data (stores + revenue) per user
+        $cacheKey = "user_{$user->id}_dashboard_data";
 
-            $stores = $localStores->filter(function ($localStore) use ($btcpayStoreIds) {
-                // Only include if local store's btcpay_store_id exists in BTCPay API response
-                return in_array($localStore->btcpay_store_id, $btcpayStoreIds);
-            })->map(function ($localStore) use ($btcpayStores) {
-                // Find matching BTCPay store data
-                $btcpayStore = collect($btcpayStores)->first(function ($bs) use ($localStore) {
-                    $btcpayStoreId = $bs['id'] ?? $bs['storeId'] ?? null;
-                    return $btcpayStoreId === $localStore->btcpay_store_id;
-                });
+        return Cache::remember($cacheKey, 600, function () use ($user, $localStores, $btcpayStores) {
+            // Only return stores that exist in BOTH local DB AND BTCPay Server
+            if (empty($btcpayStores)) {
+                $stores = collect([]);
+            } else {
+                $btcpayStoreIds = collect($btcpayStores)->map(function ($bs) {
+                    return $bs['id'] ?? $bs['storeId'] ?? null;
+                })->filter()->values()->toArray();
 
-                return [
-                    'id' => $localStore->id,
-                    'name' => $btcpayStore['name'] ?? $localStore->name,
-                    'wallet_type' => $localStore->wallet_type,
-                    'created_at' => $localStore->created_at ?? ($btcpayStore['created'] ?? now()),
-                ];
-            })->values();
-        }
+                $stores = $localStores->filter(function ($localStore) use ($btcpayStoreIds) {
+                    return in_array($localStore->btcpay_store_id, $btcpayStoreIds);
+                })->map(function ($localStore) use ($btcpayStores) {
+                    $btcpayStore = collect($btcpayStores)->first(function ($bs) use ($localStore) {
+                        $btcpayStoreId = $bs['id'] ?? $bs['storeId'] ?? null;
+                        return $btcpayStoreId === $localStore->btcpay_store_id;
+                    });
 
-        // Calculate total revenue from all invoices across all stores
-        $totalRevenue = 0;
-        $revenueByCurrency = [];
+                    return [
+                        'id' => $localStore->id,
+                        'name' => $btcpayStore['name'] ?? $localStore->name,
+                        'wallet_type' => $localStore->wallet_type,
+                        'created_at' => $localStore->created_at ?? ($btcpayStore['created'] ?? now()),
+                    ];
+                })->values();
+            }
 
-        if ($stores->isNotEmpty()) {
-            try {
-                if ($user->btcpay_api_key) {
+            $totalRevenue = 0;
+            $revenueByCurrency = [];
+
+            if ($stores->isNotEmpty() && $user->btcpay_api_key) {
+                try {
                     $invoiceService = app(\App\Services\BtcPay\InvoiceService::class);
                     foreach ($stores as $store) {
                         try {
-                            // Get store ID from local store's btcpay_store_id
                             $localStore = Store::find($store['id']);
                             if ($localStore && $localStore->btcpay_store_id) {
                                 $invoices = $invoiceService->listInvoices(
@@ -96,20 +91,17 @@ class DashboardController extends Controller
                                     userApiKey: $user->btcpay_api_key
                                 );
 
-                                // Sum up paid invoices (status: Paid, Complete, or Settled)
                                 foreach ($invoices as $invoice) {
                                     $status = strtolower($invoice['status'] ?? '');
                                     if (in_array($status, ['paid', 'complete', 'settled'])) {
                                         $amount = floatval($invoice['amount'] ?? 0);
                                         $currency = strtoupper($invoice['currency'] ?? 'BTC');
 
-                                        // We sum up BTC/SATS for the dashboard 'sats' total
                                         if ($currency === 'BTC') {
                                             $totalRevenue += round($amount * 100000000);
                                         } elseif ($currency === 'SATS') {
                                             $totalRevenue += round($amount);
                                         } else {
-                                            // Sum up other currencies (EUR, USD, etc.)
                                             if (!isset($revenueByCurrency[$currency])) {
                                                 $revenueByCurrency[$currency] = 0;
                                             }
@@ -119,37 +111,35 @@ class DashboardController extends Controller
                                 }
                             }
                         } catch (\Exception $e) {
-                            // Skip this store if invoice fetch fails
                             Log::debug('Failed to fetch invoices for store on dashboard', [
                                 'store_id' => $store['id'] ?? null,
                                 'error' => $e->getMessage(),
                             ]);
                         }
                     }
+                } catch (\Exception $e) {
+                    Log::warning('Failed to calculate total revenue on dashboard', [
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
-            } catch (\Exception $e) {
-                Log::warning('Failed to calculate total revenue on dashboard', [
-                    'user_id' => $user->id,
-                    'error' => $e->getMessage(),
-                ]);
             }
-        }
 
-        // Format other currencies as a simple list of objects
-        $formattedBreakdown = [];
-        foreach ($revenueByCurrency as $currency => $amount) {
-            $formattedBreakdown[] = [
-                'currency' => $currency,
-                'amount' => $amount,
+            $formattedBreakdown = [];
+            foreach ($revenueByCurrency as $currency => $amount) {
+                $formattedBreakdown[] = [
+                    'currency' => $currency,
+                    'amount' => $amount,
+                ];
+            }
+
+            return [
+                'stores' => $stores,
+                'store_count' => $stores->count(),
+                'total_revenue' => round($totalRevenue),
+                'revenue_breakdown' => $formattedBreakdown,
             ];
-        }
-
-        return response()->json([
-            'stores' => $stores,
-            'store_count' => $stores->count(),
-            'total_revenue' => round($totalRevenue), // Round to nearest sat
-            'revenue_breakdown' => $formattedBreakdown,
-        ]);
+        });
     }
 }
 

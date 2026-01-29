@@ -45,7 +45,7 @@ class StoreService
         // Include API key hash in cache key to prevent cross-merchant cache pollution
         $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
         $cacheKey = "btcpay:store:{$storeId}:{$apiKeyHash}";
-        
+
         return Cache::remember($cacheKey, 60, function () use ($storeId, $userApiKey) {
             $originalApiKey = null;
             if ($userApiKey) {
@@ -71,21 +71,26 @@ class StoreService
      */
     public function listStores(?string $userApiKey = null): array
     {
-        $originalApiKey = null;
-        if ($userApiKey) {
-            // Temporarily use user-level API key
-            $originalApiKey = $this->client->getApiKey();
-            $this->client->setApiKey($userApiKey);
-        }
+        $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
+        $cacheKey = "btcpay:stores:list:{$apiKeyHash}";
 
-        try {
-            return $this->client->get('/api/v1/stores');
-        } finally {
-            // Restore original API key if we changed it
-            if ($userApiKey && $originalApiKey) {
-                $this->client->setApiKey($originalApiKey);
+        return Cache::remember($cacheKey, 300, function () use ($userApiKey) {
+            $originalApiKey = null;
+            if ($userApiKey) {
+                // Temporarily use user-level API key
+                $originalApiKey = $this->client->getApiKey();
+                $this->client->setApiKey($userApiKey);
             }
-        }
+
+            try {
+                return $this->client->get('/api/v1/stores');
+            } finally {
+                // Restore original API key if we changed it
+                if ($userApiKey && $originalApiKey) {
+                    $this->client->setApiKey($originalApiKey);
+                }
+            }
+        });
     }
 
     /**
@@ -103,12 +108,12 @@ class StoreService
 
         try {
             $result = $this->client->put("/api/v1/stores/{$storeId}", $data);
-            
+
             // Clear cache for both server and merchant keys (in case both were used)
             $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
             Cache::forget("btcpay:store:{$storeId}:{$apiKeyHash}");
             Cache::forget("btcpay:store:{$storeId}:server"); // Also clear server cache in case it was used
-            
+
             return $result;
         } finally {
             // Restore original API key if we changed it
@@ -138,10 +143,12 @@ class StoreService
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
             // If user is already in store (409 Conflict or error message contains "already"), this is OK
             $errorMessage = strtolower($e->getMessage());
-            if ($e->getCode() === 409 || 
-                str_contains($errorMessage, 'already') || 
+            if (
+                $e->getCode() === 409 ||
+                str_contains($errorMessage, 'already') ||
                 str_contains($errorMessage, 'already added') ||
-                str_contains($errorMessage, 'already exists')) {
+                str_contains($errorMessage, 'already exists')
+            ) {
                 \Illuminate\Support\Facades\Log::info('User already in store, skipping add', [
                     'store_id' => $storeId,
                     'user_id' => $userId,
@@ -213,12 +220,12 @@ class StoreService
             // Delete request to BTCPay - this removes merchant from store
             // Note: This doesn't delete the store itself, just removes merchant access
             $this->client->delete("/api/v1/stores/{$storeId}");
-            
+
             // Clear cache for both server and merchant keys
             $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
             Cache::forget("btcpay:store:{$storeId}:{$apiKeyHash}");
             Cache::forget("btcpay:store:{$storeId}:server");
-            
+
             \Illuminate\Support\Facades\Log::info('Merchant removed from BTCPay store', [
                 'store_id' => $storeId,
                 'api_key_type' => $userApiKey ? 'merchant' : 'server',
