@@ -19,28 +19,24 @@ fi
 
 # Configuration - auto-detect which compose file is being used
 if [ -z "$COMPOSE_FILE" ]; then
-    # Check which containers are actually running (use docker ps for accurate detection)
-    # First check for prod containers (priority in production)
+    # Check which containers are actually running
     if docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^satflux_postgres_prod$"; then
-        # Prod environment with underscore
         COMPOSE_FILE="docker-compose.prod.yml"
         POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux_postgres_prod}"
         REDIS_CONTAINER="${REDIS_CONTAINER:-satflux_redis_prod}"
-    elif docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^satflux.io_postgres_prod$"; then
-        # Prod environment with dot
+    elif docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^uzol21_postgres_prod$"; then
         COMPOSE_FILE="docker-compose.prod.yml"
-        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux.io_postgres_prod}"
-        REDIS_CONTAINER="${REDIS_CONTAINER:-satflux.io_redis_prod}"
+        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-uzol21_postgres_prod}"
+        REDIS_CONTAINER="${REDIS_CONTAINER:-uzol21_redis_prod}"
     elif docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^satflux.io_postgres$"; then
-        # Dev environment (docker-compose.yml) is running
         COMPOSE_FILE="docker-compose.yml"
         POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux.io_postgres}"
         REDIS_CONTAINER="${REDIS_CONTAINER:-satflux.io_redis}"
     else
-        # Default to prod (underscore)
+        # Default to uzol21 prod
         COMPOSE_FILE="docker-compose.prod.yml"
-        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux_postgres_prod}"
-        REDIS_CONTAINER="${REDIS_CONTAINER:-satflux_redis_prod}"
+        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-uzol21_postgres_prod}"
+        REDIS_CONTAINER="${REDIS_CONTAINER:-uzol21_redis_prod}"
     fi
 else
     # COMPOSE_FILE is set, use defaults for container names
@@ -63,19 +59,25 @@ BACKUP_FILES="${BACKUP_FILES:-true}"
 BACKUP_ENV="${BACKUP_ENV:-true}"
 
 # Get database credentials from environment
-# Try to load from .env file if exists
-if [ -f ".env" ]; then
+# Try to load from .env.production first, then .env
+if [ -f ".env.production" ]; then
+    ENV_FILE=".env.production"
+elif [ -f ".env" ]; then
+    ENV_FILE=".env"
+fi
+
+if [ -n "$ENV_FILE" ]; then
     # Simple approach: read values directly
-    if grep -q "^DB_DATABASE=" .env; then
-        DB_DATABASE=$(grep "^DB_DATABASE=" .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+    if grep -q "^DB_DATABASE=" "$ENV_FILE"; then
+        DB_DATABASE=$(grep "^DB_DATABASE=" "$ENV_FILE" | cut -d '=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
     fi
-    if grep -q "^DB_USERNAME=" .env; then
-        DB_USERNAME=$(grep "^DB_USERNAME=" .env | cut -d '=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+    if grep -q "^DB_USERNAME=" "$ENV_FILE"; then
+        DB_USERNAME=$(grep "^DB_USERNAME=" "$ENV_FILE" | cut -d '=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
     fi
 fi
 
-DB_NAME="${DB_DATABASE:-satflux.io}"
-DB_USER="${DB_USERNAME:-satflux.io}"
+DB_NAME="${DB_DATABASE:-satflux}"
+DB_USER="${DB_USERNAME:-satflux}"
 
 # Create backup directory structure
 mkdir -p "$BACKUP_DIR/database"
@@ -153,31 +155,11 @@ else
 fi
 
 # Check if postgres container is running
-# Use docker ps for accurate container name detection (not docker compose ps which shows service names)
 if ! docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^${POSTGRES_CONTAINER}$"; then
-    # Try alternative container name (dev vs prod)
-    # Try alternative container names (dev vs prod, dot vs underscore)
-    if [ "$POSTGRES_CONTAINER" = "satflux_postgres_prod" ] || [ "$POSTGRES_CONTAINER" = "satflux.io_postgres_prod" ]; then
-        POSTGRES_CONTAINER="satflux.io_postgres"
-        COMPOSE_FILE="docker-compose.yml"
-    elif [ "$POSTGRES_CONTAINER" = "satflux.io_postgres" ]; then
-        # Last resort - try both prod naming styles
-        if docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^satflux_postgres_prod$"; then
-            POSTGRES_CONTAINER="satflux_postgres_prod"
-            COMPOSE_FILE="docker-compose.prod.yml"
-        else
-            POSTGRES_CONTAINER="satflux.io_postgres_prod"
-            COMPOSE_FILE="docker-compose.prod.yml"
-        fi
-    fi
-    
-    # Check again with alternative name
-    if ! docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^${POSTGRES_CONTAINER}$"; then
-        log_error "PostgreSQL container is not running!"
-        log_error "Tried: $POSTGRES_CONTAINER"
-        log_error "Available containers: $(docker ps --format '{{.Names}}' | grep postgres | tr '\n' ' ')"
-        exit 1
-    fi
+    log_error "PostgreSQL container is not running!"
+    log_error "Tried: $POSTGRES_CONTAINER"
+    log_error "Available containers: $(docker ps --format '{{.Names}}' | grep postgres | tr '\n' ' ')"
+    exit 1
 fi
 
 # 1. Database Backup
