@@ -49,8 +49,8 @@ class WalletConnectionValidatorTest extends TestCase
 
     public function test_valid_boltz_descriptor(): void
     {
-        // Example Aqua wallet output descriptor
-        $descriptor = 'ct(slip77(...),elsh(wpkh(...))))';
+        // Example Aqua wallet output descriptor (must contain xpub/ypub/zpub for watch-only)
+        $descriptor = 'ct(slip77(xpub6D4BDPcP2GT577Vvch3Reb8P8CH),elsh(wpkh(xpub6E8...)))';
         
         $result = $this->validator->validate('aqua_descriptor', $descriptor);
         
