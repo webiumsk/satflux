@@ -5,7 +5,6 @@ use App\Http\Controllers\AppController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LnurlAuthController;
-use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExportController;
@@ -155,9 +154,7 @@ Route::middleware(['throttle:auth'])->group(function () {
     Route::post('/auth/login', [LoginController::class, 'login']);
     Route::post('/auth/logout', [LoginController::class, 'logout'])->middleware('auth:sanctum');
 
-    // Password reset (public – no auth:sanctum; requires SANCTUM_STATEFUL_DOMAINS for localhost)
-    Route::post('/auth/password/reset-link', [PasswordResetController::class, 'sendResetLink']);
-    Route::post('/auth/password/reset', [PasswordResetController::class, 'reset']);
+    // Password reset: only in web.php (POST /api/auth/password/reset-link) so no Sanctum 401
 
     // Email verification
     Route::post('/auth/email/verification-notification', [EmailVerificationController::class, 'sendVerificationEmail']);
