@@ -164,16 +164,18 @@ const sidebarNav = computed<SidebarGroup[]>(() => {
   const categories = sidebarCategories.value;
   const articles = sidebarArticles.value;
   if (!articles.length) return [];
-  const byCategory = new Map<string | 'none', { slug: string; title: string }[]>();
+  const byCategory = new Map<string, { slug: string; title: string }[]>();
   articles.forEach((a: any) => {
-    const key = a.category_id ?? 'none';
+    const rawId = a.category_id ?? a.category?.id;
+    const key = rawId != null ? String(rawId) : 'none';
     if (!byCategory.has(key)) byCategory.set(key, []);
     byCategory.get(key)!.push({ slug: a.slug, title: a.title });
   });
   const result: SidebarGroup[] = [];
-  categories.forEach((cat: { id: string; name: string }) => {
-    const list = byCategory.get(cat.id);
-    if (list?.length) result.push({ category: cat, articles: list });
+  categories.forEach((cat: { id: string | number; name: string }) => {
+    const idStr = String(cat.id);
+    const list = byCategory.get(idStr);
+    if (list?.length) result.push({ category: { id: idStr, name: cat.name }, articles: list });
   });
   const uncategorized = byCategory.get('none');
   if (uncategorized?.length) result.push({ category: null, articles: uncategorized });
@@ -242,6 +244,15 @@ onMounted(() => {
   loadSidebar();
   loadArticle();
 });
+
+watch(
+  () => route.params.slug,
+  (newSlug, oldSlug) => {
+    if (newSlug && newSlug !== oldSlug) {
+      loadArticle();
+    }
+  }
+);
 
 watch(article, (a: { title: string; meta_description?: string } | null) => {
   if (a) {
