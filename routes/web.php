@@ -17,6 +17,13 @@ Route::middleware(['throttle:password-reset'])->group(function () {
     Route::post('/api/auth/password/reset', [PasswordResetController::class, 'reset']);
 });
 
+// Named route for password reset email link (Laravel ResetPassword notification calls route('password.reset'))
+Route::get('/reset-password/{token}', function (Request $request, string $token) {
+    $email = $request->query('email', '');
+    $url = rtrim(config('app.url'), '/') . '/password/reset?token=' . urlencode($token) . '&email=' . urlencode($email);
+    return redirect($url);
+})->name('password.reset');
+
 // Named route for authentication redirects (used by Laravel auth middleware)
 Route::get('/login', function () {
     return view('app');
