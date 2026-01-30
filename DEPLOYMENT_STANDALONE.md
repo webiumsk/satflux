@@ -55,21 +55,21 @@ Ak chcete na live serveri otestovať konkrétny branch (napr. `Inertia`) namiest
    git push origin Inertia
    ```
 
-2. **Na live serveri** v `deploy.config.sh` (alebo v súbore, ktorý source-uje deploy.sh) pridaj:
-   ```bash
+2. **Na live serveri** pridaj do **`.env.production`** (tento súbor nie je v gite, deploy ho nikdy neprepíše):
+   ```env
    DEPLOY_BRANCH=Inertia
    ```
-   Ak ešte nemáš `deploy.config.sh`, vytvor ho (napr. skopíruj z `deploy.config.standalone.sh`) a doplň tento riadok.
+   Ďalší deploy potiahne a nasadí tento branch; zmeny v `.env.production` ostávajú.
 
 3. **Spusti deploy** na serveri:
    ```bash
    ./deploy.sh
    ```
-   Skript stiahne `Inertia` branch, v Dockeri spustí `composer install`, `npm install`, `npm run build`, migrácie a reštart. Aplikácia beží na kóde z branchu `Inertia`.
+   Skript stiahne branch `Inertia`, v Dockeri spustí `composer install`, `npm install`, `npm run build`, migrácie a reštart.
 
 4. **Návrat na main** po otestovaní:
-   - V `deploy.config.sh` odstráň riadok `DEPLOY_BRANCH=Inertia` (alebo zmeň na `DEPLOY_BRANCH=`).
-   - Spusti znova `./deploy.sh` – stiahne a nasadí `main` (alebo aktuálny branch podľa pôvodnej logiky).
+   - V `.env.production` zmaž riadok `DEPLOY_BRANCH=Inertia` alebo ho zakomentuj.
+   - Spusti znova `./deploy.sh` – nasadí sa `main` (resp. pôvodná logika).
 
 ## Troubleshooting
 
