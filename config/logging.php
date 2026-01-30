@@ -74,12 +74,18 @@ return [
             'replace_placeholders' => true,
         ],
 
-        'btcpay' => [
-            'driver' => env('APP_ENV') === 'testing' ? 'null' : 'single',
-            'path' => storage_path('logs/btcpay.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'replace_placeholders' => true,
-        ],
+        'btcpay' => env('APP_ENV') === 'testing'
+            ? [
+                'driver' => 'monolog',
+                'handler' => NullHandler::class,
+                'level' => env('LOG_LEVEL', 'debug'),
+            ]
+            : [
+                'driver' => 'single',
+                'path' => storage_path('logs/btcpay.log'),
+                'level' => env('LOG_LEVEL', 'debug'),
+                'replace_placeholders' => true,
+            ],
 
         'syslog' => [
             'driver' => 'syslog',
