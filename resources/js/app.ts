@@ -33,6 +33,7 @@ function mountInertia(): void {
             app.use(plugin);
             app.use(createPinia());
             app.use(i18n);
+            app.provide('inertia', true);
             app.mount(mountEl);
         },
     });

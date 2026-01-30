@@ -1,5 +1,5 @@
 <template>
-  <AppShowLayout ref="layoutRef">
+  <AppShowLayout ref="layoutRef" :store="store" :app="app">
     <template #default="{ app, store }">
       <!-- Header -->
       <AppShowHeader
@@ -939,8 +939,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, watchEffect } from "vue";
+import { ref, computed, watch, watchEffect, inject } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { router as inertiaRouter } from "@inertiajs/vue3";
 import { useAppsStore } from "../../store/apps";
 import ProductEditDrawer from "../../components/stores/ProductEditDrawer.vue";
 import PointOfSaleProductsEditor from "../../components/stores/PointOfSaleProductsEditor.vue";
@@ -949,12 +950,16 @@ import Select from "../../components/ui/Select.vue";
 import AppShowHeader from "../../components/stores/AppShowHeader.vue";
 import DeleteAppModal from "../../components/stores/DeleteAppModal.vue";
 import { currencies } from "../../data/currencies";
-const route = useRoute();
-const router = useRouter();
+
+const isInertia = inject<boolean>("inertia", false);
+const route = !isInertia ? useRoute() : null;
+const vueRouter = !isInertia ? useRouter() : null;
 const appsStore = useAppsStore();
 
-const storeId = computed(() => route.params.id as string);
-const appId = computed(() => route.params.appId as string);
+const props = defineProps<{ store?: any; app?: any }>();
+
+const storeId = computed(() => (props.store?.id ?? route?.params?.id ?? "") as string);
+const appId = computed(() => (props.app?.id ?? route?.params?.appId ?? "") as string);
 const layoutRef = ref<InstanceType<typeof AppShowLayout> | null>(null);
 const saving = ref(false);
 const error = ref("");
@@ -1502,7 +1507,11 @@ async function handleDelete() {
 
   try {
     await appsStore.deleteApp(storeId.value, appId.value);
-    router.push({ name: "stores-show", params: { id: storeId.value } });
+    if (isInertia) {
+      inertiaRouter.visit(`/stores/${storeId.value}`);
+    } else {
+      vueRouter!.push({ name: "stores-show", params: { id: storeId.value } });
+    }
   } catch (err: any) {
     deleteError.value = err.response?.data?.message || "Failed to delete app";
   } finally {

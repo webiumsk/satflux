@@ -1,12 +1,21 @@
 <?php
 
+use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\OgImageController;
 use App\Http\Controllers\StoreAppPageController;
 use App\Http\Middleware\EnsureStoreOwnership;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // OG Image for social media sharing
 Route::get('/og-image.png', [OgImageController::class, 'generate']);
+
+// Password reset: same URL as API so SPA can POST /api/auth/password/reset-link
+// Web route is registered first → no Sanctum, no 401
+Route::middleware(['throttle:password-reset'])->group(function () {
+    Route::post('/api/auth/password/reset-link', [PasswordResetController::class, 'sendResetLink']);
+    Route::post('/api/auth/password/reset', [PasswordResetController::class, 'reset']);
+});
 
 // Named route for authentication redirects (used by Laravel auth middleware)
 Route::get('/login', function () {
@@ -31,7 +40,14 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // SPA fallback (Vue Router handles all other routes)
-Route::get('/{any}', function () {
+// When an Inertia request hits a non-Inertia URL, return 409 + X-Inertia-Location
+// so Inertia does a full page visit instead of showing the HTML in a modal.
+// Use APP_URL + request URI so the redirect has the correct host/port (e.g. localhost:8080).
+Route::get('/{any}', function (Request $request) {
+    if ($request->header('X-Inertia')) {
+        $location = rtrim(config('app.url', $request->getSchemeAndHttpHost()), '/') . '/' . ltrim($request->getRequestUri(), '/');
+        return response('', 409)->header('X-Inertia-Location', $location);
+    }
     return view('app');
 })->where('any', '.*');
 
