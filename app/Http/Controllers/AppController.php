@@ -20,64 +20,45 @@ class AppController extends Controller
     }
 
     /**
-     * List all apps for a store.
+     * Return apps list for a store (used by API index and Inertia page controller).
+     *
+     * @return array<int, array<string, mixed>>
      */
-    public function index(Request $request, Store $store)
+    public function getAppsForStore(Store $store): array
     {
-        // Get local apps first (they should always exist)
         $localApps = App::where('store_id', $store->id)
             ->get()
             ->keyBy('btcpay_app_id');
 
-        // If we have local apps, return them (with BTCPay data if API available)
         if ($localApps->isNotEmpty()) {
             try {
-                // Try to fetch BTCPay apps to merge with local data
                 $userApiKey = $store->user->getBtcPayApiKeyOrFail();
                 $btcpayApps = $this->appService->listApps($store->btcpay_store_id, $userApiKey);
-
-                // Create a map of BTCPay apps by ID
                 $btcpayAppsMap = collect($btcpayApps)->keyBy('id');
-
-                // Merge local apps with BTCPay data
-                $apps = $localApps->map(function ($localApp) use ($btcpayAppsMap) {
+                return $localApps->map(function ($localApp) use ($btcpayAppsMap) {
                     $btcpayApp = $btcpayAppsMap->get($localApp->btcpay_app_id);
                     return $this->formatApp($localApp, $btcpayApp);
-                })->values();
-
-                return response()->json(['data' => $apps]);
+                })->values()->all();
             } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
-                // If API fails, return local apps without BTCPay data
                 Log::warning('BTCPay API failed when listing apps, using local apps only', [
                     'store_id' => $store->id,
                     'error' => $e->getMessage(),
                 ]);
-
-                $apps = $localApps->map(function ($app) {
-                    return $this->formatApp($app);
-                })->values();
-
-                return response()->json(['data' => $apps]);
+                return $localApps->map(fn ($app) => $this->formatApp($app))->values()->all();
             }
         }
 
-        // If no local apps, try to fetch from BTCPay and create local records
         try {
             $userApiKey = $store->user->getBtcPayApiKeyOrFail();
             $btcpayApps = $this->appService->listApps($store->btcpay_store_id, $userApiKey);
-
             if (empty($btcpayApps)) {
-                // No apps in BTCPay either, return empty array
-                return response()->json(['data' => []]);
+                return [];
             }
-
-            // Create local app records for BTCPay apps
-            $apps = collect($btcpayApps)->map(function ($btcpayApp) use ($store) {
+            return collect($btcpayApps)->map(function ($btcpayApp) use ($store) {
                 $btcpayAppId = $btcpayApp['id'] ?? null;
                 if (!$btcpayAppId) {
                     return null;
                 }
-
                 $appType = $this->determineAppType($btcpayApp);
                 $localApp = App::create([
                     'id' => (string) Str::uuid(),
@@ -87,20 +68,23 @@ class AppController extends Controller
                     'name' => $btcpayApp['appName'] ?? $btcpayApp['name'] ?? 'Untitled App',
                     'config' => $btcpayApp,
                 ]);
-
                 return $this->formatApp($localApp, $btcpayApp);
-            })->filter()->values();
-
-            return response()->json(['data' => $apps]);
+            })->filter()->values()->all();
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
-            // If API fails and no local apps, return empty
             Log::warning('BTCPay API failed when listing apps, no local apps found', [
                 'store_id' => $store->id,
                 'error' => $e->getMessage(),
             ]);
-
-            return response()->json(['data' => []]);
+            return [];
         }
+    }
+
+    /**
+     * List all apps for a store.
+     */
+    public function index(Request $request, Store $store)
+    {
+        return response()->json(['data' => $this->getAppsForStore($store)]);
     }
 
     /**
@@ -268,40 +252,44 @@ class AppController extends Controller
     }
 
     /**
-     * Get a specific app.
+     * Return formatted app for a store (used by API show and Inertia page controller).
+     *
+     * @return array<string, mixed>|null null if app does not belong to store
      */
-    public function show(Request $request, Store $store, App $app)
+    public function getAppForStore(Store $store, App $app): ?array
     {
+        if ($app->store_id !== $store->id) {
+            return null;
+        }
         try {
-            // Verify app belongs to store
-            if ($app->store_id !== $store->id) {
-                return response()->json([
-                    'message' => 'App not found for this store.',
-                ], 404);
-            }
-
-            // Load merchant API key from store owner
             $userApiKey = $store->user->getBtcPayApiKeyOrFail();
             $btcpayApp = $this->appService->getApp(
                 $store->btcpay_store_id,
                 $app->btcpay_app_id,
-                $app->app_type, // Pass app_type for correct endpoint
+                $app->app_type,
                 $userApiKey
             );
-
-            return response()->json([
-                'data' => $this->formatApp($app, $btcpayApp)
-            ]);
+            return $this->formatApp($app, $btcpayApp);
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
-            // If API fails, return app from local DB as fallback
             Log::warning('BTCPay API failed when loading app, using local fallback', [
                 'app_id' => $app->id,
                 'btcpay_app_id' => $app->btcpay_app_id,
                 'error' => $e->getMessage(),
             ]);
-
-            return response()->json(['data' => $this->formatApp($app)]);
+            return $this->formatApp($app);
         }
+    }
+
+    /**
+     * Get a specific app.
+     */
+    public function show(Request $request, Store $store, App $app)
+    {
+        $data = $this->getAppForStore($store, $app);
+        if ($data === null) {
+            return response()->json(['message' => 'App not found for this store.'], 404);
+        }
+        return response()->json(['data' => $data]);
     }
 
     /**
