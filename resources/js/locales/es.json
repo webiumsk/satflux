@@ -60,7 +60,20 @@
     "failed_to_complete_registration": "No se pudo completar el registro. Por favor, intenta nuevamente.",
     "failed_to_generate_challenge": "Fallo al generar desafío",
     "email_placeholder": "tu{'@'}email.com",
-    "password_placeholder": "••••••••"
+    "password_placeholder": "••••••••",
+    "reset_password": "Restablecer contraseña",
+    "enter_email_reset": "Introduce tu correo para recibir un enlace de restablecimiento",
+    "send_reset_link": "Enviar enlace de restablecimiento",
+    "back_to_login": "Volver al inicio de sesión",
+    "password_reset_sent": "Si existe una cuenta con ese correo, hemos enviado un enlace para restablecer la contraseña.",
+    "failed_send_reset": "No se pudo enviar el enlace. Por favor, inténtalo de nuevo.",
+    "set_new_password": "Establecer nueva contraseña",
+    "enter_new_password_hint": "Introduce tu nueva contraseña a continuación.",
+    "reset_password_button": "Restablecer contraseña",
+    "password_reset_successful": "Tu contraseña se ha restablecido. Ya puedes iniciar sesión.",
+    "reset_failed": "No se pudo restablecer la contraseña. El enlace puede ser inválido o haber expirado.",
+    "resetting": "Restableciendo...",
+    "sending": "Enviando..."
   },
   "dashboard": {
     "title": "Tablero de control",
