@@ -628,5 +628,23 @@
         "save_error": "Nepodarilo sa uložiť FAQ položku"
       }
     }
+  },
+  "seo": {
+    "landing_title": "Prijímajte Bitcoin bez limitov",
+    "landing_description": "Prijímajte platby Bitcoinom a cez Lightning bez limitov. Non-custodial BTCPay Server ovládací panel s multi-store správou, PoS terminálmi a pokročilými analytikami.",
+    "documentation_title": "Dokumentácia",
+    "documentation_description": "Naučte sa používať satflux.io s našimi návodmi a tutoriálmi.",
+    "faq_title": "FAQ",
+    "faq_description": "Nájdite odpovede na často kladené otázky o Bitcoin platbách a satflux.io.",
+    "support_title": "Podpora",
+    "support_description": "Získajte pomoc s satflux.io. Dokumentácia, FAQ a možnosti kontaktu.",
+    "login_title": "Prihlásenie",
+    "login_description": "Prihláste sa do svojho satflux.io účtu.",
+    "register_title": "Vytvoriť účet",
+    "register_description": "Vytvorte si bezplatný satflux.io účet. Začnite prijímať Bitcoin ešte dnes.",
+    "password_reset_title": "Obnovenie hesla",
+    "password_reset_description": "Obnovte si heslo satflux.io. Zadajte svoj e-mail na odoslanie odkazu na obnovenie.",
+    "dashboard_title": "Dashboard",
+    "stores_title": "Obchody"
   }
 }

@@ -363,5 +363,23 @@
         "save_error": "Error al guardar el elemento FAQ"
       }
     }
+  },
+  "seo": {
+    "landing_title": "Acepta Bitcoin sin límites",
+    "landing_description": "Acepta pagos en Bitcoin y Lightning sin límites. Panel de control no custodial de BTCPay Server con gestión multi-tienda, terminales PoS y análisis avanzados.",
+    "documentation_title": "Documentación",
+    "documentation_description": "Aprende a usar satflux.io con nuestras guías y tutoriales.",
+    "faq_title": "FAQ",
+    "faq_description": "Encuentra respuestas a preguntas frecuentes sobre pagos Bitcoin y satflux.io.",
+    "support_title": "Soporte",
+    "support_description": "Obtén ayuda con satflux.io. Documentación, FAQ y opciones de contacto.",
+    "login_title": "Iniciar sesión",
+    "login_description": "Inicia sesión en tu cuenta satflux.io.",
+    "register_title": "Crear cuenta",
+    "register_description": "Crea tu cuenta gratuita de satflux.io. Empieza a aceptar Bitcoin hoy.",
+    "password_reset_title": "Restablecer contraseña",
+    "password_reset_description": "Restablece tu contraseña de satflux.io. Introduce tu email para recibir el enlace.",
+    "dashboard_title": "Panel de control",
+    "stores_title": "Tiendas"
   }
 }

@@ -98,9 +98,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
+import { updatePageMeta } from '../../composables/usePageMeta';
 import { documentationApi } from '../../services/api';
 import PublicHeader from "../../components/layout/PublicHeader.vue";
 import AppFooter from "../../components/layout/AppFooter.vue";
@@ -157,6 +158,15 @@ const formatContent = (content: string) => {
 onMounted(() => {
   loadArticle();
 });
+
+watch(article, (a: { title: string; meta_description?: string } | null) => {
+  if (a) {
+    updatePageMeta(route, {
+      title: a.title,
+      description: a.meta_description || a.title,
+    });
+  }
+}, { immediate: true });
 </script>
 
 <style scoped>
