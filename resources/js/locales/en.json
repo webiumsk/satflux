@@ -506,6 +506,8 @@
     "back_to_documentation": "Back to Documentation",
     "updated": "Updated",
     "article_not_found": "Article not found",
+    "categories": "Categories",
+    "uncategorized": "Uncategorized",
     "no_articles_found": "No articles found",
     "try_different_search": "Try a different search term"
   },
