@@ -40,11 +40,7 @@
 </head>
 
 <body class="font-sans antialiased">
-    <?php if(isset($page)): ?>
-        <div id="app" data-page="<?php echo e($page); ?>"></div>
-    <?php else: ?>
-        <div id="app"></div>
-    <?php endif; ?>
+    <div id="app"></div>
 </body>
 
 </html><?php /**PATH /var/www/resources/views/app.blade.php ENDPATH**/ ?>

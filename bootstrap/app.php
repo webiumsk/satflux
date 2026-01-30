@@ -19,9 +19,6 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\TrustProxies::class,
             \App\Http\Middleware\SetLocale::class,
         ]);
-        $middleware->web(append: [
-            \App\Http\Middleware\HandleInertiaRequests::class,
-        ]);
         $middleware->statefulApi();
     })
     ->withExceptions(function (Exceptions $exceptions) {
