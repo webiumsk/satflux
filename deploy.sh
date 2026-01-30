@@ -20,19 +20,18 @@ fi
 ENV_FILE=".env.production"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
 PROJECT_NAME="${PROJECT_NAME:-satflux_prod}"
-# Branch to deploy (set in deploy.config.sh to test e.g. Inertia branch)
 DEPLOY_BRANCH="${DEPLOY_BRANCH:-}"
 
 # Sanitize variables (remove CR and extra whitespace)
 COMPOSE_FILE=$(echo "$COMPOSE_FILE" | tr -d '\r' | xargs)
 PROJECT_NAME=$(echo "$PROJECT_NAME" | tr -d '\r' | xargs)
 
-# Try to detect COMPOSE_FILE from .env.production if not set
-if [ "$COMPOSE_FILE" = "docker-compose.prod.yml" ] && [ -f "$ENV_FILE" ]; then
-    ENV_COMPOSE=$(grep "^COMPOSE_FILE=" "$ENV_FILE" | cut -d '=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
-    if [ -n "$ENV_COMPOSE" ]; then
-        COMPOSE_FILE="$ENV_COMPOSE"
-    fi
+# Override from .env.production (not in git; survives every deploy)
+if [ -f "$ENV_FILE" ]; then
+    ENV_COMPOSE=$(grep "^COMPOSE_FILE=" "$ENV_FILE" 2>/dev/null | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+    [ -n "$ENV_COMPOSE" ] && COMPOSE_FILE="$ENV_COMPOSE"
+    ENV_DEPLOY_BRANCH=$(grep "^DEPLOY_BRANCH=" "$ENV_FILE" 2>/dev/null | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+    [ -n "$ENV_DEPLOY_BRANCH" ] && DEPLOY_BRANCH="$ENV_DEPLOY_BRANCH"
 fi
 
 PHP_SERVICE="php"  # Service name
