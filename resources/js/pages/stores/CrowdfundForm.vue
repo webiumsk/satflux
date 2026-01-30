@@ -345,7 +345,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useAppsStore } from '../../store/apps';
+import { useFlashStore } from '../../store/flash';
 import { currencies } from '../../data/currencies';
 import PerkEditDrawer from '../../components/stores/PerkEditDrawer.vue';
 import AdditionalOptions from '../../components/stores/AdditionalOptions.vue';
@@ -405,6 +407,8 @@ const editingPerkIndex = ref<number | null>(null);
 const saving = ref(false);
 const error = ref('');
 const success = ref('');
+const { t } = useI18n();
+const flashStore = useFlashStore();
 const appsStore = useAppsStore();
 const router = useRouter();
 
@@ -491,7 +495,9 @@ async function handleSubmit() {
         const parsed = JSON.parse(perksJson.value);
         perks.value = Array.isArray(parsed) ? parsed : [];
       } catch (e) {
-        error.value = 'Invalid JSON in perks code view';
+        flashStore.error('Invalid JSON in perks code view');
+        error.value = '';
+        saving.value = false;
         return;
       }
     }
@@ -598,12 +604,13 @@ async function handleSubmit() {
       config: config,
     });
 
-    success.value = 'Crowdfund updated successfully';
-    setTimeout(() => {
-      success.value = '';
-    }, 3000);
+    flashStore.success(t('settings.settings_updated'));
+    success.value = '';
+    error.value = '';
   } catch (err: any) {
-    error.value = err.response?.data?.message || 'Failed to save crowdfund';
+    const msg = err.response?.data?.message || t('settings.failed_to_update');
+    flashStore.error(msg);
+    error.value = '';
   } finally {
     saving.value = false;
   }

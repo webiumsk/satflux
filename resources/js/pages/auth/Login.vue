@@ -120,13 +120,6 @@
             </div>
           </div>
 
-          <div
-            v-if="error"
-            class="rounded-md bg-red-900/30 border border-red-500/30 p-4"
-          >
-            <div class="text-sm text-red-200">{{ error }}</div>
-          </div>
-
           <div class="space-y-4">
             <button
               type="submit"
@@ -310,6 +303,7 @@ import { ref, computed, onUnmounted, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
+import { useFlashStore } from "../../store/flash";
 import api from "../../services/api";
 import QRCode from "qrcode";
 import { bech32 } from "bech32";
@@ -319,6 +313,7 @@ const { t } = useI18n();
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
+const flashStore = useFlashStore();
 
 const form = ref({
   email: "",
@@ -326,7 +321,6 @@ const form = ref({
   remember: false,
 });
 
-const error = ref("");
 const loading = ref(false);
 
 const showLnurlModal = ref(false);
@@ -350,7 +344,6 @@ const lnurlAuthEnabled = computed(() => {
 });
 
 async function handleLogin() {
-  error.value = "";
   loading.value = true;
 
   try {
@@ -363,8 +356,9 @@ async function handleLogin() {
     const redirect = router.currentRoute.value.query.redirect as string;
     router.push(redirect || "/dashboard");
   } catch (err: any) {
-    error.value =
-      err.response?.data?.message || "Login failed. Please try again.";
+    flashStore.error(
+      err.response?.data?.message || "Login failed. Please try again.",
+    );
   } finally {
     loading.value = false;
   }
@@ -468,7 +462,7 @@ async function handleCompleteRegistration() {
 
     // Registration completed, show success message and close modal
     closeLnurlModal();
-    alert(t("auth.registration_successful"));
+    flashStore.success(t("auth.registration_successful"));
   } catch (err: any) {
     if (err.response?.data?.errors?.email) {
       emailError.value = err.response.data.errors.email[0];

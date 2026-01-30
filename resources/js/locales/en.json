@@ -1,5 +1,7 @@
 {
   "common": {
+    "copied": "Copied to clipboard",
+    "copy_failed": "Failed to copy",
     "loading": "Loading...",
     "error": "Error",
     "success": "Success",
@@ -168,6 +170,12 @@
     "invoices": "Invoices",
     "exports": "Exports",
     "ln_address": "LN Address",
+    "lightning_address_added": "Lightning address added successfully",
+    "lightning_address_removed": "Lightning address removed",
+    "lightning_address_save_failed": "Failed to save lightning address",
+    "lightning_address_delete_failed": "Failed to delete lightning address",
+    "api_key_created": "API key created successfully",
+    "api_key_create_failed": "Failed to create API key",
     "point_of_sale": "Point of Sale",
     "no_pos": "No PoS",
     "pay_button": "Pay Button",
