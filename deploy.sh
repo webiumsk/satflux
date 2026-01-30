@@ -20,17 +20,18 @@ fi
 ENV_FILE=".env.production"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
 PROJECT_NAME="${PROJECT_NAME:-satflux_prod}"
+DEPLOY_BRANCH="${DEPLOY_BRANCH:-}"
 
 # Sanitize variables (remove CR and extra whitespace)
 COMPOSE_FILE=$(echo "$COMPOSE_FILE" | tr -d '\r' | xargs)
 PROJECT_NAME=$(echo "$PROJECT_NAME" | tr -d '\r' | xargs)
 
-# Try to detect COMPOSE_FILE from .env.production if not set
-if [ "$COMPOSE_FILE" = "docker-compose.prod.yml" ] && [ -f "$ENV_FILE" ]; then
-    ENV_COMPOSE=$(grep "^COMPOSE_FILE=" "$ENV_FILE" | cut -d '=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
-    if [ -n "$ENV_COMPOSE" ]; then
-        COMPOSE_FILE="$ENV_COMPOSE"
-    fi
+# Override from .env.production (not in git; survives every deploy)
+if [ -f "$ENV_FILE" ]; then
+    ENV_COMPOSE=$(grep "^COMPOSE_FILE=" "$ENV_FILE" 2>/dev/null | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+    [ -n "$ENV_COMPOSE" ] && COMPOSE_FILE="$ENV_COMPOSE"
+    ENV_DEPLOY_BRANCH=$(grep "^DEPLOY_BRANCH=" "$ENV_FILE" 2>/dev/null | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+    [ -n "$ENV_DEPLOY_BRANCH" ] && DEPLOY_BRANCH="$ENV_DEPLOY_BRANCH"
 fi
 
 PHP_SERVICE="php"  # Service name
@@ -56,6 +57,11 @@ fi
 
 # Step 1: Pull latest changes
 echo -e "${YELLOW}Step 1: Pulling latest changes from Git...${NC}"
+if [ -n "$DEPLOY_BRANCH" ]; then
+    echo -e "${GREEN}  → Branch: ${DEPLOY_BRANCH}${NC}"
+else
+    echo -e "${GREEN}  → Branch: main / master (default)${NC}"
+fi
 git fetch origin
 
 # Check if there are local changes (including untracked files that might conflict)
@@ -67,26 +73,37 @@ if [ -n "$(git status --porcelain)" ]; then
     }
 fi
 
-# Pull latest changes
-if ! git pull origin main 2>/dev/null && ! git pull origin master 2>/dev/null; then
-    echo -e "${RED}Error: Failed to pull from Git${NC}"
-    echo -e "${YELLOW}Attempting to resolve by resetting to remote state...${NC}"
-    # Try to reset to origin if conflicts persist (this will discard local changes)
-    BRANCH=$(git rev-parse --abbrev-ref HEAD)
-    if [ "$BRANCH" = "master" ] || [ "$BRANCH" = "main" ]; then
-        git reset --hard "origin/$BRANCH" 2>/dev/null || {
-            echo -e "${RED}Fatal: Cannot resolve Git conflicts automatically.${NC}"
-            echo -e "${YELLOW}Please resolve manually or discard local changes.${NC}"
-            exit 1
-        }
-        echo -e "${GREEN}✓ Reset to remote branch $BRANCH${NC}"
+# Determine branch to deploy
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [ -n "$DEPLOY_BRANCH" ]; then
+    echo -e "${YELLOW}Deploying branch: $DEPLOY_BRANCH (from config)${NC}"
+    if git rev-parse --verify "origin/$DEPLOY_BRANCH" >/dev/null 2>&1; then
+        git checkout "$DEPLOY_BRANCH" 2>/dev/null || git checkout -b "$DEPLOY_BRANCH" "origin/$DEPLOY_BRANCH"
+        git pull origin "$DEPLOY_BRANCH"
+        BRANCH="$DEPLOY_BRANCH"
     else
-        echo -e "${RED}Fatal: Cannot determine branch. Please resolve Git conflicts manually.${NC}"
+        echo -e "${RED}Error: Branch origin/$DEPLOY_BRANCH not found. Run: git fetch origin${NC}"
         exit 1
+    fi
+else
+    # Default: pull current branch (main or master)
+    if ! git pull origin main 2>/dev/null && ! git pull origin master 2>/dev/null; then
+        echo -e "${RED}Error: Failed to pull from Git${NC}"
+        echo -e "${YELLOW}Attempting to resolve by resetting to remote state...${NC}"
+        if [ "$BRANCH" = "master" ] || [ "$BRANCH" = "main" ]; then
+            git reset --hard "origin/$BRANCH" 2>/dev/null || {
+                echo -e "${RED}Fatal: Cannot resolve Git conflicts automatically.${NC}"
+                exit 1
+            }
+            echo -e "${GREEN}✓ Reset to remote branch $BRANCH${NC}"
+        else
+            echo -e "${RED}Fatal: Cannot determine branch. Please resolve Git conflicts manually.${NC}"
+            exit 1
+        fi
     fi
 fi
 
-echo -e "${GREEN}✓ Git pull completed${NC}"
+echo -e "${GREEN}✓ Git pull completed → deployed branch: $BRANCH${NC}"
 
 # Step 2: Ensuring containers are running
 echo -e "${YELLOW}Step 2: Ensuring containers are running ($COMPOSE_FILE)...${NC}"
@@ -186,4 +203,3 @@ echo "Next steps:"
 echo "1. Verify the application is accessible at your domain"
 echo "2. Check logs if needed: docker compose -f $COMPOSE_FILE --project-name $PROJECT_NAME logs -f"
 echo "3. Monitor application for any issues"
-
