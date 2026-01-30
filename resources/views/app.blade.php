@@ -41,7 +41,7 @@
 
 <body class="font-sans antialiased">
     @if(isset($page))
-        <div id="app" data-page="{{ $page }}"></div>
+        <div id="app" data-page="{{ is_array($page) ? json_encode($page) : $page }}"></div>
     @else
         <div id="app"></div>
     @endif

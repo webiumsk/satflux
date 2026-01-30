@@ -92,8 +92,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
+import axios from "axios";
 import api from "../../services/api";
 
 const { t } = useI18n();
@@ -105,6 +106,11 @@ const form = ref({
 const error = ref("");
 const success = ref("");
 const loading = ref(false);
+
+// Ensure CSRF cookie is set before first POST (avoids 401/419 on first submit)
+onMounted(() => {
+  axios.get("/sanctum/csrf-cookie", { withCredentials: true }).catch(() => {});
+});
 
 async function handleReset() {
   error.value = "";

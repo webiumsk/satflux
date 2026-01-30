@@ -155,7 +155,7 @@ Route::middleware(['throttle:auth'])->group(function () {
     Route::post('/auth/login', [LoginController::class, 'login']);
     Route::post('/auth/logout', [LoginController::class, 'logout'])->middleware('auth:sanctum');
 
-    // Password reset
+    // Password reset (public – no auth:sanctum; requires SANCTUM_STATEFUL_DOMAINS for localhost)
     Route::post('/auth/password/reset-link', [PasswordResetController::class, 'sendResetLink']);
     Route::post('/auth/password/reset', [PasswordResetController::class, 'reset']);
 

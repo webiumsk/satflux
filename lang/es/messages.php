@@ -16,7 +16,7 @@ return [
     'logout_successful' => 'Logout successful',
     'registration_successful' => 'Registration successful! Please check your email to verify your account.',
     'email_verified' => 'Your email has been verified successfully. Please login to continue.',
-    'password_reset_sent' => 'We have emailed your password reset link.',
+    'password_reset_sent' => 'Si existe una cuenta con ese correo, hemos enviado un enlace para restablecer la contraseña.',
     'password_reset_successful' => 'Your password has been reset.',
 
     // Account

@@ -15,6 +15,7 @@ class PasswordResetController extends Controller
 {
     /**
      * Send a password reset link to the user.
+     * Only affects Panel DB (users table). BTCPay user/password is separate.
      */
     public function sendResetLink(Request $request)
     {
@@ -24,13 +25,17 @@ class PasswordResetController extends Controller
             $request->only('email')
         );
 
-        if ($status != Password::RESET_LINK_SENT) {
+        // Throttled: tell the user to wait (422/429)
+        if ($status === Password::RESET_THROTTLED) {
             throw ValidationException::withMessages([
                 'email' => [__($status)],
             ]);
         }
 
-        return response()->json(['message' => __($status)]);
+        // Success or user not found: always return 200 with same message (don't leak existence)
+        return response()->json([
+            'message' => __('messages.password_reset_sent'),
+        ]);
     }
 
     /**

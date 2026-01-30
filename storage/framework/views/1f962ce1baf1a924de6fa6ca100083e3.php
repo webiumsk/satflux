@@ -41,7 +41,7 @@
 
 <body class="font-sans antialiased">
     <?php if(isset($page)): ?>
-        <div id="app" data-page="<?php echo e($page); ?>"></div>
+        <div id="app" data-page="<?php echo e(is_array($page) ? json_encode($page) : $page); ?>"></div>
     <?php else: ?>
         <div id="app"></div>
     <?php endif; ?>
