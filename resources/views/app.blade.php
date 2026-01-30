@@ -40,7 +40,11 @@
 </head>
 
 <body class="font-sans antialiased">
-    <div id="app"></div>
+    @if(isset($page))
+        <div id="app" data-page="{{ $page }}"></div>
+    @else
+        <div id="app"></div>
+    @endif
 </body>
 
 </html>

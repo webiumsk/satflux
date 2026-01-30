@@ -20,6 +20,8 @@ fi
 ENV_FILE=".env.production"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
 PROJECT_NAME="${PROJECT_NAME:-satflux_prod}"
+# Branch to deploy (set in deploy.config.sh to test e.g. Inertia branch)
+DEPLOY_BRANCH="${DEPLOY_BRANCH:-}"
 
 # Sanitize variables (remove CR and extra whitespace)
 COMPOSE_FILE=$(echo "$COMPOSE_FILE" | tr -d '\r' | xargs)
@@ -67,26 +69,37 @@ if [ -n "$(git status --porcelain)" ]; then
     }
 fi
 
-# Pull latest changes
-if ! git pull origin main 2>/dev/null && ! git pull origin master 2>/dev/null; then
-    echo -e "${RED}Error: Failed to pull from Git${NC}"
-    echo -e "${YELLOW}Attempting to resolve by resetting to remote state...${NC}"
-    # Try to reset to origin if conflicts persist (this will discard local changes)
-    BRANCH=$(git rev-parse --abbrev-ref HEAD)
-    if [ "$BRANCH" = "master" ] || [ "$BRANCH" = "main" ]; then
-        git reset --hard "origin/$BRANCH" 2>/dev/null || {
-            echo -e "${RED}Fatal: Cannot resolve Git conflicts automatically.${NC}"
-            echo -e "${YELLOW}Please resolve manually or discard local changes.${NC}"
-            exit 1
-        }
-        echo -e "${GREEN}✓ Reset to remote branch $BRANCH${NC}"
+# Determine branch to deploy
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [ -n "$DEPLOY_BRANCH" ]; then
+    echo -e "${YELLOW}Deploying branch: $DEPLOY_BRANCH (from config)${NC}"
+    if git rev-parse --verify "origin/$DEPLOY_BRANCH" >/dev/null 2>&1; then
+        git checkout "$DEPLOY_BRANCH" 2>/dev/null || git checkout -b "$DEPLOY_BRANCH" "origin/$DEPLOY_BRANCH"
+        git pull origin "$DEPLOY_BRANCH"
+        BRANCH="$DEPLOY_BRANCH"
     else
-        echo -e "${RED}Fatal: Cannot determine branch. Please resolve Git conflicts manually.${NC}"
+        echo -e "${RED}Error: Branch origin/$DEPLOY_BRANCH not found. Run: git fetch origin${NC}"
         exit 1
+    fi
+else
+    # Default: pull current branch (main or master)
+    if ! git pull origin main 2>/dev/null && ! git pull origin master 2>/dev/null; then
+        echo -e "${RED}Error: Failed to pull from Git${NC}"
+        echo -e "${YELLOW}Attempting to resolve by resetting to remote state...${NC}"
+        if [ "$BRANCH" = "master" ] || [ "$BRANCH" = "main" ]; then
+            git reset --hard "origin/$BRANCH" 2>/dev/null || {
+                echo -e "${RED}Fatal: Cannot resolve Git conflicts automatically.${NC}"
+                exit 1
+            }
+            echo -e "${GREEN}✓ Reset to remote branch $BRANCH${NC}"
+        else
+            echo -e "${RED}Fatal: Cannot determine branch. Please resolve Git conflicts manually.${NC}"
+            exit 1
+        fi
     fi
 fi
 
-echo -e "${GREEN}✓ Git pull completed${NC}"
+echo -e "${GREEN}✓ Git pull completed (branch: $BRANCH)${NC}"
 
 # Step 2: Ensuring containers are running
 echo -e "${YELLOW}Step 2: Ensuring containers are running ($COMPOSE_FILE)...${NC}"

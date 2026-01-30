@@ -46,6 +46,31 @@ Pre spustenie alebo aktualizáciu stačí spustiť:
 ```
 (Ak ste v kroku 2 nastavili `deploy.config.sh`, skript automaticky použije standalone verziu.)
 
+## Testovanie iného branchu na live serveri (napr. Inertia)
+
+Ak chcete na live serveri otestovať konkrétny branch (napr. `Inertia`) namiesto `main`:
+
+1. **Pushni branch na origin** (lokálne):
+   ```bash
+   git push origin Inertia
+   ```
+
+2. **Na live serveri** v `deploy.config.sh` (alebo v súbore, ktorý source-uje deploy.sh) pridaj:
+   ```bash
+   DEPLOY_BRANCH=Inertia
+   ```
+   Ak ešte nemáš `deploy.config.sh`, vytvor ho (napr. skopíruj z `deploy.config.standalone.sh`) a doplň tento riadok.
+
+3. **Spusti deploy** na serveri:
+   ```bash
+   ./deploy.sh
+   ```
+   Skript stiahne `Inertia` branch, v Dockeri spustí `composer install`, `npm install`, `npm run build`, migrácie a reštart. Aplikácia beží na kóde z branchu `Inertia`.
+
+4. **Návrat na main** po otestovaní:
+   - V `deploy.config.sh` odstráň riadok `DEPLOY_BRANCH=Inertia` (alebo zmeň na `DEPLOY_BRANCH=`).
+   - Spusti znova `./deploy.sh` – stiahne a nasadí `main` (alebo aktuálny branch podľa pôvodnej logiky).
+
 ## Troubleshooting
 
 ### Ako skontrolovať logy?
