@@ -1,5 +1,7 @@
 {
   "common": {
+    "copied": "Skopírované do schránky",
+    "copy_failed": "Nepodarilo sa skopírovať",
     "loading": "Načítanie...",
     "error": "Chyba",
     "success": "Úspech",
@@ -169,6 +171,12 @@
     "invoices": "Faktúry",
     "exports": "Exporty",
     "ln_address": "LN Adresa",
+    "lightning_address_added": "LN adresa bola úspešne pridaná",
+    "lightning_address_removed": "LN adresa bola odstránená",
+    "lightning_address_save_failed": "Nepodarilo sa uložiť LN adresu",
+    "lightning_address_delete_failed": "Nepodarilo sa odstrániť LN adresu",
+    "api_key_created": "API kľúč bol úspešne vytvorený",
+    "api_key_create_failed": "Nepodarilo sa vytvoriť API kľúč",
     "point_of_sale": "PoS Terminál",
     "no_pos": "Žiadny PoS",
     "pay_button": "Pay Button",

@@ -53,20 +53,6 @@
             </div>
           </div>
 
-          <div
-            v-if="error"
-            class="rounded-md bg-red-900/30 border border-red-500/30 p-4"
-          >
-            <div class="text-sm text-red-200">{{ error }}</div>
-          </div>
-
-          <div
-            v-if="success"
-            class="rounded-md bg-green-900/30 border border-green-500/30 p-4"
-          >
-            <div class="text-sm text-green-200">{{ success }}</div>
-          </div>
-
           <div>
             <button
               type="submit"
@@ -137,20 +123,6 @@
             </div>
           </div>
 
-          <div
-            v-if="error"
-            class="rounded-md bg-red-900/30 border border-red-500/30 p-4"
-          >
-            <div class="text-sm text-red-200">{{ error }}</div>
-          </div>
-
-          <div
-            v-if="success"
-            class="rounded-md bg-green-900/30 border border-green-500/30 p-4"
-          >
-            <div class="text-sm text-green-200">{{ success }}</div>
-          </div>
-
           <div>
             <button
               type="submit"
@@ -182,9 +154,11 @@ import { useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import axios from "axios";
 import api from "../../services/api";
+import { useFlashStore } from "../../store/flash";
 
 const { t } = useI18n();
 const route = useRoute();
+const flashStore = useFlashStore();
 
 const form = ref({
   email: "",
@@ -192,8 +166,6 @@ const form = ref({
   password_confirmation: "",
 });
 
-const error = ref("");
-const success = ref("");
 const loading = ref(false);
 
 const resetToken = computed(() => (route.query.token as string) || "");
@@ -218,31 +190,27 @@ watch(
 );
 
 async function handleSendResetLink() {
-  error.value = "";
-  success.value = "";
   loading.value = true;
 
   try {
     await api.post("/auth/password/reset-link", {
       email: form.value.email,
     });
-    success.value = t("auth.password_reset_sent");
+    flashStore.success(t("auth.password_reset_sent"));
   } catch (err: any) {
-    error.value = err.response?.data?.message || t("auth.failed_send_reset");
+    flashStore.error(err.response?.data?.message || t("auth.failed_send_reset"));
   } finally {
     loading.value = false;
   }
 }
 
 async function handleSetNewPassword() {
-  error.value = "";
-  success.value = "";
   if (form.value.password !== form.value.password_confirmation) {
-    error.value = t("validation.password_confirmation");
+    flashStore.error(t("validation.password_confirmation"));
     return;
   }
   if (form.value.password.length < 8) {
-    error.value = t("validation.password_min");
+    flashStore.error(t("validation.password_min"));
     return;
   }
   loading.value = true;
@@ -254,18 +222,18 @@ async function handleSetNewPassword() {
       password: form.value.password,
       password_confirmation: form.value.password_confirmation,
     });
-    success.value = t("auth.password_reset_successful");
+    flashStore.success(t("auth.password_reset_successful"));
     form.value.password = "";
     form.value.password_confirmation = "";
-    // Optional: redirect to login after 2s
     setTimeout(() => {
       window.location.href = "/login";
     }, 2500);
   } catch (err: any) {
-    error.value =
+    flashStore.error(
       err.response?.data?.errors?.email?.[0] ||
-      err.response?.data?.message ||
-      t("auth.reset_failed");
+        err.response?.data?.message ||
+        t("auth.reset_failed"),
+    );
   } finally {
     loading.value = false;
   }

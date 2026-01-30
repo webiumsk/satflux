@@ -1,5 +1,7 @@
 {
   "common": {
+    "copied": "Copiado al portapapeles",
+    "copy_failed": "Error al copiar",
     "loading": "Cargando...",
     "error": "Error",
     "success": "Éxito",
@@ -157,6 +159,12 @@
     "invoices": "Facturas",
     "exports": "Exportaciones",
     "ln_address": "Dirección LN",
+    "lightning_address_added": "Dirección Lightning añadida correctamente",
+    "lightning_address_removed": "Dirección Lightning eliminada",
+    "lightning_address_save_failed": "Error al guardar la dirección Lightning",
+    "lightning_address_delete_failed": "Error al eliminar la dirección Lightning",
+    "api_key_created": "Clave API creada correctamente",
+    "api_key_create_failed": "Error al crear la clave API",
     "point_of_sale": "Punto de Venta",
     "no_pos": "Sin PoS",
     "pay_button": "Botón de Pago",
