@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../store/auth';
+import { updatePageMeta } from '../composables/usePageMeta';
 
 const router = createRouter({
     history: createWebHistory(),
@@ -8,31 +9,31 @@ const router = createRouter({
             path: '/',
             name: 'landing',
             component: () => import('../pages/Landing.vue'),
-            meta: { public: true },
+            meta: { public: true, titleKey: 'seo.landing_title', descriptionKey: 'seo.landing_description' },
         },
         {
             path: '/dashboard',
             name: 'home',
             component: () => import('../pages/Dashboard.vue'),
-            meta: { requiresAuth: true },
+            meta: { requiresAuth: true, titleKey: 'seo.dashboard_title' },
         },
         {
             path: '/login',
             name: 'login',
             component: () => import('../pages/auth/Login.vue'),
-            meta: { requiresGuest: true },
+            meta: { requiresGuest: true, titleKey: 'seo.login_title', descriptionKey: 'seo.login_description' },
         },
         {
             path: '/register',
             name: 'register',
             component: () => import('../pages/auth/Register.vue'),
-            meta: { requiresGuest: true },
+            meta: { requiresGuest: true, titleKey: 'seo.register_title', descriptionKey: 'seo.register_description' },
         },
         {
             path: '/password/reset',
             name: 'password-reset',
             component: () => import('../pages/auth/PasswordReset.vue'),
-            meta: { requiresGuest: true },
+            meta: { requiresGuest: true, titleKey: 'seo.password_reset_title', descriptionKey: 'seo.password_reset_description' },
         },
         {
             path: '/auth/verify-email/:id/:hash',
@@ -49,7 +50,7 @@ const router = createRouter({
             path: '/stores',
             name: 'stores',
             component: () => import('../pages/stores/Index.vue'),
-            meta: { requiresAuth: true },
+            meta: { requiresAuth: true, titleKey: 'seo.stores_title' },
         },
         {
             path: '/stores/create',
@@ -148,7 +149,7 @@ const router = createRouter({
             path: '/support',
             name: 'support',
             component: () => import('../pages/Support.vue'),
-            meta: { public: true },
+            meta: { public: true, titleKey: 'seo.support_title', descriptionKey: 'seo.support_description' },
         },
         {
             path: '/success',
@@ -184,19 +185,19 @@ const router = createRouter({
             path: '/documentation',
             name: 'documentation',
             component: () => import('../pages/documentation/Index.vue'),
-            meta: { public: true },
+            meta: { public: true, titleKey: 'seo.documentation_title', descriptionKey: 'seo.documentation_description' },
         },
         {
             path: '/documentation/:slug',
             name: 'documentation-show',
             component: () => import('../pages/documentation/Show.vue'),
-            meta: { public: true },
+            meta: { public: true, titleKey: 'seo.documentation_title', descriptionKey: 'seo.documentation_description' },
         },
         {
             path: '/faq',
             name: 'faq',
             component: () => import('../pages/faq/Index.vue'),
-            meta: { public: true },
+            meta: { public: true, titleKey: 'seo.faq_title', descriptionKey: 'seo.faq_description' },
         },
         {
             path: '/admin/documentation',
@@ -282,6 +283,11 @@ router.beforeEach(async (to, from, next) => {
     } else {
         next();
     }
+});
+
+// Update document title and meta description on route change
+router.afterEach((to) => {
+    updatePageMeta(to);
 });
 
 export default router;

@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 
-    <title><?php echo e(config('app.name', 'satflux.io')); ?></title>
+    <title><?php echo e(config('app.name', 'satflux.io')); ?> - Accept Bitcoin Without Limits</title>
+    <meta name="description" content="Accept Bitcoin & Lightning payments without limits. Non-custodial BTCPay Server control panel with multi-store management, PoS terminals, and advanced analytics.">
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
@@ -15,9 +16,12 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png">
 
+    <!-- Canonical -->
+    <link rel="canonical" href="<?php echo e(url()->current()); ?>">
+
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="<?php echo e(config('app.url')); ?>">
+    <meta property="og:url" content="<?php echo e(url()->current()); ?>">
     <meta property="og:title" content="<?php echo e(config('app.name', 'satflux.io')); ?> - Bitcoin Payment Control Panel">
     <meta property="og:description" content="Accept Bitcoin & Lightning payments without limits. Non-custodial BTCPay Server control panel with multi-store management, PoS terminals, and advanced analytics.">
     <meta property="og:image" content="<?php echo e(config('app.url')); ?>/og-image.png">
@@ -26,7 +30,7 @@
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="<?php echo e(config('app.url')); ?>">
+    <meta name="twitter:url" content="<?php echo e(url()->current()); ?>">
     <meta name="twitter:title" content="<?php echo e(config('app.name', 'satflux.io')); ?> - Bitcoin Payment Control Panel">
     <meta name="twitter:description" content="Accept Bitcoin & Lightning payments without limits. Non-custodial BTCPay Server control panel with multi-store management, PoS terminals, and advanced analytics.">
     <meta name="twitter:image" content="<?php echo e(config('app.url')); ?>/og-image.png">

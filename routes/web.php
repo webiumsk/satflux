@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\OgImageController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StoreAppPageController;
 use App\Http\Middleware\EnsureStoreOwnership;
 use Illuminate\Http\Request;
@@ -9,6 +10,30 @@ use Illuminate\Support\Facades\Route;
 
 // OG Image for social media sharing
 Route::get('/og-image.png', [OgImageController::class, 'generate']);
+
+// SEO: robots.txt with dynamic sitemap URL
+Route::get('/robots.txt', function () {
+    $sitemapUrl = rtrim(config('app.url'), '/') . '/sitemap.xml';
+    $content = "User-agent: *\n"
+        . "Allow: /\n"
+        . "Allow: /documentation\n"
+        . "Allow: /documentation/*\n"
+        . "Allow: /faq\n"
+        . "Allow: /support\n"
+        . "Allow: /login\n"
+        . "Allow: /register\n"
+        . "Allow: /password\n"
+        . "Disallow: /stores\n"
+        . "Disallow: /account\n"
+        . "Disallow: /admin\n"
+        . "Disallow: /dashboard\n"
+        . "Disallow: /api/\n\n"
+        . "Sitemap: {$sitemapUrl}\n";
+    return response($content, 200, ['Content-Type' => 'text/plain']);
+});
+
+// SEO: sitemap.xml
+Route::get('/sitemap.xml', [SitemapController::class, 'index']);
 
 // Password reset: same URL as API so SPA can POST /api/auth/password/reset-link
 // Web route is registered first → no Sanctum, no 401
