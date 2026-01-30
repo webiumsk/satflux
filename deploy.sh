@@ -57,6 +57,11 @@ fi
 
 # Step 1: Pull latest changes
 echo -e "${YELLOW}Step 1: Pulling latest changes from Git...${NC}"
+if [ -n "$DEPLOY_BRANCH" ]; then
+    echo -e "${GREEN}  → Branch: ${DEPLOY_BRANCH}${NC}"
+else
+    echo -e "${GREEN}  → Branch: main / master (default)${NC}"
+fi
 git fetch origin
 
 # Check if there are local changes (including untracked files that might conflict)
@@ -98,7 +103,7 @@ else
     fi
 fi
 
-echo -e "${GREEN}✓ Git pull completed (branch: $BRANCH)${NC}"
+echo -e "${GREEN}✓ Git pull completed → deployed branch: $BRANCH${NC}"
 
 # Step 2: Ensuring containers are running
 echo -e "${YELLOW}Step 2: Ensuring containers are running ($COMPOSE_FILE)...${NC}"
