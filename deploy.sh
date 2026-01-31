@@ -134,6 +134,8 @@ done
 
 # Step 3: Install/update PHP dependencies
 echo -e "${YELLOW}Step 3: Installing/updating PHP dependencies...${NC}"
+# Clear package manifest so discovery runs with current vendor only (avoids loading dev-only Collision in prod)
+docker exec --user root "$PHP_CONTAINER" rm -f /var/www/bootstrap/cache/packages.php /var/www/bootstrap/cache/services.php 2>/dev/null || true
 docker exec --user root "$PHP_CONTAINER" composer install --optimize-autoloader --no-dev --no-interaction
 
 # Step 4: Install/update Node dependencies and build assets
