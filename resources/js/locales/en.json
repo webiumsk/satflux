@@ -301,6 +301,7 @@
     "sign_in": "Sign In",
     "pricing": "Pricing",
     "features": "Features",
+    "how_it_works": "How it works",
     "my_stores": "My Stores"
   },
   "errors": {
@@ -467,7 +468,26 @@
     "sla_guarantees": "SLA Guarantees",
     "upgrade": "Upgrade",
     "contact_sales": "Contact Sales",
-    "failed_to_create_checkout": "Failed to create checkout. Please try again."
+    "failed_to_create_checkout": "Failed to create checkout. Please try again.",
+    "how_it_works": "How it works",
+    "how_it_works_intro": "Satflux is a control panel for BTCPay Server. It lets you accept Bitcoin and Lightning payments without limits, manage multiple stores, and keep everything in one place.",
+    "how_it_works_step1_title": "Create an account",
+    "how_it_works_step1_text": "Sign up for free. No credit card. Payments always go directly to your wallet.",
+    "how_it_works_step2_title": "Create a store",
+    "how_it_works_step2_text": "In the panel you create a store for your business. Choose your wallet (Blink or Aqua) and complete a short setup.",
+    "how_it_works_step3_title": "PoS terminal",
+    "how_it_works_step3_text": "Add a Point of Sale terminal for in-person sales — on tablet or mobile. Customers pay via QR code.",
+    "how_it_works_step4_title": "Lightning address",
+    "how_it_works_step4_text": "Create an address in the format your_name@satflux.org. Accept Lightning payments simply — no complex details.",
+    "how_it_works_step5_title": "E-shop integration",
+    "how_it_works_step5_text": "WooCommerce, Magento, Drupal, PrestaShop, Shopify. Pay Button or plugin to accept Bitcoin payments in your online store.",
+    "how_it_works_step6_title": "Accept payments",
+    "how_it_works_step6_text": "Customers pay with Bitcoin or Lightning. You keep full control of funds and get exports for accounting.",
+    "how_it_works_demo_title": "PoS terminal demo",
+    "how_it_works_demo_intro": "Try a live terminal — the same kind you can use in your store.",
+    "how_it_works_demo_real": "Payments are real.",
+    "how_it_works_open_pos_mobile": "Open PoS demo",
+    "how_it_works_close_modal": "Close"
   },
   "support": {
     "title": "Contact & Support",

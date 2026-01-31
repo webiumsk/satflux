@@ -302,6 +302,7 @@
     "sign_in": "Prihlásiť sa",
     "pricing": "Cenník",
     "features": "Features",
+    "how_it_works": "Ako to funguje",
     "my_stores": "Moje obchody"
   },
   "errors": {
@@ -468,7 +469,26 @@
     "sla_guarantees": "SLA záruky",
     "upgrade": "Inovovať",
     "contact_sales": "Kontaktovať predaj",
-    "failed_to_create_checkout": "Zlyhalo vytvorenie pokladne. Prosím skúste to znova."
+    "failed_to_create_checkout": "Zlyhalo vytvorenie pokladne. Prosím skúste to znova.",
+    "how_it_works": "Ako to funguje",
+    "how_it_works_intro": "Satflux je ovládací panel pre BTCPay Server. Umožňuje vám prijímať Bitcoin a Lightning platby bez limitov, spravovať viac obchodov a mať všetko na jednom mieste.",
+    "how_it_works_step1_title": "Vytvorte účet",
+    "how_it_works_step1_text": "Zaregistrujte sa zadarmo. Žiadna kreditná karta. Platby idú vždy priamo do vašej peňaženky.",
+    "how_it_works_step2_title": "Vytvorte obchod",
+    "how_it_works_step2_text": "V paneli vytvoríte obchod pre váš biznis. Vyberte peňaženku (Blink alebo Aqua) a dokončite krátky setup.",
+    "how_it_works_step3_title": "Terminál PoS",
+    "how_it_works_step3_text": "Pridajte Point of Sale terminál pre predaj v mieste — na tablete alebo mobile. Zákazníci platia cez QR kód.",
+    "how_it_works_step4_title": "Lightning adresa",
+    "how_it_works_step4_text": "Vytvorte si adresu vo formáte your_name@satflux.org. Prijímajte Lightning platby jednoducho — bez zložitých údajov.",
+    "how_it_works_step5_title": "Prepojenie s e-shopom",
+    "how_it_works_step5_text": "WooCommerce, Magento, Drupal, PrestaShop, Shopify. Pay Button alebo plugin pre prijímanie Bitcoin platieb v online obchode.",
+    "how_it_works_step6_title": "Prijímajte platby",
+    "how_it_works_step6_text": "Zákazníci platia Bitcoinom alebo Lightningom. Vy máte plnú kontrolu nad prostriedkami a exportmi pre účtovníctvo.",
+    "how_it_works_demo_title": "Ukážka PoS terminálu",
+    "how_it_works_demo_intro": "Vyskúšajte si živý terminál — rovnaký ako môžete mať vo svojom obchode.",
+    "how_it_works_demo_real": "Platby sú reálne.",
+    "how_it_works_open_pos_mobile": "Otvorť PoS demo",
+    "how_it_works_close_modal": "Zavrieť"
   },
   "support": {
     "title": "Kontakt a podpora",
