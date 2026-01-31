@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Storage;
 Route::get('/storage/{path}', function (string $path) {
     $path = str_replace(['..', "\0"], '', $path);
     $path = trim($path, '/');
+    Log::info('Storage route hit', ['path' => $path, 'exists' => Storage::disk('public')->exists($path)]);
     if ($path === '' || !Storage::disk('public')->exists($path)) {
         Log::warning('Storage file not found', ['path' => $path, 'request_uri' => request()->getRequestUri()]);
         abort(404);
@@ -90,6 +91,16 @@ Route::middleware(['auth'])->group(function () {
 // so Inertia does a full page visit instead of showing the HTML in a modal.
 // Use APP_URL + request URI so the redirect has the correct host/port (e.g. localhost:8080).
 Route::get('/{any}', function (Request $request) {
+    // Serve /storage/* here when route cache causes catch-all to match first
+    $uri = ltrim($request->getRequestUri(), '/');
+    if (str_starts_with($uri, 'storage/')) {
+        $path = str_replace(['..', "\0"], '', substr($uri, 7)); // strip "storage/"
+        $path = trim($path, '/');
+        if ($path !== '' && Storage::disk('public')->exists($path)) {
+            return response()->file(Storage::disk('public')->path($path));
+        }
+        abort(404);
+    }
     if ($request->header('X-Inertia')) {
         $location = rtrim(config('app.url', $request->getSchemeAndHttpHost()), '/') . '/' . ltrim($request->getRequestUri(), '/');
         return response('', 409)->header('X-Inertia-Location', $location);
