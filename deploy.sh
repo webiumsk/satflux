@@ -152,6 +152,10 @@ docker exec --user root "$PHP_CONTAINER" npm run build
 echo -e "${YELLOW}Step 5: Running database migrations...${NC}"
 docker exec --user root "$PHP_CONTAINER" php artisan migrate --force
 
+# Step 5b: Create storage symlink (public/storage -> storage/app/public)
+echo -e "${YELLOW}Step 5b: Creating storage symlink...${NC}"
+docker exec --user root "$PHP_CONTAINER" php artisan storage:link --force 2>/dev/null || true
+
 # Step 6: Clear and optimize Laravel caches
 echo -e "${YELLOW}Step 6: Optimizing Laravel...${NC}"
 docker exec --user root "$PHP_CONTAINER" php artisan config:clear
