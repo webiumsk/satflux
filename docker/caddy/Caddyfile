@@ -1,14 +1,21 @@
 {
-    # Global options
-    email {$ACME_EMAIL}
+    # Email pre Let's Encrypt (použije sa len pri HTTPS doméne)
+    email {$ACME_EMAIL:admin@localhost}
 }
 
-http://:80 {
-    # Proxy all traffic to the nginx container
+# SITE_ADDRESS určuje mód:
+# - localhost:80 = HTTP only (dev/test, žiadne SSL)
+# - satflux.io = HTTPS s automatickým Let's Encrypt (produkcia)
+{$SITE_ADDRESS:localhost:80} {
+    # Bind 0.0.0.0 pre prístup z hosta v Dockeri
+    bind 0.0.0.0
+
+    # Proxy na nginx (ktorý spracuje PHP cez PHP-FPM)
     reverse_proxy nginx:80
 
-    # Enable logging to both file and stdout
+    # Logovanie (stdout = Docker-friendly)
     log {
-        output file /var/log/caddy/access.log
+        output stdout
+        format console
     }
 }

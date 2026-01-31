@@ -1,88 +1,120 @@
-# Standalone Deployment Guide
+# Standalone Deployment - D21Panel
 
-Tento dokument popisuje postup nasadenia aplikácie v "standalone" režime, ktorý nie je závislý na externom Traefiku ani sieťach. Používa lokálny **Caddy** ako reverzný proxy pre automatické SSL.
+Samostatné nasadenie bez závislosti na Traefik. Caddy slúži ako reverse proxy s automatickým HTTPS cez Let's Encrypt.
 
-## Hlavné zmeny oproti štandardnému deploymentu
+## Rozdiel oproti produkčnému nasadeniu
 
-- Používa sa súbor `docker-compose.standalone.yml`.
-- SSL zabezpečuje Caddy (namiesto Traefiku).
-- Porty sú konfigurovateľné v `.env.production` (prednastavené na 8080/8443, aby sa nebili s Passboltom).
+| Produkcia (docker-compose.prod.yml) | Standalone (docker-compose.standalone.yml) |
+|-------------------------------------|-------------------------------------------|
+| Nginx + Traefik (externý)           | Nginx + Caddy (všetko v jednom stacku)    |
+| Porty: interné, Traefik na 80/443   | Porty: 80/443 alebo 8090/8443             |
+| Sieť: passbolt_default (Traefik)    | Sieť: izolovaný satflux bridge            |
 
-## Postup nasadenia
+## Rýchly štart (nový server)
 
-### 1. Príprava environment variables
+1. **Klónuj repozitár** na cieľový server
+2. **Skopíruj .env** – z `.env.example` vytvor `.env.production`
+3. **Vyplň premenné** v `.env.production`:
+   ```bash
+   # Pre produkciu s doménou
+   SITE_ADDRESS=satflux.io
+   ACME_EMAIL=admin@satflux.io
+   
+   # Porty – na čistom serveri použite 80/443
+   STANDALONE_HTTP_PORT=80
+   STANDALONE_HTTPS_PORT=443
+   
+   # DB, Redis, APP_URL, atď.
+   POSTGRES_PASSWORD=<silné_heslo>
+   DB_PASSWORD=<silné_heslo>
+   APP_URL=https://satflux.io
+   ```
+4. **Nastav DNS** – A záznam domény smeruje na IP servera
+5. **Spusti nasadenie:**
+   ```bash
+   ln -sf deploy.config.standalone.sh deploy.config.sh
+   ./deploy.sh
+   ```
 
-V súbore `.env.production` nastavte nasledujúce premenné:
+## Režimy nasadenia
 
-```env
-# Doména pre SSL (Caddy)
-APP_DOMAIN=vassa-domena.sk
-ACME_EMAIL=vas@email.sk
+### 1. Produkcia s HTTPS (doména)
 
-# Porty
-STANDALONE_HTTP_PORT=8090
-STANDALONE_HTTPS_PORT=8443
+- `SITE_ADDRESS=satflux.io` – Caddy získava Let's Encrypt certifikát
+- `STANDALONE_HTTP_PORT=80`, `STANDALONE_HTTPS_PORT=443`
+- Port 80 musí byť prístupný z internetu (ACME HTTP challenge)
 
-# Automatická voľba standalone režimu pre deploy.sh
-COMPOSE_FILE=docker-compose.standalone.yml
+### 2. Dev / test (bez SSL)
+
+- `SITE_ADDRESS=localhost:80` – len HTTP
+- `STANDALONE_HTTP_PORT=8090`, `STANDALONE_HTTPS_PORT=8443`
+- Aplikácia: `http://localhost:8090`
+
+### 3. Server s už bežiacim Traefik (porty 80/443 obsadené)
+
+- `SITE_ADDRESS=satflux.io`
+- `STANDALONE_HTTP_PORT=8090`, `STANDALONE_HTTPS_PORT=8443`
+- Aplikácia: `https://satflux.io:8443`
+- **Let's Encrypt:** Traefik už drží 80/443, ACME challenge cez Caddy nebude fungovať na štandardnom porte. Možnosti:
+  - DNS challenge (Caddy pluginy pre Cloudflare, …)
+  - Nasadiť standalone na iný server
+  - Postupne presunúť routing z Traefiku na Caddy
+
+## deploy.config.standalone.sh
+
+```bash
+COMPOSE_FILE="docker-compose.standalone.yml"
+PROJECT_NAME="satflux_standalone"
+
+# Voliteľne pre .env.production:
+# SITE_ADDRESS=satflux.io
+# ACME_EMAIL=admin@example.com
+# STANDALONE_HTTP_PORT=80
+# STANDALONE_HTTPS_PORT=443
 ```
 
-### 2. Trvalé nastavenie (Sticky configuration)
-
-Ak nechcete upravovať `.env.production`, môžete použiť konfiguračný súbor:
+Symlink pre používanie s deploy scriptom:
 
 ```bash
 ln -sf deploy.config.standalone.sh deploy.config.sh
-ln -sf backup.config.standalone.sh backup.config.sh
 ```
 
-Po tomto prelinkovaní bude stačiť spustiť `./deploy.sh` a automaticky sa použije standalone verzia.
+## Štruktúra kontajnerov
 
-### 3. Spustenie aplikácie
+| Kontajner                     | Služba   | Popis                          |
+|------------------------------|----------|--------------------------------|
+| satflux_caddy_standalone     | Caddy    | Reverse proxy, SSL             |
+| satflux_nginx_standalone     | Nginx    | PHP-FPM, statické súbory       |
+| satflux_php_standalone       | PHP-FPM  | Laravel aplikácia              |
+| satflux_postgres_standalone  | Postgres | Databáza                       |
+| satflux_redis_standalone     | Redis    | Cache, sessions, queue         |
 
-Pre spustenie alebo aktualizáciu stačí spustiť:
-```bash
-./deploy.sh
-```
-(Ak ste v kroku 2 nastavili `deploy.config.sh`, skript automaticky použije standalone verziu.)
+Názvy sú odlíšené od produkčného stacku (`satflux_*_prod`), takže môžu bežať súčasne na jednom serveri (s rôznymi portami).
 
-## Testovanie iného branchu na live serveri (napr. Inertia)
+## Riešenie problémov
 
-Ak chcete na live serveri otestovať konkrétny branch (napr. `Inertia`) namiesto `main`:
+### Caddy neštartuje
 
-1. **Pushni branch na origin** (lokálne):
-   ```bash
-   git push origin Inertia
-   ```
+- Skontroluj `docker compose logs caddy`
+- Over, či je `SITE_ADDRESS` správne (doména alebo `localhost:80`)
 
-2. **Na live serveri** pridaj do **`.env.production`** (tento súbor nie je v gite, deploy ho nikdy neprepíše):
-   ```env
-   DEPLOY_BRANCH=Inertia
-   ```
-   Ďalší deploy potiahne a nasadí tento branch; zmeny v `.env.production` ostávajú.
+### Let's Encrypt certifikát sa nepodarí získať
 
-3. **Spusti deploy** na serveri:
-   ```bash
-   ./deploy.sh
-   ```
-   Skript stiahne branch `Inertia`, v Dockeri spustí `composer install`, `npm install`, `npm run build`, migrácie a reštart.
-
-4. **Návrat na main** po otestovaní:
-   - V `.env.production` zmaž riadok `DEPLOY_BRANCH=Inertia` alebo ho zakomentuj.
-   - Spusti znova `./deploy.sh` – nasadí sa `main` (resp. pôvodná logika).
-
-## Troubleshooting
-
-### Ako skontrolovať logy?
-```bash
-COMPOSE_FILE=docker-compose.standalone.yml docker compose logs -f
-```
+- Port 80 musí byť prístupný z internetu
+- Doména musí smerovať na IP servera (platné A záznamy)
+- Skontroluj firewall (ufw, iptables)
 
 ### Konflikt portov
-Ak sa Caddy nespustí kvôli konfliktu portov, zmeňte `STANDALONE_HTTP_PORT` alebo `STANDALONE_HTTPS_PORT` v `.env.production` a reštartujte:
-```bash
-COMPOSE_FILE=docker-compose.standalone.yml docker compose up -d
-```
 
-### Prístup cez IP (pre testovanie)
-Ak ešte nemáte nasmerovanú doménu, môžete v Caddyfile dočasne zmeniť doménu na `:80` (HTTP) a pristupovať cez IP:Port.
+- Ak beží Traefik alebo iný reverse proxy na 80/443, nastav:
+  - `STANDALONE_HTTP_PORT=8090`
+  - `STANDALONE_HTTPS_PORT=8443`
+- Potom aplikácia bude na `https://tvojadomena:8443`
+
+### Kontajner satflux_nginx_prod už existuje
+
+- Standalone používa `satflux_nginx_standalone`
+- Ak stále vidíš konflikt, zastav produkčný stack:
+  ```bash
+  docker compose -f docker-compose.prod.yml down
+  ```
