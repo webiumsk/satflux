@@ -197,7 +197,13 @@
     "profile_settings": "Configuración del perfil",
     "menu": "Menú",
     "open_menu": "Abrir menú",
-    "close_menu": "Cerrar menú"
+    "close_menu": "Cerrar menú",
+    "pricing": "Precios",
+    "features": "Características",
+    "how_it_works": "Cómo funciona",
+    "start_for_free": "Empezar gratis",
+    "sign_in": "Iniciar sesión",
+    "my_stores": "Mis tiendas"
   },
   "errors": {
     "generic": "Ocurrió un error",
@@ -365,6 +371,27 @@
         "save_error": "Error al guardar el elemento FAQ"
       }
     }
+  },
+  "landing": {
+    "how_it_works": "Cómo funciona",
+    "how_it_works_intro": "Satflux es un panel de control para BTCPay Server. Te permite aceptar pagos en Bitcoin y Lightning sin límites, gestionar varias tiendas y tener todo en un solo lugar.",
+    "how_it_works_step1_title": "Crea una cuenta",
+    "how_it_works_step1_text": "Regístrate gratis. Sin tarjeta de crédito. Los pagos van siempre directamente a tu billetera.",
+    "how_it_works_step2_title": "Crea una tienda",
+    "how_it_works_step2_text": "En el panel creas una tienda para tu negocio. Elige tu billetera (Blink o Aqua) y completa una configuración breve.",
+    "how_it_works_step3_title": "Terminal PoS",
+    "how_it_works_step3_text": "Añade un terminal Point of Sale para ventas presenciales — en tablet o móvil. Los clientes pagan con código QR.",
+    "how_it_works_step4_title": "Dirección Lightning",
+    "how_it_works_step4_text": "Crea una dirección en formato your_name@satflux.org. Acepta pagos Lightning de forma sencilla — sin datos complejos.",
+    "how_it_works_step5_title": "Integración con e-shop",
+    "how_it_works_step5_text": "WooCommerce, Magento, Drupal, PrestaShop, Shopify. Pay Button o plugin para aceptar pagos Bitcoin en tu tienda online.",
+    "how_it_works_step6_title": "Acepta pagos",
+    "how_it_works_step6_text": "Los clientes pagan con Bitcoin o Lightning. Tú mantienes el control total de los fondos y tienes exportes para contabilidad.",
+    "how_it_works_demo_title": "Demo del terminal PoS",
+    "how_it_works_demo_intro": "Prueba un terminal en vivo — el mismo que puedes usar en tu tienda.",
+    "how_it_works_demo_real": "Los pagos son reales.",
+    "how_it_works_open_pos_mobile": "Abrir demo PoS",
+    "how_it_works_close_modal": "Cerrar"
   },
   "seo": {
     "landing_title": "Acepta Bitcoin sin límites",
