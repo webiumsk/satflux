@@ -27,7 +27,7 @@ class SitemapController extends Controller
             ->published()
             ->orderBy('updated_at', 'desc')
             ->get()
-            ->map(fn ($article) => [
+            ->map(fn($article) => [
                 'loc' => $baseUrl . '/documentation/' . $article->slug,
                 'priority' => '0.7',
                 'changefreq' => 'monthly',

@@ -1,26 +1,36 @@
+# D21Panel Standalone Deployment
+# Samostatné nasadenie bez závislosti na Traefik - Caddy ako reverse proxy + SSL
+#
+# Použitie:
+#   1. Skopíruj .env.production.example do .env.production a vyplň
+#   2. Pre produkciu s doménou: SITE_ADDRESS=satflux.io, porty 80:80, 443:443
+#   3. Pre dev/test: SITE_ADDRESS=localhost:80, porty 8090:80
+#   4. docker compose -f docker-compose.standalone.yml up -d
+
 services:
   caddy:
     image: caddy:alpine
     container_name: satflux_caddy_standalone
     restart: unless-stopped
     ports:
-      - "${STANDALONE_HTTP_PORT:-8090}:80"
-      - "${STANDALONE_HTTPS_PORT:-8443}:443"
+      - "${STANDALONE_HTTP_PORT:-80}:80"
+      - "${STANDALONE_HTTPS_PORT:-443}:443"
     volumes:
-      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - satflux_caddy_data:/data
       - satflux_caddy_config:/config
     environment:
-      - APP_DOMAIN=${APP_DOMAIN:-localhost}
-      - ACME_EMAIL=${ACME_EMAIL:-admin@localhost}
+      SITE_ADDRESS: ${SITE_ADDRESS:-localhost:80}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@localhost}
     networks:
       - satflux
     depends_on:
-      - nginx
+      nginx:
+        condition: service_healthy
 
   nginx:
     image: nginx:alpine
-    container_name: satflux_nginx_prod
+    container_name: satflux_nginx_standalone
     volumes:
       - ./docker/nginx/prod.conf:/etc/nginx/conf.d/default.conf:ro
       - ./public:/var/www/public:ro
@@ -42,7 +52,7 @@ services:
     build:
       context: ./docker/php
       dockerfile: Dockerfile
-    container_name: satflux_php_prod
+    container_name: satflux_php_standalone
     volumes:
       - .:/var/www:rw
       - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
@@ -68,7 +78,7 @@ services:
 
   postgres:
     image: postgres:16-alpine
-    container_name: satflux_postgres_prod
+    container_name: satflux_postgres_standalone
     env_file:
       - .env.production
     environment:
@@ -90,15 +100,15 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: satflux_redis_prod
+    container_name: satflux_redis_standalone
     env_file:
       - .env.production
     command: >
       sh -c "
-        if [ -n \"$$REDIS_PASSWORD\" ] && [ \"$$REDIS_PASSWORD\" != \"null\" ]; then 
-          redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\"; 
-        else 
-          redis-server --appendonly yes; 
+        if [ -n \"$$REDIS_PASSWORD\" ] && [ \"$$REDIS_PASSWORD\" != \"null\" ]; then
+          redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\";
+        else
+          redis-server --appendonly yes;
         fi
       "
     volumes:
