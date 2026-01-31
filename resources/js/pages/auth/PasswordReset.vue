@@ -21,10 +21,18 @@
           >
         </router-link>
         <h2 class="mt-6 text-center text-3xl font-extrabold text-white">
-          {{ isSetNewPassword ? t("auth.set_new_password") : t("auth.reset_password") }}
+          {{
+            isSetNewPassword
+              ? t("auth.set_new_password")
+              : t("auth.reset_password")
+          }}
         </h2>
         <p class="mt-2 text-center text-sm text-gray-400">
-          {{ isSetNewPassword ? t("auth.enter_new_password_hint") : t("auth.enter_email_reset") }}
+          {{
+            isSetNewPassword
+              ? t("auth.enter_new_password_hint")
+              : t("auth.enter_email_reset")
+          }}
         </p>
       </div>
 
@@ -32,7 +40,11 @@
         class="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-8 shadow-xl"
       >
         <!-- Request reset link form -->
-        <form v-if="!isSetNewPassword" class="space-y-6" @submit.prevent="handleSendResetLink">
+        <form
+          v-if="!isSetNewPassword"
+          class="space-y-6"
+          @submit.prevent="handleSendResetLink"
+        >
           <div>
             <label
               for="email"
@@ -129,7 +141,9 @@
               :disabled="loading"
               class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20"
             >
-              {{ loading ? t("auth.resetting") : t("auth.reset_password_button") }}
+              {{
+                loading ? t("auth.resetting") : t("auth.reset_password_button")
+              }}
             </button>
           </div>
         </form>
@@ -171,8 +185,8 @@ const loading = ref(false);
 const resetToken = computed(() => (route.query.token as string) || "");
 const resetEmail = computed(() => (route.query.email as string) || "");
 
-const isSetNewPassword = computed(
-  () => Boolean(resetToken.value && resetEmail.value)
+const isSetNewPassword = computed(() =>
+  Boolean(resetToken.value && resetEmail.value),
 );
 
 // Ensure CSRF cookie is set before first POST
@@ -186,7 +200,7 @@ watch(
   (email: string | string[] | undefined) => {
     if (email && typeof email === "string") form.value.email = email;
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 async function handleSendResetLink() {
@@ -198,7 +212,9 @@ async function handleSendResetLink() {
     });
     flashStore.success(t("auth.password_reset_sent"));
   } catch (err: any) {
-    flashStore.error(err.response?.data?.message || t("auth.failed_send_reset"));
+    flashStore.error(
+      err.response?.data?.message || t("auth.failed_send_reset"),
+    );
   } finally {
     loading.value = false;
   }
