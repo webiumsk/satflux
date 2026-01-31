@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="mb-8">
       <h1 class="text-3xl font-bold text-white">
         {{ isEdit ? t('admin.documentation.articles.edit_article') : t('admin.documentation.articles.create_article') }}
@@ -7,6 +7,70 @@
     </div>
 
     <form @submit.prevent="handleSubmit" class="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-6">
+      
+      <!-- Language tabs (shared for Title, Content, Meta Description) -->
+      <div class="border-b border-gray-700">
+        <nav class="-mb-px flex space-x-4">
+          <button
+            v-for="loc in formLocales"
+            :key="loc.code"
+            type="button"
+            :class="[
+              'py-2 px-4 border-b-2 font-medium text-sm transition-colors',
+              activeLocale === loc.code
+                ? 'border-indigo-500 text-indigo-400'
+                : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600'
+            ]"
+            @click="activeLocale = loc.code"
+          >
+            {{ loc.name }}
+          </button>
+        </nav>
+      </div>
+
+      <!-- Title (for active locale) -->
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-2">
+          {{ t('admin.documentation.articles.title_label') || 'Title' }} ({{ formLocales.find(l => l.code === activeLocale)?.name ?? activeLocale }})
+          <span class="text-red-400">*</span>
+        </label>
+        <input
+          :value="form.title[activeLocale] || ''"
+          type="text"
+          :placeholder="t('admin.documentation.articles.title_placeholder') || 'Article title'"
+          class="block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700/50 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          @input="updateTitleLocale(activeLocale, ($event.target as HTMLInputElement).value)"
+        />
+      </div>
+
+      <!-- Content (for active locale) -->
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-2">
+          {{ t('admin.documentation.articles.content_label') }} ({{ formLocales.find(l => l.code === activeLocale)?.name ?? activeLocale }})
+          <span class="text-red-400">*</span>
+        </label>
+        <RichTextEditor
+          :key="activeLocale"
+          :model-value="form.content[activeLocale] || ''"
+          :placeholder="t('admin.documentation.articles.content_placeholder')"
+          @update:model-value="updateContentLocale(activeLocale, $event)"
+        />
+      </div>
+
+      <!-- Meta Description (for active locale) -->
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-2">
+          {{ t('admin.documentation.articles.meta_description_label') || 'Meta Description' }} ({{ formLocales.find(l => l.code === activeLocale)?.name ?? activeLocale }})
+        </label>
+        <textarea
+          :value="form.meta_description[activeLocale] || ''"
+          :rows="3"
+          :placeholder="t('admin.documentation.articles.meta_description_placeholder') || 'SEO meta description'"
+          class="block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700/50 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          @input="updateMetaDescriptionLocale(activeLocale, ($event.target as HTMLTextAreaElement).value)"
+        />
+      </div>
+
       <!-- Slug -->
       <div>
         <label class="block text-sm font-medium text-gray-300 mb-2">
@@ -19,58 +83,6 @@
         />
         <p class="mt-1 text-sm text-gray-400">{{ t('admin.documentation.articles.slug_hint') }}</p>
       </div>
-
-      <!-- Title (Multilanguage) -->
-      <MultilanguageEditor
-        v-model="form.title"
-        label="Title"
-        placeholder="Article title"
-        required
-        type="text"
-      />
-
-      <!-- Content (Multilanguage, Rich Editor) -->
-      <div class="space-y-4">
-        <div class="border-b border-gray-700">
-          <nav class="-mb-px flex space-x-4">
-            <button
-              v-for="loc in contentLocales"
-              :key="loc.code"
-              type="button"
-              :class="[
-                'py-2 px-4 border-b-2 font-medium text-sm transition-colors',
-                activeContentLocale === loc.code
-                  ? 'border-indigo-500 text-indigo-400'
-                  : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600'
-              ]"
-              @click="activeContentLocale = loc.code"
-            >
-              {{ loc.name }}
-            </button>
-          </nav>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-300 mb-2">
-            {{ t('admin.documentation.articles.content_label') }} ({{ contentLocales.find(l => l.code === activeContentLocale)?.name ?? activeContentLocale }})
-            <span class="text-red-400">*</span>
-          </label>
-          <RichTextEditor
-            :key="activeContentLocale"
-            :model-value="form.content[activeContentLocale] || ''"
-            :placeholder="t('admin.documentation.articles.content_placeholder')"
-            @update:model-value="updateContentLocale(activeContentLocale, $event)"
-          />
-        </div>
-      </div>
-
-      <!-- Meta Description (Multilanguage) -->
-      <MultilanguageEditor
-        v-model="form.meta_description"
-        label="Meta Description"
-        placeholder="SEO meta description"
-        type="textarea"
-        :rows="3"
-      />
 
       <!-- Category -->
       <div>
@@ -135,11 +147,10 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { adminDocumentationApi } from '../../../services/api';
-import MultilanguageEditor from '../../../components/admin/MultilanguageEditor.vue';
 import RichTextEditor from '../../../components/admin/RichTextEditor.vue';
 import Select from '../../../components/ui/Select.vue';
 
-const contentLocales = [
+const formLocales = [
   { code: 'en', name: 'English' },
   { code: 'sk', name: 'Slovenčina' },
   { code: 'es', name: 'Español' },
@@ -157,10 +168,31 @@ const { t } = useI18n();
 const isEdit = computed(() => !!route.params.id);
 const saving = ref(false);
 const categories = ref<any[]>([]);
-const activeContentLocale = ref('en');
+const activeLocale = ref('en');
+
+function slugify(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function updateTitleLocale(locale: string, value: string) {
+  form.value.title = { ...form.value.title, [locale]: value };
+  if (!isEdit.value && !form.value.slug && value.trim()) {
+    form.value.slug = slugify(value);
+  }
+}
 
 function updateContentLocale(locale: string, html: string) {
   form.value.content = { ...form.value.content, [locale]: html };
+}
+
+function updateMetaDescriptionLocale(locale: string, value: string) {
+  form.value.meta_description = { ...form.value.meta_description, [locale]: value };
 }
 
 const categoryOptions = computed(() => [

@@ -25,7 +25,7 @@ class DocumentationArticleRequest extends FormRequest
 
         $rules = [
             'slug' => [
-                'required',
+                'nullable',
                 'string',
                 'max:255',
                 Rule::unique('documentation_articles', 'slug')->ignore($articleId),
