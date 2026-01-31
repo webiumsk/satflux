@@ -6,13 +6,16 @@ use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StoreAppPageController;
 use App\Http\Middleware\EnsureStoreOwnership;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
 // Serve public storage files (works with php artisan serve when symlink isn't followed)
 Route::get('/storage/{path}', function (string $path) {
     $path = str_replace(['..', "\0"], '', $path);
-    if (!Storage::disk('public')->exists($path)) {
+    $path = trim($path, '/');
+    if ($path === '' || !Storage::disk('public')->exists($path)) {
+        Log::warning('Storage file not found', ['path' => $path, 'request_uri' => request()->getRequestUri()]);
         abort(404);
     }
     $fullPath = Storage::disk('public')->path($path);
