@@ -5,50 +5,56 @@
         <!-- Left side: Empty on mobile, Logo + Navigation on desktop -->
         <div class="hidden md:flex items-center space-x-8">
           <!-- Logo -->
-          <router-link to="/" class="flex items-center gap-3">
+          <component :is="isInertia ? Link : RouterLink" :href="isInertia ? '/' : undefined" :to="!isInertia ? '/' : undefined" class="flex items-center gap-3">
             <div
               class="w-8 h-8 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg"
             >
               SF
             </div>
             <span class="text-xl font-bold text-white tracking-tight"
-              >satflux.io</span
+              >satflux.io            </span
             >
-          </router-link>
+          </component>
 
           <!-- Navigation Menu (Desktop only) -->
           <nav class="hidden md:flex space-x-2">
-            <router-link
-              to="/dashboard"
+            <component
+              :is="isInertia ? Link : RouterLink"
+              :href="isInertia ? '/dashboard' : undefined"
+              :to="!isInertia ? '/dashboard' : undefined"
               class="px-3 py-2 rounded-lg text-sm font-medium transition-all"
               :class="
-                $route.name === 'home'
+                isActive('/dashboard', 'home')
                   ? 'text-white bg-indigo-600/20 text-indigo-300'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               "
             >
               {{ t("header.dashboard") }}
-            </router-link>
-            <router-link
-              to="/stores"
+            </component>
+            <component
+              :is="isInertia ? Link : RouterLink"
+              :href="isInertia ? '/stores' : undefined"
+              :to="!isInertia ? '/stores' : undefined"
               class="px-3 py-2 rounded-lg text-sm font-medium transition-all"
               :class="
-                $route.name?.toString().startsWith('stores')
+                isActive('/stores')
                   ? 'text-white bg-indigo-600/20 text-indigo-300'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               "
             >
               {{ t("header.stores") }}
-            </router-link>
-            <router-link
+            </component>
+            <component
               v-if="
                 authStore.user?.role === 'support' ||
                 authStore.user?.role === 'admin'
               "
-              to="/support/wallet-connections"
+              :is="isInertia ? Link : RouterLink"
+              :href="isInertia ? '/support/wallet-connections' : undefined"
+              :to="!isInertia ? '/support/wallet-connections' : undefined"
               class="px-3 py-2 rounded-lg text-sm font-medium transition-all relative"
               :class="
-                $route.name === 'support-wallet-connections'
+                isActive('/support/wallet-connections', 'support-wallet-connections')
                   ? 'text-white bg-indigo-600/20 text-indigo-300'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               "
@@ -60,34 +66,36 @@
               >
                 {{ supportCount > 99 ? "99+" : supportCount }}
               </span>
-            </router-link>
-            <router-link
+            </component>
+            <component
               v-if="authStore.user?.role === 'admin'"
-              to="/admin"
+              :is="isInertia ? Link : RouterLink"
+              :href="isInertia ? '/admin' : undefined"
+              :to="!isInertia ? '/admin' : undefined"
               class="px-3 py-2 rounded-lg text-sm font-medium transition-all"
               :class="
-                $route.name === 'admin-users'
+                isActive('/admin', 'admin-users')
                   ? 'text-white bg-indigo-600/20 text-indigo-300'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               "
             >
               {{ t("header.admin") }}
-            </router-link>
+            </component>
           </nav>
         </div>
 
         <!-- Center: Logo on mobile only -->
         <div class="md:hidden absolute left-1/2 transform -translate-x-1/2">
-          <router-link to="/" class="flex items-center gap-2">
+          <component :is="isInertia ? Link : RouterLink" :href="isInertia ? '/' : undefined" :to="!isInertia ? '/' : undefined" class="flex items-center gap-2">
             <div
               class="w-7 h-7 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm"
             >
               SF
             </div>
             <span class="text-lg font-bold text-white tracking-tight"
-              >satflux.io</span
-            >
-          </router-link>
+              >satflux.io            </span
+              >
+            </component>
         </div>
 
         <!-- Right side: Mobile menu button (mobile) / User button (desktop) -->
@@ -98,17 +106,19 @@
           </div>
 
           <!-- Links visible on desktop right side -->
-          <router-link
-              to="/documentation"
+          <component
+              :is="isInertia ? Link : RouterLink"
+              :href="isInertia ? '/documentation' : undefined"
+              :to="!isInertia ? '/documentation' : undefined"
               class="hidden md:block text-gray-500 hover:text-gray-300 text-sm font-medium transition-colors"
               :class="
-                $route.name === 'home'
+                isActive('/documentation', 'home')
                   ? 'text-white bg-indigo-600/20 text-indigo-300'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               "
             >
               {{ t("header.docs") }}
-            </router-link> 
+            </component>
 
           <!-- Mobile menu button (right side, mobile only) -->
           <button
@@ -180,8 +190,10 @@
                   </p>
                 </div>
                 <div class="py-1">
-                  <router-link
-                    to="/account"
+                  <component
+                    :is="isInertia ? Link : RouterLink"
+                    :href="isInertia ? '/account' : undefined"
+                    :to="!isInertia ? '/account' : undefined"
                     @click="closeUserMenu"
                     class="group flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
                   >
@@ -199,9 +211,11 @@
                       />
                     </svg>
                     {{ t("header.profile_settings") }}
-                  </router-link>
-                  <router-link
-                    to="/support"
+                  </component>
+                  <component
+                    :is="isInertia ? Link : RouterLink"
+                    :href="isInertia ? '/support' : undefined"
+                    :to="!isInertia ? '/support' : undefined"
                     @click="closeUserMenu"
                     class="group flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
                   >
@@ -219,7 +233,7 @@
                       />
                     </svg>
                     {{ t("header.support") }}
-                  </router-link>                  
+                  </component>                  
                   <div class="border-t border-gray-700 my-1"></div>
                   <button
                     @click="handleLogout"
@@ -293,12 +307,14 @@
 
         <!-- Navigation Menu -->
         <nav class="p-4 space-y-2">
-          <router-link
-            to="/dashboard"
+          <component
+            :is="isInertia ? Link : RouterLink"
+            :href="isInertia ? '/dashboard' : undefined"
+            :to="!isInertia ? '/dashboard' : undefined"
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors"
             :class="
-              $route.name === 'home'
+              isActive('/dashboard', 'home')
                 ? 'bg-indigo-600/20 text-indigo-300'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
             "
@@ -317,13 +333,15 @@
               />
             </svg>
             {{ t("header.dashboard") }}
-          </router-link>
-          <router-link
-            to="/stores"
+          </component>
+          <component
+            :is="isInertia ? Link : RouterLink"
+            :href="isInertia ? '/stores' : undefined"
+            :to="!isInertia ? '/stores' : undefined"
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors"
             :class="
-              $route.name?.toString().startsWith('stores')
+              isActive('/stores')
                 ? 'bg-indigo-600/20 text-indigo-300'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
             "
@@ -342,13 +360,15 @@
               />
             </svg>
             {{ t("header.stores") }}
-          </router-link>
-          <router-link            
-            to="/support"
+          </component>
+          <component
+            :is="isInertia ? Link : RouterLink"
+            :href="isInertia ? '/support' : undefined"
+            :to="!isInertia ? '/support' : undefined"
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors relative"
             :class="
-              $route.name === 'support-wallet-connections'
+              isActive('/support/wallet-connections', 'support-wallet-connections')
                 ? 'bg-indigo-600/20 text-indigo-300'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
             "
@@ -367,17 +387,19 @@
               />
             </svg>
             {{ t("header.support") }}
-          </router-link>
-          <router-link
+          </component>
+          <component
             v-if="
               authStore.user?.role === 'support' ||
               authStore.user?.role === 'admin'
             "
-            to="/admin"
+            :is="isInertia ? Link : RouterLink"
+            :href="isInertia ? '/admin' : undefined"
+            :to="!isInertia ? '/admin' : undefined"
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors relative"
             :class="
-              $route.name === 'support-wallet-connections'
+              isActive('/admin', 'support-wallet-connections')
                 ? 'bg-indigo-600/20 text-indigo-300'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
             "
@@ -402,14 +424,16 @@
             >
               {{ supportCount > 99 ? "99+" : supportCount }}
             </span>
-          </router-link>
-          <router-link
+          </component>
+          <component
             v-if="authStore.user?.role === 'admin'"
-            to="/admin"
+            :is="isInertia ? Link : RouterLink"
+            :href="isInertia ? '/admin' : undefined"
+            :to="!isInertia ? '/admin' : undefined"
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors"
             :class="
-              $route.name === 'admin-users'
+              isActive('/admin', 'admin-users')
                 ? 'bg-indigo-600/20 text-indigo-300'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
             "
@@ -428,7 +452,7 @@
               />
             </svg>
             {{ t("header.admin") }}
-          </router-link>
+          </component>
         </nav>
       </div>
 
@@ -444,8 +468,10 @@
             {{ authStore.user?.email }}
           </p>
         </div>
-        <router-link
-          to="/account"
+        <component
+          :is="isInertia ? Link : RouterLink"
+          :href="isInertia ? '/account' : undefined"
+          :to="!isInertia ? '/account' : undefined"
           @click="closeMobileMenu"
           class="flex items-center px-4 py-3 rounded-xl text-base font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
         >
@@ -463,7 +489,7 @@
             />
           </svg>
           {{ t("header.profile_settings") }}
-        </router-link>
+        </component>
         <button
           @click="handleLogout"
           class="flex items-center w-full px-4 py-3 rounded-xl text-base font-medium text-red-400 hover:bg-red-900/10 hover:text-red-300 transition-colors text-left"
@@ -489,16 +515,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
-import { useRouter } from "vue-router";
+import { ref, computed, onMounted, onUnmounted, inject } from "vue";
+import { useRouter, useRoute, RouterLink } from "vue-router";
+import { Link, router as inertiaRouter, usePage } from "@inertiajs/vue3";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
 import LanguageSwitcher from "../LanguageSwitcher.vue";
 import api from "../../services/api";
 
 const { t } = useI18n();
+const isInertia = inject<boolean>("inertia", false);
+const vueRouter = !isInertia ? useRouter() : null;
+const route = !isInertia ? useRoute() : null;
+const page = isInertia ? usePage() : null;
 
-const router = useRouter();
 const authStore = useAuthStore();
 const showUserMenu = ref(false);
 const showMobileMenu = ref(false);
@@ -542,13 +572,20 @@ const handleLogout = async () => {
   closeMobileMenu();
   try {
     await authStore.logout();
-    router.push({ name: "login" });
+    if (isInertia) inertiaRouter.visit("/login");
+    else vueRouter!.push({ name: "login" });
   } catch (error) {
     console.error("Logout error:", error);
-    // Still redirect to login even if logout API call fails
-    router.push({ name: "login" });
+    if (isInertia) inertiaRouter.visit("/login");
+    else vueRouter!.push({ name: "login" });
   }
 };
+
+function isActive(path: string, routeName?: string): boolean {
+  if (isInertia && page) return page.url === path || page.url.startsWith(path + "/");
+  if (route) return routeName ? route.name === routeName : route.path.startsWith(path);
+  return false;
+}
 
 const loadSupportCount = async () => {
   if (authStore.user?.role !== "support" && authStore.user?.role !== "admin") {
@@ -565,17 +602,21 @@ const loadSupportCount = async () => {
 };
 
 // Watch for route changes to refresh count and close mobile menu
-router.afterEach(() => {
-  // Close mobile menu on navigation
-  closeMobileMenu();
-
-  if (authStore.user?.role === "support" || authStore.user?.role === "admin") {
-    // Small delay to ensure any status changes are saved
-    setTimeout(() => {
-      loadSupportCount();
-    }, 1000);
-  }
-});
+if (vueRouter) {
+  vueRouter.afterEach(() => {
+    closeMobileMenu();
+    if (authStore.user?.role === "support" || authStore.user?.role === "admin") {
+      setTimeout(() => loadSupportCount(), 1000);
+    }
+  });
+} else if (isInertia) {
+  inertiaRouter.on("navigate", () => {
+    closeMobileMenu();
+    if (authStore.user?.role === "support" || authStore.user?.role === "admin") {
+      setTimeout(() => loadSupportCount(), 1000);
+    }
+  });
+}
 
 onMounted(() => {
   // Load support count if user has support/admin role

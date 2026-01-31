@@ -371,18 +371,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
 import { useAppsStore } from '../../store/apps';
+import { useFlashStore } from '../../store/flash';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
 import InfoTooltip from '../../components/ui/InfoTooltip.vue';
 import UpgradeModal from '../../components/stores/UpgradeModal.vue';
 import { currencies } from '../../data/currencies';
 import api from '../../services/api';
 
+const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const storesStore = useStoresStore();
 const appsStore = useAppsStore();
+const flashStore = useFlashStore();
 
 const storeId = route.params.id as string;
 const loading = ref(false);
@@ -520,17 +524,18 @@ async function handleSubmit() {
 
     await loadAddresses();
     closeForm();
+    flashStore.success(t('stores.lightning_address_added'));
   } catch (err: any) {
     console.error('Failed to save address:', err);
-    const errorMessage = err.response?.data?.message || 'Failed to save lightning address';
-    
+    const errorMessage = err.response?.data?.message || t('stores.lightning_address_save_failed');
+
     // Check if error is about limit reached
     if (err.response?.status === 403 && errorMessage.includes('maximum number')) {
-      // Show upgrade modal instead of form error
       closeForm();
       showUpgradeModal.value = true;
     } else {
-      error.value = errorMessage;
+      flashStore.error(errorMessage);
+      error.value = '';
     }
   } finally {
     saving.value = false;
@@ -559,9 +564,12 @@ async function handleDelete() {
     await api.delete(`/stores/${storeId}/lightning-addresses/${addressToDelete.value.username}`);
     await loadAddresses();
     closeDeleteModal();
+    flashStore.success(t('stores.lightning_address_removed'));
   } catch (err: any) {
     console.error('Failed to delete address:', err);
-    deleteError.value = err.response?.data?.message || 'Failed to delete lightning address';
+    const msg = err.response?.data?.message || t('stores.lightning_address_delete_failed');
+    flashStore.error(msg);
+    deleteError.value = '';
   } finally {
     deleting.value = false;
   }
@@ -570,9 +578,10 @@ async function handleDelete() {
 async function copyToClipboard(text: string) {
   try {
     await navigator.clipboard.writeText(text);
-    // You could show a toast notification here
+    flashStore.success(t('common.copied'));
   } catch (err) {
     console.error('Failed to copy:', err);
+    flashStore.error(t('common.copy_failed'));
   }
 }
 

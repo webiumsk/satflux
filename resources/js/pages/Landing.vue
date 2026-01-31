@@ -89,10 +89,13 @@
           </div>
         </div>
       </div>
+      <!-- Thin gradient line at bottom of hero -->
+      <div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" aria-hidden="true"></div>
     </section>
 
     <!-- Key Points Section -->
-    <section class="py-24 bg-gray-900 border-t border-gray-800">
+    <section class="relative py-24 bg-gray-800/40">
+      <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" aria-hidden="true"></div>
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
            <!-- Point 1 -->
@@ -143,7 +146,8 @@
     </section>
 
     <!-- Features Section -->
-    <section id="features" class="py-24 bg-gray-900">
+    <section id="features" class="relative py-24 bg-gray-900">
+      <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" aria-hidden="true"></div>
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
           <h2 class="text-3xl md:text-5xl font-bold text-white mb-4">
@@ -222,10 +226,167 @@
       </div>
     </section>
 
+    <!-- How it works Section (between Features and Pricing) -->
+    <section id="how-it-works" class="relative py-24 bg-gray-800/40">
+      <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" aria-hidden="true"></div>
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+          <h2 class="text-3xl md:text-5xl font-bold text-white mb-4">
+            {{ t('landing.how_it_works') }}
+          </h2>
+          <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+            {{ t('landing.how_it_works_intro') }}
+          </p>
+        </div>
+
+        <!-- Two columns: steps (left 2/3) + terminal on mobile (right 1/3) -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12 items-center">
+          <!-- Left: 6 steps -->
+          <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <!-- Step 1 -->
+            <div class="relative flex flex-col sm:flex-row sm:items-start gap-4 p-5 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/40 transition-colors">
+              <div class="flex shrink-0 w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-bold">1</div>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-lg font-bold text-white mb-1">{{ t('landing.how_it_works_step1_title') }}</h3>
+                <p class="text-gray-400 text-sm">{{ t('landing.how_it_works_step1_text') }}</p>
+              </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="relative flex flex-col sm:flex-row sm:items-start gap-4 p-5 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/40 transition-colors">
+              <div class="flex shrink-0 w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-bold">2</div>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-lg font-bold text-white mb-1">{{ t('landing.how_it_works_step2_title') }}</h3>
+                <p class="text-gray-400 text-sm">{{ t('landing.how_it_works_step2_text') }}</p>
+              </div>
+            </div>
+
+            <!-- Step 3: PoS -->
+            <div class="relative flex flex-col sm:flex-row sm:items-start gap-4 p-5 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/40 transition-colors">
+              <div class="flex shrink-0 w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-bold">3</div>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-lg font-bold text-white mb-1">{{ t('landing.how_it_works_step3_title') }}</h3>
+                <p class="text-gray-400 text-sm">{{ t('landing.how_it_works_step3_text') }}</p>
+              </div>
+            </div>
+
+            <!-- Step 4: LN Address -->
+            <div class="relative flex flex-col sm:flex-row sm:items-start gap-4 p-5 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/40 transition-colors">
+              <div class="flex shrink-0 w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-bold">4</div>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-lg font-bold text-white mb-1">{{ t('landing.how_it_works_step4_title') }}</h3>
+                <p class="text-gray-400 text-sm">{{ t('landing.how_it_works_step4_text') }}</p>
+              </div>
+            </div>
+
+            <!-- Step 5: E-shop -->
+            <div class="relative flex flex-col sm:flex-row sm:items-start gap-4 p-5 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/40 transition-colors">
+              <div class="flex shrink-0 w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-bold">5</div>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-lg font-bold text-white mb-1">{{ t('landing.how_it_works_step5_title') }}</h3>
+                <p class="text-gray-400 text-sm">{{ t('landing.how_it_works_step5_text') }}</p>
+              </div>
+            </div>
+
+            <!-- Step 6: Accept payments -->
+            <div class="relative flex flex-col sm:flex-row sm:items-start gap-4 p-5 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/40 transition-colors">
+              <div class="flex shrink-0 w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-bold">6</div>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-lg font-bold text-white mb-1">{{ t('landing.how_it_works_step6_title') }}</h3>
+                <p class="text-gray-400 text-sm">{{ t('landing.how_it_works_step6_text') }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: terminal "on mobile" (1/3) - wider for QR -->
+          <div class="lg:col-span-1 flex justify-center lg:justify-end">
+            <div class="w-full max-w-[380px] mx-auto lg:mx-0">
+              <p class="text-center lg:text-right text-sm text-gray-500 mb-3">{{ t('landing.how_it_works_demo_title') }}</p>
+              <p class="text-center lg:text-right text-xs text-green-400/90 mb-3">{{ t('landing.how_it_works_demo_real') }}</p>
+              <!-- Desktop/tablet: phone frame with iframe -->
+              <div class="hidden md:block relative rounded-[2rem] border-[10px] border-gray-700 bg-gray-800 shadow-2xl shadow-black/50 overflow-hidden" style="box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+                <div class="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-gray-800 rounded-b-xl z-10" aria-hidden="true" />
+                <div class="bg-gray-900 overflow-hidden" style="min-height: 760px;">
+                  <iframe
+                    :src="posDemoUrl"
+                    title="SATFLUX PoS Demo"
+                    class="w-full border-0 block"
+                    style="height: 760px;"
+                    allow="payment"
+                  />
+                </div>
+              </div>
+              <!-- Mobile: button to open modal -->
+              <div class="md:hidden">
+                <button
+                  type="button"
+                  @click="showPosModal = true"
+                  class="w-full inline-flex items-center justify-center px-6 py-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20"
+                >
+                  <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  {{ t('landing.how_it_works_open_pos_mobile') }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PoS Demo Modal (mobile) -->
+    <Teleport to="body">
+      <transition
+        enter-active-class="transition-opacity duration-200 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition-opacity duration-200 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="showPosModal"
+          class="fixed inset-0 z-50 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="pos-modal-title"
+        >
+          <div class="fixed inset-0 bg-gray-900/90 backdrop-blur-sm" @click="showPosModal = false" />
+          <div class="flex min-h-full items-center justify-center p-4">
+            <div class="relative w-full max-w-lg transform rounded-2xl bg-gray-800 border border-gray-700 shadow-2xl transition-all">
+              <div class="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+                <h2 id="pos-modal-title" class="text-lg font-bold text-white">{{ t('landing.how_it_works_demo_title') }}</h2>
+                <button
+                  type="button"
+                  @click="showPosModal = false"
+                  class="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  :aria-label="t('landing.how_it_works_close_modal')"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div class="p-2 bg-gray-900 rounded-b-2xl" style="min-height: 500px;">
+                <iframe
+                  :src="posDemoUrl"
+                  title="SATFLUX PoS Demo"
+                  class="w-full h-[500px] rounded-lg border-0"
+                  allow="payment"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </Teleport>
+
     <!-- Pricing Section -->
-    <section id="pricing" class="py-24 bg-gray-900 relative">
-      <div class="absolute inset-0 bg-indigo-900/10 skew-y-3 transform origin-bottom-right"></div>
-      <div class=" max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+    <section id="pricing" class="relative py-24 bg-gray-900 overflow-hidden">
+      <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent z-10" aria-hidden="true"></div>
+      <div class="absolute inset-0 bg-indigo-900/10 skew-y-3 transform origin-bottom-right pointer-events-none z-0" aria-hidden="true"></div>
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div class="text-center mb-16">
           <h2 class="text-3xl md:text-5xl font-bold text-white mb-4">
             {{ t('landing.transparent_pricing') }}
@@ -434,6 +595,9 @@ const { t } = useI18n();
 const authStore = useAuthStore();
 const subscribing = ref(false);
 const subscribeError = ref('');
+const showPosModal = ref(false);
+
+const posDemoUrl = 'https://satflux.org/apps/rivBmZNgktMaJ3CqMrtCuekoDex/pos';
 
 // Ensure user is fetched on mount to show correct buttons
 onMounted(async () => {

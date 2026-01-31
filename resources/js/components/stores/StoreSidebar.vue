@@ -91,9 +91,12 @@
       </div>
 
       <!-- Store Name -->
-      <router-link
-        :to="{ name: 'stores-show', params: { id: store.id } }"
+      <component
+        :is="isInertia ? Link : RouterLink"
+        :href="isInertia ? `/stores/${store.id}` : undefined"
+        :to="!isInertia ? { name: 'stores-show', params: { id: store.id } } : undefined"
         class="flex items-center text-lg font-semibold mb-6 text-white hover:text-gray-200 transition-colors cursor-pointer"
+        @click="showMobileMenu = false"
       >
         <img
           v-if="store.logo_url"
@@ -102,7 +105,7 @@
           class="mr-3 h-8 w-8 object-contain rounded flex-shrink-0"
         />
         <span>{{ store.name }}</span>
-      </router-link>
+      </component>
       
       <!-- PAYMENTS Section -->
       <div class="mb-8">
@@ -112,7 +115,7 @@
             @click="handleSectionClick('invoices')"
             class="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors text-left"
             :class="
-              $route.query.section === 'invoices'
+              querySection === 'invoices'
                 ? 'bg-gray-900 text-white'
                 : 'text-gray-300 hover:bg-gray-700 hover:text-white'
             "
@@ -126,7 +129,7 @@
             @click="handleSectionClick('exports')"
             class="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors text-left"
             :class="
-              $route.query.section === 'exports'
+              querySection === 'exports'
                 ? 'bg-gray-900 text-white'
                 : 'text-gray-300 hover:bg-gray-700 hover:text-white'
             "
@@ -145,84 +148,99 @@
         <nav class="space-y-1">
           <!-- LN Address -->
           <div class="mb-2">
-            <router-link
-              :to="`/stores/${store.id}/lightning-addresses`"
+            <component
+              :is="isInertia ? Link : RouterLink"
+              :href="isInertia ? `/stores/${store.id}/lightning-addresses` : undefined"
+              :to="!isInertia ? `/stores/${store.id}/lightning-addresses` : undefined"
               class="flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="
-                $route.name === 'stores-lightning-addresses'
+                isLinkActive(`/stores/${store.id}/lightning-addresses`, 'stores-lightning-addresses')
                   ? 'bg-gray-900 text-white'
                   : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               "
+              @click="showMobileMenu = false"
             >
               <span>{{ t('stores.ln_address') }}</span>
-            </router-link>
+            </component>
           </div>          
 
           <!-- Point of Sale -->
           <div class="mb-2">
-            <router-link
-              :to="{ name: 'stores-apps-create', params: { id: store.id }, query: { type: 'PointOfSale' } }"
+            <component
+              :is="isInertia ? Link : RouterLink"
+              :href="isInertia ? `/stores/${store.id}/apps/create?type=PointOfSale` : undefined"
+              :to="!isInertia ? { name: 'stores-apps-create', params: { id: store.id }, query: { type: 'PointOfSale' } } : undefined"
               class="flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer"
               :class="
-                $route.name === 'stores-apps-create' && $route.query.type === 'PointOfSale'
+                isAppsCreateWithType('PointOfSale')
                   ? 'bg-gray-900 text-white'
                   : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               "
+              @click="showMobileMenu = false"
             >
               <span>{{ t('stores.point_of_sale') }}</span>
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
-            </router-link>
+            </component>
             <div v-if="getAppsByType('PointOfSale').length > 0" class="ml-4 space-y-1">
-              <router-link
+              <component
                 v-for="app in getAppsByType('PointOfSale')"
                 :key="app.id"
-                :to="`/stores/${store.id}/apps/${app.id}`"
+                :is="isInertia ? Link : RouterLink"
+                :href="isInertia ? `/stores/${store.id}/apps/${app.id}` : undefined"
+                :to="!isInertia ? `/stores/${store.id}/apps/${app.id}` : undefined"
                 class="block px-3 py-2 rounded-md text-sm transition-colors"
                 :class="
-                  $route.params.appId === app.id
+                  paramAppId === app.id
                     ? 'bg-gray-900 text-white'
                     : 'text-gray-400 hover:bg-gray-700 hover:text-white'
                 "
+                @click="showMobileMenu = false"
               >
                 {{ app.name }}
-              </router-link>
+              </component>
             </div>
             <div v-else class="ml-4 text-xs text-gray-500">{{ t('stores.no_pos') }}</div>
           </div>
 
           <!-- Pay Button -->
           <div class="mb-2">
-            <router-link
-              :to="`/stores/${store.id}/pay-button`"
+            <component
+              :is="isInertia ? Link : RouterLink"
+              :href="isInertia ? `/stores/${store.id}/pay-button` : undefined"
+              :to="!isInertia ? `/stores/${store.id}/pay-button` : undefined"
               class="flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="
-                $route.name === 'stores-pay-button'
+                isLinkActive(`/stores/${store.id}/pay-button`, 'stores-pay-button')
                   ? 'bg-gray-900 text-white'
                   : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               "
+              @click="showMobileMenu = false"
             >
               <span>{{ t('stores.pay_button') }}</span>
-            </router-link>
+            </component>
           </div>
 
           <!-- E-shop Integration -->
           <div class="mb-2">
-            <router-link
-              :to="`/stores/${store.id}/api-keys`"
+            <component
+              :is="isInertia ? Link : RouterLink"
+              :href="isInertia ? `/stores/${store.id}/api-keys` : undefined"
+              :to="!isInertia ? `/stores/${store.id}/api-keys` : undefined"
               class="flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="
-                $route.name === 'stores-api-keys'
+                isLinkActive(`/stores/${store.id}/api-keys`, 'stores-api-keys')
                   ? 'bg-gray-900 text-white'
                   : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               "
+              @click="showMobileMenu = false"
             >
               <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
               </svg>
               {{ t('stores.eshop_integration') }}
-            </router-link>
+            </component>
           </div>
         </nav>
       </div>
@@ -231,14 +249,17 @@
       <div class="mb-8">
         <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{{ t('stores.wallet_section') }}</h3>
         <nav class="space-y-1">
-          <router-link
-            :to="`/stores/${store.id}/wallet-connection`"
+          <component
+            :is="isInertia ? Link : RouterLink"
+            :href="isInertia ? `/stores/${store.id}/wallet-connection` : undefined"
+            :to="!isInertia ? `/stores/${store.id}/wallet-connection` : undefined"
             class="flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium transition-colors"
             :class="
-              $route.name === 'stores-wallet-connection'
+              isLinkActive(`/stores/${store.id}/wallet-connection`, 'stores-wallet-connection')
                 ? 'bg-gray-900 text-white'
                 : 'text-gray-300 hover:bg-gray-700 hover:text-white'
             "
+            @click="showMobileMenu = false"
           >
             <svg 
               class="w-5 h-5 mr-3" 
@@ -250,7 +271,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
             <span :class="getWalletConnectionIconClass()">{{ t('stores.wallet_connection') }}</span>
-          </router-link>
+          </component>
         </nav>
       </div>
 
@@ -259,7 +280,7 @@
         <button
           @click="$emit('show-settings')"
           class="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-gray-700 bg-gray-700 hover:bg-gray-600 text-white transition-colors"
-          :class="{ 'bg-gray-900': $route.name === 'stores-show' && $route.query.section === 'settings' }"
+          :class="{ 'bg-gray-900': isStoreShowSettings }"
         >
           <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -273,13 +294,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted, onUnmounted, watch, inject } from 'vue';
+import { useRouter, useRoute, RouterLink } from 'vue-router';
+import { Link, router as inertiaRouter, usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import { useAppsStore } from '../../store/apps';
 import { useStoresStore } from '../../store/stores';
 
 const { t } = useI18n();
+const isInertia = inject<boolean>('inertia', false);
+const vueRouter = !isInertia ? useRouter() : null;
+const route = !isInertia ? useRoute() : null;
+const page = isInertia ? usePage() : null;
 
 interface Props {
   store: {
@@ -303,13 +329,77 @@ const emit = defineEmits<{
   'show-section': [section: string];
 }>();
 
-const router = useRouter();
 const appsStore = useAppsStore();
 const storesStore = useStoresStore();
 const showStoreDropdown = ref(false);
 const showMobileMenu = ref(false);
 
 const allStores = computed(() => storesStore.stores);
+
+// Current URL state for both Inertia and SPA
+const currentPath = computed(() => {
+  if (isInertia && page) {
+    try {
+      return new URL(page.url, window.location.origin).pathname;
+    } catch {
+      return page.url;
+    }
+  }
+  return route?.path ?? '';
+});
+
+const querySection = computed(() => {
+  if (isInertia && page) {
+    try {
+      return new URL(page.url, window.location.origin).searchParams.get('section');
+    } catch {
+      return null;
+    }
+  }
+  return (route?.query?.section as string) ?? null;
+});
+
+const paramAppId = computed(() => {
+  if (isInertia && page) {
+    const match = page.url.match(/\/apps\/([^/?#]+)/);
+    return match ? match[1] : null;
+  }
+  return (route?.params?.appId as string) ?? null;
+});
+
+const isStoreShowSettings = computed(() => {
+  if (isInertia && page) {
+    const path = currentPath.value;
+    const section = querySection.value;
+    return path.includes('/stores/') && !path.includes('/apps/') && section === 'settings';
+  }
+  return route?.name === 'stores-show' && route?.query?.section === 'settings';
+});
+
+function isLinkActive(path: string, routeName?: string): boolean {
+  if (isInertia && page) {
+    const urlPath = currentPath.value;
+    return urlPath === path || urlPath.startsWith(path + '/');
+  }
+  if (route) {
+    return routeName ? route.name === routeName : route.path.startsWith(path);
+  }
+  return false;
+}
+
+function isAppsCreateWithType(type: string): boolean {
+  if (isInertia && page) {
+    const path = currentPath.value;
+    try {
+      const url = new URL(page.url, window.location.origin);
+      const q = url.searchParams.get('type');
+      return path.includes('/apps/create') && q === type;
+    } catch {
+      return path.includes('/apps/create');
+    }
+  }
+  return route?.name === 'stores-apps-create' && (route?.query?.type as string) === type;
+}
 
 onMounted(async () => {
   // Load stores if not already loaded
@@ -337,16 +427,23 @@ function selectStore(storeId: string) {
   showStoreDropdown.value = false;
   showMobileMenu.value = false; // Close mobile menu on store change
   if (storeId !== props.store?.id) {
-    router.push({ name: 'stores-show', params: { id: storeId } });
+    if (isInertia) {
+      inertiaRouter.visit(`/stores/${storeId}`);
+    } else {
+      vueRouter!.push({ name: 'stores-show', params: { id: storeId } });
+    }
   }
 }
 
 function createStore() {
   showStoreDropdown.value = false;
   showMobileMenu.value = false; // Close mobile menu
-  router.push({ name: 'stores-create' });
+  if (isInertia) {
+    inertiaRouter.visit('/stores/create');
+  } else {
+    vueRouter!.push({ name: 'stores-create' });
+  }
 }
-
 
 function getAppsByType(type: string) {
   // Handle different type formats (PointOfSale, PaymentButton)
@@ -358,8 +455,6 @@ function getAppsByType(type: string) {
   });
 }
 
-// createApp function removed - now using router links directly
-
 function handleSectionClick(section: string) {
   showMobileMenu.value = false; // Close mobile menu on navigation
   emit('show-section', section);
@@ -369,7 +464,7 @@ function getWalletConnectionIconClass(): string {
   if (!props.store?.wallet_connection) {
     return 'text-red-400'; // Non-existent - red
   }
-  
+
   const status = props.store.wallet_connection.status;
   switch (status) {
     case 'connected':
@@ -382,9 +477,15 @@ function getWalletConnectionIconClass(): string {
   }
 }
 
-// Watch for route changes to close mobile menu
-watch(() => router.currentRoute.value.fullPath, () => {
-  showMobileMenu.value = false;
-});
+// Watch for route/URL changes to close mobile menu
+if (isInertia && page) {
+  watch(() => page.url, () => {
+    showMobileMenu.value = false;
+  });
+} else if (vueRouter) {
+  watch(() => vueRouter.currentRoute.value.fullPath, () => {
+    showMobileMenu.value = false;
+  });
+}
 </script>
 

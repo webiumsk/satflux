@@ -4,6 +4,7 @@
     <div class="border-b border-gray-700">
       <nav class="-mb-px flex space-x-4">
         <button
+          type="button"
           v-for="locale in supportedLocales"
           :key="locale.code"
           :class="[

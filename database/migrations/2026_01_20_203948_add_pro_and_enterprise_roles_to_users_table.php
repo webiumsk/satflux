@@ -13,7 +13,12 @@ return new class extends Migration
     public function up(): void
     {
         $driver = DB::getDriverName();
-        
+
+        // SQLite: no ENUM/MODIFY support; role column is TEXT and accepts any value
+        if ($driver === 'sqlite') {
+            return;
+        }
+
         if ($driver === 'pgsql') {
             // PostgreSQL: Find existing enum type and create new one with additional values
             $enumType = DB::selectOne("
@@ -64,12 +69,15 @@ return new class extends Migration
     public function down(): void
     {
         $driver = DB::getDriverName();
-        
+
         // Before reverting, set any 'pro' or 'enterprise' users back to 'merchant'
         DB::table('users')
             ->whereIn('role', ['pro', 'enterprise'])
             ->update(['role' => 'merchant']);
         
+        if ($driver === 'sqlite') {
+            return;
+        }
         if ($driver === 'pgsql') {
             // PostgreSQL: Cannot remove enum values, so we just ensure no users have those roles
             // The enum values will remain but won't be used

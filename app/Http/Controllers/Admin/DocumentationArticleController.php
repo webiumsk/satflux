@@ -70,10 +70,24 @@ class DocumentationArticleController extends Controller
     {
         $user = $request->user();
 
-        // Generate slug if not provided
+        // Generate slug if not provided (from first available title, prefer en)
         $slug = $request->slug;
-        if (empty($slug) && isset($request->title['en'])) {
-            $slug = DocumentationArticle::generateSlug($request->title['en']);
+        if (empty($slug) && is_array($request->title)) {
+            $titleForSlug = $request->title['en'] ?? null;
+            if (empty($titleForSlug)) {
+                foreach (['sk', 'es', 'cz', 'de', 'fr', 'hu', 'pl'] as $locale) {
+                    if (!empty($request->title[$locale])) {
+                        $titleForSlug = $request->title[$locale];
+                        break;
+                    }
+                }
+            }
+            if (!empty($titleForSlug)) {
+                $slug = DocumentationArticle::generateSlug($titleForSlug);
+            }
+        }
+        if (empty($slug)) {
+            $slug = DocumentationArticle::generateSlug('untitled');
         }
 
         $article = DocumentationArticle::create([

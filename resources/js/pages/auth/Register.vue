@@ -92,20 +92,6 @@
             </div>
           </div>
 
-          <div
-            v-if="error"
-            class="rounded-md bg-red-900/30 border border-red-500/30 p-4"
-          >
-            <div class="text-sm text-red-200">{{ error }}</div>
-          </div>
-
-          <div
-            v-if="success"
-            class="rounded-md bg-green-900/30 border border-green-500/30 p-4"
-          >
-            <div class="text-sm text-green-200">{{ success }}</div>
-          </div>
-
           <div class="space-y-4">
             <button
               type="submit"
@@ -293,6 +279,7 @@ import { ref, computed, onUnmounted, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
+import { useFlashStore } from "../../store/flash";
 import api from "../../services/api";
 import QRCode from "qrcode";
 import { bech32 } from "bech32";
@@ -301,6 +288,7 @@ const { t } = useI18n();
 
 const router = useRouter();
 const authStore = useAuthStore();
+const flashStore = useFlashStore();
 
 const form = ref({
   email: "",
@@ -308,8 +296,6 @@ const form = ref({
   password_confirmation: "",
 });
 
-const error = ref("");
-const success = ref("");
 const loading = ref(false);
 
 const showLnurlModal = ref(false);
@@ -333,8 +319,6 @@ const lnurlAuthEnabled = computed(() => {
 });
 
 async function handleRegister() {
-  error.value = "";
-  success.value = "";
   loading.value = true;
 
   try {
@@ -343,13 +327,14 @@ async function handleRegister() {
       form.value.password,
       form.value.password_confirmation,
     );
-    success.value = t("auth.registration_successful");
+    flashStore.success(t("auth.registration_successful"));
   } catch (err: any) {
-    error.value = err.response?.data?.message || t("auth.registration_failed");
+    let msg = err.response?.data?.message || t("auth.registration_failed");
     if (err.response?.data?.errors) {
       const errors = Object.values(err.response.data.errors).flat();
-      error.value = errors.join(", ");
+      msg = errors.join(", ");
     }
+    flashStore.error(msg);
   } finally {
     loading.value = false;
   }
@@ -446,7 +431,7 @@ async function handleCompleteRegistration() {
     });
 
     closeLnurlModal();
-    alert(t("auth.registration_successful"));
+    flashStore.success(t("auth.registration_successful"));
   } catch (err: any) {
     if (err.response?.data?.errors?.email) {
       emailError.value = err.response.data.errors.email[0];

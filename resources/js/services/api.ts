@@ -9,28 +9,43 @@ const api = axios.create({
     withCredentials: true,
 });
 
+// Helper: get CSRF token from cookie (shared for api and postWeb)
+function getCsrfToken(): string | null {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; XSRF-TOKEN=`);
+    if (parts.length === 2) {
+        return (parts.pop()?.split(';').shift() || null);
+    }
+    return null;
+}
+
+// Post to a web route (no /api prefix) – for password reset etc., avoids Sanctum auth
+export async function postWeb<T = unknown>(path: string, data: object): Promise<T> {
+    const csrf = getCsrfToken();
+    const { data: result } = await axios.request<T>({
+        method: 'post',
+        url: path,
+        baseURL: '',
+        data,
+        withCredentials: true,
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            ...(csrf ? { 'X-XSRF-TOKEN': decodeURIComponent(csrf) } : {}),
+        },
+    });
+    return result;
+}
+
 // Ensure CSRF token is sent with all requests
 // Axios automatically reads XSRF-TOKEN cookie and sets X-XSRF-TOKEN header,
 // but we need to ensure the cookie is available
 api.interceptors.request.use(
     async (config) => {
-        // Get CSRF token from cookie (XSRF-TOKEN is the cookie name Sanctum uses)
-        const getCookie = (name: string): string | null => {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) {
-                return parts.pop()?.split(';').shift() || null;
-            }
-            return null;
-        };
-
-        const csrfToken = getCookie('XSRF-TOKEN');
-        
-        // If token exists in cookie, set it in header
+        const csrfToken = getCsrfToken();
         if (csrfToken) {
             config.headers['X-XSRF-TOKEN'] = decodeURIComponent(csrfToken);
         }
-
         return config;
     },
     (error) => {

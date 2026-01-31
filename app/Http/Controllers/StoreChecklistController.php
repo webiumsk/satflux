@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Store;
 use App\Models\StoreChecklist;
 use Illuminate\Http\Request;
 
@@ -10,9 +11,8 @@ class StoreChecklistController extends Controller
     /**
      * Get checklist for a store.
      */
-    public function index(Request $request)
+    public function index(Request $request, Store $store)
     {
-        $store = $request->route('store');
         
         $checklistItems = $store->checklistItems()->get()->map(function ($item) use ($store) {
             $definition = \App\Services\StoreChecklistService::getChecklistItems($store->wallet_type);
@@ -41,9 +41,8 @@ class StoreChecklistController extends Controller
     /**
      * Update checklist item (mark as done/undone).
      */
-    public function update(Request $request, string $itemKey)
+    public function update(Request $request, Store $store, string $itemKey)
     {
-        $store = $request->route('store');
         
         $request->validate([
             'completed' => ['required', 'boolean'],

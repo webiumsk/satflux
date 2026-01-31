@@ -1,4 +1,11 @@
 <?php return array (
+  'inertiajs/inertia-laravel' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Inertia\\ServiceProvider',
+    ),
+  ),
   'laravel/sail' => 
   array (
     'providers' => 

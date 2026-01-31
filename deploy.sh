@@ -134,6 +134,8 @@ done
 
 # Step 3: Install/update PHP dependencies
 echo -e "${YELLOW}Step 3: Installing/updating PHP dependencies...${NC}"
+# Clear package manifest so discovery runs with current vendor only (avoids loading dev-only Collision in prod)
+docker exec --user root "$PHP_CONTAINER" rm -f /var/www/bootstrap/cache/packages.php /var/www/bootstrap/cache/services.php 2>/dev/null || true
 docker exec --user root "$PHP_CONTAINER" composer install --optimize-autoloader --no-dev --no-interaction
 
 # Step 4: Install/update Node dependencies and build assets
@@ -149,6 +151,10 @@ docker exec --user root "$PHP_CONTAINER" npm run build
 # Step 5: Run database migrations
 echo -e "${YELLOW}Step 5: Running database migrations...${NC}"
 docker exec --user root "$PHP_CONTAINER" php artisan migrate --force
+
+# Step 5b: Create storage symlink (public/storage -> storage/app/public)
+echo -e "${YELLOW}Step 5b: Creating storage symlink...${NC}"
+docker exec --user root "$PHP_CONTAINER" php artisan storage:link --force 2>/dev/null || true
 
 # Step 6: Clear and optimize Laravel caches
 echo -e "${YELLOW}Step 6: Optimizing Laravel...${NC}"
