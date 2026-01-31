@@ -284,16 +284,20 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
 import { useAppsStore } from '../../store/apps';
+import { useFlashStore } from '../../store/flash';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
 import ApiKeyCard from '../../components/stores/ApiKeyCard.vue';
 import api from '../../services/api';
 
+const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const storesStore = useStoresStore();
 const appsStore = useAppsStore();
+const flashStore = useFlashStore();
 
 const storeId = computed(() => route.params.id as string);
 const store = ref<any>(null);
@@ -388,11 +392,14 @@ async function handleSubmit() {
     showModal.value = false;
     showApiKeyModal.value = true;
     showApiKey.value = false;
-    
+    flashStore.success(t('stores.api_key_created'));
+
     // Refresh list
     await fetchApiKeys();
   } catch (err: any) {
-    error.value = err.response?.data?.message || 'Failed to create API key';
+    const msg = err.response?.data?.message || t('stores.api_key_create_failed');
+    flashStore.error(msg);
+    error.value = '';
   } finally {
     saving.value = false;
   }

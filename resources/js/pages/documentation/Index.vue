@@ -11,7 +11,7 @@
       </div>
 
       <!-- Search and Category Filter -->
-      <div class="mb-8 flex flex-col sm:flex-row gap-4">
+      <div class="mb-6 flex flex-col sm:flex-row gap-4">
         <div class="flex-1">
           <SearchBar
             v-model="searchQuery"
@@ -24,6 +24,28 @@
           :categories="categories"
           @filter="handleCategoryFilter"
         />
+      </div>
+
+      <!-- Category Cards -->
+      <div v-if="categories.length > 0" class="mb-8">
+        <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">{{ t('documentation.categories') }}</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <button
+            v-for="cat in categories"
+            :key="cat.id"
+            type="button"
+            @click="handleCategoryFilter(selectedCategory === cat.id ? null : cat.id)"
+            :class="[
+              'group text-left rounded-2xl p-5 border transition-all duration-300 relative overflow-hidden',
+              selectedCategory === cat.id
+                ? 'bg-indigo-500/10 border-indigo-500/50 shadow-lg shadow-indigo-900/10'
+                : 'bg-gray-800 hover:bg-gray-750 border-gray-700 hover:border-indigo-500/50 hover:shadow-2xl hover:shadow-indigo-900/10 hover:-translate-y-0.5'
+            ]"
+          >
+            <div v-if="selectedCategory !== cat.id" class="absolute inset-0 bg-gradient-to-br from-indigo-600/5 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <span :class="['font-semibold', selectedCategory === cat.id ? 'text-indigo-300' : 'text-white group-hover:text-indigo-300 transition-colors']">{{ cat.name }}</span>
+          </button>
+        </div>
       </div>
 
       <!-- Loading State -->

@@ -41,7 +41,7 @@
             :href="appUrl"
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-flex items-center px-4 py-2 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700 transition-colors"
+            class="btcpay-open-link inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium text-orange-100 bg-orange-500/20 border border-orange-400/40 hover:bg-orange-500/30 hover:border-orange-400/60 hover:text-orange-50 transition-all shadow-[inset_0_0_12px_rgba(249,115,22,0.15)] hover:shadow-[inset_0_0_16px_rgba(249,115,22,0.25)]"
           >
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />

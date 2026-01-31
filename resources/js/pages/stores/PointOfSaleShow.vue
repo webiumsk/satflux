@@ -1,5 +1,5 @@
 <template>
-  <AppShowLayout ref="layoutRef">
+  <AppShowLayout ref="layoutRef" :store="store" :app="app">
     <template #default="{ app, store }">
       <!-- Header -->
       <AppShowHeader
@@ -11,8 +11,8 @@
         save-button-text="Save Settings"
         saving-text="Saving..."
         :saving="saving"
-        :error="displayedError"
-        :success="success"
+        :error="''"
+        :success="''"
       />
 
       <!-- Content Container -->
@@ -939,9 +939,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, watchEffect } from "vue";
+import { ref, computed, watch, watchEffect, inject } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
+import { router as inertiaRouter } from "@inertiajs/vue3";
 import { useAppsStore } from "../../store/apps";
+import { useFlashStore } from "../../store/flash";
 import ProductEditDrawer from "../../components/stores/ProductEditDrawer.vue";
 import PointOfSaleProductsEditor from "../../components/stores/PointOfSaleProductsEditor.vue";
 import AppShowLayout from "../../components/stores/AppShowLayout.vue";
@@ -949,24 +952,22 @@ import Select from "../../components/ui/Select.vue";
 import AppShowHeader from "../../components/stores/AppShowHeader.vue";
 import DeleteAppModal from "../../components/stores/DeleteAppModal.vue";
 import { currencies } from "../../data/currencies";
-const route = useRoute();
-const router = useRouter();
+
+const { t } = useI18n();
+const flashStore = useFlashStore();
+const isInertia = inject<boolean>("inertia", false);
+const route = !isInertia ? useRoute() : null;
+const vueRouter = !isInertia ? useRouter() : null;
 const appsStore = useAppsStore();
 
-const storeId = computed(() => route.params.id as string);
-const appId = computed(() => route.params.appId as string);
+const props = defineProps<{ store?: any; app?: any }>();
+
+const storeId = computed(() => (props.store?.id ?? route?.params?.id ?? "") as string);
+const appId = computed(() => (props.app?.id ?? route?.params?.appId ?? "") as string);
 const layoutRef = ref<InstanceType<typeof AppShowLayout> | null>(null);
 const saving = ref(false);
 const error = ref("");
 const success = ref("");
-
-// Computed property for displayed error
-const displayedError = computed(() => {
-  if (success.value) {
-    return "";
-  }
-  return error.value;
-});
 
 const customerDataOptions = [
   { label: 'Do not request', value: '' },
@@ -1413,9 +1414,10 @@ async function handleSubmit() {
       config,
     });
 
-    // Set success and clear error immediately
+    // Set success and clear error immediately; show flash toast
     success.value = "Settings saved successfully";
     error.value = "";
+    flashStore.success(t("settings.settings_updated"));
     isReloadingAfterSubmit.value = true;
 
     try {
@@ -1481,7 +1483,9 @@ async function handleSubmit() {
   } catch (err: any) {
     // Only set error if we don't have success
     if (!success.value) {
-      error.value = err.response?.data?.message || "Failed to save settings";
+      const msg = err.response?.data?.message || t("settings.failed_to_update");
+      error.value = msg;
+      flashStore.error(msg);
       success.value = "";
     }
   } finally {
@@ -1502,7 +1506,11 @@ async function handleDelete() {
 
   try {
     await appsStore.deleteApp(storeId.value, appId.value);
-    router.push({ name: "stores-show", params: { id: storeId.value } });
+    if (isInertia) {
+      inertiaRouter.visit(`/stores/${storeId.value}`);
+    } else {
+      vueRouter!.push({ name: "stores-show", params: { id: storeId.value } });
+    }
   } catch (err: any) {
     deleteError.value = err.response?.data?.message || "Failed to delete app";
   } finally {

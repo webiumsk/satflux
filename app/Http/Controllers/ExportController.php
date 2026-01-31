@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ExportRequest;
 use App\Jobs\GenerateCsvExport;
 use App\Models\Export;
+use App\Models\Store;
 use Illuminate\Http\Request;
 
 class ExportController extends Controller
@@ -12,10 +13,8 @@ class ExportController extends Controller
     /**
      * List exports for a store.
      */
-    public function index(Request $request)
+    public function index(Request $request, Store $store)
     {
-        $store = $request->route('store');
-
         $exports = Export::where('store_id', $store->id)
             ->where('user_id', $request->user()->id)
             ->orderBy('created_at', 'desc')
@@ -31,10 +30,8 @@ class ExportController extends Controller
      * Automatic monthly exports are handled by a scheduled job that checks the
      * 'automatic_csv_exports' feature flag via SubscriptionService.
      */
-    public function store(ExportRequest $request)
+    public function store(ExportRequest $request, Store $store)
     {
-        $store = $request->route('store');
-
         $export = Export::create([
             'store_id' => $store->id,
             'user_id' => $request->user()->id,

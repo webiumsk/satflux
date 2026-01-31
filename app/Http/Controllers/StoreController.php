@@ -459,6 +459,8 @@ class StoreController extends Controller
                         ]);
                         // Status remains 'needs_support'
                     }
+                } catch (\Illuminate\Validation\ValidationException $e) {
+                    throw $e;
                 } catch (\Exception $e) {
                     // Log error but don't fail store creation
                     Log::error('Failed to create wallet connection during store creation', [

@@ -32,6 +32,7 @@ class UserService
             $userData = [
                 'email' => $data['email'],
                 'isAdministrator' => $data['isAdministrator'] ?? false,
+                'sendInvitationEmail' => $data['sendInvitationEmail'] ?? false,
             ];
 
             // Add password if provided - this ensures user is created as active

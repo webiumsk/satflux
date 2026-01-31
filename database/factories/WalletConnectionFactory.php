@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Models\Store;
 use App\Models\WalletConnection;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\Crypt;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\WalletConnection>
@@ -22,7 +23,7 @@ class WalletConnectionFactory extends Factory
             'store_id' => Store::factory(),
             'type' => 'blink',
             'status' => 'pending',
-            'encrypted_secret' => encrypt('blink:test@example.com:password'),
+            'secret_encrypted' => Crypt::encryptString('blink:test@example.com:password'),
             'submitted_by_user_id' => \App\Models\User::factory(),
         ];
     }
@@ -34,7 +35,7 @@ class WalletConnectionFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'type' => 'blink',
-            'encrypted_secret' => encrypt('blink:test@example.com:password'),
+            'secret_encrypted' => Crypt::encryptString('blink:test@example.com:password'),
         ]);
     }
 
@@ -45,7 +46,7 @@ class WalletConnectionFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'type' => 'aqua_descriptor',
-            'encrypted_secret' => encrypt('ct(slip77(...),elsh(wpkh(...))))'),
+            'secret_encrypted' => Crypt::encryptString('ct(slip77(...),elsh(wpkh(...))))'),
         ]);
     }
 

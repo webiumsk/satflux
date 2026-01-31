@@ -28,6 +28,13 @@
               {{ t("header.features") }}
             </router-link>
             <router-link
+              to="/#how-it-works"
+              @click="handleAnchorClick('/#how-it-works')"
+              class="px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-all"
+            >
+              {{ t("header.how_it_works") }}
+            </router-link>
+            <router-link
               to="/#pricing"
               @click="handleAnchorClick('/#pricing')"
               class="px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-all"
@@ -194,6 +201,13 @@
             class="flex items-center px-4 py-3 rounded-xl text-base font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
           >
             {{ t("header.features") }}
+          </router-link>
+          <router-link
+            to="/#how-it-works"
+            @click="handleAnchorClick('/#how-it-works'); closeMobileMenu();"
+            class="flex items-center px-4 py-3 rounded-xl text-base font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+          >
+            {{ t("header.how_it_works") }}
           </router-link>
           <router-link
             to="/#pricing"
