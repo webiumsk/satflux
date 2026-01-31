@@ -5,8 +5,8 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
       <div class="flex flex-col lg:flex-row gap-10">
         <!-- Sidebar: Categories & Articles -->
-        <aside class="lg:w-72 flex-shrink-0">
-          <div class="lg:sticky lg:top-24 bg-gray-800/80 border border-gray-700 rounded-2xl p-5 overflow-hidden">
+        <aside class="lg:w-72 flex-shrink-0 border-r border-gray-700">
+          <div class="lg:sticky lg:top-24 p-5 overflow-hidden">
             <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">{{ t('documentation.categories') }}</h2>
             <div v-if="sidebarLoading" class="flex justify-center py-8">
               <svg class="animate-spin h-6 w-6 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -66,7 +66,7 @@
       </div>
 
       <!-- Article Content -->
-      <article v-else-if="article" class="bg-gray-800 border border-gray-700 rounded-2xl p-8">
+      <article v-else-if="article" class="p-8">
         <!-- Back + Edit (Admin/Support) -->
         <div class="flex items-center justify-between gap-4 mb-6">
           <router-link

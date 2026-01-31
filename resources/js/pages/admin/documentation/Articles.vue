@@ -94,8 +94,7 @@
               <td class="px-6 py-4 text-right text-sm font-medium">
                 <router-link
                   v-if="article.slug"
-                  :to="`/documentation/${article.slug}`"
-                  target="_blank"
+                  :to="`/documentation/${article.slug}`"                  
                   rel="noopener noreferrer"
                   class="text-gray-400 hover:text-white mr-4"
                 >
