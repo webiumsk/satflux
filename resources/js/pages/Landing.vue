@@ -89,10 +89,13 @@
           </div>
         </div>
       </div>
+      <!-- Thin gradient line at bottom of hero -->
+      <div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" aria-hidden="true"></div>
     </section>
 
     <!-- Key Points Section -->
-    <section class="py-24 bg-gray-900 border-t border-gray-800">
+    <section class="relative py-24 bg-gray-800/40">
+      <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" aria-hidden="true"></div>
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
            <!-- Point 1 -->
@@ -143,7 +146,8 @@
     </section>
 
     <!-- Features Section -->
-    <section id="features" class="py-24 bg-gray-900">
+    <section id="features" class="relative py-24 bg-gray-900">
+      <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" aria-hidden="true"></div>
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
           <h2 class="text-3xl md:text-5xl font-bold text-white mb-4">
@@ -223,7 +227,8 @@
     </section>
 
     <!-- How it works Section (between Features and Pricing) -->
-    <section id="how-it-works" class="py-24 bg-gray-900 border-t border-gray-800">
+    <section id="how-it-works" class="relative py-24 bg-gray-800/40">
+      <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" aria-hidden="true"></div>
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-12">
           <h2 class="text-3xl md:text-5xl font-bold text-white mb-4">
@@ -378,9 +383,10 @@
     </Teleport>
 
     <!-- Pricing Section -->
-    <section id="pricing" class="py-24 bg-gray-900 relative">
-      <div class="absolute inset-0 bg-indigo-900/10 skew-y-3 transform origin-bottom-right"></div>
-      <div class=" max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+    <section id="pricing" class="relative py-24 bg-gray-900 overflow-hidden">
+      <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent z-10" aria-hidden="true"></div>
+      <div class="absolute inset-0 bg-indigo-900/10 skew-y-3 transform origin-bottom-right pointer-events-none z-0" aria-hidden="true"></div>
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div class="text-center mb-16">
           <h2 class="text-3xl md:text-5xl font-bold text-white mb-4">
             {{ t('landing.transparent_pricing') }}
