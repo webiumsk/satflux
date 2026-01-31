@@ -15,22 +15,30 @@ class SubscriptionTest extends TestCase
     {
         parent::setUp();
 
-        // Mock BTCPay API responses
-        Http::fake([
-            'satflux.org/api/v1/stores/*/offerings/*' => Http::response([
-                'id' => 'offering_GpWCnNRm6W9qqmgwdC',
-                'name' => 'Test Offering',
-            ]),
-            'satflux.org/api/v1/stores/*/offerings/*/plans/*' => Http::response([
-                'id' => 'plan_9UQMqk4vbAFyQinRpL',
-                'name' => 'Pro Plan',
-            ]),
-            'satflux.org/api/v1/plan-checkout' => Http::response([
-                'checkoutId' => 'checkout_test123',
-                'checkoutUrl' => 'https://satflux.org/plan-checkout/checkout_test123',
-                'expiresAt' => now()->addHours(24)->toIso8601String(),
-            ]),
-        ]);
+        config(['services.btcpay.base_url' => 'https://satflux.org']);
+        $this->app->forgetInstance(\App\Services\BtcPay\BtcPayClient::class);
+    }
+
+    /** BTCPay fake: success for offering, plan, and plan-checkout. Use in tests that expect 200. */
+    protected function fakeBtcPayCheckoutSuccess(): void
+    {
+        Http::fake(function ($request) {
+            $url = (string) $request->url();
+            if (str_contains($url, '/api/v1/stores/') && str_contains($url, '/offerings/') && str_contains($url, '/plans/')) {
+                return Http::response(['id' => 'plan_9UQMqk4vbAFyQinRpL', 'name' => 'Pro Plan']);
+            }
+            if (str_contains($url, '/api/v1/stores/') && str_contains($url, '/offerings/')) {
+                return Http::response(['id' => 'offering_GpWCnNRm6W9qqmgwdC', 'name' => 'Test Offering']);
+            }
+            if (str_contains($url, '/api/v1/plan-checkout') && $request->method() === 'POST') {
+                return Http::response([
+                    'id' => 'checkout_test123',
+                    'url' => 'https://satflux.org/plan-checkout/checkout_test123',
+                    'expiration' => now()->addHours(24)->timestamp,
+                ]);
+            }
+            return Http::response([], 404);
+        });
     }
 
     /** @test */
@@ -38,10 +46,11 @@ class SubscriptionTest extends TestCase
     {
         $user = User::factory()->create();
 
-        // Set subscription store ID directly in config (no local Store record needed)
         config(['services.btcpay.subscription_store_id' => 'GVQwmBoEfPpYY4j7YysmVDbTKmFp24XsFvUZATANVqAY']);
         config(['services.btcpay.subscription_offering_id' => 'offering_GpWCnNRm6W9qqmgwdC']);
         config(['services.btcpay.subscription_plans.pro' => 'plan_9UQMqk4vbAFyQinRpL']);
+
+        $this->fakeBtcPayCheckoutSuccess();
 
         $response = $this->actingAs($user)->postJson('/api/subscriptions/checkout', [
             'plan' => 'pro',
@@ -72,9 +81,11 @@ class SubscriptionTest extends TestCase
         config(['services.btcpay.subscription_offering_id' => 'offering_GpWCnNRm6W9qqmgwdC']);
         config(['services.btcpay.subscription_plans.pro' => 'plan_9UQMqk4vbAFyQinRpL']);
 
-        // Mock BTCPay to return 404 for invalid plan
+        $this->app->forgetInstance(\App\Services\BtcPay\BtcPayClient::class);
+
+        // Mock BTCPay: return 404 for every request so offering validation fails
         Http::fake([
-            'satflux.org/api/v1/stores/*/offerings/*' => Http::response([], 404),
+            '*' => Http::response([], 404),
         ]);
 
         $response = $this->actingAs($user)->postJson('/api/subscriptions/checkout', [
@@ -122,14 +133,7 @@ class SubscriptionTest extends TestCase
         config(['services.btcpay.subscription_offering_id' => 'offering_GpWCnNRm6W9qqmgwdC']);
         config(['services.btcpay.subscription_plans.pro' => 'plan_9UQMqk4vbAFyQinRpL']);
 
-        Http::fake([
-            'satflux.org/api/v1/stores/*/offerings/*' => Http::response(['id' => 'offering_GpWCnNRm6W9qqmgwdC']),
-            'satflux.org/api/v1/stores/*/offerings/*/plans/*' => Http::response(['id' => 'plan_9UQMqk4vbAFyQinRpL']),
-            'satflux.org/api/v1/plan-checkout' => Http::response([
-                'checkoutId' => 'checkout_test123',
-                'checkoutUrl' => 'https://satflux.org/plan-checkout/checkout_test123',
-            ]),
-        ]);
+        $this->fakeBtcPayCheckoutSuccess();
 
         $response = $this->actingAs($user)->postJson('/api/subscriptions/checkout', [
             'plan' => 'pro',
@@ -147,14 +151,23 @@ class SubscriptionTest extends TestCase
         config(['services.btcpay.subscription_offering_id' => 'offering_GpWCnNRm6W9qqmgwdC']);
         config(['services.btcpay.subscription_plans.pro' => 'plan_9UQMqk4vbAFyQinRpL']);
 
-        // Mock BTCPay API error
-        Http::fake([
-            'satflux.org/api/v1/stores/*/offerings/*' => Http::response(['id' => 'offering_GpWCnNRm6W9qqmgwdC']),
-            'satflux.org/api/v1/stores/*/offerings/*/plans/*' => Http::response(['id' => 'plan_9UQMqk4vbAFyQinRpL']),
-            'satflux.org/api/v1/plan-checkout' => Http::response([
-                'message' => 'Invalid request',
-            ], 422),
-        ]);
+        $this->app->forgetInstance(\App\Services\BtcPay\BtcPayClient::class);
+
+        // Mock BTCPay: offering and plan succeed, plan-checkout POST returns 422
+        Http::fake(function ($request) {
+            $url = (string) $request->url();
+            $method = $request->method();
+            if (($method === 'POST') && (str_contains($url, 'plan-checkout') || str_contains($url, '/api/v1/plan-checkout'))) {
+                return Http::response(['message' => 'Invalid request'], 422);
+            }
+            if (str_contains($url, '/api/v1/stores/') && str_contains($url, '/offerings/') && str_contains($url, '/plans/')) {
+                return Http::response(['id' => 'plan_9UQMqk4vbAFyQinRpL', 'name' => 'Pro Plan']);
+            }
+            if (str_contains($url, '/api/v1/stores/') && str_contains($url, '/offerings/')) {
+                return Http::response(['id' => 'offering_GpWCnNRm6W9qqmgwdC', 'name' => 'Test Offering']);
+            }
+            return Http::response([], 404);
+        });
 
         $response = $this->actingAs($user)->postJson('/api/subscriptions/checkout', [
             'plan' => 'pro',
