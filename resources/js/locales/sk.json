@@ -479,7 +479,7 @@
     "how_it_works_step3_title": "Terminál PoS",
     "how_it_works_step3_text": "Pridajte Point of Sale terminál pre predaj v mieste — na tablete alebo mobile. Zákazníci platia cez QR kód.",
     "how_it_works_step4_title": "Lightning adresa",
-    "how_it_works_step4_text": "Vytvorte si adresu vo formáte your_name@satflux.org. Prijímajte Lightning platby jednoducho — bez zložitých údajov.",
+    "how_it_works_step4_text": "Vytvorte si adresu vo formáte your_name{'@'}satflux.org. Prijímajte Lightning platby jednoducho — bez zložitých údajov.",
     "how_it_works_step5_title": "Prepojenie s e-shopom",
     "how_it_works_step5_text": "WooCommerce, Magento, Drupal, PrestaShop, Shopify. Pay Button alebo plugin pre prijímanie Bitcoin platieb v online obchode.",
     "how_it_works_step6_title": "Prijímajte platby",

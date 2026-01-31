@@ -478,7 +478,7 @@
     "how_it_works_step3_title": "PoS terminal",
     "how_it_works_step3_text": "Add a Point of Sale terminal for in-person sales — on tablet or mobile. Customers pay via QR code.",
     "how_it_works_step4_title": "Lightning address",
-    "how_it_works_step4_text": "Create an address in the format your_name@satflux.org. Accept Lightning payments simply — no complex details.",
+    "how_it_works_step4_text": "Create an address in the format your_name{'@'}satflux.org. Accept Lightning payments simply — no complex details.",
     "how_it_works_step5_title": "E-shop integration",
     "how_it_works_step5_text": "WooCommerce, Magento, Drupal, PrestaShop, Shopify. Pay Button or plugin to accept Bitcoin payments in your online store.",
     "how_it_works_step6_title": "Accept payments",
