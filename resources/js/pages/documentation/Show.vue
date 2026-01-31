@@ -67,26 +67,38 @@
 
       <!-- Article Content -->
       <article v-else-if="article" class="bg-gray-800 border border-gray-700 rounded-2xl p-8">
-        <!-- Back Button -->
-        <router-link
-          to="/documentation"
-          class="inline-flex items-center text-sm text-gray-400 hover:text-indigo-400 mb-6 transition-colors"
-        >
-          <svg
-            class="w-4 h-4 mr-2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <!-- Back + Edit (Admin/Support) -->
+        <div class="flex items-center justify-between gap-4 mb-6">
+          <router-link
+            to="/documentation"
+            class="inline-flex items-center text-sm text-gray-400 hover:text-indigo-400 transition-colors"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M10 19l-7-7m0 0l7-7m-7 7h18"
-            />
-          </svg>
-          {{ t('documentation.back_to_documentation') }}
-        </router-link>
+            <svg
+              class="w-4 h-4 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              />
+            </svg>
+            {{ t('documentation.back_to_documentation') }}
+          </router-link>
+          <router-link
+            v-if="article.id && canEditArticle"
+            :to="`/admin/documentation/articles/${article.id}/edit`"
+            class="inline-flex items-center text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+          >
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            {{ t('common.edit') }}
+          </router-link>
+        </div>
 
         <!-- Category Badge -->
         <div v-if="article.category" class="mb-4">
@@ -110,10 +122,10 @@
           </span>
         </div>
 
-        <!-- Content -->
+        <!-- Content (sanitized HTML from rich editor or legacy plain text) -->
         <div
-          class="prose prose-invert prose-lg max-w-none"
-          v-html="formatContent(article.content)"
+          class="prose prose-invert prose-lg max-w-none doc-content"
+          v-html="sanitizedContent(article.content)"
         ></div>
       </article>
 
@@ -141,6 +153,8 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
+import DOMPurify from 'dompurify';
+import { useAuthStore } from '../../store/auth';
 import { updatePageMeta } from '../../composables/usePageMeta';
 import { documentationApi } from '../../services/api';
 import PublicHeader from "../../components/layout/PublicHeader.vue";
@@ -148,6 +162,12 @@ import AppFooter from "../../components/layout/AppFooter.vue";
 
 const route = useRoute();
 const { t } = useI18n();
+const authStore = useAuthStore();
+
+const canEditArticle = computed(() => {
+  const role = authStore.user?.role;
+  return role === 'admin' || role === 'support';
+});
 
 const loading = ref(false);
 const sidebarLoading = ref(false);
@@ -218,27 +238,45 @@ const formatDate = (dateString: string) => {
   return date.toLocaleDateString();
 };
 
-const formatContent = (content: string) => {
-  // Simple markdown-like formatting (can be enhanced with a markdown parser)
+const ALLOWED_TAGS = [
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'strong', 'em', 'u', 's', 'a',
+  'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
+  'img', 'iframe', 'span', 'div',
+];
+const ALLOWED_ATTR = ['href', 'src', 'alt', 'title', 'class', 'width', 'height', 'allow', 'allowfullscreen', 'frameborder'];
+
+function sanitizedContent(content: string): string {
   if (!content) return '';
-  
-  // Convert line breaks to <br>
-  let formatted = content.replace(/\n\n/g, '</p><p>');
-  formatted = formatted.replace(/\n/g, '<br>');
-  
-  // Convert **bold** to <strong>
-  formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  
-  // Convert *italic* to <em>
-  formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  
-  // Convert # headings
-  formatted = formatted.replace(/^### (.*$)/gim, '<h3>$1</h3>');
-  formatted = formatted.replace(/^## (.*$)/gim, '<h2>$1</h2>');
-  formatted = formatted.replace(/^# (.*$)/gim, '<h1>$1</h1>');
-  
-  return `<p>${formatted}</p>`;
-};
+  // Legacy: plain text (no HTML) – apply simple markdown-like formatting
+  if (!content.includes('<')) {
+    let formatted = content.replace(/\n\n/g, '</p><p>');
+    formatted = formatted.replace(/\n/g, '<br>');
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    formatted = formatted.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+    formatted = formatted.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+    formatted = formatted.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+    content = `<p>${formatted}</p>`;
+  }
+  // Restrict iframe src to YouTube only
+  DOMPurify.addHook('uponSanitizeAttribute', (node, data) => {
+    if (data.attrName === 'src' && node.tagName === 'IFRAME') {
+      const url = data.attrValue || '';
+      const allowed =
+        url.startsWith('https://www.youtube.com/') ||
+        url.startsWith('https://www.youtube-nocookie.com/');
+      if (!allowed) data.attrValue = '';
+    }
+  });
+  const result = DOMPurify.sanitize(content, {
+    ALLOWED_TAGS,
+    ALLOWED_ATTR,
+    ADD_ATTR: ['allowfullscreen'],
+    ADD_TAGS: ['iframe'],
+  });
+  DOMPurify.removeHook('uponSanitizeAttribute');
+  return result;
+}
 
 onMounted(() => {
   loadSidebar();
@@ -265,51 +303,93 @@ watch(article, (a: { title: string; meta_description?: string } | null) => {
 </script>
 
 <style scoped>
-.prose {
+.doc-content {
   color: #e5e7eb;
 }
 
-.prose h1,
-.prose h2,
-.prose h3 {
+.doc-content :deep(h1),
+.doc-content :deep(h2),
+.doc-content :deep(h3),
+.doc-content :deep(h4),
+.doc-content :deep(h5),
+.doc-content :deep(h6) {
   color: #ffffff;
   font-weight: 700;
   margin-top: 2em;
   margin-bottom: 1em;
 }
 
-.prose h1 {
-  font-size: 2.25em;
-}
+.doc-content :deep(h1) { font-size: 2.25em; }
+.doc-content :deep(h2) { font-size: 1.875em; }
+.doc-content :deep(h3) { font-size: 1.5em; }
+.doc-content :deep(h4) { font-size: 1.25em; }
+.doc-content :deep(h5) { font-size: 1.125em; }
+.doc-content :deep(h6) { font-size: 1em; }
 
-.prose h2 {
-  font-size: 1.875em;
-}
-
-.prose h3 {
-  font-size: 1.5em;
-}
-
-.prose p {
+.doc-content :deep(p) {
   margin-bottom: 1.25em;
   line-height: 1.75;
 }
 
-.prose strong {
+.doc-content :deep(strong) {
   color: #ffffff;
   font-weight: 600;
 }
 
-.prose em {
+.doc-content :deep(em) {
   font-style: italic;
 }
 
-.prose a {
+.doc-content :deep(a) {
   color: #818cf8;
   text-decoration: underline;
 }
 
-.prose a:hover {
+.doc-content :deep(a:hover) {
   color: #a5b4fc;
+}
+
+.doc-content :deep(table) {
+  border-collapse: collapse;
+  margin: 1.5em 0;
+  width: 100%;
+}
+
+.doc-content :deep(th),
+.doc-content :deep(td) {
+  border: 1px solid #4b5563;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.doc-content :deep(th) {
+  background: #374151;
+  color: #fff;
+  font-weight: 600;
+}
+
+.doc-content :deep(pre) {
+  background: #1f2937;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1.5em 0;
+}
+
+.doc-content :deep(pre code) {
+  font-size: 0.875rem;
+  color: #e5e7eb;
+}
+
+.doc-content :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.375rem;
+}
+
+.doc-content :deep(iframe) {
+  max-width: 100%;
+  border-radius: 0.375rem;
+  aspect-ratio: 16 / 9;
 }
 </style>

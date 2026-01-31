@@ -29,15 +29,39 @@
         type="text"
       />
 
-      <!-- Content (Multilanguage) -->
-      <MultilanguageEditor
-        v-model="form.content"
-        label="Content"
-        placeholder="Article content"
-        required
-        type="textarea"
-        :rows="10"
-      />
+      <!-- Content (Multilanguage, Rich Editor) -->
+      <div class="space-y-4">
+        <div class="border-b border-gray-700">
+          <nav class="-mb-px flex space-x-4">
+            <button
+              v-for="loc in contentLocales"
+              :key="loc.code"
+              type="button"
+              :class="[
+                'py-2 px-4 border-b-2 font-medium text-sm transition-colors',
+                activeContentLocale === loc.code
+                  ? 'border-indigo-500 text-indigo-400'
+                  : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600'
+              ]"
+              @click="activeContentLocale = loc.code"
+            >
+              {{ loc.name }}
+            </button>
+          </nav>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">
+            {{ t('admin.documentation.articles.content_label') }} ({{ contentLocales.find(l => l.code === activeContentLocale)?.name ?? activeContentLocale }})
+            <span class="text-red-400">*</span>
+          </label>
+          <RichTextEditor
+            :key="activeContentLocale"
+            :model-value="form.content[activeContentLocale] || ''"
+            :placeholder="t('admin.documentation.articles.content_placeholder')"
+            @update:model-value="updateContentLocale(activeContentLocale, $event)"
+          />
+        </div>
+      </div>
 
       <!-- Meta Description (Multilanguage) -->
       <MultilanguageEditor
@@ -112,7 +136,19 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { adminDocumentationApi } from '../../../services/api';
 import MultilanguageEditor from '../../../components/admin/MultilanguageEditor.vue';
+import RichTextEditor from '../../../components/admin/RichTextEditor.vue';
 import Select from '../../../components/ui/Select.vue';
+
+const contentLocales = [
+  { code: 'en', name: 'English' },
+  { code: 'sk', name: 'Slovenčina' },
+  { code: 'es', name: 'Español' },
+  { code: 'cz', name: 'Čeština' },
+  { code: 'de', name: 'Deutsch' },
+  { code: 'fr', name: 'Français' },
+  { code: 'hu', name: 'Magyar' },
+  { code: 'pl', name: 'Polski' },
+];
 
 const route = useRoute();
 const router = useRouter();
@@ -121,6 +157,11 @@ const { t } = useI18n();
 const isEdit = computed(() => !!route.params.id);
 const saving = ref(false);
 const categories = ref<any[]>([]);
+const activeContentLocale = ref('en');
+
+function updateContentLocale(locale: string, html: string) {
+  form.value.content = { ...form.value.content, [locale]: html };
+}
 
 const categoryOptions = computed(() => [
   { label: t('admin.documentation.articles.no_category'), value: null },
