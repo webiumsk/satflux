@@ -8,8 +8,7 @@ use App\Http\Middleware\EnsureStoreOwnership;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-// NOTE: /storage/{path} is handled by Laravel 12's built-in ServeFile (see FilesystemServiceProvider).
-// Ensure `php artisan storage:link` is run so public/storage -> storage/app/public symlink exists.
+// /storage/* is served by Laravel 12 built-in (ServeFile). Deploy runs storage:link.
 
 // OG Image for social media sharing
 Route::get('/og-image.png', [OgImageController::class, 'generate']);
