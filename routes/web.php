@@ -7,6 +7,17 @@ use App\Http\Controllers\StoreAppPageController;
 use App\Http\Middleware\EnsureStoreOwnership;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
+
+// Serve public storage files (works with php artisan serve when symlink isn't followed)
+Route::get('/storage/{path}', function (string $path) {
+    $path = str_replace(['..', "\0"], '', $path);
+    if (!Storage::disk('public')->exists($path)) {
+        abort(404);
+    }
+    $fullPath = Storage::disk('public')->path($path);
+    return response()->file($fullPath);
+})->where('path', '.*')->name('storage.serve');
 
 // OG Image for social media sharing
 Route::get('/og-image.png', [OgImageController::class, 'generate']);

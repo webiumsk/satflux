@@ -23,14 +23,10 @@ class DocumentationImageController extends Controller
             $file = $request->file('image');
             $path = $file->store('documentation', 'public');
 
-            $relativeUrl = Storage::disk('public')->url($path);
-
-            if (str_starts_with($relativeUrl, '/')) {
-                $baseUrl = rtrim(config('app.url', 'http://localhost'), '/');
-                $url = $baseUrl . $relativeUrl;
-            } else {
-                $url = $relativeUrl;
-            }
+            // Return relative URL so images load from the same origin as the frontend
+            $fullUrl = Storage::disk('public')->url($path);
+            $pathOnly = parse_url($fullUrl, PHP_URL_PATH);
+            $url = $pathOnly ? ('/' . ltrim($pathOnly, '/')) : '/storage/' . $path;
 
             Log::info('Documentation image uploaded', [
                 'user_id' => $request->user()?->id,
