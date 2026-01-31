@@ -226,6 +226,7 @@ class EmailVerificationController extends Controller
                             'email' => $user->email,
                             'password' => $btcpayRandomPassword,
                             'isAdministrator' => false,
+                            'sendInvitationEmail' => false,
                         ]);
 
                         $btcpayUserId = $btcpayUser['id'] ?? $btcpayUser['userId'] ?? null;
