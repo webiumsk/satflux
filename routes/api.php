@@ -24,6 +24,7 @@ use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\FaqController;
 use App\Http\Controllers\Admin\DocumentationArticleController;
 use App\Http\Controllers\Admin\DocumentationCategoryController;
+use App\Http\Controllers\Admin\DocumentationImageController;
 use App\Http\Controllers\Admin\FaqItemController;
 use App\Http\Controllers\Admin\FaqCategoryController;
 use App\Http\Middleware\AuditLog;
@@ -341,7 +342,8 @@ Route::middleware(['auth:sanctum', EnsureSupportOrAdminRole::class])->prefix('ad
         ->middleware(AuditLog::class . ':documentation_article.updated');
     Route::delete('/articles/{article}', [DocumentationArticleController::class, 'destroy'])
         ->middleware(AuditLog::class . ':documentation_article.deleted');
-    
+    Route::post('/upload-image', [DocumentationImageController::class, 'upload']);
+
     // Categories
     Route::get('/categories', [DocumentationCategoryController::class, 'index']);
     Route::post('/categories', [DocumentationCategoryController::class, 'store'])

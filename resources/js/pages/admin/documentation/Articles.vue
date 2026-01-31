@@ -93,6 +93,15 @@
               <td class="px-6 py-4 text-sm text-gray-400">{{ formatDate(article.created_at) }}</td>
               <td class="px-6 py-4 text-right text-sm font-medium">
                 <router-link
+                  v-if="article.slug"
+                  :to="`/documentation/${article.slug}`"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-gray-400 hover:text-white mr-4"
+                >
+                  {{ t('admin.documentation.articles.view') }}
+                </router-link>
+                <router-link
                   :to="`/admin/documentation/articles/${article.id}/edit`"
                   class="text-indigo-400 hover:text-indigo-300 mr-4"
                 >
