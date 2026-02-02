@@ -14,6 +14,7 @@ use App\Http\Controllers\StoreDashboardController;
 use App\Http\Controllers\LightningAddressController;
 use App\Http\Controllers\StoreSettingsController;
 use App\Http\Controllers\WalletConnectionController;
+use App\Http\Controllers\NwcConnectorController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\EshopIntegrationController;
 use App\Http\Controllers\InvoiceController;
@@ -41,6 +42,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/health', function () {
     return response()->json(['status' => 'ok']);
 });
+
+// NWC Connector service health (for monitoring)
+Route::get('/health/nwc-connector', [NwcConnectorController::class, 'health']);
 
 // Locale endpoints (public - no auth required, but need session)
 Route::middleware([\Illuminate\Session\Middleware\StartSession::class])->group(function () {
@@ -292,6 +296,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':wallet_connection.configured']);
     Route::delete('/stores/{store}/wallet-connection', [WalletConnectionController::class, 'destroy'])
         ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':wallet_connection.deleted']);
+
+    // NWC Connector (receive-only Lightning via Nostr Wallet Connect)
+    Route::post('/stores/{store}/nwc-connector', [NwcConnectorController::class, 'store'])
+        ->middleware([EnsureStoreOwnership::class]);
+    Route::get('/stores/{store}/nwc-connector', [NwcConnectorController::class, 'show'])
+        ->middleware(EnsureStoreOwnership::class);
+    Route::post('/stores/{store}/nwc-connector/revoke', [NwcConnectorController::class, 'revoke'])
+        ->middleware([EnsureStoreOwnership::class]);
 
     // Support routes
     Route::middleware([EnsureSupportRole::class])->group(function () {

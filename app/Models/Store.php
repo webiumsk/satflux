@@ -26,8 +26,18 @@ class Store extends Model
         'timezone',
         'preferred_exchange',
         'wallet_type',
+        'nwc_connector_id',
         'metadata',
     ];
+
+    /**
+     * Get the NWC connector for the store (if any).
+     * Connector record lives in nwc_connectors table; we only store connector_id on store.
+     */
+    public function nwcConnector(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(NwcConnector::class, 'nwc_connector_id');
+    }
 
     /**
      * Get the attributes that should be cast.

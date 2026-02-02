@@ -309,7 +309,7 @@ class StoreController extends Controller
                 'wallet_type' => $request->wallet_type,
             ]);
 
-            // Create wallet connection if connection_string is provided
+            // Create wallet connection or NWC connector if connection_string is provided
             $walletConnection = null;
             if ($request->filled('connection_string')) {
                 Log::info('Starting wallet connection creation during store creation', [
@@ -320,6 +320,18 @@ class StoreController extends Controller
                     'connection_string_preview' => substr($request->connection_string, 0, 50) . '...',
                 ]);
 
+                // Lightning (NWC): store merchant's NWC string so it can be copied into BTCPay (no Connector)
+                if ($request->wallet_type === 'nwc') {
+                    try {
+                        $walletConnectionService = app(\App\Services\WalletConnectionService::class);
+                        $walletConnectionService->createOrUpdate($store, 'nwc', $request->connection_string, $user);
+                    } catch (\Throwable $e) {
+                        Log::warning('NWC wallet connection during store creation failed', [
+                            'store_id' => $store->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                } else {
                 try {
                     $connectionType = $request->wallet_type === 'blink' ? 'blink' : 'aqua_descriptor';
                     Log::info('Determined connection type', [
@@ -472,6 +484,7 @@ class StoreController extends Controller
                         'error_class' => get_class($e),
                         'error_trace' => $e->getTraceAsString(),
                     ]);
+                }
                 }
             } else {
                 Log::info('No connection_string provided, skipping wallet connection creation', [

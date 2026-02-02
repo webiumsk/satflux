@@ -94,6 +94,10 @@ class WalletConnection extends Model
      */
     public function reveal(): string
     {
+        if ($this->type === 'nwc' && empty($this->attributes['secret_encrypted'] ?? null)) {
+            throw new \RuntimeException('NWC secrets are stored only in the NWC Connector service and cannot be revealed here.');
+        }
+
         return Crypt::decryptString($this->secret_encrypted);
     }
 }

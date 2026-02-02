@@ -24,7 +24,7 @@ class WalletConnectionStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => ['required', 'string', 'in:blink,aqua_descriptor'],
+            'type' => ['required', 'string', 'in:blink,aqua_descriptor,nwc'],
             'secret' => ['required', 'string', 'min:10'],
         ];
     }
@@ -41,11 +41,11 @@ class WalletConnectionStoreRequest extends FormRequest
             $type = $this->input('type');
             $secret = $this->input('secret');
 
-            if ($type && $secret) {
+            if ($type && $secret && in_array($type, ['blink', 'aqua_descriptor', 'nwc'], true)) {
                 $connectionValidator = new WalletConnectionValidator();
                 $validation = $connectionValidator->validate($type, $secret);
 
-                if (!$validation['valid']) {
+                if (! $validation['valid']) {
                     foreach ($validation['errors'] as $error) {
                         $validator->errors()->add('secret', $error);
                     }

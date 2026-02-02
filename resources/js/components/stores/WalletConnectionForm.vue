@@ -46,13 +46,34 @@
                         <div class="text-sm text-gray-400 mt-1">Connect a watch-only wallet using an output descriptor. Non-custodial Setup.</div>
                     </div>
                 </label>
+
+                <label 
+                    class="flex items-start p-5 border rounded-xl cursor-pointer transition-all duration-200 group"
+                    :class="form.type === 'nwc' 
+                        ? 'border-indigo-500 bg-indigo-900/10 shadow-lg shadow-indigo-900/20' 
+                        : 'border-gray-700 bg-gray-800 hover:bg-gray-700/50 hover:border-gray-600'"
+                >
+                    <div class="flex items-center h-5 mt-1">
+                        <input
+                            type="radio"
+                            v-model="form.type"
+                            value="nwc"
+                            class="h-4 w-4 text-indigo-600 border-gray-600 focus:ring-indigo-500 bg-gray-700"
+                            required
+                        />
+                    </div>
+                    <div class="ml-4">
+                        <div class="font-bold text-white text-lg">Lightning (NWC)</div>
+                        <div class="text-sm text-gray-400 mt-1">Connect your Lightning wallet (Alby, Phoenix, etc.) for receive-only payments. No custody.</div>
+                    </div>
+                </label>
             </div>
             <p v-if="errors.type" class="mt-2 text-sm text-red-400">{{ errors.type }}</p>
         </div>
 
         <div>
             <label for="secret" class="block text-sm font-medium text-indigo-300 mb-2 uppercase tracking-wider">
-                {{ form.type === 'blink' ? 'Connection String' : 'Descriptor' }}
+                {{ form.type === 'blink' ? 'Connection String' : form.type === 'nwc' ? 'Pripojenie k peňaženke' : 'Descriptor' }}
             </label>
             <div class="relative rounded-xl shadow-sm">
                 <textarea
@@ -62,6 +83,8 @@
                     class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono p-4"
                     :placeholder="form.type === 'blink' 
                         ? 'type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx'
+                        : form.type === 'nwc'
+                        ? 'nostr+walletconnect:pubkey?relay=wss://...&secret=...'
                         : 'ct(slip77(...),elsh(wpkh(...))))'"
                     required
                 ></textarea>
@@ -72,6 +95,10 @@
                 <div v-if="form.type === 'blink'" class="space-y-1">
                      <p>Format: <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">type=blink;server=...;api-key=...;wallet-id=...</code></p>
                     <p>Paste your Blink connection string containing server URL, API key, and wallet ID.</p>
+                </div>
+                <div v-else-if="form.type === 'nwc'" class="space-y-1">
+                    <p>Paste <strong>your</strong> Lightning wallet connection string (from Alby, Phoenix, etc.). It starts with <code class="bg-gray-800 border border-gray-600 px-1.5 py-0.5 rounded text-indigo-300 font-mono text-xs">nostr+walletconnect:</code></p>
+                    <p class="text-gray-500 text-xs mt-2">We store it securely. After saving, copy the connection string below and add it to your BTCPay Server (Lightning → Nostr Wallet Connect via NIP47).</p>
                 </div>
                  <div v-else class="space-y-1">
                     <p>Paste your Aqua wallet output descriptor (watch-only, no private keys).</p>
@@ -103,15 +130,34 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                 <div>
                      <span class="block text-gray-500 text-xs uppercase">Type</span>
-                     <span class="font-medium text-white">{{ existingConnection.type === 'blink' ? 'Blink' : 'Aqua' }}</span>
+                     <span class="font-medium text-white">{{ existingConnection.type === 'blink' ? 'Blink' : existingConnection.type === 'nwc' ? 'Lightning (NWC)' : 'Aqua' }}</span>
                 </div>
                  <div>
                      <span class="block text-gray-500 text-xs uppercase">Status</span>
                      <span class="font-medium" :class="getStatusColorClass(existingConnection.status)">{{ formatStatus(existingConnection.status) }}</span>
                 </div>
-                 <div class="sm:col-span-3">
+                 <div class="sm:col-span-3" v-if="existingConnection.type !== 'nwc'">
                      <span class="block text-gray-500 text-xs uppercase">Masked Secret</span>
                      <span class="font-mono text-gray-300 break-all bg-gray-900/50 px-2 py-1 rounded border border-gray-700/50 inline-block mt-1">{{ existingConnection.masked_secret || 'N/A' }}</span>
+                </div>
+            </div>
+            <div v-if="existingConnection.type === 'nwc' && existingConnection.connection_string" class="mt-4 pt-4 border-t border-blue-500/20">
+                <p class="text-xs text-gray-400 uppercase mb-2">Connection string for BTCPay</p>
+                <p class="text-sm text-gray-400 mb-2">Copy this and add it to your BTCPay Server: Lightning → Nostr Wallet Connect via NIP47 (in the required format).</p>
+                <div class="flex gap-2 items-start">
+                    <textarea
+                        readonly
+                        :value="existingConnection.connection_string"
+                        rows="3"
+                        class="flex-1 font-mono text-xs bg-gray-900/70 border border-gray-700 rounded-lg p-3 text-gray-300 break-all"
+                    ></textarea>
+                    <button
+                        type="button"
+                        @click="copyConnectionString(existingConnection.connection_string)"
+                        class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm whitespace-nowrap"
+                    >
+                        Copy
+                    </button>
                 </div>
             </div>
         </div>
@@ -200,6 +246,20 @@ function getStatusColorClass(status: string): string {
     }
 }
 
+async function copyConnectionString(str: string) {
+    try {
+        await navigator.clipboard.writeText(str);
+        // Could use a toast; for now copy button is enough
+    } catch {
+        // fallback: select the textarea
+        const ta = document.querySelector('textarea[readonly]') as HTMLTextAreaElement;
+        if (ta) {
+            ta.select();
+            document.execCommand('copy');
+        }
+    }
+}
+
 // Client-side validation for Blink connection string format
 function validateBlinkConnectionString(connectionString: string): boolean {
     // Check for connection string format: type=blink;server=...;api-key=...;wallet-id=...
@@ -276,6 +336,22 @@ async function handleTestConnection() {
         return;
     }
 
+    if (form.type === 'nwc') {
+        const trimmed = form.secret.trim();
+        if (!trimmed.toLowerCase().startsWith('nostr+walletconnect:') || trimmed.length < 80) {
+            testResult.value = {
+                success: false,
+                message: 'Invalid Lightning (NWC) connection. Must start with nostr+walletconnect: and include relay and secret.',
+            };
+        } else {
+            testResult.value = {
+                success: true,
+                message: 'Format looks valid. Save to connect your Lightning wallet.',
+            };
+        }
+        return;
+    }
+
     testing.value = true;
     testResult.value = null;
 
@@ -318,10 +394,16 @@ async function handleSubmit() {
         return;
     }
 
+    if (form.type === 'nwc' && !form.secret.trim().toLowerCase().startsWith('nostr+walletconnect:')) {
+        errors.secret = 'Invalid Lightning (NWC) connection. Must start with nostr+walletconnect: and include relay and secret.';
+        submitting.value = false;
+        return;
+    }
+
     try {
         await api.post(`/stores/${props.storeId}/wallet-connection`, {
             type: form.type,
-            secret: form.secret,
+            secret: form.secret.trim(),
         });
 
         emit('submitted');

@@ -265,6 +265,16 @@ class WalletConnectionValidator
             if (!$isValid) {
                 $errors[] = 'Invalid descriptor format. Must be a valid Aqua wallet output descriptor (e.g., wpkh(), tr(), wsh(), or complex formats like ct(slip77(...),elsh(wpkh(...)))) and must not contain private keys (prv).';
             }
+        } elseif ($type === 'nwc') {
+            $returnType = 'nwc';
+            $trimmed = trim($value);
+            if (! str_starts_with(strtolower($trimmed), 'nostr+walletconnect:')) {
+                $errors[] = 'Invalid NWC connection string. Must start with nostr+walletconnect: and include relay and secret.';
+            } elseif (strlen($trimmed) < 80) {
+                $errors[] = 'NWC connection string too short.';
+            } elseif (strpos($trimmed, 'relay=') === false || strpos($trimmed, 'secret=') === false) {
+                $errors[] = 'NWC connection string must contain relay= and secret= parameters.';
+            }
         } else {
             \Illuminate\Support\Facades\Log::error('Unsupported wallet connection type', [
                 'type' => $type,

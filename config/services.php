@@ -30,6 +30,11 @@ return [
         // Note: Grace period is configured per plan in BTCPay Server, not here
     ],
 
+    'nwc_connector' => [
+        'base_url' => env('NWC_CONNECTOR_URL', 'http://nwc-connector:8082'),
+        'api_key' => env('NWC_PANEL_API_KEY'),
+    ],
+
 ];
 
 

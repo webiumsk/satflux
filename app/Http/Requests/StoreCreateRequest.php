@@ -27,7 +27,7 @@ class StoreCreateRequest extends FormRequest
             'default_currency' => ['required', 'string', 'max:10'], // Allow BTC, SATS, and 3-letter codes
             'timezone' => ['required', 'string', 'timezone'],
             'preferred_exchange' => ['nullable', 'string', 'max:255'],
-            'wallet_type' => ['required', 'string', Rule::in(['blink', 'aqua_boltz'])],
+            'wallet_type' => ['required', 'string', Rule::in(['blink', 'aqua_boltz', 'nwc'])],
             'connection_string' => ['nullable', 'string', 'max:2000'], // Connection string or descriptor
         ];
     }
@@ -62,6 +62,11 @@ class StoreCreateRequest extends FormRequest
                         foreach ($errors as $error) {
                             $validator->errors()->add('connection_string', $error);
                         }
+                    }
+                } elseif ($walletType === 'nwc') {
+                    // Validate NWC URI format (nostr+walletconnect:pubkey?relay=...&secret=...)
+                    if (!str_starts_with(trim($connectionString), 'nostr+walletconnect:')) {
+                        $validator->errors()->add('connection_string', 'Invalid Lightning (NWC) connection. Must start with nostr+walletconnect: and include relay and secret.');
                     }
                 }
             }

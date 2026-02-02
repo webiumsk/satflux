@@ -9,6 +9,7 @@ use App\Models\WalletConnection;
 use App\Services\BtcPay\LightningService;
 use App\Services\WalletConnectionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -32,19 +33,30 @@ class WalletConnectionController extends Controller
         $store = $request->route('store');
         $connection = WalletConnection::where('store_id', $store->id)->first();
 
-        if (!$connection) {
+        if (! $connection) {
             return response()->json(['data' => null]);
         }
 
-        return response()->json([
-            'data' => [
-                'id' => $connection->id,
-                'type' => $connection->type,
-                'status' => $connection->status,
-                'masked_secret' => $connection->masked_secret,
-                'submitted_at' => $connection->created_at,
-            ],
-        ]);
+        $data = [
+            'id' => $connection->id,
+            'type' => $connection->type,
+            'status' => $connection->status,
+            'masked_secret' => $connection->masked_secret,
+            'submitted_at' => $connection->created_at,
+        ];
+        // For NWC: return decrypted connection string so it can be copied into BTCPay (Nostr Wallet Connect via NIP47)
+        if ($connection->type === 'nwc' && ! empty($connection->secret_encrypted)) {
+            try {
+                $plain = Crypt::decryptString($connection->secret_encrypted);
+                $data['connection_string'] = str_starts_with(trim($plain), 'nostr+walletconnect')
+                    ? 'type=nwc;key=' . trim($plain)
+                    : $plain;
+            } catch (\Throwable $e) {
+                Log::warning('Wallet connection: could not decrypt NWC secret', ['connection_id' => $connection->id]);
+            }
+        }
+
+        return response()->json(['data' => $data]);
     }
 
     /**

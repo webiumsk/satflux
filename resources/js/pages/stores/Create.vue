@@ -134,6 +134,21 @@
                     <p class="text-sm text-gray-400">{{ t('create_store.aqua_description') }}</p>
                     <input type="radio" v-model="form.wallet_type" value="aqua_boltz" class="hidden" />
                   </label>
+
+                  <label 
+                    class="relative flex flex-col p-6 border-2 rounded-2xl cursor-pointer transition-all hover:bg-gray-700/50" 
+                    :class="form.wallet_type === 'nwc' ? 'border-indigo-500 bg-indigo-900/10' : 'border-gray-600 bg-gray-800'"
+                  >
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="font-bold text-white text-lg">{{ t('create_store.nwc_wallet') }}</span>
+                      <div v-if="form.wallet_type === 'nwc'" class="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-white">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+                      </div>
+                      <div v-else class="w-6 h-6 rounded-full border-2 border-gray-500"></div>
+                    </div>
+                    <p class="text-sm text-gray-400">{{ t('create_store.nwc_description') }}</p>
+                    <input type="radio" v-model="form.wallet_type" value="nwc" class="hidden" />
+                  </label>
                 </div>
               </div>
               
@@ -147,22 +162,27 @@
                 leave-to-class="opacity-0 translate-y-2"
               >
                   <div v-if="form.wallet_type" class="bg-gray-900/50 rounded-xl p-6 border border-gray-700">
-                    <label :for="form.wallet_type === 'blink' ? 'connection_string_blink' : 'connection_string_aqua'" class="block text-sm font-medium text-indigo-300 mb-2">
-                      {{ form.wallet_type === 'blink' ? t('create_store.connection_string') : t('create_store.descriptor') }}
+                    <label :for="form.wallet_type === 'blink' ? 'connection_string_blink' : form.wallet_type === 'nwc' ? 'connection_string_nwc' : 'connection_string_aqua'" class="block text-sm font-medium text-indigo-300 mb-2">
+                      {{ form.wallet_type === 'blink' ? t('create_store.connection_string') : form.wallet_type === 'nwc' ? t('create_store.wallet_connection_label') : t('create_store.descriptor') }}
                     </label>
                     <textarea
-                      :id="form.wallet_type === 'blink' ? 'connection_string_blink' : 'connection_string_aqua'"
+                      :id="form.wallet_type === 'blink' ? 'connection_string_blink' : form.wallet_type === 'nwc' ? 'connection_string_nwc' : 'connection_string_aqua'"
                       v-model="form.connection_string"
                       rows="4"
                       class="block w-full rounded-lg border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono text-sm placeholder-gray-600"
                       :placeholder="form.wallet_type === 'blink' 
                         ? 'type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx'
+                        : form.wallet_type === 'nwc'
+                        ? 'nostr+walletconnect:pubkey?relay=wss://...&secret=...'
                         : 'ct(slip77(...),elsh(wpkh(...))))'"
                     ></textarea>
                     <p class="mt-3 text-sm text-gray-400 leading-relaxed">
                       <span v-if="form.wallet_type === 'blink'">
                         {{ t('create_store.connection_string_format') }}<br>
                         {{ t('create_store.connection_string_help') }}
+                      </span>
+                      <span v-else-if="form.wallet_type === 'nwc'">
+                        {{ t('create_store.wallet_connection_label') }}: paste the connection string from your Lightning wallet (Alby, Phoenix, etc.). Starts with nostr+walletconnect:
                       </span>
                       <span v-else>
                         {{ t('create_store.descriptor_help') }}<br>
@@ -217,7 +237,7 @@
                   </div>
                   <div class="flex justify-between items-center">
                     <dt class="text-sm text-gray-400">{{ t('create_store.wallet_type_label') }}</dt>
-                    <dd class="text-sm font-bold text-indigo-300">{{ form.wallet_type === 'blink' ? t('create_store.wallet_type_blink') : t('create_store.wallet_type_aqua') }}</dd>
+                    <dd class="text-sm font-bold text-indigo-300">{{ form.wallet_type === 'blink' ? t('create_store.wallet_type_blink') : form.wallet_type === 'nwc' ? t('create_store.wallet_type_nwc') : t('create_store.wallet_type_aqua') }}</dd>
                   </div>
                   <div class="flex justify-between items-center" v-if="form.connection_string">
                     <dt class="text-sm text-gray-400">{{ t('create_store.connection_label') }}</dt>
@@ -288,7 +308,7 @@ const form = ref({
   default_currency: 'EUR',
   timezone: 'UTC',
   preferred_exchange: '',
-  wallet_type: '' as 'blink' | 'aqua_boltz' | '',
+  wallet_type: '' as 'blink' | 'aqua_boltz' | 'nwc' | '',
   connection_string: '',
 });
 

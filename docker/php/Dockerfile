@@ -32,14 +32,13 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 # Set working directory
 WORKDIR /var/www
 
-# Copy existing application directory permissions
-RUN chown -R www-data:www-data /var/www
-
-# Change current user to www-data
-USER www-data
+# Entrypoint: fix storage/cache permissions when volume is mounted, then start php-fpm
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Expose port 9000 and start php-fpm server
 EXPOSE 9000
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["php-fpm"]
 
 
