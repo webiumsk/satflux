@@ -446,7 +446,13 @@
     "api_description": "Seamlessly integrate with your e-shop or custom application. Your API keys stay with you, ensuring maximum security and privacy.",
     "learn_more": "Learn more",
     "transparent_pricing": "Transparent Pricing",
-    "pricing_description": "Pay with sats. No credit card required."
+    "pricing_description": "Pay with sats. No credit card required.",
+    "wallet_pros": "Pros",
+    "wallet_cons": "Cons",
+    "blink_pros": "Speed (Lightning), Simplicity, Stability",
+    "blink_cons": "Custodial (Not your keys)",
+    "aqua_pros": "Non-custodial (Your keys), Liquid + Lightning",
+    "aqua_cons": "Higher complexity for beginners"
   },
   "support": {
     "title": "Contact & Support",
