@@ -190,7 +190,7 @@
         <!-- How It Works Timeline -->
         <div class="relative">
            <!-- Vertical Connector Line (Desktop) -->
-           <div class="absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-indigo-500/30 to-transparent hidden md:block transform -translate-x-1/2"></div>
+           <div class="absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-indigo-500/50 to-transparent hidden md:block transform -translate-x-1/2 z-0"></div>
            
            <div class="space-y-12 md:space-y-0">
             <!-- Step 1: Registration -->
@@ -225,17 +225,72 @@
                <div class="absolute left-1/2 top-1/2 w-4 h-4 bg-gray-900 border-2 border-indigo-500 rounded-full transform -translate-x-1/2 -translate-y-1/2 hidden md:block shadow-[0_0_10px_rgba(99,102,241,0.5)] group-hover:scale-125 transition-transform z-10"></div>
 
                <div class="md:w-5/12 flex justify-end pr-8 md:pr-16 order-1">
-                  <div class="relative w-full max-w-md transform group-hover:scale-105 transition-transform duration-500">
-                    <!-- Blink Card -->
-                    <div class="absolute top-0 left-0 w-48 bg-orange-500 rounded-xl p-4 shadow-xl transform -rotate-6 z-10 border border-orange-400">
-                      <div class="font-bold text-white">Blink Wallet</div>
-                      <div class="text-orange-100 text-xs mt-1">Lightning Speed</div>
-                    </div>
-                    <!-- Aqua Card -->
-                    <div class="bg-blue-500 rounded-xl p-4 shadow-xl transform rotate-3 ml-12 mt-20 border border-blue-400 relative z-0">
-                      <div class="font-bold text-white">Aqua Wallet</div>
-                      <div class="text-blue-100 text-xs mt-1">Non-custodial</div>
-                    </div>
+                  <div class="flex flex-col gap-10 w-full max-w-sm mt-12 md:mt-0">
+                      <!-- Blink Card (Shifted left) -->
+                      <div class="relative group/card cursor-pointer transform md:-translate-x-12 transition-transform duration-500 hover:scale-105">
+                          <!-- Card Content -->
+                          <div class="bg-gray-800 rounded-2xl p-6 border border-gray-700 shadow-xl flex items-center gap-6 transition-all duration-300 group-hover/card:border-orange-500/50 group-hover/card:bg-gray-800/80">
+                              <img src="/img/wallets/blink.png" alt="Blink Wallet" class="w-20 h-20 rounded-2xl object-contain p-2 bg-white/5 border border-white/10 shadow-inner">
+                              <div>
+                                  <h4 class="text-2xl font-bold text-white mb-1">Blink Wallet</h4>
+                                  <p class="text-sm text-orange-400 font-medium">Lightning Speed</p>
+                              </div>
+                          </div>
+
+                          <!-- Hover Details (Tooltip/Overlay) -->
+                          <div class="absolute inset-0 bg-gray-900/95 backdrop-blur-xl rounded-2xl p-6 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex flex-col justify-center border border-orange-500/50 z-20 pointer-events-none group-hover/card:pointer-events-auto shadow-[0_0_30px_rgba(249,115,22,0.3)]">
+                             <div class="space-y-4">
+                                 <div>
+                                     <span class="text-green-400 font-bold text-xs uppercase tracking-wider flex items-center gap-2 mb-1">
+                                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                       {{ t('landing.wallet_pros') }}
+                                     </span>
+                                     <p class="text-gray-300 text-sm leading-relaxed">{{ t('landing.blink_pros') }}</p>
+                                 </div>
+                                 <div>
+                                     <span class="text-red-400 font-bold text-xs uppercase tracking-wider flex items-center gap-2 mb-1">
+                                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                       {{ t('landing.wallet_cons') }}
+                                     </span>
+                                     <p class="text-gray-300 text-sm leading-relaxed">{{ t('landing.blink_cons') }}</p>
+                                 </div>
+                             </div>
+                          </div>
+                      </div>
+
+                      <!-- Aqua Card (Shifted right/default) -->
+                      <div class="relative group/card cursor-pointer transition-transform duration-500 hover:scale-105">
+                          <!-- Card Content -->
+                          <div class="bg-gray-800 rounded-2xl p-6 border border-gray-700 shadow-xl flex items-center gap-6 transition-all duration-300 group-hover/card:border-blue-500/50 group-hover/card:bg-gray-800/80">
+                              <div class="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center p-2 shadow-inner">
+                                <img src="/img/wallets/aqua.png" alt="Aqua Wallet" class="w-full h-full object-contain">
+                              </div>
+                              <div>
+                                  <h4 class="text-2xl font-bold text-white mb-1">Aqua Wallet</h4>
+                                  <p class="text-sm text-blue-400 font-medium">Non-custodial</p>
+                              </div>
+                          </div>
+
+                           <!-- Hover Details -->
+                          <div class="absolute inset-0 bg-gray-900/95 backdrop-blur-xl rounded-2xl p-6 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex flex-col justify-center border border-blue-500/50 z-20 pointer-events-none group-hover/card:pointer-events-auto shadow-[0_0_30px_rgba(59,130,246,0.3)]">
+                             <div class="space-y-4">
+                                 <div>
+                                     <span class="text-green-400 font-bold text-xs uppercase tracking-wider flex items-center gap-2 mb-1">
+                                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                       {{ t('landing.wallet_pros') }}
+                                     </span>
+                                     <p class="text-gray-300 text-sm leading-relaxed">{{ t('landing.aqua_pros') }}</p>
+                                 </div>
+                                 <div>
+                                     <span class="text-red-400 font-bold text-xs uppercase tracking-wider flex items-center gap-2 mb-1">
+                                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                       {{ t('landing.wallet_cons') }}
+                                     </span>
+                                     <p class="text-gray-300 text-sm leading-relaxed">{{ t('landing.aqua_cons') }}</p>
+                                 </div>
+                             </div>
+                          </div>
+                      </div>
                   </div>
                </div>
 

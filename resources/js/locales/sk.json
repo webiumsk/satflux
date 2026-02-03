@@ -447,7 +447,13 @@
     "api_description": "Jednoducho integrujte so svojím e-shopom alebo aplikáciou. Vaše API kľúče zostávajú u vás.",
     "learn_more": "Zistiť viac",
     "transparent_pricing": "Transparentný cenník",
-    "pricing_description": "Plaťte v satoshi. Žiadna kreditná karta."
+    "pricing_description": "Plaťte v satoshi. Žiadna kreditná karta.",
+    "wallet_pros": "Výhody",
+    "wallet_cons": "Nevýhody",
+    "blink_pros": "Rýchlosť (Lightning), Jednoduchosť, Stabilita",
+    "blink_cons": "Kustodiálna (Nemáte privátne kľúče)",
+    "aqua_pros": "Nekustodiálna (Vlastné kľúče), Liquid + Lightning",
+    "aqua_cons": "Vyššia zložitosť pre začiatočníkov"
   },
   "support": {
     "title": "Kontakt a podpora",
