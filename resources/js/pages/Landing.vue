@@ -190,7 +190,7 @@
         <!-- How It Works Timeline -->
         <div class="relative">
            <!-- Vertical Connector Line (Desktop) -->
-           <div class="absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-indigo-500/50 to-transparent hidden md:block transform -translate-x-1/2 z-0"></div>
+           <div class="absolute left-1/2 top-0 bottom-0 w-1px bg-gradient-to-b from-transparent via-indigo-500/50 to-transparent hidden md:block transform -translate-x-1/2 z-10 w-1"></div>
            
            <div class="space-y-12 md:space-y-0">
             <!-- Step 1: Registration -->
