@@ -16,11 +16,10 @@
         <div class="text-center">
           <div class="inline-flex items-center px-4 py-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-sm font-medium mb-8 backdrop-blur-sm">
             <span class="flex h-2 w-2 rounded-full bg-indigo-400 mr-2"></span>
-            {{ t('landing.payments_for_future') }}
+            {{ t('landing.hero_subheadline') }}
           </div>
           <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-indigo-400">
-            {{ t('landing.accept_bitcoin') }} <br class="hidden md:block" />
-            <span class="text-white">{{ t('landing.without_limits') }}</span>
+            {{ t('landing.hero_headline') }}
           </h1>
           <p class="text-xl md:text-2xl mb-10 text-gray-400 max-w-3xl mx-auto leading-relaxed">
             {{ t('landing.hero_description') }}
@@ -91,58 +90,6 @@
       </div>
       <!-- Thin gradient line at bottom of hero -->
       <div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" aria-hidden="true"></div>
-    </section>
-
-    <!-- Key Points Section -->
-    <section class="relative py-24 bg-gray-800/40">
-      <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" aria-hidden="true"></div>
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-           <!-- Point 1 -->
-           <div class="p-6 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/50 transition-colors">
-             <div class="w-12 h-12 bg-green-500/20 text-green-400 rounded-lg flex items-center justify-center mb-4">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-             </div>
-             <h3 class="text-xl font-bold text-white mb-2">{{ t('landing.non_custodial') }}</h3>
-             <p class="text-gray-400 text-sm">{{ t('landing.non_custodial_description') }}</p>
-           </div>
-
-           <!-- Point 2 -->
-           <div class="p-6 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/50 transition-colors">
-             <div class="w-12 h-12 bg-blue-500/20 text-blue-400 rounded-lg flex items-center justify-center mb-4">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-             </div>
-             <h3 class="text-xl font-bold text-white mb-2">{{ t('landing.lightning_ready') }}</h3>
-             <p class="text-gray-400 text-sm">{{ t('landing.lightning_ready_description') }}</p>
-           </div>
-
-           <!-- Point 3 -->
-           <div class="p-6 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/50 transition-colors">
-             <div class="w-12 h-12 bg-purple-500/20 text-purple-400 rounded-lg flex items-center justify-center mb-4">
-               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-             </div>
-             <h3 class="text-xl font-bold text-white mb-2">{{ t('landing.smart_exports') }}</h3>
-             <p class="text-gray-400 text-sm">{{ t('landing.smart_exports_description') }}</p>
-           </div>
-
-           <!-- Point 4 -->
-           <div class="p-6 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/50 transition-colors">
-             <div class="w-12 h-12 bg-orange-500/20 text-orange-400 rounded-lg flex items-center justify-center mb-4">
-               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-             </div>
-             <h3 class="text-xl font-bold text-white mb-2">{{ t('landing.monthly_recap') }}</h3>
-             <p class="text-gray-400 text-sm">{{ t('landing.monthly_recap_description') }}</p>
-           </div>
-        </div>
-      </div>
     </section>
 
     <!-- Features Section -->
@@ -227,111 +174,228 @@
     </section>
 
     <!-- How it works Section (between Features and Pricing) -->
+    <!-- How it works Section (Zig-Zag) -->
     <section id="how-it-works" class="relative py-24 bg-gray-800/40">
       <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" aria-hidden="true"></div>
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center mb-12">
-          <h2 class="text-3xl md:text-5xl font-bold text-white mb-4">
+        <div class="text-center mb-24">
+          <h2 class="text-4xl md:text-6xl font-bold text-white mb-6 tracking-tight">
             {{ t('landing.how_it_works') }}
           </h2>
-          <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+          <p class="text-xl text-indigo-300 max-w-2xl mx-auto">
             {{ t('landing.how_it_works_intro') }}
           </p>
         </div>
 
-        <!-- Two columns: steps (left 2/3) + terminal on mobile (right 1/3) -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12 items-center">
-          <!-- Left: 6 steps -->
-          <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <!-- Step 1 -->
-            <div class="relative flex flex-col sm:flex-row sm:items-start gap-4 p-5 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/40 transition-colors">
-              <div class="flex shrink-0 w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-bold">1</div>
-              <div class="flex-1 min-w-0">
-                <h3 class="text-lg font-bold text-white mb-1">{{ t('landing.how_it_works_step1_title') }}</h3>
-                <p class="text-gray-400 text-sm">{{ t('landing.how_it_works_step1_text') }}</p>
+        <!-- How It Works Timeline -->
+        <div class="relative">
+           <!-- Vertical Connector Line (Desktop) -->
+           <div class="absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-indigo-500/30 to-transparent hidden md:block transform -translate-x-1/2"></div>
+           
+           <div class="space-y-12 md:space-y-0">
+            <!-- Step 1: Registration -->
+            <div class="flex flex-col md:flex-row items-center justify-between gap-8 md:min-h-[75vh] py-12 relative group">
+              <!-- Dot on timeline -->
+              <div class="absolute left-1/2 top-1/2 w-4 h-4 bg-gray-900 border-2 border-indigo-500 rounded-full transform -translate-x-1/2 -translate-y-1/2 hidden md:block shadow-[0_0_10px_rgba(99,102,241,0.5)] group-hover:scale-125 transition-transform z-10"></div>
+              
+              <div class="md:w-5/12 text-right pr-8 md:pr-16 order-2 md:order-1">
+                 <div class="inline-flex items-center gap-3 mb-4 md:flex-row-reverse">
+                   <h3 class="text-3xl md:text-5xl font-bold text-white">{{ t('landing.step1_title') }}</h3>
+                   <span class="flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 font-bold text-xl border border-indigo-500/50 md:hidden">1</span>
+                 </div>
+                 <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
+                   {{ t('landing.step1_text') }}
+                 </p>
               </div>
-            </div>
-
-            <!-- Step 2 -->
-            <div class="relative flex flex-col sm:flex-row sm:items-start gap-4 p-5 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/40 transition-colors">
-              <div class="flex shrink-0 w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-bold">2</div>
-              <div class="flex-1 min-w-0">
-                <h3 class="text-lg font-bold text-white mb-1">{{ t('landing.how_it_works_step2_title') }}</h3>
-                <p class="text-gray-400 text-sm">{{ t('landing.how_it_works_step2_text') }}</p>
-              </div>
-            </div>
-
-            <!-- Step 3: PoS -->
-            <div class="relative flex flex-col sm:flex-row sm:items-start gap-4 p-5 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/40 transition-colors">
-              <div class="flex shrink-0 w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-bold">3</div>
-              <div class="flex-1 min-w-0">
-                <h3 class="text-lg font-bold text-white mb-1">{{ t('landing.how_it_works_step3_title') }}</h3>
-                <p class="text-gray-400 text-sm">{{ t('landing.how_it_works_step3_text') }}</p>
-              </div>
-            </div>
-
-            <!-- Step 4: LN Address -->
-            <div class="relative flex flex-col sm:flex-row sm:items-start gap-4 p-5 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/40 transition-colors">
-              <div class="flex shrink-0 w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-bold">4</div>
-              <div class="flex-1 min-w-0">
-                <h3 class="text-lg font-bold text-white mb-1">{{ t('landing.how_it_works_step4_title') }}</h3>
-                <p class="text-gray-400 text-sm">{{ t('landing.how_it_works_step4_text') }}</p>
-              </div>
-            </div>
-
-            <!-- Step 5: E-shop -->
-            <div class="relative flex flex-col sm:flex-row sm:items-start gap-4 p-5 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/40 transition-colors">
-              <div class="flex shrink-0 w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-bold">5</div>
-              <div class="flex-1 min-w-0">
-                <h3 class="text-lg font-bold text-white mb-1">{{ t('landing.how_it_works_step5_title') }}</h3>
-                <p class="text-gray-400 text-sm">{{ t('landing.how_it_works_step5_text') }}</p>
-              </div>
-            </div>
-
-            <!-- Step 6: Accept payments -->
-            <div class="relative flex flex-col sm:flex-row sm:items-start gap-4 p-5 rounded-2xl bg-gray-800/50 border border-gray-700 hover:border-indigo-500/40 transition-colors">
-              <div class="flex shrink-0 w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-bold">6</div>
-              <div class="flex-1 min-w-0">
-                <h3 class="text-lg font-bold text-white mb-1">{{ t('landing.how_it_works_step6_title') }}</h3>
-                <p class="text-gray-400 text-sm">{{ t('landing.how_it_works_step6_text') }}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Right: terminal "on mobile" (1/3) - wider for QR -->
-          <div class="lg:col-span-1 flex justify-center lg:justify-end">
-            <div class="w-full max-w-[380px] mx-auto lg:mx-0">
-              <p class="text-center lg:text-right text-sm text-gray-500 mb-3">{{ t('landing.how_it_works_demo_title') }}</p>
-              <p class="text-center lg:text-right text-xs text-green-400/90 mb-3">{{ t('landing.how_it_works_demo_real') }}</p>
-              <!-- Desktop/tablet: phone frame with iframe -->
-              <div class="hidden md:block relative rounded-[2rem] border-[10px] border-gray-700 bg-gray-800 shadow-2xl shadow-black/50 overflow-hidden" style="box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                <div class="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-gray-800 rounded-b-xl z-10" aria-hidden="true" />
-                <div class="bg-gray-900 overflow-hidden" style="min-height: 760px;">
-                  <iframe
-                    :src="posDemoUrl"
-                    title="SATFLUX PoS Demo"
-                    class="w-full border-0 block"
-                    style="height: 760px;"
-                    allow="payment"
-                  />
+              
+              <div class="md:w-5/12 flex justify-start pl-8 md:pl-16 order-1 md:order-2">
+                <!-- Removed hover scaling to avoid UX issues with form inputs -->
+                <div class="w-full max-w-md bg-gray-800 rounded-2xl border border-gray-700 p-6 shadow-2xl relative overflow-hidden group hover:border-indigo-500/50 transition-colors duration-500">
+                  <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <!-- Embedded Registration Form -->
+                  <div class="relative z-10">
+                    <RegistrationForm :show-login-link="false" />
+                  </div>
                 </div>
               </div>
-              <!-- Mobile: button to open modal -->
-              <div class="md:hidden">
-                <button
-                  type="button"
-                  @click="showPosModal = true"
-                  class="w-full inline-flex items-center justify-center px-6 py-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20"
-                >
-                  <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                  {{ t('landing.how_it_works_open_pos_mobile') }}
-                </button>
-              </div>
             </div>
-          </div>
+
+            <!-- Step 2: Wallet Connection -->
+            <div class="flex flex-col md:flex-row items-center justify-between gap-8 md:min-h-[75vh] py-12 relative group">
+               <div class="absolute left-1/2 top-1/2 w-4 h-4 bg-gray-900 border-2 border-indigo-500 rounded-full transform -translate-x-1/2 -translate-y-1/2 hidden md:block shadow-[0_0_10px_rgba(99,102,241,0.5)] group-hover:scale-125 transition-transform z-10"></div>
+
+               <div class="md:w-5/12 flex justify-end pr-8 md:pr-16 order-1">
+                  <div class="relative w-full max-w-md transform group-hover:scale-105 transition-transform duration-500">
+                    <!-- Blink Card -->
+                    <div class="absolute top-0 left-0 w-48 bg-orange-500 rounded-xl p-4 shadow-xl transform -rotate-6 z-10 border border-orange-400">
+                      <div class="font-bold text-white">Blink Wallet</div>
+                      <div class="text-orange-100 text-xs mt-1">Lightning Speed</div>
+                    </div>
+                    <!-- Aqua Card -->
+                    <div class="bg-blue-500 rounded-xl p-4 shadow-xl transform rotate-3 ml-12 mt-20 border border-blue-400 relative z-0">
+                      <div class="font-bold text-white">Aqua Wallet</div>
+                      <div class="text-blue-100 text-xs mt-1">Non-custodial</div>
+                    </div>
+                  </div>
+               </div>
+
+               <div class="md:w-5/12 text-left pl-8 md:pl-16 order-2">
+                 <div class="inline-flex items-center gap-3 mb-4">
+                   <h3 class="text-3xl md:text-5xl font-bold text-white">{{ t('landing.step2_title') }}</h3>
+                   <span class="md:hidden flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 font-bold text-xl border border-indigo-500/50">2</span>
+                 </div>
+                 <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
+                   {{ t('landing.step2_text') }}
+                 </p>
+               </div>
+            </div>
+
+            <!-- Step 3: PoS Terminal (Interactive) -->
+            <div class="flex flex-col md:flex-row items-center justify-between gap-8 md:min-h-[100vh] py-12 relative group">
+               <div class="absolute left-1/2 top-1/2 w-4 h-4 bg-gray-900 border-2 border-indigo-500 rounded-full transform -translate-x-1/2 -translate-y-1/2 hidden md:block shadow-[0_0_10px_rgba(99,102,241,0.5)] group-hover:scale-125 transition-transform z-10"></div>
+
+               <div class="md:w-5/12 text-right pr-8 md:pr-16 order-2 md:order-1">
+                 <div class="inline-flex items-center gap-3 mb-4 md:flex-row-reverse">
+                   <h3 class="text-3xl md:text-5xl font-bold text-white">{{ t('landing.step3_title') }}</h3>
+                   <span class="md:hidden flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 font-bold text-xl border border-indigo-500/50">3</span>
+                 </div>
+                 <p class="text-gray-400 text-lg md:text-xl leading-relaxed mb-6">
+                   {{ t('landing.step3_text') }}
+                 </p>
+                 <p class="text-sm text-green-400/80 hidden md:block">
+                    {{ t('landing.how_it_works_demo_real') }}
+                 </p>
+                 
+                 <!-- Mobile Button -->
+                 <div class="md:hidden mt-4">
+                    <button
+                      @click="showPosModal = true"
+                      class="inline-flex items-center justify-center px-6 py-3 text-base font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 transition-all shadow-lg"
+                    >
+                       {{ t('landing.how_it_works_open_pos_mobile') }}
+                    </button>
+                 </div>
+               </div>
+
+               <div class="md:w-5/12 flex justify-start pl-8 md:pl-16 order-1 md:order-2">
+                  <div class="hidden md:block w-full max-w-[380px] bg-gray-900 rounded-[2.5rem] border-[8px] border-gray-800 shadow-2xl overflow-hidden h-[800px] relative">
+                     <!-- Phone Notches -->
+                     <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-gray-800 rounded-b-xl z-20"></div>
+                     <!-- Iframe -->
+                     <iframe
+                        :src="posDemoUrl"
+                        title="SATFLUX PoS Demo"
+                        class="w-full h-full border-0 bg-gray-900"
+                        allow="payment"
+                        loading="lazy"
+                      />
+                      <!-- Overlay hint -->
+                      <div class="absolute bottom-4 left-0 right-0 text-center pointer-events-none">
+                         <span class="inline-block px-3 py-1 bg-black/50 text-white/50 text-xs rounded-full backdrop-blur-sm">Live Demo</span>
+                      </div>
+                  </div>
+                  <!-- Mobile Visual (Placeholder card instead of full iframe) -->
+                  <div class="md:hidden w-full max-w-xs bg-gray-800 rounded-2xl p-4 border border-gray-700">
+                      <div class="grid grid-cols-3 gap-2">
+                         <div v-for="n in 9" :key="n" class="aspect-square bg-gray-700/50 rounded flex items-center justify-center text-gray-500">{{ n }}</div>
+                      </div>
+                  </div>
+               </div>
+            </div>
+
+            <!-- Step 4: Integrations -->
+            <div class="flex flex-col md:flex-row items-center justify-between gap-8 md:min-h-[75vh] py-12 relative group">
+               <div class="absolute left-1/2 top-1/2 w-4 h-4 bg-gray-900 border-2 border-indigo-500 rounded-full transform -translate-x-1/2 -translate-y-1/2 hidden md:block shadow-[0_0_10px_rgba(99,102,241,0.5)] group-hover:scale-125 transition-transform z-10"></div>
+
+               <div class="md:w-5/12 flex justify-end pr-8 md:pr-16 order-1">
+                  <div class="flex flex-wrap gap-4 max-w-md justify-end">
+                     <div class="bg-gray-100 text-gray-900 px-4 py-2 rounded-lg font-bold shadow-lg transform group-hover:-translate-y-1 transition-transform delay-75">Woo</div>
+                     <div class="bg-[#95BF47] text-white px-4 py-2 rounded-lg font-bold shadow-lg transform group-hover:-translate-y-1 transition-transform delay-100">Shopify</div>
+                     <div class="bg-[#F46F25] text-white px-4 py-2 rounded-lg font-bold shadow-lg transform group-hover:-translate-y-1 transition-transform delay-150">Magento</div>
+                     <div class="bg-[#0678BE] text-white px-4 py-2 rounded-lg font-bold shadow-lg transform group-hover:-translate-y-1 transition-transform delay-200">Drupal</div>
+                     <div class="w-full text-center text-gray-400 text-xs mt-2 font-mono bg-gray-900/50 p-2 rounded border border-gray-700/50">API Key: sk_live_...</div>
+                  </div>
+               </div>
+
+               <div class="md:w-5/12 text-left pl-8 md:pl-16 order-2">
+                 <div class="inline-flex items-center gap-3 mb-4">
+                   <h3 class="text-3xl md:text-5xl font-bold text-white">{{ t('landing.step4_title') }}</h3>
+                   <span class="md:hidden flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 font-bold text-xl border border-indigo-500/50">4</span>
+                 </div>
+                 <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
+                   {{ t('landing.step4_text') }}
+                 </p>
+               </div>
+            </div>
+
+            <!-- Step 5: LN Address -->
+            <div class="flex flex-col md:flex-row items-center justify-between gap-8 md:min-h-[75vh] py-12 relative group">
+               <div class="absolute left-1/2 top-1/2 w-4 h-4 bg-gray-900 border-2 border-indigo-500 rounded-full transform -translate-x-1/2 -translate-y-1/2 hidden md:block shadow-[0_0_10px_rgba(99,102,241,0.5)] group-hover:scale-125 transition-transform z-10"></div>
+
+               <div class="md:w-5/12 text-right pr-8 md:pr-16 order-2 md:order-1">
+                 <div class="inline-flex items-center gap-3 mb-4 md:flex-row-reverse">
+                   <h3 class="text-3xl md:text-5xl font-bold text-white">{{ t('landing.step5_title') }}</h3>
+                   <span class="md:hidden flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 font-bold text-xl border border-indigo-500/50">5</span>
+                 </div>
+                 <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
+                   {{ t('landing.step5_text') }}
+                 </p>
+               </div>
+               
+               <div class="md:w-5/12 flex justify-start pl-8 md:pl-16 order-1 md:order-2">
+                  <div class="bg-gradient-to-r from-purple-600 to-indigo-600 p-1 rounded-2xl w-full max-w-sm shadow-xl shadow-purple-900/20 transform group-hover:scale-105 transition-transform duration-500">
+                     <div class="bg-gray-900 rounded-xl p-8 text-center relative overflow-hidden">
+                        <!-- Shine effect -->
+                        <div class="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                        <div class="w-16 h-16 mx-auto bg-gray-800 rounded-full mb-4 flex items-center justify-center shadow-inner">
+                          <svg class="w-8 h-8 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" /></svg>
+                        </div>
+                        <div class="text-white font-mono text-lg md:text-xl">satoshi<span class="text-indigo-400">@satflux.org</span></div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+
+            <!-- Step 6: Accounting Exports -->
+            <div class="flex flex-col md:flex-row items-center justify-between gap-8 md:min-h-[75vh] py-12 relative group">
+               <div class="absolute left-1/2 top-1/2 w-4 h-4 bg-gray-900 border-2 border-indigo-500 rounded-full transform -translate-x-1/2 -translate-y-1/2 hidden md:block shadow-[0_0_10px_rgba(99,102,241,0.5)] group-hover:scale-125 transition-transform z-10"></div>
+
+               <div class="md:w-5/12 flex justify-end pr-8 md:pr-16 order-1">
+                  <div class="w-full max-w-md bg-gray-800 rounded-2xl border border-gray-700 p-6 flex flex-col items-center gap-6 transform group-hover:scale-105 transition-transform duration-500 relative overflow-hidden">
+                     <div class="absolute top-0 right-0 p-4 opacity-10">
+                        <svg class="w-32 h-32 text-indigo-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" /></svg>
+                     </div>
+                     <div class="grid grid-cols-2 gap-4 w-full relative z-10">
+                        <div class="bg-gray-700/50 p-4 rounded-xl border border-gray-600 flex flex-col items-center hover:bg-green-500/10 hover:border-green-500/50 transition-colors">
+                           <span class="font-bold text-white text-lg mb-1">CSV</span>
+                           <span class="text-xs text-gray-400">Excel / Pohoda</span>
+                        </div>
+                        <div class="bg-gray-700/50 p-4 rounded-xl border border-gray-600 flex flex-col items-center hover:bg-red-500/10 hover:border-red-500/50 transition-colors">
+                           <span class="font-bold text-white text-lg mb-1">PDF</span>
+                           <span class="text-xs text-gray-400">Tlač</span>
+                        </div>
+                     </div>
+                     <div class="w-full bg-gray-900 rounded-lg p-3 border border-gray-700 flex items-center justify-between text-xs text-gray-400 font-mono">
+                        <span>export_2026_02.csv</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                     </div>
+                  </div>
+               </div>
+
+               <div class="md:w-5/12 text-left pl-8 md:pl-16 order-2">
+                 <div class="inline-flex items-center gap-3 mb-4">
+                   <h3 class="text-3xl md:text-5xl font-bold text-white">{{ t('landing.step6_title') }}</h3>
+                   <span class="md:hidden flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 font-bold text-xl border border-indigo-500/50">6</span>
+                 </div>
+                 <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
+                   {{ t('landing.step6_text') }}
+                 </p>
+               </div>
+            </div>
+           </div>
         </div>
+
+
       </div>
     </section>
 
@@ -581,12 +645,12 @@
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
 import { useAuthStore } from '../store/auth';
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import PublicHeader from '../components/layout/PublicHeader.vue';
 import AppFooter from '../components/layout/AppFooter.vue';
+import RegistrationForm from '../components/auth/RegistrationForm.vue';
 import api from '../services/api';
 
 const { t } = useI18n();
@@ -652,7 +716,9 @@ onMounted(() => {
   const anchors = document.querySelectorAll('a[href^="#"]');
   anchors.forEach(anchor => {
     anchor.addEventListener('click', function (e) {
-      const href = this.getAttribute('href');
+      // Fix: use e.currentTarget instead of this, and cast to HTMLAnchorElement
+      const targetAnchor = e.currentTarget as HTMLAnchorElement;
+      const href = targetAnchor.getAttribute('href');
       if (href && href !== '#') {
         e.preventDefault();
         const target = document.querySelector(href);
