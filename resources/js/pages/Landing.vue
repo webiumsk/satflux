@@ -189,26 +189,27 @@
 
         <!-- How It Works Timeline -->
         <div class="relative">
-           <!-- Vertical Connector Line (Desktop) -->
-           <div class="absolute left-1/2 top-0 bottom-0 w-1px bg-gradient-to-b from-transparent via-indigo-500/50 to-transparent hidden md:block transform -translate-x-1/2 z-10 w-1"></div>
+           <!-- Vertical Connector Line -->
+           <div class="absolute left-6 md:left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-indigo-500/30 to-transparent transform -translate-x-1/2"></div>
            
            <div class="space-y-12 md:space-y-0">
             <!-- Step 1: Registration -->
             <div class="flex flex-col md:flex-row items-center justify-between gap-8 md:min-h-[75vh] py-12 relative group">
-              <!-- Dot on timeline -->
+              <!-- Dot on timeline (Desktop) -->
               <div class="absolute left-1/2 top-1/2 w-4 h-4 bg-gray-900 border-2 border-indigo-500 rounded-full transform -translate-x-1/2 -translate-y-1/2 hidden md:block shadow-[0_0_10px_rgba(99,102,241,0.5)] group-hover:scale-125 transition-transform z-10"></div>
+              <!-- Number on timeline (Mobile) -->
+              <div class="absolute left-6 top-12 flex items-center justify-center w-10 h-10 rounded-full bg-gray-900 border-2 border-indigo-500 text-indigo-400 font-bold text-lg transform -translate-x-1/2 md:hidden shadow-[0_0_10px_rgba(99,102,241,0.5)] z-10">1</div>
               
-              <div class="md:w-5/12 text-right pr-8 md:pr-16 order-2 md:order-1">
+              <div class="md:w-5/12 text-left md:text-right pl-16 md:pl-0 pr-0 md:pr-16 order-1 md:order-1">
                  <div class="inline-flex items-center gap-3 mb-4 md:flex-row-reverse">
                    <h3 class="text-3xl md:text-5xl font-bold text-white">{{ t('landing.step1_title') }}</h3>
-                   <span class="flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 font-bold text-xl border border-indigo-500/50 md:hidden">1</span>
                  </div>
                  <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
                    {{ t('landing.step1_text') }}
                  </p>
               </div>
               
-              <div class="md:w-5/12 flex justify-start pl-8 md:pl-16 order-1 md:order-2">
+              <div class="md:w-5/12 flex justify-start pl-16 md:pl-16 order-2 md:order-2">
                 <!-- Removed hover scaling to avoid UX issues with form inputs -->
                 <div class="w-full max-w-md bg-gray-800 rounded-2xl border border-gray-700 p-6 shadow-2xl relative overflow-hidden group hover:border-indigo-500/50 transition-colors duration-500">
                   <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -223,8 +224,9 @@
             <!-- Step 2: Wallet Connection -->
             <div class="flex flex-col md:flex-row items-center justify-between gap-8 md:min-h-[75vh] py-12 relative group">
                <div class="absolute left-1/2 top-1/2 w-4 h-4 bg-gray-900 border-2 border-indigo-500 rounded-full transform -translate-x-1/2 -translate-y-1/2 hidden md:block shadow-[0_0_10px_rgba(99,102,241,0.5)] group-hover:scale-125 transition-transform z-10"></div>
+               <div class="absolute left-6 top-12 flex items-center justify-center w-10 h-10 rounded-full bg-gray-900 border-2 border-indigo-500 text-indigo-400 font-bold text-lg transform -translate-x-1/2 md:hidden shadow-[0_0_10px_rgba(99,102,241,0.5)] z-10">2</div>
 
-               <div class="md:w-5/12 flex justify-end pr-8 md:pr-16 order-1">
+               <div class="md:w-5/12 flex justify-center md:justify-end pl-16 md:pl-0 pr-0 md:pr-16 order-2 md:order-1">
                   <div class="flex flex-col gap-10 w-full max-w-sm mt-12 md:mt-0">
                       <!-- Blink Card (Shifted left) -->
                       <div class="relative group/card cursor-pointer transform md:-translate-x-12 transition-transform duration-500 hover:scale-105">
@@ -273,15 +275,15 @@
 
                            <!-- Hover Details -->
                           <div class="absolute inset-0 bg-gray-900/95 backdrop-blur-xl rounded-2xl p-6 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex flex-col justify-center border border-blue-500/50 z-20 pointer-events-none group-hover/card:pointer-events-auto shadow-[0_0_30px_rgba(59,130,246,0.3)]">
-                             <div class="space-y-4">
-                                 <div>
+                             <div class="space-4">
+                                 <div class="pt-4">
                                      <span class="text-green-400 font-bold text-xs uppercase tracking-wider flex items-center gap-2 mb-1">
                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                                        {{ t('landing.wallet_pros') }}
                                      </span>
                                      <p class="text-gray-300 text-sm leading-relaxed">{{ t('landing.aqua_pros') }}</p>
                                  </div>
-                                 <div>
+                                 <div class="pb-4">
                                      <span class="text-red-400 font-bold text-xs uppercase tracking-wider flex items-center gap-2 mb-1">
                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path></svg>
                                        {{ t('landing.wallet_cons') }}
@@ -294,10 +296,9 @@
                   </div>
                </div>
 
-               <div class="md:w-5/12 text-left pl-8 md:pl-16 order-2">
+               <div class="md:w-5/12 text-left pl-16 md:pl-16 order-1 md:order-2">
                  <div class="inline-flex items-center gap-3 mb-4">
                    <h3 class="text-3xl md:text-5xl font-bold text-white">{{ t('landing.step2_title') }}</h3>
-                   <span class="md:hidden flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 font-bold text-xl border border-indigo-500/50">2</span>
                  </div>
                  <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
                    {{ t('landing.step2_text') }}
@@ -308,11 +309,11 @@
             <!-- Step 3: PoS Terminal (Interactive) -->
             <div class="flex flex-col md:flex-row items-center justify-between gap-8 md:min-h-[100vh] py-12 relative group">
                <div class="absolute left-1/2 top-1/2 w-4 h-4 bg-gray-900 border-2 border-indigo-500 rounded-full transform -translate-x-1/2 -translate-y-1/2 hidden md:block shadow-[0_0_10px_rgba(99,102,241,0.5)] group-hover:scale-125 transition-transform z-10"></div>
+               <div class="absolute left-6 top-12 flex items-center justify-center w-10 h-10 rounded-full bg-gray-900 border-2 border-indigo-500 text-indigo-400 font-bold text-lg transform -translate-x-1/2 md:hidden shadow-[0_0_10px_rgba(99,102,241,0.5)] z-10">3</div>
 
-               <div class="md:w-5/12 text-right pr-8 md:pr-16 order-2 md:order-1">
+               <div class="md:w-5/12 text-left md:text-right pl-16 md:pl-0 pr-0 md:pr-16 order-1 md:order-1">
                  <div class="inline-flex items-center gap-3 mb-4 md:flex-row-reverse">
                    <h3 class="text-3xl md:text-5xl font-bold text-white">{{ t('landing.step3_title') }}</h3>
-                   <span class="md:hidden flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 font-bold text-xl border border-indigo-500/50">3</span>
                  </div>
                  <p class="text-gray-400 text-lg md:text-xl leading-relaxed mb-6">
                    {{ t('landing.step3_text') }}
@@ -322,7 +323,7 @@
                  </p>
                  
                  <!-- Mobile Button -->
-                 <div class="md:hidden mt-4">
+                 <div class="md:hidden mt-4 flex justify-center">
                     <button
                       @click="showPosModal = true"
                       class="inline-flex items-center justify-center px-6 py-3 text-base font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 transition-all shadow-lg"
@@ -332,7 +333,7 @@
                  </div>
                </div>
 
-               <div class="md:w-5/12 flex justify-start pl-8 md:pl-16 order-1 md:order-2">
+               <div class="md:w-5/12 flex justify-start pl-16 md:pl-16 order-2 md:order-2">
                   <div class="hidden md:block w-full max-w-[380px] bg-gray-900 rounded-[2.5rem] border-[8px] border-gray-800 shadow-2xl overflow-hidden h-[800px] relative">
                      <!-- Phone Notches -->
                      <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-gray-800 rounded-b-xl z-20"></div>
@@ -361,9 +362,10 @@
             <!-- Step 4: Integrations -->
             <div class="flex flex-col md:flex-row items-center justify-between gap-8 md:min-h-[75vh] py-12 relative group">
                <div class="absolute left-1/2 top-1/2 w-4 h-4 bg-gray-900 border-2 border-indigo-500 rounded-full transform -translate-x-1/2 -translate-y-1/2 hidden md:block shadow-[0_0_10px_rgba(99,102,241,0.5)] group-hover:scale-125 transition-transform z-10"></div>
+               <div class="absolute left-6 top-12 flex items-center justify-center w-10 h-10 rounded-full bg-gray-900 border-2 border-indigo-500 text-indigo-400 font-bold text-lg transform -translate-x-1/2 md:hidden shadow-[0_0_10px_rgba(99,102,241,0.5)] z-10">4</div>
 
-               <div class="md:w-5/12 flex justify-end pr-8 md:pr-16 order-1">
-                  <div class="flex flex-wrap gap-4 max-w-md justify-end">
+               <div class="md:w-5/12 flex justify-start pl-16 md:justify-end pr-8 md:pr-16 order-2 md:order-1">
+                  <div class="flex flex-wrap gap-4 max-w-md justify-start md:justify-end">
                      <div class="bg-gray-100 text-gray-900 px-4 py-2 rounded-lg font-bold shadow-lg transform group-hover:-translate-y-1 transition-transform delay-75">Woo</div>
                      <div class="bg-[#95BF47] text-white px-4 py-2 rounded-lg font-bold shadow-lg transform group-hover:-translate-y-1 transition-transform delay-100">Shopify</div>
                      <div class="bg-[#F46F25] text-white px-4 py-2 rounded-lg font-bold shadow-lg transform group-hover:-translate-y-1 transition-transform delay-150">Magento</div>
@@ -372,10 +374,9 @@
                   </div>
                </div>
 
-               <div class="md:w-5/12 text-left pl-8 md:pl-16 order-2">
+               <div class="md:w-5/12 text-left pl-16 md:pl-16 order-1 md:order-2">
                  <div class="inline-flex items-center gap-3 mb-4">
                    <h3 class="text-3xl md:text-5xl font-bold text-white">{{ t('landing.step4_title') }}</h3>
-                   <span class="md:hidden flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 font-bold text-xl border border-indigo-500/50">4</span>
                  </div>
                  <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
                    {{ t('landing.step4_text') }}
@@ -386,23 +387,23 @@
             <!-- Step 5: LN Address -->
             <div class="flex flex-col md:flex-row items-center justify-between gap-8 md:min-h-[75vh] py-12 relative group">
                <div class="absolute left-1/2 top-1/2 w-4 h-4 bg-gray-900 border-2 border-indigo-500 rounded-full transform -translate-x-1/2 -translate-y-1/2 hidden md:block shadow-[0_0_10px_rgba(99,102,241,0.5)] group-hover:scale-125 transition-transform z-10"></div>
+               <div class="absolute left-6 top-12 flex items-center justify-center w-10 h-10 rounded-full bg-gray-900 border-2 border-indigo-500 text-indigo-400 font-bold text-lg transform -translate-x-1/2 md:hidden shadow-[0_0_10px_rgba(99,102,241,0.5)] z-10">5</div>
 
-               <div class="md:w-5/12 text-right pr-8 md:pr-16 order-2 md:order-1">
+               <div class="md:w-5/12 text-left md:text-right pl-16 md:pl-0 pr-0 md:pr-16 order-1 md:order-1">
                  <div class="inline-flex items-center gap-3 mb-4 md:flex-row-reverse">
                    <h3 class="text-3xl md:text-5xl font-bold text-white">{{ t('landing.step5_title') }}</h3>
-                   <span class="md:hidden flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 font-bold text-xl border border-indigo-500/50">5</span>
                  </div>
                  <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
                    {{ t('landing.step5_text') }}
                  </p>
                </div>
                
-               <div class="md:w-5/12 flex justify-start pl-8 md:pl-16 order-1 md:order-2">
+               <div class="md:w-5/12 flex justify-start pl-16 md:pl-16 order-2 md:order-2">
                   <div class="bg-gradient-to-r from-purple-600 to-indigo-600 p-1 rounded-2xl w-full max-w-sm shadow-xl shadow-purple-900/20 transform group-hover:scale-105 transition-transform duration-500">
-                     <div class="bg-gray-900 rounded-xl p-8 text-center relative overflow-hidden">
+                     <div class="bg-gray-900 rounded-xl p-8 text-left relative overflow-hidden">
                         <!-- Shine effect -->
                         <div class="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                        <div class="w-16 h-16 mx-auto bg-gray-800 rounded-full mb-4 flex items-center justify-center shadow-inner">
+                        <div class="w-16 h-16 bg-gray-800 rounded-full mb-4 flex items-center justify-center shadow-inner">
                           <svg class="w-8 h-8 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" /></svg>
                         </div>
                         <div class="text-white font-mono text-lg md:text-xl">satoshi<span class="text-indigo-400">@satflux.org</span></div>
@@ -414,8 +415,9 @@
             <!-- Step 6: Accounting Exports -->
             <div class="flex flex-col md:flex-row items-center justify-between gap-8 md:min-h-[75vh] py-12 relative group">
                <div class="absolute left-1/2 top-1/2 w-4 h-4 bg-gray-900 border-2 border-indigo-500 rounded-full transform -translate-x-1/2 -translate-y-1/2 hidden md:block shadow-[0_0_10px_rgba(99,102,241,0.5)] group-hover:scale-125 transition-transform z-10"></div>
+               <div class="absolute left-6 top-12 flex items-center justify-center w-10 h-10 rounded-full bg-gray-900 border-2 border-indigo-500 text-indigo-400 font-bold text-lg transform -translate-x-1/2 md:hidden shadow-[0_0_10px_rgba(99,102,241,0.5)] z-10">6</div>
 
-               <div class="md:w-5/12 flex justify-end pr-8 md:pr-16 order-1">
+               <div class="md:w-5/12 flex justify-start pl-16 md:justify-end pr-8 md:pr-16 order-2 md:order-1">
                   <div class="w-full max-w-md bg-gray-800 rounded-2xl border border-gray-700 p-6 flex flex-col items-center gap-6 transform group-hover:scale-105 transition-transform duration-500 relative overflow-hidden">
                      <div class="absolute top-0 right-0 p-4 opacity-10">
                         <svg class="w-32 h-32 text-indigo-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" /></svg>
@@ -437,10 +439,9 @@
                   </div>
                </div>
 
-               <div class="md:w-5/12 text-left pl-8 md:pl-16 order-2">
+               <div class="md:w-5/12 text-left pl-16 md:pl-16 order-1 md:order-2">
                  <div class="inline-flex items-center gap-3 mb-4">
                    <h3 class="text-3xl md:text-5xl font-bold text-white">{{ t('landing.step6_title') }}</h3>
-                   <span class="md:hidden flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 font-bold text-xl border border-indigo-500/50">6</span>
                  </div>
                  <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
                    {{ t('landing.step6_text') }}
