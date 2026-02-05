@@ -116,28 +116,22 @@ class User extends Authenticatable
 
     /**
      * Get maximum number of Lightning Addresses allowed for this user.
-     * 
+     * Based on subscription plan (max_ln_addresses).
+     *
      * @return int|null Maximum number of addresses (null = unlimited)
      */
     public function getMaxLightningAddresses(): ?int
     {
-        // Support, admin and enterprise users have unlimited
         if ($this->hasUnlimitedAccess()) {
-            return null; // unlimited
+            return null;
         }
 
-        // Enterprise users have unlimited
-        if ($this->isEnterprise()) {
-            return null; // unlimited
+        $plan = $this->currentSubscriptionPlan();
+        if ($plan && $plan->hasUnlimitedLnAddresses()) {
+            return null;
         }
 
-        // Pro users have 3
-        if ($this->isPro()) {
-            return 3;
-        }
-
-        // Regular merchants have 1
-        return 1;
+        return $plan ? (int) $plan->max_ln_addresses : 1;
     }
 
     /**
@@ -157,6 +151,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's panel API keys (not BTCPay keys).
+     */
+    public function userApiKeys(): HasMany
+    {
+        return $this->hasMany(UserApiKey::class, 'user_id');
+    }
+
+    /**
      * Get the current active subscription for the user.
      * Returns the most recent active subscription, or null if none exists.
      * 
@@ -173,7 +175,7 @@ class User extends Authenticatable
     /**
      * Get the current subscription plan for the user.
      * Returns the plan for the current subscription, or FREE plan if no subscription.
-     * 
+     *
      * @return \App\Models\SubscriptionPlan|null
      */
     public function currentSubscriptionPlan(): ?\App\Models\SubscriptionPlan
@@ -183,8 +185,16 @@ class User extends Authenticatable
             return $subscription->plan;
         }
 
-        // Return FREE plan as default
-        return SubscriptionPlan::where('name', 'free')->first();
+        return SubscriptionPlan::where('code', 'free')->orWhere('name', 'free')->first();
+    }
+
+    /**
+     * Check if the user's plan has a feature (e.g. advanced_stats, automatic_csv_exports, offline_payment_methods).
+     */
+    public function planFeature(string $feature): bool
+    {
+        $plan = $this->currentSubscriptionPlan();
+        return $plan ? $plan->hasFeature($feature) : false;
     }
 
     /**

@@ -8,6 +8,10 @@ use App\Http\Controllers\Auth\LnurlAuthController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\PlanController;
+use App\Http\Controllers\PosOrderController;
+use App\Http\Controllers\PosTerminalController;
+use App\Http\Controllers\StatsController;
 use App\Http\Controllers\StoreChecklistController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\StoreDashboardController;
@@ -31,6 +35,9 @@ use App\Http\Middleware\AuditLog;
 use App\Http\Middleware\EnsureAdminRole;
 use App\Http\Middleware\EnsureApiKeyLimit;
 use App\Http\Middleware\EnsureActiveSubscription;
+use App\Http\Middleware\EnsurePlanAllowsLnAddressCreation;
+use App\Http\Middleware\EnsurePlanAllowsOfflinePaymentMethods;
+use App\Http\Middleware\EnsurePlanAllowsUserApiKeyCreation;
 use App\Http\Middleware\EnsureStoreLimit;
 use App\Http\Middleware\EnsureStoreOwnership;
 use App\Http\Middleware\EnsureSupportRole;
@@ -183,6 +190,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/user', [AccountController::class, 'updateProfile']);
     Route::put('/user/password', [AccountController::class, 'updatePassword']);
 
+    // Panel API keys (for our API, not BTCPay)
+    Route::get('/user/api-keys', [\App\Http\Controllers\UserApiKeyController::class, 'index']);
+    Route::post('/user/api-keys', [\App\Http\Controllers\UserApiKeyController::class, 'store'])
+        ->middleware(EnsurePlanAllowsUserApiKeyCreation::class);
+    Route::delete('/user/api-keys/{user_api_key}', [\App\Http\Controllers\UserApiKeyController::class, 'destroy']);
+
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
@@ -252,9 +265,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'show'])
         ->middleware(EnsureStoreOwnership::class);
     Route::post('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'store'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':lightning-address.created']);
+        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsLnAddressCreation::class, AuditLog::class . ':lightning-address.created']);
     Route::put('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'update'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':lightning-address.updated']);
+        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsLnAddressCreation::class, AuditLog::class . ':lightning-address.updated']);
     Route::delete('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'destroy'])
         ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':lightning-address.deleted']);
 
@@ -275,6 +288,28 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Product Images
     Route::post('/stores/{store}/products/image', [\App\Http\Controllers\ProductImageController::class, 'upload'])
         ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':product.image.uploaded']);
+
+    // Plans (public pricing)
+    Route::get('/plans', [PlanController::class, 'index']);
+
+    // Stats
+    Route::get('/stores/{store}/stats', [StatsController::class, 'store'])
+        ->middleware(EnsureStoreOwnership::class);
+    Route::get('/stats/advanced', [StatsController::class, 'advanced']);
+
+    // PoS terminals and orders
+    Route::get('/stores/{store}/pos-terminals', [PosTerminalController::class, 'index'])
+        ->middleware(EnsureStoreOwnership::class);
+    Route::post('/stores/{store}/pos-terminals', [PosTerminalController::class, 'store'])
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':pos-terminal.created']);
+    Route::put('/stores/{store}/pos-terminals/{pos_terminal}', [PosTerminalController::class, 'update'])
+        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsOfflinePaymentMethods::class, AuditLog::class . ':pos-terminal.updated']);
+    Route::delete('/stores/{store}/pos-terminals/{pos_terminal}', [PosTerminalController::class, 'destroy'])
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':pos-terminal.deleted']);
+    Route::get('/stores/{store}/pos-orders', [PosOrderController::class, 'index'])
+        ->middleware(EnsureStoreOwnership::class);
+    Route::post('/stores/{store}/pos-orders', [PosOrderController::class, 'store'])
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':pos-order.created']);
 
     // Wallet Connections (Merchant)
     Route::get('/stores/{store}/wallet-connection', [WalletConnectionController::class, 'show'])

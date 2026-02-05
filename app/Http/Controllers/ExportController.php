@@ -35,6 +35,7 @@ class ExportController extends Controller
         $export = Export::create([
             'store_id' => $store->id,
             'user_id' => $request->user()->id,
+            'source' => Export::SOURCE_MANUAL,
             'format' => $request->format,
             'filters' => [
                 'date_from' => $request->date_from,

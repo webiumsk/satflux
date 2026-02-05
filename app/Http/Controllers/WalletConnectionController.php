@@ -262,7 +262,13 @@ class WalletConnectionController extends Controller
             ]);
         }
 
-        $plaintext = $this->service->reveal($connection, $user);
+        try {
+            $plaintext = $this->service->reveal($connection, $user);
+        } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+            return response()->json([
+                'message' => 'Unable to decrypt the stored secret. This usually happens when APP_KEY was changed after the secret was saved. The merchant will need to re-submit their wallet connection.',
+            ], 500);
+        }
 
         return response()->json([
             'data' => [
