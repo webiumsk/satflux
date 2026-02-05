@@ -16,12 +16,15 @@ class SubscriptionPlanSeeder extends Seeder
     {
         // FREE Plan
         SubscriptionPlan::updateOrCreate(
-            ['name' => 'free'],
+            ['code' => 'free'],
             [
+                'name' => 'free',
                 'display_name' => 'Free',
                 'price_eur' => 0.00,
+                'billing_period' => 'year',
                 'max_stores' => 1,
                 'max_api_keys' => 1,
+                'max_ln_addresses' => 1,
                 'features' => [
                     'manual_csv_exports',
                     'basic_payment_overview',
@@ -30,37 +33,46 @@ class SubscriptionPlanSeeder extends Seeder
             ]
         );
 
-        // PRO Plan
+        // PRO Plan (€99/year, paid yearly)
         SubscriptionPlan::updateOrCreate(
-            ['name' => 'pro'],
+            ['code' => 'pro'],
             [
+                'name' => 'pro',
                 'display_name' => 'Pro',
                 'price_eur' => 99.00,
+                'billing_period' => 'year',
                 'max_stores' => 3,
                 'max_api_keys' => 3,
+                'max_ln_addresses' => null, // unlimited
                 'features' => [
                     'manual_csv_exports',
                     'automatic_csv_exports',
                     'advanced_statistics',
                     'basic_payment_overview',
+                    'offline_payment_methods',
+                    'priority_support',
                 ],
                 'is_active' => true,
             ]
         );
 
-        // ENTERPRISE Plan
+        // ENTERPRISE Plan (internal only, not on pricing page)
         SubscriptionPlan::updateOrCreate(
-            ['name' => 'enterprise'],
+            ['code' => 'enterprise'],
             [
+                'name' => 'enterprise',
                 'display_name' => 'Enterprise',
                 'price_eur' => 299.00,
-                'max_stores' => null, // unlimited
-                'max_api_keys' => null, // unlimited
+                'billing_period' => 'year',
+                'max_stores' => null,
+                'max_api_keys' => null,
+                'max_ln_addresses' => null,
                 'features' => [
                     'manual_csv_exports',
                     'automatic_csv_exports',
                     'advanced_statistics',
                     'basic_payment_overview',
+                    'offline_payment_methods',
                     'per_store_user_management',
                     'priority_support',
                 ],

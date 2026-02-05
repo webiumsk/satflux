@@ -15,8 +15,8 @@ class SetLocale
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Supported locales
-        $supportedLocales = ['en', 'cz', 'de', 'es', 'fr', 'hu', 'pl', 'sk'];
+        // Supported locales (EN and SK only)
+        $supportedLocales = ['en', 'sk'];
         $defaultLocale = 'en';
 
         $locale = null;

@@ -9,14 +9,37 @@ use Illuminate\Validation\Rules\Password;
 class AccountController extends Controller
 {
     /**
-     * Get the authenticated user.
+     * Get the authenticated user with plan and subscription info.
      */
     public function user(Request $request)
     {
         $user = $request->user();
-        // Ensure role is visible in response
         $user->makeVisible('role');
-        return response()->json($user);
+
+        $subscription = $user->currentSubscription();
+        $plan = $user->currentSubscriptionPlan();
+
+        $payload = $user->toArray();
+        $payload['plan'] = $plan ? [
+            'code' => $plan->code,
+            'name' => $plan->display_name,
+            'max_stores' => $plan->max_stores,
+            'max_api_keys' => $plan->max_api_keys,
+            'max_ln_addresses' => $plan->max_ln_addresses,
+            'features' => $plan->features ?? [],
+        ] : null;
+        $payload['subscription'] = $subscription ? [
+            'status' => $subscription->status,
+            'expires_at' => $subscription->expires_at?->toIso8601String(),
+            'grace_ends_at' => $subscription->grace_ends_at?->toIso8601String(),
+        ] : null;
+        $payload['plan_features'] = [
+            'advanced_stats' => $user->planFeature('advanced_statistics'),
+            'automatic_exports' => $user->planFeature('automatic_csv_exports'),
+            'offline_payment_methods' => $user->planFeature('offline_payment_methods'),
+        ];
+
+        return response()->json($payload);
     }
 
     /**
