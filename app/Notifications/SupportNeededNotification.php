@@ -4,14 +4,15 @@ namespace App\Notifications;
 
 use App\Models\Store;
 use App\Models\WalletConnection;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class SupportNeededNotification extends Notification implements ShouldQueue
+/**
+ * Sent immediately (no queue) so support gets notified as soon as a connection needs support.
+ */
+class SupportNeededNotification extends Notification
 {
-    use Queueable;
 
     /**
      * Create a new notification instance.
@@ -30,7 +31,31 @@ class SupportNeededNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        $channels = ['mail'];
+        if (config('broadcasting.default') !== 'null') {
+            $channels[] = 'broadcast';
+        }
+        return $channels;
+    }
+
+    /**
+     * Get the broadcastable representation of the notification.
+     */
+    public function toBroadcast(object $notifiable): BroadcastMessage
+    {
+        $appUrl = config('app.url');
+        $supportUrl = "{$appUrl}/support/wallet-connections";
+        $storeName = $this->store->name;
+        $type = $this->walletConnection->type === 'blink' ? 'Blink' : 'Aqua';
+
+        return new BroadcastMessage([
+            'message' => "New wallet connection needs support: {$storeName} ({$type})",
+            'store_name' => $storeName,
+            'store_id' => $this->store->id,
+            'wallet_connection_id' => $this->walletConnection->id,
+            'type' => $type,
+            'url' => $supportUrl,
+        ]);
     }
 
     /**

@@ -10,6 +10,7 @@ services:
       - ./storage:/var/www/storage
     depends_on:
       - php
+      - reverb
     networks:
       - satflux.io
 
@@ -29,6 +30,25 @@ services:
       - satflux.io
     environment:
       - PHP_OPCACHE_ENABLE=1
+
+  reverb:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: satflux.io_reverb
+    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+    volumes:
+      - .:/var/www
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    working_dir: /var/www
+    depends_on:
+      - php
+      - redis
+    networks:
+      - satflux.io
+    environment:
+      - REVERB_SERVER_HOST=0.0.0.0
+      - REVERB_SERVER_PORT=8080
 
   postgres:
     image: postgres:16-alpine

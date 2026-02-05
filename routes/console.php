@@ -22,3 +22,9 @@ Schedule::command('backup:run')
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('Scheduled backup failed');
     });
+
+// Attempt to auto-configure wallet connections (Blink/Aqua) via BTCPay API every 15 minutes
+Schedule::command('wallet-connections:attempt-config', ['--limit' => 10])
+    ->everyFifteenMinutes()
+    ->withoutOverlapping(10)
+    ->runInBackground();
