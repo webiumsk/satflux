@@ -8,12 +8,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // We're using the original column name 'secret_encrypted' in the code
-        // So we just need to ensure it exists. If it doesn't, add it.
-        if (!Schema::hasColumn('wallet_connections', 'secret_encrypted')) {
+        if (!Schema::hasColumn('wallet_connections', 'encrypted_secret')) {
             Schema::table('wallet_connections', function (Blueprint $table) {
-                // Add as nullable first to avoid NOT NULL violation on existing rows
-                $table->text('secret_encrypted')->nullable()->after('type');
+                $table->text('encrypted_secret')->nullable()->after('type');
             });
         }
     }
