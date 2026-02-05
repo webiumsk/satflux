@@ -85,7 +85,7 @@ class AttemptWalletConnectionConfig extends Command
             }
 
             try {
-                $plaintext = Crypt::decryptString($connection->secret_encrypted);
+                $plaintext = Crypt::decryptString($connection->encrypted_secret);
             } catch (\Throwable $e) {
                 Log::warning('AttemptWalletConnectionConfig: failed to decrypt secret', [
                     'connection_id' => $connection->id,
