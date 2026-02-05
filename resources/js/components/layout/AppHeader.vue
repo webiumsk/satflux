@@ -1,5 +1,36 @@
 <template>
   <header class="bg-gray-900 border-b border-gray-800 relative z-30">
+    <!-- Push notification toast for support/admin (new wallet connection needs support) -->
+    <div
+      v-if="supportToastVisible && supportToastMessage"
+      class="fixed top-4 right-4 z-[100] max-w-sm rounded-lg border border-blue-500/30 bg-gray-800 shadow-lg p-4 flex items-start gap-3"
+      role="alert"
+    >
+      <div class="flex-shrink-0 w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-medium text-white">{{ supportToastMessage }}</p>
+        <a
+          :href="supportToastUrl"
+          class="mt-2 inline-block text-sm font-medium text-indigo-400 hover:text-indigo-300"
+        >
+          {{ t("header.view_support") || "View support" }}
+        </a>
+      </div>
+      <button
+        type="button"
+        class="flex-shrink-0 text-gray-400 hover:text-white"
+        aria-label="Close"
+        @click="dismissSupportToast"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between items-center h-16 relative">
         <!-- Left side: Empty on mobile, Logo + Navigation on desktop -->
@@ -522,6 +553,7 @@ import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
 import LanguageSwitcher from "../LanguageSwitcher.vue";
 import api from "../../services/api";
+import { getEcho } from "../../echo";
 
 const { t } = useI18n();
 const isInertia = inject<boolean>("inertia", false);
@@ -533,7 +565,12 @@ const authStore = useAuthStore();
 const showUserMenu = ref(false);
 const showMobileMenu = ref(false);
 const supportCount = ref(0);
+const supportToastMessage = ref("");
+const supportToastUrl = ref("/support/wallet-connections");
+const supportToastVisible = ref(false);
 let supportCountInterval: ReturnType<typeof setInterval> | null = null;
+let supportToastTimeout: ReturnType<typeof setTimeout> | null = null;
+let echoUnsub: (() => void) | null = null;
 
 const userInitials = computed(() => {
   if (!authStore.user?.email) return "?";
@@ -601,6 +638,24 @@ const loadSupportCount = async () => {
   }
 };
 
+function showSupportToast(message: string, url = "/support/wallet-connections") {
+  if (supportToastTimeout) clearTimeout(supportToastTimeout);
+  supportToastMessage.value = message;
+  supportToastUrl.value = url;
+  supportToastVisible.value = true;
+  loadSupportCount();
+  supportToastTimeout = setTimeout(() => {
+    supportToastVisible.value = false;
+    supportToastTimeout = null;
+  }, 8000);
+}
+
+function dismissSupportToast() {
+  if (supportToastTimeout) clearTimeout(supportToastTimeout);
+  supportToastVisible.value = false;
+  supportToastTimeout = null;
+}
+
 // Watch for route changes to refresh count and close mobile menu
 if (vueRouter) {
   vueRouter.afterEach(() => {
@@ -622,15 +677,28 @@ onMounted(() => {
   // Load support count if user has support/admin role
   if (authStore.user?.role === "support" || authStore.user?.role === "admin") {
     loadSupportCount();
-    // Refresh count every 30 seconds
     supportCountInterval = setInterval(loadSupportCount, 30000);
+
+    // Subscribe to push notifications (new wallet connection needs support)
+    const echo = getEcho();
+    const userId = authStore.user?.id;
+    if (echo && userId) {
+      const channel = echo.private(`App.Models.User.${userId}`);
+      channel.notification((notification: { message?: string; store_name?: string; url?: string }) => {
+        const msg = notification.message ?? (notification.store_name ? `New wallet connection: ${notification.store_name}` : "New wallet connection needs support");
+        const url = notification.url ?? "/support/wallet-connections";
+        showSupportToast(msg, url);
+      });
+      echoUnsub = () => {
+        echo.leave(`App.Models.User.${userId}`);
+      };
+    }
   }
 });
 
 onUnmounted(() => {
-  if (supportCountInterval) {
-    clearInterval(supportCountInterval);
-  }
+  if (supportCountInterval) clearInterval(supportCountInterval);
+  if (echoUnsub) echoUnsub();
 });
 
 // Click outside directive
