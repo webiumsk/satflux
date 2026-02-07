@@ -86,21 +86,28 @@ if [ -n "$DEPLOY_BRANCH" ]; then
         exit 1
     fi
 else
-    # Default: pull current branch (main or master)
-    if ! git pull origin main 2>/dev/null && ! git pull origin master 2>/dev/null; then
-        echo -e "${RED}Error: Failed to pull from Git${NC}"
-        echo -e "${YELLOW}Attempting to resolve by resetting to remote state...${NC}"
-        if [ "$BRANCH" = "master" ] || [ "$BRANCH" = "main" ]; then
-            git reset --hard "origin/$BRANCH" 2>/dev/null || {
-                echo -e "${RED}Fatal: Cannot resolve Git conflicts automatically.${NC}"
-                exit 1
-            }
-            echo -e "${GREEN}✓ Reset to remote branch $BRANCH${NC}"
-        else
-            echo -e "${RED}Fatal: Cannot determine branch. Please resolve Git conflicts manually.${NC}"
-            exit 1
-        fi
+    # Default: deploy main or master (checkout that branch first, then pull)
+    DEFAULT_BRANCH=""
+    if git rev-parse --verify "origin/master" >/dev/null 2>&1; then
+        DEFAULT_BRANCH="master"
+    elif git rev-parse --verify "origin/main" >/dev/null 2>&1; then
+        DEFAULT_BRANCH="main"
     fi
+    if [ -z "$DEFAULT_BRANCH" ]; then
+        echo -e "${RED}Error: Neither origin/master nor origin/main found. Run: git fetch origin${NC}"
+        exit 1
+    fi
+    echo -e "${YELLOW}Deploying default branch: $DEFAULT_BRANCH${NC}"
+    git checkout "$DEFAULT_BRANCH" 2>/dev/null || git checkout -b "$DEFAULT_BRANCH" "origin/$DEFAULT_BRANCH"
+    if ! git pull origin "$DEFAULT_BRANCH"; then
+        echo -e "${YELLOW}Attempting to resolve by resetting to remote state...${NC}"
+        git reset --hard "origin/$DEFAULT_BRANCH" 2>/dev/null || {
+            echo -e "${RED}Fatal: Cannot resolve Git conflicts automatically.${NC}"
+            exit 1
+        }
+        echo -e "${GREEN}✓ Reset to remote branch $DEFAULT_BRANCH${NC}"
+    fi
+    BRANCH="$DEFAULT_BRANCH"
 fi
 
 echo -e "${GREEN}✓ Git pull completed → deployed branch: $BRANCH${NC}"
