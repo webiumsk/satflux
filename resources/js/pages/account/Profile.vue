@@ -315,29 +315,15 @@
                       >
                     </div>
                     <ul class="text-sm text-gray-400 space-y-2 mb-6">
-                      <li class="flex items-center">
+                      <li
+                        v-for="key in planFeatures.pro.feature_keys"
+                        :key="key"
+                        class="flex items-center"
+                      >
                         <span
                           class="w-1.5 h-1.5 rounded-full bg-indigo-500 mr-2"
                         ></span
-                        >{{ t("account.feature_3_ln_addresses") }}
-                      </li>
-                      <li class="flex items-center">
-                        <span
-                          class="w-1.5 h-1.5 rounded-full bg-indigo-500 mr-2"
-                        ></span
-                        >{{ t("account.feature_unlimited_stores") }}
-                      </li>
-                      <li class="flex items-center">
-                        <span
-                          class="w-1.5 h-1.5 rounded-full bg-indigo-500 mr-2"
-                        ></span
-                        >{{ t("account.feature_csv") }}
-                      </li>
-                      <li class="flex items-center">
-                        <span
-                          class="w-1.5 h-1.5 rounded-full bg-indigo-500 mr-2"
-                        ></span
-                        >{{ t("account.feature_api") }}
+                        >{{ t("plans.features." + key) }}
                       </li>
                     </ul>
                     <button
@@ -367,41 +353,15 @@
                       {{ t("landing.pricing_need_more_text") }}
                     </p>
                     <ul class="text-sm text-gray-400 space-y-2 mb-6">
-                      <li class="flex items-center">
+                      <li
+                        v-for="key in planFeatures.enterprise.feature_keys"
+                        :key="key"
+                        class="flex items-center"
+                      >
                         <span
                           class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"
                         ></span
-                        >{{ t("landing.pricing_enterprise_unlimited_stores") }}
-                      </li>
-                      <li class="flex items-center">
-                        <span
-                          class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"
-                        ></span
-                        >{{ t("landing.pricing_enterprise_webhooks") }}
-                      </li>
-                      <li class="flex items-center">
-                        <span
-                          class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"
-                        ></span
-                        >{{ t("landing.pricing_enterprise_roles") }}
-                      </li>
-                      <li class="flex items-center">
-                        <span
-                          class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"
-                        ></span
-                        >{{ t("landing.pricing_enterprise_custom_reporting") }}
-                      </li>
-                      <li class="flex items-center">
-                        <span
-                          class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"
-                        ></span
-                        >{{ t("landing.pricing_enterprise_integration") }}
-                      </li>
-                      <li class="flex items-center">
-                        <span
-                          class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"
-                        ></span
-                        >{{ t("landing.pricing_enterprise_cash_card") }}
+                        >{{ t("plans.features." + key) }}
                       </li>
                     </ul>
                     <a
@@ -578,11 +538,13 @@ import { ref, onMounted, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
 import { usePricing } from "../../composables/usePricing";
+import { usePlanFeatures } from "../../composables/usePlanFeatures";
 import api from "../../services/api";
 
 const { t, locale } = useI18n();
 const authStore = useAuthStore();
 const { pricing, formatSats, load: loadPricing } = usePricing();
+const { planFeatures, load: loadPlanFeatures } = usePlanFeatures();
 
 const profileForm = ref({
   name: "",
@@ -630,35 +592,13 @@ const currentPlanDescription = computed(() => {
 
 const currentPlanFeatures = computed(() => {
   const role = authStore.user?.role || "merchant";
-  if (role === "enterprise") {
-    return [
-      t("account.feature_unlimited_ln"),
-      t("account.feature_unlimited_stores"),
-      t("account.feature_priority_support"),
-      t("account.feature_csv"),
-      t("account.feature_api"),
-      t("account.feature_custom_integrations"),
-      t("account.feature_sla"),
-      t("account.feature_auto_reports"),
-    ];
-  }
-  if (role === "pro") {
-    return [
-      t("account.feature_3_ln_addresses"),
-      t("account.feature_unlimited_stores"),
-      t("account.feature_priority_support"),
-      t("account.feature_csv"),
-      t("account.feature_api"),
-      t("account.feature_auto_reports"),
-    ];
-  }
-  return [
-    t("account.feature_1_ln_address"),
-    t("account.feature_1_store"),
-    t("account.feature_basic"),
-    t("account.feature_pos"),
-    t("account.feature_invoices"),
-  ];
+  const keys =
+    role === "enterprise"
+      ? planFeatures.value.enterprise.feature_keys
+      : role === "pro"
+        ? planFeatures.value.pro.feature_keys
+        : planFeatures.value.free.feature_keys;
+  return keys.map((key: string) => t("plans.features." + key));
 });
 
 const isPaidPlan = computed(() => {
@@ -687,7 +627,7 @@ const showEnterpriseUpgrade = computed(() => {
 });
 
 onMounted(async () => {
-  await loadPricing();
+  await Promise.all([loadPricing(), loadPlanFeatures()]);
   if (authStore.user) {
     profileForm.value.name = authStore.user.name || "";
     profileForm.value.email = authStore.user.email || "";

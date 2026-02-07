@@ -29,10 +29,12 @@
             <div class="flex items-center gap-3">
               <button
                 @click="openAddForm"
-                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg shadow-indigo-600/20 transition-all hover:scale-105"
+                :disabled="addCheckLoading"
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg shadow-indigo-600/20 transition-all hover:scale-105 disabled:opacity-70 disabled:cursor-wait"
               >
-                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                Add Address
+                <svg v-if="addCheckLoading" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <svg v-else class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                {{ addCheckLoading ? t('common.loading') : 'Add Address' }}
               </button>
             </div>
           </div>
@@ -400,15 +402,16 @@ const deleteError = ref('');
 const showForm = ref(false);
 const showDeleteModal = ref(false);
 const showUpgradeModal = ref(false);
+const addCheckLoading = ref(false);
 const addressToDelete = ref<any>(null);
 const showAdvancedSettings = ref(false);
 
 const allApps = computed(() => appsStore.apps);
 
 const canAddAddress = computed(() => {
-  if (!limit.value) return true; // If limit not loaded yet, allow (will be validated on backend)
+  if (!limit.value) return false; // Unknown until loaded – openAddForm will load first
   if (limit.value.unlimited) return true;
-  return limit.value.current < limit.value.max;
+  return limit.value.current < (limit.value.max ?? 0);
 });
 
 const form = ref({
@@ -459,8 +462,13 @@ async function loadAddresses() {
   }
 }
 
-function openAddForm() {
-  // Check if user can add address, if not show upgrade modal
+async function openAddForm() {
+  // Ensure limit is loaded before deciding (so we show modal immediately when at limit)
+  if (!limit.value) {
+    addCheckLoading.value = true;
+    await loadAddresses();
+    addCheckLoading.value = false;
+  }
   if (!canAddAddress.value) {
     showUpgradeModal.value = true;
     return;

@@ -38,8 +38,22 @@ class StoreApiKeyController extends Controller
             ];
         });
 
+        // Plan limit: total API keys across all user's stores
+        $user = $request->user();
+        $plan = $user->currentSubscriptionPlan();
+        $totalCount = 0;
+        foreach ($user->stores as $s) {
+            $totalCount += $s->apiKeys()->count();
+        }
+        $maxApiKeys = $plan?->max_api_keys;
+
         return response()->json([
-            'data' => $apiKeysData
+            'data' => $apiKeysData,
+            'limit' => [
+                'max' => $maxApiKeys,
+                'current' => $totalCount,
+                'unlimited' => $maxApiKeys === null,
+            ],
         ]);
     }
 

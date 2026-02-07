@@ -24,7 +24,7 @@ class SubscriptionPlanSeeder extends Seeder
                 'billing_period' => 'year',
                 'max_stores' => 1,
                 'max_api_keys' => 1,
-                'max_ln_addresses' => 1,
+                'max_ln_addresses' => 2,
                 'features' => [
                     'manual_csv_exports',
                     'basic_payment_overview',
