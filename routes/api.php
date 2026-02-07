@@ -55,6 +55,20 @@ Route::middleware([\Illuminate\Session\Middleware\StartSession::class])->group(f
     Route::post('/locale', [LocaleController::class, 'setLocale']);
 });
 
+// Public pricing (single source: config/pricing.php)
+Route::get('/pricing', function () {
+    $pricing = config('pricing', []);
+    return response()->json([
+        'free' => [
+            'sats_per_year' => (int) ($pricing['free']['sats_per_year'] ?? 0),
+        ],
+        'pro' => [
+            'sats_per_year' => (int) ($pricing['pro']['sats_per_year'] ?? 0),
+            'sats_per_month_display' => (int) ($pricing['pro']['sats_per_month_display'] ?? 0),
+        ],
+    ]);
+});
+
 // Version endpoint (public - no auth required)
 Route::get('/version', function () {
     // Try to read version from package.json

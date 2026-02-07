@@ -50,7 +50,10 @@ class EnsurePlanAllowsLnAddressCreation
 
         if ($currentCount >= $max) {
             return response()->json([
-                'message' => "You have reached the maximum number of Lightning Addresses ({$max}) for your plan.",
+                'message' => __('messages.lightning_address_limit_reached', [
+                    'max' => $max,
+                    'plan' => $plan?->display_name ?? 'Free',
+                ]),
                 'current_count' => $currentCount,
                 'max_allowed' => $max,
                 'plan' => $plan?->display_name ?? 'Free',

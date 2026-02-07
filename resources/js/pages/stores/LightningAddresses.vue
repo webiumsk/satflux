@@ -18,7 +18,7 @@
               <h1 class="text-2xl font-bold text-white mb-1">Lightning Address</h1>
               <p class="text-sm text-gray-400">
                 Manage Lightning Addresses for <span class="text-indigo-400">{{ store?.name || 'this store' }}</span>
-                <span v-if="limit && !limit.unlimited" class="text-gray-500 ml-1 bg-gray-800 px-2 py-0.5 rounded-full text-xs">
+                <span v-if="limit && limit.max != null" class="text-gray-500 ml-1 bg-gray-800 px-2 py-0.5 rounded-full text-xs">
                   {{ limit.current }} / {{ limit.max }} used
                 </span>
                 <span v-else-if="limit && limit.unlimited" class="text-gray-500 ml-1 bg-gray-800 px-2 py-0.5 rounded-full text-xs">
