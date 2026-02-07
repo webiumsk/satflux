@@ -62,12 +62,6 @@ const showDropdown = ref(false);
 
 const availableLocales = [
   { code: 'en', name: 'English' },
-  { code: 'cz', name: 'Čeština' },
-  { code: 'de', name: 'Deutsch' },
-  { code: 'es', name: 'Español' },
-  { code: 'fr', name: 'Français' },
-  { code: 'hu', name: 'Magyar' },
-  { code: 'pl', name: 'Polski' },
   { code: 'sk', name: 'Slovenčina' },
 ];
 

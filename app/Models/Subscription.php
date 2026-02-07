@@ -22,7 +22,9 @@ class Subscription extends Model
         'status',
         'starts_at',
         'expires_at',
+        'grace_ends_at',
         'btcpay_subscription_id',
+        'auto_renew',
     ];
 
     /**
@@ -35,6 +37,8 @@ class Subscription extends Model
         return [
             'starts_at' => 'datetime',
             'expires_at' => 'datetime',
+            'grace_ends_at' => 'datetime',
+            'auto_renew' => 'boolean',
         ];
     }
 
@@ -64,7 +68,7 @@ class Subscription extends Model
 
     /**
      * Check if the subscription is in grace period.
-     * Grace period is 14 days after expiration.
+     * Uses grace_ends_at if set, otherwise 14 days after expiration.
      */
     public function isInGracePeriod(): bool
     {
@@ -76,13 +80,8 @@ class Subscription extends Model
             return false;
         }
 
-        // Check if expired but within 14-day grace period
-        if ($this->expires_at->isPast()) {
-            $gracePeriodEnds = $this->expires_at->copy()->addDays(14);
-            return now()->isBefore($gracePeriodEnds);
-        }
-
-        return false;
+        $graceEnds = $this->grace_ends_at ?? $this->expires_at->copy()->addDays(14);
+        return $this->expires_at->isPast() && now()->isBefore($graceEnds);
     }
 
     /**
@@ -121,11 +120,13 @@ class Subscription extends Model
 
     /**
      * Extend subscription by 1 year from current expiration date.
+     * Sets grace_ends_at = expires_at + 14 days.
      */
     public function extendOneYear(): void
     {
         $newExpiresAt = $this->expires_at->copy()->addYear();
         $this->expires_at = $newExpiresAt;
+        $this->grace_ends_at = $newExpiresAt->copy()->addDays(14);
         $this->status = 'active';
         $this->save();
     }

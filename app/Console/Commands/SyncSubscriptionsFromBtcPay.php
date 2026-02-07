@@ -160,9 +160,9 @@ class SyncSubscriptionsFromBtcPay extends Command
                 } elseif (in_array($status, ['expired', 'cancelled', 'suspended'])) {
                     // Subscription is not active - downgrade if user has paid role
                     if (in_array($oldRole, ['pro', 'enterprise'])) {
-                        $updateData['role'] = 'merchant';
+                        $updateData['role'] = 'free';
                         $updateData['btcpay_subscription_id'] = null; // Clear subscription ID
-                        $this->line("Downgraded {$user->email} from {$oldRole} to merchant (subscription expired: {$subscriptionId})");
+                        $this->line("Downgraded {$user->email} from {$oldRole} to free (subscription expired: {$subscriptionId})");
                     }
                 }
 
@@ -309,9 +309,9 @@ class SyncSubscriptionsFromBtcPay extends Command
                 } elseif (in_array($status, ['expired', 'suspended'])) {
                     // Subscription is not active - downgrade if user has paid role
                     if (in_array($oldRole, ['pro', 'enterprise'])) {
-                        $updateData['role'] = 'merchant';
+                        $updateData['role'] = 'free';
                         $updateData['btcpay_subscription_id'] = null;
-                        $this->line("Downgraded {$user->email} from {$oldRole} to merchant (status: {$status})");
+                        $this->line("Downgraded {$user->email} from {$oldRole} to free (status: {$status})");
                     }
                 }
 

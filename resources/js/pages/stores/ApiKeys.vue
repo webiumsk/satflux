@@ -16,7 +16,15 @@
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 class="text-2xl font-bold text-white mb-1">E-shop Integration</h1>
-              <p class="text-sm text-gray-400">Manage API keys for connecting your e-shop (WooCommerce, etc.) to <span class="text-indigo-400">{{ store?.name || 'this store' }}</span></p>
+              <p class="text-sm text-gray-400">
+                Manage API keys for connecting your e-shop (WooCommerce, etc.) to <span class="text-indigo-400">{{ store?.name || 'this store' }}</span>
+                <span v-if="limit && limit.max != null" class="text-gray-500 ml-1 bg-gray-800 px-2 py-0.5 rounded-full text-xs">
+                  {{ limit.current }} / {{ limit.max }} used
+                </span>
+                <span v-else-if="limit && limit.unlimited" class="text-gray-500 ml-1 bg-gray-800 px-2 py-0.5 rounded-full text-xs">
+                  Unlimited
+                </span>
+              </p>
             </div>
             <div class="flex items-center gap-3">
               <button
@@ -278,6 +286,16 @@
         </div>
       </div>
     </div>
+
+    <!-- Upgrade Modal -->
+    <UpgradeModal
+      :show="showUpgradeModal"
+      :message="limit ? t('stores.api_key_limit_reached', { max: limit.max ?? 1 }) : ''"
+      :limits="limit ? [{ feature: 'API keys', current: limit.current, max: limit.max }] : []"
+      recommended-plan="pro"
+      upgrade-button-text="Upgrade to Pro"
+      @close="showUpgradeModal = false"
+    />
   </div>
 </template>
 
@@ -290,6 +308,7 @@ import { useAppsStore } from '../../store/apps';
 import { useFlashStore } from '../../store/flash';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
 import ApiKeyCard from '../../components/stores/ApiKeyCard.vue';
+import UpgradeModal from '../../components/stores/UpgradeModal.vue';
 import api from '../../services/api';
 
 const { t } = useI18n();
@@ -303,12 +322,20 @@ const storeId = computed(() => route.params.id as string);
 const store = ref<any>(null);
 const loading = ref(false);
 const apiKeys = ref<any[]>([]);
+const limit = ref<{ max: number | null; current: number; unlimited: boolean } | null>(null);
 const showModal = ref(false);
 const showApiKeyModal = ref(false);
+const showUpgradeModal = ref(false);
 const saving = ref(false);
 const error = ref('');
 const createdApiKey = ref<any>(null);
 const showApiKey = ref(false);
+
+const canAddApiKey = computed(() => {
+  if (!limit.value) return true;
+  if (limit.value.unlimited) return true;
+  return limit.value.current < (limit.value.max ?? 0);
+});
 
 const allApps = computed(() => appsStore.apps);
 
@@ -348,6 +375,9 @@ async function fetchApiKeys() {
   try {
     const response = await api.get(`/stores/${storeId.value}/api-keys`);
     apiKeys.value = response.data.data || [];
+    if (response.data.limit) {
+      limit.value = response.data.limit;
+    }
   } catch (err: any) {
     error.value = err.response?.data?.message || 'Failed to load API keys';
     console.error('Failed to fetch API keys:', err);
@@ -357,6 +387,10 @@ async function fetchApiKeys() {
 }
 
 function openCreateForm() {
+  if (!canAddApiKey.value) {
+    showUpgradeModal.value = true;
+    return;
+  }
   form.value = {
     label: '',
     permissions: [
@@ -398,8 +432,18 @@ async function handleSubmit() {
     await fetchApiKeys();
   } catch (err: any) {
     const msg = err.response?.data?.message || t('stores.api_key_create_failed');
-    flashStore.error(msg);
-    error.value = '';
+    if (err.response?.status === 403 && msg.includes('maximum number')) {
+      closeModal();
+      showUpgradeModal.value = true;
+      if (limit.value) {
+        limit.value = { ...limit.value, current: limit.value.current };
+      } else {
+        await fetchApiKeys();
+      }
+    } else {
+      flashStore.error(msg);
+      error.value = '';
+    }
   } finally {
     saving.value = false;
   }

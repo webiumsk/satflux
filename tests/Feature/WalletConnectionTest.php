@@ -24,7 +24,7 @@ class WalletConnectionTest extends TestCase
         $connection = WalletConnection::create([
             'store_id' => $store->id,
             'type' => 'blink',
-            'secret_encrypted' => Crypt::encryptString(self::VALID_BLINK_SECRET),
+            'encrypted_secret' => Crypt::encryptString(self::VALID_BLINK_SECRET),
             'status' => 'needs_support',
             'submitted_by_user_id' => $user->id,
         ]);
@@ -158,7 +158,7 @@ class WalletConnectionTest extends TestCase
         WalletConnection::create([
             'store_id' => $store1->id,
             'type' => 'aqua_descriptor',
-            'secret_encrypted' => Crypt::encryptString(self::VALID_AQUA_DESCRIPTOR),
+            'encrypted_secret' => Crypt::encryptString(self::VALID_AQUA_DESCRIPTOR),
             'status' => 'needs_support',
             'submitted_by_user_id' => $user1->id,
         ]);
@@ -197,7 +197,7 @@ class WalletConnectionTest extends TestCase
         WalletConnection::create([
             'store_id' => $store->id,
             'type' => 'aqua_descriptor',
-            'secret_encrypted' => Crypt::encryptString(self::VALID_AQUA_DESCRIPTOR),
+            'encrypted_secret' => Crypt::encryptString(self::VALID_AQUA_DESCRIPTOR),
             'status' => 'needs_support',
             'submitted_by_user_id' => $user->id,
         ]);
@@ -219,7 +219,7 @@ class WalletConnectionTest extends TestCase
         $connection = WalletConnection::create([
             'store_id' => $store->id,
             'type' => 'blink',
-            'secret_encrypted' => Crypt::encryptString(self::VALID_BLINK_SECRET),
+            'encrypted_secret' => Crypt::encryptString(self::VALID_BLINK_SECRET),
             'status' => 'pending',
             'submitted_by_user_id' => $user->id,
         ]);
@@ -239,7 +239,7 @@ class WalletConnectionTest extends TestCase
         WalletConnection::create([
             'store_id' => $store->id,
             'type' => 'blink',
-            'secret_encrypted' => Crypt::encryptString(self::VALID_BLINK_SECRET),
+            'encrypted_secret' => Crypt::encryptString(self::VALID_BLINK_SECRET),
             'status' => 'needs_support',
             'submitted_by_user_id' => $user->id,
         ]);
@@ -273,7 +273,7 @@ class WalletConnectionTest extends TestCase
         WalletConnection::create([
             'store_id' => $store->id,
             'type' => 'blink',
-            'secret_encrypted' => Crypt::encryptString(self::VALID_BLINK_SECRET),
+            'encrypted_secret' => Crypt::encryptString(self::VALID_BLINK_SECRET),
             'status' => 'pending',
             'submitted_by_user_id' => $owner->id,
         ]);
@@ -293,7 +293,7 @@ class WalletConnectionTest extends TestCase
         WalletConnection::create([
             'store_id' => $store1->id,
             'type' => 'aqua_descriptor',
-            'secret_encrypted' => Crypt::encryptString(self::VALID_AQUA_DESCRIPTOR),
+            'encrypted_secret' => Crypt::encryptString(self::VALID_AQUA_DESCRIPTOR),
             'status' => 'needs_support',
             'submitted_by_user_id' => $user1->id,
         ]);

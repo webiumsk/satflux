@@ -210,14 +210,22 @@
               </div>
               
               <div class="md:w-5/12 flex justify-start pl-16 md:pl-16 order-2 md:order-2">
-                <!-- Removed hover scaling to avoid UX issues with form inputs -->
-                <div class="w-full max-w-md bg-gray-800 rounded-2xl border border-gray-700 p-6 shadow-2xl relative overflow-hidden group hover:border-indigo-500/50 transition-colors duration-500">
-                  <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <!-- Embedded Registration Form -->
-                  <div class="relative z-10">
-                    <RegistrationForm :show-login-link="false" />
-                  </div>
-                </div>
+                <router-link
+                  to="/register"
+                  class="block w-full max-w-md rounded-2xl border border-gray-700 shadow-2xl overflow-hidden group hover:border-indigo-500/50 transition-colors duration-500 relative"
+                >
+                  <img
+                    src="/img/satflux-register.webp"
+                    alt="Register"
+                    class="w-full h-auto block"
+                  />
+                  <img
+                    src="/img/satflux-register-hover.webp"
+                    alt=""
+                    aria-hidden="true"
+                    class="absolute inset-0 w-full h-full object-cover object-top opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                  />
+                </router-link>
               </div>
             </div>
 
@@ -269,7 +277,7 @@
                               </div>
                               <div>
                                   <h4 class="text-2xl font-bold text-white mb-1">Aqua Wallet</h4>
-                                  <p class="text-sm text-blue-400 font-medium">Non-custodial</p>
+                                  <p class="text-sm text-blue-400 font-medium">Full control</p>
                               </div>
                           </div>
 
@@ -400,10 +408,10 @@
                
                <div class="md:w-5/12 flex justify-start pl-16 md:pl-16 order-2 md:order-2">
                   <div class="bg-gradient-to-r from-purple-600 to-indigo-600 p-1 rounded-2xl w-full max-w-sm shadow-xl shadow-purple-900/20 transform group-hover:scale-105 transition-transform duration-500">
-                     <div class="bg-gray-900 rounded-xl p-8 text-left relative overflow-hidden">
+                     <div class="bg-gray-900 rounded-xl p-8 text-center relative overflow-hidden">
                         <!-- Shine effect -->
                         <div class="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                        <div class="w-16 h-16 bg-gray-800 rounded-full mb-4 flex items-center justify-center shadow-inner">
+                        <div class="w-16 h-16 bg-gray-800 rounded-full mb-4 flex items-center justify-center shadow-inner mx-auto">
                           <svg class="w-8 h-8 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" /></svg>
                         </div>
                         <div class="text-white font-mono text-lg md:text-xl">satoshi<span class="text-indigo-400">@satflux.org</span></div>
@@ -507,48 +515,36 @@
       <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent z-10" aria-hidden="true"></div>
       <div class="absolute inset-0 bg-indigo-900/10 skew-y-3 transform origin-bottom-right pointer-events-none z-0" aria-hidden="true"></div>
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <!-- Pricing Hero -->
         <div class="text-center mb-16">
           <h2 class="text-3xl md:text-5xl font-bold text-white mb-4">
-            {{ t('landing.transparent_pricing') }}
+            {{ t('landing.pricing_hero_headline') }}
           </h2>
           <p class="text-xl text-gray-400 max-w-2xl mx-auto">
-            {{ t('landing.pricing_description') }}
+            {{ t('landing.pricing_hero_subheadline') }}
           </p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto items-start">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto items-start">
           <!-- Free Plan -->
           <div class="bg-gray-800/80 backdrop-blur rounded-2xl p-8 border border-gray-700 hover:border-gray-500 transition-colors">
-             <h3 class="text-xl font-bold text-white mb-2">Free</h3>
+             <h3 class="text-xl font-bold text-white mb-2">{{ t('landing.pricing_free_name') }}</h3>
+             <p class="text-gray-400 text-sm mb-4">{{ t('landing.pricing_free_tagline') }}</p>
              <div class="flex items-baseline mb-6">
-                <span class="text-4xl font-extrabold text-white">€0</span>
-                <span class="text-gray-400 ml-2">/ year</span>
+                <span class="text-4xl font-extrabold text-white">{{ formatSats(pricing.free.sats_per_year) }}</span>
+                <span class="text-gray-400 ml-2">{{ t('landing.pricing_free_price_period') }}</span>
              </div>
-             <p class="text-gray-400 text-sm mb-6">Perfect for getting started with Bitcoin payments</p>
+             <p class="text-gray-400 text-sm mb-6">
+               {{ t('landing.pricing_free_description') }}
+             </p>
              <ul class="space-y-3 mb-8">
-               <li class="flex items-start text-gray-300 text-sm">
+               <li
+                 v-for="key in planFeatures.free.feature_keys"
+                 :key="key"
+                 class="flex items-start text-gray-300 text-sm"
+               >
                  <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>1 store</span>
-               </li>
-               <li class="flex items-start text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>Unlimited PoS terminals per store</span>
-               </li>
-               <li class="flex items-start text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>Unlimited Lightning addresses</span>
-               </li>
-               <li class="flex items-start text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>1 API key</span>
-               </li>
-               <li class="flex items-start text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>Manual CSV exports</span>
-               </li>
-               <li class="flex items-start text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>Basic payment overview</span>
+                 <span>{{ t('plans.features.' + key) }}</span>
                </li>
              </ul>
              <router-link
@@ -556,52 +552,40 @@
                to="/register"
                class="block w-full text-center px-6 py-3 rounded-lg border border-gray-600 text-white hover:bg-gray-700 font-bold transition-colors"
              >
-               Start Free
+               {{ t('landing.pricing_free_cta') }}
              </router-link>
              <router-link
                v-else
                to="/stores"
                class="block w-full text-center px-6 py-3 rounded-lg border border-gray-600 text-white hover:bg-gray-700 font-bold transition-colors"
              >
-               View Stores
+               {{ t('landing.pricing_free_cta_logged_in') }}
              </router-link>
           </div>
 
           <!-- Pro Plan (Highlighted) -->
-          <div class="bg-gray-800 rounded-2xl p-8 border-2 border-indigo-500 shadow-2xl relative transform md:scale-105 z-10">
+          <div class="bg-gray-800 rounded-2xl p-8 border-2 border-indigo-500 shadow-2xl relative transform md:scale-[1.02] z-10">
              <div class="absolute top-0 right-0 -mt-4 mr-4 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">
-               Popular
+               {{ t('landing.pricing_pro_badge') }}
              </div>
-             <h3 class="text-2xl font-bold text-white mb-2">Pro</h3>
-             <div class="flex items-baseline mb-6">
-                <span class="text-5xl font-extrabold text-white">€99</span>
-                <span class="text-indigo-300 ml-2">/ year</span>
+             <h3 class="text-2xl font-bold text-white mb-2">{{ t('landing.pricing_pro_name') }}</h3>
+             <p class="text-gray-400 text-sm mb-4">{{ t('landing.pricing_pro_tagline') }}</p>
+             <div class="flex items-baseline flex-wrap gap-x-1 mb-6">
+                <span class="text-5xl font-extrabold text-white">{{ formatSats(pricing.pro.sats_per_month_display) }}</span>
+                <span class="text-indigo-300">{{ t('landing.pricing_pro_price_period') }}</span>
+                <span class="text-indigo-300/80 text-sm">{{ t('landing.pricing_pro_price_note') }}</span>
              </div>
-             <p class="text-gray-400 text-sm mb-6">For growing businesses with multiple stores</p>
+             <p class="text-gray-400 text-sm mb-6">
+               {{ t('landing.pricing_pro_description') }}
+             </p>
              <ul class="space-y-3 mb-8">
-               <li class="flex items-start text-white font-medium text-sm">
+               <li
+                 v-for="key in planFeatures.pro.feature_keys"
+                 :key="key"
+                 class="flex items-start text-white font-medium text-sm"
+               >
                  <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>3 stores</span>
-               </li>
-               <li class="flex items-start text-white font-medium text-sm">
-                 <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>Unlimited PoS terminals per store</span>
-               </li>
-               <li class="flex items-start text-white font-medium text-sm">
-                 <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>3 API keys</span>
-               </li>
-               <li class="flex items-start text-white font-medium text-sm">
-                 <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>Manual + automatic monthly CSV exports</span>
-               </li>
-               <li class="flex items-start text-white font-medium text-sm">
-                 <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>Advanced statistics (per store, per PoS, overall)</span>
-               </li>
-               <li class="flex items-start text-white font-medium text-sm">
-                 <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>Basic payment overview</span>
+                 <span>{{ t('plans.features.' + key) }}</span>
                </li>
              </ul>
              <button
@@ -610,62 +594,41 @@
                 :disabled="subscribing"
                 class="block w-full text-center px-6 py-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {{ subscribing ? 'Processing...' : 'Upgrade Now' }}
+                {{ subscribing ? t('stores.processing') : t('landing.pricing_pro_cta') }}
               </button>
               <router-link
                 v-else
                 to="/register"
                 class="block w-full text-center px-6 py-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition-all"
               >
-                Start Free
+                {{ t('landing.pricing_pro_cta_guest') }}
               </router-link>
           </div>
+        </div>
 
-          <!-- Enterprise Plan -->
-          <div class="bg-gray-800/80 backdrop-blur rounded-2xl p-8 border border-gray-700 hover:border-gray-500 transition-colors">
-             <h3 class="text-xl font-bold text-white mb-2">Enterprise</h3>
-             <div class="flex items-baseline mb-6">
-                <span class="text-4xl font-extrabold text-white">€299</span>
-                <span class="text-gray-400 ml-2">/ year</span>
-             </div>
-             <p class="text-gray-400 text-sm mb-6">For businesses that need unlimited scale</p>
-             <ul class="space-y-3 mb-8">
-               <li class="flex items-start text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>Unlimited stores</span>
-               </li>
-               <li class="flex items-start text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>Unlimited API keys</span>
-               </li>
-               <li class="flex items-start text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>All Pro features</span>
-               </li>
-               <li class="flex items-start text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>Per-store user management (roles)</span>
-               </li>
-               <li class="flex items-start text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>Priority support</span>
-               </li>
-             </ul>
-             <button
-                v-if="authStore.isAuthenticated"
-                @click="handleUpgrade('enterprise')"
-                :disabled="subscribing"
-                class="block w-full text-center px-6 py-3 rounded-lg border border-gray-600 text-white hover:bg-gray-700 font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        <!-- Need more? Enterprise teaser -->
+        <div class="mt-12 max-w-2xl mx-auto">
+          <div class="bg-gray-800/50 rounded-2xl p-6 border border-gray-700">
+            <h3 class="text-lg font-bold text-white mb-2">{{ t('landing.pricing_need_more_headline') }}</h3>
+            <p class="text-gray-400 text-sm mb-4">
+              {{ t('landing.pricing_need_more_text') }}
+            </p>
+            <ul class="space-y-2 mb-6 text-gray-300 text-sm">
+              <li
+                v-for="key in planFeatures.enterprise.feature_keys"
+                :key="key"
+                class="flex items-center gap-2"
               >
-                {{ subscribing ? 'Processing...' : 'Upgrade' }}
-              </button>
-              <router-link
-                v-else
-                to="/register"
-                class="block w-full text-center px-6 py-3 rounded-lg border border-gray-600 text-white hover:bg-gray-700 font-bold transition-colors"
-              >
-                Start Free
-              </router-link>
+                <svg class="w-4 h-4 text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <span>{{ t('plans.features.' + key) }}</span>
+              </li>
+            </ul>
+            <a
+              href="mailto:hello@satflux.io"
+              class="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700 font-medium text-sm transition-colors"
+            >
+              {{ t('landing.pricing_need_more_cta') }}
+            </a>
           </div>
         </div>
         
@@ -676,20 +639,37 @@
           </div>
         </div>
 
-        <!-- Important Note -->
-        <div class="mt-12 max-w-3xl mx-auto">
+        <!-- Your payments never stop -->
+        <div class="mt-16 max-w-3xl mx-auto">
           <div class="bg-indigo-900/20 border border-indigo-500/30 rounded-xl p-6 text-center">
             <div class="flex items-center justify-center mb-3">
               <svg class="w-6 h-6 text-indigo-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
-              <h3 class="text-lg font-bold text-white">Non-Custodial & Payment Guarantee</h3>
+              <h3 class="text-lg font-bold text-white">{{ t('landing.pricing_trust_headline') }}</h3>
             </div>
             <p class="text-gray-300 text-sm leading-relaxed">
-              <strong class="text-white">Payments are NEVER blocked.</strong> Subscription plans only affect management features and limits. 
-              Your existing stores, PoS terminals, Lightning addresses, and payment acceptance continue to work regardless of your plan status. 
-              This is a non-custodial system - you always maintain full control of your funds.
+              {{ t('landing.pricing_trust_text') }}
             </p>
+          </div>
+        </div>
+
+        <!-- FAQ -->
+        <div class="mt-16 max-w-2xl mx-auto">
+          <h3 class="text-xl font-bold text-white mb-6 text-center">{{ t('landing.pricing_faq_title') }}</h3>
+          <div class="space-y-4">
+            <div class="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+              <h4 class="font-semibold text-white mb-2">{{ t('landing.pricing_faq_custody_q') }}</h4>
+              <p class="text-gray-400 text-sm">{{ t('landing.pricing_faq_custody_a') }}</p>
+            </div>
+            <div class="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+              <h4 class="font-semibold text-white mb-2">{{ t('landing.pricing_faq_switch_q') }}</h4>
+              <p class="text-gray-400 text-sm">{{ t('landing.pricing_faq_switch_a') }}</p>
+            </div>
+            <div class="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+              <h4 class="font-semibold text-white mb-2">{{ t('landing.pricing_faq_expire_q') }}</h4>
+              <p class="text-gray-400 text-sm">{{ t('landing.pricing_faq_expire_a') }}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -702,14 +682,17 @@
 
 <script setup lang="ts">
 import { useAuthStore } from '../store/auth';
+import { usePricing } from '../composables/usePricing';
+import { usePlanFeatures } from '../composables/usePlanFeatures';
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import PublicHeader from '../components/layout/PublicHeader.vue';
 import AppFooter from '../components/layout/AppFooter.vue';
-import RegistrationForm from '../components/auth/RegistrationForm.vue';
 import api from '../services/api';
 
 const { t } = useI18n();
+const { pricing, formatSats, load: loadPricing } = usePricing();
+const { planFeatures, load: loadPlanFeatures } = usePlanFeatures();
 
 //const router = useRouter();
 const authStore = useAuthStore();
@@ -719,8 +702,9 @@ const showPosModal = ref(false);
 
 const posDemoUrl = 'https://satflux.org/apps/rivBmZNgktMaJ3CqMrtCuekoDex/pos';
 
-// Ensure user is fetched on mount to show correct buttons
+// Ensure user, pricing and plan features are fetched on mount
 onMounted(async () => {
+  await Promise.all([loadPricing(), loadPlanFeatures()]);
   if (!authStore.user) {
     try {
       await authStore.fetchUser();
@@ -743,7 +727,6 @@ async function handleUpgrade(plan: string) {
     });
 
     if (response.data.checkoutUrl) {
-      // Redirect to BTCPay checkout
       window.location.href = response.data.checkoutUrl;
     } else {
       subscribeError.value = t('landing.failed_to_create_checkout');

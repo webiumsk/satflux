@@ -101,7 +101,7 @@
                 d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
               />
             </svg>
-            Subscription Plan
+            {{ t("account.subscription_plan") }}
           </h4>
 
           <div
@@ -124,19 +124,19 @@
                     v-if="!isPaidPlan"
                     class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-600 text-gray-100"
                   >
-                    Standard
+                    {{ t("account.plan_badge_standard") }}
                   </span>
                   <span
                     v-else-if="subscriber?.isActive"
                     class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-emerald-600 text-white"
                   >
-                    Active
+                    {{ t("account.plan_badge_active") }}
                   </span>
                   <span
                     v-else
                     class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-600 text-white"
                   >
-                    Inactive
+                    {{ t("account.plan_badge_inactive") }}
                   </span>
                 </h5>
                 <p class="text-gray-400 mt-2">{{ currentPlanDescription }}</p>
@@ -144,14 +144,14 @@
                   v-if="subscriber && subscriber.periodEnd"
                   class="text-sm text-gray-400 mt-2"
                 >
-                  Next billing: {{ formatDate(subscriber.periodEnd) }}
+                  {{ t("account.next_billing", { date: formatDate(subscriber.periodEnd) }) }}
                 </div>
               </div>
               <div class="mt-4 md:mt-0 md:text-right">
                 <div class="text-3xl font-bold text-white">
                   {{ currentPlanPrice }}
                 </div>
-                <div class="text-sm text-gray-400">per month</div>
+                <div class="text-sm text-gray-400">{{ isProPlan ? t("account.per_month_paid_yearly") : t("account.per_month") }}</div>
               </div>
             </div>
 
@@ -160,7 +160,7 @@
               <h6
                 class="text-sm font-medium text-gray-300 mb-4 uppercase tracking-wider"
               >
-                Current plan includes:
+                {{ t("account.current_plan_includes") }}
               </h6>
               <ul class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <li
@@ -194,18 +194,18 @@
               <h6
                 class="text-sm font-medium text-gray-300 mb-4 uppercase tracking-wider"
               >
-                Billing Information
+                {{ t("account.billing_information") }}
               </h6>
               <div class="space-y-4">
                 <div
                   v-if="isPaidPlan"
                   class="flex items-center justify-between"
                 >
-                  <span class="text-sm text-gray-400">Payment Method</span>
+                  <span class="text-sm text-gray-400">{{ t("account.payment_method") }}</span>
                   <div class="flex items-center gap-2">
                     <span
                       class="px-3 py-1 rounded-full bg-gray-700 text-sm text-gray-300"
-                      >Credit balance: {{ formatSats(creditBalance) }}</span
+                      >{{ t("account.credit_balance", { amount: formatSats(creditBalance) }) }}</span
                     >
                     <button
                       @click="showAddCreditModal = true"
@@ -224,12 +224,12 @@
                           d="M12 6v6m0 0v6m0-6h6m-6 0H6"
                         />
                       </svg>
-                      Add credit
+                      {{ t("account.add_credit") }}
                     </button>
                   </div>
                 </div>
                 <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-400">Notification Email</span>
+                  <span class="text-sm text-gray-400">{{ t("account.notification_email") }}</span>
                   <span class="text-sm text-gray-300 flex items-center gap-1">
                     <svg
                       class="w-4 h-4"
@@ -252,17 +252,17 @@
                   class="flex items-center justify-between"
                 >
                   <span class="text-sm text-gray-400"
-                    >Next charge on {{ formatDate(subscriber.periodEnd) }}</span
+                    >{{ t("account.next_charge_on", { date: formatDate(subscriber.periodEnd) }) }}</span
                   >
                   <span class="text-sm font-medium text-white">{{
                     currentPlanPrice
                   }}</span>
                 </div>
                 <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-400">Auto renewal</span>
+                  <span class="text-sm text-gray-400">{{ t("account.auto_renewal") }}</span>
                   <div class="flex items-center gap-2">
                     <span class="text-sm text-gray-300">{{
-                      subscriber?.autoRenew ? "On" : "Off"
+                      subscriber?.autoRenew ? t("account.on") : t("account.off")
                     }}</span>
                     <div
                       class="relative inline-block w-10 h-6 transition-colors duration-200 ease-in-out rounded-full"
@@ -290,7 +290,7 @@
               class="border-t border-gray-600 pt-8 mt-8"
             >
               <h6 class="text-lg font-medium text-white mb-6">
-                Upgrade to unlock more power:
+                {{ t("account.upgrade_to_unlock") }}
               </h6>
               <div
                 :class="
@@ -308,36 +308,22 @@
                     class="absolute inset-0 bg-gradient-to-br from-indigo-600/5 to-purple-600/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
                   ></div>
                   <div class="relative z-10">
-                    <h6 class="text-lg font-bold text-white mb-2">Pro Plan</h6>
+                    <h6 class="text-lg font-bold text-white mb-2">{{ t("account.pro_plan") }}</h6>
                     <div class="text-2xl font-bold text-indigo-400 mb-4">
-                      100 sats<span class="text-base font-normal text-gray-500"
-                        >/mo</span
+                      {{ formatSats(pricing.pro.sats_per_month_display) }}<span class="text-base font-normal text-gray-500"
+                        >{{ t("account.pro_price_period") }}</span
                       >
                     </div>
                     <ul class="text-sm text-gray-400 space-y-2 mb-6">
-                      <li class="flex items-center">
+                      <li
+                        v-for="key in planFeatures.pro.feature_keys"
+                        :key="key"
+                        class="flex items-center"
+                      >
                         <span
                           class="w-1.5 h-1.5 rounded-full bg-indigo-500 mr-2"
                         ></span
-                        >3 Lightning Addresses
-                      </li>
-                      <li class="flex items-center">
-                        <span
-                          class="w-1.5 h-1.5 rounded-full bg-indigo-500 mr-2"
-                        ></span
-                        >Unlimited stores
-                      </li>
-                      <li class="flex items-center">
-                        <span
-                          class="w-1.5 h-1.5 rounded-full bg-indigo-500 mr-2"
-                        ></span
-                        >CSV exports
-                      </li>
-                      <li class="flex items-center">
-                        <span
-                          class="w-1.5 h-1.5 rounded-full bg-indigo-500 mr-2"
-                        ></span
-                        >API integrations
+                        >{{ t("plans.features." + key) }}
                       </li>
                     </ul>
                     <button
@@ -345,12 +331,12 @@
                       :disabled="upgrading"
                       class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {{ upgrading ? "Processing..." : "Upgrade to Pro" }}
+                      {{ upgrading ? t("stores.processing") : t("account.upgrade_to_pro") }}
                     </button>
                   </div>
                 </div>
 
-                <!-- Enterprise Plan Card -->
+                <!-- Enterprise / Need more? Card (same as Landing) -->
                 <div
                   v-if="showEnterpriseUpgrade"
                   class="border border-gray-600 rounded-xl p-6 bg-gray-800/80 hover:border-purple-500 transition-colors relative group"
@@ -361,53 +347,29 @@
                   ></div>
                   <div class="relative z-10">
                     <h6 class="text-lg font-bold text-white mb-2">
-                      Enterprise Plan
+                      {{ t("landing.pricing_need_more_headline") }}
                     </h6>
-                    <div class="text-2xl font-bold text-purple-400 mb-4">
-                      1,000 sats<span
-                        class="text-base font-normal text-gray-500"
-                        >/mo</span
-                      >
-                    </div>
+                    <p class="text-sm text-gray-400 mb-4">
+                      {{ t("landing.pricing_need_more_text") }}
+                    </p>
                     <ul class="text-sm text-gray-400 space-y-2 mb-6">
-                      <li class="flex items-center">
+                      <li
+                        v-for="key in planFeatures.enterprise.feature_keys"
+                        :key="key"
+                        class="flex items-center"
+                      >
                         <span
                           class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"
                         ></span
-                        >Unlimited Lightning Addresses
-                      </li>
-                      <li class="flex items-center">
-                        <span
-                          class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"
-                        ></span
-                        >Everything from Pro
-                      </li>
-                      <li class="flex items-center">
-                        <span
-                          class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"
-                        ></span
-                        >Dedicated support
-                      </li>
-                      <li class="flex items-center">
-                        <span
-                          class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"
-                        ></span
-                        >Custom integrations
+                        >{{ t("plans.features." + key) }}
                       </li>
                     </ul>
-                    <button
-                      @click="upgradePlan('enterprise')"
-                      :disabled="upgrading"
-                      class="w-full px-4 py-2 border border-purple-500 text-purple-400 hover:bg-purple-500/10 text-sm font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    <a
+                      href="mailto:hello@satflux.io"
+                      class="block w-full text-center px-4 py-2 border border-purple-500 text-purple-400 hover:bg-purple-500/10 text-sm font-bold rounded-lg transition-all"
                     >
-                      {{
-                        upgrading
-                          ? "Processing..."
-                          : isPaidPlan
-                            ? "Upgrade to Enterprise"
-                            : "Upgrade to Enterprise"
-                      }}
-                    </button>
+                      {{ t("landing.pricing_need_more_cta") }}
+                    </a>
                   </div>
                 </div>
               </div>
@@ -516,7 +478,7 @@
         class="bg-gray-800 rounded-xl border border-gray-700 max-w-md w-full p-6"
       >
         <div class="flex items-center justify-between mb-4">
-          <h5 class="text-lg font-bold text-white">Add Credit</h5>
+          <h5 class="text-lg font-bold text-white">{{ t("account.add_credit_modal_title") }}</h5>
           <button
             @click="showAddCreditModal = false"
             class="text-gray-400 hover:text-white"
@@ -539,7 +501,7 @@
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-2"
-              >Amount (SATS)</label
+              >{{ t("account.amount_sats") }}</label
             >
             <input
               v-model.number="creditAmount"
@@ -547,7 +509,7 @@
               min="1"
               step="1"
               class="w-full px-4 py-3 border border-gray-600 rounded-lg text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="Enter amount"
+              :placeholder="t('account.amount_placeholder')"
             />
           </div>
           <div class="flex gap-3">
@@ -555,14 +517,14 @@
               @click="showAddCreditModal = false"
               class="flex-1 px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
             >
-              Cancel
+              {{ t("common.cancel") }}
             </button>
             <button
               @click="handleAddCredit"
               :disabled="!creditAmount || creditAmount < 1 || addingCredit"
               class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {{ addingCredit ? "Processing..." : "Add Credit" }}
+              {{ addingCredit ? t("stores.processing") : t("account.add_credit_btn") }}
             </button>
           </div>
         </div>
@@ -575,10 +537,14 @@
 import { ref, onMounted, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
+import { usePricing } from "../../composables/usePricing";
+import { usePlanFeatures } from "../../composables/usePlanFeatures";
 import api from "../../services/api";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const authStore = useAuthStore();
+const { pricing, formatSats, load: loadPricing } = usePricing();
+const { planFeatures, load: loadPlanFeatures } = usePlanFeatures();
 
 const profileForm = ref({
   name: "",
@@ -603,83 +569,65 @@ const loadingSubscription = ref(false);
 
 // Plan information
 const currentPlanName = computed(() => {
-  const role = authStore.user?.role || "merchant";
-  if (role === "enterprise") return "Enterprise";
-  if (role === "pro") return "Pro";
-  return "Free";
+  const role = authStore.user?.role || "free";
+  if (role === "enterprise") return t("account.plan_enterprise");
+  if (role === "pro") return t("account.plan_pro");
+  return t("account.plan_free");
 });
 
 const currentPlanPrice = computed(() => {
-  const role = authStore.user?.role || "merchant";
-  if (role === "enterprise") return "1,000 sats";
-  if (role === "pro") return "100 sats";
-  return "0 sats";
+  const role = authStore.user?.role || "free";
+  const p = pricing.value;
+  if (role === "enterprise") return "—";
+  if (role === "pro") return formatSats(p?.pro?.sats_per_month_display ?? 16_500);
+  return formatSats(p?.free?.sats_per_year ?? 0);
 });
 
 const currentPlanDescription = computed(() => {
-  const role = authStore.user?.role || "merchant";
-  if (role === "enterprise") return "Unlimited features with dedicated support";
-  if (role === "pro") return "Advanced features for growing businesses";
-  return "Basic features to get started";
+  const role = authStore.user?.role || "free";
+  if (role === "enterprise") return t("account.plan_desc_enterprise");
+  if (role === "pro") return t("account.plan_desc_pro");
+  return t("account.plan_desc_free");
 });
 
 const currentPlanFeatures = computed(() => {
-  const role = authStore.user?.role || "merchant";
-  if (role === "enterprise") {
-    return [
-      "Unlimited Lightning Addresses",
-      "Unlimited stores",
-      "Priority support",
-      "CSV exports",
-      "API integrations",
-      "Custom integrations",
-      "SLA guarantees",
-      "Automatic monthly reports",
-    ];
-  }
-  if (role === "pro") {
-    return [
-      "3 Lightning Addresses",
-      "Unlimited stores",
-      "Priority support",
-      "CSV exports",
-      "API integrations",
-      "Automatic monthly reports",
-    ];
-  }
-  return [
-    "1 Lightning Address",
-    "1 Store",
-    "Basic features",
-    "Point of Sale apps",
-    "Invoice management",
-  ];
+  const role = authStore.user?.role || "free";
+  const keys =
+    role === "enterprise"
+      ? planFeatures.value.enterprise.feature_keys
+      : role === "pro"
+        ? planFeatures.value.pro.feature_keys
+        : planFeatures.value.free.feature_keys;
+  return keys.map((key: string) => t("plans.features." + key));
 });
 
 const isPaidPlan = computed(() => {
-  const role = authStore.user?.role || "merchant";
+  const role = authStore.user?.role || "free";
   return role === "pro" || role === "enterprise";
 });
 
+const isProPlan = computed(() => authStore.user?.role === "pro");
+
 // Upgrade options logic
 const showUpgradeOptions = computed(() => {
-  const role = authStore.user?.role || "merchant";
-  // Show upgrades if user is merchant (free) or pro (can upgrade to enterprise)
+  const role = authStore.user?.role || "free";
+  // Show upgrades if user is free or pro (can upgrade to enterprise)
   // Don't show for enterprise (top tier) or admin/support (not applicable)
-  return role === "merchant" || role === "pro";
+  return role === "free" || role === "pro";
 });
 
 const showProUpgrade = computed(() => {
-  const role = authStore.user?.role || "merchant";
-  return role === "merchant";
+  const role = authStore.user?.role || "free";
+  return role === "free";
 });
 
 const showEnterpriseUpgrade = computed(() => {
-  const role = authStore.user?.role || "merchant";
-  return role === "merchant" || role === "pro";
+  const role = authStore.user?.role || "free";
+  return role === "free" || role === "pro";
 });
 
 onMounted(async () => {
+  await Promise.all([loadPricing(), loadPlanFeatures()]);
   if (authStore.user) {
     profileForm.value.name = authStore.user.name || "";
     profileForm.value.email = authStore.user.email || "";
@@ -727,9 +675,7 @@ async function handleAddCredit() {
       window.location.href = `${baseUrl}/i/${response.data.invoiceId}`;
     } else {
       // No invoice URL - this shouldn't happen, but handle gracefully
-      alert(
-        "Credit invoice created. Please check your email or BTCPay dashboard for payment instructions.",
-      );
+      alert(t("account.credit_invoice_created"));
       showAddCreditModal.value = false;
       creditAmount.value = null;
     }
@@ -737,7 +683,7 @@ async function handleAddCredit() {
     console.error("Failed to add credit:", error);
     alert(
       error.response?.data?.message ||
-        "Failed to add credit. Please try again.",
+        t("account.add_credit_failed"),
     );
   } finally {
     addingCredit.value = false;
@@ -750,16 +696,13 @@ function formatDate(timestamp: number | string): string {
     typeof timestamp === "number"
       ? new Date(timestamp * 1000)
       : new Date(timestamp);
-  return date.toLocaleDateString("en-US", {
+  const localeTag = locale.value === "sk" ? "sk-SK" : "en-US";
+  return date.toLocaleDateString(localeTag, {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
   });
-}
-
-function formatSats(amount: number): string {
-  return new Intl.NumberFormat("en-US").format(amount) + " sats";
 }
 
 async function upgradePlan(plan: string) {
@@ -772,14 +715,14 @@ async function upgradePlan(plan: string) {
     if (response.data.checkoutUrl) {
       window.location.href = response.data.checkoutUrl;
     } else {
-      alert("Failed to create checkout. Please try again.");
+      alert(t("account.checkout_failed"));
       upgrading.value = false;
     }
   } catch (error: any) {
     console.error("Failed to create checkout:", error);
     alert(
       error.response?.data?.message ||
-        "Failed to create checkout. Please try again.",
+        t("account.checkout_failed"),
     );
     upgrading.value = false;
   }
@@ -790,9 +733,9 @@ async function handleUpdateProfile() {
   try {
     await api.put("/user", profileForm.value);
     await authStore.fetchUser();
-    alert("Profile updated successfully");
+    alert(t("account.profile_updated"));
   } catch (error) {
-    alert("Failed to update profile");
+    alert(t("account.profile_update_failed"));
   } finally {
     profileLoading.value = false;
   }
@@ -807,9 +750,9 @@ async function handleUpdatePassword() {
       password: "",
       password_confirmation: "",
     };
-    alert("Password updated successfully");
+    alert(t("account.password_updated"));
   } catch (error) {
-    alert("Failed to update password");
+    alert(t("account.password_update_failed"));
   } finally {
     passwordLoading.value = false;
   }

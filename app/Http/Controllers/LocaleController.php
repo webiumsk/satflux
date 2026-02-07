@@ -12,12 +12,6 @@ class LocaleController extends Controller
      */
     private const SUPPORTED_LOCALES = [
         'en' => 'English',
-        'cz' => 'Čeština',
-        'de' => 'Deutsch',
-        'es' => 'Español',
-        'fr' => 'Français',
-        'hu' => 'Magyar',
-        'pl' => 'Polski',
         'sk' => 'Slovenčina',
     ];
 

@@ -16,11 +16,14 @@ class SubscriptionPlan extends Model
      * @var array<int, string>
      */
     protected $fillable = [
+        'code',
         'name',
         'display_name',
         'price_eur',
+        'billing_period',
         'max_stores',
         'max_api_keys',
+        'max_ln_addresses',
         'features',
         'is_active',
     ];
@@ -36,6 +39,7 @@ class SubscriptionPlan extends Model
             'price_eur' => 'decimal:2',
             'max_stores' => 'integer',
             'max_api_keys' => 'integer',
+            'max_ln_addresses' => 'integer',
             'features' => 'array',
             'is_active' => 'boolean',
         ];
@@ -72,6 +76,14 @@ class SubscriptionPlan extends Model
     {
         $features = $this->features ?? [];
         return in_array($feature, $features);
+    }
+
+    /**
+     * Check if this plan has unlimited LN addresses.
+     */
+    public function hasUnlimitedLnAddresses(): bool
+    {
+        return $this->max_ln_addresses === null;
     }
 
     /**

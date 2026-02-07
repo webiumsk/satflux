@@ -418,7 +418,7 @@ All store-scoped operations use **merchant API key**:
 - `lightning_public_key` (string, nullable, unique)
 - `btcpay_user_id` (string, nullable, indexed) - Links to BTCPay Server user
 - `btcpay_api_key` (encrypted text) - Merchant's BTCPay API key
-- `role` (enum: 'merchant', 'support', 'admin', default: 'merchant')
+- `role` (enum: 'free', 'support', 'admin', 'pro', 'enterprise', default: 'free')
 
 **Relationships**:
 
@@ -448,7 +448,7 @@ All store-scoped operations use **merchant API key**:
 - `id` (UUID, primary)
 - `store_id` (UUID, foreign key)
 - `type` (enum: 'blink', 'aqua_descriptor')
-- `secret_encrypted` (text) - Laravel encrypted (Blink token or Aqua descriptor)
+- `encrypted_secret` (text) - Laravel encrypted (Blink token or Aqua descriptor)
 - `status` (enum: 'pending', 'needs_support', 'connected')
 - `submitted_by_user_id` (foreign key)
 - `revealed_last_at` (timestamp, nullable)
@@ -481,7 +481,7 @@ protected $casts = [
 
 **WalletConnection Model**:
 
-- `secret_encrypted` is stored encrypted
+- `encrypted_secret` is stored encrypted
 - Accessor: `masked_secret` (shows first 6 + last 6 chars)
 - Mutator: `setSecretAttribute()` encrypts before storing
 - Method: `reveal()` returns decrypted value
@@ -979,7 +979,7 @@ All authenticated requests include:
 
 1. **Merchant submits** (`POST /api/stores/{uuid}/wallet-connection`):
    - Validates connection string format
-   - Encrypts and stores in `wallet_connections.secret_encrypted`
+   - Encrypts and stores in `wallet_connections.encrypted_secret`
    - Status: `needs_support`
 
 2. **Support reveals** (`POST /api/support/wallet-connections/{id}/reveal`):

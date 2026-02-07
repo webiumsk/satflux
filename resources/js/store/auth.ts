@@ -10,6 +10,24 @@ export interface User {
     email_verified_at?: string;
     role?: string;
     name?: string;
+    plan?: {
+        code: string;
+        name: string;
+        max_stores: number | null;
+        max_api_keys: number | null;
+        max_ln_addresses: number | null;
+        features: string[];
+    };
+    subscription?: {
+        status: string;
+        expires_at: string | null;
+        grace_ends_at: string | null;
+    };
+    plan_features?: {
+        advanced_stats: boolean;
+        automatic_exports: boolean;
+        offline_payment_methods: boolean;
+    };
 }
 
 export const useAuthStore = defineStore('auth', () => {

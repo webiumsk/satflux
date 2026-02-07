@@ -474,7 +474,7 @@ class ProcessBtcPayWebhook implements ShouldQueue
     }
 
     /**
-     * Downgrade user role from pro/enterprise to merchant.
+     * Downgrade user role from pro/enterprise to free.
      * BTCPay has already handled grace period, so we can downgrade immediately.
      */
     protected function downgradeUserRole(User $user, string $reason): void
@@ -486,7 +486,7 @@ class ProcessBtcPayWebhook implements ShouldQueue
 
         $oldRole = $user->role;
         $user->update([
-            'role' => 'merchant',
+            'role' => 'free',
             'btcpay_subscription_id' => null,
             'subscription_expires_at' => null,
             'subscription_grace_period_ends_at' => null, // Clear any old grace period tracking
@@ -496,7 +496,7 @@ class ProcessBtcPayWebhook implements ShouldQueue
             'user_id' => $user->id,
             'user_email' => $user->email,
             'old_role' => $oldRole,
-            'new_role' => 'merchant',
+            'new_role' => 'free',
             'reason' => $reason,
         ]);
     }
