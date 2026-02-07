@@ -1,4 +1,28 @@
 {
+  "plans": {
+    "features": {
+      "store_1": "1 obchod",
+      "stores_3": "3 obchody",
+      "stores_unlimited": "Neobmedzené obchody",
+      "pos_unlimited": "Neobmedzené PoS terminály na obchod",
+      "ln_addresses_2": "2 Lightning adresy",
+      "ln_unlimited": "Neobmedzené Lightning adresy",
+      "api_key_1": "1 API kľúč",
+      "api_keys_3": "3 API kľúče",
+      "manual_csv": "Manuálne CSV exporty",
+      "manual_auto_csv": "Manuálne + automatické mesačné CSV exporty",
+      "basic_stats": "Základné štatistiky",
+      "advanced_stats": "Pokročilé štatistiky (na obchod, na PoS, celkovo)",
+      "no_tx_fees": "Bez transakčných poplatkov",
+      "custom_branding": "Vlastná značka",
+      "priority_support": "Prioritná podpora",
+      "webhooks": "Webhooky",
+      "multi_user_roles": "Viacerí používatelia a role na obchod",
+      "custom_reporting_formats": "Vlastné reportovacie formáty (CSV, JSON, PDF)",
+      "integration_support": "Integračná podpora",
+      "pos_cash_card": "PoS: označenie objednávok ako \"Zaplatené hotovosťou\" alebo \"Zaplatené kartou\" (pre účtovníctvo)"
+    }
+  },
   "common": {
     "copied": "Skopírované do schránky",
     "copy_failed": "Nepodarilo sa skopírovať",
@@ -177,6 +201,10 @@
     "lightning_address_delete_failed": "Nepodarilo sa odstrániť LN adresu",
     "api_key_created": "API kľúč bol úspešne vytvorený",
     "api_key_create_failed": "Nepodarilo sa vytvoriť API kľúč",
+    "api_key_limit_reached": "Dosiahli ste maximálny počet API kľúčov ({max}) pre váš plán.",
+    "store_limit_reached": "Dosiahli ste maximálny počet obchodov ({max}) pre váš plán.",
+    "view_plan_options": "Zobraziť možnosti plánu",
+    "back_to_stores": "Späť na obchody",
     "point_of_sale": "PoS Terminál",
     "no_pos": "Žiadny PoS",
     "pay_button": "Pay Button",

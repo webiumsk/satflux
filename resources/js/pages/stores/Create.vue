@@ -2,7 +2,24 @@
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <h1 class="text-3xl font-bold text-white mb-8 text-center">{{ t('create_store.title') }}</h1>
 
-      <div class="bg-gray-800 shadow-2xl rounded-2xl border border-gray-700">
+      <!-- Store limit reached: show message + upgrade modal only -->
+      <div v-if="storeLimitReached" class="bg-gray-800 shadow-2xl rounded-2xl border border-gray-700 p-8 text-center">
+        <p class="text-gray-300 mb-6">{{ t('stores.store_limit_reached', { max: limits?.stores?.max ?? 1 }) }}</p>
+        <button
+          type="button"
+          @click="showUpgradeModal = true"
+          class="inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          {{ t('stores.view_plan_options') }}
+        </button>
+        <div class="mt-6">
+          <router-link to="/stores" class="text-sm text-indigo-400 hover:text-indigo-300">
+            {{ t('stores.back_to_stores') }}
+          </router-link>
+        </div>
+      </div>
+
+      <div v-else class="bg-gray-800 shadow-2xl rounded-2xl border border-gray-700">
         <!-- Step Indicator -->
         <div class="bg-gray-900/50 border-b border-gray-700 px-8 py-6">
           <div class="flex items-center justify-between relative">
@@ -262,26 +279,42 @@
             </div>
         </div>
       </div>
+
+    <!-- Upgrade modal when store limit reached -->
+    <UpgradeModal
+      v-if="storeLimitReached"
+      :show="showUpgradeModal"
+      :message="t('stores.store_limit_reached', { max: limits?.stores?.max ?? 1 })"
+      :limits="limits?.stores ? [{ feature: 'Stores', current: limits.stores.current, max: limits.stores.max }] : []"
+      recommended-plan="pro"
+      :upgrade-button-text="t('stores.upgrade_to_pro')"
+      @close="showUpgradeModal = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
+import { useAccountLimits } from '../../composables/useAccountLimits';
 import { currencies } from '../../data/currencies';
 import { exchanges } from '../../data/exchanges';
 import Select from '../../components/ui/Select.vue';
+import UpgradeModal from '../../components/stores/UpgradeModal.vue';
 
 const { t } = useI18n();
 
 const router = useRouter();
 const storesStore = useStoresStore();
+const { limits, load: loadLimits } = useAccountLimits();
 
 const currentStep = ref(1);
 const loading = ref(false);
 const error = ref('');
+const storeLimitReached = ref(false);
+const showUpgradeModal = ref(false);
 
 const form = ref({
   name: '',
@@ -346,6 +379,15 @@ const timezones = [
 ];
 
 const timezoneOptions = timezones.map(tz => ({ label: tz, value: tz }));
+
+onMounted(async () => {
+  await loadLimits();
+  const s = limits.value?.stores;
+  if (s && !s.unlimited && s.max != null && s.current >= s.max) {
+    storeLimitReached.value = true;
+    showUpgradeModal.value = true;
+  }
+});
 
 async function handleSubmit() {
   error.value = '';

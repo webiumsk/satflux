@@ -5,7 +5,15 @@
         <h1 class="text-3xl font-bold text-white mb-2">
           {{ t("stores.title") }}
         </h1>
-        <p class="text-gray-400">{{ t("stores.manage_stores") }}</p>
+        <p class="text-gray-400">
+          {{ t("stores.manage_stores") }}
+          <span v-if="limits?.stores?.max != null" class="text-gray-500 ml-1 bg-gray-800 px-2 py-0.5 rounded-full text-xs">
+            {{ limits.stores.current }} / {{ limits.stores.max }} used
+          </span>
+          <span v-else-if="limits?.stores?.unlimited" class="text-gray-500 ml-1 bg-gray-800 px-2 py-0.5 rounded-full text-xs">
+            Unlimited
+          </span>
+        </p>
       </div>
       <router-link
         to="/stores/create"
@@ -182,11 +190,13 @@ import { onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { storeToRefs } from "pinia";
 import { useStoresStore } from "../../store/stores";
+import { useAccountLimits } from "../../composables/useAccountLimits";
 
 const { t } = useI18n();
 
 const storesStore = useStoresStore();
 const { stores, loading } = storeToRefs(storesStore);
+const { limits, load: loadLimits } = useAccountLimits();
 
 function getWalletConnectionStatusBadgeClass(store: any): string {
   if (!store.wallet_connection) {
@@ -235,7 +245,7 @@ function formatDate(dateString: string): string {
   return `${day}.${month}.${year}`;
 }
 
-onMounted(() => {
-  storesStore.fetchStores();
+onMounted(async () => {
+  await Promise.all([storesStore.fetchStores(), loadLimits()]);
 });
 </script>

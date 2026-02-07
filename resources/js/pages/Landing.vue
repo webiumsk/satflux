@@ -530,29 +530,13 @@
                {{ t('landing.pricing_free_description') }}
              </p>
              <ul class="space-y-3 mb-8">
-               <li class="flex items-start text-gray-300 text-sm">
+               <li
+                 v-for="key in planFeatures.free.feature_keys"
+                 :key="key"
+                 class="flex items-start text-gray-300 text-sm"
+               >
                  <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>{{ t('landing.pricing_feature_store') }}</span>
-               </li>
-               <li class="flex items-start text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>{{ t('landing.pricing_feature_pos') }}</span>
-               </li>
-               <li class="flex items-start text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>{{ t('landing.pricing_feature_ln_address') }}</span>
-               </li>
-               <li class="flex items-start text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>{{ t('landing.pricing_feature_api_key') }}</span>
-               </li>
-               <li class="flex items-start text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>{{ t('landing.pricing_feature_manual_csv') }}</span>
-               </li>
-               <li class="flex items-start text-gray-300 text-sm">
-                 <svg class="w-4 h-4 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>{{ t('landing.pricing_feature_basic_stats') }}</span>
+                 <span>{{ t('plans.features.' + key) }}</span>
                </li>
              </ul>
              <router-link
@@ -587,37 +571,13 @@
                {{ t('landing.pricing_pro_description') }}
              </p>
              <ul class="space-y-3 mb-8">
-               <li class="flex items-start text-white font-medium text-sm">
+               <li
+                 v-for="key in planFeatures.pro.feature_keys"
+                 :key="key"
+                 class="flex items-start text-white font-medium text-sm"
+               >
                  <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>{{ t('landing.pricing_feature_stores') }}</span>
-               </li>
-               <li class="flex items-start text-white font-medium text-sm">
-                 <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>{{ t('landing.pricing_feature_pos') }}</span>
-               </li>
-               <li class="flex items-start text-white font-medium text-sm">
-                 <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>{{ t('landing.pricing_feature_ln_addresses') }}</span>
-               </li>
-               <li class="flex items-start text-white font-medium text-sm">
-                 <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>{{ t('landing.pricing_feature_api_keys') }}</span>
-               </li>
-               <li class="flex items-start text-white font-medium text-sm">
-                 <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>{{ t('landing.pricing_feature_auto_csv') }}</span>
-               </li>
-               <li class="flex items-start text-white font-medium text-sm">
-                 <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>{{ t('landing.pricing_feature_advanced_stats') }}</span>
-               </li>
-               <li class="flex items-start text-white font-medium text-sm">
-                 <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>{{ t('landing.pricing_feature_branding') }}</span>
-               </li>
-               <li class="flex items-start text-white font-medium text-sm">
-                 <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                 <span>{{ t('landing.pricing_feature_priority_support') }}</span>
+                 <span>{{ t('plans.features.' + key) }}</span>
                </li>
              </ul>
              <button
@@ -646,29 +606,13 @@
               {{ t('landing.pricing_need_more_text') }}
             </p>
             <ul class="space-y-2 mb-6 text-gray-300 text-sm">
-              <li class="flex items-center gap-2">
+              <li
+                v-for="key in planFeatures.enterprise.feature_keys"
+                :key="key"
+                class="flex items-center gap-2"
+              >
                 <svg class="w-4 h-4 text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                <span>{{ t('landing.pricing_enterprise_unlimited_stores') }}</span>
-              </li>
-              <li class="flex items-center gap-2">
-                <svg class="w-4 h-4 text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                <span>{{ t('landing.pricing_enterprise_webhooks') }}</span>
-              </li>
-              <li class="flex items-center gap-2">
-                <svg class="w-4 h-4 text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                <span>{{ t('landing.pricing_enterprise_roles') }}</span>
-              </li>
-              <li class="flex items-center gap-2">
-                <svg class="w-4 h-4 text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                <span>{{ t('landing.pricing_enterprise_custom_reporting') }}</span>
-              </li>
-              <li class="flex items-center gap-2">
-                <svg class="w-4 h-4 text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                <span>{{ t('landing.pricing_enterprise_integration') }}</span>
-              </li>
-              <li class="flex items-center gap-2">
-                <svg class="w-4 h-4 text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                <span>{{ t('landing.pricing_enterprise_cash_card') }}</span>
+                <span>{{ t('plans.features.' + key) }}</span>
               </li>
             </ul>
             <a
@@ -731,6 +675,7 @@
 <script setup lang="ts">
 import { useAuthStore } from '../store/auth';
 import { usePricing } from '../composables/usePricing';
+import { usePlanFeatures } from '../composables/usePlanFeatures';
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import PublicHeader from '../components/layout/PublicHeader.vue';
@@ -740,6 +685,7 @@ import api from '../services/api';
 
 const { t } = useI18n();
 const { pricing, formatSats, load: loadPricing } = usePricing();
+const { planFeatures, load: loadPlanFeatures } = usePlanFeatures();
 
 //const router = useRouter();
 const authStore = useAuthStore();
@@ -749,9 +695,9 @@ const showPosModal = ref(false);
 
 const posDemoUrl = 'https://satflux.org/apps/rivBmZNgktMaJ3CqMrtCuekoDex/pos';
 
-// Ensure user and pricing are fetched on mount
+// Ensure user, pricing and plan features are fetched on mount
 onMounted(async () => {
-  await loadPricing();
+  await Promise.all([loadPricing(), loadPlanFeatures()]);
   if (!authStore.user) {
     try {
       await authStore.fetchUser();

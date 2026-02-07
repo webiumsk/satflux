@@ -1,4 +1,28 @@
 {
+  "plans": {
+    "features": {
+      "store_1": "1 store",
+      "stores_3": "3 stores",
+      "stores_unlimited": "Unlimited stores",
+      "pos_unlimited": "Unlimited PoS terminals per store",
+      "ln_addresses_2": "2 Lightning addresses",
+      "ln_unlimited": "Unlimited Lightning addresses",
+      "api_key_1": "1 API key",
+      "api_keys_3": "3 API keys",
+      "manual_csv": "Manual CSV exports",
+      "manual_auto_csv": "Manual + automatic monthly CSV exports",
+      "basic_stats": "Basic stats (totals per store)",
+      "advanced_stats": "Advanced stats (per store, per PoS, overall)",
+      "no_tx_fees": "No transaction fees",
+      "custom_branding": "Custom branding",
+      "priority_support": "Priority support",
+      "webhooks": "Webhooks",
+      "multi_user_roles": "Multi-user roles per store",
+      "custom_reporting_formats": "Custom reporting formats (CSV, JSON, PDF)",
+      "integration_support": "Integration support",
+      "pos_cash_card": "PoS: mark orders as \"Paid in Cash\" or \"Paid by Card\" (for accounting)"
+    }
+  },
   "common": {
     "copied": "Copied to clipboard",
     "copy_failed": "Failed to copy",
@@ -176,6 +200,10 @@
     "lightning_address_delete_failed": "Failed to delete lightning address",
     "api_key_created": "API key created successfully",
     "api_key_create_failed": "Failed to create API key",
+    "api_key_limit_reached": "You have reached the maximum number of API keys ({max}) for your current plan.",
+    "store_limit_reached": "You have reached the maximum number of stores ({max}) for your current plan.",
+    "view_plan_options": "View plan options",
+    "back_to_stores": "Back to stores",
     "point_of_sale": "Point of Sale",
     "no_pos": "No PoS",
     "pay_button": "Pay Button",
