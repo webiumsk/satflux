@@ -118,6 +118,12 @@ Laravel (php container) pushes to `reverb:8080`. The built frontend connects to 
 
 If you leave `BROADCAST_CONNECTION=null` or omit the VITE_* vars, support/admin still get **email** and the **Support** badge; only the in-app toast is skipped.
 
+### How notifications work
+
+- **Email:** Support/admin users receive a mail when a merchant submits or updates a wallet connection (status `needs_support`). Can be queued.
+- **Instant in-app (Reverb):** When `BROADCAST_CONNECTION=reverb` and Reverb is running, the app dispatches a `WalletConnectionNeedsSupport` event that implements `ShouldBroadcastNow` (no queue). Support/admin see a toast in the browser immediately and can open **Support → Wallet Connections** to reveal the connection string and configure it in BTCPay.
+- **Why manual step:** BTCPay Server’s Greenfield API does not support setting custom Lightning connection strings programmatically. So the flow is: merchant submits string → support gets instant notification → support logs into BTCPay, opens the store’s Lightning setup, and pastes the string (or uses “Mark Connected” after configuring externally). There is no full automation without BTCPay adding API support.
+
 ## 5. Auto wallet connection config (scheduled command)
 
 The command `wallet-connections:attempt-config` is scheduled every 15 minutes (see `routes/console.php`). It:

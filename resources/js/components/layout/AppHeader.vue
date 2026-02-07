@@ -679,18 +679,17 @@ onMounted(() => {
     loadSupportCount();
     supportCountInterval = setInterval(loadSupportCount, 30000);
 
-    // Subscribe to push notifications (new wallet connection needs support)
+    // Subscribe to instant push notifications (Reverb): new/updated wallet connection needs support
     const echo = getEcho();
-    const userId = authStore.user?.id;
-    if (echo && userId) {
-      const channel = echo.private(`App.Models.User.${userId}`);
-      channel.notification((notification: { message?: string; store_name?: string; url?: string }) => {
-        const msg = notification.message ?? (notification.store_name ? `New wallet connection: ${notification.store_name}` : "New wallet connection needs support");
-        const url = notification.url ?? "/support/wallet-connections";
+    if (echo) {
+      const channel = echo.private("support.wallet-connections");
+      channel.listen(".wallet-connection.needs-support", (payload: { message?: string; store_name?: string; url?: string }) => {
+        const msg = payload.message ?? (payload.store_name ? `New wallet connection: ${payload.store_name}` : "New wallet connection needs support");
+        const url = payload.url ?? "/support/wallet-connections";
         showSupportToast(msg, url);
       });
       echoUnsub = () => {
-        echo.leave(`App.Models.User.${userId}`);
+        echo.leave("support.wallet-connections");
       };
     }
   }

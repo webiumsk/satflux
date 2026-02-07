@@ -22,7 +22,7 @@
                     <Select
                         v-model="statusFilter"
                         :options="statusOptions"
-                        placeholder="All Statuses"
+                        placeholder="Status"
                         class="min-w-[160px]"
                     />
                 </div>
@@ -194,7 +194,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import api from '../../services/api';
 import RevealSecretModal from '../../components/support/RevealSecretModal.vue';
 import Select from '../../components/ui/Select.vue';
@@ -205,11 +205,11 @@ const connections = ref<any[]>([]);
 const showRevealModal = ref(false);
 const selectedConnection = ref<any>(null);
 const searchQuery = ref('');
-const statusFilter = ref('');
+const statusFilter = ref('needs_support');
 
 const statusOptions = [
-    { label: 'All Statuses', value: '' },
     { label: 'Needs Support', value: 'needs_support' },
+    { label: 'All Statuses', value: 'all' },
     { label: 'Pending', value: 'pending' },
     { label: 'Connected', value: 'connected' },
 ];
@@ -218,7 +218,8 @@ async function loadConnections() {
     loading.value = true;
     error.value = null;
     try {
-        const response = await api.get('/support/wallet-connections');
+        const status = statusFilter.value || 'needs_support';
+        const response = await api.get('/support/wallet-connections', { params: { status } });
         connections.value = response.data.data || [];
     } catch (err: any) {
         error.value = err.response?.data?.message || 'Failed to load wallet connections';
@@ -259,14 +260,14 @@ function getStatusBadgeClass(status: string): string {
     return classMap[status] || 'bg-gray-500/20 text-gray-400';
 }
 
-// Filtered connections based on search and status filter
+// Refetch when status filter changes (API returns filtered data)
+watch(statusFilter, () => {
+    loadConnections();
+});
+
+// Filtered connections based on search (status filter is applied by API)
 const filteredConnections = computed(() => {
     let filtered = connections.value;
-
-    // Apply status filter
-    if (statusFilter.value) {
-        filtered = filtered.filter(conn => conn.status === statusFilter.value);
-    }
 
     // Apply search filter
     if (searchQuery.value) {

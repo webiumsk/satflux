@@ -48,6 +48,47 @@ class WalletConnectionController extends Controller
     }
 
     /**
+     * Reveal wallet connection secret for store owner (requires password confirmation).
+     * Allows the merchant to view/edit their connection string when changing wallet.
+     */
+    public function revealForOwner(Request $request)
+    {
+        $request->validate([
+            'password' => ['required', 'string'],
+        ]);
+
+        $store = $request->route('store');
+        $connection = WalletConnection::where('store_id', $store->id)->first();
+
+        if (!$connection) {
+            return response()->json(['message' => 'No wallet connection found for this store.'], 404);
+        }
+
+        $user = $request->user();
+        if (!Hash::check($request->password, $user->password)) {
+            throw ValidationException::withMessages([
+                'password' => ['Invalid password.'],
+            ]);
+        }
+
+        try {
+            $plaintext = $this->service->reveal($connection, $user);
+        } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+            return response()->json([
+                'message' => 'Unable to decrypt the stored secret. Please re-submit your wallet connection.',
+            ], 500);
+        }
+
+        return response()->json([
+            'data' => [
+                'secret' => $plaintext,
+                'type' => $connection->type,
+                'masked_secret' => $connection->masked_secret,
+            ],
+        ]);
+    }
+
+    /**
      * Check if a descriptor is already in use by another store.
      * Used for frontend validation before submission.
      * Works for both existing stores and new stores (when store ID is 'new' or doesn't exist).
@@ -202,14 +243,20 @@ class WalletConnectionController extends Controller
     }
 
     /**
-     * List all wallet connections needing support (support role only).
+     * List wallet connections (support role only).
+     * Query param: status = needs_support (default) | connected | pending | all
+     * Nothing is ever deleted; "Mark Connected" only updates status so all can be viewed.
      */
     public function indexSupport(Request $request)
     {
-        $connections = WalletConnection::where('status', 'needs_support')
-            ->with(['store', 'submittedBy'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $status = $request->query('status', 'needs_support');
+        $query = WalletConnection::with(['store', 'submittedBy'])->orderBy('updated_at', 'desc');
+
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        $connections = $query->get();
 
         return response()->json([
             'data' => $connections->map(function ($connection) {
@@ -222,6 +269,7 @@ class WalletConnectionController extends Controller
                     'masked_secret' => $connection->masked_secret,
                     'submitted_by' => $connection->submittedBy->email ?? 'Unknown',
                     'submitted_at' => $connection->created_at,
+                    'updated_at' => $connection->updated_at,
                     'revealed_last_at' => $connection->revealed_last_at,
                 ];
             }),

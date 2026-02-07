@@ -339,6 +339,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Wallet Connections (Merchant)
     Route::get('/stores/{store}/wallet-connection', [WalletConnectionController::class, 'show'])
         ->middleware([EnsureStoreOwnership::class]);
+    Route::post('/stores/{store}/wallet-connection/reveal', [WalletConnectionController::class, 'revealForOwner'])
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':wallet_connection.revealed']);
     Route::post('/stores/{store}/wallet-connection', [WalletConnectionController::class, 'store'])
         ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':wallet_connection.created']);
     Route::post('/stores/{store}/wallet-connection/check-duplicate', [WalletConnectionController::class, 'checkDuplicate'])
