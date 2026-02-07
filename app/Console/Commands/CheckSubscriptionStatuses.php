@@ -21,7 +21,7 @@ class CheckSubscriptionStatuses extends Command
      *
      * @var string
      */
-    protected $description = 'Check subscription statuses from BTCPay API and sync user roles. Also upgrades users with active subscriptions who still have "merchant" role.';
+    protected $description = 'Check subscription statuses from BTCPay API and sync user roles. Also upgrades users with active subscriptions who still have "free" role.';
 
     protected SubscriptionService $subscriptionService;
 
@@ -41,7 +41,7 @@ class CheckSubscriptionStatuses extends Command
         $storeId = config('services.btcpay.subscription_store_id');
         
         // Find ALL users with subscription_id (regardless of role)
-        // This includes users who have active subscription in BTCPay but still "merchant" role in DB
+        // This includes users who have active subscription in BTCPay but still "free" role in DB
         $usersWithSubscriptions = User::whereNotNull('btcpay_subscription_id')->get();
 
         $this->info("Found {$usersWithSubscriptions->count()} users with subscription IDs");
@@ -120,7 +120,7 @@ class CheckSubscriptionStatuses extends Command
                             $oldRole = $user->role;
                             $user->update(['role' => $expectedRole]);
                             
-                            if (in_array($oldRole, ['merchant']) && in_array($expectedRole, ['pro', 'enterprise'])) {
+                            if (in_array($oldRole, ['free']) && in_array($expectedRole, ['pro', 'enterprise'])) {
                                 $upgraded++;
                                 $this->line("Upgraded {$user->email} from {$oldRole} to {$expectedRole} (subscription active in BTCPay)");
                             }
@@ -186,15 +186,15 @@ class CheckSubscriptionStatuses extends Command
     }
 
     /**
-     * Downgrade user role to merchant.
+     * Downgrade user role to free.
      * BTCPay has already handled grace period, so we can downgrade immediately.
      */
     protected function downgradeUser(User $user, string $reason): void
     {
         $oldRole = $user->role;
-        
+
         $user->update([
-            'role' => 'merchant',
+            'role' => 'free',
             'btcpay_subscription_id' => null,
             'subscription_expires_at' => null,
             'subscription_grace_period_ends_at' => null, // Clear any old grace period tracking
@@ -204,11 +204,11 @@ class CheckSubscriptionStatuses extends Command
             'user_id' => $user->id,
             'user_email' => $user->email,
             'old_role' => $oldRole,
-            'new_role' => 'merchant',
+            'new_role' => 'free',
             'reason' => $reason,
         ]);
 
-        $this->line("Downgraded {$user->email} from {$oldRole} to merchant: {$reason}");
+        $this->line("Downgraded {$user->email} from {$oldRole} to free: {$reason}");
     }
 }
 

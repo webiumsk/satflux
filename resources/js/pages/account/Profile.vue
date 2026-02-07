@@ -569,14 +569,14 @@ const loadingSubscription = ref(false);
 
 // Plan information
 const currentPlanName = computed(() => {
-  const role = authStore.user?.role || "merchant";
+  const role = authStore.user?.role || "free";
   if (role === "enterprise") return t("account.plan_enterprise");
   if (role === "pro") return t("account.plan_pro");
   return t("account.plan_free");
 });
 
 const currentPlanPrice = computed(() => {
-  const role = authStore.user?.role || "merchant";
+  const role = authStore.user?.role || "free";
   const p = pricing.value;
   if (role === "enterprise") return "—";
   if (role === "pro") return formatSats(p?.pro?.sats_per_month_display ?? 16_500);
@@ -584,14 +584,14 @@ const currentPlanPrice = computed(() => {
 });
 
 const currentPlanDescription = computed(() => {
-  const role = authStore.user?.role || "merchant";
+  const role = authStore.user?.role || "free";
   if (role === "enterprise") return t("account.plan_desc_enterprise");
   if (role === "pro") return t("account.plan_desc_pro");
   return t("account.plan_desc_free");
 });
 
 const currentPlanFeatures = computed(() => {
-  const role = authStore.user?.role || "merchant";
+  const role = authStore.user?.role || "free";
   const keys =
     role === "enterprise"
       ? planFeatures.value.enterprise.feature_keys
@@ -602,7 +602,7 @@ const currentPlanFeatures = computed(() => {
 });
 
 const isPaidPlan = computed(() => {
-  const role = authStore.user?.role || "merchant";
+  const role = authStore.user?.role || "free";
   return role === "pro" || role === "enterprise";
 });
 
@@ -610,20 +610,20 @@ const isProPlan = computed(() => authStore.user?.role === "pro");
 
 // Upgrade options logic
 const showUpgradeOptions = computed(() => {
-  const role = authStore.user?.role || "merchant";
-  // Show upgrades if user is merchant (free) or pro (can upgrade to enterprise)
+  const role = authStore.user?.role || "free";
+  // Show upgrades if user is free or pro (can upgrade to enterprise)
   // Don't show for enterprise (top tier) or admin/support (not applicable)
-  return role === "merchant" || role === "pro";
+  return role === "free" || role === "pro";
 });
 
 const showProUpgrade = computed(() => {
-  const role = authStore.user?.role || "merchant";
-  return role === "merchant";
+  const role = authStore.user?.role || "free";
+  return role === "free";
 });
 
 const showEnterpriseUpgrade = computed(() => {
-  const role = authStore.user?.role || "merchant";
-  return role === "merchant" || role === "pro";
+  const role = authStore.user?.role || "free";
+  return role === "free" || role === "pro";
 });
 
 onMounted(async () => {
