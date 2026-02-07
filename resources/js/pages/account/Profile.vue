@@ -310,7 +310,7 @@
                   <div class="relative z-10">
                     <h6 class="text-lg font-bold text-white mb-2">{{ t("account.pro_plan") }}</h6>
                     <div class="text-2xl font-bold text-indigo-400 mb-4">
-                      {{ t("account.pro_price") }}<span class="text-base font-normal text-gray-500"
+                      {{ formatSats(pricing.pro.sats_per_month_display) }}<span class="text-base font-normal text-gray-500"
                         >{{ t("account.pro_price_period") }}</span
                       >
                     </div>
@@ -350,7 +350,7 @@
                   </div>
                 </div>
 
-                <!-- Enterprise Plan Card -->
+                <!-- Enterprise / Need more? Card (same as Landing) -->
                 <div
                   v-if="showEnterpriseUpgrade"
                   class="border border-gray-600 rounded-xl p-6 bg-gray-800/80 hover:border-purple-500 transition-colors relative group"
@@ -361,47 +361,55 @@
                   ></div>
                   <div class="relative z-10">
                     <h6 class="text-lg font-bold text-white mb-2">
-                      {{ t("account.enterprise_plan") }}
+                      {{ t("landing.pricing_need_more_headline") }}
                     </h6>
-                    <div class="text-2xl font-bold text-purple-400 mb-4">
-                      {{ t("account.enterprise_price") }}<span
-                        class="text-base font-normal text-gray-500"
-                        >{{ t("account.enterprise_price_period") }}</span
-                      >
-                    </div>
+                    <p class="text-sm text-gray-400 mb-4">
+                      {{ t("landing.pricing_need_more_text") }}
+                    </p>
                     <ul class="text-sm text-gray-400 space-y-2 mb-6">
                       <li class="flex items-center">
                         <span
                           class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"
                         ></span
-                        >{{ t("account.feature_unlimited_ln") }}
+                        >{{ t("landing.pricing_enterprise_unlimited_stores") }}
                       </li>
                       <li class="flex items-center">
                         <span
                           class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"
                         ></span
-                        >{{ t("account.feature_unlimited_stores") }}
+                        >{{ t("landing.pricing_enterprise_webhooks") }}
                       </li>
                       <li class="flex items-center">
                         <span
                           class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"
                         ></span
-                        >{{ t("account.feature_dedicated_support") }}
+                        >{{ t("landing.pricing_enterprise_roles") }}
                       </li>
                       <li class="flex items-center">
                         <span
                           class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"
                         ></span
-                        >{{ t("account.feature_custom_integrations") }}
+                        >{{ t("landing.pricing_enterprise_custom_reporting") }}
+                      </li>
+                      <li class="flex items-center">
+                        <span
+                          class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"
+                        ></span
+                        >{{ t("landing.pricing_enterprise_integration") }}
+                      </li>
+                      <li class="flex items-center">
+                        <span
+                          class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"
+                        ></span
+                        >{{ t("landing.pricing_enterprise_cash_card") }}
                       </li>
                     </ul>
-                    <button
-                      @click="upgradePlan('enterprise')"
-                      :disabled="upgrading"
-                      class="w-full px-4 py-2 border border-purple-500 text-purple-400 hover:bg-purple-500/10 text-sm font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    <a
+                      href="mailto:hello@satflux.io"
+                      class="block w-full text-center px-4 py-2 border border-purple-500 text-purple-400 hover:bg-purple-500/10 text-sm font-bold rounded-lg transition-all"
                     >
-                      {{ upgrading ? t("stores.processing") : t("account.upgrade_to_enterprise") }}
-                    </button>
+                      {{ t("landing.pricing_need_more_cta") }}
+                    </a>
                   </div>
                 </div>
               </div>
@@ -569,10 +577,12 @@
 import { ref, onMounted, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
+import { usePricing } from "../../composables/usePricing";
 import api from "../../services/api";
 
 const { t, locale } = useI18n();
 const authStore = useAuthStore();
+const { pricing, formatSats, load: loadPricing } = usePricing();
 
 const profileForm = ref({
   name: "",
@@ -605,9 +615,10 @@ const currentPlanName = computed(() => {
 
 const currentPlanPrice = computed(() => {
   const role = authStore.user?.role || "merchant";
-  if (role === "enterprise") return t("account.enterprise_price");
-  if (role === "pro") return t("account.pro_price");
-  return t("account.plan_free_price");
+  const p = pricing.value;
+  if (role === "enterprise") return "—";
+  if (role === "pro") return formatSats(p?.pro?.sats_per_month_display ?? 16_500);
+  return formatSats(p?.free?.sats_per_year ?? 0);
 });
 
 const currentPlanDescription = computed(() => {
@@ -676,6 +687,7 @@ const showEnterpriseUpgrade = computed(() => {
 });
 
 onMounted(async () => {
+  await loadPricing();
   if (authStore.user) {
     profileForm.value.name = authStore.user.name || "";
     profileForm.value.email = authStore.user.email || "";
@@ -751,10 +763,6 @@ function formatDate(timestamp: number | string): string {
     month: "long",
     day: "numeric",
   });
-}
-
-function formatSats(amount: number): string {
-  return new Intl.NumberFormat("en-US").format(amount) + " sats";
 }
 
 async function upgradePlan(plan: string) {

@@ -400,7 +400,7 @@
                
                <div class="md:w-5/12 flex justify-start pl-16 md:pl-16 order-2 md:order-2">
                   <div class="bg-gradient-to-r from-purple-600 to-indigo-600 p-1 rounded-2xl w-full max-w-sm shadow-xl shadow-purple-900/20 transform group-hover:scale-105 transition-transform duration-500">
-                     <div class="bg-gray-900 rounded-xl p-8 text-left relative overflow-hidden">
+                     <div class="bg-gray-900 rounded-xl p-8 text-center relative overflow-hidden">
                         <!-- Shine effect -->
                         <div class="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
                         <div class="w-16 h-16 bg-gray-800 rounded-full mb-4 flex items-center justify-center shadow-inner">
@@ -523,7 +523,7 @@
              <h3 class="text-xl font-bold text-white mb-2">{{ t('landing.pricing_free_name') }}</h3>
              <p class="text-gray-400 text-sm mb-4">{{ t('landing.pricing_free_tagline') }}</p>
              <div class="flex items-baseline mb-6">
-                <span class="text-4xl font-extrabold text-white">{{ t('landing.pricing_free_price') }}</span>
+                <span class="text-4xl font-extrabold text-white">{{ formatSats(pricing.free.sats_per_year) }}</span>
                 <span class="text-gray-400 ml-2">{{ t('landing.pricing_free_price_period') }}</span>
              </div>
              <p class="text-gray-400 text-sm mb-6">
@@ -579,7 +579,7 @@
              <h3 class="text-2xl font-bold text-white mb-2">{{ t('landing.pricing_pro_name') }}</h3>
              <p class="text-gray-400 text-sm mb-4">{{ t('landing.pricing_pro_tagline') }}</p>
              <div class="flex items-baseline flex-wrap gap-x-1 mb-6">
-                <span class="text-5xl font-extrabold text-white">{{ t('landing.pricing_pro_price') }}</span>
+                <span class="text-5xl font-extrabold text-white">{{ formatSats(pricing.pro.sats_per_month_display) }}</span>
                 <span class="text-indigo-300">{{ t('landing.pricing_pro_price_period') }}</span>
                 <span class="text-indigo-300/80 text-sm">{{ t('landing.pricing_pro_price_note') }}</span>
              </div>
@@ -730,6 +730,7 @@
 
 <script setup lang="ts">
 import { useAuthStore } from '../store/auth';
+import { usePricing } from '../composables/usePricing';
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import PublicHeader from '../components/layout/PublicHeader.vue';
@@ -738,6 +739,7 @@ import RegistrationForm from '../components/auth/RegistrationForm.vue';
 import api from '../services/api';
 
 const { t } = useI18n();
+const { pricing, formatSats, load: loadPricing } = usePricing();
 
 //const router = useRouter();
 const authStore = useAuthStore();
@@ -747,8 +749,9 @@ const showPosModal = ref(false);
 
 const posDemoUrl = 'https://satflux.org/apps/rivBmZNgktMaJ3CqMrtCuekoDex/pos';
 
-// Ensure user is fetched on mount to show correct buttons
+// Ensure user and pricing are fetched on mount
 onMounted(async () => {
+  await loadPricing();
   if (!authStore.user) {
     try {
       await authStore.fetchUser();

@@ -25,7 +25,7 @@ class AccountController extends Controller
             'name' => $plan->display_name,
             'max_stores' => $plan->max_stores,
             'max_api_keys' => $plan->max_api_keys,
-            'max_ln_addresses' => $plan->max_ln_addresses,
+            'max_ln_addresses' => $user->getMaxLightningAddresses(),
             'features' => $plan->features ?? [],
         ] : null;
         $payload['subscription'] = $subscription ? [

@@ -127,11 +127,21 @@ class User extends Authenticatable
         }
 
         $plan = $this->currentSubscriptionPlan();
-        if ($plan && $plan->hasUnlimitedLnAddresses()) {
+        if (! $plan) {
+            return 1; // No plan = Free tier
+        }
+
+        // Free plan: always max 1 (never unlimited), even if max_ln_addresses is null in DB
+        $code = strtolower($plan->code ?? $plan->name ?? '');
+        if ($code === 'free') {
+            return (int) ($plan->max_ln_addresses ?? 1);
+        }
+
+        if ($plan->hasUnlimitedLnAddresses()) {
             return null;
         }
 
-        return $plan ? (int) $plan->max_ln_addresses : 1;
+        return (int) $plan->max_ln_addresses;
     }
 
     /**
