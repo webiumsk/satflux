@@ -2,18 +2,18 @@
 
 # Pre-push git hook to automatically bump patch version when pushing to main/master
 
-# Get the current branch name
+# Read refs from stdin (we need to consume them to know target branch)
 current_branch=$(git rev-parse --abbrev-ref HEAD)
-
-# Define main branches (main or master)
 main_branches=("main" "master")
-
-# Check if pushing to a main branch
 is_main_branch=false
+push_remote=""
+push_branch=""
+
 while read local_ref local_sha remote_ref remote_sha; do
-    # Extract branch name from remote_ref (format: refs/heads/branch_name)
     remote_branch=$(echo "$remote_ref" | sed 's|refs/heads/||')
-    
+    # Get remote name from the ref (e.g. refs/remotes/origin/master -> origin)
+    push_remote=$(git config --get "branch.${current_branch}.remote" 2>/dev/null || echo "origin")
+    push_branch="$remote_branch"
     for main_branch in "${main_branches[@]}"; do
         if [ "$remote_branch" = "$main_branch" ]; then
             is_main_branch=true
@@ -26,46 +26,37 @@ done
 if [ "$is_main_branch" = true ]; then
     echo "Pushing to main branch detected. Automatically bumping patch version..."
     
-    # Get the project root directory (parent of .git)
     project_root=$(git rev-parse --show-toplevel)
-    
-    # Check if bump-version.js exists
     bump_script="$project_root/scripts/bump-version.js"
-    if [ ! -f "$bump_script" ]; then
-        echo "Warning: bump-version.js not found at $bump_script"
-        exit 0
-    fi
-    
-    # Check if package.json exists
     package_json="$project_root/package.json"
-    if [ ! -f "$package_json" ]; then
-        echo "Warning: package.json not found at $package_json"
+    
+    if [ ! -f "$bump_script" ] || [ ! -f "$package_json" ]; then
+        echo "Warning: bump-version.js or package.json not found, skipping."
         exit 0
     fi
     
-    # Get current version before bump
     current_version=$(node -p "JSON.parse(require('fs').readFileSync('$package_json','utf8')).version")
-    
-    # Bump patch version
     node "$bump_script" patch
-    
-    # Get new version (same way - ESM project may not support require)
     new_version=$(node -p "JSON.parse(require('fs').readFileSync('$package_json','utf8')).version")
     
-    # Check if version actually changed
     if [ "$current_version" != "$new_version" ]; then
         echo "Version bumped: $current_version → $new_version"
-        
-        # Stage package.json and amend into the commit being pushed (so this push includes it)
         git add "$package_json"
-        git commit --amend -m "chore: bump version to $new_version" --no-verify
+        git commit -m "chore: bump version to $new_version" --no-verify
         
-        echo "Version bump amended. Continuing with push..."
-    else
-        echo "Version unchanged, skipping."
+        # Push ourselves so the *current* ref (with the new commit) is pushed.
+        # We then abort the original push (exit 1) so Git doesn't push the old ref.
+        echo "Pushing (including version bump)..."
+        if git push "$push_remote" "$push_branch"; then
+            echo "Version bump pushed successfully. (Sync is complete; ignore IDE error if shown.)"
+            exit 1
+        else
+            echo "Push failed. Aborting."
+            git reset --soft HEAD~1
+            exit 1
+        fi
     fi
 fi
 
-# Allow push to continue
 exit 0
 
