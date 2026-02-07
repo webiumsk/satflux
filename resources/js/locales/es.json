@@ -75,7 +75,10 @@
     "password_reset_successful": "Tu contraseña se ha restablecido. Ya puedes iniciar sesión.",
     "reset_failed": "No se pudo restablecer la contraseña. El enlace puede ser inválido o haber expirado.",
     "resetting": "Restableciendo...",
-    "sending": "Enviando..."
+    "sending": "Enviando...",
+    "resend_verification_email": "Reenviar correo de verificación",
+    "verification_email_resent": "Correo de verificación enviado. Revisa tu bandeja de entrada.",
+    "resend_available_in": "Reenviar disponible en {seconds} s"
   },
   "dashboard": {
     "title": "Tablero de control",
@@ -92,6 +95,12 @@
     "get_started": "Empezar",
     "get_started_description": "Crea una tienda para comenzar a aceptar pagos en Bitcoin.",
     "create_new_store": "Crear nueva tienda"
+  },
+  "create_store": {
+    "invalid_blink_format": "Formato no válido. Requerido: type=blink;server=...;api-key=...;wallet-id=...",
+    "invalid_descriptor_format": "Descriptor no válido. Formato requerido: ct(slip77(...),elsh(wpkh(...)))",
+    "doc_link_blink": "Guía de configuración Blink",
+    "doc_link_aqua": "Guía descriptor Aqua / Boltz"
   },
   "stores": {
     "title": "Tiendas",
@@ -170,6 +179,11 @@
     "pay_button": "Botón de Pago",
     "eshop_integration": "Integración Tienda en Línea",
     "wallet_connection": "Conexión del Monedero",
+    "change_connection": "Cambiar",
+    "confirm_password_to_change": "Introduce tu contraseña para ver o cambiar la conexión del monedero.",
+    "password_placeholder": "Tu contraseña",
+    "invalid_password": "Contraseña incorrecta.",
+    "reveal_error": "No se pudieron cargar los detalles de la conexión. Inténtalo de nuevo.",
     "currency_placeholder": "Selecciona o escribe una moneda (ej., USD, BTC, EUR)"
   },
   "account": {

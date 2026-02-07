@@ -2,12 +2,14 @@
 
 namespace App\Services;
 
+use App\Events\WalletConnectionNeedsSupport;
 use App\Models\AuditLog;
 use App\Models\Store;
 use App\Models\User;
 use App\Models\WalletConnection;
 use App\Notifications\SupportNeededNotification;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class WalletConnectionService
@@ -135,9 +137,53 @@ class WalletConnectionService
             throw $e;
         }
 
-        // Notify support users when a new connection needs support
-        // Only notify for new connections to avoid spam on updates
-        if ($isNew && $connection->status === 'needs_support') {
+        // Notify support users when a connection needs support (new or re-submitted after merchant change)
+        if ($connection->status === 'needs_support') {
+            // Instant in-app notification via Reverb (no queue) so support can act immediately
+            if (config('broadcasting.default') !== 'null') {
+                try {
+                    event(new WalletConnectionNeedsSupport($connection, $store));
+                    Log::info('WalletConnectionNeedsSupport event broadcast', [
+                        'connection_id' => $connection->id,
+                        'store_id' => $store->id,
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to broadcast WalletConnectionNeedsSupport', [
+                        'connection_id' => $connection->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            // Discord webhook (instant, works even when no one has browser open)
+            $webhookUrl = config('services.discord.support_webhook_url');
+            if ($webhookUrl) {
+                try {
+                    $storeName = $store->name;
+                    $type = $connection->type === 'blink' ? 'Blink' : 'Aqua';
+                    $panelUrl = rtrim(config('app.url'), '/') . '/support/wallet-connections';
+
+                    Http::post($webhookUrl, [
+                        'content' => "🔔 **Wallet connection needs support**: {$storeName} ({$type})",
+                        'embeds' => [
+                            [
+                                'title' => 'Wallet Connection Needs Support',
+                                'description' => "**Store:** {$storeName}\n**Type:** {$type}\n**Status:** Needs Support",
+                                'url' => $panelUrl,
+                                'color' => 5814783, // indigo
+                            ],
+                        ],
+                    ]);
+                    Log::info('Discord webhook sent', ['connection_id' => $connection->id]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to send Discord webhook', [
+                        'connection_id' => $connection->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            // Email notification (can be queued)
             $supportUsers = User::whereIn('role', ['support', 'admin'])
                 ->whereNotNull('email')
                 ->whereNotNull('email_verified_at')

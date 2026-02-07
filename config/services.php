@@ -30,6 +30,10 @@ return [
         // Note: Grace period is configured per plan in BTCPay Server, not here
     ],
 
+    'discord' => [
+        'support_webhook_url' => env('SUPPORT_DISCORD_WEBHOOK_URL'),
+    ],
+
 ];
 
 

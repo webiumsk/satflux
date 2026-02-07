@@ -1,6 +1,55 @@
 /// <reference types="vite/client" />
 <template>
-  <form class="space-y-6" @submit.prevent="handleRegister">
+  <!-- Success state after classic registration -->
+  <div v-if="registrationSuccess" class="space-y-6">
+    <div class="text-center">
+      <div
+        class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-500/20 text-green-400 mb-4"
+      >
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+      <p class="text-sm text-gray-300">
+        {{ t("auth.registration_successful") }}
+      </p>
+      <p class="mt-2 text-xs text-gray-500">
+        {{ registeredEmail }}
+      </p>
+    </div>
+    <div class="flex flex-col gap-3">
+      <button
+        type="button"
+        :disabled="resendCooldownSeconds > 0 || resendLoading"
+        @click="handleResendVerification"
+        class="w-full flex justify-center py-3 px-4 border border-gray-600 text-sm font-medium rounded-xl text-white bg-gray-700/50 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+      >
+        <template v-if="resendLoading">
+          {{ t("auth.sending") }}
+        </template>
+        <template v-else-if="resendCooldownSeconds > 0">
+          {{ t("auth.resend_available_in", { seconds: resendCooldownSeconds }) }}
+        </template>
+        <template v-else>
+          {{ t("auth.resend_verification_email") }}
+        </template>
+      </button>
+      <p v-if="resendSuccess" class="text-sm text-green-400 text-center">
+        {{ t("auth.verification_email_resent") }}
+      </p>
+    </div>
+    <div class="text-center text-sm" v-if="showLoginLink">
+      <span class="text-gray-400">{{ t("auth.already_have_account") }}</span>
+      <router-link
+        to="/login"
+        class="font-medium text-indigo-400 hover:text-indigo-300 ml-1 transition-colors"
+      >
+        {{ t("auth.sign_in") }}
+      </router-link>
+    </div>
+  </div>
+
+  <form v-else class="space-y-6" @submit.prevent="handleRegister">
     <div>
       <label for="email" class="block text-sm font-medium text-gray-300">{{
         t("auth.email")
@@ -159,6 +208,43 @@
                     </div>
                   </div>
 
+                  <!-- LNURL registration success (after email submitted) -->
+                  <div v-else-if="lnurlRegistrationSuccess" class="text-center">
+                    <div
+                      class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-500/20 text-green-400 mb-4"
+                    >
+                      <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <h3 class="text-lg leading-6 font-bold text-white mb-2">
+                      {{ t("auth.registration_successful") }}
+                    </h3>
+                    <p class="text-sm text-gray-500 mb-6">{{ emailForm.email }}</p>
+                    <button
+                      type="button"
+                      :disabled="lnurlResendCooldownSeconds > 0 || lnurlResendLoading"
+                      @click="handleLnurlResendVerification"
+                      class="w-full mb-3 py-2.5 px-4 border border-gray-600 text-sm font-medium rounded-lg text-white bg-gray-700/50 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    >
+                      <template v-if="lnurlResendLoading">{{ t("auth.sending") }}</template>
+                      <template v-else-if="lnurlResendCooldownSeconds > 0">
+                        {{ t("auth.resend_available_in", { seconds: lnurlResendCooldownSeconds }) }}
+                      </template>
+                      <template v-else>{{ t("auth.resend_verification_email") }}</template>
+                    </button>
+                    <p v-if="lnurlResendSuccess" class="text-sm text-green-400 mb-4">
+                      {{ t("auth.verification_email_resent") }}
+                    </p>
+                    <button
+                      type="button"
+                      @click="closeLnurlModal"
+                      class="w-full inline-flex justify-center rounded-lg border border-gray-600 px-4 py-2 bg-gray-700 text-base font-medium text-white hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm transition-colors"
+                    >
+                      {{ t("common.close") }}
+                    </button>
+                  </div>
+
                   <!-- Email Input Step -->
                   <div v-else>
                     <h3 class="text-lg leading-6 font-bold text-white mb-4">
@@ -254,6 +340,8 @@ const props = defineProps({
 
 const { t } = useI18n();
 
+const RESEND_COOLDOWN = 60; // seconds before resend button is available again
+
 const router = useRouter();
 const authStore = useAuthStore();
 const flashStore = useFlashStore();
@@ -281,10 +369,89 @@ const emailLoading = ref(false);
 const emailError = ref("");
 let pollingInterval: number | null = null;
 
+const lnurlRegistrationSuccess = ref(false);
+const lnurlResendCooldownSeconds = ref(0);
+const lnurlResendLoading = ref(false);
+const lnurlResendSuccess = ref(false);
+let lnurlResendCooldownTimer: number | null = null;
+
+function startLnurlResendCooldown() {
+  lnurlResendCooldownSeconds.value = RESEND_COOLDOWN;
+  if (lnurlResendCooldownTimer) clearInterval(lnurlResendCooldownTimer);
+  lnurlResendCooldownTimer = window.setInterval(() => {
+    lnurlResendCooldownSeconds.value = Math.max(0, lnurlResendCooldownSeconds.value - 1);
+    if (lnurlResendCooldownSeconds.value <= 0 && lnurlResendCooldownTimer) {
+      clearInterval(lnurlResendCooldownTimer);
+      lnurlResendCooldownTimer = null;
+    }
+  }, 1000);
+}
+
+async function handleLnurlResendVerification() {
+  if (!emailForm.value.email || lnurlResendCooldownSeconds.value > 0 || lnurlResendLoading.value) return;
+  lnurlResendLoading.value = true;
+  lnurlResendSuccess.value = false;
+  try {
+    await api.post("/auth/email/verification-notification", {
+      email: emailForm.value.email,
+    });
+    lnurlResendSuccess.value = true;
+    startLnurlResendCooldown();
+  } catch (err: any) {
+    const msg =
+      err.response?.data?.errors?.email?.[0] ||
+      err.response?.data?.message ||
+      t("auth.failed_to_verify_email");
+    flashStore.error(msg);
+  } finally {
+    lnurlResendLoading.value = false;
+  }
+}
+
 // Check if LNURL auth is enabled
 const lnurlAuthEnabled = computed(() => {
   return import.meta.env.VITE_LNURL_AUTH_ENABLED === "true";
 });
+
+const registrationSuccess = ref(false);
+const registeredEmail = ref("");
+const resendCooldownSeconds = ref(0);
+const resendLoading = ref(false);
+const resendSuccess = ref(false);
+let resendCooldownTimer: number | null = null;
+
+function startResendCooldown() {
+  resendCooldownSeconds.value = RESEND_COOLDOWN;
+  if (resendCooldownTimer) clearInterval(resendCooldownTimer);
+  resendCooldownTimer = window.setInterval(() => {
+    resendCooldownSeconds.value = Math.max(0, resendCooldownSeconds.value - 1);
+    if (resendCooldownSeconds.value <= 0 && resendCooldownTimer) {
+      clearInterval(resendCooldownTimer);
+      resendCooldownTimer = null;
+    }
+  }, 1000);
+}
+
+async function handleResendVerification() {
+  if (!registeredEmail.value || resendCooldownSeconds.value > 0 || resendLoading.value) return;
+  resendLoading.value = true;
+  resendSuccess.value = false;
+  try {
+    await api.post("/auth/email/verification-notification", {
+      email: registeredEmail.value,
+    });
+    resendSuccess.value = true;
+    startResendCooldown();
+  } catch (err: any) {
+    const msg =
+      err.response?.data?.errors?.email?.[0] ||
+      err.response?.data?.message ||
+      t("auth.failed_to_verify_email");
+    flashStore.error(msg);
+  } finally {
+    resendLoading.value = false;
+  }
+}
 
 async function handleRegister() {
   loading.value = true;
@@ -295,17 +462,10 @@ async function handleRegister() {
       form.value.password,
       form.value.password_confirmation,
     );
-    flashStore.success(t("auth.registration_successful"));
-    // Navigation is handled by authStore usually, or we can explicit here.
-    // Assuming authStore handles login state but maybe not redirect?
-    // In Register.vue it was just `flashStore.success`.
-    // Let's assume the router guard or user will be redirected.
-    // Re-checking Register.vue: it didn't have router.push after register success,
-    // only flashStore.success. This implies the store might redirect OR the user sees the message.
-    // Looking at Register.vue again...
-    // Ah, usually after registration, it auto-logs in.
-    // Wait, let me check Register.vue logic again.
-    // It calls `authStore.register`.
+    registeredEmail.value = form.value.email;
+    registrationSuccess.value = true;
+    resendSuccess.value = false;
+    startResendCooldown();
   } catch (err: any) {
     let msg = err.response?.data?.message || t("auth.registration_failed");
     if (err.response?.data?.errors) {
@@ -409,10 +569,9 @@ async function handleCompleteRegistration() {
       email: emailForm.value.email,
     });
 
-    closeLnurlModal();
-    flashStore.success(t("auth.registration_successful"));
-    // Assuming redirection happens or user is now logged in?
-    // In original code: `flashStore.success`. No explicit redirect here either.
+    lnurlRegistrationSuccess.value = true;
+    lnurlResendSuccess.value = false;
+    startLnurlResendCooldown();
   } catch (err: any) {
     if (err.response?.data?.errors?.email) {
       emailError.value = err.response.data.errors.email[0];
@@ -438,6 +597,7 @@ function closeLnurlModal() {
   stopPolling();
   showLnurlModal.value = false;
   showEmailStep.value = false;
+  lnurlRegistrationSuccess.value = false;
   lnurlError.value = "";
   lnurlK1.value = "";
   emailForm.value = {
@@ -445,10 +605,24 @@ function closeLnurlModal() {
     user_id: null,
   };
   emailError.value = "";
+  lnurlResendCooldownSeconds.value = 0;
+  lnurlResendSuccess.value = false;
+  if (lnurlResendCooldownTimer) {
+    clearInterval(lnurlResendCooldownTimer);
+    lnurlResendCooldownTimer = null;
+  }
 }
 
 onUnmounted(() => {
   stopPolling();
+  if (resendCooldownTimer) {
+    clearInterval(resendCooldownTimer);
+    resendCooldownTimer = null;
+  }
+  if (lnurlResendCooldownTimer) {
+    clearInterval(lnurlResendCooldownTimer);
+    lnurlResendCooldownTimer = null;
+  }
 });
 
 // Convert URL to LNURL format (bech32 encoded)

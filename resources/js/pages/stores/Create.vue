@@ -171,7 +171,7 @@
                       :id="form.wallet_type === 'blink' ? 'connection_string_blink' : 'connection_string_aqua'"
                       v-model="form.connection_string"
                       rows="4"
-                      class="block w-full rounded-lg border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono text-sm placeholder-gray-600"
+                      class="block w-full rounded-lg p-2 border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono text-sm placeholder-gray-600"
                       :placeholder="form.wallet_type === 'blink' 
                         ? 'type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx'
                         : 'ct(slip77(...),elsh(wpkh(...))))'"
@@ -186,8 +186,19 @@
                         {{ t('create_store.descriptor_example') }}
                       </span>
                     </p>
-                    <p class="mt-2 text-xs text-gray-500 italic">
-                      {{ t('create_store.configure_later') }}
+                    <p class="mt-2 text-sm text-gray-400">
+                      <template v-if="form.wallet_type === 'blink'">
+                        <a :href="docBlinkPath" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-300 hover:underline">
+                          {{ t('create_store.doc_link_blink') }}
+                          <svg class="inline w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                        </a>
+                      </template>
+                      <template v-else>
+                        <a :href="docAquaPath" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-300 hover:underline">
+                          {{ t('create_store.doc_link_aqua') }}
+                          <svg class="inline w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                        </a>
+                      </template>
                     </p>
                   </div>
               </transition>
@@ -202,7 +213,7 @@
                 </button>
                 <button
                   @click="currentStep = 3"
-                  :disabled="!form.wallet_type"
+                  :disabled="!canProceedFromStep2"
                   class="inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {{ t('create_store.next_step') }}
@@ -294,7 +305,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
@@ -323,6 +334,49 @@ const form = ref({
   preferred_exchange: '',
   wallet_type: '' as 'blink' | 'aqua_boltz' | '',
   connection_string: '',
+});
+
+const docBlinkPath = '/documentation/blink-wallet';
+const docAquaPath = '/documentation/aqua-wallet';
+
+// Validate Blink connection string: type=blink;server=...;api-key=...;wallet-id=... (all keys present, type=blink, non-empty values)
+function validateBlinkConnectionString(s: string): boolean {
+  const trimmed = s.trim();
+  if (!trimmed) return false;
+  if (!trimmed.includes(';')) return false;
+  const parts = trimmed.split(';').map(p => p.trim()).filter(Boolean);
+  let typeVal = '';
+  let serverVal = '';
+  let apiKeyVal = '';
+  let walletIdVal = '';
+  for (const part of parts) {
+    const eq = part.indexOf('=');
+    if (eq === -1) continue;
+    const key = part.slice(0, eq).trim().toLowerCase();
+    const value = part.slice(eq + 1).trim();
+    if (key === 'type') typeVal = value;
+    if (key === 'server') serverVal = value;
+    if (key === 'api-key' || key === 'apikey') apiKeyVal = value;
+    if (key === 'wallet-id' || key === 'walletid') walletIdVal = value;
+  }
+  return typeVal === 'blink' && !!serverVal && !!apiKeyVal && !!walletIdVal;
+}
+
+// Validate Aqua descriptor: must be format ct(slip77(...),elsh(wpkh(...)))
+function validateDescriptor(s: string): boolean {
+  const trimmed = s.trim();
+  if (!trimmed) return false;
+  const lower = trimmed.toLowerCase();
+  return lower.startsWith('ct(slip77') && lower.includes(',elsh(wpkh(');
+}
+
+const canProceedFromStep2 = computed(() => {
+  const wt = form.value.wallet_type;
+  const cs = form.value.connection_string?.trim() ?? '';
+  if (!wt || !cs) return false;
+  if (wt === 'blink') return validateBlinkConnectionString(cs);
+  if (wt === 'aqua_boltz') return validateDescriptor(cs);
+  return false;
 });
 
 // Common timezones - you can expand this list
