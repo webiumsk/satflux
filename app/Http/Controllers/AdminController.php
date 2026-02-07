@@ -55,7 +55,7 @@ class AdminController extends Controller
             'data' => [
                 'id' => $user->id,
                 'email' => $user->email,
-                'role' => $user->role ?? 'merchant',
+                'role' => $user->role ?? 'free',
                 'email_verified_at' => $user->email_verified_at,
                 'created_at' => $user->created_at,
                 'updated_at' => $user->updated_at,
@@ -80,7 +80,7 @@ class AdminController extends Controller
                 'sometimes',
                 'required',
                 'string',
-                Rule::in(['merchant', 'support', 'admin', 'pro', 'enterprise']),
+                Rule::in(['free', 'support', 'admin', 'pro', 'enterprise']),
             ],
         ]);
 
@@ -94,7 +94,7 @@ class AdminController extends Controller
             }
 
             if ($request->has('role')) {
-                $oldRole = $user->role ?? 'merchant';
+                $oldRole = $user->role ?? 'free';
                 $user->role = $request->role;
                 $updated['role'] = $oldRole;
             }
@@ -114,7 +114,7 @@ class AdminController extends Controller
             'data' => [
                 'id' => $user->id,
                 'email' => $user->email,
-                'role' => $user->role ?? 'merchant',
+                'role' => $user->role ?? 'free',
                 'email_verified_at' => $user->email_verified_at,
                 'created_at' => $user->created_at,
                 'updated_at' => $user->updated_at,

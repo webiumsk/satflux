@@ -66,9 +66,9 @@
               <td class="px-6 py-4 whitespace-nowrap">
                 <span
                   class="px-2 py-1 text-xs font-semibold rounded-full"
-                  :class="getRoleBadgeClass(user.role || 'merchant')"
+                  :class="getRoleBadgeClass(user.role || 'free')"
                 >
-                  {{ formatRole(user.role || 'merchant') }}
+                  {{ formatRole(user.role || 'free') }}
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
@@ -239,7 +239,7 @@ const selectedRole = ref('all');
 
 const roleOptions = [
   { label: 'All Roles', value: 'all' },
-  { label: 'Merchant', value: 'merchant' },
+  { label: 'Free', value: 'free' },
   { label: 'Pro', value: 'pro' },
   { label: 'Enterprise', value: 'enterprise' },
   { label: 'Support', value: 'support' },
@@ -254,7 +254,7 @@ const showEditModal = ref(false);
 const editForm = ref({
   id: null as number | null,
   email: '',
-  role: 'merchant',
+  role: 'free',
 });
 const updateLoading = ref(false);
 const editError = ref('');
@@ -315,7 +315,7 @@ const closeEditModal = () => {
   editForm.value = {
     id: null,
     email: '',
-    role: 'merchant',
+    role: 'free',
   };
   editError.value = '';
 };
@@ -375,13 +375,13 @@ const formatRole = (role: string) => {
 
 const getRoleBadgeClass = (role: string) => {
   const classes: Record<string, string> = {
-    merchant: 'bg-gray-500/20 text-gray-300',
+    free: 'bg-gray-500/20 text-gray-300',
     pro: 'bg-blue-500/20 text-blue-300',
     enterprise: 'bg-purple-500/20 text-purple-300',
     support: 'bg-yellow-500/20 text-yellow-300',
     admin: 'bg-red-500/20 text-red-300',
   };
-  return classes[role] || classes.merchant;
+  return classes[role] || classes.free;
 };
 
 const formatDate = (dateString: string) => {

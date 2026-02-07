@@ -418,7 +418,7 @@ All store-scoped operations use **merchant API key**:
 - `lightning_public_key` (string, nullable, unique)
 - `btcpay_user_id` (string, nullable, indexed) - Links to BTCPay Server user
 - `btcpay_api_key` (encrypted text) - Merchant's BTCPay API key
-- `role` (enum: 'merchant', 'support', 'admin', default: 'merchant')
+- `role` (enum: 'free', 'support', 'admin', 'pro', 'enterprise', default: 'free')
 
 **Relationships**:
 

@@ -83,11 +83,11 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if user is a merchant.
+     * Check if user is on free tier (role 'free', formerly 'merchant').
      */
     public function isMerchant(): bool
     {
-        return $this->role === 'merchant' || empty($this->role);
+        return $this->role === 'free' || empty($this->role);
     }
 
     /**
