@@ -210,14 +210,22 @@
               </div>
               
               <div class="md:w-5/12 flex justify-start pl-16 md:pl-16 order-2 md:order-2">
-                <!-- Removed hover scaling to avoid UX issues with form inputs -->
-                <div class="w-full max-w-md bg-gray-800 rounded-2xl border border-gray-700 p-6 shadow-2xl relative overflow-hidden group hover:border-indigo-500/50 transition-colors duration-500">
-                  <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <!-- Embedded Registration Form -->
-                  <div class="relative z-10">
-                    <RegistrationForm :show-login-link="false" />
-                  </div>
-                </div>
+                <router-link
+                  to="/register"
+                  class="block w-full max-w-md rounded-2xl border border-gray-700 shadow-2xl overflow-hidden group hover:border-indigo-500/50 transition-colors duration-500 relative"
+                >
+                  <img
+                    src="/img/satflux-register.webp"
+                    alt="Register"
+                    class="w-full h-auto block"
+                  />
+                  <img
+                    src="/img/satflux-register-hover.webp"
+                    alt=""
+                    aria-hidden="true"
+                    class="absolute inset-0 w-full h-full object-cover object-top opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                  />
+                </router-link>
               </div>
             </div>
 
@@ -403,7 +411,7 @@
                      <div class="bg-gray-900 rounded-xl p-8 text-center relative overflow-hidden">
                         <!-- Shine effect -->
                         <div class="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                        <div class="w-16 h-16 bg-gray-800 rounded-full mb-4 flex items-center justify-center shadow-inner">
+                        <div class="w-16 h-16 bg-gray-800 rounded-full mb-4 flex items-center justify-center shadow-inner mx-auto">
                           <svg class="w-8 h-8 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" /></svg>
                         </div>
                         <div class="text-white font-mono text-lg md:text-xl">satoshi<span class="text-indigo-400">@satflux.org</span></div>
@@ -680,7 +688,6 @@ import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import PublicHeader from '../components/layout/PublicHeader.vue';
 import AppFooter from '../components/layout/AppFooter.vue';
-import RegistrationForm from '../components/auth/RegistrationForm.vue';
 import api from '../services/api';
 
 const { t } = useI18n();
