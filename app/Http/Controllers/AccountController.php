@@ -93,14 +93,23 @@ class AccountController extends Controller
 
         $cacheKey = 'account_limits_' . $user->id;
         $limits = Cache::remember($cacheKey, 60, function () use ($user, $plan) {
+            $planCode = $plan ? strtolower($plan->code ?? $plan->name ?? '') : '';
+            $isFreePlan = ($plan === null || $planCode === 'free');
+
             $storesCount = $user->stores()->count();
             $maxStores = $plan?->max_stores;
+            if ($isFreePlan && $maxStores === null) {
+                $maxStores = 1;
+            }
 
             $apiKeysCount = 0;
             foreach ($user->stores as $store) {
                 $apiKeysCount += $store->apiKeys()->count();
             }
             $maxApiKeys = $plan?->max_api_keys;
+            if ($isFreePlan && $maxApiKeys === null) {
+                $maxApiKeys = 1;
+            }
 
             $lnAddressesCount = 0;
             $maxLnAddresses = $user->getMaxLightningAddresses();
