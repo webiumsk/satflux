@@ -28,7 +28,7 @@ class SubscriptionService
         }
 
         // Get FREE plan
-        $freePlan = SubscriptionPlan::where('name', 'free')->first();
+        $freePlan = SubscriptionPlan::where('code', 'free')->orWhere('name', 'free')->first();
         if (!$freePlan) {
             throw new \Exception('FREE subscription plan not found. Please run the seeder.');
         }
@@ -56,7 +56,7 @@ class SubscriptionService
      */
     public function activateSubscription(User $user, string $planName, ?string $btcpaySubscriptionId = null): Subscription
     {
-        $plan = SubscriptionPlan::where('name', $planName)->first();
+        $plan = SubscriptionPlan::where('code', $planName)->orWhere('name', $planName)->first();
         if (!$plan) {
             throw new \Exception("Subscription plan '{$planName}' not found.");
         }
@@ -84,6 +84,7 @@ class SubscriptionService
         // Create new subscription
         $startsAt = now();
         $expiresAt = $startsAt->copy()->addYear();
+        $graceEndsAt = $expiresAt->copy()->addDays(14);
 
         $subscription = Subscription::create([
             'user_id' => $user->id,
@@ -91,6 +92,7 @@ class SubscriptionService
             'status' => 'active',
             'starts_at' => $startsAt,
             'expires_at' => $expiresAt,
+            'grace_ends_at' => $graceEndsAt,
             'btcpay_subscription_id' => $btcpaySubscriptionId,
         ]);
 
@@ -104,12 +106,21 @@ class SubscriptionService
     }
 
     /**
-     * Check if user can use automatic exports.
+     * Check if user can use automatic (monthly) exports.
      */
     public function canUseAutomaticExports(User $user): bool
     {
         $plan = $user->currentSubscriptionPlan();
-        return $plan?->hasFeature('automatic_exports') ?? false;
+        return $plan?->hasFeature('automatic_csv_exports') ?? false;
+    }
+
+    /**
+     * Check if user can enable cash/card (offline) payment methods in PoS.
+     */
+    public function canUseOfflinePaymentMethods(User $user): bool
+    {
+        $plan = $user->currentSubscriptionPlan();
+        return $plan?->hasFeature('offline_payment_methods') ?? false;
     }
 
     /**

@@ -9,8 +9,10 @@
         "inertiajs/inertia-laravel": "*",
         "kornrunner/secp256k1": "^0.4.0",
         "laravel/framework": "^12.0",
+        "laravel/reverb": "^1.0",
         "laravel/sanctum": "^4.0",
-        "laravel/tinker": "^2.9"
+        "laravel/tinker": "^2.9",
+        "pusher/pusher-php-server": "^7.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

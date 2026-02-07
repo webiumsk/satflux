@@ -23,7 +23,7 @@ class WalletConnectionFactory extends Factory
             'store_id' => Store::factory(),
             'type' => 'blink',
             'status' => 'pending',
-            'secret_encrypted' => Crypt::encryptString('blink:test@example.com:password'),
+            'encrypted_secret' => Crypt::encryptString('blink:test@example.com:password'),
             'submitted_by_user_id' => \App\Models\User::factory(),
         ];
     }
@@ -35,7 +35,7 @@ class WalletConnectionFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'type' => 'blink',
-            'secret_encrypted' => Crypt::encryptString('blink:test@example.com:password'),
+            'encrypted_secret' => Crypt::encryptString('blink:test@example.com:password'),
         ]);
     }
 
@@ -46,7 +46,7 @@ class WalletConnectionFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'type' => 'aqua_descriptor',
-            'secret_encrypted' => Crypt::encryptString('ct(slip77(...),elsh(wpkh(...))))'),
+            'encrypted_secret' => Crypt::encryptString('ct(slip77(...),elsh(wpkh(...))))'),
         ]);
     }
 

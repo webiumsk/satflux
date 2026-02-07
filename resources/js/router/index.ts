@@ -41,6 +41,12 @@ const router = createRouter({
             component: () => import('../pages/auth/VerifyEmail.vue'),
         },
         {
+            path: '/pricing',
+            name: 'pricing',
+            component: () => import('../pages/Pricing.vue'),
+            meta: { public: true, titleKey: 'seo.pricing_title' },
+        },
+        {
             path: '/account',
             name: 'account',
             component: () => import('../pages/account/Profile.vue'),

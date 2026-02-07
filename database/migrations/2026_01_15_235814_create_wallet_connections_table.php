@@ -15,7 +15,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->uuid('store_id');
             $table->enum('type', ['blink', 'aqua_descriptor']);
-            $table->text('secret_encrypted');
+            $table->text('encrypted_secret');
             $table->enum('status', ['pending', 'needs_support', 'connected'])->default('pending');
             $table->foreignId('submitted_by_user_id')->constrained('users')->onDelete('cascade');
             $table->timestamp('revealed_last_at')->nullable();

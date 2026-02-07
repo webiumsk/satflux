@@ -9,6 +9,8 @@ services:
     depends_on:
       php:
         condition: service_healthy
+      reverb:
+        condition: service_started
     networks:
       - satflux
       - passbolt_default
@@ -54,6 +56,30 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+
+  reverb:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: satflux_reverb_prod
+    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+    volumes:
+      - .:/var/www:rw
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+    working_dir: /var/www
+    depends_on:
+      php:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - satflux
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      - REVERB_SERVER_HOST=0.0.0.0
+      - REVERB_SERVER_PORT=8080
 
   postgres:
     image: postgres:16-alpine

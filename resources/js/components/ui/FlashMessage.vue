@@ -1,7 +1,7 @@
 <template>
   <div
     v-show="flash.show"
-    class="fixed bottom-4 right-4 z-[9999] flex items-center w-full max-w-xs p-4 space-x-4 text-white rounded-lg shadow-lg dark:text-gray-400 dark:bg-gray-800 transition-all duration-300 transform"
+    class="fixed top-4 right-4 z-[9999] flex items-center w-full max-w-xs p-4 space-x-4 text-white rounded-lg shadow-lg dark:text-gray-400 dark:bg-gray-800 transition-all duration-300 transform"
     :class="[
       bgClass,
       flash.show ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0',

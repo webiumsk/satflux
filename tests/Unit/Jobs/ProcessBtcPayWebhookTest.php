@@ -40,7 +40,7 @@ class ProcessBtcPayWebhookTest extends TestCase
         Config::set('services.btcpay.subscription_plans.pro', 'plan-pro-123');
         User::factory()->create([
             'email' => 'customer@example.com',
-            'role' => 'merchant',
+            'role' => 'free',
         ]);
         $event = WebhookEvent::create([
             'event_type' => 'InvoiceSettled',

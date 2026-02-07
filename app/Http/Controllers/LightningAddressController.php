@@ -32,14 +32,29 @@ class LightningAddressController extends Controller
             );
 
             $addressList = $addresses ?? [];
-            $currentCount = is_array($addressList) ? count($addressList) : 0;
+            $storeCount = is_array($addressList) ? count($addressList) : 0;
             $maxAddresses = $store->user->getMaxLightningAddresses();
+
+            // When user has a limit, report total LN addresses across all their stores
+            $totalCount = $storeCount;
+            if ($maxAddresses !== null && $store->user->stores->count() > 1) {
+                $totalCount = 0;
+                foreach ($store->user->stores as $userStore) {
+                    $list = $this->lightningAddressService->listAddresses(
+                        $userStore->btcpay_store_id,
+                        $userApiKey
+                    );
+                    $totalCount += is_array($list) ? count($list) : 0;
+                }
+            } elseif ($maxAddresses !== null) {
+                $totalCount = $storeCount;
+            }
 
             return response()->json([
                 'data' => $addressList,
                 'limit' => [
                     'max' => $maxAddresses,
-                    'current' => $currentCount,
+                    'current' => $totalCount,
                     'unlimited' => $maxAddresses === null,
                 ],
             ]);
@@ -142,34 +157,42 @@ class LightningAddressController extends Controller
             }
         }
 
-        // If creating a new address, check the limit
+        // If creating a new address, check the limit (total across all user's stores)
         if ($isNewAddress) {
             $maxAddresses = $store->user->getMaxLightningAddresses();
-            
+
             if ($maxAddresses !== null) {
-                // User has a limit - check current count
+                $currentCount = 0;
                 try {
-                    $existingAddresses = $this->lightningAddressService->listAddresses(
-                        $store->btcpay_store_id,
-                        $userApiKey
-                    );
-                    $currentCount = is_array($existingAddresses) ? count($existingAddresses) : 0;
-                    
-                    if ($currentCount >= $maxAddresses) {
-                        $roleName = $store->user->role ?? 'merchant';
-                        return response()->json([
-                            'message' => "You have reached the maximum number of Lightning Addresses ({$maxAddresses}) for your {$roleName} plan. Please upgrade to add more addresses.",
-                        ], 403);
+                    foreach ($store->user->stores as $userStore) {
+                        $list = $this->lightningAddressService->listAddresses(
+                            $userStore->btcpay_store_id,
+                            $userApiKey
+                        );
+                        $currentCount += is_array($list) ? count($list) : 0;
                     }
                 } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
-                    // If we can't list addresses, log but continue - let BTCPay handle it
                     Log::warning('Failed to list addresses for limit check', [
                         'store_id' => $store->id,
                         'error' => $e->getMessage(),
                     ]);
+                    return response()->json([
+                        'message' => __('messages.lightning_address_limit_reached', [
+                            'max' => $maxAddresses,
+                            'plan' => $store->user->currentSubscriptionPlan()?->display_name ?? 'Free',
+                        ]),
+                    ], 403);
+                }
+
+                if ($currentCount >= $maxAddresses) {
+                    return response()->json([
+                        'message' => __('messages.lightning_address_limit_reached', [
+                            'max' => $maxAddresses,
+                            'plan' => $store->user->currentSubscriptionPlan()?->display_name ?? 'Free',
+                        ]),
+                    ], 403);
                 }
             }
-            // If maxAddresses is null (unlimited), no need to check
         }
 
         try {

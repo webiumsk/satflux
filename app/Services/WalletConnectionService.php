@@ -110,7 +110,7 @@ class WalletConnectionService
                 ['store_id' => $store->id],
                 [
                     'type' => $type,
-                    'secret_encrypted' => Crypt::encryptString($secret),
+                    'encrypted_secret' => Crypt::encryptString($secret),
                     'status' => 'needs_support',
                     'submitted_by_user_id' => $user->id,
                 ]
@@ -227,7 +227,7 @@ class WalletConnectionService
 
         foreach ($connections as $connection) {
             try {
-                $decrypted = Crypt::decryptString($connection->secret_encrypted);
+                $decrypted = Crypt::decryptString($connection->encrypted_secret);
                 // Compare descriptors (normalize by trimming)
                 if (trim($decrypted) === trim($descriptor)) {
                     $store = $connection->store;

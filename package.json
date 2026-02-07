@@ -13,6 +13,8 @@
         "version:major": "node scripts/bump-version.js major"
     },
     "dependencies": {
+        "laravel-echo": "^1.16.0",
+        "pusher-js": "^8.4.0-rc2",
         "@inertiajs/vue3": "^2.0",
         "@pinia/nuxt": "^0.5.1",
         "@tiptap/extension-code-block-lowlight": "^2.10.0",

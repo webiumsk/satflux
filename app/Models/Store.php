@@ -90,6 +90,22 @@ class Store extends Model
     }
 
     /**
+     * Get the PoS terminals for the store.
+     */
+    public function posTerminals(): HasMany
+    {
+        return $this->hasMany(PosTerminal::class, 'store_id');
+    }
+
+    /**
+     * Get PoS orders for the store.
+     */
+    public function posOrders(): HasMany
+    {
+        return $this->hasMany(PosOrder::class, 'store_id');
+    }
+
+    /**
      * Scope a query to only include stores for a specific user.
      */
     public function scopeForUser($query, int $userId)

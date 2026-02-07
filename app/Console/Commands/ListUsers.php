@@ -42,7 +42,7 @@ class ListUsers extends Command
             $rows[] = [
                 $user->id,
                 $user->email,
-                $user->role ?? 'merchant',
+                $user->role ?? 'free',
                 $user->email_verified_at ? '✓ Yes' : '✗ No',
                 $user->created_at->format('Y-m-d H:i:s'),
             ];

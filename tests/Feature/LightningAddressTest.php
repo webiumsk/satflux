@@ -20,11 +20,14 @@ class LightningAddressTest extends TestCase
         $this->app->forgetInstance(\App\Services\BtcPay\BtcPayClient::class);
 
         SubscriptionPlan::create([
+            'code' => 'free',
             'name' => 'free',
             'display_name' => 'Free',
             'price_eur' => 0,
+            'billing_period' => 'year',
             'max_stores' => 5,
             'max_api_keys' => 10,
+            'max_ln_addresses' => 1,
             'features' => [],
             'is_active' => true,
         ]);

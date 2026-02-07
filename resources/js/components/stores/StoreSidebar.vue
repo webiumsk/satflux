@@ -152,7 +152,7 @@
               :is="isInertia ? Link : RouterLink"
               :href="isInertia ? `/stores/${store.id}/lightning-addresses` : undefined"
               :to="!isInertia ? `/stores/${store.id}/lightning-addresses` : undefined"
-              class="flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="
                 isLinkActive(`/stores/${store.id}/lightning-addresses`, 'stores-lightning-addresses')
                   ? 'bg-gray-900 text-white'
@@ -161,6 +161,8 @@
               @click="showMobileMenu = false"
             >
               <span>{{ t('stores.ln_address') }}</span>
+              <span v-if="limits?.ln_addresses?.max != null" class="ml-2 bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded-full shrink-0">{{ limits.ln_addresses.current }} / {{ limits.ln_addresses.max }}</span>
+              <span v-else-if="limits?.ln_addresses?.unlimited" class="ml-2 text-xs text-gray-500 shrink-0">∞</span>
             </component>
           </div>          
 
@@ -228,7 +230,7 @@
               :is="isInertia ? Link : RouterLink"
               :href="isInertia ? `/stores/${store.id}/api-keys` : undefined"
               :to="!isInertia ? `/stores/${store.id}/api-keys` : undefined"
-              class="flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="
                 isLinkActive(`/stores/${store.id}/api-keys`, 'stores-api-keys')
                   ? 'bg-gray-900 text-white'
@@ -236,10 +238,14 @@
               "
               @click="showMobileMenu = false"
             >
-              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-              </svg>
-              {{ t('stores.eshop_integration') }}
+              <span class="flex items-center">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                </svg>
+                {{ t('stores.eshop_integration') }}
+              </span>
+              <span v-if="limits?.api_keys?.max != null" class="ml-2 bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded-full shrink-0">{{ limits.api_keys.current }} / {{ limits.api_keys.max }}</span>
+              <span v-else-if="limits?.api_keys?.unlimited" class="ml-2 text-xs text-gray-500 shrink-0">∞</span>
             </component>
           </div>
         </nav>
@@ -300,8 +306,10 @@ import { Link, router as inertiaRouter, usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import { useAppsStore } from '../../store/apps';
 import { useStoresStore } from '../../store/stores';
+import { useAccountLimits } from '../../composables/useAccountLimits';
 
 const { t } = useI18n();
+const { limits, load: loadLimits } = useAccountLimits();
 const isInertia = inject<boolean>('inertia', false);
 const vueRouter = !isInertia ? useRouter() : null;
 const route = !isInertia ? useRoute() : null;
@@ -405,6 +413,11 @@ onMounted(async () => {
   // Load stores if not already loaded
   if (storesStore.stores.length === 0) {
     await storesStore.fetchStores();
+  }
+
+  // Load account limits for sidebar badges (LN addresses, API keys)
+  if (props.store) {
+    loadLimits().catch(() => {});
   }
 
   // Close dropdown on outside click
