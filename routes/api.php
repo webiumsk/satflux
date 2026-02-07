@@ -180,6 +180,7 @@ Route::get('/lnurl-auth/challenge-status/{k1}', [LnurlAuthController::class, 'ch
 Route::middleware(['auth:sanctum'])->group(function () {
     // User/Account routes
     Route::get('/user', [AccountController::class, 'user']);
+    Route::get('/user/limits', [AccountController::class, 'limits']);
     Route::put('/user', [AccountController::class, 'updateProfile']);
     Route::put('/user/password', [AccountController::class, 'updatePassword']);
 
