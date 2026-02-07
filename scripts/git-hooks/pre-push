@@ -44,27 +44,25 @@ if [ "$is_main_branch" = true ]; then
     fi
     
     # Get current version before bump
-    current_version=$(node -p "require('$package_json').version")
+    current_version=$(node -p "JSON.parse(require('fs').readFileSync('$package_json','utf8')).version")
     
     # Bump patch version
     node "$bump_script" patch
     
-    # Get new version
-    new_version=$(node -p "require('$package_json').version")
+    # Get new version (same way - ESM project may not support require)
+    new_version=$(node -p "JSON.parse(require('fs').readFileSync('$package_json','utf8')).version")
     
     # Check if version actually changed
     if [ "$current_version" != "$new_version" ]; then
         echo "Version bumped: $current_version → $new_version"
         
-        # Stage package.json
+        # Stage package.json and amend into the commit being pushed (so this push includes it)
         git add "$package_json"
+        git commit --amend -m "chore: bump version to $new_version" --no-verify
         
-        # Commit with version bump message
-        git commit -m "chore: bump version to $new_version" --no-verify
-        
-        echo "Version bump committed. Continuing with push..."
+        echo "Version bump amended. Continuing with push..."
     else
-        echo "Version unchanged, skipping commit."
+        echo "Version unchanged, skipping."
     fi
 fi
 
