@@ -5,8 +5,12 @@
  * Usage: node scripts/bump-version.js [patch|minor|major]
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Get version type from command line argument
 const versionType = process.argv[2] || 'patch';
@@ -72,11 +76,10 @@ try {
     JSON.stringify(packageJson, null, 2) + '\n',
     'utf8'
   );
-  
+
   console.log(`Version bumped: ${currentVersion} → ${newVersion} (${versionType})`);
   console.log(newVersion);
 } catch (error) {
   console.error(`Error writing package.json: ${error.message}`);
   process.exit(1);
 }
-
