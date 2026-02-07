@@ -73,6 +73,7 @@ class AccountController extends Controller
                     'unlimited' => true,
                 ],
                 'ln_addresses' => [
+                    'current' => 0,
                     'max' => null,
                     'unlimited' => true,
                 ],
@@ -100,8 +101,23 @@ class AccountController extends Controller
 
             $storeCount = $user->stores()->count();
             $apiKeyCount = 0;
+            $lnAddressesCount = 0;
             foreach ($user->stores as $store) {
                 $apiKeyCount += $store->apiKeys()->count();
+            }
+            if ($maxLnAddresses !== null || $user->hasUnlimitedAccess()) {
+                try {
+                    $apiKey = $user->getBtcPayApiKeyOrFail();
+                    foreach ($user->stores as $store) {
+                        $list = $this->lightningAddressService->listAddresses(
+                            $store->btcpay_store_id,
+                            $apiKey
+                        );
+                        $lnAddressesCount += is_array($list) ? count($list) : 0;
+                    }
+                } catch (\Throwable $e) {
+                    // Leave count at 0 on BTCPay errors
+                }
             }
 
             return [
@@ -111,6 +127,7 @@ class AccountController extends Controller
                     'unlimited' => false,
                 ],
                 'ln_addresses' => [
+                    'current' => $lnAddressesCount,
                     'max' => $maxLnAddresses,
                     'unlimited' => $maxLnAddresses === null,
                 ],
@@ -158,74 +175,6 @@ class AccountController extends Controller
         ]);
 
         return response()->json(['message' => __('messages.password_updated')]);
-    }
-
-    /**
-     * Get current usage and plan limits for sidebar/UI (stores, LN addresses, API keys).
-     * Cached per user for 60 seconds to avoid hammering BTCPay for LN count.
-     */
-    public function limits(Request $request)
-    {
-        $user = $request->user();
-        $plan = $user->currentSubscriptionPlan();
-
-        $cacheKey = 'account_limits_' . $user->id;
-        $limits = Cache::remember($cacheKey, 60, function () use ($user, $plan) {
-            $planCode = $plan ? strtolower($plan->code ?? $plan->name ?? '') : '';
-            $isFreePlan = ($plan === null || $planCode === 'free');
-
-            $storesCount = $user->stores()->count();
-            $maxStores = $plan?->max_stores;
-            if ($isFreePlan && $maxStores === null) {
-                $maxStores = 1;
-            }
-
-            $apiKeysCount = 0;
-            foreach ($user->stores as $store) {
-                $apiKeysCount += $store->apiKeys()->count();
-            }
-            $maxApiKeys = $plan?->max_api_keys;
-            if ($isFreePlan && $maxApiKeys === null) {
-                $maxApiKeys = 1;
-            }
-
-            $lnAddressesCount = 0;
-            $maxLnAddresses = $user->getMaxLightningAddresses();
-            if ($maxLnAddresses !== null || $user->hasUnlimitedAccess()) {
-                try {
-                    $apiKey = $user->getBtcPayApiKeyOrFail();
-                    foreach ($user->stores as $store) {
-                        $list = $this->lightningAddressService->listAddresses(
-                            $store->btcpay_store_id,
-                            $apiKey
-                        );
-                        $lnAddressesCount += is_array($list) ? count($list) : 0;
-                    }
-                } catch (\Throwable $e) {
-                    // Leave count at 0 on BTCPay errors
-                }
-            }
-
-            return [
-                'stores' => [
-                    'current' => $storesCount,
-                    'max' => $maxStores,
-                    'unlimited' => $maxStores === null,
-                ],
-                'ln_addresses' => [
-                    'current' => $lnAddressesCount,
-                    'max' => $maxLnAddresses,
-                    'unlimited' => $maxLnAddresses === null,
-                ],
-                'api_keys' => [
-                    'current' => $apiKeysCount,
-                    'max' => $maxApiKeys,
-                    'unlimited' => $maxApiKeys === null,
-                ],
-            ];
-        });
-
-        return response()->json($limits);
     }
 }
 
