@@ -206,6 +206,8 @@
     "api_key_create_failed": "Nepodarilo sa vytvoriť API kľúč",
     "api_key_limit_reached": "Dosiahli ste maximálny počet API kľúčov ({max}) pre váš plán.",
     "store_limit_reached": "Dosiahli ste maximálny počet obchodov ({max}) pre váš plán.",
+    "pos_advanced_options_pro_only": "Pokročilé možnosti môžu meniť len plány Pro a vyššie. Pre úpravu týchto nastavení prejdite na vyšší plán.",
+    "available_in_pro": "Dostupné v Pro",
     "view_plan_options": "Zobraziť možnosti plánu",
     "back_to_stores": "Späť na obchody",
     "point_of_sale": "PoS Terminál",

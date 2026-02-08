@@ -205,6 +205,8 @@
     "api_key_create_failed": "Failed to create API key",
     "api_key_limit_reached": "You have reached the maximum number of API keys ({max}) for your current plan.",
     "store_limit_reached": "You have reached the maximum number of stores ({max}) for your current plan.",
+    "pos_advanced_options_pro_only": "Advanced options can be edited on Pro plan and above. Upgrade to change these settings.",
+    "available_in_pro": "Available in Pro",
     "view_plan_options": "View plan options",
     "back_to_stores": "Back to stores",
     "point_of_sale": "Point of Sale",
