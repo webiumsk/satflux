@@ -1,0 +1,110 @@
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: satflux.io_nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./public:/var/www/public
+      - ./storage:/var/www/storage
+    depends_on:
+      - php
+      - reverb
+    networks:
+      - satflux.io
+
+  php:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: satflux.io_php
+    volumes:
+      - .:/var/www
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    working_dir: /var/www
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - satflux.io
+    environment:
+      - PHP_OPCACHE_ENABLE=1
+
+  reverb:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: satflux.io_reverb
+    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+    volumes:
+      - .:/var/www
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    working_dir: /var/www
+    depends_on:
+      - php
+      - redis
+    networks:
+      - satflux.io
+    environment:
+      - REVERB_SERVER_HOST=0.0.0.0
+      - REVERB_SERVER_PORT=8080
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: satflux.io_postgres
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-satflux.io}
+      POSTGRES_USER: ${DB_USERNAME:-satflux.io}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-satflux.io}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - satflux.io
+
+  redis:
+    image: redis:7-alpine
+    container_name: satflux.io_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - satflux.io
+      
+  mailpit:
+    image: axllent/mailpit
+    container_name: satflux.io_mailpit
+    ports:
+      - "1025:1025"  # SMTP server
+      - "8025:8025"  # Web UI
+    networks:
+      - satflux.io
+
+  adminer:
+    image: adminer
+    container_name: satflux.io_adminer
+    ports:
+      - "8081:8080"
+    networks:
+      - satflux.io
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  satflux.io:
+    driver: bridge
+
+
+
+
+
+
+
+

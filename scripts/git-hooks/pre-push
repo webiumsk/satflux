@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# Pre-push git hook to automatically bump patch version when pushing to main/master
+
+# Read refs from stdin (we need to consume them to know target branch)
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+main_branches=("main" "master")
+is_main_branch=false
+push_remote=""
+push_branch=""
+
+while read local_ref local_sha remote_ref remote_sha; do
+    remote_branch=$(echo "$remote_ref" | sed 's|refs/heads/||')
+    # Get remote name from the ref (e.g. refs/remotes/origin/master -> origin)
+    push_remote=$(git config --get "branch.${current_branch}.remote" 2>/dev/null || echo "origin")
+    push_branch="$remote_branch"
+    for main_branch in "${main_branches[@]}"; do
+        if [ "$remote_branch" = "$main_branch" ]; then
+            is_main_branch=true
+            break 2
+        fi
+    done
+done
+
+# Only bump version if pushing to main/master branch
+if [ "$is_main_branch" = true ]; then
+    echo "Pushing to main branch detected. Automatically bumping patch version..."
+    
+    project_root=$(git rev-parse --show-toplevel)
+    bump_script="$project_root/scripts/bump-version.js"
+    package_json="$project_root/package.json"
+    
+    if [ ! -f "$bump_script" ] || [ ! -f "$package_json" ]; then
+        echo "Warning: bump-version.js or package.json not found, skipping."
+        exit 0
+    fi
+    
+    current_version=$(node -p "JSON.parse(require('fs').readFileSync('$package_json','utf8')).version")
+    node "$bump_script" patch
+    new_version=$(node -p "JSON.parse(require('fs').readFileSync('$package_json','utf8')).version")
+    
+    if [ "$current_version" != "$new_version" ]; then
+        echo "Version bumped: $current_version → $new_version"
+        git add "$package_json"
+        git commit -m "chore: bump version to $new_version" --no-verify
+        
+        # Push ourselves so the *current* ref (with the new commit) is pushed.
+        # We then abort the original push (exit 1) so Git doesn't push the old ref.
+        echo "Pushing (including version bump)..."
+        if git push "$push_remote" "$push_branch"; then
+            echo "Version bump pushed successfully. (Sync is complete; ignore IDE error if shown.)"
+            exit 1
+        else
+            echo "Push failed. Aborting."
+            git reset --soft HEAD~1
+            exit 1
+        fi
+    fi
+fi
+
+exit 0
+
