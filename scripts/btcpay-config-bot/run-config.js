@@ -84,11 +84,34 @@ export async function runConfigForConnection(connectionId) {
     const lightningUrl = `${btcpayUrl}/stores/${btcpay_store_id}/lightning/BTC/setup`;
     logger.info('btcpay_lightning', 'Navigating to Lightning setup', { url: lightningUrl });
     await page.goto(lightningUrl, { waitUntil: 'networkidle', timeout: 30000 });
+    await new Promise((r) => setTimeout(r, 2000)); // let dynamic content (Blazor etc.) render
 
-    // Click "Use custom node" label (natural user flow)
-    logger.info('btcpay_lightning', 'Clicking Use custom node');
-    await page.click('label[for="LightningNodeType-Custom"]');
-    await page.waitForSelector('#ConnectionString', { state: 'visible', timeout: 10000 });
+    await page.waitForSelector('#LightningNodeType-Custom', { state: 'attached', timeout: 15000 });
+
+    // Switch to "Use custom node" tab – try label first, then Bootstrap Tab API (BTCPay versions differ)
+    const customLabel = page.locator('label[for="LightningNodeType-Custom"]');
+    const labelVisible = await customLabel.isVisible().catch(() => false);
+    if (labelVisible) {
+      logger.info('btcpay_lightning', 'Clicking Use custom node (label)');
+      await customLabel.click();
+    } else {
+      logger.info('btcpay_lightning', 'Switching to Use custom node (Bootstrap Tab)');
+      await page.evaluate(() => {
+        const tabTrigger = document.querySelector('#LightningNodeType-Custom');
+        if (!tabTrigger) return;
+        if (typeof bootstrap !== 'undefined' && bootstrap.Tab) {
+          const tab = bootstrap.Tab.getOrCreateInstance(tabTrigger);
+          tab.show();
+        } else {
+          tabTrigger.checked = true;
+          tabTrigger.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
+      await page.waitForSelector('#CustomSetup.tab-pane.show', { state: 'visible', timeout: 5000 }).catch(() => {});
+      await new Promise((r) => setTimeout(r, 400));
+    }
+    await page.locator('#LightningNodeType-Custom').check(); // ensure form submits Custom
+    await page.waitForSelector('#ConnectionString', { state: 'visible', timeout: 15000 });
 
     await page.fill('#ConnectionString', secret);
     await new Promise((r) => setTimeout(r, 300));
