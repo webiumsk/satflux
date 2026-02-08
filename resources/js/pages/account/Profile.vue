@@ -43,8 +43,8 @@
                     id="name"
                     v-model="profileForm.name"
                     type="text"
-                    required
                     class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+                    :placeholder="t('account.name_optional')"
                   />
                 </div>
               </div>
@@ -57,10 +57,10 @@
                 <div class="mt-1">
                   <input
                     id="email"
-                    v-model="profileForm.email"
+                    :value="authStore.user?.email"
                     type="email"
-                    required
-                    class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+                    disabled
+                    class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm text-gray-400 bg-gray-800 cursor-not-allowed sm:text-sm"
                   />
                 </div>
               </div>
@@ -548,7 +548,6 @@ const { planFeatures, load: loadPlanFeatures } = usePlanFeatures();
 
 const profileForm = ref({
   name: "",
-  email: "",
 });
 
 const passwordForm = ref({
@@ -630,7 +629,6 @@ onMounted(async () => {
   await Promise.all([loadPricing(), loadPlanFeatures()]);
   if (authStore.user) {
     profileForm.value.name = authStore.user.name || "";
-    profileForm.value.email = authStore.user.email || "";
   }
 
   // Load subscription details if user has paid plan or might have subscription
@@ -731,7 +729,7 @@ async function upgradePlan(plan: string) {
 async function handleUpdateProfile() {
   profileLoading.value = true;
   try {
-    await api.put("/user", profileForm.value);
+    await api.put("/user", { name: profileForm.value.name ?? null });
     await authStore.fetchUser();
     alert(t("account.profile_updated"));
   } catch (error) {

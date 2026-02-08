@@ -37,32 +37,31 @@ class AccountTest extends TestCase
 
         $response = $this->putJson('/api/user', [
             'name' => 'New Name',
-            'email' => 'new@example.com',
         ]);
 
         $response->assertStatus(200);
         $response->assertJson(['message' => __('messages.profile_updated')]);
         $response->assertJsonPath('user.name', 'New Name');
-        $response->assertJsonPath('user.email', 'new@example.com');
+        $response->assertJsonPath('user.email', 'old@example.com');
 
         $user->refresh();
         $this->assertSame('New Name', $user->name);
-        $this->assertSame('new@example.com', $user->email);
+        $this->assertSame('old@example.com', $user->email);
     }
 
-    public function test_profile_update_validates_email(): void
+    public function test_profile_update_cannot_change_email(): void
     {
-        $other = User::factory()->create(['email' => 'taken@example.com']);
         $user = User::factory()->create(['email' => 'me@example.com']);
         Sanctum::actingAs($user);
 
         $response = $this->putJson('/api/user', [
             'name' => 'Me',
-            'email' => 'taken@example.com',
+            'email' => 'other@example.com',
         ]);
 
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors(['email']);
+        $response->assertStatus(200);
+        $user->refresh();
+        $this->assertSame('me@example.com', $user->email);
     }
 
     public function test_user_can_update_password(): void
