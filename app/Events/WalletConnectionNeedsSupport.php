@@ -13,8 +13,7 @@ use Illuminate\Queue\SerializesModels;
 
 /**
  * Fired when a wallet connection needs support (new or merchant re-submitted).
- * Broadcasts immediately (ShouldBroadcastNow) so support/admin get an instant in-app toast.
- * Mail is still sent via SupportNeededNotification; this event is for real-time only.
+ * In-app broadcast only (instant toast for support). Mail and Discord are sent only when the bot fails (bot-failed).
  */
 class WalletConnectionNeedsSupport implements ShouldBroadcastNow
 {
@@ -47,7 +46,7 @@ class WalletConnectionNeedsSupport implements ShouldBroadcastNow
     }
 
     /**
-     * Data to broadcast (same shape as SupportNeededNotification for frontend).
+     * Data to broadcast for in-app toast / list update.
      */
     public function broadcastWith(): array
     {

@@ -7,7 +7,6 @@ use App\Models\AuditLog;
 use App\Models\Store;
 use App\Models\User;
 use App\Models\WalletConnection;
-use App\Notifications\SupportNeededNotification;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -137,7 +136,8 @@ class WalletConnectionService
             throw $e;
         }
 
-        // Notify support users when a connection needs support (new or re-submitted after merchant change)
+        // When connection needs support: only in-app broadcast + optional bot job.
+        // Admin/support email and Discord are sent only when the bot fails (POST bot-failed), not when status becomes needs_support.
         if ($connection->status === 'needs_support') {
             // BTCPay config bot (disabled by default; use poller on host instead: node scripts/btcpay-config-bot/poll.js)
             if (config('services.btcpay_config_bot.enabled') && config('services.btcpay_config_bot.use_job', false)) {
@@ -154,7 +154,7 @@ class WalletConnectionService
                 }
             }
 
-            // Instant in-app notification via Reverb (no queue) so support can act immediately
+            // In-app real-time update only (no mail, no Discord here)
             if (config('broadcasting.default') !== 'null') {
                 try {
                     event(new WalletConnectionNeedsSupport($connection, $store));
@@ -165,59 +165,6 @@ class WalletConnectionService
                 } catch (\Exception $e) {
                     Log::error('Failed to broadcast WalletConnectionNeedsSupport', [
                         'connection_id' => $connection->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
-
-            // Discord webhook (instant, works even when no one has browser open)
-            $webhookUrl = config('services.discord.support_webhook_url');
-            if ($webhookUrl) {
-                try {
-                    $storeName = $store->name;
-                    $type = $connection->type === 'blink' ? 'Blink' : 'Aqua';
-                    $panelUrl = rtrim(config('app.url'), '/') . '/support/wallet-connections';
-
-                    Http::post($webhookUrl, [
-                        'content' => "🔔 **Wallet connection needs support**: {$storeName} ({$type})",
-                        'embeds' => [
-                            [
-                                'title' => 'Wallet Connection Needs Support',
-                                'description' => "**Store:** {$storeName}\n**Type:** {$type}\n**Status:** Needs Support",
-                                'url' => $panelUrl,
-                                'color' => 5814783, // indigo
-                            ],
-                        ],
-                    ]);
-                    Log::info('Discord webhook sent', ['connection_id' => $connection->id]);
-                } catch (\Exception $e) {
-                    Log::error('Failed to send Discord webhook', [
-                        'connection_id' => $connection->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
-
-            // Email notification (can be queued)
-            $supportUsers = User::whereIn('role', ['support', 'admin'])
-                ->whereNotNull('email')
-                ->whereNotNull('email_verified_at')
-                ->get();
-
-            foreach ($supportUsers as $supportUser) {
-                try {
-                    $supportUser->notify(new SupportNeededNotification($connection, $store));
-                    Log::info('Support needed notification sent', [
-                        'connection_id' => $connection->id,
-                        'store_id' => $store->id,
-                        'support_user_id' => $supportUser->id,
-                        'support_user_email' => $supportUser->email,
-                    ]);
-                } catch (\Exception $e) {
-                    Log::error('Failed to send support needed notification', [
-                        'connection_id' => $connection->id,
-                        'store_id' => $store->id,
-                        'support_user_id' => $supportUser->id,
                         'error' => $e->getMessage(),
                     ]);
                 }
