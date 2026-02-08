@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Http\Requests\WalletConnectionStoreRequest;
 use App\Models\AuditLog;
 use App\Models\Store;
+use App\Models\User;
 use App\Models\WalletConnection;
+use App\Notifications\WalletConnectionBotFailedNotification;
 use App\Services\BtcPay\LightningService;
 use App\Services\WalletConnectionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -334,10 +337,12 @@ class WalletConnectionController extends Controller
 
     /**
      * Mark wallet connection as connected (support role only).
+     * Body: { "notify_merchant": false } to skip "wallet ready" email (e.g. when bot marks connected).
      */
     public function markConnected(Request $request, WalletConnection $connection)
     {
-        $this->service->markConnected($connection, $request->user());
+        $notifyMerchant = $request->boolean('notify_merchant', true);
+        $this->service->markConnected($connection, $request->user(), $notifyMerchant);
 
         return response()->json([
             'data' => [
@@ -346,6 +351,69 @@ class WalletConnectionController extends Controller
             ],
             'message' => 'Wallet connection marked as connected',
         ]);
+    }
+
+    /**
+     * Report that the BTCPay config bot failed for this connection (support role only).
+     * Sends email to support so they can configure manually.
+     */
+    public function botFailed(Request $request, WalletConnection $connection)
+    {
+        $request->validate(['error' => ['required', 'string', 'max:2000']]);
+
+        $connection->load('store');
+        $store = $connection->store;
+        $errorMessage = $request->input('error');
+        $storeName = $store->name;
+        $type = $connection->type === 'blink' ? 'Blink' : 'Aqua';
+        $panelUrl = rtrim(config('app.url'), '/') . '/support/wallet-connections';
+
+        // Discord: only on problems (same webhook as "needs support")
+        $webhookUrl = config('services.discord.support_webhook_url');
+        if ($webhookUrl) {
+            try {
+                Http::post($webhookUrl, [
+                    'content' => "⚠️ **BTCPay config bot failed**: {$storeName} ({$type})",
+                    'embeds' => [
+                        [
+                            'title' => 'Config Bot Failed',
+                            'description' => "**Store:** {$storeName}\n**Type:** {$type}\n**Error:** " . substr($errorMessage, 0, 1000),
+                            'url' => $panelUrl,
+                            'color' => 15158332, // red
+                        ],
+                    ],
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to send Discord webhook (bot-failed)', [
+                    'connection_id' => $connection->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        /** @var \Illuminate\Database\Eloquent\Collection<int, User> $supportUsers */
+        $supportUsers = User::whereIn('role', ['support', 'admin'])
+            ->whereNotNull('email')
+            ->whereNotNull('email_verified_at')
+            ->get();
+
+        foreach ($supportUsers as $user) {
+            try {
+                $user->notify(new WalletConnectionBotFailedNotification(
+                    $connection,
+                    $store,
+                    $errorMessage
+                ));
+            } catch (\Exception $e) {
+                Log::error('Failed to send bot-failed notification', [
+                    'connection_id' => $connection->id,
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return response()->json(['message' => 'Failure reported']);
     }
 
     /**

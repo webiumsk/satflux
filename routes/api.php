@@ -364,6 +364,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/support/wallet-connections/{connection}/btcpay-store-url', [WalletConnectionController::class, 'getBtcPayStoreUrl']);
         Route::put('/support/wallet-connections/{connection}/mark-connected', [WalletConnectionController::class, 'markConnected'])
             ->middleware(AuditLog::class . ':wallet_connection.marked_connected');
+        Route::post('/support/wallet-connections/{connection}/bot-failed', [WalletConnectionController::class, 'botFailed']);
     });
 
     // Admin routes
