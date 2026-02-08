@@ -318,11 +318,15 @@ class WalletConnectionController extends Controller
             ], 500);
         }
 
+        $connection->load('store');
+
         return response()->json([
             'data' => [
                 'secret' => $plaintext,
                 'masked_secret' => $connection->masked_secret,
                 'revealed_at' => $connection->revealed_last_at,
+                'btcpay_store_id' => $connection->store?->btcpay_store_id,
+                'store_name' => $connection->store?->name,
             ],
             'message' => 'Secret revealed (will auto-hide after 30 seconds)',
         ]);

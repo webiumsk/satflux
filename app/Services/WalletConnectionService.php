@@ -139,6 +139,21 @@ class WalletConnectionService
 
         // Notify support users when a connection needs support (new or re-submitted after merchant change)
         if ($connection->status === 'needs_support') {
+            // BTCPay config bot (disabled by default; use poller on host instead: node scripts/btcpay-config-bot/poll.js)
+            if (config('services.btcpay_config_bot.enabled') && config('services.btcpay_config_bot.use_job', false)) {
+                try {
+                    \App\Jobs\ConfigureWalletViaBtcpPayUI::dispatch($connection);
+                    Log::info('ConfigureWalletViaBtcpPayUI job dispatched', [
+                        'connection_id' => $connection->id,
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to dispatch ConfigureWalletViaBtcpPayUI job', [
+                        'connection_id' => $connection->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
             // Instant in-app notification via Reverb (no queue) so support can act immediately
             if (config('broadcasting.default') !== 'null') {
                 try {
