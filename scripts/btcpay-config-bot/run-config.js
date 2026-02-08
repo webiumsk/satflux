@@ -83,10 +83,20 @@ export async function runConfigForConnection(connectionId) {
 
     const lightningUrl = `${btcpayUrl}/stores/${btcpay_store_id}/lightning/BTC/setup`;
     logger.info('btcpay_lightning', 'Navigating to Lightning setup', { url: lightningUrl });
-    await page.goto(lightningUrl, { waitUntil: 'networkidle', timeout: 30000 });
-    await new Promise((r) => setTimeout(r, 2000)); // let dynamic content (Blazor etc.) render
+    await page.goto(lightningUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await new Promise((r) => setTimeout(r, 4000)); // let Blazor/JS render (slower in headless)
 
-    await page.waitForSelector('#LightningNodeType-Custom', { state: 'attached', timeout: 15000 });
+    try {
+      await page.waitForSelector('#LightningNodeType-Custom', { state: 'attached', timeout: 45000 });
+    } catch (e) {
+      const currentUrl = page.url();
+      const bodyText = await page.locator('body').innerText().catch(() => '');
+      logger.error('btcpay_lightning_no_form', 'Lightning setup form not found', {
+        currentUrl,
+        bodySnippet: bodyText.slice(0, 300),
+      });
+      throw new Error(`Lightning setup form not found. Page: ${currentUrl}. Check access (403?) or BTCPay version.`);
+    }
 
     // Switch to "Use custom node" tab – try label first, then Bootstrap Tab API (BTCPay versions differ)
     const customLabel = page.locator('label[for="LightningNodeType-Custom"]');
