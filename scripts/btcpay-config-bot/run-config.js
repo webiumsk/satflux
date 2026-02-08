@@ -8,8 +8,8 @@ import { logger } from './logger.js';
 
 export async function runConfigForConnection(connectionId) {
   const panelUrl = (process.env.PANEL_URL || process.env.BTCPAY_BOT_PANEL_URL || process.env.APP_URL || '')?.replace(/\/$/, '');
-  const panelToken = process.env.PANEL_BOT_TOKEN;
-  const panelPassword = process.env.PANEL_BOT_PASSWORD;
+  const panelToken = (process.env.PANEL_BOT_TOKEN || '').trim();
+  const panelPassword = (process.env.PANEL_BOT_PASSWORD || '').trim();
   const btcpayUrl = process.env.BTCPAY_BASE_URL?.replace(/\/$/, '');
   const btcpayEmail = process.env.BTCPAY_BOT_EMAIL;
   const btcpayPassword = process.env.BTCPAY_BOT_PASSWORD;
@@ -74,34 +74,33 @@ export async function runConfigForConnection(connectionId) {
     await page.click('button[type="submit"], input[type="submit"], button:has-text("Log in"), button:has-text("Login")');
     await page.waitForLoadState('networkidle');
 
-    const loginError = await page.locator('.alert-danger, .text-danger, [role="alert"]').first().textContent().catch(() => null);
-    if (loginError) {
-      throw new Error(`BTCPay login failed: ${loginError.trim()}`);
+    // "Logout" appears when logged in – don't treat as error
+    const loginError = await page.locator('.alert-danger, .text-danger').first().textContent().catch(() => null);
+    const err = loginError?.trim();
+    if (err && !err.toLowerCase().includes('logout')) {
+      throw new Error(`BTCPay login failed: ${err}`);
     }
 
     const lightningUrl = `${btcpayUrl}/stores/${btcpay_store_id}/lightning/BTC/setup`;
     logger.info('btcpay_lightning', 'Navigating to Lightning setup', { url: lightningUrl });
     await page.goto(lightningUrl, { waitUntil: 'networkidle', timeout: 30000 });
 
-    const customNodeSel = '#LightningNodeType-Custom, label[for="LightningNodeType-Custom"]';
-    const customEl = page.locator(customNodeSel).first();
-    if (await customEl.isVisible().catch(() => false)) {
-      logger.info('btcpay_lightning', 'Clicking Use custom node');
-      await customEl.click();
-    }
+    // Click "Use custom node" label (natural user flow)
+    logger.info('btcpay_lightning', 'Clicking Use custom node');
+    await page.click('label[for="LightningNodeType-Custom"]');
+    await page.waitForSelector('#ConnectionString', { state: 'visible', timeout: 10000 });
 
-    const connSel = '#ConnectionString, textarea[name="ConnectionString"], [id*="connection"], textarea';
-    await page.waitForSelector(connSel, { state: 'visible', timeout: 15000 });
-    await page.fill(connSel, secret);
+    await page.fill('#ConnectionString', secret);
+    await new Promise((r) => setTimeout(r, 300));
 
     logger.info('btcpay_lightning', 'Clicking Save');
-    const saveSel = '#page-primary, button:has-text("Save"), button[type="submit"]';
-    await page.click(saveSel);
+    await page.click('#page-primary');
     await page.waitForLoadState('networkidle');
 
     const btcpayError = await page.locator('.alert-danger, .text-danger, [role="alert"]').first().textContent().catch(() => null);
-    if (btcpayError) {
-      throw new Error(`BTCPay save error: ${btcpayError.trim()}`);
+    const saveErr = btcpayError?.trim();
+    if (saveErr && !saveErr.toLowerCase().includes('logout')) {
+      throw new Error(`BTCPay save error: ${saveErr}`);
     }
 
     logger.info('btcpay_lightning', 'Lightning setup completed');
@@ -120,8 +119,12 @@ export async function runConfigForConnection(connectionId) {
     },
   });
 
+  const markBody = await markRes.json().catch(() => ({}));
   if (!markRes.ok) {
-    const markBody = await markRes.json().catch(() => ({}));
+    logger.error('panel_mark_connected_failed', 'Mark connected failed', {
+      status: markRes.status,
+      body: markBody,
+    });
     throw new Error(`Mark connected failed: ${markRes.status} ${JSON.stringify(markBody)}`);
   }
 

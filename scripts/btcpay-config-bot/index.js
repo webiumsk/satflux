@@ -17,7 +17,9 @@ import { logger } from './logger.js';
 import { runConfigForConnection } from './run-config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-config({ path: resolve(__dirname, '../../.env') });
+const root = resolve(__dirname, '../..');
+config({ path: resolve(root, '.env') });
+config({ path: resolve(root, '.env.production') });
 config();
 
 const connectionId = process.argv[2] || process.env.BTCPAY_BOT_CONNECTION_ID;

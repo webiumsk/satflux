@@ -330,6 +330,19 @@ class WalletConnectionService
             'status' => 'connected',
         ]);
 
+        // Auto-complete store checklist "connect_wallet" item
+        $store = $connection->store;
+        $checklistItem = \App\Models\StoreChecklist::where('store_id', $store->id)
+            ->where('item_key', 'connect_wallet')
+            ->first();
+        if ($checklistItem && ! $checklistItem->isCompleted()) {
+            $checklistItem->markAsCompleted();
+            Log::info('Store checklist connect_wallet auto-completed', [
+                'store_id' => $store->id,
+                'connection_id' => $connection->id,
+            ]);
+        }
+
         // Audit log
         AuditLog::log(
             'wallet_connection.marked_connected',

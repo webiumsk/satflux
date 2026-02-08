@@ -195,7 +195,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStoresStore } from '../../store/stores';
 import { useAppsStore } from '../../store/apps';
@@ -267,6 +267,8 @@ function updateSection(section: string) {
   showExports.value = section === 'exports';
 }
 
+let pollInterval: ReturnType<typeof setInterval> | null = null;
+
 onMounted(async () => {
   const storeId = route.params.id as string;
   loading.value = true;
@@ -280,10 +282,32 @@ onMounted(async () => {
       await storesStore.fetchDashboard(storeId);
       await appsStore.fetchApps(storeId);
     }
+
+    // Poll store when wallet connection is in "needs_support" so merchant sees update when bot completes
+    if (store.value?.wallet_connection?.status === 'needs_support') {
+      pollInterval = setInterval(async () => {
+        const updated = await storesStore.fetchStore(storeId);
+        store.value = updated;
+        if (updated?.wallet_connection?.status !== 'needs_support' && pollInterval) {
+          clearInterval(pollInterval);
+          pollInterval = null;
+          if (!route.query.section) {
+            await storesStore.fetchDashboard(storeId);
+            await appsStore.fetchApps(storeId);
+          }
+        }
+      }, 15000);
+    }
   } catch (e) {
       console.error("Error loading store", e);
   } finally {
     loading.value = false;
+  }
+});
+
+onUnmounted(() => {
+  if (pollInterval) {
+    clearInterval(pollInterval);
   }
 });
 

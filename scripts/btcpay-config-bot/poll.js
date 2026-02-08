@@ -21,7 +21,9 @@ import { logger } from './logger.js';
 import { runConfigForConnection } from './run-config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-config({ path: resolve(__dirname, '../../.env') });
+const root = resolve(__dirname, '../..');
+config({ path: resolve(root, '.env') });
+config({ path: resolve(root, '.env.production') });
 config();
 
 const args = process.argv.slice(2);
@@ -30,7 +32,7 @@ const intervalIdx = args.indexOf('--interval');
 const intervalSec = intervalIdx >= 0 ? parseInt(args[intervalIdx + 1], 10) || 120 : 120;
 
 const panelUrl = (process.env.PANEL_URL || process.env.BTCPAY_BOT_PANEL_URL || process.env.APP_URL || '')?.replace(/\/$/, '');
-const panelToken = process.env.PANEL_BOT_TOKEN;
+const panelToken = (process.env.PANEL_BOT_TOKEN || '').trim();
 
 async function fetchNeedsSupport() {
   const apiBase = `${panelUrl}/api`;
