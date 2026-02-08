@@ -23,6 +23,9 @@ yarn-error.log
 /storage/logs/*.log
 !/storage/logs/.gitkeep
 
+# BTCPay config bot runtime (logs, etc.)
+/scripts/btcpay-config-bot/storage/
+
 
 
 
