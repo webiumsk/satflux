@@ -140,3 +140,43 @@ php artisan wallet-connections:attempt-config --limit=5
 ```
 
 Ensure the scheduler is running (e.g. cron: `* * * * * php /path/to/artisan schedule:run`).
+
+## 6. BTCPay Config Bot (Playwright – UI automation)
+
+When the BTCPay API cannot configure Lightning (Blink/Aqua), the **BTCPay Config Bot** automates the BTCPay UI flow. On each `needs_support` connection, a job is dispatched that:
+
+1. Reveals the connection secret from the panel API (support auth)
+2. Logs into BTCPay, navigates to Lightning setup, fills the connection string, saves
+3. Marks the connection as connected in the panel
+
+### Setup
+
+1. **Panel API token** – create a Sanctum token for a support user:
+
+   ```bash
+   php artisan tinker
+   $u = \App\Models\User::where('email', 'bot@...')->first();
+   echo $u->createToken('btcpay-config-bot')->plainTextToken;
+   ```
+
+2. **Environment** – add to `.env` (see `.env.example`):
+
+   - `PANEL_BOT_TOKEN`, `PANEL_BOT_PASSWORD`
+   - `BTCPAY_BOT_EMAIL`, `BTCPAY_BOT_PASSWORD`
+   - Optional: `BTCPAY_BOT_LOG_FILE`, `BTCPAY_BOT_HEADLESS`
+
+3. **Install bot dependencies**:
+
+   ```bash
+   cd scripts/btcpay-config-bot && npm install
+   ```
+
+4. **Queue worker** – run `btcpay-config` queue:
+
+   ```bash
+   php artisan queue:work --queue=btcpay-config
+   ```
+
+### Logging
+
+The bot logs all actions and outputs (JSON lines) to stdout and to `storage/logs/btcpay-config-bot.log`, including BTCPay errors and validation messages. See `scripts/btcpay-config-bot/README.md`.

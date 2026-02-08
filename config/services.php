@@ -34,6 +34,28 @@ return [
         'support_webhook_url' => env('SUPPORT_DISCORD_WEBHOOK_URL'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | BTCPay Config Bot (Lightning setup automation)
+    |--------------------------------------------------------------------------
+    | Bot that automates BTCPay Lightning setup when wallet connection needs support.
+    | Requires: panel bot token (create via tinker), BTCPay login, Node.js + Playwright.
+    */
+    'btcpay_config_bot' => [
+        'enabled' => ! empty(env('BTCPAY_BOT_EMAIL')) && ! empty(env('PANEL_BOT_TOKEN')),
+        'use_job' => env('BTCPAY_BOT_USE_JOB', false), // true = Laravel job in Docker; false = use poller on host
+        // Use BTCPAY_BOT_PANEL_URL if panel runs on host and APP_URL is localhost (container can't reach host via localhost)
+        'panel_url' => rtrim(env('BTCPAY_BOT_PANEL_URL', env('APP_URL', '')), '/'),
+        'panel_token' => env('PANEL_BOT_TOKEN'),
+        'panel_password' => env('PANEL_BOT_PASSWORD'),
+        'btcpay_base_url' => rtrim(env('BTCPAY_BASE_URL', ''), '/'),
+        'btcpay_email' => env('BTCPAY_BOT_EMAIL'),
+        'btcpay_password' => env('BTCPAY_BOT_PASSWORD'),
+        // Use /tmp by default so bot can write when running in Docker (storage/ may not be writable by www-data)
+        'log_file' => env('BTCPAY_BOT_LOG_FILE', '/tmp/btcpay-config-bot.log'),
+        'headless' => env('BTCPAY_BOT_HEADLESS', 'true') !== 'false',
+    ],
+
 ];
 
 
