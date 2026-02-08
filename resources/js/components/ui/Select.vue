@@ -7,7 +7,7 @@
     >
       <div
         :class="[
-          'flex items-center justify-between w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white transition-all cursor-pointer select-none min-h-[42px]',
+          'flex items-center justify-between w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white transition-all cursor-pointer select-none min-h-[42px]',
           isOpen ? 'ring-2 ring-indigo-500/50 border-indigo-500' : 'hover:border-gray-500',
           error ? 'border-red-500/50 ring-1 ring-red-500/20' : ''
         ]"

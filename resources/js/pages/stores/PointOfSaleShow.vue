@@ -334,7 +334,7 @@
                   <button
                     type="button"
                     @click="showAdvancedSettings = !showAdvancedSettings"
-                    class="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-800 hover:bg-gray-700 transition-colors rounded-t-xl"
+                    class="border border-gray-700/50 w-full px-6 py-4 flex items-center justify-between text-left bg-gray-700/50 hover:bg-gray-700 transition-colors rounded-t-xl"
                   >
                     <span class="text-xl font-medium text-orange-500"
                       >Extra Settings</span
@@ -474,7 +474,7 @@
                               v-model="form.tipsMessage"
                               type="text"
                               required
-                              class="block w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                             />
                           </div>
                         </div>
@@ -485,7 +485,7 @@
                             form.defaultView === 'Static' ||
                             form.defaultView === 'Print'
                           "
-                          class="p-4"
+                          class=""
                         >
                           <div class="flex items-center mb-4">
                             <input
@@ -526,7 +526,7 @@
                             form.defaultView === 'Light' ||
                             form.defaultView === 'Cart'
                           "
-                          class="p-4"
+                          class=""
                         >
                           <div class="flex items-center">
                             <input
@@ -622,11 +622,75 @@
                     </div>
                     <!-- Additional Options (Accordion style) -->
                     <div
-                      class="border-t border-gray-700/50 pt-6 px-6 space-y-4"
+                      class="border-t border-gray-700/50 p-6 space-y-4 bg-gray-700/50"
                     >
-                      <h3 class="text-xl font-bold text-white mb-4">
-                        Advanced Options
-                      </h3>
+                      <div class="mb-4">
+                        <div class="flex items-center gap-2">
+                          <h3 class="text-xl font-bold text-white">
+                            Advanced Options
+                          </h3>
+                          <button
+                            v-if="!canEditAdvancedOptions"
+                            type="button"
+                            @click="showProUpgradeNotice = !showProUpgradeNotice"
+                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors"
+                          >
+                            {{ t("stores.available_in_pro") }}
+                            <svg
+                              class="w-3.5 h-3.5 transition-transform duration-200"
+                              :class="{ 'rotate-180': showProUpgradeNotice }"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M19 9l-7 7-7-7"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                        <Transition
+                          enter-active-class="transition ease-out duration-200"
+                          enter-from-class="opacity-0 -translate-y-1"
+                          enter-to-class="opacity-100 translate-y-0"
+                          leave-active-class="transition ease-in duration-150"
+                          leave-from-class="opacity-100 translate-y-0"
+                          leave-to-class="opacity-0 -translate-y-1"
+                        >
+                          <div
+                            v-if="!canEditAdvancedOptions && showProUpgradeNotice"
+                            class="mt-3 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-sm text-indigo-200"
+                          >
+                            <p class="mb-2">
+                              {{ t("stores.pos_advanced_options_pro_only") }}
+                            </p>
+                            <component
+                              :is="isInertia ? InertiaLink : RouterLink"
+                              :href="isInertia ? '/account' : undefined"
+                              :to="!isInertia ? '/account' : undefined"
+                              class="inline-flex items-center font-medium text-indigo-300 hover:text-indigo-200 underline underline-offset-2"
+                            >
+                              {{ t("stores.upgrade_to_pro") }}
+                              <svg
+                                class="w-4 h-4 ml-1"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                />
+                              </svg>
+                            </component>
+                          </div>
+                        </Transition>
+                      </div>
 
                       <!-- HTML Headers -->
                       <div
@@ -675,7 +739,8 @@
                               v-model="form.htmlLang"
                               type="text"
                               placeholder="en"
-                              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              :disabled="!canEditAdvancedOptions"
+                              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
                             />
                           </div>
                           <div>
@@ -688,7 +753,8 @@
                               id="htmlMetaTags"
                               v-model="form.htmlMetaTags"
                               rows="3"
-                              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              :disabled="!canEditAdvancedOptions"
+                              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
                             ></textarea>
                           </div>
                         </div>
@@ -739,7 +805,8 @@
                               v-model="form.redirectUrl"
                               type="url"
                               placeholder="https://example.com/thanks"
-                              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              :disabled="!canEditAdvancedOptions"
+                              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
                             />
                           </div>
                           <div>
@@ -748,12 +815,18 @@
                               class="block text-sm font-medium text-gray-300 mb-1"
                               >Redirect Automatically</label
                             >
-                            <Select
-                              id="redirectAutomatically"
-                              v-model="form.redirectAutomatically"
-                              :options="redirectOptions"
-                              placeholder="Use Store Settings"
-                            />
+                            <div
+                              :class="{
+                                'pointer-events-none opacity-60': !canEditAdvancedOptions,
+                              }"
+                            >
+                              <Select
+                                id="redirectAutomatically"
+                                v-model="form.redirectAutomatically"
+                                :options="redirectOptions"
+                                placeholder="Use Store Settings"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -805,7 +878,8 @@
                               v-model="form.notificationUrl"
                               type="url"
                               placeholder="https://example.com/callback"
-                              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              :disabled="!canEditAdvancedOptions"
+                              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
                             />
                           </div>
                           <div
@@ -853,7 +927,11 @@
                         </button>
                         <div
                           v-show="accordionSections.embed"
-                          class="px-6 py-6 bg-gray-900 border-t border-gray-700 space-y-6"
+                          :class="[
+                            'px-6 py-6 bg-gray-900 border-t border-gray-700 space-y-6',
+                            !canEditAdvancedOptions &&
+                              'select-none pointer-events-none opacity-75',
+                          ]"
                         >
                           <div>
                             <p class="text-sm font-medium text-gray-300 mb-2">
@@ -942,7 +1020,9 @@
 import { ref, computed, watch, watchEffect, inject } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { router as inertiaRouter } from "@inertiajs/vue3";
+import { router as inertiaRouter, Link as InertiaLink } from "@inertiajs/vue3";
+import { RouterLink } from "vue-router";
+import { useAuthStore } from "../../store/auth";
 import { useAppsStore } from "../../store/apps";
 import { useFlashStore } from "../../store/flash";
 import ProductEditDrawer from "../../components/stores/ProductEditDrawer.vue";
@@ -958,9 +1038,17 @@ const flashStore = useFlashStore();
 const isInertia = inject<boolean>("inertia", false);
 const route = !isInertia ? useRoute() : null;
 const vueRouter = !isInertia ? useRouter() : null;
+const authStore = useAuthStore();
 const appsStore = useAppsStore();
 
 const props = defineProps<{ store?: any; app?: any }>();
+
+const planCode = computed(
+  () => (authStore.user?.plan?.code ?? "free") as string,
+);
+const canEditAdvancedOptions = computed(
+  () => planCode.value === "pro" || planCode.value === "enterprise",
+);
 
 const storeId = computed(() => (props.store?.id ?? route?.params?.id ?? "") as string);
 const appId = computed(() => (props.app?.id ?? route?.params?.appId ?? "") as string);
@@ -1022,6 +1110,8 @@ const accordionSections = ref({
   notifications: false,
   embed: false,
 });
+
+const showProUpgradeNotice = ref(false);
 
 // Computed property to determine if products editor should be shown
 const shouldShowProductsEditor = computed(() => {
@@ -1392,6 +1482,15 @@ async function handleSubmit() {
         : null,
       notificationUrl: form.value.notificationUrl || null,
     };
+
+    // Free tier: do not send advanced options so we don't overwrite them
+    if (!canEditAdvancedOptions.value) {
+      delete config.htmlLang;
+      delete config.htmlMetaTags;
+      delete config.redirectUrl;
+      delete config.redirectAutomatically;
+      delete config.notificationUrl;
+    }
 
     if (
       form.value.defaultView === "Static" ||
