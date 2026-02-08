@@ -141,7 +141,7 @@ export async function runConfigForConnection(connectionId) {
     await browser.close();
   }
 
-  // Step 3: Mark connected in panel
+  // Step 3: Mark connected in panel (notify_merchant: false = no "wallet ready" email; bot did the work)
   logger.info('panel_mark_connected', 'Marking connected');
   const markRes = await fetch(`${apiBase}/support/wallet-connections/${connectionId}/mark-connected`, {
     method: 'PUT',
@@ -150,6 +150,7 @@ export async function runConfigForConnection(connectionId) {
       'Accept': 'application/json',
       'Authorization': `Bearer ${panelToken}`,
     },
+    body: JSON.stringify({ notify_merchant: false }),
   });
 
   const markBody = await markRes.json().catch(() => ({}));

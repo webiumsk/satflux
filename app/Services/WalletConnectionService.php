@@ -320,12 +320,13 @@ class WalletConnectionService
      *
      * @param WalletConnection $connection
      * @param User $markedBy User marking as connected
+     * @param bool $notifyMerchant If true, send "wallet ready" email to merchant (set false when bot marks connected)
      * @return void
      */
-    public function markConnected(WalletConnection $connection, User $markedBy): void
+    public function markConnected(WalletConnection $connection, User $markedBy, bool $notifyMerchant = true): void
     {
         $wasNeedsSupport = $connection->status === 'needs_support';
-        
+
         $connection->update([
             'status' => 'connected',
         ]);
@@ -356,11 +357,11 @@ class WalletConnectionService
             $markedBy->id
         );
 
-        // If status changed from needs_support to connected, notify the merchant
-        if ($wasNeedsSupport) {
+        // Notify merchant only when requested (e.g. manual mark from UI; skip when bot marks connected)
+        if ($notifyMerchant && $wasNeedsSupport) {
             $store = $connection->store;
             $merchant = $store->user;
-            
+
             if ($merchant && $merchant->email) {
                 try {
                     $merchant->notify(new \App\Notifications\WalletConnectionReadyNotification($store));

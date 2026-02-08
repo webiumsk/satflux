@@ -72,6 +72,25 @@ async function runPoll() {
       await runConfigForConnection(id);
     } catch (err) {
       logger.error('poll_error', `Failed for ${id}`, { connectionId: id, error: err.message });
+      try {
+        const apiBase = `${panelUrl}/api`;
+        const reportRes = await fetch(`${apiBase}/support/wallet-connections/${id}/bot-failed`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${panelToken}`,
+          },
+          body: JSON.stringify({ error: err.message || String(err) }),
+        });
+        if (reportRes.ok) {
+          logger.info('poll_bot_failed_reported', 'Reported bot failure to panel', { connectionId: id });
+        } else {
+          logger.warn('poll_bot_failed_report_failed', 'Could not report bot failure', { connectionId: id, status: reportRes.status });
+        }
+      } catch (reportErr) {
+        logger.warn('poll_bot_failed_report_err', 'Error reporting bot failure', { connectionId: id, error: reportErr.message });
+      }
     }
   }
 
