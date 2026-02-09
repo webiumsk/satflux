@@ -112,6 +112,10 @@ fi
 
 echo -e "${GREEN}✓ Git pull completed → deployed branch: $BRANCH${NC}"
 
+# Step 2a: Build PHP image (picks up Dockerfile changes like new extensions)
+echo -e "${YELLOW}Step 2a: Building PHP image...${NC}"
+$DC_CMD build php
+
 # Step 2: Ensuring containers are running
 echo -e "${YELLOW}Step 2: Ensuring containers are running ($COMPOSE_FILE)...${NC}"
 # Use --force-recreate to avoid "container name already in use" when run from different project context
