@@ -35,15 +35,29 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+        $authUser = $user ? [
+            'id' => $user->id,
+            'email' => $user->email,
+            'email_verified_at' => $user->email_verified_at,
+            'name' => $user->name,
+            'role' => $user->role ?? null,
+            'plan' => (function () use ($user) {
+                $plan = $user->currentSubscriptionPlan();
+                return $plan ? [
+                    'code' => $plan->code,
+                    'name' => $plan->display_name,
+                    'max_stores' => $plan->max_stores,
+                    'max_api_keys' => $plan->max_api_keys,
+                    'max_ln_addresses' => $user->getMaxLightningAddresses(),
+                    'features' => $plan->features ?? [],
+                ] : null;
+            })(),
+        ] : null;
+
         return array_merge(parent::share($request), [
             'auth' => [
-                'user' => $request->user() ? [
-                    'id' => $request->user()->id,
-                    'email' => $request->user()->email,
-                    'email_verified_at' => $request->user()->email_verified_at,
-                    'name' => $request->user()->name,
-                    'role' => $request->user()->role ?? null,
-                ] : null,
+                'user' => $authUser,
             ],
             'app' => [
                 'version' => config('app.version', '1.0.0'),

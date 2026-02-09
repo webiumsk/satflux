@@ -106,6 +106,31 @@ class SubscriptionService
     }
 
     /**
+     * Check if user can use XLSX export (Pro+ or admin/support).
+     */
+    public function canUseXlsxExport(User $user): bool
+    {
+        if ($user->hasUnlimitedAccess()) {
+            return true;
+        }
+        $plan = $user->currentSubscriptionPlan();
+        return in_array($plan?->code ?? '', ['pro', 'enterprise'], true);
+    }
+
+    /**
+     * Check if user can access exports section (history, automatic exports).
+     * Admin and support always have access.
+     */
+    public function canAccessExports(User $user): bool
+    {
+        if ($user->hasUnlimitedAccess()) {
+            return true;
+        }
+        $plan = $user->currentSubscriptionPlan();
+        return $plan?->hasFeature('automatic_csv_exports') ?? false;
+    }
+
+    /**
      * Check if user can use automatic (monthly) exports.
      */
     public function canUseAutomaticExports(User $user): bool

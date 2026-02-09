@@ -27,6 +27,9 @@ class Store extends Model
         'preferred_exchange',
         'wallet_type',
         'metadata',
+        'auto_report_enabled',
+        'auto_report_email',
+        'auto_report_format',
     ];
 
     /**
@@ -38,6 +41,7 @@ class Store extends Model
     {
         return [
             'metadata' => 'array',
+            'auto_report_enabled' => 'boolean',
         ];
     }
 

@@ -126,18 +126,19 @@
             {{ t('stores.invoices') }}
           </button>
           <button
-            @click="handleSectionClick('exports')"
+            @click="handleReportsClick"
             class="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors text-left"
             :class="
-              querySection === 'exports'
+              querySection === 'reports'
                 ? 'bg-gray-900 text-white'
                 : 'text-gray-300 hover:bg-gray-700 hover:text-white'
             "
           >
             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            {{ t('stores.exports') }}
+            {{ t('stores.reports') }}
+            <span v-if="!canAccessReports" class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">{{ t('stores.available_in_pro') }}</span>
           </button>
         </nav>
       </div>
@@ -297,6 +298,7 @@
       </div>
     </div>
   </aside>
+
 </template>
 
 <script setup lang="ts">
@@ -307,8 +309,9 @@ import { useI18n } from 'vue-i18n';
 import { useAppsStore } from '../../store/apps';
 import { useStoresStore } from '../../store/stores';
 import { useAccountLimits } from '../../composables/useAccountLimits';
-
+import { useAuthStore } from '../../store/auth';
 const { t } = useI18n();
+const authStore = useAuthStore();
 const { limits, load: loadLimits } = useAccountLimits();
 const isInertia = inject<boolean>('inertia', false);
 const vueRouter = !isInertia ? useRouter() : null;
@@ -336,6 +339,17 @@ const emit = defineEmits<{
   'show-settings': [];
   'show-section': [section: string];
 }>();
+
+const authUser = computed(() => {
+  if (authStore.user) return authStore.user;
+  if (isInertia && page?.props?.auth?.user) return page.props.auth.user;
+  return null;
+});
+const planCode = computed(() => (authUser.value?.plan?.code ?? 'free') as string);
+const userRole = computed(() => authUser.value?.role ?? '');
+const canAccessReports = computed(() =>
+  planCode.value === 'pro' || planCode.value === 'enterprise' || userRole.value === 'admin' || userRole.value === 'support'
+);
 
 const appsStore = useAppsStore();
 const storesStore = useStoresStore();
@@ -471,6 +485,11 @@ function getAppsByType(type: string) {
 function handleSectionClick(section: string) {
   showMobileMenu.value = false; // Close mobile menu on navigation
   emit('show-section', section);
+}
+
+function handleReportsClick() {
+  showMobileMenu.value = false;
+  emit('show-section', 'reports');
 }
 
 function getWalletConnectionIconClass(): string {

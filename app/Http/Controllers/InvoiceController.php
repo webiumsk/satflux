@@ -3,19 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\GenerateCsvExport;
+use App\Jobs\GenerateXlsxExport;
 use App\Models\Export;
 use App\Services\BtcPay\InvoiceService;
+use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InvoiceController extends Controller
 {
-    protected InvoiceService $invoiceService;
-
-    public function __construct(InvoiceService $invoiceService)
-    {
-        $this->invoiceService = $invoiceService;
-    }
+    public function __construct(
+        protected InvoiceService $invoiceService,
+        protected SubscriptionService $subscriptionService
+    ) {}
 
     /**
      * List invoices for a store with optional filters.
@@ -103,33 +105,33 @@ class InvoiceController extends Controller
     }
 
     /**
-     * Export invoices to CSV with hybrid approach:
+     * Export invoices to CSV or XLSX (XLSX requires Pro+ or admin/support).
      * - Small exports (≤1000 invoices): synchronous streaming response
      * - Large exports (>1000 invoices): asynchronous queue job
      */
     public function exportCsv(Request $request)
     {
         $store = $request->route('store');
-        
-        // Load merchant API key from store owner
+        $format = $request->query('format', 'csv');
+
+        if ($format === 'xlsx' && !$this->subscriptionService->canUseXlsxExport($request->user())) {
+            return response()->json([
+                'message' => 'XLSX export is available in Pro and above. Please upgrade.',
+            ], 403);
+        }
+
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
-        
-        // Build filters from query parameters
+
         $filters = [];
-        
-        // Status filter
         if ($request->has('status') && $request->status) {
             $filters['status'] = $request->status;
         }
-        
-        // Date range filters (BTCPay expects Unix timestamps)
         if ($request->has('date_from') && $request->date_from) {
             $dateFrom = strtotime($request->date_from);
             if ($dateFrom !== false) {
                 $filters['startDate'] = $dateFrom;
             }
         }
-        
         if ($request->has('date_to') && $request->date_to) {
             $dateTo = strtotime($request->date_to . ' 23:59:59');
             if ($dateTo !== false) {
@@ -137,42 +139,48 @@ class InvoiceController extends Controller
             }
         }
 
+        $exportFormat = $format === 'xlsx' ? 'xlsx' : 'standard';
+        $filtersForExport = [
+            'date_from' => $request->date_from,
+            'date_to' => $request->date_to,
+            'status' => $request->status,
+        ];
+
         try {
-            // Estimate invoice count to decide sync vs async
             $estimatedCount = $this->invoiceService->estimateInvoiceCount(
                 $store->btcpay_store_id,
                 $filters,
                 $userApiKey
             );
 
-            // Threshold: 1000 invoices
             if ($estimatedCount <= 1000) {
-                // Synchronous export: stream CSV directly
+                if ($format === 'xlsx') {
+                    return $this->streamXlsxExport($store, $filters, $userApiKey);
+                }
                 return $this->streamCsvExport($store, $filters, $userApiKey);
-            } else {
-                // Asynchronous export: create job
-                $export = Export::create([
-                    'store_id' => $store->id,
-                    'user_id' => $request->user()->id,
-                    'format' => 'standard',
-                    'status' => 'pending',
-                    'filters' => [
-                        'date_from' => $request->date_from,
-                        'date_to' => $request->date_to,
-                        'status' => $request->status,
-                    ],
-                ]);
-
-                // Dispatch job
-                GenerateCsvExport::dispatch($export);
-
-                return response()->json([
-                    'type' => 'asynchronous',
-                    'export_id' => $export->id,
-                    'data' => $export,
-                    'message' => 'Export job queued',
-                ], 202);
             }
+
+            $export = Export::create([
+                'store_id' => $store->id,
+                'user_id' => $request->user()->id,
+                'source' => Export::SOURCE_MANUAL,
+                'format' => $exportFormat,
+                'status' => 'pending',
+                'filters' => $filtersForExport,
+            ]);
+
+            if ($format === 'xlsx') {
+                GenerateXlsxExport::dispatch($export);
+            } else {
+                GenerateCsvExport::dispatch($export);
+            }
+
+            return response()->json([
+                'type' => 'asynchronous',
+                'export_id' => $export->id,
+                'data' => $export,
+                'message' => 'Export job queued',
+            ], 202);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to export invoices: ' . $e->getMessage(),
@@ -193,11 +201,16 @@ class InvoiceController extends Controller
             // Write CSV header
             fputcsv($handle, [
                 'invoiceId',
+                'store',
+                'pos',
                 'createdTime',
                 'status',
                 'amount',
                 'currency',
                 'paidAmount',
+                'tax',
+                'tip',
+                'discount',
                 'paymentMethod',
                 'buyerEmail',
                 'orderId',
@@ -241,14 +254,21 @@ class InvoiceController extends Controller
                     if (isset($invoice['availablePaymentMethods']) && is_array($invoice['availablePaymentMethods'])) {
                         $paymentMethods = implode(',', $invoice['availablePaymentMethods']);
                     }
-                    
+
+                    $posData = $this->parsePosData($invoice['metadata'] ?? []);
+
                     fputcsv($handle, [
                         $invoice['id'] ?? '',
-                        $invoice['createdTime'] ?? '',
+                        $store->name ?? '',
+                        $posData['pos'],
+                        $this->formatCreatedTimeEu($invoice['createdTime'] ?? null),
                         $invoice['status'] ?? '',
                         $invoice['amount'] ?? '',
                         $invoice['currency'] ?? '',
                         $invoice['paidAmount'] ?? '',
+                        $posData['tax'],
+                        $posData['tip'],
+                        $posData['discount'],
                         $paymentMethods,
                         $buyerEmail,
                         $orderId,
@@ -264,6 +284,123 @@ class InvoiceController extends Controller
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ]);
+    }
+
+    /**
+     * Stream XLSX export synchronously for small exports.
+     */
+    protected function streamXlsxExport($store, array $filters, string $userApiKey): StreamedResponse
+    {
+        $filename = 'invoices-' . date('Y-m-d_His') . '.xlsx';
+
+        return new StreamedResponse(function () use ($store, $filters, $userApiKey) {
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Invoices');
+
+            $headers = [
+                'invoiceId', 'store', 'pos', 'createdTime', 'status', 'amount', 'currency',
+                'paidAmount', 'tax', 'tip', 'discount', 'paymentMethod', 'buyerEmail', 'orderId', 'checkoutLink',
+            ];
+            $sheet->fromArray($headers, null, 'A1');
+
+            $skip = 0;
+            $take = 100;
+            $row = 2;
+
+            do {
+                $response = $this->invoiceService->listInvoices(
+                    $store->btcpay_store_id,
+                    $filters,
+                    $skip,
+                    $take,
+                    $userApiKey
+                );
+                $invoices = $response['data'] ?? $response;
+                if (!is_array($invoices)) {
+                    $invoices = [];
+                }
+
+                foreach ($invoices as $invoice) {
+                    $posData = $this->parsePosData($invoice['metadata'] ?? []);
+                    $paymentMethods = isset($invoice['availablePaymentMethods']) && is_array($invoice['availablePaymentMethods'])
+                        ? implode(',', $invoice['availablePaymentMethods']) : '';
+
+                    $sheet->fromArray([
+                        $invoice['id'] ?? '',
+                        $store->name ?? '',
+                        $posData['pos'],
+                        $this->formatCreatedTimeEu($invoice['createdTime'] ?? null),
+                        $invoice['status'] ?? '',
+                        $invoice['amount'] ?? '',
+                        $invoice['currency'] ?? '',
+                        $invoice['paidAmount'] ?? '',
+                        $posData['tax'],
+                        $posData['tip'],
+                        $posData['discount'],
+                        $paymentMethods,
+                        $invoice['buyer']['buyerEmail'] ?? '',
+                        $invoice['metadata']['orderId'] ?? '',
+                        $invoice['checkoutLink'] ?? '',
+                    ], null, 'A' . $row);
+                    $row++;
+                }
+
+                $skip += $take;
+            } while (count($invoices) === $take);
+
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+        }, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    /**
+     * Parse posData from invoice metadata: determine Pos/Eshop label and extract tax, tip, discount.
+     */
+    protected function parsePosData(array $metadata): array
+    {
+        $posData = $metadata['posData'] ?? $metadata['pos'] ?? $metadata['posId'] ?? null;
+        if ($posData === null || $posData === '') {
+            return ['pos' => '', 'tax' => '', 'tip' => '', 'discount' => ''];
+        }
+        $data = is_string($posData) ? json_decode($posData, true) : $posData;
+        if (!is_array($data)) {
+            return ['pos' => '', 'tax' => '', 'tip' => '', 'discount' => ''];
+        }
+        $posLabel = '';
+        if (isset($data['WooCommerce']) || isset($data['Magento']) || isset($data['PrestaShop']) || isset($data['OpenCart']) || isset($data['Shopify'])) {
+            $posLabel = 'Eshop';
+        } elseif (isset($data['tax']) || isset($data['tip']) || array_key_exists('cart', $data)) {
+            $posLabel = 'PoS';
+        }
+        $tax = isset($data['tax']) ? (string) $data['tax'] : '';
+        $tip = isset($data['tip']) ? (string) $data['tip'] : '';
+        $discount = isset($data['discountAmount']) ? (string) $data['discountAmount'] : '';
+
+        return ['pos' => $posLabel, 'tax' => $tax, 'tip' => $tip, 'discount' => $discount];
+    }
+
+    /**
+     * Format createdTime as human-readable EU format (DD.MM.YYYY HH:mm).
+     */
+    protected function formatCreatedTimeEu(mixed $createdTime): string
+    {
+        if ($createdTime === null || $createdTime === '') {
+            return '';
+        }
+        $ts = is_numeric($createdTime) ? (float) $createdTime : strtotime($createdTime);
+        if ($ts === false) {
+            return (string) $createdTime;
+        }
+        // BTCPay uses seconds; if value looks like milliseconds (13+ digits), convert
+        if ($ts > 10000000000) {
+            $ts = $ts / 1000;
+        }
+        $date = \DateTime::createFromFormat('U', (string) (int) $ts);
+        return $date ? $date->format('d.m.Y H:i') : (string) $createdTime;
     }
 }
 

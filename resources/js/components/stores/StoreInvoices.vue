@@ -15,9 +15,9 @@
            <p class="text-sm text-gray-400 mt-1">{{ t('stores.view_manage_transactions') }}</p>
         </div>
         
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 flex-wrap">
              <button
-              @click="handleExportInvoices"
+              @click="handleExportInvoices('csv')"
               :disabled="exportingInvoices"
               class="inline-flex items-center px-4 py-2 border border-gray-600 shadow-sm text-sm font-medium rounded-lg text-white bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
@@ -27,6 +27,29 @@
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
               {{ exportingInvoices ? t('stores.exporting') : t('stores.export_to_csv') }}
+            </button>
+             <button
+              v-if="canUseXlsx"
+              @click="handleExportInvoices('xlsx')"
+              :disabled="exportingInvoices"
+              class="inline-flex items-center px-4 py-2 border border-gray-600 shadow-sm text-sm font-medium rounded-lg text-white bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              <svg v-if="!exportingInvoices" class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              <svg v-else class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ exportingInvoices ? t('stores.exporting') : t('stores.export_to_xlsx') }}
+            </button>
+             <button
+              v-else
+              @click="showXlsxUpgradeModal = true"
+              class="inline-flex items-center px-4 py-2 border border-gray-600 shadow-sm text-sm font-medium rounded-lg text-gray-500 bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 transition-all"
+              :title="t('stores.available_in_pro')"
+            >
+              <svg class="w-4 h-4 mr-2 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+              {{ t('stores.export_to_xlsx') }}
+              <span class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">{{ t('stores.available_in_pro') }}</span>
             </button>
              
              <!-- Create Invoice Button (Future implementation) -->
@@ -209,17 +232,36 @@
         </div>
       </div>
     </div>
+
+    <UpgradeModal
+      :show="showXlsxUpgradeModal"
+      :message="t('stores.xlsx_export_available_in_pro_message')"
+      :limits="[]"
+      recommended-plan="pro"
+      :upgrade-button-text="t('stores.upgrade_to_pro')"
+      @close="showXlsxUpgradeModal = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useAuthStore } from '../../store/auth';
 import api from '../../services/api';
 import DatePicker from '../ui/DatePicker.vue';
 import Select from '../ui/Select.vue';
+import UpgradeModal from './UpgradeModal.vue';
 
 const { t } = useI18n();
+const authStore = useAuthStore();
+
+const planCode = computed(() => (authStore.user?.plan?.code ?? 'free') as string);
+const userRole = computed(() => authStore.user?.role ?? '');
+const canUseXlsx = computed(() =>
+  planCode.value === 'pro' || planCode.value === 'enterprise' || userRole.value === 'admin' || userRole.value === 'support'
+);
+const showXlsxUpgradeModal = ref(false);
 
 const props = defineProps({
   store: {
@@ -313,8 +355,7 @@ async function copyToClipboard(text: string) {
   }
 }
 
-// Reuse logic from Show.vue for export but adapted
-async function handleExportInvoices() {
+async function handleExportInvoices(format: 'csv' | 'xlsx') {
   if (!props.store) return;
   
   exportingInvoices.value = true;
@@ -322,7 +363,7 @@ async function handleExportInvoices() {
   exportSuccess.value = '';
   
   try {
-     const params: any = {};
+    const params: any = { format };
     if (filters.value.status) params.status = filters.value.status;
     if (filters.value.date_from) params.date_from = filters.value.date_from;
     if (filters.value.date_to) params.date_to = filters.value.date_to;
@@ -338,33 +379,47 @@ async function handleExportInvoices() {
       const text = new TextDecoder().decode(response.data);
       const jsonData = JSON.parse(text);
       if (jsonData.type === 'asynchronous') {
-        exportSuccess.value = 'Export job queued. Check Exports tab.';
+        exportSuccess.value = t('stores.export_queued_check_reports');
         setTimeout(() => { exportSuccess.value = ''; }, 5000);
       }
     } else if (contentType.includes('text/csv')) {
       const blob = new Blob([response.data], { type: 'text/csv' });
-      const urlObj = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = urlObj;
-       const contentDisposition = response.headers['content-disposition'] || '';
-      let filename = 'invoices.csv';
-       if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-        if (filenameMatch) filename = filenameMatch[1];
-      }
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      exportSuccess.value = 'CSV exported successfully.';
+      downloadBlob(blob, response.headers, 'invoices.csv');
+      exportSuccess.value = t('stores.export_csv_success');
+      setTimeout(() => { exportSuccess.value = ''; }, 3000);
+    } else if (contentType.includes('spreadsheet') || contentType.includes('vnd.openxmlformats')) {
+      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      downloadBlob(blob, response.headers, 'invoices.xlsx');
+      exportSuccess.value = t('stores.export_xlsx_success');
       setTimeout(() => { exportSuccess.value = ''; }, 3000);
     }
   } catch (err: any) {
-     exportError.value = 'Failed to export invoices.';
-     setTimeout(() => { exportError.value = ''; }, 5000);
+    if (err.response?.status === 403) {
+      showXlsxUpgradeModal.value = true;
+    } else {
+      exportError.value = err.response?.data?.message || t('stores.export_failed');
+      setTimeout(() => { exportError.value = ''; }, 5000);
+    }
   } finally {
     exportingInvoices.value = false;
   }
+}
+
+function downloadBlob(blob: Blob, headers: any, defaultFilename: string) {
+  const contentDisposition = headers['content-disposition'] || '';
+  let filename = defaultFilename;
+  if (contentDisposition) {
+    const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+    if (filenameMatch) filename = filenameMatch[1];
+  }
+  const urlObj = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = urlObj;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(urlObj);
 }
 
 function formatDate(dateInput: string | number): string {
