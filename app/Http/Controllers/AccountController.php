@@ -149,7 +149,6 @@ class AccountController extends Controller
     {
         $validated = $request->validate([
             'name' => ['nullable', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $request->user()->id],
         ]);
 
         $request->user()->update($validated);
