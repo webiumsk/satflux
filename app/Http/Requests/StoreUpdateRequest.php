@@ -15,6 +15,24 @@ class StoreUpdateRequest extends FormRequest
     }
 
     /**
+     * Prepare the data for validation.
+     * Empty strings for URL fields fail the 'url' rule; convert to null.
+     */
+    protected function prepareForValidation(): void
+    {
+        $urlFields = ['website', 'support_url', 'logo_url', 'css_url', 'payment_sound_url'];
+        $merge = [];
+        foreach ($urlFields as $key) {
+            if ($this->has($key) && $this->input($key) === '') {
+                $merge[$key] = null;
+            }
+        }
+        if ($merge !== []) {
+            $this->merge($merge);
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
@@ -24,7 +42,7 @@ class StoreUpdateRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'website' => ['nullable', 'string', 'url', 'max:500'],
-            'support_url' => ['nullable', 'string', 'url', 'max:500'],
+            'support_url' => ['nullable', 'string', 'max:500'],
             'logo_url' => ['nullable', 'string', 'url', 'max:500'],
             'css_url' => ['nullable', 'string', 'url', 'max:500'],
             'payment_sound_url' => ['nullable', 'string', 'url', 'max:500'],

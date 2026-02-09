@@ -21,6 +21,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'last_login_at',
         'password',
         'lightning_public_key',
         'btcpay_user_id',
@@ -51,6 +52,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_login_at' => 'datetime',
             'password' => 'hashed',
             'btcpay_api_key' => 'encrypted', // Encrypt API key in database
             'subscription_expires_at' => 'datetime',

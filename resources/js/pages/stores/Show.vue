@@ -24,6 +24,8 @@
       <div class="flex-1 overflow-y-auto">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
+        <ArchivedStoreBanner :store="store" />
+
         <!-- Settings View -->
         <div v-if="showSettings" class="max-w-4xl mx-auto">
            <StoreSettings :store="store" @update-store="handleStoreUpdate" />
@@ -205,6 +207,7 @@ import RecentInvoices from '../../components/stores/RecentInvoices.vue';
 import SalesChart from '../../components/stores/SalesChart.vue';
 import TopItems from '../../components/stores/TopItems.vue';
 import StoreSettings from '../../components/stores/StoreSettings.vue';
+import ArchivedStoreBanner from '../../components/stores/ArchivedStoreBanner.vue';
 import StoreInvoices from '../../components/stores/StoreInvoices.vue';
 import StoreReports from '../../components/stores/StoreReports.vue';
 

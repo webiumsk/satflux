@@ -256,7 +256,10 @@ class StoreSettingsController extends Controller
                 continue;
             }
             if ($snake === 'payment_method_criteria' && is_array($value)) {
-                $payload[$camel] = $value;
+                $criteria = $this->mapPaymentMethodCriteriaForBtcPay($value, $request->input('default_currency', 'USD'));
+                if (!empty($criteria)) {
+                    $payload[$camel] = $criteria;
+                }
                 continue;
             }
             if ($snake === 'additional_tracked_rates') {
@@ -267,6 +270,59 @@ class StoreSettingsController extends Controller
         }
 
         return $payload;
+    }
+
+    /**
+     * Map frontend payment_method_criteria to BTCPay API format.
+     * BTCPay expects: PaymentMethodId, CurrencyCode, Amount, Above.
+     * Skips entries with empty value or invalid format.
+     */
+    protected function mapPaymentMethodCriteriaForBtcPay(array $items, string $defaultCurrency): array
+    {
+        $paymentMethodIdMap = [
+            'BTC-LN' => 'BTC_LightningNetwork',
+            'BTC-LNURL' => 'BTC_LightningNetwork',
+            'BTC-CHAIN' => 'BTC',
+            'BTC' => 'BTC',
+            'BTC_LightningNetwork' => 'BTC_LightningNetwork',
+        ];
+
+        $result = [];
+        foreach (array_values($items) as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $rawMethod = $item['paymentMethod'] ?? $item['payment_method'] ?? null;
+            $paymentMethodId = $paymentMethodIdMap[$rawMethod] ?? $rawMethod;
+            if (empty($paymentMethodId)) {
+                continue;
+            }
+            $value = trim((string) ($item['value'] ?? ''));
+            if ($value === '') {
+                continue;
+            }
+            // Parse "6.15 USD" or "100" (use default currency)
+            if (preg_match('/^([\d.,]+)\s*([A-Z]{3})$/i', $value, $m)) {
+                $amount = (float) str_replace(',', '.', $m[1]);
+                $currencyCode = strtoupper($m[2]);
+            } elseif (preg_match('/^[\d.,]+$/', $value)) {
+                $amount = (float) str_replace(',', '.', $value);
+                $currencyCode = $defaultCurrency;
+            } else {
+                continue;
+            }
+            $type = $item['type'] ?? 'GreaterThan';
+            $above = strtolower($type) === 'greaterthan';
+
+            $result[] = [
+                'PaymentMethodId' => $paymentMethodId,
+                'CurrencyCode' => $currencyCode,
+                'Amount' => $amount,
+                'Above' => $above,
+            ];
+        }
+
+        return $result;
     }
 }
 

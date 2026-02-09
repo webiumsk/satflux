@@ -337,6 +337,7 @@ class EmailVerificationController extends Controller
             if ($request->hasSession()) {
                 $request->session()->regenerate();
             }
+            $user->update(['last_login_at' => now()]);
 
             return response()->json([
                 'message' => 'Email verified successfully. You are now logged in.',

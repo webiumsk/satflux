@@ -809,6 +809,7 @@ class AppService
                 // PointOfSale and other app types - original mapping
                 $fieldMapping = [
                     'appName' => 'appName',
+                    'archived' => 'archived',
                     'title' => 'title',
                     'description' => 'description',
                     'defaultView' => 'defaultView',

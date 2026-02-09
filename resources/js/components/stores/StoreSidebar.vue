@@ -52,9 +52,9 @@
           @click.stop
         >
           <div class="py-1">
-            <!-- Store List -->
+            <!-- Active Store List (non-archived) -->
             <button
-              v-for="s in allStores"
+              v-for="s in activeStores"
               :key="s.id"
               @click="selectStore(s.id)"
               class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
@@ -74,7 +74,7 @@
             </button>
 
             <!-- Divider -->
-            <div v-if="allStores.length > 0" class="border-t border-gray-200 my-1"></div>
+            <div v-if="activeStores.length > 0" class="border-t border-gray-200 my-1"></div>
 
             <!-- Create Store Button -->
             <button
@@ -85,6 +85,31 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
               {{ t('stores.create_store') }}
+            </button>
+
+            <!-- Archived Stores -->
+            <div v-if="archivedStores.length > 0" class="border-t border-gray-200 my-1"></div>
+            <div v-if="archivedStores.length > 0" class="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+              {{ archivedStores.length }} {{ archivedStores.length === 1 ? t('stores.archived_store') : t('stores.archived_stores') }}
+            </div>
+            <button
+              v-for="s in archivedStores"
+              :key="s.id"
+              @click="selectStore(s.id)"
+              class="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+              :class="{ 'bg-gray-100 font-medium': s.id === store.id }"
+            >
+              <div class="flex items-center">
+                <svg 
+                  v-if="s.id === store.id"
+                  class="w-4 h-4 mr-2 text-indigo-600" 
+                  fill="currentColor" 
+                  viewBox="0 0 20 20"
+                >
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+                <span class="truncate">{{ s.name }}</span>
+              </div>
             </button>
           </div>
         </div>
@@ -143,9 +168,9 @@
         </nav>
       </div>
 
-      <!-- PLUGINS Section -->
+      <!-- APPS Section -->
       <div class="mb-8">
-        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{{ t('stores.plugins') }}</h3>
+        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{{ t('stores.apps') }}</h3>
         <nav class="space-y-1">
           <!-- LN Address -->
           <div class="mb-2">
@@ -247,6 +272,19 @@
               </span>
               <span v-if="limits?.api_keys?.max != null" class="ml-2 bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded-full shrink-0">{{ limits.api_keys.current }} / {{ limits.api_keys.max }}</span>
               <span v-else-if="limits?.api_keys?.unlimited" class="ml-2 text-xs text-gray-500 shrink-0">∞</span>
+            </component>
+          </div>
+
+          <!-- Archived Apps link -->
+          <div v-if="archivedAppsCount > 0" class="mb-2">
+            <component
+              :is="isInertia ? Link : RouterLink"
+              :href="isInertia ? `/stores/${store.id}/apps?archived=1` : undefined"
+              :to="!isInertia ? { name: 'stores-apps', params: { id: store.id }, query: { archived: '1' } } : undefined"
+              class="flex items-center w-full px-3 py-2 rounded-md text-sm font-medium transition-colors text-red-400 hover:bg-gray-700 hover:text-red-300"
+              @click="showMobileMenu = false"
+            >
+              <span>{{ archivedAppsCount }} {{ t('stores.archived') }}</span>
             </component>
           </div>
         </nav>
@@ -357,6 +395,8 @@ const showStoreDropdown = ref(false);
 const showMobileMenu = ref(false);
 
 const allStores = computed(() => storesStore.stores);
+const activeStores = computed(() => allStores.value.filter((s: any) => !s.archived));
+const archivedStores = computed(() => allStores.value.filter((s: any) => s.archived));
 
 // Current URL state for both Inertia and SPA
 const currentPath = computed(() => {
@@ -475,12 +515,16 @@ function createStore() {
 function getAppsByType(type: string) {
   // Handle different type formats (PointOfSale, PaymentButton)
   // Normalize both to lowercase for comparison
+  // Exclude archived apps from sidebar listing (BTCPay behavior)
   const normalizedType = type.toLowerCase().replace(/[_-]/g, '');
   return props.apps.filter(app => {
+    if ((app as any).archived) return false;
     const appType = (app.app_type || '').toString().toLowerCase().replace(/[_-]/g, '');
     return appType === normalizedType || appType.includes(normalizedType);
   });
 }
+
+const archivedAppsCount = computed(() => props.apps.filter((app: any) => app.archived).length);
 
 function handleSectionClick(section: string) {
   showMobileMenu.value = false; // Close mobile menu on navigation

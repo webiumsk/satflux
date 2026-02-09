@@ -15,7 +15,7 @@
             v-model="searchQuery"
             type="text"
             placeholder="Search users..."
-            class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             @input="handleSearch"
           />
         </div>
@@ -41,14 +41,16 @@
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">ID</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Email</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Role</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Stores</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Created</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Last login</th>
               <th class="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody class="bg-gray-800 divide-y divide-gray-700">
             <tr v-if="loading" class="bg-gray-800">
-              <td colspan="7" class="px-6 py-12 text-center text-gray-400">
+              <td colspan="8" class="px-6 py-12 text-center text-gray-400">
                 <svg class="animate-spin h-8 w-8 text-indigo-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -56,13 +58,20 @@
               </td>
             </tr>
             <tr v-else-if="users.length === 0" class="bg-gray-800">
-              <td colspan="6" class="px-6 py-12 text-center text-gray-400">
+              <td colspan="8" class="px-6 py-12 text-center text-gray-400">
                 No users found.
               </td>
             </tr>
             <tr v-else v-for="user in users" :key="user.id" class="hover:bg-gray-700/50 transition-colors">
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{{ user.id }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{{ user.email }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <router-link
+                  :to="`/admin/users/${user.id}`"
+                  class="text-indigo-400 hover:text-indigo-300 transition-colors"
+                >
+                  {{ user.email || '–' }}
+                </router-link>
+              </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span
                   class="px-2 py-1 text-xs font-semibold rounded-full"
@@ -91,13 +100,10 @@
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                 {{ formatDate(user.created_at) }}
               </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                {{ user.last_login_at ? formatDate(user.last_login_at) : '–' }}
+              </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button
-                  @click="$router.push(`/admin/users/${user.id}`)"
-                  class="text-indigo-400 hover:text-indigo-300 mr-4 transition-colors"
-                >
-                  {{ t('admin.user_detail.view') }}
-                </button>
                 <button
                   @click="openEditModal(user)"
                   class="text-indigo-400 hover:text-indigo-300 mr-4 transition-colors"

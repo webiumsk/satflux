@@ -199,48 +199,17 @@ class StoreService
     }
 
     /**
-     * Delete a store in BTCPay Server.
-     * If a user-level API key is provided, it will be used instead of server-level.
+     * Delete a store in BTCPay Server (DELETE /api/v1/stores/{storeId}).
+     * Must use server-level API key – merchant keys typically lack this permission.
+     *
+     * @param string|null $userApiKey Pass null to use server key (required for delete)
      */
     public function deleteStore(string $storeId, ?string $userApiKey = null): void
     {
-        $originalApiKey = null;
-        if ($userApiKey) {
-            // Temporarily use user-level API key
-            $originalApiKey = $this->client->getApiKey();
-            $this->client->setApiKey($userApiKey);
-        }
+        // Store deletion requires server-level key (merchant keys lack this permission)
+        $this->client->delete("/api/v1/stores/{$storeId}");
 
-        try {
-            // Delete request to BTCPay - this removes merchant from store
-            // Note: This doesn't delete the store itself, just removes merchant access
-            $this->client->delete("/api/v1/stores/{$storeId}");
-
-            // Clear cache for both server and merchant keys
-            $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
-            Cache::forget("btcpay:store:{$storeId}:{$apiKeyHash}");
-            Cache::forget("btcpay:store:{$storeId}:server");
-
-            \Illuminate\Support\Facades\Log::info('Merchant removed from BTCPay store', [
-                'store_id' => $storeId,
-                'api_key_type' => $userApiKey ? 'merchant' : 'server',
-            ]);
-        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
-            // Re-throw BtcPay exceptions so they can be handled upstream
-            throw $e;
-        } catch (\Exception $e) {
-            // Wrap other exceptions
-            throw new \App\Services\BtcPay\Exceptions\BtcPayException(
-                "Failed to remove merchant from BTCPay store: {$e->getMessage()}",
-                0,
-                $e
-            );
-        } finally {
-            // Restore original API key if we changed it
-            if ($userApiKey && $originalApiKey) {
-                $this->client->setApiKey($originalApiKey);
-            }
-        }
+        Cache::forget("btcpay:store:{$storeId}:server");
     }
 
     /**
