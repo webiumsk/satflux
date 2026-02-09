@@ -5,6 +5,260 @@
       <p class="text-gray-400 mt-1">{{ t('admin.dashboard.description') }}</p>
     </div>
 
+    <!-- Platform Overview (Admin only) -->
+    <div v-if="userRole === 'admin'" class="mb-10">
+      <h2 class="text-lg font-semibold text-white mb-4">{{ t('admin.dashboard.platform_overview') }}</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
+        <div
+          class="bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-amber-500/50 transition-all cursor-pointer"
+          @click="$router.push('/admin/users')"
+        >
+          <p class="text-gray-400 text-xs font-medium mb-1">{{ t('admin.dashboard.users') }}</p>
+          <p class="text-2xl font-bold text-white">{{ loading ? '...' : platformStats.users_total }}</p>
+          <p v-if="platformStats.users_7d > 0" class="text-xs text-amber-400 mt-1">{{ t('admin.dashboard.new_users_7d') }} {{ platformStats.users_7d }}</p>
+        </div>
+        <div
+          class="bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-amber-500/50 transition-all cursor-pointer"
+          @click="$router.push('/admin/users')"
+        >
+          <p class="text-gray-400 text-xs font-medium mb-1">{{ t('admin.dashboard.merchants') }}</p>
+          <p class="text-2xl font-bold text-white">{{ loading ? '...' : platformStats.merchants_total }}</p>
+        </div>
+        <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
+          <p class="text-gray-400 text-xs font-medium mb-1">{{ t('admin.dashboard.stores') }}</p>
+          <p class="text-2xl font-bold text-white">{{ loading ? '...' : platformStats.stores_total }}</p>
+          <p v-if="platformStats.stores_7d > 0" class="text-xs text-amber-400 mt-1">{{ t('admin.dashboard.new_stores_7d') }} {{ platformStats.stores_7d }}</p>
+        </div>
+        <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
+          <p class="text-gray-400 text-xs font-medium mb-1">{{ t('admin.dashboard.pos_terminals') }}</p>
+          <p class="text-2xl font-bold text-white">{{ loading ? '...' : platformStats.pos_terminals_total }}</p>
+        </div>
+        <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
+          <p class="text-gray-400 text-xs font-medium mb-1">{{ t('admin.dashboard.pos_orders') }}</p>
+          <p class="text-2xl font-bold text-white">{{ loading ? '...' : platformStats.pos_orders_paid_total }}</p>
+          <p v-if="posRevenue30d > 0" class="text-xs text-emerald-400 mt-1">{{ formatPosAmount(posRevenue30d) }} (30d)</p>
+          <p v-else-if="platformStats.pos_orders_paid_30d > 0" class="text-xs text-emerald-400 mt-1">{{ platformStats.pos_orders_paid_30d }} (30d)</p>
+        </div>
+        <div
+          class="bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-purple-500/50 transition-all cursor-pointer"
+          @click="$router.push('/support/wallet-connections')"
+        >
+          <p class="text-gray-400 text-xs font-medium mb-1">{{ t('admin.dashboard.wallet_needs_support') }}</p>
+          <p class="text-2xl font-bold" :class="platformStats.wallet_connections_needs_support > 0 ? 'text-amber-400' : 'text-white'">
+            {{ loading ? '...' : platformStats.wallet_connections_needs_support }}
+          </p>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-4 mb-6 items-center">
+        <div class="bg-gray-800/50 rounded-lg px-4 py-2 border border-gray-700">
+          <span class="text-gray-400 text-sm">{{ t('admin.dashboard.paid_plans') }}:</span>
+          <span class="text-white font-semibold ml-2">{{ loading ? '...' : platformStats.paid_plan_count }}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-gray-400 text-sm">{{ t('admin.dashboard.currency_toggle') }}:</span>
+          <div class="flex rounded-lg border border-gray-600 overflow-hidden">
+            <button
+              type="button"
+              :class="['px-3 py-1.5 text-xs font-medium transition-colors', amountCurrency === 'sats' ? 'bg-amber-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700']"
+              @click="amountCurrency = 'sats'"
+            >
+              sats
+            </button>
+            <button
+              type="button"
+              :class="['px-3 py-1.5 text-xs font-medium transition-colors', amountCurrency === 'eur' ? 'bg-amber-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700']"
+              @click="amountCurrency = 'eur'"
+            >
+              €
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trends chart -->
+      <div v-if="trendsChartData.length > 0" class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-base font-semibold text-white">{{ t('admin.dashboard.trends_30d') }}</h3>
+          <div class="flex rounded-lg border border-gray-600 overflow-hidden">
+            <button
+              type="button"
+              :class="['px-3 py-1.5 text-xs font-medium transition-colors', trendPeriod === '7d' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700']"
+              @click="trendPeriod = '7d'"
+            >
+              7d
+            </button>
+            <button
+              type="button"
+              :class="['px-3 py-1.5 text-xs font-medium transition-colors', trendPeriod === '30d' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700']"
+              @click="trendPeriod = '30d'"
+            >
+              30d
+            </button>
+          </div>
+        </div>
+        <div class="relative h-48 w-full">
+          <svg class="w-full h-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none" @mouseleave="trendActivePoint = null">
+            <defs>
+              <linearGradient id="adminUsersGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#6366f1" stop-opacity="0.3" />
+                <stop offset="100%" stop-color="#6366f1" stop-opacity="0" />
+              </linearGradient>
+              <linearGradient id="adminStoresGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#10b981" stop-opacity="0.3" />
+                <stop offset="100%" stop-color="#10b981" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <g v-for="(d, i) in trendsChartData" :key="d.date">
+              <!-- Invisible hover zone -->
+              <rect
+                :x="(i / trendsChartData.length) * 100"
+                y="0"
+                :width="100 / trendsChartData.length"
+                height="100"
+                fill="transparent"
+                class="cursor-pointer"
+                @mouseenter="trendActivePoint = i"
+              />
+              <!-- Users bar -->
+              <rect
+                :x="(i / trendsChartData.length) * 100 + (100 / trendsChartData.length) * 0.02"
+                :y="100 - (d.users / maxTrendValue) * 40"
+                :width="(100 / trendsChartData.length) * 0.28"
+                :height="Math.max((d.users / maxTrendValue) * 40, d.users > 0 ? 2 : 0)"
+                fill="#6366f1"
+                :opacity="trendActivePoint === i ? 1 : 0.7"
+                rx="2"
+                class="transition-all duration-150"
+              />
+              <!-- Stores bar -->
+              <rect
+                :x="(i / trendsChartData.length) * 100 + (100 / trendsChartData.length) * 0.35"
+                :y="100 - (d.stores / maxTrendValue) * 40"
+                :width="(100 / trendsChartData.length) * 0.28"
+                :height="Math.max((d.stores / maxTrendValue) * 40, d.stores > 0 ? 2 : 0)"
+                fill="#10b981"
+                :opacity="trendActivePoint === i ? 1 : 0.7"
+                rx="2"
+                class="transition-all duration-150"
+              />
+              <!-- PoS amount bar (sats or € based on toggle) -->
+              <rect
+                :x="(i / trendsChartData.length) * 100 + (100 / trendsChartData.length) * 0.68"
+                :y="100 - (posAmountForDay(d) / maxTrendValue) * 40"
+                :width="(100 / trendsChartData.length) * 0.28"
+                :height="Math.max((posAmountForDay(d) / maxTrendValue) * 40, posAmountForDay(d) > 0 ? 2 : 0)"
+                fill="#f59e0b"
+                :opacity="trendActivePoint === i ? 1 : 0.7"
+                rx="2"
+                class="transition-all duration-150"
+              />
+            </g>
+          </svg>
+
+          <!-- Tooltip -->
+          <div
+            v-if="trendActivePoint !== null"
+            class="absolute pointer-events-none z-50 bg-gray-900/95 backdrop-blur-md border border-gray-600 shadow-xl rounded-xl px-4 py-3 min-w-[160px] transition-all duration-150"
+            :style="tooltipStyle"
+          >
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+              {{ formatChartDate(trendsChartData[trendActivePoint]?.date) }}
+            </p>
+            <div class="flex items-center justify-between gap-4">
+              <span class="flex items-center gap-2 text-sm text-gray-300">
+                <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                {{ t('admin.dashboard.users') }}
+              </span>
+              <span class="font-bold text-indigo-400">{{ trendsChartData[trendActivePoint]?.users ?? 0 }}</span>
+            </div>
+            <div class="flex items-center justify-between gap-4 mt-1">
+              <span class="flex items-center gap-2 text-sm text-gray-300">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                {{ t('admin.dashboard.stores') }}
+              </span>
+              <span class="font-bold text-emerald-400">{{ trendsChartData[trendActivePoint]?.stores ?? 0 }}</span>
+            </div>
+            <div class="flex items-center justify-between gap-4 mt-1">
+              <span class="flex items-center gap-2 text-sm text-gray-300">
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                {{ amountCurrency === 'sats' ? 'PoS (sats)' : 'PoS (€)' }}
+              </span>
+              <span class="font-bold text-amber-400">{{ formatPosAmount(posAmountForDay(trendsChartData[trendActivePoint])) }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-between mt-2 text-xs text-gray-500">
+          <span>{{ formatChartDate(trendsChartData[0]?.date) }}</span>
+          <span>{{ formatChartDate(trendsChartData[trendsChartData.length - 1]?.date) }}</span>
+        </div>
+        <div class="flex justify-between items-center mt-3">
+          <div class="flex gap-6">
+            <span class="flex items-center gap-2 text-sm">
+              <span class="w-3 h-3 rounded bg-indigo-500"></span>
+              {{ t('admin.dashboard.users') }}
+            </span>
+            <span class="flex items-center gap-2 text-sm">
+              <span class="w-3 h-3 rounded bg-emerald-500"></span>
+              {{ t('admin.dashboard.stores') }}
+            </span>
+            <span class="flex items-center gap-2 text-sm">
+              <span class="w-3 h-3 rounded bg-amber-500"></span>
+              {{ amountCurrency === 'sats' ? 'PoS (sats)' : 'PoS (€)' }}
+            </span>
+          </div>
+          <button
+            type="button"
+            :disabled="exportingStats"
+            @click="downloadStatsExport"
+            class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700/50 rounded-lg hover:bg-gray-600/50 border border-gray-600 transition-colors disabled:opacity-50"
+          >
+            <svg v-if="exportingStats" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            {{ exportingStats ? '...' : t('admin.dashboard.export_stats') }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Top stores by PoS orders -->
+      <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 mt-6">
+        <h3 class="text-base font-semibold text-white mb-4">{{ t('admin.dashboard.top_stores_pos') }}</h3>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-700">
+            <thead class="bg-gray-900/50">
+              <tr>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">#</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">{{ t('admin.dashboard.stores') }}</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">{{ t('admin.dashboard.merchants') }}</th>
+                <th class="px-4 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">{{ t('admin.dashboard.pos_orders') }}</th>
+                <th class="px-4 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">{{ amountCurrency === 'sats' ? 'sats' : '€' }}</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-700">
+              <tr v-if="platformStats.top_stores_by_pos_orders.length === 0">
+                <td colspan="5" class="px-4 py-8 text-center text-gray-400">{{ t('admin.dashboard.top_stores_empty') }}</td>
+              </tr>
+              <tr
+                v-for="(s, idx) in platformStats.top_stores_by_pos_orders"
+                :key="s.store_id"
+                class="hover:bg-gray-700/30 transition-colors"
+              >
+                <td class="px-4 py-3 text-sm text-gray-400">{{ idx + 1 }}</td>
+                <td class="px-4 py-3 text-sm font-medium text-white">{{ s.store_name }}</td>
+                <td class="px-4 py-3 text-sm text-gray-400">{{ s.user_email || '—' }}</td>
+                <td class="px-4 py-3 text-sm text-right font-semibold text-emerald-400">{{ s.pos_orders_paid }}</td>
+                <td class="px-4 py-3 text-sm text-right font-medium text-amber-400">{{ formatPosAmount(amountCurrency === 'sats' ? (s.pos_amount_sats ?? 0) : (s.pos_amount_eur ?? 0)) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- Quick Stats -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
       <!-- Users Card -->
@@ -189,7 +443,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../../store/auth';
 import { adminDocumentationApi, adminFaqApi } from '../../services/api';
@@ -203,11 +457,126 @@ const userCount = ref(0);
 const docCount = ref(0);
 const faqCount = ref(0);
 
+const platformStats = ref({
+  users_total: 0,
+  users_7d: 0,
+  users_30d: 0,
+  merchants_total: 0,
+  stores_total: 0,
+  stores_7d: 0,
+  stores_30d: 0,
+  pos_terminals_total: 0,
+  apps_total: 0,
+  pos_orders_paid_total: 0,
+  pos_orders_paid_30d: 0,
+  pos_orders_amount_30d_sats: 0,
+  pos_orders_amount_30d_eur: 0,
+  pos_orders_amount_total_sats: 0,
+  pos_orders_amount_total_eur: 0,
+  wallet_connections_needs_support: 0,
+  paid_plan_count: 0,
+  trends_7d: [] as { date: string; users: number; stores: number; pos_orders: number; pos_amount_sats?: number; pos_amount_eur?: number }[],
+  trends_30d: [] as { date: string; users: number; stores: number; pos_orders: number; pos_amount_sats?: number; pos_amount_eur?: number }[],
+  top_stores_by_pos_orders: [] as { store_id: string; store_name: string; user_email: string | null; pos_orders_paid: number; pos_amount_sats?: number; pos_amount_eur?: number }[],
+});
+
 const userRole = computed(() => authStore.user?.role || '');
+
+const trendActivePoint = ref<number | null>(null);
+const trendPeriod = ref<'7d' | '30d'>('30d');
+const amountCurrency = ref<'sats' | 'eur'>('eur');
+
+const posRevenue30d = computed(() =>
+  amountCurrency.value === 'sats'
+    ? (platformStats.value.pos_orders_amount_30d_sats ?? 0)
+    : (platformStats.value.pos_orders_amount_30d_eur ?? 0)
+);
+
+function posAmountForDay(d: { pos_amount_sats?: number; pos_amount_eur?: number } | undefined): number {
+  if (!d) return 0;
+  return amountCurrency.value === 'sats' ? (d.pos_amount_sats ?? 0) : (d.pos_amount_eur ?? 0);
+}
+
+function formatPosAmount(n: number): string {
+  if (amountCurrency.value === 'sats') {
+    return new Intl.NumberFormat().format(Math.round(n)) + ' sats';
+  }
+  return new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) + ' €';
+}
+
+const trendsChartData = computed(() => {
+  const key = trendPeriod.value === '7d' ? 'trends_7d' : 'trends_30d';
+  return platformStats.value[key] ?? [];
+});
+const exportingStats = ref(false);
+
+async function downloadStatsExport() {
+  exportingStats.value = true;
+  try {
+    const res = await api.get('/admin/stats/export', { responseType: 'blob' });
+    const blob = new Blob([res.data], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `platform-stats-${new Date().toISOString().slice(0, 19).replace(/[:-]/g, '')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error('Export failed:', e);
+  } finally {
+    exportingStats.value = false;
+  }
+}
+
+const tooltipStyle = computed(() => {
+  const idx = trendActivePoint.value;
+  const d = trendsChartData.value;
+  if (idx == null || !d?.length) return {};
+  const pct = ((idx + 0.5) / d.length) * 100;
+  return {
+    left: `${pct}%`,
+    top: '8px',
+    transform: 'translateX(-50%)',
+  };
+});
+
+const maxTrendValue = computed(() => {
+  const d = trendsChartData.value;
+  if (!d?.length) return 1;
+  type TrendDay = { users: number; stores: number; pos_amount_sats?: number; pos_amount_eur?: number };
+  const max = Math.max(
+    ...d.flatMap((x: TrendDay) => [x.users, x.stores, posAmountForDay(x)])
+  );
+  return max > 0 ? max : 1;
+});
+
+function formatChartDate(dateStr: string | undefined): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
 
 const loadStats = async () => {
   loading.value = true;
   try {
+    // Load platform stats (admin only) - try whenever we might be admin
+    try {
+      const statsResponse = await api.get('/admin/stats');
+      platformStats.value = { ...platformStats.value, ...statsResponse.data };
+      userCount.value = platformStats.value.users_total;
+    } catch (error) {
+      if (userRole.value === 'admin') {
+        console.error('Failed to load platform stats:', error);
+      }
+      // Fallback: load user count from users endpoint
+      try {
+        const userResponse = await api.get('/admin/users', { params: { per_page: 1 } });
+        userCount.value = userResponse.data.meta?.total || 0;
+      } catch (e) {
+        // Ignore - user may not have admin access
+      }
+    }
+
     // Load documentation count
     try {
       const docResponse = await adminDocumentationApi.articles.index();
@@ -224,15 +593,7 @@ const loadStats = async () => {
       console.error('Failed to load FAQ count:', error);
     }
 
-    // Load user count (admin only)
-    if (userRole.value === 'admin') {
-      try {
-        const userResponse = await api.get('/admin/users', { params: { per_page: 1 } });
-        userCount.value = userResponse.data.meta?.total || 0;
-      } catch (error) {
-        console.error('Failed to load user count:', error);
-      }
-    }
+    // Load user count for non-admin (support sees users card? No - Users card is admin only. So we're good.)
   } finally {
     loading.value = false;
   }
@@ -241,5 +602,16 @@ const loadStats = async () => {
 onMounted(() => {
   loadStats();
 });
+
+// Re-load platform stats when user becomes admin (e.g. auth loaded after mount)
+watch(
+  () => userRole.value,
+  (role: string) => {
+    if (role === 'admin') {
+      loadStats();
+    }
+  },
+  { immediate: false }
+);
 </script>
 

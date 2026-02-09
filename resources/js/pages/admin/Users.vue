@@ -48,7 +48,7 @@
           </thead>
           <tbody class="bg-gray-800 divide-y divide-gray-700">
             <tr v-if="loading" class="bg-gray-800">
-              <td colspan="6" class="px-6 py-12 text-center text-gray-400">
+              <td colspan="7" class="px-6 py-12 text-center text-gray-400">
                 <svg class="animate-spin h-8 w-8 text-indigo-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -71,6 +71,9 @@
                   {{ formatRole(user.role || 'free') }}
                 </span>
               </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                {{ user.stores_count ?? 0 }}
+              </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span
                   v-if="user.email_verified_at"
@@ -89,6 +92,12 @@
                 {{ formatDate(user.created_at) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <button
+                  @click="$router.push(`/admin/users/${user.id}`)"
+                  class="text-indigo-400 hover:text-indigo-300 mr-4 transition-colors"
+                >
+                  {{ t('admin.user_detail.view') }}
+                </button>
                 <button
                   @click="openEditModal(user)"
                   class="text-indigo-400 hover:text-indigo-300 mr-4 transition-colors"
@@ -224,10 +233,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
 import { useAuthStore } from '../../store/auth';
 import Select from '../../components/ui/Select.vue';
 
+const { t } = useI18n();
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 
