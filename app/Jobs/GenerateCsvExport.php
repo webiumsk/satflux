@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Export;
+use App\Notifications\MonthlyExportReadyNotification;
 use App\Services\BtcPay\InvoiceService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -93,6 +94,26 @@ class GenerateCsvExport implements ShouldQueue
                 $signedUrl,
                 now()->addSeconds($ttl)
             );
+
+            // Send email when export is ready
+            $user = $this->export->user;
+            $store = $this->export->store;
+            if ($this->export->source === Export::SOURCE_AUTOMATIC) {
+                $filters = $this->export->filters ?? [];
+                $dateFrom = $filters['date_from'] ?? null;
+                $monthLabel = $dateFrom
+                    ? (new \DateTime($dateFrom))->format('F Y')
+                    : now()->subMonth()->format('F Y');
+                $email = $store->auto_report_email ?: $user->email;
+                if ($email) {
+                    \Illuminate\Support\Facades\Notification::route('mail', $email)
+                        ->notify(new \App\Notifications\MonthlyExportReadyNotification($this->export, $store, $monthLabel));
+                }
+            } elseif ($this->export->source === Export::SOURCE_MANUAL && $user->email) {
+                $label = date('Y-m-d_His');
+                \Illuminate\Support\Facades\Notification::route('mail', $user->email)
+                    ->notify(new \App\Notifications\ExportReadyNotification($this->export, $store, $label));
+            }
         } catch (\Exception $e) {
             $this->export->markAsFailed($e->getMessage());
             throw $e;
@@ -104,11 +125,16 @@ class GenerateCsvExport implements ShouldQueue
         // Write header
         fputcsv($handle, [
             'invoiceId',
+            'store',
+            'pos',
             'createdTime',
             'status',
             'amount',
             'currency',
             'paidAmount',
+            'tax',
+            'tip',
+            'discount',
             'paymentMethod',
             'buyerEmail',
             'orderId',
@@ -134,14 +160,21 @@ class GenerateCsvExport implements ShouldQueue
             }
             
             foreach ($invoices as $invoice) {
+                $posData = $this->parsePosData($invoice['metadata'] ?? []);
+
                 fputcsv($handle, [
                     $invoice['id'] ?? '',
-                    $invoice['createdTime'] ?? '',
+                    $store->name ?? '',
+                    $posData['pos'],
+                    $this->formatCreatedTimeEu($invoice['createdTime'] ?? null),
                     $invoice['status'] ?? '',
                     $invoice['amount'] ?? '',
                     $invoice['currency'] ?? '',
                     $invoice['paidAmount'] ?? '',
-                    $invoice['availablePaymentMethods'] ? implode(',', $invoice['availablePaymentMethods']) : '',
+                    $posData['tax'],
+                    $posData['tip'],
+                    $posData['discount'],
+                    isset($invoice['availablePaymentMethods']) && is_array($invoice['availablePaymentMethods']) ? implode(',', $invoice['availablePaymentMethods']) : '',
                     $invoice['buyer']['buyerEmail'] ?? '',
                     $invoice['metadata']['orderId'] ?? '',
                     $invoice['checkoutLink'] ?? '',
@@ -150,6 +183,52 @@ class GenerateCsvExport implements ShouldQueue
 
             $skip += $take;
         } while (count($invoices) === $take);
+    }
+
+    /**
+     * Parse posData from invoice metadata: determine Pos/Eshop label and extract tax, tip, discount.
+     */
+    protected function parsePosData(array $metadata): array
+    {
+        $posData = $metadata['posData'] ?? $metadata['pos'] ?? $metadata['posId'] ?? null;
+        if ($posData === null || $posData === '') {
+            return ['pos' => '', 'tax' => '', 'tip' => '', 'discount' => ''];
+        }
+        $data = is_string($posData) ? json_decode($posData, true) : $posData;
+        if (!is_array($data)) {
+            return ['pos' => '', 'tax' => '', 'tip' => '', 'discount' => ''];
+        }
+        $posLabel = '';
+        if (isset($data['WooCommerce']) || isset($data['Magento']) || isset($data['PrestaShop']) || isset($data['OpenCart']) || isset($data['Shopify'])) {
+            $posLabel = 'Eshop';
+        } elseif (isset($data['tax']) || isset($data['tip']) || array_key_exists('cart', $data)) {
+            $posLabel = 'PoS';
+        }
+        $tax = isset($data['tax']) ? (string) $data['tax'] : '';
+        $tip = isset($data['tip']) ? (string) $data['tip'] : '';
+        $discount = isset($data['discountAmount']) ? (string) $data['discountAmount'] : '';
+
+        return ['pos' => $posLabel, 'tax' => $tax, 'tip' => $tip, 'discount' => $discount];
+    }
+
+    /**
+     * Format createdTime as human-readable EU format (DD.MM.YYYY HH:mm).
+     */
+    protected function formatCreatedTimeEu(mixed $createdTime): string
+    {
+        if ($createdTime === null || $createdTime === '') {
+            return '';
+        }
+        $ts = is_numeric($createdTime) ? (float) $createdTime : strtotime($createdTime);
+        if ($ts === false) {
+            return (string) $createdTime;
+        }
+        // BTCPay uses seconds; if value looks like milliseconds (13+ digits), convert
+        if ($ts > 10000000000) {
+            $ts = $ts / 1000;
+        }
+        $date = \DateTime::createFromFormat('U', (string) (int) $ts);
+        return $date ? $date->format('d.m.Y H:i') : (string) $createdTime;
     }
 
     protected function writeAccountingCsv($handle, InvoiceService $invoiceService, $store, array $filters): void

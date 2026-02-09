@@ -148,7 +148,14 @@ const router = createRouter({
             path: '/stores/:id/exports',
             name: 'stores-exports',
             redirect: to => {
-                return { name: 'stores-show', params: { id: to.params.id }, query: { section: 'exports' } }
+                return { name: 'stores-show', params: { id: to.params.id }, query: { section: 'reports' } }
+            }
+        },
+        {
+            path: '/stores/:id/reports',
+            name: 'stores-reports',
+            redirect: to => {
+                return { name: 'stores-show', params: { id: to.params.id }, query: { section: 'reports' } }
             }
         },
         {

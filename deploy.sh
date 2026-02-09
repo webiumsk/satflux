@@ -112,9 +112,20 @@ fi
 
 echo -e "${GREEN}✓ Git pull completed → deployed branch: $BRANCH${NC}"
 
+# Step 2a: Build PHP image (picks up Dockerfile changes like new extensions)
+echo -e "${YELLOW}Step 2a: Building PHP image...${NC}"
+$DC_CMD build php
+
 # Step 2: Ensuring containers are running
 echo -e "${YELLOW}Step 2: Ensuring containers are running ($COMPOSE_FILE)...${NC}"
-$DC_CMD up -d
+# Use --force-recreate to avoid "container name already in use" when run from different project context
+$DC_CMD up -d --force-recreate 2>/dev/null || {
+    echo -e "${YELLOW}Retrying after removing orphaned containers...${NC}"
+    for c in satflux_redis_prod satflux_postgres_prod satflux_php_prod satflux_nginx_prod satflux_reverb_prod; do
+        docker rm -f "$c" 2>/dev/null || true
+    done
+    $DC_CMD up -d
+}
 
 # Wait for services to be healthy
 echo -e "${YELLOW}Waiting for services to be healthy...${NC}"

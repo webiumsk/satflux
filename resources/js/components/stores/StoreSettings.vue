@@ -131,7 +131,7 @@
                 v-if="!canEditBranding"
                 type="button"
                 @click="showBrandingProNotice = !showBrandingProNotice"
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
               >
                 {{ t('stores.available_in_pro') }}
                 <svg
@@ -155,12 +155,12 @@
             >
               <div
                 v-if="!canEditBranding && showBrandingProNotice"
-                class="mb-3 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-sm text-indigo-200"
+                class="mb-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-200"
               >
                 <p class="mb-2">{{ t('stores.pos_advanced_options_pro_only') }}</p>
                 <a
                   :href="'/account'"
-                  class="inline-flex items-center font-medium text-indigo-300 hover:text-indigo-200 underline underline-offset-2"
+                  class="inline-flex items-center font-medium text-amber-300 hover:text-amber-200 underline underline-offset-2"
                 >
                   {{ t('stores.upgrade_to_pro') }}
                 </a>
@@ -260,7 +260,7 @@
                   v-if="!canEditPaymentOptions"
                   type="button"
                   @click="showPaymentProNotice = !showPaymentProNotice"
-                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
                 >
                   {{ t('stores.available_in_pro') }}
                   <svg
@@ -284,12 +284,12 @@
               >
                 <div
                   v-if="!canEditPaymentOptions && showPaymentProNotice"
-                  class="mb-3 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-sm text-indigo-200"
+                  class="mb-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-200"
                 >
                   <p class="mb-2">{{ t('stores.pos_advanced_options_pro_only') }}</p>
                   <a
                     :href="'/account'"
-                    class="inline-flex items-center font-medium text-indigo-300 hover:text-indigo-200 underline underline-offset-2"
+                    class="inline-flex items-center font-medium text-amber-300 hover:text-indigo-200 underline underline-offset-2"
                   >
                     {{ t('stores.upgrade_to_pro') }}
                   </a>
@@ -441,7 +441,7 @@
                   v-if="!canEditRatesOptions"
                   type="button"
                   @click="showRatesProNotice = !showRatesProNotice"
-                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
                 >
                   {{ t('stores.available_in_pro') }}
                   <svg
@@ -465,12 +465,12 @@
               >
                 <div
                   v-if="!canEditRatesOptions && showRatesProNotice"
-                  class="mb-3 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-sm text-indigo-200"
+                  class="mb-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-200"
                 >
                   <p class="mb-2">{{ t('stores.pos_advanced_options_pro_only') }}</p>
                   <a
                     :href="'/account'"
-                    class="inline-flex items-center font-medium text-indigo-300 hover:text-indigo-200 underline underline-offset-2"
+                    class="inline-flex items-center font-medium text-amber-300 hover:text-amber-200 underline underline-offset-2"
                   >
                     {{ t('stores.upgrade_to_pro') }}
                   </a>
@@ -508,7 +508,7 @@
                 v-if="!canEditCheckoutOptions"
                 type="button"
                 @click="showCheckoutProNotice = !showCheckoutProNotice"
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
               >
                 {{ t('stores.available_in_pro') }}
                 <svg
@@ -532,12 +532,12 @@
             >
               <div
                 v-if="!canEditCheckoutOptions && showCheckoutProNotice"
-                class="p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-sm text-indigo-200"
+                class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-200"
               >
                 <p class="mb-2">{{ t('stores.pos_advanced_options_pro_only') }}</p>
                 <a
                   :href="'/account'"
-                  class="inline-flex items-center font-medium text-indigo-300 hover:text-indigo-200 underline underline-offset-2"
+                  class="inline-flex items-center font-medium text-amber-300 hover:text-amber-200 underline underline-offset-2"
                 >
                   {{ t('stores.upgrade_to_pro') }}
                 </a>
@@ -782,13 +782,17 @@ const authStore = useAuthStore();
 const storesStore = useStoresStore();
 
 const planCode = computed(() => (authStore.user?.plan?.code ?? 'free') as string);
-const canEditBranding = computed(() => planCode.value === 'pro' || planCode.value === 'enterprise');
+const userRole = computed(() => authStore.user?.role ?? '');
+const hasPaidAccess = computed(() =>
+  planCode.value === 'pro' || planCode.value === 'enterprise' || userRole.value === 'admin' || userRole.value === 'support'
+);
+const canEditBranding = computed(() => hasPaidAccess.value);
 const showBrandingProNotice = ref(false);
-const canEditPaymentOptions = computed(() => planCode.value === 'pro' || planCode.value === 'enterprise');
+const canEditPaymentOptions = computed(() => hasPaidAccess.value);
 const showPaymentProNotice = ref(false);
-const canEditRatesOptions = computed(() => planCode.value === 'pro' || planCode.value === 'enterprise');
+const canEditRatesOptions = computed(() => hasPaidAccess.value);
 const showRatesProNotice = ref(false);
-const canEditCheckoutOptions = computed(() => planCode.value === 'pro' || planCode.value === 'enterprise');
+const canEditCheckoutOptions = computed(() => hasPaidAccess.value);
 const showCheckoutProNotice = ref(false);
 
 const activeSettingsTab = ref<'settings' | 'payment' | 'rates' | 'checkout'>('settings');

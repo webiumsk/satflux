@@ -2,7 +2,10 @@
 
 namespace App\Jobs;
 
+use App\Jobs\GenerateCsvExport;
+use App\Jobs\GenerateXlsxExport;
 use App\Models\Export;
+use App\Models\Store;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\SubscriptionService;
@@ -14,7 +17,8 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
 /**
- * End-of-month job: create automatic CSV exports for Pro (and above) users.
+ * End-of-month job: create automatic exports for stores with auto_report_enabled.
+ * Only processes stores where user has Pro+ and store has auto_report_enabled.
  * Idempotent: only creates one automatic export per store per month.
  */
 class ProcessMonthlyExports implements ShouldQueue
@@ -50,42 +54,52 @@ class ProcessMonthlyExports implements ShouldQueue
             ->unique()
             ->all();
 
-        foreach ($userIds as $userId) {
-            $user = User::find($userId);
+        $stores = Store::where('auto_report_enabled', true)
+            ->whereIn('user_id', $userIds)
+            ->with('user')
+            ->get();
+
+        foreach ($stores as $store) {
+            $user = $store->user;
             if (!$user || !$subscriptionService->canUseAutomaticExports($user)) {
                 continue;
             }
 
-            foreach ($user->stores as $store) {
-                $exists = Export::where('store_id', $store->id)
-                    ->where('user_id', $user->id)
-                    ->where('source', Export::SOURCE_AUTOMATIC)
-                    ->where('filters->date_from', $dateFrom)
-                    ->exists();
+            $exists = Export::where('store_id', $store->id)
+                ->where('user_id', $user->id)
+                ->where('source', Export::SOURCE_AUTOMATIC)
+                ->where('filters->date_from', $dateFrom)
+                ->exists();
 
-                if ($exists) {
-                    continue;
-                }
-
-                $export = Export::create([
-                    'store_id' => $store->id,
-                    'user_id' => $user->id,
-                    'source' => Export::SOURCE_AUTOMATIC,
-                    'format' => 'standard',
-                    'filters' => [
-                        'date_from' => $dateFrom,
-                        'date_to' => $dateTo,
-                        'status' => null,
-                    ],
-                ]);
-
-                GenerateCsvExport::dispatch($export);
-                Log::info('Scheduled automatic monthly export', [
-                    'export_id' => $export->id,
-                    'store_id' => $store->id,
-                    'month' => $month,
-                ]);
+            if ($exists) {
+                continue;
             }
+
+            $format = $store->auto_report_format === 'xlsx' ? 'xlsx' : 'standard';
+            $export = Export::create([
+                'store_id' => $store->id,
+                'user_id' => $user->id,
+                'source' => Export::SOURCE_AUTOMATIC,
+                'format' => $format,
+                'filters' => [
+                    'date_from' => $dateFrom,
+                    'date_to' => $dateTo,
+                    'status' => 'Settled',
+                ],
+            ]);
+
+            if ($format === 'xlsx') {
+                GenerateXlsxExport::dispatch($export);
+            } else {
+                GenerateCsvExport::dispatch($export);
+            }
+
+            Log::info('Scheduled automatic monthly export', [
+                'export_id' => $export->id,
+                'store_id' => $store->id,
+                'format' => $format,
+                'month' => $month,
+            ]);
         }
     }
 }

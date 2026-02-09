@@ -21,6 +21,8 @@ use App\Http\Controllers\WalletConnectionController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\EshopIntegrationController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReportSettingsController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\LocaleController;
@@ -35,6 +37,7 @@ use App\Http\Middleware\AuditLog;
 use App\Http\Middleware\EnsureAdminRole;
 use App\Http\Middleware\EnsureApiKeyLimit;
 use App\Http\Middleware\EnsureActiveSubscription;
+use App\Http\Middleware\EnsurePlanAllowsExportsAccess;
 use App\Http\Middleware\EnsurePlanAllowsLnAddressCreation;
 use App\Http\Middleware\EnsurePlanAllowsOfflinePaymentMethods;
 use App\Http\Middleware\EnsurePlanAllowsUserApiKeyCreation;
@@ -263,14 +266,28 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/stores/{store}/invoices/export', [InvoiceController::class, 'exportCsv'])
         ->middleware(EnsureStoreOwnership::class);
 
-    // Exports
+    // Reports (list visible to all; download/retry require Pro+ or admin/support)
     Route::get('/stores/{store}/exports', [ExportController::class, 'index'])
         ->middleware(EnsureStoreOwnership::class);
     Route::post('/stores/{store}/exports', [ExportController::class, 'store'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':export.created']);
+        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsExportsAccess::class, AuditLog::class . ':export.created']);
     Route::get('/exports', [ExportController::class, 'all']);
-    Route::get('/exports/{export}/download', [ExportController::class, 'download']);
-    Route::post('/exports/{export}/retry', [ExportController::class, 'retry']);
+    Route::get('/exports/{export}/download', [ExportController::class, 'download'])
+        ->middleware(EnsurePlanAllowsExportsAccess::class);
+    Route::post('/exports/{export}/retry', [ExportController::class, 'retry'])
+        ->middleware(EnsurePlanAllowsExportsAccess::class);
+    Route::delete('/exports/{export}', [ExportController::class, 'destroy'])
+        ->middleware(EnsurePlanAllowsExportsAccess::class);
+
+    // PDF report (Pro+ or admin/support only)
+    Route::get('/stores/{store}/report/pdf', [ReportController::class, 'pdf'])
+        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsExportsAccess::class]);
+
+    // Report settings (GET for all, PUT requires Pro+)
+    Route::get('/stores/{store}/report-settings', [ReportSettingsController::class, 'show'])
+        ->middleware(EnsureStoreOwnership::class);
+    Route::put('/stores/{store}/report-settings', [ReportSettingsController::class, 'update'])
+        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsExportsAccess::class]);
 
     // Apps
     Route::get('/stores/{store}/apps', [AppController::class, 'index'])

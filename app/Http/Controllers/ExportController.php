@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ExportRequest;
 use App\Jobs\GenerateCsvExport;
+use App\Jobs\GenerateXlsxExport;
 use App\Models\Export;
 use App\Models\Store;
 use Illuminate\Http\Request;
@@ -11,12 +12,13 @@ use Illuminate\Http\Request;
 class ExportController extends Controller
 {
     /**
-     * List exports for a store.
+     * List exports for a store (automatic monthly reports only).
      */
     public function index(Request $request, Store $store)
     {
         $exports = Export::where('store_id', $store->id)
             ->where('user_id', $request->user()->id)
+            ->where('source', Export::SOURCE_AUTOMATIC)
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -110,7 +112,7 @@ class ExportController extends Controller
     }
 
     /**
-     * Retry a failed export.
+     * Retry a failed or stuck (pending/running) export.
      */
     public function retry(Request $request, Export $export)
     {
@@ -119,8 +121,8 @@ class ExportController extends Controller
             abort(403);
         }
 
-        if (!$export->hasFailed()) {
-            return response()->json(['message' => 'Export is not in failed state'], 400);
+        if (!$export->hasFailed() && $export->status !== 'pending' && $export->status !== 'running') {
+            return response()->json(['message' => 'Export can only be retried when failed or stuck'], 400);
         }
 
         $export->update([
@@ -128,12 +130,35 @@ class ExportController extends Controller
             'error_message' => null,
         ]);
 
-        GenerateCsvExport::dispatch($export);
+        if ($export->format === 'xlsx') {
+            GenerateXlsxExport::dispatch($export);
+        } else {
+            GenerateCsvExport::dispatch($export);
+        }
 
         return response()->json([
             'data' => $export->fresh(),
             'message' => 'Export job requeued',
         ]);
+    }
+
+    /**
+     * Delete an export.
+     */
+    public function destroy(Request $request, Export $export)
+    {
+        // Verify ownership
+        if ($export->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        if ($export->file_path && \Illuminate\Support\Facades\Storage::disk('local')->exists($export->file_path)) {
+            \Illuminate\Support\Facades\Storage::disk('local')->delete($export->file_path);
+        }
+
+        $export->delete();
+
+        return response()->json(['message' => 'Export deleted']);
     }
 }
 
