@@ -368,6 +368,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Admin routes
     Route::middleware([EnsureAdminRole::class])->group(function () {
+        Route::get('/admin/stats', [AdminController::class, 'stats']);
+        Route::get('/admin/stats/export', [AdminController::class, 'statsExport']);
         Route::get('/admin/users', [AdminController::class, 'index']);
         Route::get('/admin/users/{user}', [AdminController::class, 'show']);
         Route::put('/admin/users/{user}', [AdminController::class, 'update'])
