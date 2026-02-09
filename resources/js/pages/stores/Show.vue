@@ -34,9 +34,9 @@
            <StoreInvoices :store="store" />
         </div>
 
-        <!-- Exports View -->
-        <div v-else-if="showExports" class="max-w-7xl">
-           <StoreExports :store="store" />
+        <!-- Reports View -->
+        <div v-else-if="showReports" class="max-w-7xl">
+           <StoreReports :store="store" />
         </div>
 
         <!-- Dashboard View -->
@@ -206,7 +206,7 @@ import SalesChart from '../../components/stores/SalesChart.vue';
 import TopItems from '../../components/stores/TopItems.vue';
 import StoreSettings from '../../components/stores/StoreSettings.vue';
 import StoreInvoices from '../../components/stores/StoreInvoices.vue';
-import StoreExports from '../../components/stores/StoreExports.vue';
+import StoreReports from '../../components/stores/StoreReports.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -217,7 +217,7 @@ const loading = ref(false);
 const store = ref<any>(null);
 const showSettings = ref(false);
 const showInvoices = ref(false);
-const showExports = ref(false);
+const showReports = ref(false);
 
 const dashboard = computed(() => storesStore.dashboard);
 const allApps = computed(() => appsStore.apps);
@@ -264,7 +264,7 @@ watch(() => route.query.section, async (newSection, oldSection) => {
 function updateSection(section: string) {
   showSettings.value = section === 'settings';
   showInvoices.value = section === 'invoices';
-  showExports.value = section === 'exports';
+  showReports.value = section === 'reports' || section === 'exports'; // support legacy exports query
 }
 
 onMounted(async () => {

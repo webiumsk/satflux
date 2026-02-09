@@ -118,14 +118,14 @@ class StoreSettingsTest extends TestCase
             'name' => 'Updated Store Name',
             'default_currency' => 'USD',
             'timezone' => 'America/New_York',
-            'preferred_exchange' => 'coingecko',
+            'preferred_exchange' => 'binance',
         ]);
 
         $response->assertStatus(200)
             ->assertJsonPath('data.name', 'Updated Store Name')
             ->assertJsonPath('data.default_currency', 'USD')
             ->assertJsonPath('data.timezone', 'America/New_York')
-            ->assertJsonPath('data.preferred_exchange', 'coingecko')
+            ->assertJsonPath('data.preferred_exchange', 'binance')
             ->assertJsonPath('message', 'Store settings updated successfully');
         $store->refresh();
         $this->assertSame('Updated Store Name', $store->name);

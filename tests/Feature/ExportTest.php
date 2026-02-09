@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Jobs\GenerateCsvExport;
 use App\Models\Export;
 use App\Models\Store;
+use App\Models\Subscription;
+use App\Models\SubscriptionPlan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -15,10 +17,33 @@ class ExportTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected User $proUser;
+
     protected function setUp(): void
     {
         parent::setUp();
         Queue::fake();
+
+        $proPlan = SubscriptionPlan::create([
+            'code' => 'pro',
+            'name' => 'pro',
+            'display_name' => 'Pro',
+            'price_eur' => 99,
+            'billing_period' => 'year',
+            'max_stores' => 3,
+            'max_api_keys' => 3,
+            'max_ln_addresses' => null,
+            'features' => ['automatic_csv_exports'],
+            'is_active' => true,
+        ]);
+        $this->proUser = User::factory()->create();
+        Subscription::create([
+            'user_id' => $this->proUser->id,
+            'plan_id' => $proPlan->id,
+            'status' => 'active',
+            'starts_at' => now(),
+            'expires_at' => now()->addYear(),
+        ]);
     }
 
     public function test_user_can_list_exports_for_store(): void
@@ -28,6 +53,7 @@ class ExportTest extends TestCase
         Export::create([
             'store_id' => $store->id,
             'user_id' => $user->id,
+            'source' => Export::SOURCE_AUTOMATIC,
             'format' => 'standard',
             'status' => 'pending',
             'filters' => [],
@@ -55,12 +81,29 @@ class ExportTest extends TestCase
         $response->assertStatus(403);
     }
 
+    public function test_free_user_cannot_create_export(): void
+    {
+        $freeUser = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $freeUser->id]);
+
+        Sanctum::actingAs($freeUser);
+
+        $response = $this->postJson("/api/stores/{$store->id}/exports", [
+            'format' => 'standard',
+            'date_from' => '2024-01-01',
+            'date_to' => '2024-01-31',
+            'status' => 'Settled',
+        ]);
+
+        $response->assertStatus(403)
+            ->assertJsonPath('message', fn ($m) => str_contains($m, 'Pro') || str_contains($m, 'upgrade'));
+    }
+
     public function test_user_can_create_export(): void
     {
-        $user = User::factory()->create();
-        $store = Store::factory()->create(['user_id' => $user->id]);
+        $store = Store::factory()->create(['user_id' => $this->proUser->id]);
 
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($this->proUser);
 
         $response = $this->postJson("/api/stores/{$store->id}/exports", [
             'format' => 'standard',
@@ -75,7 +118,7 @@ class ExportTest extends TestCase
 
         $this->assertDatabaseHas('exports', [
             'store_id' => $store->id,
-            'user_id' => $user->id,
+            'user_id' => $this->proUser->id,
             'format' => 'standard',
         ]);
 
@@ -84,10 +127,9 @@ class ExportTest extends TestCase
 
     public function test_export_creation_validates_format(): void
     {
-        $user = User::factory()->create();
-        $store = Store::factory()->create(['user_id' => $user->id]);
+        $store = Store::factory()->create(['user_id' => $this->proUser->id]);
 
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($this->proUser);
 
         $response = $this->postJson("/api/stores/{$store->id}/exports", [
             'format' => 'invalid',
@@ -99,9 +141,16 @@ class ExportTest extends TestCase
 
     public function test_download_returns_403_for_other_users_export(): void
     {
-        $user1 = User::factory()->create();
+        $user1 = $this->proUser;
         $user2 = User::factory()->create();
         $store = Store::factory()->create(['user_id' => $user1->id]);
+        Subscription::create([
+            'user_id' => $user2->id,
+            'plan_id' => SubscriptionPlan::where('code', 'pro')->first()->id,
+            'status' => 'active',
+            'starts_at' => now(),
+            'expires_at' => now()->addYear(),
+        ]);
         $export = Export::create([
             'store_id' => $store->id,
             'user_id' => $user1->id,
@@ -117,19 +166,39 @@ class ExportTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_download_returns_202_when_export_not_ready(): void
+    public function test_download_returns_403_for_free_user(): void
     {
-        $user = User::factory()->create();
-        $store = Store::factory()->create(['user_id' => $user->id]);
+        $freeUser = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $this->proUser->id]);
         $export = Export::create([
             'store_id' => $store->id,
-            'user_id' => $user->id,
+            'user_id' => $this->proUser->id,
+            'format' => 'standard',
+            'status' => 'finished',
+            'file_path' => 'exports/test.csv',
+            'filters' => [],
+        ]);
+
+        Sanctum::actingAs($freeUser);
+
+        $response = $this->getJson("/api/exports/{$export->id}/download");
+
+        $response->assertStatus(403)
+            ->assertJsonPath('message', fn ($m) => str_contains($m, 'Pro') || str_contains($m, 'upgrade'));
+    }
+
+    public function test_download_returns_202_when_export_not_ready(): void
+    {
+        $store = Store::factory()->create(['user_id' => $this->proUser->id]);
+        $export = Export::create([
+            'store_id' => $store->id,
+            'user_id' => $this->proUser->id,
             'format' => 'standard',
             'status' => 'pending',
             'filters' => [],
         ]);
 
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($this->proUser);
 
         $response = $this->getJson("/api/exports/{$export->id}/download");
 
@@ -139,8 +208,15 @@ class ExportTest extends TestCase
 
     public function test_retry_returns_403_for_other_users_export(): void
     {
-        $user1 = User::factory()->create();
+        $user1 = $this->proUser;
         $user2 = User::factory()->create();
+        Subscription::create([
+            'user_id' => $user2->id,
+            'plan_id' => SubscriptionPlan::where('code', 'pro')->first()->id,
+            'status' => 'active',
+            'starts_at' => now(),
+            'expires_at' => now()->addYear(),
+        ]);
         $store = Store::factory()->create(['user_id' => $user1->id]);
         $export = Export::create([
             'store_id' => $store->id,
@@ -158,40 +234,39 @@ class ExportTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_retry_returns_400_when_export_not_failed(): void
+    public function test_retry_returns_400_when_export_finished(): void
     {
-        $user = User::factory()->create();
-        $store = Store::factory()->create(['user_id' => $user->id]);
+        $store = Store::factory()->create(['user_id' => $this->proUser->id]);
         $export = Export::create([
             'store_id' => $store->id,
-            'user_id' => $user->id,
+            'user_id' => $this->proUser->id,
             'format' => 'standard',
-            'status' => 'pending',
+            'status' => 'finished',
+            'file_path' => 'exports/test.csv',
             'filters' => [],
         ]);
 
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($this->proUser);
 
         $response = $this->postJson("/api/exports/{$export->id}/retry");
 
         $response->assertStatus(400);
-        $response->assertJson(['message' => 'Export is not in failed state']);
+        $response->assertJsonPath('message', fn ($m) => str_contains($m, 'retried') || str_contains($m, 'can only'));
     }
 
     public function test_retry_requeues_failed_export(): void
     {
-        $user = User::factory()->create();
-        $store = Store::factory()->create(['user_id' => $user->id]);
+        $store = Store::factory()->create(['user_id' => $this->proUser->id]);
         $export = Export::create([
             'store_id' => $store->id,
-            'user_id' => $user->id,
+            'user_id' => $this->proUser->id,
             'format' => 'standard',
             'status' => 'failed',
             'error_message' => 'Test error',
             'filters' => [],
         ]);
 
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($this->proUser);
 
         $response = $this->postJson("/api/exports/{$export->id}/retry");
 
@@ -202,5 +277,26 @@ class ExportTest extends TestCase
         $this->assertSame('pending', $export->status);
         $this->assertNull($export->error_message);
         Queue::assertPushed(GenerateCsvExport::class);
+    }
+
+    public function test_pro_user_can_delete_export(): void
+    {
+        $store = Store::factory()->create(['user_id' => $this->proUser->id]);
+        $export = Export::create([
+            'store_id' => $store->id,
+            'user_id' => $this->proUser->id,
+            'source' => Export::SOURCE_AUTOMATIC,
+            'format' => 'standard',
+            'status' => 'finished',
+            'filters' => [],
+        ]);
+
+        Sanctum::actingAs($this->proUser);
+
+        $response = $this->deleteJson("/api/exports/{$export->id}");
+
+        $response->assertStatus(200);
+        $response->assertJson(['message' => 'Export deleted']);
+        $this->assertDatabaseMissing('exports', ['id' => $export->id]);
     }
 }
