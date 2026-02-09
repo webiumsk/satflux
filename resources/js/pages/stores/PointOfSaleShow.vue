@@ -633,7 +633,7 @@
                             v-if="!canEditAdvancedOptions"
                             type="button"
                             @click="showProUpgradeNotice = !showProUpgradeNotice"
-                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors"
+                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 transition-colors"
                           >
                             {{ t("stores.available_in_pro") }}
                             <svg

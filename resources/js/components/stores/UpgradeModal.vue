@@ -33,7 +33,7 @@
             {{ message }}
           </p>
 
-          <div class="bg-gray-50 rounded-lg p-4 mb-4">
+          <div v-if="limits.length > 0" class="bg-gray-50 rounded-lg p-4 mb-4">
             <p class="text-sm text-gray-600 mb-2">
               <strong>Current plan limits:</strong>
             </p>
