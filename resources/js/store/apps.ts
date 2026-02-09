@@ -6,6 +6,7 @@ export interface App {
     id: string;
     name: string;
     app_type: 'PointOfSale' | 'PaymentButton' | 'LightningAddress';
+    archived?: boolean;
     config?: any;
     metadata?: any;
     btcpay_app_url?: string;
@@ -48,7 +49,7 @@ export const useAppsStore = defineStore('apps', () => {
         }
     }
 
-    async function updateApp(storeId: string, appId: string, config: { name?: string; config?: any }) {
+    async function updateApp(storeId: string, appId: string, config: { name?: string; config?: any; archived?: boolean }) {
         loading.value = true;
         try {
             const response = await api.put(`/stores/${storeId}/apps/${appId}`, config);
@@ -57,10 +58,21 @@ export const useAppsStore = defineStore('apps', () => {
             if (index !== -1) {
                 apps.value[index] = app;
             }
+            if (currentApp.value?.id === appId) {
+                currentApp.value = app;
+            }
             return app;
         } finally {
             loading.value = false;
         }
+    }
+
+    async function archiveApp(storeId: string, appId: string) {
+        return updateApp(storeId, appId, { archived: true });
+    }
+
+    async function unarchiveApp(storeId: string, appId: string) {
+        return updateApp(storeId, appId, { archived: false });
     }
 
     async function deleteApp(storeId: string, appId: string) {
@@ -98,6 +110,8 @@ export const useAppsStore = defineStore('apps', () => {
         fetchApps,
         createApp,
         updateApp,
+        archiveApp,
+        unarchiveApp,
         deleteApp,
         fetchApp,
         getAppsByType,

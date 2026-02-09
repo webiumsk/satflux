@@ -5,6 +5,7 @@ import api from '../services/api';
 export interface Store {
     id: string;
     name: string;
+    archived?: boolean;
     wallet_type: 'blink' | 'aqua_boltz' | null;
     created_at: string;
     updated_at: string;

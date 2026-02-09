@@ -190,6 +190,9 @@ class StoreController extends Controller
                 'name' => $request->name,
                 'defaultCurrency' => $request->default_currency,
                 'timeZone' => $request->timezone,
+                'anyoneCanCreateInvoice' => true,
+                'showRecommendedFee' => true,
+                'recommendedFeeBlockTarget' => 1,
             ];
 
             // Add preferred exchange if provided (even if empty string, set to null for recommendation)
@@ -622,27 +625,24 @@ class StoreController extends Controller
         $localStoreId = $store->id;
 
         try {
-            // Delete merchant from BTCPay store (removes merchant as owner)
-            // Note: This removes the merchant from the store but doesn't delete the store itself
-            // The store will remain in BTCPay with admin access only
+            // Delete store in BTCPay Server (DELETE /api/v1/stores/{storeId})
+            // Uses server-level API key – user keys typically lack permission to delete stores
             try {
-                $userApiKey = $user->getBtcPayApiKeyOrFail();
-                Log::info('Attempting to remove merchant from BTCPay store', [
+                Log::info('Attempting to delete store in BTCPay', [
                     'store_id' => $localStoreId,
                     'btcpay_store_id' => $btcpayStoreId,
                     'user_id' => $user->id,
                 ]);
 
-                // Try DELETE request - this will remove merchant from store
-                $this->storeService->deleteStore($btcpayStoreId, $userApiKey);
+                $this->storeService->deleteStore($btcpayStoreId, null);
 
-                Log::info('Merchant removed from BTCPay store', [
+                Log::info('Store deleted in BTCPay', [
                     'store_id' => $localStoreId,
                     'btcpay_store_id' => $btcpayStoreId,
                 ]);
             } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
                 // If DELETE fails, log but continue - we'll still delete locally
-                Log::warning('Failed to remove merchant from BTCPay store', [
+                Log::warning('Failed to delete store in BTCPay', [
                     'store_id' => $localStoreId,
                     'btcpay_store_id' => $btcpayStoreId,
                     'error_code' => $e->getCode(),

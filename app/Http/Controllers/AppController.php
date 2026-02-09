@@ -300,6 +300,7 @@ class AppController extends Controller
         $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'config' => ['sometimes', 'array'],
+            'archived' => ['sometimes', 'boolean'],
         ]);
 
         // Verify app belongs to store
@@ -454,6 +455,13 @@ class AppController extends Controller
             $config['appName'] = $request->name;
             // Remove 'name' if it exists
             unset($config['name']);
+        }
+
+        // Add archived from request (for Archive App action)
+        if ($request->has('archived')) {
+            $config['archived'] = filter_var($request->input('archived'), FILTER_VALIDATE_BOOLEAN);
+        } elseif ($request->has('config.archived')) {
+            $config['archived'] = filter_var($request->input('config.archived'), FILTER_VALIDATE_BOOLEAN);
         }
 
         // CRITICAL: Verify btcpay_app_id exists and is not empty before updating
@@ -680,10 +688,16 @@ class AppController extends Controller
             }
         }
 
+        $archived = $config['archived'] ?? false;
+        if (is_string($archived)) {
+            $archived = strtolower($archived) === 'true' || $archived === '1';
+        }
+
         $data = [
             'id' => $app->id,
             'name' => $app->name,
             'app_type' => $app->app_type,
+            'archived' => (bool) $archived,
             'config' => $config,
             'metadata' => $app->metadata,
             'created_at' => $app->created_at,

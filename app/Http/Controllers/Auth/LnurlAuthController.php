@@ -133,6 +133,7 @@ class LnurlAuthController extends Controller
                 // User is verified - login and return success
                 Auth::login($user);
                 $request->session()->regenerate();
+                $user->update(['last_login_at' => now()]);
 
                 // Mark challenge as consumed (user is authenticated)
                 $challenge->update([

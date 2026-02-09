@@ -302,7 +302,7 @@ class AdminController extends Controller
 
         $users = $query->withCount('stores')
             ->orderBy('created_at', 'desc')
-            ->select('id', 'email', 'role', 'email_verified_at', 'created_at', 'updated_at')
+            ->select('id', 'email', 'role', 'email_verified_at', 'created_at', 'updated_at', 'last_login_at')
             ->paginate(20);
 
         return response()->json([

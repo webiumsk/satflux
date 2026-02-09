@@ -133,12 +133,20 @@
                   <span class="text-gray-500 w-24">{{
                     t("stores.status")
                   }}</span>
-                  <span
-                    class="px-2 py-0.5 rounded-md text-xs font-semibold"
-                    :class="getWalletConnectionStatusBadgeClass(store)"
-                  >
-                    {{ getWalletConnectionStatusText(store) }}
-                  </span>
+                  <div class="flex flex-wrap gap-1.5">
+                    <span
+                      class="px-2 py-0.5 rounded-md text-xs font-semibold"
+                      :class="getWalletConnectionStatusBadgeClass(store)"
+                    >
+                      {{ getWalletConnectionStatusText(store) }}
+                    </span>
+                    <span
+                      v-if="store.archived"
+                      class="px-2 py-0.5 rounded-md text-xs font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20"
+                    >
+                      {{ t("stores.archived") }}
+                    </span>
+                  </div>
                 </div>
 
                 <div

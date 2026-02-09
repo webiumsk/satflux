@@ -28,6 +28,9 @@
     <div class="flex-1 overflow-hidden flex flex-col bg-gray-900 border-l border-gray-800">
       <!-- Scrollable Content Area -->
       <div class="flex-1 overflow-y-auto custom-scrollbar">
+        <div class="px-4 sm:px-6 lg:px-8 pt-8">
+          <ArchivedStoreBanner :store="store" />
+        </div>
         <slot :app="app" :store="store" />
       </div>
     </div>
@@ -49,6 +52,7 @@ import { router as inertiaRouter } from '@inertiajs/vue3';
 import { useAppsStore } from '../../store/apps';
 import { useStoresStore } from '../../store/stores';
 import StoreSidebar from './StoreSidebar.vue';
+import ArchivedStoreBanner from './ArchivedStoreBanner.vue';
 
 const props = defineProps<{ store?: any; app?: any }>();
 const isInertia = inject<boolean>('inertia', false);

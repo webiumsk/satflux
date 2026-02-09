@@ -33,18 +33,18 @@
         </button>
       </nav>
 
-      <!-- Tabs: Settings, Rates, Checkout (one form) -->
+      <!-- Tabs: General, Payment, Rates, Checkout (one form) -->
       <div v-show="['settings', 'payment', 'rates', 'checkout'].includes(activeSettingsTab)" class="px-6 py-8">
         <form @submit.prevent="handleSettingsSubmit" class="space-y-8">
           <!-- Tab: Settings -->
           <div v-show="activeSettingsTab === 'settings'" class="space-y-8">
           <!-- Store identification -->
           <div class="space-y-4">
-            <h2 class="text-lg font-semibold text-white border-b border-gray-700 pb-2">Store identification</h2>
+            <h2 class="text-lg font-semibold text-white border-b border-gray-700 pb-2">{{ t('stores.settings_store_identification') }}</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div class="md:col-span-2 space-y-4">
                 <div v-if="settings?.id" class="grid grid-cols-1 gap-1">
-                  <label class="block text-sm font-medium text-gray-400">Store Id</label>
+                  <label class="block text-sm font-medium text-gray-400">{{ t('stores.settings_store_id') }}</label>
                   <input
                     type="text"
                     :value="settings.id"
@@ -63,7 +63,7 @@
                   />
                 </div>
                 <div>
-                  <label for="website" class="block text-sm font-medium text-gray-300 mb-1">Store website</label>
+                  <label for="website" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_store_website') }}</label>
                   <input
                     id="website"
                     v-model="settingsForm.website"
@@ -104,7 +104,7 @@
                       @change="handleLogoUpload"
                       class="block w-full text-sm text-gray-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer bg-gray-700/50 rounded-lg border border-gray-600 focus:outline-none"
                     />
-                    <p class="mt-2 text-xs text-gray-500">PNG, JPG, GIF. Max 2MB.</p>
+                    <p class="mt-2 text-xs text-gray-500">{{ t('stores.settings_logo_format') }}</p>
                   </div>
                 </div>
                 <div v-if="logoError" class="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 p-4">
@@ -126,7 +126,7 @@
           <!-- Branding (Pro+) -->
           <div class="space-y-4">
             <div class="flex items-center gap-2 flex-wrap">
-              <h2 class="text-lg font-semibold text-white border-b border-gray-700 pb-2">Branding</h2>
+              <h2 class="text-lg font-semibold text-white border-b border-gray-700 pb-2">{{ t('stores.settings_branding') }}</h2>
               <button
                 v-if="!canEditBranding"
                 type="button"
@@ -166,7 +166,7 @@
                 </a>
               </div>
             </Transition>
-            <p class="text-sm text-gray-400">Custom color, logo, and CSS apply to public and customer-facing pages. Brand color is used as an accent.</p>
+            <p class="text-sm text-gray-400">{{ t('stores.settings_branding_desc') }}</p>
             <div
               :class="[
                 'space-y-4',
@@ -175,7 +175,7 @@
             >
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label for="brand_color" class="block text-sm font-medium text-gray-300 mb-1">Brand color</label>
+                  <label for="brand_color" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_brand_color') }}</label>
                   <div class="flex items-center gap-2">
                     <input
                       id="brand_color"
@@ -194,7 +194,7 @@
                 </div>
               </div>
               <div>
-                <label for="css_url" class="block text-sm font-medium text-gray-300 mb-1">Custom CSS URL</label>
+                <label for="css_url" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_custom_css_url') }}</label>
                 <input
                   id="css_url"
                   v-model="settingsForm.css_url"
@@ -205,7 +205,7 @@
                 />
               </div>
               <div>
-                <label for="payment_sound_url" class="block text-sm font-medium text-gray-300 mb-1">Payment sound URL</label>
+                <label for="payment_sound_url" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_payment_sound_url') }}</label>
                 <input
                   id="payment_sound_url"
                   v-model="settingsForm.payment_sound_url"
@@ -248,14 +248,40 @@
                   id="timezone"
                   v-model="settingsForm.timezone"
                   :options="timezoneOptions"
-                  placeholder="Select timezone"
+                  :placeholder="t('stores.settings_select_timezone')"
+                />
+              </div>
+            </div>
+            <!-- Allow anyone / Show recommended fee: available to all (Free) -->
+            <div class="space-y-4 pt-4 border-t border-gray-700">
+              <div class="flex flex-wrap gap-x-8 gap-y-4 items-start">
+                <label class="flex items-center">
+                  <input v-model="settingsForm.anyone_can_create_invoice" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
+                  <span class="ml-2 text-sm text-gray-300">{{ t('stores.settings_allow_anyone_invoice') }}</span>
+                </label>
+                <div>
+                  <label class="flex items-center">
+                    <input v-model="settingsForm.show_recommended_fee" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
+                    <span class="ml-2 text-sm text-gray-300">{{ t('stores.settings_show_recommended_fee') }}</span>
+                  </label>
+                  <p v-if="settingsForm.show_recommended_fee" class="mt-1 ml-7 text-xs text-gray-500">{{ t('stores.settings_fee_btc_ltc_only') }}</p>
+                </div>
+              </div>
+              <div v-if="settingsForm.show_recommended_fee" class="max-w-xs">
+                <label for="recommended_fee_block_target" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_recommended_fee_blocks') }}</label>
+                <input
+                  id="recommended_fee_block_target"
+                  v-model.number="settingsForm.recommended_fee_block_target"
+                  type="number"
+                  min="1"
+                  class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
                 />
               </div>
             </div>
             <!-- Payment options: Pro only -->
             <div class="space-y-4 pt-4 border-t border-gray-700">
               <div class="flex items-center gap-2 flex-wrap">
-                <h3 class="text-base font-semibold text-white">Payment options</h3>
+                <h3 class="text-base font-semibold text-white">{{ t('stores.settings_payment_options') }}</h3>
                 <button
                   v-if="!canEditPaymentOptions"
                   type="button"
@@ -303,16 +329,16 @@
               >
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label for="network_fee_mode" class="block text-sm font-medium text-gray-300 mb-1">Add network fee to invoice</label>
+                <label for="network_fee_mode" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_add_network_fee') }}</label>
                 <Select
                   id="network_fee_mode"
                   v-model="settingsForm.network_fee_mode"
                   :options="networkFeeModeOptions"
-                  placeholder="Select"
+                  :placeholder="t('stores.settings_select')"
                 />
               </div>
               <div>
-                <label for="invoice_expiration" class="block text-sm font-medium text-gray-300 mb-1">Invoice expires after (minutes)</label>
+                <label for="invoice_expiration" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_invoice_expires') }}</label>
                 <input
                   id="invoice_expiration"
                   v-model.number="settingsForm.invoice_expiration"
@@ -324,7 +350,7 @@
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label for="payment_tolerance" class="block text-sm font-medium text-gray-300 mb-1">Consider invoice paid if amount is … % less (percent)</label>
+                <label for="payment_tolerance" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_consider_paid_less') }}</label>
                 <input
                   id="payment_tolerance"
                   v-model.number="settingsForm.payment_tolerance"
@@ -335,7 +361,7 @@
                 />
               </div>
               <div>
-                <label for="refund_bolt11_expiration" class="block text-sm font-medium text-gray-300 mb-1">Minimum BOLT11 expiration for refunds (days)</label>
+                <label for="refund_bolt11_expiration" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_bolt11_refund_days') }}</label>
                 <input
                   id="refund_bolt11_expiration"
                   v-model.number="settingsForm.refund_bolt11_expiration"
@@ -347,17 +373,7 @@
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label for="display_expiration_timer" class="block text-sm font-medium text-gray-300 mb-1">Display expiration timer (minutes)</label>
-                <input
-                  id="display_expiration_timer"
-                  v-model.number="settingsForm.display_expiration_timer"
-                  type="number"
-                  min="0"
-                  class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
-                />
-              </div>
-              <div>
-                <label for="monitoring_expiration" class="block text-sm font-medium text-gray-300 mb-1">Payment invalid if not confirmed after expiration (minutes)</label>
+                <label for="monitoring_expiration" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_payment_invalid_after') }}</label>
                 <input
                   id="monitoring_expiration"
                   v-model.number="settingsForm.monitoring_expiration"
@@ -368,39 +384,16 @@
               </div>
             </div>
             <div>
-              <label for="speed_policy" class="block text-sm font-medium text-gray-300 mb-1">Consider invoice settled when payment has</label>
-              <Select
-                id="speed_policy"
-                v-model="settingsForm.speed_policy"
-                :options="speedPolicyOptions"
-                placeholder="Select"
-              />
-            </div>
-            <div class="flex flex-wrap gap-x-8 gap-y-4 items-start">
-              <label class="flex items-center">
-                <input v-model="settingsForm.anyone_can_create_invoice" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                <span class="ml-2 text-sm text-gray-300">Allow anyone to create invoice</span>
-              </label>
-              <div>
-                <label class="flex items-center">
-                  <input v-model="settingsForm.show_recommended_fee" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                  <span class="ml-2 text-sm text-gray-300">Show recommended fee</span>
-                </label>
-                <p v-if="settingsForm.show_recommended_fee" class="mt-1 ml-7 text-xs text-gray-500">Fee is shown for BTC and LTC on-chain payments only.</p>
-              </div>
-            </div>
-            <div v-if="settingsForm.show_recommended_fee" class="max-w-xs">
-              <label for="recommended_fee_block_target" class="block text-sm font-medium text-gray-300 mb-1">Recommended fee confirmation target (blocks)</label>
-              <input
-                id="recommended_fee_block_target"
-                v-model.number="settingsForm.recommended_fee_block_target"
-                type="number"
-                min="1"
-                class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
-              />
+              <label for="speed_policy" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_invoice_settled_when') }}</label>
+                <Select
+                  id="speed_policy"
+                  v-model="settingsForm.speed_policy"
+                  :options="speedPolicyOptions"
+                  :placeholder="t('stores.settings_select')"
+                />
             </div>
             <div>
-              <label for="lightning_description_template" class="block text-sm font-medium text-gray-300 mb-1">Lightning description template</label>
+              <label for="lightning_description_template" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_lightning_description_template') }}</label>
               <input
                 id="lightning_description_template"
                 v-model="settingsForm.lightning_description_template"
@@ -408,13 +401,63 @@
                 class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
               />
             </div>
-            <div class="flex flex-wrap gap-x-8 gap-y-4">
-              <label class="flex items-center">
-                <input v-model="settingsForm.archived" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                <span class="ml-2 text-sm text-gray-300">Archived</span>
-              </label>
-            </div>
               </div>
+            </div>
+          </div>
+
+          <!-- Archived (Pro + admin/support only) - at bottom of General tab -->
+          <div v-show="activeSettingsTab === 'settings'" class="space-y-4 pt-8 border-t border-gray-700 mt-8">
+            <div class="flex items-center gap-2 flex-wrap">
+              <h3 class="text-base font-semibold text-white">{{ t('stores.settings_archived') }}</h3>
+              <button
+                v-if="!canEditArchivedOption"
+                type="button"
+                @click="showArchivedProNotice = !showArchivedProNotice"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
+              >
+                {{ t('stores.available_in_pro') }}
+                <svg
+                  class="w-3.5 h-3.5 transition-transform duration-200"
+                  :class="{ 'rotate-180': showArchivedProNotice }"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+            <Transition
+              enter-active-class="transition ease-out duration-200"
+              enter-from-class="opacity-0 -translate-y-1"
+              enter-to-class="opacity-100 translate-y-0"
+              leave-active-class="transition ease-in duration-150"
+              leave-from-class="opacity-100 translate-y-0"
+              leave-to-class="opacity-0 -translate-y-1"
+            >
+              <div
+                v-if="!canEditArchivedOption && showArchivedProNotice"
+                class="mb-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-200"
+              >
+                <p class="mb-2">{{ t('stores.settings_tab_archived_desc') }}</p>
+                <a
+                  href="/account"
+                  class="inline-flex items-center font-medium text-amber-300 hover:text-amber-200 underline underline-offset-2"
+                >
+                  {{ t('stores.upgrade_to_pro') }}
+                </a>
+              </div>
+            </Transition>
+            <div
+              :class="[
+                'flex flex-wrap gap-x-8 gap-y-4',
+                !canEditArchivedOption && 'pointer-events-none opacity-75 select-none',
+              ]"
+            >
+              <label class="flex items-center">
+                <input v-model="settingsForm.archived" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" :disabled="!canEditArchivedOption" />
+                <span class="ml-2 text-sm text-gray-300">{{ t('stores.settings_archived') }}</span>
+              </label>
             </div>
           </div>
 
@@ -425,18 +468,18 @@
             <!-- Preferred Price Source: free for all -->
             <div>
               <label for="preferred_exchange" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.preferred_price_source') }}</label>
-              <Select
-                id="preferred_exchange"
-                v-model="settingsForm.preferred_exchange"
-                :options="exchanges"
-                placeholder="Select preferred exchange"
-              />
+                <Select
+                  id="preferred_exchange"
+                  v-model="settingsForm.preferred_exchange"
+                  :options="exchanges"
+                  :placeholder="t('stores.settings_select')"
+                />
               <p class="mt-2 text-xs text-gray-500">{{ t('stores.recommended_price_source') }}</p>
             </div>
             <!-- Additional rates: Pro only -->
             <div class="space-y-4 pt-4 border-t border-gray-700">
               <div class="flex items-center gap-2 flex-wrap">
-                <h3 class="text-base font-semibold text-white">Additional rates</h3>
+                <h3 class="text-base font-semibold text-white">{{ t('stores.settings_additional_rates') }}</h3>
                 <button
                   v-if="!canEditRatesOptions"
                   type="button"
@@ -483,7 +526,7 @@
                 ]"
               >
                 <div>
-                  <label for="additional_tracked_rates" class="block text-sm font-medium text-gray-300 mb-1">Additional rates to track</label>
+                  <label for="additional_tracked_rates" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_additional_rates_label') }}</label>
                   <input
                     id="additional_tracked_rates"
                     :value="(settingsForm.additional_tracked_rates || []).join(', ')"
@@ -492,7 +535,7 @@
                     class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
                     @input="onAdditionalRatesInput"
                   />
-                  <p class="mt-1 text-xs text-gray-500">Comma-separated list of currencies (e.g. USD, EUR, JPY). Rates are recorded and available in reports.</p>
+                  <p class="mt-1 text-xs text-gray-500">{{ t('stores.settings_additional_rates_desc') }}</p>
                 </div>
               </div>
             </div>
@@ -503,7 +546,7 @@
             <h2 class="text-lg font-semibold text-white">{{ t('stores.settings_tab_checkout') }}</h2>
             <p class="text-sm text-gray-400 max-w-2xl">{{ t('stores.settings_tab_checkout_desc') }}</p>
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-base font-medium text-white">Checkout options</span>
+              <span class="text-base font-medium text-white">{{ t('stores.settings_checkout_options') }}</span>
               <button
                 v-if="!canEditCheckoutOptions"
                 type="button"
@@ -545,95 +588,162 @@
             </Transition>
             <div
               :class="[
-                'space-y-6',
+                'space-y-6 max-w-2xl',
                 !canEditCheckoutOptions && 'pointer-events-none opacity-75 select-none',
               ]"
             >
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label for="default_lang" class="block text-sm font-medium text-gray-300 mb-1">Default language</label>
-                <input
-                  id="default_lang"
-                  v-model="settingsForm.default_lang"
-                  type="text"
-                  placeholder="en"
-                  maxlength="10"
-                  class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+              <!-- Default payment method -->
+              <div class="form-group mb-4">
+                <label for="default_payment_method" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_default_payment_method') }}</label>
+                <Select
+                  id="default_payment_method"
+                  v-model="settingsForm.default_payment_method"
+                  :options="defaultPaymentMethodOptions"
+                  :placeholder="t('stores.settings_select')"
                 />
               </div>
-              <div>
-                <label for="html_title" class="block text-sm font-medium text-gray-300 mb-1">HTML title</label>
-                <input
-                  id="html_title"
-                  v-model="settingsForm.html_title"
-                  type="text"
-                  class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
-                />
+
+              <!-- Enable payment methods only when amount is ... -->
+              <div class="form-group mb-4">
+                <div class="text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_enable_payment_when_amount') }}</div>
+                <div class="mt-2 flex flex-wrap items-center gap-3">
+                  <template v-for="(crit, idx) in settingsForm.payment_method_criteria" :key="idx">
+                    <div class="w-28 min-w-0">
+                      <Select
+                        v-model="crit.payment_method"
+                        :options="defaultPaymentMethodOptions"
+                        :placeholder="t('stores.settings_method')"
+                      />
+                    </div>
+                    <div class="w-36 min-w-0">
+                      <Select
+                        v-model="crit.type"
+                        :options="paymentMethodCriteriaTypeOptions"
+                        :placeholder="t('stores.settings_type')"
+                      />
+                    </div>
+                    <input
+                      v-model="crit.value"
+                      type="text"
+                      placeholder="6.15 USD"
+                      class="w-28 px-3 py-2.5 border border-gray-600 rounded-lg text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </template>
+                </div>
               </div>
-            </div>
-            <div class="space-y-2">
-              <p class="text-sm font-medium text-gray-300">Receipt</p>
-              <label class="flex items-center">
-                <input v-model="settingsForm.receipt.enabled" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                <span class="ml-2 text-sm text-gray-300">Enable receipt</span>
-              </label>
-            </div>
-            <div class="flex flex-wrap gap-x-8 gap-y-4 pt-2 border-t border-gray-700">
-              <label class="flex items-center">
-                <input v-model="settingsForm.lightning_amount_in_satoshi" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                <span class="ml-2 text-sm text-gray-300">Lightning amount in satoshi</span>
-              </label>
-              <label class="flex items-center">
-                <input v-model="settingsForm.lightning_private_route_hints" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                <span class="ml-2 text-sm text-gray-300">Lightning private route hints</span>
-              </label>
-              <label class="flex items-center">
-                <input v-model="settingsForm.on_chain_with_ln_invoice_fallback" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                <span class="ml-2 text-sm text-gray-300">On-chain with LN invoice fallback</span>
-              </label>
-              <label class="flex items-center">
-                <input v-model="settingsForm.redirect_automatically" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                <span class="ml-2 text-sm text-gray-300">Redirect automatically</span>
-              </label>
-              <label class="flex items-center">
-                <input v-model="settingsForm.pay_join_enabled" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                <span class="ml-2 text-sm text-gray-300">PayJoin enabled</span>
-              </label>
-              <label class="flex items-center">
-                <input v-model="settingsForm.auto_detect_language" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                <span class="ml-2 text-sm text-gray-300">Auto-detect language</span>
-              </label>
-              <label class="flex items-center">
-                <input v-model="settingsForm.show_pay_in_wallet_button" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                <span class="ml-2 text-sm text-gray-300">Show pay in wallet button</span>
-              </label>
-              <label class="flex items-center">
-                <input v-model="settingsForm.show_store_header" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                <span class="ml-2 text-sm text-gray-300">Show store header</span>
-              </label>
-              <label class="flex items-center">
-                <input v-model="settingsForm.celebrate_payment" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                <span class="ml-2 text-sm text-gray-300">Celebrate payment</span>
-              </label>
-              <label class="flex items-center">
-                <input v-model="settingsForm.play_sound_on_payment" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                <span class="ml-2 text-sm text-gray-300">Play sound on payment</span>
-              </label>
-              <label class="flex items-center">
-                <input v-model="settingsForm.lazy_payment_methods" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                <span class="ml-2 text-sm text-gray-300">Lazy payment methods</span>
-              </label>
-            </div>
-            <div class="max-w-xs">
-              <label for="default_payment_method" class="block text-sm font-medium text-gray-300 mb-1">Default payment method</label>
-              <input
-                id="default_payment_method"
-                v-model="settingsForm.default_payment_method"
-                type="text"
-                placeholder="BTC-CHAIN"
-                class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
-              />
-            </div>
+
+              <!-- Checkout section -->
+              <h3 class="text-base font-semibold text-white mb-3 pt-2 border-t border-gray-700">{{ t('stores.settings_checkout_section') }}</h3>
+              <div class="space-y-4">
+                <div>
+                  <label for="display_expiration_timer" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_timer_before_expiration') }}</label>
+                  <div class="flex items-center gap-2 max-w-[14rem]">
+                    <input
+                      id="display_expiration_timer"
+                      v-model.number="settingsForm.display_expiration_timer"
+                      type="number"
+                      min="1"
+                      max="34560"
+                      inputmode="numeric"
+                      class="w-24 px-4 py-3 border border-gray-600 rounded-xl shadow-sm text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <span class="text-sm text-gray-400">{{ t('stores.settings_minutes') }}</span>
+                  </div>
+                </div>
+                <label class="flex items-center gap-3">
+                  <input v-model="settingsForm.celebrate_payment" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
+                  <span class="text-sm text-gray-300">{{ t('stores.settings_celebrate_payment') }}</span>
+                </label>
+                <label class="flex items-center gap-3">
+                  <input v-model="settingsForm.play_sound_on_payment" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
+                  <span class="text-sm text-gray-300">{{ t('stores.settings_sounds_on_checkout') }}</span>
+                </label>
+                <label class="flex items-center gap-3">
+                  <input v-model="settingsForm.show_store_header" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
+                  <span class="text-sm text-gray-300">{{ t('stores.settings_show_store_header') }}</span>
+                </label>
+                <label class="flex items-center gap-3">
+                  <input v-model="settingsForm.show_pay_in_wallet_button" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
+                  <span class="text-sm text-gray-300">{{ t('stores.settings_show_pay_in_wallet') }}</span>
+                </label>
+              </div>
+
+              <!-- Checkout Experience section -->
+              <h3 class="text-base font-semibold text-white mb-3 pt-4 border-t border-gray-700">{{ t('stores.settings_checkout_experience') }}</h3>
+              <div class="space-y-4">
+                <label class="flex items-center gap-3">
+                  <input v-model="settingsForm.on_chain_with_ln_invoice_fallback" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
+                  <span class="text-sm text-gray-300">{{ t('stores.settings_unify_onchain_ln') }}</span>
+                  <a href="https://bitcoinqr.dev/" target="_blank" rel="noreferrer noopener" class="text-gray-500 hover:text-gray-400" :title="t('stores.settings_more_info')">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  </a>
+                </label>
+                <label class="flex items-center gap-3">
+                  <input v-model="settingsForm.lightning_amount_in_satoshi" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
+                  <span class="text-sm text-gray-300">{{ t('stores.settings_lightning_satoshis') }}</span>
+                </label>
+                <div class="flex items-start gap-3">
+                  <input v-model="settingsForm.auto_detect_language" type="checkbox" class="mt-1 h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
+                  <div>
+                    <label for="auto_detect_language" class="text-sm font-medium text-gray-300">{{ t('stores.settings_auto_detect_language') }}</label>
+                    <p class="text-xs text-gray-500 mt-0.5">{{ t('stores.settings_auto_detect_language_desc') }}</p>
+                  </div>
+                </div>
+                <div>
+                  <label for="default_lang" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_default_language') }}</label>
+                  <Select
+                    id="default_lang"
+                    v-model="settingsForm.default_lang"
+                    :options="defaultLangOptions"
+                    :placeholder="t('stores.settings_select_language')"
+                  />
+                </div>
+                <div>
+                  <label for="html_title" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_html_title') }}</label>
+                  <input
+                    id="html_title"
+                    v-model="settingsForm.html_title"
+                    type="text"
+                    class="w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label for="support_url" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_support_url') }}</label>
+                  <input
+                    id="support_url"
+                    v-model="settingsForm.support_url"
+                    type="text"
+                    placeholder="https://example.com/support"
+                    class="w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <p class="mt-1.5 text-xs text-gray-500">{{ t('stores.settings_support_url_desc') }}</p>
+                </div>
+                <label class="flex items-center gap-3">
+                  <input v-model="settingsForm.lazy_payment_methods" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
+                  <span class="text-sm text-gray-300">{{ t('stores.settings_lazy_payment_methods') }}</span>
+                </label>
+                <label class="flex items-center gap-3">
+                  <input v-model="settingsForm.redirect_automatically" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
+                  <span class="text-sm text-gray-300">{{ t('stores.settings_redirect_automatically') }}</span>
+                </label>
+              </div>
+
+              <!-- Receipt section -->
+              <h3 class="text-base font-semibold text-white mb-3 pt-4 border-t border-gray-700">{{ t('stores.settings_receipt_section') }}</h3>
+              <div class="space-y-3">
+                <label class="flex items-center gap-3">
+                  <input v-model="settingsForm.receipt.enabled" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
+                  <span class="text-sm text-gray-300">{{ t('stores.settings_receipt_enabled') }}</span>
+                </label>
+                <label class="flex items-center gap-3">
+                  <input v-model="settingsForm.receipt.show_payments" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" :disabled="!settingsForm.receipt.enabled" />
+                  <span class="text-sm text-gray-300">{{ t('stores.settings_receipt_show_payments') }}</span>
+                </label>
+                <label class="flex items-center gap-3">
+                  <input v-model="settingsForm.receipt.show_qr" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" :disabled="!settingsForm.receipt.enabled" />
+                  <span class="text-sm text-gray-300">{{ t('stores.settings_receipt_show_qr') }}</span>
+                </label>
+              </div>
             </div>
           </div>
 
@@ -674,12 +784,12 @@
     <!-- Danger Zone (shown under every tab) -->
     <div class="bg-red-900/10 shadow-xl rounded-2xl border border-red-900/30 overflow-hidden">
       <div class="px-6 py-5 border-b border-red-900/20 bg-red-900/20">
-        <h2 class="text-lg font-bold text-red-400">Danger Zone</h2>
+        <h2 class="text-lg font-bold text-red-400">{{ t('stores.settings_danger_zone') }}</h2>
       </div>
       <div class="px-6 py-6">
-        <h3 class="text-sm font-bold text-white mb-2">Delete Store</h3>
+        <h3 class="text-sm font-bold text-white mb-2">{{ t('stores.settings_delete_store') }}</h3>
         <p class="text-sm text-gray-400 mb-6 max-w-xl">
-          This will permanently delete the store <strong>{{ store?.name }}</strong> and all its data, including invoices, apps, and settings. This action cannot be undone.
+          {{ t('stores.settings_delete_store_desc', { name: store?.name || '' }) }}
         </p>
         <button
           type="button"
@@ -687,7 +797,7 @@
           class="inline-flex items-center px-4 py-2 border border-red-500/50 text-sm font-medium rounded-lg text-red-400 bg-red-500/10 hover:bg-red-500/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 focus:ring-offset-gray-900 transition-colors"
         >
           <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-          Delete Store
+          {{ t('stores.settings_delete_store') }}
         </button>
       </div>
     </div>
@@ -713,19 +823,19 @@
                     <svg class="h-6 w-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                  </div>
                  <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                    <h3 class="text-lg leading-6 font-medium text-white" id="modal-title">Delete Store</h3>
+                    <h3 class="text-lg leading-6 font-medium text-white" id="modal-title">{{ t('stores.settings_delete_confirm_title') }}</h3>
                     <div class="mt-2">
                        <p class="text-sm text-gray-400">
-                          Are you sure you want to delete <strong>{{ store?.name }}</strong>? This action cannot be undone.
+                          {{ t('stores.settings_delete_confirm_desc', { name: store?.name || '' }) }}
                        </p>
                        <p class="text-sm text-gray-400 mt-2">
-                          Please type <span class="font-mono text-red-400 bg-red-900/20 px-1 rounded">DELETE</span> to confirm:
+                          {{ t('stores.settings_delete_type_confirm', { word: 'DELETE' }) }}
                        </p>
                        <input
                           v-model="deleteStoreConfirmText"
                           type="text"
                           class="mt-3 block w-full border border-gray-600 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm bg-gray-700 text-white placeholder-gray-500"
-                          placeholder="Type DELETE"
+                          :placeholder="t('stores.settings_delete_placeholder')"
                            @keyup.enter="handleDeleteStore"
                        />
                        <p v-if="deleteStoreError" class="mt-2 text-sm text-red-500">{{ deleteStoreError }}</p>
@@ -794,6 +904,8 @@ const canEditRatesOptions = computed(() => hasPaidAccess.value);
 const showRatesProNotice = ref(false);
 const canEditCheckoutOptions = computed(() => hasPaidAccess.value);
 const showCheckoutProNotice = ref(false);
+const canEditArchivedOption = computed(() => hasPaidAccess.value);
+const showArchivedProNotice = ref(false);
 
 const activeSettingsTab = ref<'settings' | 'payment' | 'rates' | 'checkout'>('settings');
 const settingsTabs = [
@@ -821,13 +933,13 @@ const settingsForm = ref<Record<string, any>>({
   additional_tracked_rates: [] as string[],
   invoice_expiration: 15,
   refund_bolt11_expiration: 30,
-  display_expiration_timer: 90,
-  monitoring_expiration: 144,
+  display_expiration_timer: 5,
+  monitoring_expiration: 1440,
   speed_policy: 'HighSpeed',
   lightning_description_template: '',
   payment_tolerance: 0,
   archived: false,
-  anyone_can_create_invoice: false,
+  anyone_can_create_invoice: true,
   receipt: { enabled: true, show_qr: null, show_payments: null },
   lightning_amount_in_satoshi: false,
   lightning_private_route_hints: false,
@@ -845,8 +957,8 @@ const settingsForm = ref<Record<string, any>>({
   celebrate_payment: true,
   play_sound_on_payment: false,
   lazy_payment_methods: false,
-  default_payment_method: '',
-  payment_method_criteria: {},
+  default_payment_method: 'BTC-LN',
+  payment_method_criteria: [{ payment_method: 'BTC-LN', type: 'GreaterThan', value: '' }],
   timezone: 'UTC',
   preferred_exchange: '',
 });
@@ -926,10 +1038,73 @@ const speedPolicyOptions = [
   { label: 'Low speed (6+ confirmations)', value: 'LowSpeed' },
 ];
 
+const defaultPaymentMethodOptions = [
+  { label: 'BTC-LN', value: 'BTC-LN' },
+  { label: 'BTC-LNURL', value: 'BTC-LNURL' },
+  { label: 'BTC-CHAIN', value: 'BTC-CHAIN' },
+];
+
+const paymentMethodCriteriaTypeOptions = [
+  { label: 'Greater than', value: 'GreaterThan' },
+  { label: 'Less than', value: 'LessThan' },
+];
+
 const networkFeeModeOptions = [
   { label: 'Always add network fee to invoice', value: 'Always' },
   { label: 'Only if customer makes more than one payment for the invoice', value: 'MultiplePaymentsOnly' },
   { label: 'Never', value: 'Never' },
+];
+
+// BTCPay DefaultLang options (checkout appearance)
+const defaultLangOptions = [
+  { label: 'Azərbaycanca', value: 'az' },
+  { label: 'Bahasa Indonesia', value: 'id' },
+  { label: 'Bosanski', value: 'bs-BA' },
+  { label: 'Català', value: 'ca-ES' },
+  { label: 'Česky', value: 'cs-CZ' },
+  { label: 'Dansk', value: 'da-DK' },
+  { label: 'Deutsch', value: 'de-DE' },
+  { label: 'English', value: 'en' },
+  { label: 'Español', value: 'es-ES' },
+  { label: 'Français', value: 'fr-FR' },
+  { label: 'Hrvatski', value: 'hr-HR' },
+  { label: 'Íslenska', value: 'is-IS' },
+  { label: 'Italiano', value: 'it-IT' },
+  { label: 'Latviešu', value: 'lv' },
+  { label: 'Magyar', value: 'hu-HU' },
+  { label: 'Nederlands', value: 'nl-NL' },
+  { label: 'Norsk', value: 'no' },
+  { label: 'Polski', value: 'pl' },
+  { label: 'Português (Brasil)', value: 'pt-BR' },
+  { label: 'Portuguese', value: 'pt-PT' },
+  { label: 'Română', value: 'ro' },
+  { label: 'Slovenčina', value: 'sk-SK' },
+  { label: 'Slovenščina', value: 'sl-SI' },
+  { label: 'Srpski', value: 'sr' },
+  { label: 'Suomi', value: 'fi-FI' },
+  { label: 'Svenska', value: 'sv' },
+  { label: 'Tiếng Việt', value: 'vi-VN' },
+  { label: 'Türkçe', value: 'tr' },
+  { label: 'Zulu', value: 'zu' },
+  { label: 'Ελληνικά', value: 'el-GR' },
+  { label: 'български', value: 'bg-BG' },
+  { label: 'қазақ', value: 'kk-KZ' },
+  { label: 'Русский', value: 'ru-RU' },
+  { label: 'Українська', value: 'uk-UA' },
+  { label: 'ქართული', value: 'ka' },
+  { label: 'Հայերեն', value: 'hy' },
+  { label: 'עברית', value: 'he' },
+  { label: 'العربية', value: 'ar' },
+  { label: 'فارسی', value: 'fa' },
+  { label: 'አማርኛ', value: 'am-ET' },
+  { label: 'नेपाली', value: 'np-NP' },
+  { label: 'हिंदी', value: 'hi' },
+  { label: 'ไทย', value: 'th-TH' },
+  { label: '한국어', value: 'ko' },
+  { label: '中文 (华语)', value: 'zh-SG' },
+  { label: '中文 (台語)', value: 'zh-TW' },
+  { label: '日本語', value: 'ja-JP' },
+  { label: '英文', value: 'zh-SP' },
 ];
 
 function onAdditionalRatesInput(e: Event) {
@@ -961,10 +1136,13 @@ async function fetchSettings() {
     settingsForm.value.apply_brand_color_to_backend = !!d.apply_brand_color_to_backend;
     settingsForm.value.default_currency = d.default_currency ?? 'EUR';
     settingsForm.value.additional_tracked_rates = arr(d.additional_tracked_rates);
-    settingsForm.value.invoice_expiration = d.invoice_expiration ?? 15;
+    // invoice_expiration: API returns seconds; UI shows minutes (15 min default)
+    settingsForm.value.invoice_expiration = Math.round((d.invoice_expiration ?? 900) / 60);
     settingsForm.value.refund_bolt11_expiration = d.refund_bolt11_expiration ?? 30;
-    settingsForm.value.display_expiration_timer = d.display_expiration_timer ?? 90;
-    settingsForm.value.monitoring_expiration = d.monitoring_expiration ?? 144;
+    // API returns seconds; UI shows minutes (BTCPay default 300s = 5min)
+    settingsForm.value.display_expiration_timer = Math.round((d.display_expiration_timer ?? 300) / 60);
+    // monitoring_expiration: API returns seconds; UI shows minutes (1440 min = 24h default)
+    settingsForm.value.monitoring_expiration = Math.round((d.monitoring_expiration ?? 86400) / 60);
     settingsForm.value.speed_policy = d.speed_policy ?? 'HighSpeed';
     settingsForm.value.lightning_description_template = d.lightning_description_template ?? '';
     settingsForm.value.payment_tolerance = Number(d.payment_tolerance) || 0;
@@ -972,8 +1150,8 @@ async function fetchSettings() {
     settingsForm.value.anyone_can_create_invoice = !!d.anyone_can_create_invoice;
     settingsForm.value.receipt = {
       enabled: d.receipt?.enabled !== false,
-      show_qr: d.receipt?.show_qr ?? d.receipt?.showQR ?? null,
-      show_payments: d.receipt?.show_payments ?? d.receipt?.showPayments ?? null,
+      show_qr: d.receipt?.show_qr ?? d.receipt?.showQR ?? (d.receipt?.enabled !== false),
+      show_payments: d.receipt?.show_payments ?? d.receipt?.showPayments ?? (d.receipt?.enabled !== false),
     };
     settingsForm.value.lightning_amount_in_satoshi = !!d.lightning_amount_in_satoshi;
     settingsForm.value.lightning_private_route_hints = !!d.lightning_private_route_hints;
@@ -991,8 +1169,17 @@ async function fetchSettings() {
     settingsForm.value.celebrate_payment = d.celebrate_payment !== false;
     settingsForm.value.play_sound_on_payment = !!d.play_sound_on_payment;
     settingsForm.value.lazy_payment_methods = !!d.lazy_payment_methods;
-    settingsForm.value.default_payment_method = d.default_payment_method ?? '';
-    settingsForm.value.payment_method_criteria = d.payment_method_criteria && typeof d.payment_method_criteria === 'object' ? d.payment_method_criteria : {};
+    settingsForm.value.default_payment_method = d.default_payment_method ?? 'BTC-LN';
+    const rawCriteria = d.payment_method_criteria;
+    if (Array.isArray(rawCriteria) && rawCriteria.length > 0) {
+      settingsForm.value.payment_method_criteria = rawCriteria.map((c: any) => ({
+        payment_method: c.paymentMethod ?? c.payment_method ?? 'BTC-LN',
+        type: c.type ?? 'GreaterThan',
+        value: c.value ?? '',
+      }));
+    } else {
+      settingsForm.value.payment_method_criteria = [{ payment_method: 'BTC-LN', type: 'GreaterThan', value: '' }];
+    }
     settingsForm.value.timezone = d.timezone ?? 'UTC';
     settingsForm.value.preferred_exchange = d.preferred_exchange ?? '';
   } catch (err) {
@@ -1011,6 +1198,21 @@ async function handleSettingsSubmit() {
 
   try {
     const payload = { ...settingsForm.value };
+    // Convert empty URL strings to null to avoid 422 validation errors
+    const urlFields = ['website', 'support_url', 'logo_url', 'css_url', 'payment_sound_url'];
+    urlFields.forEach((key) => {
+      if (payload[key] === '') payload[key] = null;
+    });
+    // Time fields: UI uses minutes, API expects seconds
+    if (typeof payload.display_expiration_timer === 'number') {
+      payload.display_expiration_timer = Math.round(payload.display_expiration_timer * 60);
+    }
+    if (typeof payload.invoice_expiration === 'number') {
+      payload.invoice_expiration = Math.round(payload.invoice_expiration * 60);
+    }
+    if (typeof payload.monitoring_expiration === 'number') {
+      payload.monitoring_expiration = Math.round(payload.monitoring_expiration * 60);
+    }
     if (!canEditBranding.value) {
       delete payload.brand_color;
       delete payload.css_url;
@@ -1019,21 +1221,24 @@ async function handleSettingsSubmit() {
     if (!canEditPaymentOptions.value) {
       const paymentPaidFields = [
         'network_fee_mode', 'invoice_expiration', 'payment_tolerance', 'refund_bolt11_expiration',
-        'display_expiration_timer', 'monitoring_expiration', 'speed_policy', 'anyone_can_create_invoice',
-        'show_recommended_fee', 'recommended_fee_block_target', 'lightning_description_template', 'archived',
+        'monitoring_expiration', 'speed_policy',
+        'lightning_description_template',
       ];
       paymentPaidFields.forEach((key) => delete payload[key]);
+    }
+    if (!canEditArchivedOption.value) {
+      delete payload.archived;
     }
     if (!canEditRatesOptions.value) {
       delete payload.additional_tracked_rates;
     }
     if (!canEditCheckoutOptions.value) {
       const checkoutFields = [
-        'default_lang', 'html_title', 'receipt',
+        'default_lang', 'html_title', 'receipt', 'support_url', 'display_expiration_timer',
         'lightning_amount_in_satoshi', 'lightning_private_route_hints', 'on_chain_with_ln_invoice_fallback',
         'redirect_automatically', 'pay_join_enabled', 'auto_detect_language', 'show_pay_in_wallet_button',
         'show_store_header', 'celebrate_payment', 'play_sound_on_payment', 'lazy_payment_methods',
-        'default_payment_method',
+        'default_payment_method', 'payment_method_criteria',
       ];
       checkoutFields.forEach((key) => delete payload[key]);
     }
