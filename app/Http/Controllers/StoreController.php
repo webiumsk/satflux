@@ -365,103 +365,22 @@ class StoreController extends Controller
                         'user_id' => $request->user()->id,
                     ]);
 
+                    // Create as pending; config bot runs first. Emails sent only on bot failure (via bot-failed).
                     $walletConnection = $walletConnectionService->createOrUpdate(
                         $store,
                         $connectionType,
                         $request->connection_string,
-                        $request->user()
+                        $request->user(),
+                        'pending'
                     );
 
-                    Log::info('Wallet connection created successfully during store creation', [
+                    Log::info('Wallet connection created (pending – config bot will run)', [
                         'store_id' => $store->id,
                         'wallet_connection_id' => $walletConnection->id ?? 'NULL',
                         'wallet_type' => $request->wallet_type,
                         'connection_type' => $connectionType,
                         'status' => $walletConnection->status ?? 'NULL',
                     ]);
-
-                    // Try to automatically connect to BTCPay
-                    // Wait a moment after store creation to ensure store is fully initialized
-                    try {
-                        Log::info('Attempting to automatically connect wallet to BTCPay', [
-                            'store_id' => $store->id,
-                            'btcpay_store_id' => $store->btcpay_store_id,
-                            'wallet_connection_id' => $walletConnection->id ?? 'NULL',
-                            'user_id' => $user->id,
-                        ]);
-
-                        // Small delay to ensure store is fully initialized in BTCPay
-                        sleep(1);
-
-                        // Get user API key for BTCPay API call
-                        $userApiKey = $user->getBtcPayApiKeyOrFail();
-                        Log::info('User API key retrieved successfully', [
-                            'store_id' => $store->id,
-                            'user_id' => $user->id,
-                            'api_key_length' => strlen($userApiKey),
-                        ]);
-
-                        $cryptoCode = 'BTC'; // Default to BTC for Lightning
-                        Log::info('Calling LightningService::connectLightningNode', [
-                            'store_id' => $store->id,
-                            'btcpay_store_id' => $store->btcpay_store_id,
-                            'crypto_code' => $cryptoCode,
-                            'connection_string_length' => strlen($request->connection_string),
-                        ]);
-
-                        $result = $this->lightningService->connectLightningNode(
-                            $store->btcpay_store_id,
-                            $cryptoCode,
-                            $request->connection_string,
-                            $userApiKey
-                        );
-
-                        Log::info('LightningService::connectLightningNode returned result', [
-                            'store_id' => $store->id,
-                            'success' => $result['success'] ?? 'NOT_SET',
-                            'message' => $result['message'] ?? 'NOT_SET',
-                            'requires_manual_config' => $result['requires_manual_config'] ?? 'NOT_SET',
-                        ]);
-
-                        if ($result['success'] ?? false) {
-                            // Connection successful - update status to connected
-                            $walletConnectionService->markConnected($walletConnection, $user);
-                            Log::info('Wallet connection automatically connected to BTCPay', [
-                                'store_id' => $store->id,
-                                'wallet_connection_id' => $walletConnection->id,
-                                'wallet_type' => $request->wallet_type,
-                            ]);
-                        } else {
-                            // Connection failed - keep needs_support status
-                            Log::info('Wallet connection could not be automatically connected to BTCPay', [
-                                'store_id' => $store->id,
-                                'wallet_connection_id' => $walletConnection->id,
-                                'wallet_type' => $request->wallet_type,
-                                'message' => $result['message'] ?? 'Unknown error',
-                                'requires_manual_config' => $result['requires_manual_config'] ?? false,
-                            ]);
-                        }
-                    } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
-                        // BTCPay API error - log but don't fail store creation
-                        Log::warning('Failed to automatically connect wallet to BTCPay', [
-                            'store_id' => $store->id,
-                            'wallet_connection_id' => $walletConnection->id ?? null,
-                            'wallet_type' => $request->wallet_type,
-                            'error' => $e->getMessage(),
-                            'error_code' => $e->getCode(),
-                        ]);
-                        // Status remains 'needs_support'
-                    } catch (\Exception $e) {
-                        // Other errors (e.g., no API key) - log but don't fail
-                        Log::warning('Failed to automatically connect wallet to BTCPay (non-API error)', [
-                            'store_id' => $store->id,
-                            'wallet_connection_id' => $walletConnection->id ?? null,
-                            'wallet_type' => $request->wallet_type,
-                            'error' => $e->getMessage(),
-                            'error_class' => get_class($e),
-                        ]);
-                        // Status remains 'needs_support'
-                    }
                 } catch (\Illuminate\Validation\ValidationException $e) {
                     throw $e;
                 } catch (\Exception $e) {
