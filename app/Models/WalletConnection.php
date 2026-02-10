@@ -23,6 +23,9 @@ class WalletConnection extends Model
         'encrypted_secret',
         'status',
         'reconfig',
+        'bot_failure_message',
+        'bot_failed_at',
+        'secret_updated_at',
         'submitted_by_user_id',
         'revealed_last_at',
         'revealed_last_by',
@@ -38,6 +41,8 @@ class WalletConnection extends Model
         return [
             'revealed_last_at' => 'datetime',
             'reconfig' => 'boolean',
+            'bot_failed_at' => 'datetime',
+            'secret_updated_at' => 'datetime',
         ];
     }
 

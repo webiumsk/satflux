@@ -6,6 +6,9 @@
                 <h3 class="text-sm font-bold text-indigo-400 mb-4 uppercase tracking-wider">
                     {{ t('stores.current_connection') }}
                 </h3>
+                <div v-if="existingConnection.type === 'aqua_descriptor'" class="mb-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10">
+                    <p class="text-sm text-amber-400">{{ t('stores.aqua_warning_btcpay') }}</p>
+                </div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                     <div>
                         <span class="block text-gray-500 text-xs uppercase">{{ t('stores.type') }}</span>
@@ -127,6 +130,9 @@
                             <div class="text-sm text-gray-400 mt-1">{{ t('stores.aqua_connection_description') }}</div>
                         </div>
                     </label>
+                </div>
+                <div v-if="form.type === 'aqua_descriptor'" class="mt-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10">
+                    <p class="text-sm text-amber-400">{{ t('stores.aqua_warning_btcpay') }}</p>
                 </div>
                 <p v-if="errors.type" class="mt-2 text-sm text-red-400">{{ errors.type }}</p>
             </div>

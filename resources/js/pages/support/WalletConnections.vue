@@ -70,6 +70,9 @@
                                 Submitted
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                Bot failure
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                                 Actions
                             </th>
                         </tr>
@@ -97,6 +100,12 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                                 {{ formatDate(connection.submitted_at) }}
+                            </td>
+                            <td class="px-6 py-4 max-w-xs">
+                                <span v-if="connection.status === 'needs_support' && connection.bot_failure_message" class="text-xs text-amber-400" :title="connection.bot_failure_message">
+                                    {{ connection.bot_failed_at ? formatDate(connection.bot_failed_at) + ': ' : '' }}{{ connection.bot_failure_message.slice(0, 80) }}{{ connection.bot_failure_message.length > 80 ? '…' : '' }}
+                                </span>
+                                <span v-else class="text-gray-500 text-xs">—</span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex items-center space-x-3">
@@ -147,6 +156,9 @@
                         </div>
                     </div>
                     
+                    <div v-if="connection.status === 'needs_support' && connection.bot_failure_message" class="mb-3 p-2 bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-400">
+                        <span class="font-medium">Bot failure:</span> {{ connection.bot_failure_message }}
+                    </div>
                     <div class="space-y-3">
                         <div class="flex flex-col">
                             <span class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Secret (Masked)</span>

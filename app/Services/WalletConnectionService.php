@@ -8,6 +8,8 @@ use App\Models\Store;
 use App\Models\User;
 use App\Models\WalletConnection;
 use App\Notifications\SupportNeededNotification;
+use App\Notifications\WalletConnectionChangedNotification;
+use App\Notifications\WalletConnectionNeedsSupportMerchantNotification;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -118,6 +120,9 @@ class WalletConnectionService
                     'encrypted_secret' => Crypt::encryptString($secret),
                     'status' => $initialStatus,
                     'reconfig' => $wasConnected,
+                    'bot_failure_message' => null,
+                    'bot_failed_at' => null,
+                    'secret_updated_at' => now(),
                     'submitted_by_user_id' => $user->id,
                 ]
             );
@@ -146,6 +151,20 @@ class WalletConnectionService
             $this->notifySupportNeeded($connection, $store);
         }
 
+        // Notify store owner: connection changed (masked secret + security warning) and, if pending, that it's being configured
+        $merchant = $store->user;
+        if ($merchant && $merchant->email) {
+            try {
+                $merchant->notify(new WalletConnectionChangedNotification($store, $connection));
+            } catch (\Exception $e) {
+                Log::error('Failed to send wallet connection changed notification', [
+                    'connection_id' => $connection->id,
+                    'store_id' => $store->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         return $connection;
     }
 
@@ -158,8 +177,22 @@ class WalletConnectionService
         $store = $connection->store;
         if ($store) {
             $this->notifySupportNeeded($connection, $store);
+
+            // Notify merchant: same message as in-app notice + optional bot failure details
+            $merchant = $store->user;
+            if ($merchant && $merchant->email) {
+                try {
+                    $merchant->notify(new WalletConnectionNeedsSupportMerchantNotification($store, $connection));
+                } catch (\Exception $e) {
+                    Log::error('Failed to send wallet connection needs-support (merchant) notification', [
+                        'connection_id' => $connection->id,
+                        'store_id' => $store->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
         }
-        Log::info('Wallet connection set to needs_support and support notified', [
+        Log::info('Wallet connection set to needs_support and support + merchant notified', [
             'connection_id' => $connection->id,
             'store_id' => $connection->store_id,
         ]);
@@ -360,7 +393,7 @@ class WalletConnectionService
             
             if ($merchant && $merchant->email) {
                 try {
-                    $merchant->notify(new \App\Notifications\WalletConnectionReadyNotification($store));
+                    $merchant->notify(new \App\Notifications\WalletConnectionReadyNotification($store, $connection));
                     Log::info('Wallet connection ready notification sent', [
                         'connection_id' => $connection->id,
                         'store_id' => $connection->store_id,

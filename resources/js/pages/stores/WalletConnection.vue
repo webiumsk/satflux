@@ -43,6 +43,12 @@
           </div>
 
           <div v-else class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
+            <div v-if="connection?.secret_updated_at || connection?.submitted_by_email" class="px-8 pt-6 pb-2 border-b border-gray-700">
+              <p class="text-sm text-gray-400">
+                <span v-if="connection.secret_updated_at">{{ t('stores.last_connection_change') }}: {{ formatDate(connection.secret_updated_at) }}</span>
+                <span v-if="connection.submitted_by_email"> {{ t('stores.by') }} {{ connection.submitted_by_email }}</span>
+              </p>
+            </div>
             <div class="p-8">
               <WalletConnectionForm
                 :store-id="storeId"
@@ -116,6 +122,11 @@ function handleSubmitted() {
 
 function handleCancel() {
     router.push({ name: 'stores-show', params: { id: storeId.value } });
+}
+
+function formatDate(dateString: string): string {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 function handleCreateApp() {

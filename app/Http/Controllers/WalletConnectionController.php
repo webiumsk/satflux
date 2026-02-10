@@ -36,6 +36,8 @@ class WalletConnectionController extends Controller
             return response()->json(['data' => null]);
         }
 
+        $connection->load('submittedBy');
+
         return response()->json([
             'data' => [
                 'id' => $connection->id,
@@ -43,6 +45,8 @@ class WalletConnectionController extends Controller
                 'status' => $connection->status,
                 'masked_secret' => $connection->masked_secret,
                 'submitted_at' => $connection->created_at,
+                'secret_updated_at' => $connection->secret_updated_at,
+                'submitted_by_email' => $connection->submittedBy?->email,
             ],
         ]);
     }
@@ -271,8 +275,11 @@ class WalletConnectionController extends Controller
                     'masked_secret' => $connection->masked_secret,
                     'submitted_by' => $connection->submittedBy->email ?? 'Unknown',
                     'submitted_at' => $connection->created_at,
+                    'secret_updated_at' => $connection->secret_updated_at,
                     'updated_at' => $connection->updated_at,
                     'revealed_last_at' => $connection->revealed_last_at,
+                    'bot_failure_message' => $connection->status === 'needs_support' ? $connection->bot_failure_message : null,
+                    'bot_failed_at' => $connection->status === 'needs_support' ? $connection->bot_failed_at : null,
                 ];
             }),
         ]);
@@ -363,6 +370,11 @@ class WalletConnectionController extends Controller
             'connection_id' => $connection->id,
             'store_id' => $connection->store_id,
             'error' => $error,
+        ]);
+
+        $connection->update([
+            'bot_failure_message' => $error ?: null,
+            'bot_failed_at' => now(),
         ]);
 
         $this->service->markNeedsSupportAndNotify($connection);
