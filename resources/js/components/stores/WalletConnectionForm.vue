@@ -8,6 +8,7 @@
                 </h3>
                 <div v-if="existingConnection.type === 'aqua_descriptor'" class="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10">
                     <p class="text-sm text-amber-400">{{ t('stores.aqua_warning_btcpay') }}</p>
+                    <p class="text-sm text-amber-400 mt-2">{{ t('stores.aqua_limits_warning') }}</p>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
                     <div>
@@ -147,6 +148,7 @@
                 </div>
                 <div v-if="form.type === 'aqua_descriptor'" class="mt-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10">
                     <p class="text-sm text-amber-400">{{ t('stores.aqua_warning_btcpay') }}</p>
+                    <p class="text-sm text-amber-400 mt-2">{{ t('stores.aqua_limits_warning') }}</p>
                 </div>
                 <p v-if="errors.type" class="mt-2 text-sm text-red-400">{{ errors.type }}</p>
             </div>

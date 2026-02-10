@@ -177,6 +177,7 @@
     "by": "by",
     "by_user_id": "By user ID",
     "aqua_warning_btcpay": "The Aqua/Boltz wallet in BTCPay cannot be removed. It will only be removed when the store is deleted.",
+    "aqua_limits_warning": "Aqua has min/max limits (100–25,000,000 sats). It is not ideal for micropayments (zaps) and may have higher fees.",
     "blink_keys_warning": "Create API keys with only \"read\" and \"receive\" permissions. Never use \"write\" — it would allow spending from your wallet.",
     "blink_dashboard_link": "Blink dashboard",
     "descriptor_already_in_use": "This descriptor is already in use",
