@@ -25,6 +25,7 @@ yarn-error.log
 
 # BTCPay config bot runtime (logs, etc.)
 /scripts/btcpay-config-bot/storage/
+/scripts/btcpay-config-bot/node_modules
 
 
 
