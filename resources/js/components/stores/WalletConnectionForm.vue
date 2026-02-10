@@ -165,6 +165,12 @@
                         : 'ct(slip77(...),elsh(wpkh(...))))'"
                     required
                 ></textarea>
+                <div v-if="form.type === 'blink'" class="mt-3 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10">
+                    <p class="text-sm text-amber-400 font-medium">
+                        {{ t('stores.blink_keys_warning') }}
+                        <a href="https://dashboard.blink.sv/" target="_blank" rel="noopener noreferrer" class="underline hover:text-amber-300 ml-1">{{ t('stores.blink_dashboard_link') }}</a>
+                    </p>
+                </div>
                 <div class="mt-3 text-sm text-gray-400 bg-gray-900/30 p-4 rounded-xl border border-gray-700/50">
                     <p class="font-medium text-gray-300 mb-2">{{ t('stores.format_help') }}</p>
                     <div v-if="form.type === 'blink'" class="space-y-1">

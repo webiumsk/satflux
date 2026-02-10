@@ -179,6 +179,10 @@
                         ? 'type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx'
                         : 'ct(slip77(...),elsh(wpkh(...))))'"
                     ></textarea>
+                    <p v-if="form.wallet_type === 'blink'" class="mt-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-sm text-amber-400">
+                      {{ t('stores.blink_keys_warning') }}
+                      <a href="https://dashboard.blink.sv/" target="_blank" rel="noopener noreferrer" class="underline hover:text-amber-300 ml-1">{{ t('stores.blink_dashboard_link') }}</a>
+                    </p>
                     <p class="mt-3 text-sm text-gray-400 leading-relaxed">
                       <span v-if="form.wallet_type === 'blink'">
                         {{ t('create_store.connection_string_format') }}<br>
