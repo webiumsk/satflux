@@ -8,7 +8,11 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class WalletConnectionReadyNotification extends Notification
+/**
+ * Sent to the store owner whenever their wallet connection string is changed (create/update).
+ * Includes masked secret and security warning.
+ */
+class WalletConnectionChangedNotification extends Notification
 {
     use Queueable;
 
@@ -26,16 +30,17 @@ class WalletConnectionReadyNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $appUrl = rtrim(config('app.url', 'http://localhost:8080'), '/');
-        $storeUrl = "{$appUrl}/stores/{$this->store->id}";
+        $storeUrl = "{$appUrl}/stores/{$this->store->id}/wallet-connection";
         $masked = $this->walletConnection->masked_secret ?: '******';
+        $type = $this->walletConnection->type === 'blink' ? 'Blink' : 'Aqua (Boltz)';
 
         return (new MailMessage)
-            ->subject('Wallet Connection Ready - ' . $this->store->name)
-            ->line('Your wallet connection has been successfully configured!')
-            ->line("Store: {$this->store->name}")
+            ->subject('Wallet connection updated - ' . $this->store->name)
+            ->line('Your wallet connection for store **' . $this->store->name . '** has been updated.')
+            ->line('**Type:** ' . $type)
             ->line('**Masked connection (for your records):** `' . $masked . '`')
-            ->line('Your store is now ready to accept Lightning payments.')
-            ->action('View Store Dashboard', $storeUrl)
+            ->line('**If this was not you,** please contact our support immediately to secure your account.')
+            ->action('Wallet connection settings', $storeUrl)
             ->line('Thank you for using our service!');
     }
 
@@ -43,8 +48,7 @@ class WalletConnectionReadyNotification extends Notification
     {
         return [
             'store_id' => $this->store->id,
-            'store_name' => $this->store->name,
+            'wallet_connection_id' => $this->walletConnection->id,
         ];
     }
 }
-

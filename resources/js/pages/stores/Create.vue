@@ -152,6 +152,9 @@
                     <input type="radio" v-model="form.wallet_type" value="aqua_boltz" class="hidden" />
                   </label>
                 </div>
+                <div v-if="form.wallet_type === 'aqua_boltz'" class="mt-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10">
+                  <p class="text-sm text-amber-400">{{ t('stores.aqua_warning_btcpay') }}</p>
+                </div>
               </div>
               
               <!-- Connection String Input -->

@@ -8,7 +8,10 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class WalletConnectionReadyNotification extends Notification
+/**
+ * Sent to the store owner when their wallet connection could not be configured (status = needs_support, e.g. after bot failure).
+ */
+class WalletConnectionNeedsSupportMerchantNotification extends Notification
 {
     use Queueable;
 
@@ -29,22 +32,27 @@ class WalletConnectionReadyNotification extends Notification
         $storeUrl = "{$appUrl}/stores/{$this->store->id}";
         $masked = $this->walletConnection->masked_secret ?: '******';
 
-        return (new MailMessage)
-            ->subject('Wallet Connection Ready - ' . $this->store->name)
-            ->line('Your wallet connection has been successfully configured!')
+        $mail = (new MailMessage)
+            ->subject('Wallet connection needs support - ' . $this->store->name)
+            ->line('Your wallet connection is being configured by our support team.')
             ->line("Store: {$this->store->name}")
             ->line('**Masked connection (for your records):** `' . $masked . '`')
-            ->line('Your store is now ready to accept Lightning payments.')
-            ->action('View Store Dashboard', $storeUrl)
-            ->line('Thank you for using our service!');
+            ->line("You'll be notified when it's ready.");
+
+        if ($this->walletConnection->bot_failure_message) {
+            $mail->line('**Technical details (for your reference):** ' . $this->walletConnection->bot_failure_message);
+        }
+
+        return $mail
+            ->action('View store', $storeUrl)
+            ->line('Thank you for your patience!');
     }
 
     public function toArray(object $notifiable): array
     {
         return [
             'store_id' => $this->store->id,
-            'store_name' => $this->store->name,
+            'wallet_connection_id' => $this->walletConnection->id,
         ];
     }
 }
-
