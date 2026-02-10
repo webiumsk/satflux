@@ -36,8 +36,6 @@ class WalletConnectionController extends Controller
             return response()->json(['data' => null]);
         }
 
-        $connection->load('submittedBy');
-
         return response()->json([
             'data' => [
                 'id' => $connection->id,
@@ -46,7 +44,7 @@ class WalletConnectionController extends Controller
                 'masked_secret' => $connection->masked_secret,
                 'submitted_at' => $connection->created_at,
                 'secret_updated_at' => $connection->secret_updated_at,
-                'submitted_by_email' => $connection->submittedBy?->email,
+                'submitted_by_user_id' => $connection->submitted_by_user_id,
             ],
         ]);
     }

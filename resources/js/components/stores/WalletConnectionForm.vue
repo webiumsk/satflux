@@ -2,45 +2,59 @@
     <div class="space-y-8">
         <!-- Read-only: Current Connection + Change button (when connection exists and not editing) -->
         <template v-if="existingConnection && viewMode === 'readonly'">
-            <div class="bg-gray-900/50 border border-gray-700 rounded-xl p-6">
-                <h3 class="text-sm font-bold text-indigo-400 mb-4 uppercase tracking-wider">
+            <div class="bg-gray-900/50 border border-gray-700 rounded-2xl p-8">
+                <h3 class="text-sm font-bold text-indigo-400 mb-6 uppercase tracking-wider">
                     {{ t('stores.current_connection') }}
                 </h3>
-                <div v-if="existingConnection.type === 'aqua_descriptor'" class="mb-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10">
+                <div v-if="existingConnection.type === 'aqua_descriptor'" class="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10">
                     <p class="text-sm text-amber-400">{{ t('stores.aqua_warning_btcpay') }}</p>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
                     <div>
-                        <span class="block text-gray-500 text-xs uppercase">{{ t('stores.type') }}</span>
+                        <span class="block text-gray-500 text-xs uppercase tracking-wider mb-1">{{ t('stores.type') }}</span>
                         <span class="font-medium text-white">{{ existingConnection.type === 'blink' ? t('create_store.wallet_type_blink') : t('create_store.wallet_type_aqua') }}</span>
                     </div>
                     <div>
-                        <span class="block text-gray-500 text-xs uppercase">{{ t('stores.status') }}</span>
+                        <span class="block text-gray-500 text-xs uppercase tracking-wider mb-1">{{ t('stores.status') }}</span>
                         <span class="font-medium" :class="getStatusColorClass(existingConnection.status)">{{ formatStatus(existingConnection.status) }}</span>
                     </div>
-                    <div class="sm:col-span-3">
-                        <span class="block text-gray-500 text-xs uppercase">{{ t('stores.masked_secret') }}</span>
-                        <span class="font-mono text-gray-300 break-all bg-gray-800 px-2 py-1 rounded border border-gray-700/50 inline-block mt-1">{{ existingConnection.masked_secret || 'N/A' }}</span>
+                </div>
+                <div class="mt-6 pt-6 border-t border-gray-700">
+                    <span class="block text-gray-500 text-xs uppercase tracking-wider mb-2">{{ t('stores.masked_secret') }}</span>
+                    <div class="font-mono text-gray-300 text-sm break-all bg-gray-800/80 px-4 py-3 rounded-xl border border-gray-700/50">
+                        {{ existingConnection.masked_secret || 'N/A' }}
                     </div>
                 </div>
-                <div class="mt-6">
+                <!-- Last change: date + user ID (integrated into main card) -->
+                <div
+                    v-if="existingConnection.secret_updated_at || existingConnection.submitted_by_user_id"
+                    class="mt-6 pt-6 border-t border-gray-700 flex flex-wrap items-baseline gap-x-6 gap-y-1 text-sm text-gray-400"
+                >
+                    <span v-if="existingConnection.secret_updated_at">
+                        <span class="text-gray-500 uppercase tracking-wider">{{ t('stores.last_connection_change') }}:</span>
+                        <span class="ml-2 text-gray-300">{{ formatLastChangeDate(existingConnection.secret_updated_at) }}</span>
+                    </span>
+                    <span v-if="existingConnection.submitted_by_user_id">
+                        <span class="text-gray-500 uppercase tracking-wider">{{ t('stores.by_user_id') }}:</span>
+                        <span class="ml-2 font-mono text-indigo-300">{{ existingConnection.submitted_by_user_id }}</span>
+                    </span>
+                </div>
+                <div class="mt-8 flex flex-wrap items-center gap-4">
                     <button
                         type="button"
                         @click="viewMode = 'password'"
-                        class="inline-flex items-center px-5 py-2.5 border border-indigo-500 rounded-xl text-sm font-medium text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 transition-all"
+                        class="inline-flex items-center px-6 py-3 border border-indigo-500 rounded-xl text-sm font-medium text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 transition-all"
                     >
                         {{ t('stores.change_connection') }}
                     </button>
+                    <button
+                        type="button"
+                        @click="$emit('cancel')"
+                        class="px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all"
+                    >
+                        {{ t('common.cancel') }}
+                    </button>
                 </div>
-            </div>
-            <div class="flex justify-start pt-4 border-t border-gray-700">
-                <button
-                    type="button"
-                    @click="$emit('cancel')"
-                    class="px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all"
-                >
-                    {{ t('common.cancel') }}
-                </button>
             </div>
         </template>
 
@@ -291,6 +305,11 @@ function getStatusColorClass(status: string): string {
         case 'pending': return 'text-yellow-400';
         default: return 'text-gray-400';
     }
+}
+
+function formatLastChangeDate(dateString: string): string {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 async function handleConfirmPassword() {
