@@ -245,14 +245,18 @@ class WalletConnectionController extends Controller
     /**
      * List wallet connections (support role only).
      * Query param: status = needs_support (default) | connected | pending | all
-     * Nothing is ever deleted; "Mark Connected" only updates status so all can be viewed.
+     * When status=needs_support, returns both 'pending' and 'needs_support' so the config bot can process new and failed connections.
      */
     public function indexSupport(Request $request)
     {
         $status = $request->query('status', 'needs_support');
         $query = WalletConnection::with(['store', 'submittedBy'])->orderBy('updated_at', 'desc');
 
-        if ($status !== 'all') {
+        if ($status === 'all') {
+            // no filter
+        } elseif ($status === 'needs_support') {
+            $query->whereIn('status', ['pending', 'needs_support']);
+        } else {
             $query->where('status', $status);
         }
 
@@ -347,6 +351,29 @@ class WalletConnectionController extends Controller
                 'status' => $connection->status,
             ],
             'message' => 'Wallet connection marked as connected',
+        ]);
+    }
+
+    /**
+     * Report config bot failure: set status to needs_support and send support notifications (support role / bot token).
+     */
+    public function botFailed(Request $request, WalletConnection $connection)
+    {
+        $error = $request->input('error', '');
+        Log::info('Config bot reported failure', [
+            'connection_id' => $connection->id,
+            'store_id' => $connection->store_id,
+            'error' => $error,
+        ]);
+
+        $this->service->markNeedsSupportAndNotify($connection);
+
+        return response()->json([
+            'data' => [
+                'id' => $connection->id,
+                'status' => $connection->fresh()->status,
+            ],
+            'message' => 'Bot failure recorded; support notified',
         ]);
     }
 

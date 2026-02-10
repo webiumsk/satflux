@@ -28,10 +28,11 @@ class WalletConnectionService
      * @param string $type Connection type ('blink' or 'aqua_descriptor')
      * @param string $secret Secret value (will be encrypted)
      * @param User $user User submitting the connection
+     * @param string $initialStatus 'pending' = bot will run first, no support emails yet; 'needs_support' = notify support immediately
      * @return WalletConnection
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function createOrUpdate(Store $store, string $type, string $secret, User $user): WalletConnection
+    public function createOrUpdate(Store $store, string $type, string $secret, User $user, string $initialStatus = 'needs_support'): WalletConnection
     {
         Log::info('WalletConnectionService::createOrUpdate called', [
             'store_id' => $store->id,
@@ -113,11 +114,11 @@ class WalletConnectionService
                 [
                     'type' => $type,
                     'encrypted_secret' => Crypt::encryptString($secret),
-                    'status' => 'needs_support',
+                    'status' => $initialStatus,
                     'submitted_by_user_id' => $user->id,
                 ]
             );
-            
+
             Log::info('Wallet connection created/updated successfully in database', [
                 'store_id' => $store->id,
                 'connection_id' => $connection->id,
@@ -137,79 +138,100 @@ class WalletConnectionService
             throw $e;
         }
 
-        // Notify support users when a connection needs support (new or re-submitted after merchant change)
+        // Notify support only when status is needs_support (e.g. not when initialStatus is 'pending' – bot runs first)
         if ($connection->status === 'needs_support') {
-            // Instant in-app notification via Reverb (no queue) so support can act immediately
-            if (config('broadcasting.default') !== 'null') {
-                try {
-                    event(new WalletConnectionNeedsSupport($connection, $store));
-                    Log::info('WalletConnectionNeedsSupport event broadcast', [
-                        'connection_id' => $connection->id,
-                        'store_id' => $store->id,
-                    ]);
-                } catch (\Exception $e) {
-                    Log::error('Failed to broadcast WalletConnectionNeedsSupport', [
-                        'connection_id' => $connection->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
-
-            // Discord webhook (instant, works even when no one has browser open)
-            $webhookUrl = config('services.discord.support_webhook_url');
-            if ($webhookUrl) {
-                try {
-                    $storeName = $store->name;
-                    $type = $connection->type === 'blink' ? 'Blink' : 'Aqua';
-                    $panelUrl = rtrim(config('app.url'), '/') . '/support/wallet-connections';
-
-                    Http::post($webhookUrl, [
-                        'content' => "🔔 **Wallet connection needs support**: {$storeName} ({$type})",
-                        'embeds' => [
-                            [
-                                'title' => 'Wallet Connection Needs Support',
-                                'description' => "**Store:** {$storeName}\n**Type:** {$type}\n**Status:** Needs Support",
-                                'url' => $panelUrl,
-                                'color' => 5814783, // indigo
-                            ],
-                        ],
-                    ]);
-                    Log::info('Discord webhook sent', ['connection_id' => $connection->id]);
-                } catch (\Exception $e) {
-                    Log::error('Failed to send Discord webhook', [
-                        'connection_id' => $connection->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
-
-            // Email notification (can be queued)
-            $supportUsers = User::whereIn('role', ['support', 'admin'])
-                ->whereNotNull('email')
-                ->whereNotNull('email_verified_at')
-                ->get();
-
-            foreach ($supportUsers as $supportUser) {
-                try {
-                    $supportUser->notify(new SupportNeededNotification($connection, $store));
-                    Log::info('Support needed notification sent', [
-                        'connection_id' => $connection->id,
-                        'store_id' => $store->id,
-                        'support_user_id' => $supportUser->id,
-                        'support_user_email' => $supportUser->email,
-                    ]);
-                } catch (\Exception $e) {
-                    Log::error('Failed to send support needed notification', [
-                        'connection_id' => $connection->id,
-                        'store_id' => $store->id,
-                        'support_user_id' => $supportUser->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
+            $this->notifySupportNeeded($connection, $store);
         }
 
         return $connection;
+    }
+
+    /**
+     * Mark connection as needs_support and send event, Discord and emails (e.g. after bot failure).
+     */
+    public function markNeedsSupportAndNotify(WalletConnection $connection): void
+    {
+        $connection->update(['status' => 'needs_support']);
+        $store = $connection->store;
+        if ($store) {
+            $this->notifySupportNeeded($connection, $store);
+        }
+        Log::info('Wallet connection set to needs_support and support notified', [
+            'connection_id' => $connection->id,
+            'store_id' => $connection->store_id,
+        ]);
+    }
+
+    /**
+     * Send support notifications: in-app event, Discord webhook, support emails.
+     */
+    private function notifySupportNeeded(WalletConnection $connection, Store $store): void
+    {
+        if (config('broadcasting.default') !== 'null') {
+            try {
+                event(new WalletConnectionNeedsSupport($connection, $store));
+                Log::info('WalletConnectionNeedsSupport event broadcast', [
+                    'connection_id' => $connection->id,
+                    'store_id' => $store->id,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to broadcast WalletConnectionNeedsSupport', [
+                    'connection_id' => $connection->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $webhookUrl = config('services.discord.support_webhook_url');
+        if ($webhookUrl) {
+            try {
+                $storeName = $store->name;
+                $typeLabel = $connection->type === 'blink' ? 'Blink' : 'Aqua';
+                $panelUrl = rtrim(config('app.url'), '/') . '/support/wallet-connections';
+
+                Http::post($webhookUrl, [
+                    'content' => "🔔 **Wallet connection needs support**: {$storeName} ({$typeLabel})",
+                    'embeds' => [
+                        [
+                            'title' => 'Wallet Connection Needs Support',
+                            'description' => "**Store:** {$storeName}\n**Type:** {$typeLabel}\n**Status:** Needs Support",
+                            'url' => $panelUrl,
+                            'color' => 5814783,
+                        ],
+                    ],
+                ]);
+                Log::info('Discord webhook sent', ['connection_id' => $connection->id]);
+            } catch (\Exception $e) {
+                Log::error('Failed to send Discord webhook', [
+                    'connection_id' => $connection->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $supportUsers = User::whereIn('role', ['support', 'admin'])
+            ->whereNotNull('email')
+            ->whereNotNull('email_verified_at')
+            ->get();
+
+        foreach ($supportUsers as $supportUser) {
+            try {
+                $supportUser->notify(new SupportNeededNotification($connection, $store));
+                Log::info('Support needed notification sent', [
+                    'connection_id' => $connection->id,
+                    'store_id' => $store->id,
+                    'support_user_id' => $supportUser->id,
+                    'support_user_email' => $supportUser->email,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to send support needed notification', [
+                    'connection_id' => $connection->id,
+                    'store_id' => $store->id,
+                    'support_user_id' => $supportUser->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     /**
