@@ -38,11 +38,12 @@ export async function runConfigForConnection(connectionId) {
     throw new Error(`Panel reveal failed: ${revealRes.status} ${JSON.stringify(revealBody)}`);
   }
 
-  const { secret, type: connectionType, btcpay_store_id, store_name } = revealBody?.data ?? {};
+  const { secret, type: connectionType, reconfig, btcpay_store_id, store_name } = revealBody?.data ?? {};
   if (!secret || !btcpay_store_id) {
     throw new Error(`Invalid reveal response: ${JSON.stringify(revealBody)}`);
   }
   const isAqua = connectionType === 'aqua_descriptor';
+  const isBlinkReconfig = !isAqua && reconfig;
 
   /** Unique Boltz wallet name for this connection (identifiable in BTCPay when debugging duplicates). */
   const boltzWalletName = (() => {
@@ -61,6 +62,7 @@ export async function runConfigForConnection(connectionId) {
     btcpayStoreId: btcpay_store_id,
     type: connectionType,
     isAqua,
+    isBlinkReconfig,
   });
 
   // Step 2: BTCPay UI
@@ -99,10 +101,28 @@ export async function runConfigForConnection(connectionId) {
       throw new Error(`BTCPay login failed: ${err}`);
     }
 
-    const lightningUrl = `${btcpayUrl}/stores/${btcpay_store_id}/lightning/BTC/setup`;
-    logger.info('btcpay_lightning', 'Navigating to Lightning setup', { url: lightningUrl, isAqua });
-    await page.goto(lightningUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await new Promise((r) => setTimeout(r, 4000)); // let Blazor/JS render (slower in headless)
+    const lightningBase = `${btcpayUrl}/stores/${btcpay_store_id}/lightning/BTC`;
+    const setupUrl = `${lightningBase}/setup`;
+    const settingsUrl = `${lightningBase}/settings`;
+
+    if (isBlinkReconfig) {
+      logger.info('btcpay_lightning', 'Blink reconfig: navigating via Settings → Change connection', { settingsUrl });
+      await page.goto(settingsUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await new Promise((r) => setTimeout(r, 3000));
+      const changeConnectionLink = page.locator('a[href*="/lightning/BTC/setup"], a:has-text("Change connection")').first();
+      await changeConnectionLink.waitFor({ state: 'visible', timeout: 15000 }).catch(async () => {
+        const bodyText = await page.locator('body').innerText().catch(() => '');
+        throw new Error(`Change connection link not found on Settings. Page: ${page.url()}. Snippet: ${bodyText.slice(0, 400)}`);
+      });
+      const changeHref = await changeConnectionLink.getAttribute('href');
+      const changeUrl = changeHref && changeHref.startsWith('http') ? changeHref : new URL(changeHref || '/setup', btcpayUrl).href;
+      await page.goto(changeUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await new Promise((r) => setTimeout(r, 3000));
+    } else {
+      logger.info('btcpay_lightning', 'Navigating to Lightning setup', { url: setupUrl, isAqua });
+      await page.goto(setupUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await new Promise((r) => setTimeout(r, 4000));
+    }
 
     if (isAqua) {
       // --- Aqua (Boltz): wizard flow – Configure Boltz → Continue → Import wallet → Enter core descriptor → submit ---
@@ -154,43 +174,47 @@ export async function runConfigForConnection(connectionId) {
       }
       logger.info('btcpay_boltz', 'Boltz L-BTC wallet import completed');
     } else {
-      // --- Blink (Custom node): paste connection string into Custom tab and Save ---
-      try {
-        await page.waitForSelector('#LightningNodeType-Custom', { state: 'attached', timeout: 45000 });
-      } catch (e) {
-        const currentUrl = page.url();
-        const bodyText = await page.locator('body').innerText().catch(() => '');
-        logger.error('btcpay_lightning_no_form', 'Lightning setup form not found', {
-          currentUrl,
-          bodySnippet: bodyText.slice(0, 300),
-        });
-        throw new Error(`Lightning setup form not found. Page: ${currentUrl}. Check access (403?) or BTCPay version.`);
+      // --- Blink (Custom node): paste connection string and Save ---
+      // Reconfig: we came from Settings → Change connection, form with #ConnectionString is already visible.
+      // First time: must switch to "Use custom node" tab, then fill #ConnectionString.
+      if (!isBlinkReconfig) {
+        try {
+          await page.waitForSelector('#LightningNodeType-Custom', { state: 'attached', timeout: 45000 });
+        } catch (e) {
+          const currentUrl = page.url();
+          const bodyText = await page.locator('body').innerText().catch(() => '');
+          logger.error('btcpay_lightning_no_form', 'Lightning setup form not found', {
+            currentUrl,
+            bodySnippet: bodyText.slice(0, 300),
+          });
+          throw new Error(`Lightning setup form not found. Page: ${currentUrl}. Check access (403?) or BTCPay version.`);
+        }
+
+        const customLabel = page.locator('label[for="LightningNodeType-Custom"]');
+        const labelVisible = await customLabel.isVisible().catch(() => false);
+        if (labelVisible) {
+          logger.info('btcpay_lightning', 'Clicking Use custom node (label)');
+          await customLabel.click();
+        } else {
+          logger.info('btcpay_lightning', 'Switching to Use custom node (Bootstrap Tab)');
+          await page.evaluate(() => {
+            const tabTrigger = document.querySelector('#LightningNodeType-Custom');
+            if (!tabTrigger) return;
+            if (typeof bootstrap !== 'undefined' && bootstrap.Tab) {
+              const tab = bootstrap.Tab.getOrCreateInstance(tabTrigger);
+              tab.show();
+            } else {
+              tabTrigger.checked = true;
+              tabTrigger.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          });
+          await page.waitForSelector('#CustomSetup.tab-pane.show', { state: 'visible', timeout: 5000 }).catch(() => {});
+          await new Promise((r) => setTimeout(r, 400));
+        }
+        await page.locator('#LightningNodeType-Custom').check();
       }
 
-      const customLabel = page.locator('label[for="LightningNodeType-Custom"]');
-      const labelVisible = await customLabel.isVisible().catch(() => false);
-      if (labelVisible) {
-        logger.info('btcpay_lightning', 'Clicking Use custom node (label)');
-        await customLabel.click();
-      } else {
-        logger.info('btcpay_lightning', 'Switching to Use custom node (Bootstrap Tab)');
-        await page.evaluate(() => {
-          const tabTrigger = document.querySelector('#LightningNodeType-Custom');
-          if (!tabTrigger) return;
-          if (typeof bootstrap !== 'undefined' && bootstrap.Tab) {
-            const tab = bootstrap.Tab.getOrCreateInstance(tabTrigger);
-            tab.show();
-          } else {
-            tabTrigger.checked = true;
-            tabTrigger.dispatchEvent(new Event('change', { bubbles: true }));
-          }
-        });
-        await page.waitForSelector('#CustomSetup.tab-pane.show', { state: 'visible', timeout: 5000 }).catch(() => {});
-        await new Promise((r) => setTimeout(r, 400));
-      }
-      await page.locator('#LightningNodeType-Custom').check();
       await page.waitForSelector('#ConnectionString', { state: 'visible', timeout: 15000 });
-
       await page.fill('#ConnectionString', secret);
       await new Promise((r) => setTimeout(r, 300));
 

@@ -94,20 +94,22 @@ class WalletConnectionService
         // Check if this is a new connection or update
         $existingConnection = WalletConnection::where('store_id', $store->id)->first();
         $isNew = $existingConnection === null;
-        
+        $wasConnected = $existingConnection && $existingConnection->status === 'connected';
+
         Log::info('Checking for existing wallet connection', [
             'store_id' => $store->id,
             'is_new' => $isNew,
             'existing_connection_id' => $existingConnection->id ?? 'NULL',
+            'was_connected' => $wasConnected,
         ]);
-        
+
         // Create or update wallet connection
         Log::info('Creating/updating wallet connection in database', [
             'store_id' => $store->id,
             'type' => $type,
             'is_new' => $isNew,
         ]);
-        
+
         try {
             $connection = WalletConnection::updateOrCreate(
                 ['store_id' => $store->id],
@@ -115,6 +117,7 @@ class WalletConnectionService
                     'type' => $type,
                     'encrypted_secret' => Crypt::encryptString($secret),
                     'status' => $initialStatus,
+                    'reconfig' => $wasConnected,
                     'submitted_by_user_id' => $user->id,
                 ]
             );

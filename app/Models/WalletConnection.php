@@ -22,6 +22,7 @@ class WalletConnection extends Model
         'type',
         'encrypted_secret',
         'status',
+        'reconfig',
         'submitted_by_user_id',
         'revealed_last_at',
         'revealed_last_by',
@@ -36,6 +37,7 @@ class WalletConnection extends Model
     {
         return [
             'revealed_last_at' => 'datetime',
+            'reconfig' => 'boolean',
         ];
     }
 
