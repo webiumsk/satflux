@@ -175,11 +175,13 @@ class WalletConnectionController extends Controller
         $store = $request->route('store');
         $user = $request->user();
 
+        // pending = bot runs first; support notified only on bot failure
         $connection = $this->service->createOrUpdate(
             $store,
             $request->type,
             $request->secret,
-            $user
+            $user,
+            'pending'
         );
 
         // Audit log
@@ -325,6 +327,7 @@ class WalletConnectionController extends Controller
             'data' => [
                 'secret' => $plaintext,
                 'type' => $connection->type,
+                'reconfig' => (bool) $connection->reconfig,
                 'btcpay_store_id' => $store?->btcpay_store_id,
                 'store_name' => $store?->name,
                 'masked_secret' => $connection->masked_secret,
