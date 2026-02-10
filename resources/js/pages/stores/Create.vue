@@ -154,6 +154,7 @@
                 </div>
                 <div v-if="form.wallet_type === 'aqua_boltz'" class="mt-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10">
                   <p class="text-sm text-amber-400">{{ t('stores.aqua_warning_btcpay') }}</p>
+                  <p class="text-sm text-amber-400 mt-2">{{ t('stores.aqua_limits_warning') }}</p>
                 </div>
               </div>
               
