@@ -2,8 +2,10 @@
 
 Automates BTCPay Lightning setup when a wallet connection needs support. The bot:
 
-1. Reveals the connection secret from the panel API (support auth)
-2. Logs into BTCPay, fills the Lightning connection string, saves
+1. Reveals the connection secret (and type) from the panel API (support auth)
+2. Logs into BTCPay and configures Lightning according to connection type:
+   - **Blink**: "Use custom node" tab → fill `#ConnectionString` with the connection string → Save
+   - **Aqua (Boltz)**: Configure Boltz → Continue → Import a wallet → Enter core descriptor → fill Wallet Name + Core descriptor → Import
 3. Marks the connection as connected in the panel
 
 ## Recommended: Run on host (poller)
@@ -88,4 +90,5 @@ The poller on host is simpler and avoids Docker networking.
 ## BTCPay UI assumptions
 
 - No 2FA, no CAPTCHA
-- Lightning setup: switch to "Use custom node" tab, fill `#ConnectionString`, click Save
+- **Blink**: Lightning setup page has "Use custom node" tab; bot fills `#ConnectionString` and clicks Save
+- **Aqua (Boltz)**: Lightning setup page has "Configure Boltz" link; bot follows the wizard (Standalone → Continue → Import wallet → Enter core descriptor) and submits the descriptor in "Import Readonly L-BTC Wallet"

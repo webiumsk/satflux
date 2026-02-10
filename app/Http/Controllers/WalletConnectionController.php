@@ -318,9 +318,15 @@ class WalletConnectionController extends Controller
             ], 500);
         }
 
+        $connection->loadMissing('store');
+        $store = $connection->store;
+
         return response()->json([
             'data' => [
                 'secret' => $plaintext,
+                'type' => $connection->type,
+                'btcpay_store_id' => $store?->btcpay_store_id,
+                'store_name' => $store?->name,
                 'masked_secret' => $connection->masked_secret,
                 'revealed_at' => $connection->revealed_last_at,
             ],
