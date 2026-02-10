@@ -34,9 +34,10 @@ const intervalSec = intervalIdx >= 0 ? parseInt(args[intervalIdx + 1], 10) || 12
 const panelUrl = (process.env.PANEL_URL || process.env.BTCPAY_BOT_PANEL_URL || process.env.APP_URL || '')?.replace(/\/$/, '');
 const panelToken = (process.env.PANEL_BOT_TOKEN || '').trim();
 
-async function fetchNeedsSupport() {
+/** Fetch connections for the bot to process: only "pending" (new). needs_support = manual, bot does not retry. */
+async function fetchPendingConnections() {
   const apiBase = `${panelUrl}/api`;
-  const res = await fetch(`${apiBase}/support/wallet-connections?status=needs_support`, {
+  const res = await fetch(`${apiBase}/support/wallet-connections?status=pending`, {
     headers: {
       'Accept': 'application/json',
       'Authorization': `Bearer ${panelToken}`,
@@ -58,10 +59,10 @@ async function runPoll() {
     process.exit(1);
   }
 
-  logger.info('poll_start', 'Fetching needs_support connections', { panelUrl });
+  logger.info('poll_start', 'Fetching pending connections (bot only processes pending)', { panelUrl });
 
-  const connections = await fetchNeedsSupport();
-  logger.info('poll_fetched', `Found ${connections.length} connection(s)`, { count: connections.length });
+  const connections = await fetchPendingConnections();
+  logger.info('poll_fetched', `Found ${connections.length} pending connection(s)`, { count: connections.length });
 
   for (const conn of connections) {
     const id = conn.id;
