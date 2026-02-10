@@ -178,6 +178,8 @@
     "by": "používateľ",
     "by_user_id": "Používateľ (ID)",
     "aqua_warning_btcpay": "Peňaženku Aqua/Boltz v BTCPay nie je možné odstrániť. Odstráni sa až vymazaním obchodu (store).",
+    "blink_keys_warning": "Vytvárajte API kľúče len s oprávneniami \"read\" a \"receive\". V žiadnom prípade nepoužívajte \"write\" — umožnilo by to výdavky z peňaženky.",
+    "blink_dashboard_link": "Dashboard Blink",
     "descriptor_already_in_use": "Tento popisovač sa už používa",
     "descriptor_btcpay_once": "BTCPay umožňuje každý popisovač použiť len raz. Použite inú peňaženku/popisovač.",
     "review_store_settings": "Skontrolujte nastavenia obchodu",

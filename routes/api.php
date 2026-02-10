@@ -100,7 +100,7 @@ Route::get('/version', function () {
     }
 
     return response()->json([
-        'version' => $version,
+        'version' => $version . ' (beta)',
         'name' => 'satflux.io',
     ]);
 });
