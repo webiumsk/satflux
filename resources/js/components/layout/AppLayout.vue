@@ -5,11 +5,13 @@
       <slot />
     </main>
     <AppFooter />
+    <OnboardingTour />
   </div>
 </template>
 
 <script setup lang="ts">
 import AppHeader from './AppHeader.vue';
 import AppFooter from './AppFooter.vue';
+import OnboardingTour from '../OnboardingTour.vue';
 </script>
 

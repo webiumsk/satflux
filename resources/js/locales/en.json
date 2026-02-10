@@ -789,6 +789,36 @@
     "go_to_dashboard": "Go to Dashboard",
     "all_stores": "All Stores"
   },
+  "setup_wizard": {
+    "title": "Setup guide",
+    "open_guide": "Setup guide",
+    "step_wallet_title": "1. Wallet connection",
+    "step_wallet_desc": "Connect your Blink or Aqua wallet so this store can receive Bitcoin and Lightning payments. Without a connected wallet, the store cannot accept payments.",
+    "step_wallet_why": "You will add your connection string or descriptor in Wallet Connection and complete a short checklist (e.g. enable Lightning, test invoice).",
+    "go_wallet_connection": "Wallet connection",
+    "step_pos_title": "2. Point of Sale (PoS)",
+    "step_pos_desc": "A Point of Sale app is a payment terminal for your store. You can create one or more PoS apps — for example one per physical counter or device.",
+    "step_pos_why": "Each PoS has its own products and settings. Use it on a tablet or phone to create invoices and accept in-person payments.",
+    "create_pos": "Create PoS",
+    "step_ln_address_title": "3. Lightning Address",
+    "step_ln_address_desc": "A Lightning Address is a human-readable address (like you@yourstore.com) that customers can use to send you Lightning payments. It is optional but useful for tips, donations, or simple pay links.",
+    "step_ln_address_why": "You can create and manage Lightning addresses in the LN Address section. Each address is linked to this store's wallet.",
+    "manage_ln_addresses": "Lightning addresses"
+  },
+  "onboarding": {
+    "next": "Next",
+    "skip": "Skip tour",
+    "pos_1_title": "Point of Sale",
+    "pos_1_body": "Create your first PoS terminal here. Click this to add a new Point of Sale app, then name it and configure the style and products.",
+    "pos_2_title": "PoS style",
+    "pos_2_body": "Choose how your terminal looks: Keypad (simple keypad for amounts), Product list (list of items), or List with cart (add items to a cart). We recommend Keypad to start. Click Keypad (Light) below.",
+    "pos_3_title": "Products and settings",
+    "pos_3_body": "Here you can add products, set prices, and for Keypad mode optionally show item selection. You can also expand Extra Settings for currency, tax, and checkout options.",
+    "pos_4_title": "Save and open PoS",
+    "pos_4_body": "When you're done, click Save Settings to store your configuration. Then click Open PoS to open the terminal in a new tab and start accepting payments.",
+    "restart_tour": "Show PoS setup tips again",
+    "start_tour": "Start PoS tips tour"
+  },
   "documentation": {
     "title": "Documentation",
     "description": "Learn how to use satflux.io",
