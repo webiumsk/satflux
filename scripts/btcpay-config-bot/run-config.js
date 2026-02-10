@@ -38,12 +38,30 @@ export async function runConfigForConnection(connectionId) {
     throw new Error(`Panel reveal failed: ${revealRes.status} ${JSON.stringify(revealBody)}`);
   }
 
-  const { secret, btcpay_store_id, store_name } = revealBody?.data ?? {};
+  const { secret, type: connectionType, btcpay_store_id, store_name } = revealBody?.data ?? {};
   if (!secret || !btcpay_store_id) {
     throw new Error(`Invalid reveal response: ${JSON.stringify(revealBody)}`);
   }
+  const isAqua = connectionType === 'aqua_descriptor';
 
-  logger.info('panel_reveal', 'Secret revealed', { storeName: store_name, btcpayStoreId: btcpay_store_id });
+  /** Unique Boltz wallet name for this connection (identifiable in BTCPay when debugging duplicates). */
+  const boltzWalletName = (() => {
+    const slug = (store_name || 'store')
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 35);
+    const storeIdPart = String(btcpay_store_id).replace(/[^a-zA-Z0-9]/g, '').slice(0, 12);
+    return `boltz-${slug || 'store'}-${storeIdPart || 'store'}`;
+  })();
+
+  logger.info('panel_reveal', 'Secret revealed', {
+    storeName: store_name,
+    btcpayStoreId: btcpay_store_id,
+    type: connectionType,
+    isAqua,
+  });
 
   // Step 2: BTCPay UI
   const browser = await chromium.launch({
@@ -82,61 +100,112 @@ export async function runConfigForConnection(connectionId) {
     }
 
     const lightningUrl = `${btcpayUrl}/stores/${btcpay_store_id}/lightning/BTC/setup`;
-    logger.info('btcpay_lightning', 'Navigating to Lightning setup', { url: lightningUrl });
+    logger.info('btcpay_lightning', 'Navigating to Lightning setup', { url: lightningUrl, isAqua });
     await page.goto(lightningUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await new Promise((r) => setTimeout(r, 4000)); // let Blazor/JS render (slower in headless)
 
-    try {
-      await page.waitForSelector('#LightningNodeType-Custom', { state: 'attached', timeout: 45000 });
-    } catch (e) {
-      const currentUrl = page.url();
-      const bodyText = await page.locator('body').innerText().catch(() => '');
-      logger.error('btcpay_lightning_no_form', 'Lightning setup form not found', {
-        currentUrl,
-        bodySnippet: bodyText.slice(0, 300),
+    if (isAqua) {
+      // --- Aqua (Boltz): wizard flow – Configure Boltz → Continue → Import wallet → Enter core descriptor → submit ---
+      const configureBoltzLink = page.locator('a[href*="/Boltz/setup/Standalone"]').first();
+      await configureBoltzLink.waitFor({ state: 'visible', timeout: 20000 }).catch(async () => {
+        const bodyText = await page.locator('body').innerText().catch(() => '');
+        throw new Error(`Configure Boltz link not found. Page: ${page.url()}. Snippet: ${bodyText.slice(0, 400)}`);
       });
-      throw new Error(`Lightning setup form not found. Page: ${currentUrl}. Check access (403?) or BTCPay version.`);
-    }
+      const boltzHref = await configureBoltzLink.getAttribute('href');
+      const boltzUrl = boltzHref.startsWith('http') ? boltzHref : new URL(boltzHref, btcpayUrl).href;
+      logger.info('btcpay_boltz', 'Clicking Configure Boltz', { boltzUrl });
+      await page.goto(boltzUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await new Promise((r) => setTimeout(r, 2000));
 
-    // Switch to "Use custom node" tab – try label first, then Bootstrap Tab API (BTCPay versions differ)
-    const customLabel = page.locator('label[for="LightningNodeType-Custom"]');
-    const labelVisible = await customLabel.isVisible().catch(() => false);
-    if (labelVisible) {
-      logger.info('btcpay_lightning', 'Clicking Use custom node (label)');
-      await customLabel.click();
+      const continueLink = page.locator('a.btn.btn-success[href*="setup/wallet/Standalone"]').first();
+      await continueLink.waitFor({ state: 'visible', timeout: 15000 });
+      logger.info('btcpay_boltz', 'Clicking Continue (How does it work?)');
+      await continueLink.click();
+      await page.waitForLoadState('domcontentloaded');
+      await new Promise((r) => setTimeout(r, 1500));
+
+      const importWalletLink = page.locator('a.list-group-item-action[href*="/Lbtc/import"]').first();
+      await importWalletLink.waitFor({ state: 'visible', timeout: 15000 });
+      logger.info('btcpay_boltz', 'Clicking Import a wallet');
+      await importWalletLink.click();
+      await page.waitForLoadState('domcontentloaded');
+      await new Promise((r) => setTimeout(r, 1500));
+
+      const coreDescriptorLink = page.locator('a[href*="importMethod=Descriptor"]').first();
+      await coreDescriptorLink.waitFor({ state: 'visible', timeout: 15000 });
+      logger.info('btcpay_boltz', 'Clicking Enter core descriptor');
+      await coreDescriptorLink.click();
+      await page.waitForLoadState('domcontentloaded');
+      await new Promise((r) => setTimeout(r, 1500));
+
+      await page.waitForSelector('#WalletName', { state: 'visible', timeout: 15000 });
+      await page.waitForSelector('#WalletCredentials_CoreDescriptor', { state: 'visible', timeout: 5000 });
+      await page.fill('#WalletName', boltzWalletName);
+      await page.fill('#WalletCredentials_CoreDescriptor', secret);
+      await new Promise((r) => setTimeout(r, 300));
+      logger.info('btcpay_boltz', 'Submitting Import (core descriptor)', { walletName: boltzWalletName });
+      await page.click('form button[type="submit"], form input[type="submit"]');
+      await page.waitForLoadState('networkidle');
+
+      const boltzError = await page.locator('.alert-danger, .text-danger, [role="alert"]').first().textContent().catch(() => null);
+      const boltzErr = boltzError?.trim();
+      if (boltzErr && !boltzErr.toLowerCase().includes('logout')) {
+        throw new Error(`BTCPay Boltz import error: ${boltzErr}`);
+      }
+      logger.info('btcpay_boltz', 'Boltz L-BTC wallet import completed');
     } else {
-      logger.info('btcpay_lightning', 'Switching to Use custom node (Bootstrap Tab)');
-      await page.evaluate(() => {
-        const tabTrigger = document.querySelector('#LightningNodeType-Custom');
-        if (!tabTrigger) return;
-        if (typeof bootstrap !== 'undefined' && bootstrap.Tab) {
-          const tab = bootstrap.Tab.getOrCreateInstance(tabTrigger);
-          tab.show();
-        } else {
-          tabTrigger.checked = true;
-          tabTrigger.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-      });
-      await page.waitForSelector('#CustomSetup.tab-pane.show', { state: 'visible', timeout: 5000 }).catch(() => {});
-      await new Promise((r) => setTimeout(r, 400));
+      // --- Blink (Custom node): paste connection string into Custom tab and Save ---
+      try {
+        await page.waitForSelector('#LightningNodeType-Custom', { state: 'attached', timeout: 45000 });
+      } catch (e) {
+        const currentUrl = page.url();
+        const bodyText = await page.locator('body').innerText().catch(() => '');
+        logger.error('btcpay_lightning_no_form', 'Lightning setup form not found', {
+          currentUrl,
+          bodySnippet: bodyText.slice(0, 300),
+        });
+        throw new Error(`Lightning setup form not found. Page: ${currentUrl}. Check access (403?) or BTCPay version.`);
+      }
+
+      const customLabel = page.locator('label[for="LightningNodeType-Custom"]');
+      const labelVisible = await customLabel.isVisible().catch(() => false);
+      if (labelVisible) {
+        logger.info('btcpay_lightning', 'Clicking Use custom node (label)');
+        await customLabel.click();
+      } else {
+        logger.info('btcpay_lightning', 'Switching to Use custom node (Bootstrap Tab)');
+        await page.evaluate(() => {
+          const tabTrigger = document.querySelector('#LightningNodeType-Custom');
+          if (!tabTrigger) return;
+          if (typeof bootstrap !== 'undefined' && bootstrap.Tab) {
+            const tab = bootstrap.Tab.getOrCreateInstance(tabTrigger);
+            tab.show();
+          } else {
+            tabTrigger.checked = true;
+            tabTrigger.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        });
+        await page.waitForSelector('#CustomSetup.tab-pane.show', { state: 'visible', timeout: 5000 }).catch(() => {});
+        await new Promise((r) => setTimeout(r, 400));
+      }
+      await page.locator('#LightningNodeType-Custom').check();
+      await page.waitForSelector('#ConnectionString', { state: 'visible', timeout: 15000 });
+
+      await page.fill('#ConnectionString', secret);
+      await new Promise((r) => setTimeout(r, 300));
+
+      logger.info('btcpay_lightning', 'Clicking Save');
+      await page.click('#page-primary');
+      await page.waitForLoadState('networkidle');
+
+      const btcpayError = await page.locator('.alert-danger, .text-danger, [role="alert"]').first().textContent().catch(() => null);
+      const saveErr = btcpayError?.trim();
+      if (saveErr && !saveErr.toLowerCase().includes('logout')) {
+        throw new Error(`BTCPay save error: ${saveErr}`);
+      }
+
+      logger.info('btcpay_lightning', 'Lightning setup completed');
     }
-    await page.locator('#LightningNodeType-Custom').check(); // ensure form submits Custom
-    await page.waitForSelector('#ConnectionString', { state: 'visible', timeout: 15000 });
-
-    await page.fill('#ConnectionString', secret);
-    await new Promise((r) => setTimeout(r, 300));
-
-    logger.info('btcpay_lightning', 'Clicking Save');
-    await page.click('#page-primary');
-    await page.waitForLoadState('networkidle');
-
-    const btcpayError = await page.locator('.alert-danger, .text-danger, [role="alert"]').first().textContent().catch(() => null);
-    const saveErr = btcpayError?.trim();
-    if (saveErr && !saveErr.toLowerCase().includes('logout')) {
-      throw new Error(`BTCPay save error: ${saveErr}`);
-    }
-
-    logger.info('btcpay_lightning', 'Lightning setup completed');
   } finally {
     await browser.close();
   }
