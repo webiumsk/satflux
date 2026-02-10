@@ -89,11 +89,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, inject } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../../services/api';
 
-const router = useRouter();
+const isInertia = inject<boolean>('inertia', false);
+const router = !isInertia ? useRouter() : undefined;
 
 interface Props {
   show: boolean;

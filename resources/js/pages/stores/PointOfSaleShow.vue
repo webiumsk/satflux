@@ -1,7 +1,7 @@
 <template>
   <AppShowLayout ref="layoutRef" :store="store" :app="app">
     <template #default="{ app, store }">
-      <!-- Header -->
+      <!-- Header (Save / Open PoS – onboarding pos-4 target is inside AppShowHeader on the buttons wrapper) -->
       <AppShowHeader
         :title="app.name || 'Point of Sale'"
         :subtitle="`PoS - ${store.name}`"
@@ -61,7 +61,7 @@
               </div>
 
               <!-- Default View Selection -->
-              <div>
+              <div data-onboarding="pos-2">
                 <label class="block text-sm font-medium text-gray-300 mb-3">
                   {{ $t('apps.pos_style') }}
                 </label>
@@ -328,11 +328,12 @@
                 />
               </div>
 
-              <!-- Advanced Settings Accordion -->
+              <!-- Advanced Settings Accordion (onboarding pos-3) -->
               <div class="">
                 <div class="">
                   <button
                     type="button"
+                    data-onboarding="pos-3"
                     @click="showAdvancedSettings = !showAdvancedSettings"
                     class="border border-gray-700/50 w-full px-6 py-4 flex items-center justify-between text-left bg-gray-700/50 hover:bg-gray-700 transition-colors rounded-t-xl"
                   >

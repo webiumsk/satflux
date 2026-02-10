@@ -17,6 +17,7 @@
       @create-app="handleCreateApp"
       @show-settings="handleShowSettings"
       @show-section="handleShowSection"
+      @open-setup-wizard="showSetupWizard = true"
     />
 
     <!-- Main Content -->
@@ -194,6 +195,15 @@
         <router-link to="/stores" class="text-indigo-400 hover:text-indigo-300">Return to Stores</router-link>
     </div>
   </div>
+
+  <!-- Setup wizard modal (sprievodca nastavením) -->
+  <SetupWizardModal
+    v-if="store && showSetupWizard"
+    :store-id="store.id"
+    :store="store"
+    @close="handleCloseSetupWizard"
+    @restart-pos-tour="handleRestartPosTour"
+  />
 </template>
 
 <script setup lang="ts">
@@ -210,6 +220,8 @@ import StoreSettings from '../../components/stores/StoreSettings.vue';
 import ArchivedStoreBanner from '../../components/stores/ArchivedStoreBanner.vue';
 import StoreInvoices from '../../components/stores/StoreInvoices.vue';
 import StoreReports from '../../components/stores/StoreReports.vue';
+import SetupWizardModal from '../../components/stores/SetupWizardModal.vue';
+import { useOnboardingStore } from '../../store/onboarding';
 
 const route = useRoute();
 const router = useRouter();
@@ -221,6 +233,7 @@ const store = ref<any>(null);
 const showSettings = ref(false);
 const showInvoices = ref(false);
 const showReports = ref(false);
+const showSetupWizard = ref(false);
 
 const dashboard = computed(() => storesStore.dashboard);
 const allApps = computed(() => appsStore.apps);
@@ -270,6 +283,8 @@ function updateSection(section: string) {
   showReports.value = section === 'reports' || section === 'exports'; // support legacy exports query
 }
 
+const SETUP_WIZARD_DISMISSED_KEY = 'setup_wizard_dismissed';
+
 onMounted(async () => {
   const storeId = route.params.id as string;
   loading.value = true;
@@ -283,12 +298,40 @@ onMounted(async () => {
       await storesStore.fetchDashboard(storeId);
       await appsStore.fetchApps(storeId);
     }
+
+    // Auto-open setup wizard when coming from store creation (?setup=1) or when store has no PoS yet and user never dismissed
+    const querySetup = route.query.setup === '1';
+    const dismissed = typeof localStorage !== 'undefined' && localStorage.getItem(`${SETUP_WIZARD_DISMISSED_KEY}_${storeId}`);
+    if (querySetup) {
+      showSetupWizard.value = true;
+      const q = { ...route.query };
+      delete q.setup;
+      router.replace({ name: 'stores-show', params: { id: storeId }, query: q });
+    } else if (!dismissed && store.value && !section) {
+      const hasPos = (appsStore.apps || []).some((a: any) => a.app_type === 'PointOfSale' && !a.archived);
+      if (!hasPos) {
+        showSetupWizard.value = true;
+      }
+    }
   } catch (e) {
       console.error("Error loading store", e);
   } finally {
     loading.value = false;
   }
 });
+
+function handleCloseSetupWizard() {
+  showSetupWizard.value = false;
+  if (store.value && typeof localStorage !== 'undefined') {
+    localStorage.setItem(`${SETUP_WIZARD_DISMISSED_KEY}_${store.value.id}`, '1');
+  }
+}
+
+function handleRestartPosTour() {
+  const onboarding = useOnboardingStore();
+  onboarding.reset();
+  showSetupWizard.value = false;
+}
 
 function handleCreateApp() {
   router.push({ name: 'stores-apps-create', params: { id: store.value.id } });

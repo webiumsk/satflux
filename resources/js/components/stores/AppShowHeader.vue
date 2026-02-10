@@ -23,7 +23,7 @@
 
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div class="flex items-center">
-             <button @click="$router.back()" class="mr-4 text-gray-400 hover:text-white transition-colors">
+             <button @click="goBack" class="mr-4 text-gray-400 hover:text-white transition-colors">
                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
              </button>
             <div>
@@ -32,7 +32,7 @@
             </div>
         </div>
         
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3" data-onboarding="pos-4">
           <!-- Actions slot for custom buttons (e.g., Delete App) -->
           <slot name="actions"></slot>
           
@@ -67,6 +67,9 @@
 </template>
 
 <script setup lang="ts">
+import { inject } from 'vue';
+import { useRouter } from 'vue-router';
+
 defineProps<{
   title: string;
   subtitle?: string;
@@ -79,4 +82,15 @@ defineProps<{
   error?: string;
   success?: string;
 }>();
+
+const isInertia = inject<boolean>('inertia', false);
+const vueRouter = !isInertia ? useRouter() : null;
+
+function goBack() {
+  if (vueRouter) {
+    vueRouter.back();
+  } else {
+    window.history.back();
+  }
+}
 </script>

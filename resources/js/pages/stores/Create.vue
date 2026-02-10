@@ -457,7 +457,7 @@ async function handleSubmit() {
 
   try {
     const store = await storesStore.createStore(form.value as any);
-    router.push(`/stores/${store.id}`);
+    router.push(`/stores/${store.id}?setup=1`);
   } catch (err: any) {
     error.value = err.response?.data?.message || t('create_store.failed_to_create');
     if (err.response?.data?.errors) {

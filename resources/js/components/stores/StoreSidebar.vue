@@ -193,7 +193,7 @@
           </div>          
 
           <!-- Point of Sale -->
-          <div class="mb-2">
+          <div class="mb-2" data-onboarding="pos-1">
             <component
               :is="isInertia ? Link : RouterLink"
               :href="isInertia ? `/stores/${store.id}/apps/create?type=PointOfSale` : undefined"
@@ -334,6 +334,32 @@
           {{ t('stores.store_settings') }}
         </button>
       </div>
+
+      <!-- Setup guide + PoS tour (under Store settings) -->
+      <div class="mt-4 space-y-2">
+        <button
+          type="button"
+          @click="$emit('open-setup-wizard')"
+          class="w-full flex items-center justify-center px-3 py-2.5 rounded-md text-sm font-medium text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 hover:border-indigo-500/30 transition-colors"
+        >
+          <svg class="w-5 h-5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          {{ t('setup_wizard.open_guide') }}
+        </button>
+        <button
+          v-if="isOnPosPage"
+          type="button"
+          @click="onboardingStore.reset()"
+          class="w-full flex items-center justify-center px-3 py-2.5 rounded-md text-sm font-medium text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 hover:border-indigo-500/30 transition-colors"
+        >
+          <svg class="w-5 h-5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          {{ t('onboarding.start_tour') }}
+        </button>
+      </div>
     </div>
   </aside>
 
@@ -348,8 +374,10 @@ import { useAppsStore } from '../../store/apps';
 import { useStoresStore } from '../../store/stores';
 import { useAccountLimits } from '../../composables/useAccountLimits';
 import { useAuthStore } from '../../store/auth';
+import { useOnboardingStore } from '../../store/onboarding';
 const { t } = useI18n();
 const authStore = useAuthStore();
+const onboardingStore = useOnboardingStore();
 const { limits, load: loadLimits } = useAccountLimits();
 const isInertia = inject<boolean>('inertia', false);
 const vueRouter = !isInertia ? useRouter() : null;
@@ -376,6 +404,7 @@ const emit = defineEmits<{
   'create-app': [];
   'show-settings': [];
   'show-section': [section: string];
+  'open-setup-wizard': [];
 }>();
 
 const authUser = computed(() => {
@@ -427,6 +456,19 @@ const paramAppId = computed(() => {
     return match ? match[1] : null;
   }
   return (route?.params?.appId as string) ?? null;
+});
+
+const currentApp = computed(() => {
+  const id = paramAppId.value;
+  if (!id) return null;
+  return (props.apps?.find((a: any) => a.id === id) ?? appsStore.apps?.find((a: any) => a.id === id)) ?? null;
+});
+
+const isOnPosPage = computed(() => {
+  const path = currentPath.value;
+  const onAppShow = path.includes('/stores/') && path.includes('/apps/') && !path.includes('/apps/create');
+  if (!onAppShow || !paramAppId.value) return false;
+  return currentApp.value?.app_type === 'PointOfSale';
 });
 
 const isStoreShowSettings = computed(() => {
