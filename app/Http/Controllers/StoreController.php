@@ -464,11 +464,8 @@ class StoreController extends Controller
      */
     protected function formatStoreFromBtcPay(array $btcpayStore, Store $localStore): array
     {
-        // Load wallet connection if exists (with who last submitted)
+        // Load wallet connection if exists
         $walletConnection = $localStore->walletConnection;
-        if ($walletConnection && !$walletConnection->relationLoaded('submittedBy')) {
-            $walletConnection->load('submittedBy');
-        }
 
         $data = [
             'id' => $localStore->id,
@@ -498,7 +495,7 @@ class StoreController extends Controller
                 'masked_secret' => $walletConnection->masked_secret,
                 'submitted_at' => $walletConnection->created_at,
                 'secret_updated_at' => $walletConnection->secret_updated_at,
-                'submitted_by_email' => $walletConnection->submittedBy?->email,
+                'submitted_by_user_id' => $walletConnection->submitted_by_user_id,
             ] : null,
         ];
 
@@ -682,11 +679,8 @@ class StoreController extends Controller
      */
     protected function formatStore(Store $store): array
     {
-        // Load wallet connection if exists (with who last submitted)
+        // Load wallet connection if exists
         $walletConnection = $store->walletConnection;
-        if ($walletConnection && !$walletConnection->relationLoaded('submittedBy')) {
-            $walletConnection->load('submittedBy');
-        }
 
         return [
             'id' => $store->id,
@@ -718,7 +712,7 @@ class StoreController extends Controller
                 'masked_secret' => $walletConnection->masked_secret,
                 'submitted_at' => $walletConnection->created_at,
                 'secret_updated_at' => $walletConnection->secret_updated_at,
-                'submitted_by_email' => $walletConnection->submittedBy?->email,
+                'submitted_by_user_id' => $walletConnection->submitted_by_user_id,
             ] : null,
         ];
     }
