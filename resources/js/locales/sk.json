@@ -802,7 +802,7 @@
     "step_pos_why": "Každá PoS má vlastné produkty a nastavenia. Použite ju na tablete alebo telefóne na vytváranie faktúr a prijímanie platieb na mieste.",
     "create_pos": "Vytvoriť PoS",
     "step_ln_address_title": "3. Lightning adresa",
-    "step_ln_address_desc": "Lightning adresa je ľudsky čitateľná adresa (napr. vy@vasobchod.sk), ktorú zákazníci môžu použiť na odoslanie Lightning platieb. Je voliteľná, ale užitočná na dary, dary alebo jednoduché platobné odkazy.",
+    "step_ln_address_desc": "Lightning adresa je ľudsky čitateľná adresa (napr. vy{'@'}vasobchod.sk), ktorú zákazníci môžu použiť na odoslanie Lightning platieb. Je voliteľná, ale užitočná na dary, dary alebo jednoduché platobné odkazy.",
     "step_ln_address_why": "Lightning adresy môžete vytvárať a spravovať v sekcii Lightning adresy. Každá adresa je prepojená s peňaženkou tohto obchodu.",
     "manage_ln_addresses": "Lightning adresy"
   },
