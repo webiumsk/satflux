@@ -348,7 +348,7 @@
           {{ t('setup_wizard.open_guide') }}
         </button>
         <button
-          v-if="isOnPosPage"
+          v-if="showPosTourButton"
           type="button"
           @click="onboardingStore.reset()"
           class="w-full flex items-center justify-center px-3 py-2.5 rounded-md text-sm font-medium text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 hover:border-indigo-500/30 transition-colors"
@@ -470,6 +470,17 @@ const isOnPosPage = computed(() => {
   if (!onAppShow || !paramAppId.value) return false;
   return currentApp.value?.app_type === 'PointOfSale';
 });
+
+const isOnStoreShowPage = computed(() => {
+  const path = currentPath.value;
+  return path.includes('/stores/') && !path.includes('/apps/');
+});
+
+const isStoreConnected = computed(() => props.store?.wallet_connection?.status === 'connected');
+
+const showPosTourButton = computed(() =>
+  isOnPosPage.value || (isOnStoreShowPage.value && isStoreConnected.value)
+);
 
 const isStoreShowSettings = computed(() => {
   if (isInertia && page) {
