@@ -1,10 +1,11 @@
 import { createI18n } from 'vue-i18n';
 import en from './locales/en.json';
 import sk from './locales/sk.json';
+import es from './locales/es.json';
 import api from './services/api';
 
-// Supported locales (EN and SK only)
-export const supportedLocales = ['en', 'sk'] as const;
+// Supported locales
+export const supportedLocales = ['en', 'sk', 'es'] as const;
 export type SupportedLocale = typeof supportedLocales[number];
 
 // Default locale
@@ -72,6 +73,7 @@ const i18n = createI18n({
     messages: {
         en,
         sk,
+        es,
     },
     missingWarn: false, // Disable warnings for missing translations in development
     fallbackWarn: false,
@@ -102,6 +104,9 @@ export async function setLocale(locale: SupportedLocale) {
                 break;
             case 'sk':
                 messages = { default: sk };
+                break;
+            case 'es':
+                messages = { default: es };
                 break;
             default:
                 messages = { default: en };

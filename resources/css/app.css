@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  /** Applied by OnboardingTour to the element targeted by the current step (matches popover orange) */
+  .onboarding-step-highlight {
+    @apply border border-orange-400/40 shadow-xl shadow-orange-900/20;
+  }
+}
+
 a {
     cursor: pointer;
 }

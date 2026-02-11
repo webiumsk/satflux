@@ -18,6 +18,10 @@ const router = createRouter({
             meta: { requiresAuth: true, titleKey: 'seo.dashboard_title' },
         },
         {
+            path: '/dashboard/stats',
+            redirect: () => ({ name: 'home' }),
+        },
+        {
             path: '/login',
             name: 'login',
             component: () => import('../pages/auth/Login.vue'),

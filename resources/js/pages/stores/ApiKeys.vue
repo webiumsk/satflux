@@ -16,14 +16,14 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 class="text-2xl font-bold text-white mb-1">E-shop Integration</h1>
+              <h1 class="text-2xl font-bold text-white mb-1">{{ t('stores.eshop_integration') }}</h1>
               <p class="text-sm text-gray-400">
-                Manage API keys for connecting your e-shop (WooCommerce, etc.) to <span class="text-indigo-400">{{ store?.name || 'this store' }}</span>
+                {{ t('stores.manage_api_keys_for') }} <span class="text-indigo-400">{{ store?.name || t('stores.this_store') }}</span>
                 <span v-if="limit && limit.max != null" class="text-gray-500 ml-1 bg-gray-800 px-2 py-0.5 rounded-full text-xs">
-                  {{ limit.current }} / {{ limit.max }} used
+                  {{ limit.current }} / {{ limit.max }} {{ t('stores.used') }}
                 </span>
                 <span v-else-if="limit && limit.unlimited" class="text-gray-500 ml-1 bg-gray-800 px-2 py-0.5 rounded-full text-xs">
-                  Unlimited
+                  {{ t('stores.unlimited') }}
                 </span>
               </p>
             </div>
@@ -33,7 +33,7 @@
                 class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg shadow-indigo-600/20 transition-all hover:scale-105"
               >
                 <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                Create API Key
+                {{ t('stores.create_api_key') }}
               </button>
             </div>
           </div>
@@ -63,7 +63,7 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
              </svg>
-             <p class="text-gray-400">Loading API keys...</p>
+             <p class="text-gray-400">{{ t('stores.loading_api_keys') }}</p>
           </div>
 
           <!-- Empty State -->
@@ -71,13 +71,13 @@
              <div class="mx-auto h-16 w-16 text-gray-600 bg-gray-800 rounded-full flex items-center justify-center mb-4">
                 <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
              </div>
-            <h3 class="text-lg font-medium text-white mb-2">No API keys yet</h3>
-            <p class="text-gray-400 mb-6 max-w-sm mx-auto">Create an API key to connect external services like WooCommerce or other e-commerce platforms to your store.</p>
+            <h3 class="text-lg font-medium text-white mb-2">{{ t('stores.no_api_keys_yet') }}</h3>
+            <p class="text-gray-400 mb-6 max-w-sm mx-auto">{{ t('stores.create_api_key_description') }}</p>
             <button
               @click="openCreateForm"
               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg shadow-indigo-600/20 transition-all hover:scale-105"
             >
-              Create Your First API Key
+              {{ t('stores.create_your_first_api_key') }}
             </button>
           </div>
 
@@ -98,27 +98,27 @@
                         <div class="sm:flex sm:items-start">
                             <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
                                 <h3 class="text-lg leading-6 font-bold text-white mb-4" id="modal-title">
-                                    {{ 'Create New API Key' }}
+                                    {{ t('stores.create_new_api_key') }}
                                 </h3>
 
                                 <form @submit.prevent="handleSubmit" class="space-y-5">
                                     <div>
                                         <label for="label" class="block text-sm font-medium text-gray-300 mb-1">
-                                            Label <span class="text-red-400">*</span>
+                                            {{ t('stores.api_key_label') }} <span class="text-red-400">*</span>
                                         </label>
                                         <input
                                             id="label"
                                             v-model="form.label"
                                             type="text"
                                             required
-                                            placeholder="e.g., WooCommerce Production"
+                                            :placeholder="t('stores.api_key_label_placeholder')"
                                             class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                         />
                                     </div>
 
                                     <div>
                                         <label class="block text-sm font-medium text-gray-300 mb-2">
-                                            Permissions
+                                            {{ t('stores.api_key_permissions') }}
                                         </label>
                                         <div class="bg-gray-700/30 rounded-xl p-4 border border-gray-700 space-y-3 max-h-60 overflow-y-auto custom-scrollbar">
                                             <label
@@ -141,17 +141,17 @@
 
                                     <div>
                                         <label for="callback_url" class="block text-sm font-medium text-gray-300 mb-1">
-                                            Callback URL <span class="text-gray-500 text-xs font-normal">(optional)</span>
+                                            {{ t('stores.api_key_callback_url') }} <span class="text-gray-500 text-xs font-normal">({{ t('common.optional') }})</span>
                                         </label>
                                         <input
                                             id="callback_url"
                                             v-model="form.callback_url"
                                             type="url"
-                                            placeholder="https://your-eshop.com/api/callback"
+                                            :placeholder="t('stores.api_key_callback_placeholder')"
                                             class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                         />
                                         <p class="mt-1 text-xs text-gray-400">
-                                            If provided, the API key will be automatically sent to this URL upon creation.
+                                            {{ t('stores.api_key_callback_url_hint') }}
                                         </p>
                                     </div>
 
@@ -168,7 +168,7 @@
                                             @click="closeModal"
                                             class="px-4 py-2 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700 transition-colors"
                                         >
-                                            Cancel
+                                            {{ t('common.cancel') }}
                                         </button>
                                         <button
                                             type="submit"
@@ -179,7 +179,7 @@
                                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
-                                            {{ saving ? 'Creating...' : 'Create API Key' }}
+                                            {{ saving ? t('stores.creating') : t('stores.create_api_key') }}
                                         </button>
                                     </div>
                                 </form>
