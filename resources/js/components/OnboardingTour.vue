@@ -44,6 +44,23 @@ const step = computed(() => onboarding.currentStep);
 const targetRect = ref<DOMRect | null>(null);
 const visible = ref(false);
 
+const HIGHLIGHT_CLASS = 'onboarding-step-highlight';
+let lastHighlightedEl: Element | null = null;
+
+function clearHighlight() {
+  if (lastHighlightedEl?.classList) {
+    lastHighlightedEl.classList.remove(HIGHLIGHT_CLASS);
+    lastHighlightedEl = null;
+  }
+}
+
+function setHighlight(el: Element) {
+  if (el === lastHighlightedEl) return;
+  clearHighlight();
+  lastHighlightedEl = el;
+  el.classList.add(HIGHLIGHT_CLASS);
+}
+
 let rafId: number | null = null;
 let intervalId: ReturnType<typeof setInterval> | null = null;
 
@@ -51,21 +68,25 @@ function updatePosition() {
   const path = currentPath.value;
   const stepVal = onboarding.currentStep;
   if (!stepVal) {
+    clearHighlight();
     targetRect.value = null;
     visible.value = false;
     return;
   }
   if (!stepVal.routeMatch(path)) {
+    clearHighlight();
     targetRect.value = null;
     visible.value = false;
     return;
   }
   const el = document.querySelector(`[data-onboarding="${stepVal.target}"]`);
   if (!el) {
+    clearHighlight();
     targetRect.value = null;
     visible.value = false;
     return;
   }
+  setHighlight(el);
   targetRect.value = el.getBoundingClientRect();
   visible.value = true;
 }
@@ -120,6 +141,7 @@ onMounted(() => {
 onUnmounted(() => {
   stopPolling();
   if (rafId !== null) cancelAnimationFrame(rafId);
+  clearHighlight();
   window.removeEventListener('resize', scheduleUpdate);
   window.removeEventListener('scroll', scheduleUpdate, true);
 });

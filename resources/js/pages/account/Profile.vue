@@ -694,7 +694,7 @@ function formatDate(timestamp: number | string): string {
     typeof timestamp === "number"
       ? new Date(timestamp * 1000)
       : new Date(timestamp);
-  const localeTag = locale.value === "sk" ? "sk-SK" : "en-US";
+  const localeTag = locale.value === "sk" ? "sk-SK" : locale.value === "es" ? "es-ES" : "en-US";
   return date.toLocaleDateString(localeTag, {
     weekday: "long",
     year: "numeric",

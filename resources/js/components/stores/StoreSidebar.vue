@@ -234,9 +234,10 @@
           </div>          
 
           <!-- Point of Sale -->
-          <div class="mb-2" data-onboarding="pos-1">
+          <div class="mb-2">
             <component
               :is="isInertia ? Link : RouterLink"
+              data-onboarding="pos-1"
               :href="isInertia ? `/stores/${store.id}/apps/create?type=PointOfSale` : undefined"
               :to="!isInertia ? { name: 'stores-apps-create', params: { id: store.id }, query: { type: 'PointOfSale' } } : undefined"
               class="flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer"

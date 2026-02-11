@@ -16,14 +16,14 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 class="text-2xl font-bold text-white mb-1">Lightning Address</h1>
+              <h1 class="text-2xl font-bold text-white mb-1">{{ t('stores.lightning_address_page_title') }}</h1>
               <p class="text-sm text-gray-400">
-                Manage Lightning Addresses for <span class="text-indigo-400">{{ store?.name || 'this store' }}</span>
+                {{ t('stores.manage_lightning_addresses_for') }} <span class="text-indigo-400">{{ store?.name || t('stores.this_store') }}</span>
                 <span v-if="limit && limit.max != null" class="text-gray-500 ml-1 bg-gray-800 px-2 py-0.5 rounded-full text-xs">
-                  {{ limit.current }} / {{ limit.max }} used
+                  {{ limit.current }} / {{ limit.max }} {{ t('stores.used') }}
                 </span>
                 <span v-else-if="limit && limit.unlimited" class="text-gray-500 ml-1 bg-gray-800 px-2 py-0.5 rounded-full text-xs">
-                  Unlimited
+                  {{ t('stores.unlimited') }}
                 </span>
               </p>
             </div>
@@ -35,7 +35,7 @@
               >
                 <svg v-if="addCheckLoading" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                 <svg v-else class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                {{ addCheckLoading ? t('common.loading') : 'Add Address' }}
+                {{ addCheckLoading ? t('common.loading') : t('stores.add_address') }}
               </button>
             </div>
           </div>
@@ -53,13 +53,13 @@
                 <thead class="bg-gray-800/50">
                   <tr>
                     <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Address
+                      {{ t('stores.address') }}
                     </th>
                     <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Settings
+                      {{ t('stores.settings_tab_settings') }}
                     </th>
                     <th scope="col" class="px-6 py-4 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Actions
+                      {{ t('common.actions') }}
                     </th>
                   </tr>
                 </thead>
@@ -93,14 +93,14 @@
                               {{ address.currencyCode }}
                           </span>
                         </span>
-                        <span v-else class="text-gray-500 italic">Default limits</span>
+                        <span v-else class="text-gray-500 italic">{{ t('stores.default_limits') }}</span>
                       </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         @click="confirmDelete(address)"
                         class="text-red-400 hover:text-red-300 transition-colors p-2 rounded-lg hover:bg-red-500/10"
-                        title="Delete Address"
+                        :title="t('stores.delete_address')"
                       >
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                       </button>
@@ -117,7 +117,7 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
              </svg>
-             <p class="text-gray-400">Loading lightning addresses...</p>
+             <p class="text-gray-400">{{ t('stores.loading_lightning_addresses') }}</p>
           </div>
 
           <!-- Empty State -->
@@ -125,13 +125,13 @@
              <div class="mx-auto h-16 w-16 text-gray-600 bg-gray-800 rounded-full flex items-center justify-center mb-4">
                 <svg class="h-8 w-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
              </div>
-            <h3 class="text-lg font-medium text-white mb-2">No lightning addresses yet</h3>
-            <p class="text-gray-400 mb-6 max-w-sm mx-auto">Create a Lightning Address to receive payments easily via a reusable address format your-username@satflux.org.</p>
+            <h3 class="text-lg font-medium text-white mb-2">{{ t('stores.no_lightning_addresses_yet') }}</h3>
+            <p class="text-gray-400 mb-6 max-w-sm mx-auto">{{ t('stores.create_lightning_address_description') }}</p>
             <button
               @click="openAddForm"
               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg shadow-indigo-600/20 transition-all hover:scale-105"
             >
-              Add Your First Address
+              {{ t('stores.add_your_first_address') }}
             </button>
           </div>
         </div>
@@ -154,7 +154,7 @@
           <div class="bg-gray-800 px-4 pt-5 pb-4 sm:p-6">
             <div class="flex items-center justify-between mb-6">
                 <h3 class="text-xl font-bold text-white leading-6" id="modal-title">
-                  Add Lightning Address
+                  {{ t('stores.add_lightning_address') }}
                 </h3>
                 <button
                   @click="closeForm"
@@ -299,7 +299,7 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                  {{ saving ? 'Saving...' : 'Add Address' }}
+                  {{ saving ? t('auth.saving') : t('stores.add_address') }}
                 </button>
               </div>
             </form>
@@ -327,7 +327,7 @@
                     <svg class="h-6 w-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                  </div>
                  <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                    <h3 class="text-lg leading-6 font-bold text-white mb-2" id="modal-title">Remove Lightning Address</h3>
+                    <h3 class="text-lg leading-6 font-bold text-white mb-2" id="modal-title">{{ t('stores.remove_lightning_address') }}</h3>
                     <div class="mt-2">
                        <p class="text-sm text-gray-400">
                           Are you sure you want to remove <strong class="text-white">{{ addressToDelete?.username }}@satflux.org</strong>?

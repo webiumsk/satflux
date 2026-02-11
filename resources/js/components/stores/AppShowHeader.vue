@@ -49,6 +49,20 @@
             {{ openButtonText }}
           </a>
           <button
+            v-if="appUrl"
+            type="button"
+            :title="copied ? t('common.copied') : t('stores.copy_app_url')"
+            class="inline-flex items-center justify-center p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-700 border border-transparent hover:border-gray-600 transition-colors"
+            @click="copyAppUrl"
+          >
+            <svg v-if="copied" class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+          </button>
+          <button
             type="submit"
             :form="formId"
             :disabled="saving"
@@ -67,10 +81,11 @@
 </template>
 
 <script setup lang="ts">
-import { inject } from 'vue';
+import { ref, inject } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 
-defineProps<{
+const props = defineProps<{
   title: string;
   subtitle?: string;
   appUrl?: string;
@@ -83,8 +98,26 @@ defineProps<{
   success?: string;
 }>();
 
+const { t } = useI18n();
 const isInertia = inject<boolean>('inertia', false);
 const vueRouter = !isInertia ? useRouter() : null;
+const copied = ref(false);
+let copiedTimeout: ReturnType<typeof setTimeout> | null = null;
+
+async function copyAppUrl() {
+  if (!props.appUrl) return;
+  try {
+    await navigator.clipboard.writeText(props.appUrl);
+    copied.value = true;
+    if (copiedTimeout) clearTimeout(copiedTimeout);
+    copiedTimeout = setTimeout(() => {
+      copied.value = false;
+      copiedTimeout = null;
+    }, 2000);
+  } catch (err) {
+    console.error('Failed to copy app URL:', err);
+  }
+}
 
 function goBack() {
   if (vueRouter) {

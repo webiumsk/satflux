@@ -226,6 +226,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
 
     // Stores
     Route::get('/stores', [StoreController::class, 'index']);

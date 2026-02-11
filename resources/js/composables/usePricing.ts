@@ -32,7 +32,7 @@ export function usePricing() {
   const loaded = computed(() => cached.value !== null);
 
   function formatSats(amount: number): string {
-    const localeTag = locale.value === 'sk' ? 'sk-SK' : 'en-US';
+    const localeTag = locale.value === 'sk' ? 'sk-SK' : locale.value === 'es' ? 'es-ES' : 'en-US';
     return new Intl.NumberFormat(localeTag).format(amount) + ' sats';
   }
 
