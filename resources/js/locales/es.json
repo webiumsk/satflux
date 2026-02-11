@@ -680,7 +680,7 @@
     "step_pos_why": "Cada TPV tiene sus propios productos y ajustes. Úsala en tablet o móvil para crear facturas y aceptar pagos en persona.",
     "create_pos": "Crear TPV",
     "step_ln_address_title": "3. Dirección Lightning",
-    "step_ln_address_desc": "Una dirección Lightning es una dirección legible (como tu@tutienda.com) que los clientes pueden usar para enviarte pagos Lightning. Es opcional pero útil para propinas, donaciones o enlaces de pago simples.",
+    "step_ln_address_desc": "Una dirección Lightning es una dirección legible (como tu{'@'}tutienda.com) que los clientes pueden usar para enviarte pagos Lightning. Es opcional pero útil para propinas, donaciones o enlaces de pago simples.",
     "step_ln_address_why": "Puedes crear y gestionar direcciones Lightning en la sección Dirección LN. Cada dirección está vinculada al monedero de esta tienda.",
     "manage_ln_addresses": "Direcciones Lightning"
   },

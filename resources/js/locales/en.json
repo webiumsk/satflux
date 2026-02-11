@@ -801,7 +801,7 @@
     "step_pos_why": "Each PoS has its own products and settings. Use it on a tablet or phone to create invoices and accept in-person payments.",
     "create_pos": "Create PoS",
     "step_ln_address_title": "3. Lightning Address",
-    "step_ln_address_desc": "A Lightning Address is a human-readable address (like you@yourstore.com) that customers can use to send you Lightning payments. It is optional but useful for tips, donations, or simple pay links.",
+    "step_ln_address_desc": "A Lightning Address is a human-readable address (like you{'@'}yourstore.com) that customers can use to send you Lightning payments. It is optional but useful for tips, donations, or simple pay links.",
     "step_ln_address_why": "You can create and manage Lightning addresses in the LN Address section. Each address is linked to this store's wallet.",
     "manage_ln_addresses": "Lightning addresses"
   },
