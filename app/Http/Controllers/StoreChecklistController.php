@@ -14,26 +14,27 @@ class StoreChecklistController extends Controller
     public function index(Request $request, Store $store)
     {
         
-        $checklistItems = $store->checklistItems()->get()->map(function ($item) use ($store) {
-            $definition = \App\Services\StoreChecklistService::getChecklistItems($store->wallet_type);
-            $itemDef = $definition[$item->item_key] ?? null;
-            $btcpayStoreId = $store->btcpay_store_id;
-            
-            // Replace {storeId} placeholder in link
-            $link = $itemDef['link'] ?? null;
-            if ($link && $btcpayStoreId) {
-                $link = str_replace('{storeId}', $btcpayStoreId, $link);
-            }
-            
-            return [
-                'key' => $item->item_key,
-                'description' => $itemDef['description'] ?? $item->item_key,
-                'link' => $link,
-                'completed_at' => $item->completed_at?->toIso8601String(),
-                'is_completed' => $item->isCompleted(),
-                'optional' => $itemDef['optional'] ?? false,
-            ];
-        });
+        $definition = \App\Services\StoreChecklistService::getChecklistItems($store->wallet_type);
+        $btcpayStoreId = $store->btcpay_store_id;
+
+        $checklistItems = $store->checklistItems()->get()
+            ->filter(fn ($item) => isset($definition[$item->item_key]))
+            ->map(function ($item) use ($store, $definition, $btcpayStoreId) {
+                $itemDef = $definition[$item->item_key];
+                $link = $itemDef['link'] ?? null;
+                if ($link && $btcpayStoreId) {
+                    $link = str_replace('{storeId}', $btcpayStoreId, $link);
+                }
+                return [
+                    'key' => $item->item_key,
+                    'description' => $itemDef['description'] ?? $item->item_key,
+                    'link' => $link,
+                    'completed_at' => $item->completed_at?->toIso8601String(),
+                    'is_completed' => $item->isCompleted(),
+                    'optional' => $itemDef['optional'] ?? false,
+                ];
+            })
+            ->values();
 
         return response()->json(['data' => $checklistItems]);
     }

@@ -20,12 +20,10 @@ class StoreChecklistServiceTest extends TestCase
         $this->assertArrayHasKey('connect_wallet', $items);
         $this->assertArrayHasKey('enable_lightning', $items);
         $this->assertArrayHasKey('test_invoice', $items);
-        $this->assertArrayHasKey('set_payout_policy', $items);
 
         $this->assertSame('connect_wallet', $items['connect_wallet']['key']);
         $this->assertSame('Connect Blink wallet via Wallet Connection settings', $items['connect_wallet']['description']);
         $this->assertArrayHasKey('order', $items['connect_wallet']);
-        $this->assertTrue($items['set_payout_policy']['optional'] ?? false);
     }
 
     public function test_get_checklist_items_for_aqua_boltz_returns_expected_keys(): void
@@ -69,10 +67,10 @@ class StoreChecklistServiceTest extends TestCase
         StoreChecklistService::initializeChecklist($store->id, 'blink');
 
         $count = StoreChecklist::where('store_id', $store->id)->count();
-        $this->assertSame(4, $count);
+        $this->assertSame(3, $count);
 
         $keys = StoreChecklist::where('store_id', $store->id)->pluck('item_key')->sort()->values()->toArray();
-        $this->assertSame(['connect_wallet', 'enable_lightning', 'set_payout_policy', 'test_invoice'], $keys);
+        $this->assertSame(['connect_wallet', 'enable_lightning', 'test_invoice'], $keys);
     }
 
     public function test_initialize_checklist_for_aqua_boltz_creates_five_items(): void

@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router';
 
 const STORAGE_KEY = 'onboarding_pos_tour';
 
-export type PosOnboardingStepId = 'pos_1' | 'pos_2' | 'pos_3' | 'pos_4' | 'done' | 'dismissed';
+export type PosOnboardingStepId = 'pos_1' | 'pos_2' | 'pos_3' | 'pos_4' | 'pos_5' | 'done' | 'dismissed';
 
 export interface OnboardingStep {
   id: PosOnboardingStepId;
@@ -49,13 +49,21 @@ const POS_STEPS: OnboardingStep[] = [
     placement: 'bottom',
     routeMatch: (path) => path.includes('/stores/') && path.includes('/apps/') && !path.includes('/apps/create'),
   },
+  {
+    id: 'pos_5',
+    target: 'pos-5',
+    titleKey: 'onboarding.pos_5_title',
+    bodyKey: 'onboarding.pos_5_body',
+    placement: 'right',
+    routeMatch: (path) => path.includes('/stores/') && path.includes('/apps/') && !path.includes('/apps/create'),
+  },
 ];
 
 function loadStored(): PosOnboardingStepId {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
     if (v === 'dismissed' || v === 'done') return v;
-    if (v === 'pos_1' || v === 'pos_2' || v === 'pos_3' || v === 'pos_4') return v;
+    if (v === 'pos_1' || v === 'pos_2' || v === 'pos_3' || v === 'pos_4' || v === 'pos_5') return v;
   } catch (_) {}
   return 'pos_1';
 }

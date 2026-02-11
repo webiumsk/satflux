@@ -817,6 +817,8 @@
     "pos_3_body": "Tu môžeš pridať produkty, nastaviť ceny a pri režime Klávesnica voliteľne zobraziť výber položiek. V časti Extra Settings môžeš nastaviť menuu, daň a možnosti pokladničky.",
     "pos_4_title": "Uložiť a otvoriť PoS",
     "pos_4_body": "Keď máš hotovo, klikni na Uložiť nastavenia. Potom klikni na Otvoriť PoS a terminál sa otvorí v novej karte — môžeš prijímať platby.",
+    "pos_5_title": "Nastavenia obchodu",
+    "pos_5_body": "Obchod môžeš kedykoľvek spravovať cez Nastavenia obchodu: peňaženka, faktúry, používatelia a ďalšie. Klikni na ikonu ozubeného kolieska a otvoríš Nastavenia obchodu.",
     "restart_tour": "Znovu zobraziť tipy pre nastavenie PoS",
     "start_tour": "Spustiť prehliadku tipov PoS"
   },
