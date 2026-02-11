@@ -40,13 +40,6 @@ class StoreChecklistService
                     'link' => null,
                     'order' => 3,
                 ],
-                'set_payout_policy' => [
-                    'key' => 'set_payout_policy',
-                    'description' => 'Optional: Set payout/withdrawal policy in Blink wallet',
-                    'link' => null,
-                    'order' => 4,
-                    'optional' => true,
-                ],
             ],
             'aqua_boltz' => [
                 'configure_wallet' => [

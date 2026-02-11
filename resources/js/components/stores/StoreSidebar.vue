@@ -115,22 +115,63 @@
         </div>
       </div>
 
-      <!-- Store Name -->
-      <component
-        :is="isInertia ? Link : RouterLink"
-        :href="isInertia ? `/stores/${store.id}` : undefined"
-        :to="!isInertia ? { name: 'stores-show', params: { id: store.id } } : undefined"
-        class="flex items-center text-lg font-semibold mb-6 text-white hover:text-gray-200 transition-colors cursor-pointer"
-        @click="showMobileMenu = false"
-      >
-        <img
-          v-if="store.logo_url"
-          :src="store.logo_url"
-          :alt="`${store.name} logo`"
-          class="mr-3 h-8 w-8 object-contain rounded flex-shrink-0"
-        />
-        <span>{{ store.name }}</span>
-      </component>
+      <!-- Store Name + Wallet & Settings icons -->
+      <div class="flex items-center gap-2 mb-3 py-3 border-y border-gray-300 border-dotted">
+        <component
+          :is="isInertia ? Link : RouterLink"
+          :href="isInertia ? `/stores/${store.id}` : undefined"
+          :to="!isInertia ? { name: 'stores-show', params: { id: store.id } } : undefined"
+          class="flex items-center min-w-0 flex-1 text-md font-semibold text-white hover:text-gray-200 transition-colors cursor-pointer"
+          @click="showMobileMenu = false"
+        >
+          <img
+            v-if="store.logo_url"
+            :src="store.logo_url"
+            :alt="`${store.name} logo`"
+            class="mr-2 h-8 w-8 object-contain rounded flex-shrink-0"
+          />
+          <span class="truncate">{{ store.name }}</span>
+        </component>
+        <div class="flex items-center gap-1 flex-shrink-0">
+          <!-- Wallet connection (plug / unplug by status) -->
+          <component
+            :is="isInertia ? Link : RouterLink"
+            :href="isInertia ? `/stores/${store.id}/wallet-connection` : undefined"
+            :to="!isInertia ? { name: 'stores-wallet-connection', params: { id: store.id } } : undefined"
+            :title="t('stores.wallet_connection')"
+            class="p-1.5 rounded-md transition-colors"
+            :class="[
+              isLinkActive(`/stores/${store.id}/wallet-connection`, 'stores-wallet-connection')
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-400 hover:bg-gray-700 hover:text-white',
+              getWalletConnectionIconClass()
+            ]"
+            @click="showMobileMenu = false"
+          >
+            <!-- Link (connected) vs LinkSlash (disconnected / needs support / pending) -->
+            <svg v-if="store?.wallet_connection?.status === 'connected'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+          </component>
+          <!-- Store settings (onboarding pos-5) -->
+          <button
+            type="button"
+            data-onboarding="pos-5"
+            :title="t('stores.store_settings')"
+            class="p-1.5 rounded-md transition-colors text-gray-400 hover:bg-gray-700 hover:text-white"
+            :class="{ 'bg-gray-700 text-white': isStoreShowSettings }"
+            @click="$emit('show-settings'); showMobileMenu = false"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+        </div>
+      </div>
       
       <!-- PAYMENTS Section -->
       <div class="mb-8">
@@ -290,52 +331,7 @@
         </nav>
       </div>
 
-      <!-- WALLET Section -->
-      <div class="mb-8">
-        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{{ t('stores.wallet_section') }}</h3>
-        <nav class="space-y-1">
-          <component
-            :is="isInertia ? Link : RouterLink"
-            :href="isInertia ? `/stores/${store.id}/wallet-connection` : undefined"
-            :to="!isInertia ? `/stores/${store.id}/wallet-connection` : undefined"
-            class="flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium transition-colors"
-            :class="
-              isLinkActive(`/stores/${store.id}/wallet-connection`, 'stores-wallet-connection')
-                ? 'bg-gray-900 text-white'
-                : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-            "
-            @click="showMobileMenu = false"
-          >
-            <svg 
-              class="w-5 h-5 mr-3" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-              :class="getWalletConnectionIconClass()"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            <span :class="getWalletConnectionIconClass()">{{ t('stores.wallet_connection') }}</span>
-          </component>
-        </nav>
-      </div>
-
-      <!-- Settings Link -->
-      <div class="mt-8">
-        <button
-          @click="$emit('show-settings')"
-          class="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-gray-700 bg-gray-700 hover:bg-gray-600 text-white transition-colors"
-          :class="{ 'bg-gray-900': isStoreShowSettings }"
-        >
-          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          {{ t('stores.store_settings') }}
-        </button>
-      </div>
-
-      <!-- Setup guide + PoS tour (under Store settings) -->
+      <!-- Setup guide + PoS tour -->
       <div class="mt-4 space-y-2">
         <button
           type="button"
@@ -348,9 +344,8 @@
           {{ t('setup_wizard.open_guide') }}
         </button>
         <button
-          v-if="showPosTourButton"
           type="button"
-          @click="onboardingStore.reset()"
+          @click="handleStartPosTour"
           class="w-full flex items-center justify-center px-3 py-2.5 rounded-md text-sm font-medium text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 hover:border-indigo-500/30 transition-colors"
         >
           <svg class="w-5 h-5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -458,30 +453,6 @@ const paramAppId = computed(() => {
   return (route?.params?.appId as string) ?? null;
 });
 
-const currentApp = computed(() => {
-  const id = paramAppId.value;
-  if (!id) return null;
-  return (props.apps?.find((a: any) => a.id === id) ?? appsStore.apps?.find((a: any) => a.id === id)) ?? null;
-});
-
-const isOnPosPage = computed(() => {
-  const path = currentPath.value;
-  const onAppShow = path.includes('/stores/') && path.includes('/apps/') && !path.includes('/apps/create');
-  if (!onAppShow || !paramAppId.value) return false;
-  return currentApp.value?.app_type === 'PointOfSale';
-});
-
-const isOnStoreShowPage = computed(() => {
-  const path = currentPath.value;
-  return path.includes('/stores/') && !path.includes('/apps/');
-});
-
-const isStoreConnected = computed(() => props.store?.wallet_connection?.status === 'connected');
-
-const showPosTourButton = computed(() =>
-  isOnPosPage.value || (isOnStoreShowPage.value && isStoreConnected.value)
-);
-
 const isStoreShowSettings = computed(() => {
   if (isInertia && page) {
     const path = currentPath.value;
@@ -490,6 +461,28 @@ const isStoreShowSettings = computed(() => {
   }
   return route?.name === 'stores-show' && route?.query?.section === 'settings';
 });
+
+/** True when the current route can show a PoS tour step (dashboard or PoS app page). */
+const canShowPosTourOnCurrentRoute = computed(() => {
+  const path = currentPath.value;
+  const onStoreDashboard = path.match(/^\/stores\/[^/]+\/?$/) !== null;
+  const onAppShow = path.includes('/stores/') && path.includes('/apps/') && !path.includes('/apps/create');
+  return onStoreDashboard || onAppShow;
+});
+
+function handleStartPosTour() {
+  showMobileMenu.value = false;
+  if (canShowPosTourOnCurrentRoute.value) {
+    onboardingStore.reset();
+    return;
+  }
+  if (!props.store?.id) return;
+  if (isInertia && inertiaRouter) {
+    inertiaRouter.visit(`/stores/${props.store.id}?openPosTour=1`);
+  } else if (vueRouter) {
+    vueRouter.push({ name: 'stores-show', params: { id: props.store.id }, query: { openPosTour: '1' } });
+  }
+}
 
 function isLinkActive(path: string, routeName?: string): boolean {
   if (isInertia && page) {

@@ -695,6 +695,8 @@
     "pos_3_body": "Aquí puedes añadir productos, precios y en modo Teclado opcionalmente mostrar la selección de artículos. En Ajustes extra puedes configurar moneda, impuestos y opciones de pago.",
     "pos_4_title": "Guardar y abrir TPV",
     "pos_4_body": "Cuando termines, haz clic en Guardar configuración. Luego haz clic en Abrir TPV para abrir el terminal en una nueva pestaña y empezar a aceptar pagos.",
+    "pos_5_title": "Configuración de la tienda",
+    "pos_5_body": "Puedes gestionar tu tienda en cualquier momento desde Configuración de la tienda: monedero, facturas, usuarios y más. Haz clic en el icono de engranaje para abrir la configuración.",
     "restart_tour": "Mostrar de nuevo los consejos de configuración del TPV",
     "start_tour": "Iniciar guía de consejos TPV"
   },

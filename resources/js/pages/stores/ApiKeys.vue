@@ -6,6 +6,7 @@
       :apps="allApps"
       @show-settings="handleShowSettings"
       @show-section="handleShowSection"
+      @open-setup-wizard="handleOpenSetupWizard"
     />
 
     <!-- Main Content -->
@@ -483,6 +484,10 @@ function handleDelete() {
 
 function handleShowSettings() {
   router.push({ name: 'stores-show', params: { id: storeId.value }, query: { section: 'settings' } });
+}
+
+function handleOpenSetupWizard() {
+  router.push({ name: 'stores-show', params: { id: storeId.value }, query: { setup: '1' } });
 }
 
 function handleShowSection(section: string) {

@@ -301,12 +301,19 @@ onMounted(async () => {
 
     // Auto-open setup wizard when coming from store creation (?setup=1) or when store has no PoS yet and user never dismissed
     const querySetup = route.query.setup === '1';
+    const queryOpenPosTour = route.query.openPosTour === '1';
     const dismissed = typeof localStorage !== 'undefined' && localStorage.getItem(`${SETUP_WIZARD_DISMISSED_KEY}_${storeId}`);
     if (querySetup) {
       showSetupWizard.value = true;
       const q = { ...route.query };
       delete q.setup;
       router.replace({ name: 'stores-show', params: { id: storeId }, query: q });
+    } else if (queryOpenPosTour) {
+      const onboarding = useOnboardingStore();
+      onboarding.reset();
+      const q = { ...route.query };
+      delete q.openPosTour;
+      router.replace({ name: 'stores-show', params: { id: storeId }, query: Object.keys(q).length ? q : undefined });
     } else if (!dismissed && store.value && !section) {
       const hasPos = (appsStore.apps || []).some((a: any) => a.app_type === 'PointOfSale' && !a.archived);
       if (!hasPos) {

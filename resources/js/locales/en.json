@@ -268,7 +268,7 @@
     "no_pos": "No PoS",
     "pay_button": "Pay Button",
     "eshop_integration": "E-shop Integration",
-    "wallet_connection": "Wallet Connection",
+    "wallet_connection": "LN Wallet Connection",
     "currency_placeholder": "Select or type currency (e.g., USD, BTC, EUR)",
     "store_id": "Store ID",
     "blink_connection_description": "Connect your Blink wallet using a read+receive API key. Best for speed and reliability.",
@@ -816,6 +816,8 @@
     "pos_3_body": "Here you can add products, set prices, and for Keypad mode optionally show item selection. You can also expand Extra Settings for currency, tax, and checkout options.",
     "pos_4_title": "Save and open PoS",
     "pos_4_body": "When you're done, click Save Settings to store your configuration. Then click Open PoS to open the terminal in a new tab and start accepting payments.",
+    "pos_5_title": "Store settings",
+    "pos_5_body": "You can manage your store anytime via Store settings: wallet, invoices, users, and more. Click the gear icon to open Store settings.",
     "restart_tour": "Show PoS setup tips again",
     "start_tour": "Start PoS tips tour"
   },
