@@ -337,8 +337,14 @@ class AdminController extends Controller
 
         $subscription = $user->currentSubscription();
         $plan = $user->currentSubscriptionPlan();
+        // Use the plan from subscription record; fall back to user role for users
+        // who were upgraded via webhook/admin before the subscription system existed.
+        $planCode = $plan?->code ?? $plan?->name ?? 'free';
+        if ($planCode === 'free' && in_array($user->role, ['pro', 'enterprise'], true)) {
+            $planCode = $user->role;
+        }
         $subscriptionData = [
-            'plan' => $plan?->code ?? $plan?->name ?? 'free',
+            'plan' => $planCode,
             'status' => $subscription ? ($subscription->isActive() ? 'active' : ($subscription->isInGracePeriod() ? 'grace' : 'expired')) : 'none',
             'expires_at' => $subscription?->expires_at?->toIso8601String(),
         ];
