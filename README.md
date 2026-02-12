@@ -179,16 +179,16 @@ The system provides two CSV export formats:
 
 Exports support filtering by date range and status. Large exports use pagination and streaming to handle datasets of any size safely.
 
-## LNURL-Auth Skeleton
+## LNURL-Auth
 
-The application includes a skeleton implementation of LNURL-auth:
+The application supports LNURL-auth for Lightning-based login:
 
-- Challenge endpoint: `POST /api/lnurl-auth/challenge` (generates k1, returns lnurl-auth URL)
-- Verification endpoint: `POST /api/lnurl-auth/verify` (exists but verification logic is TODO)
+- Challenge: `POST /api/lnurl-auth/challenge` (generates k1, returns lnurl-auth URL)
+- Verify: `GET /api/lnurl-auth/verify` (validates sig/key, login or create user, optional email step)
+- Complete registration: `POST /api/lnurl-auth/complete-registration` (set email, send verification)
+- Challenge status: `GET /api/lnurl-auth/challenge-status/{k1}` (poll for pending / authenticated / pending_email)
 
-When `LNURL_AUTH_ENABLED=false`, the "Login with Lightning" button is hidden. When enabled, the button is shown but verification is not yet implemented.
-
-Classic email/password authentication always works regardless of LNURL-auth status.
+When `LNURL_AUTH_ENABLED=false`, the "Login with Lightning" button is hidden. Classic email/password authentication always works regardless of LNURL-auth status.
 
 ## Security Features
 
