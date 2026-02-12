@@ -227,7 +227,12 @@
               "
               @click="showMobileMenu = false"
             >
-              <span>{{ t('stores.ln_address') }}</span>
+              <span class="flex items-center min-w-0">
+                <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                </svg>
+                {{ t('stores.ln_address') }}
+              </span>
               <span v-if="limits?.ln_addresses?.max != null" class="ml-2 bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded-full shrink-0">{{ limits.ln_addresses.current }} / {{ limits.ln_addresses.max }}</span>
               <span v-else-if="limits?.ln_addresses?.unlimited" class="ml-2 text-xs text-gray-500 shrink-0">∞</span>
             </component>
@@ -248,8 +253,13 @@
               "
               @click="showMobileMenu = false"
             >
-              <span>{{ t('stores.point_of_sale') }}</span>
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <span class="flex items-center min-w-0">
+                <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z M9 7h6m-6 3h.01m0 3h.01m0 3h.01m6-9h.01m0 3h.01m0 3h.01m0 3h.01" />
+                </svg>
+                {{ t('stores.point_of_sale') }}
+              </span>
+              <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
             </component>
@@ -288,6 +298,9 @@
               "
               @click="showMobileMenu = false"
             >
+              <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 3.219M3.239 7.188l3.22.777M6.5 15.205l-3.75-.75M15.205 6.5l-.75-3.75" />
+              </svg>
               <span>{{ t('stores.pay_button') }}</span>
             </component>
           </div>

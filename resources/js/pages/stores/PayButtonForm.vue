@@ -21,14 +21,14 @@
         </svg>
         <div class="flex-1">
           <p class="text-sm text-yellow-400">
-            <strong>Warning:</strong> Payment button should only be used for
-            tips and donations. Using the payment button for e-commerce
-            integrations is not recommended since order relevant information can
-            be modified by the user. For e-commerce, you should use our
-            Greenfield API. If this store process commercial transactions, we
-            advise you to create a separate store before using the payment
-            button.
+            <strong>{{ t('stores.pay_button_warning_title') }}</strong>
           </p>
+          <p class="text-sm text-gray-400 mt-1">
+            {{ t('stores.pay_button_warning_text') }}
+          </p>
+          <div v-if="$slots['warning-action']" class="mt-3">
+            <slot name="warning-action" />
+          </div>
         </div>
         <button
           v-if="showWarning"
@@ -60,7 +60,7 @@
         class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700"
       >
         <div class="p-6 md:p-8 space-y-6">
-          <h2 class="text-xl font-bold text-white mb-4">General Settings</h2>
+          <h2 class="text-xl font-bold text-white mb-4">{{ t('stores.pay_button_general_settings') }}</h2>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -68,13 +68,13 @@
                 for="price"
                 class="block text-sm font-medium text-gray-300 mb-1"
               >
-                Price
+                {{ t('stores.pay_button_price') }}
               </label>
               <input
                 id="price"
                 v-model="form.price"
                 type="text"
-                placeholder="Leave empty for custom amount"
+                :placeholder="t('stores.pay_button_price_placeholder')"
                 class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />
             </div>
@@ -84,13 +84,13 @@
                 for="currency"
                 class="block text-sm font-medium text-gray-300 mb-1"
               >
-                Currency
+                {{ t('stores.pay_button_currency') }}
               </label>
               <Select
                 id="currency"
                 v-model="form.currency"
                 :options="currencyOptions"
-                placeholder="Select currency"
+                :placeholder="t('stores.pay_button_select_currency')"
               />
             </div>
           </div>
@@ -101,13 +101,13 @@
                 for="defaultPaymentMethod"
                 class="block text-sm font-medium text-gray-300 mb-1"
               >
-                Default Payment Method
+                {{ t('stores.pay_button_default_payment_method') }}
               </label>
               <Select
                 id="defaultPaymentMethod"
                 v-model="form.defaultPaymentMethod"
                 :options="paymentMethodOptions"
-                placeholder="Use the store's default"
+                :placeholder="t('stores.pay_button_default_payment_method_placeholder')"
               />
             </div>
 
@@ -116,13 +116,13 @@
                 for="checkoutDescription"
                 class="block text-sm font-medium text-gray-300 mb-1"
               >
-                Checkout Description
+                {{ t('stores.pay_button_checkout_description') }}
               </label>
               <input
                 id="checkoutDescription"
                 v-model="form.checkoutDescription"
                 type="text"
-                placeholder="Description shown on checkout"
+                :placeholder="t('stores.pay_button_checkout_description_placeholder')"
                 class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />
             </div>
@@ -133,13 +133,13 @@
               for="orderId"
               class="block text-sm font-medium text-gray-300 mb-1"
             >
-              Order ID
+              {{ t('stores.pay_button_order_id') }}
             </label>
             <input
               id="orderId"
               v-model="form.orderId"
               type="text"
-              placeholder="Optional order identifier"
+              :placeholder="t('stores.pay_button_order_id_placeholder')"
               class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
           </div>
@@ -151,7 +151,7 @@
         class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
       >
         <div class="p-6 md:p-8 space-y-6">
-          <h2 class="text-xl font-bold text-white mb-4">Pay Button</h2>
+          <h2 class="text-xl font-bold text-white mb-4">{{ t('stores.pay_button') }}</h2>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div
               class="flex items-center bg-gray-900 border border-gray-700 p-4 rounded-xl"
@@ -166,7 +166,7 @@
                 for="customizeButtonText"
                 class="ml-3 block text-sm font-medium text-white cursor-pointer"
               >
-                Customize Pay Button Text
+                {{ t('stores.pay_button_customize_text') }}
               </label>
             </div>
 
@@ -175,13 +175,13 @@
                 for="buttonText"
                 class="block text-sm font-medium text-gray-300 mb-1"
               >
-                Pay Button Text
+                {{ t('stores.pay_button_text') }}
               </label>
               <input
                 id="buttonText"
                 v-model="form.buttonText"
                 type="text"
-                placeholder="Pay with"
+                :placeholder="t('stores.pay_button_text_placeholder')"
                 class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />
             </div>
@@ -192,7 +192,7 @@
               for="buttonImageUrl"
               class="block text-sm font-medium text-gray-300 mb-1"
             >
-              Pay Button Image Url
+              {{ t('stores.pay_button_image_url') }}
             </label>
             <input
               id="buttonImageUrl"
@@ -207,7 +207,7 @@
             <div class="space-y-4">
               <div>
                 <label class="block text-sm font-medium text-gray-300 mb-2"
-                  >Image Size</label
+                  >{{ t('stores.pay_button_image_size') }}</label
                 >
                 <div class="flex gap-3">
                   <button
@@ -229,7 +229,7 @@
 
               <div>
                 <label class="block text-sm font-medium text-gray-300 mb-2"
-                  >Button Type</label
+                  >{{ t('stores.pay_button_button_type') }}</label
                 >
                 <div class="space-y-2">
                   <label
@@ -242,7 +242,7 @@
                       class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-600"
                     />
                     <span class="ml-3 text-sm font-medium text-white"
-                      >Fixed amount</span
+                      >{{ t('stores.pay_button_fixed_amount') }}</span
                     >
                   </label>
                   <label
@@ -255,7 +255,7 @@
                       class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-600"
                     />
                     <span class="ml-3 text-sm font-medium text-white"
-                      >Custom amount</span
+                      >{{ t('stores.pay_button_custom_amount') }}</span
                     >
                   </label>
                   <label
@@ -268,7 +268,7 @@
                       class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-600"
                     />
                     <span class="ml-3 text-sm font-medium text-white"
-                      >Slider</span
+                      >{{ t('stores.pay_button_slider') }}</span
                     >
                   </label>
                 </div>
@@ -284,7 +284,7 @@
                   <label
                     for="minAmount"
                     class="block text-sm font-medium text-gray-300 mb-1"
-                    >Min</label
+                    >{{ t('stores.pay_button_min') }}</label
                   >
                   <input
                     id="minAmount"
@@ -299,7 +299,7 @@
                   <label
                     for="maxAmount"
                     class="block text-sm font-medium text-gray-300 mb-1"
-                    >Max</label
+                    >{{ t('stores.pay_button_max') }}</label
                   >
                   <input
                     id="maxAmount"
@@ -314,7 +314,7 @@
                   <label
                     for="stepAmount"
                     class="block text-sm font-medium text-gray-300 mb-1"
-                    >Step</label
+                    >{{ t('stores.pay_button_step') }}</label
                   >
                   <input
                     id="stepAmount"
@@ -328,9 +328,7 @@
               </div>
 
               <div
-                v-if="
-                  form.buttonType === 'custom' || form.buttonType === 'slider'
-                "
+                v-if="form.buttonType === 'custom'"
                 class="space-y-3"
               >
                 <div
@@ -346,7 +344,7 @@
                     for="simpleInputStyle"
                     class="ml-3 block text-sm font-medium text-white cursor-pointer"
                   >
-                    Use a simple input style
+                    {{ t('stores.pay_button_simple_input_style') }}
                   </label>
                 </div>
                 <div
@@ -362,7 +360,7 @@
                     for="fitButtonInline"
                     class="ml-3 block text-sm font-medium text-white cursor-pointer"
                   >
-                    Fit button inline
+                    {{ t('stores.pay_button_fit_inline') }}
                   </label>
                 </div>
               </div>
@@ -370,51 +368,103 @@
 
             <!-- Preview -->
             <div class="mt-6 p-6 bg-gray-900 border border-gray-700 rounded-xl">
-              <h3 class="text-sm font-medium text-gray-300 mb-4">Preview</h3>
+              <h3 class="text-sm font-medium text-gray-300 mb-4">{{ t('stores.pay_button_preview') }}</h3>
               <div
-                class="flex flex-col items-center gap-4 p-4 bg-gray-800 rounded"
+                class="flex p-4 bg-gray-800 rounded gap-4"
+                :class="
+                  form.fitButtonInline && form.buttonType !== 'slider'
+                    ? 'flex-row items-center flex-wrap justify-center'
+                    : 'flex-col items-center'
+                "
               >
-                <div
-                  v-if="
-                    form.buttonType === 'custom' || form.buttonType === 'slider'
-                  "
-                  class="flex items-center gap-2"
-                >
+                <template v-if="form.buttonType === 'custom'">
+                  <div class="flex items-center gap-2">
+                    <button
+                      v-if="!form.simpleInputStyle"
+                      type="button"
+                      class="px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white hover:bg-gray-600"
+                      @click="previewAmountDecrement"
+                    >
+                      -
+                    </button>
+                    <input
+                      v-model.number="previewAmount"
+                      type="number"
+                      :min="form.minAmount"
+                      :max="form.maxAmount"
+                      :step="form.stepAmount"
+                      class="w-24 px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white text-center"
+                    />
+                    <button
+                      v-if="!form.simpleInputStyle"
+                      type="button"
+                      class="px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white hover:bg-gray-600"
+                      @click="previewAmountIncrement"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <div class="text-sm text-gray-400">
+                    {{ form.currency || "EUR" }}
+                  </div>
+                </template>
+                <template v-else-if="form.buttonType === 'slider'">
+                  <div class="flex flex-col items-center gap-2 w-full max-w-xs">
+                    <input
+                      v-model.number="previewAmount"
+                      type="number"
+                      :min="form.minAmount"
+                      :max="form.maxAmount"
+                      :step="form.stepAmount"
+                      class="w-24 px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white text-center"
+                    />
+                    <input
+                      v-model.number="previewAmount"
+                      type="range"
+                      :min="form.minAmount"
+                      :max="form.maxAmount"
+                      :step="form.stepAmount"
+                      class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                    />
+                  </div>
+                  <div class="text-sm text-gray-400">
+                    {{ form.currency || "EUR" }}
+                  </div>
+                </template>
+                <template v-if="form.customizeButtonText">
                   <button
                     type="button"
-                    class="px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white hover:bg-gray-600"
+                    class="submit inline-flex items-center justify-center gap-1"
+                    :style="{
+                      minWidth: form.imageSize.split('x')[0] + 'px',
+                      minHeight: form.imageSize.split('x')[1] + 'px',
+                      borderRadius: '4px',
+                      border: 'none',
+                      backgroundColor: '#0f3b21',
+                      cursor: 'pointer',
+                    }"
+                    title="Pay with BTCPay Server, a Self-Hosted Bitcoin Payment Processor"
                   >
-                    -
+                    <span style="color: #fff">{{ form.buttonText || t('stores.pay_button_text_placeholder') }}</span>
+                    <img
+                      :src="baseUrl + '/img/paybutton/logo.svg'"
+                      :style="{
+                        height: getImageHeight(),
+                        display: 'inline-block',
+                        padding: '5% 0 5% 5px',
+                        verticalAlign: 'middle',
+                      }"
+                      alt=""
+                    />
                   </button>
-                  <input
-                    type="number"
-                    :value="form.minAmount || 1"
-                    readonly
-                    class="w-24 px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white text-center"
-                  />
-                  <button
-                    type="button"
-                    class="px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white hover:bg-gray-600"
-                  >
-                    +
-                  </button>
-                </div>
-                <div class="text-sm text-gray-400">
-                  {{ form.currency || "EUR" }}
-                </div>
-                <button
-                  type="button"
-                  class="inline-flex items-center px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-500 transition-colors"
-                >
-                  {{ form.buttonText || "Pay with" }}
+                </template>
+                <template v-else>
                   <img
-                    v-if="form.buttonImageUrl"
-                    :src="form.buttonImageUrl"
-                    alt="Pay Button"
-                    class="ml-2"
-                    :style="{ height: getImageHeight() }"
+                    :src="baseUrl + '/img/paybutton/pay.svg'"
+                    style="width: 209px"
+                    alt="Pay with BTCPay Server, a Self-Hosted Bitcoin Payment Processor"
                   />
-                </button>
+                </template>
               </div>
             </div>
           </div>
@@ -427,7 +477,7 @@
       >
         <div class="p-6 md:p-8 space-y-6">
           <h2 class="text-xl font-bold text-white mb-4">
-            Payment Notifications
+            {{ t('stores.pay_button_payment_notifications') }}
           </h2>
 
           <div>
@@ -435,7 +485,7 @@
               for="serverIpn"
               class="block text-sm font-medium text-gray-300 mb-1"
             >
-              Server IPN
+              {{ t('stores.pay_button_server_ipn') }}
             </label>
             <input
               id="serverIpn"
@@ -626,10 +676,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { currencies } from "../../data/currencies";
 import Select from "../../components/ui/Select.vue";
 
+const { t } = useI18n();
 const props = defineProps<{
   store: any;
 }>();
@@ -640,11 +692,11 @@ const alternativeType = ref<"link" | "lnurl">("link");
 
 const currencyOptions = currencies.map(c => ({ label: `${c.code} - ${c.name}`, value: c.code }));
 
-const paymentMethodOptions = [
-  { label: "Use the store's default", value: "" },
+const paymentMethodOptions = computed(() => [
+  { label: t("stores.pay_button_default_payment_method_placeholder"), value: "" },
   { label: "Bitcoin On-Chain", value: "BTC-OnChain" },
   { label: "Bitcoin Lightning Network", value: "BTC-LightningNetwork" },
-];
+]);
 
 const form = ref({
   price: "",
@@ -668,6 +720,44 @@ const form = ref({
   browserRedirect: "",
   checkoutQueryString: "",
 });
+
+const previewAmount = ref(1);
+
+watch(
+  () => [
+    form.value.minAmount,
+    form.value.maxAmount,
+    form.value.buttonType,
+  ],
+  () => {
+    const min = Number(form.value.minAmount) || 1;
+    const max = Number(form.value.maxAmount) ?? min;
+    previewAmount.value = Math.min(Math.max(previewAmount.value, min), max);
+    if (form.value.buttonType === "slider") {
+      form.value.simpleInputStyle = false;
+      form.value.fitButtonInline = false;
+    }
+  },
+  { immediate: true }
+);
+
+function previewAmountIncrement() {
+  const step = Number(form.value.stepAmount) || 1;
+  const max = Number(form.value.maxAmount) ?? form.value.minAmount;
+  previewAmount.value = Math.min(
+    (Number(previewAmount.value) || form.value.minAmount) + step,
+    max
+  );
+}
+
+function previewAmountDecrement() {
+  const step = Number(form.value.stepAmount) || 1;
+  const min = Number(form.value.minAmount) || 1;
+  previewAmount.value = Math.max(
+    (Number(previewAmount.value) || min) - step,
+    min
+  );
+}
 
 const imageSizes = [
   { value: "146x40", label: "146 x 40 px" },
@@ -725,9 +815,10 @@ function generateHtmlCode(): string {
     throw new Error("Store ID is required");
   }
 
-  const formClass = form.value.fitButtonInline
-    ? "btcpay-form--inline"
-    : "btcpay-form--block";
+  const formClass =
+    form.value.fitButtonInline && form.value.buttonType !== "slider"
+      ? "btcpay-form--inline"
+      : "btcpay-form--block";
 
   let html = `<style>
 .btcpay-form {
@@ -818,6 +909,19 @@ function generateHtmlCode(): string {
   -webkit-appearance: none;
   margin: 0;
 }
+.btcpay-slider-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.btcpay-range {
+  width: 100%;
+  max-width: 280px;
+  height: 8px;
+  cursor: pointer;
+  accent-color: #6366f1;
+}
 </style>
 <form method="POST" action="${baseUrl}/api/v1/invoices" class="btcpay-form ${formClass}">
   <input type="hidden" name="storeId" value="${storeId.value}" />
@@ -830,17 +934,13 @@ function generateHtmlCode(): string {
 `;
   }
 
-  // Add custom amount input if custom or slider
-  if (
-    form.value.buttonType === "custom" ||
-    form.value.buttonType === "slider"
-  ) {
+  // Custom amount: simple input or plus-minus + currency select
+  if (form.value.buttonType === "custom") {
     if (form.value.simpleInputStyle) {
       html += `  <input type="number" name="price" min="${form.value.minAmount}" max="${form.value.maxAmount}" step="${form.value.stepAmount}" value="${form.value.minAmount}" class="btcpay-input-price" required />
   <input type="hidden" name="currency" value="${form.value.currency || "EUR"}" />
 `;
     } else {
-      // Common currencies for select dropdown
       const commonCurrencies = ["USD", "GBP", "EUR", "BTC"];
       const selectedCurrency = form.value.currency || "EUR";
 
@@ -860,8 +960,19 @@ function generateHtmlCode(): string {
   </div>
 `;
     }
-  } else {
-    // For fixed amount, add currency as hidden field
+  } else if (form.value.buttonType === "slider") {
+    // Slider: range input + display value, hidden currency
+    const min = form.value.minAmount ?? 1;
+    const max = form.value.maxAmount ?? min;
+    const step = form.value.stepAmount ?? 1;
+    html += `  <div class="btcpay-slider-container">
+    <input type="number" id="btcpay-slider-value" class="btcpay-input-price" readonly min="${min}" max="${max}" step="${step}" value="${min}" style="width:3em; margin-bottom: 8px;" />
+    <input type="range" name="price" class="btcpay-range" min="${min}" max="${max}" step="${step}" value="${min}" data-sync-target="btcpay-slider-value" required />
+  </div>
+  <input type="hidden" name="currency" value="${form.value.currency || "EUR"}" />
+`;
+  } else if (form.value.buttonType === "fixed" && !form.value.price) {
+    // Fixed amount without price: currency as hidden field
     html += `  <input type="hidden" name="currency" value="${form.value.currency || "EUR"}" />
 `;
   }
@@ -897,13 +1008,27 @@ function generateHtmlCode(): string {
   }
 
   // Add submit button
-  if (form.value.customizeButtonText && form.value.buttonImageUrl) {
-    const [width] = form.value.imageSize.split("x");
-    html += `  <input type="image" class="submit" name="submit" src="${form.value.buttonImageUrl}" style="width:${width}px" alt="${form.value.buttonText || "Pay with BTCPay Server"}" />
+  const defaultTitle =
+    "Pay with BTCPay Server, a Self-Hosted Bitcoin Payment Processor";
+  if (form.value.customizeButtonText) {
+    const [width, height] = form.value.imageSize.split("x");
+    const btnText = (form.value.buttonText || "Pay with").replace(
+      /&/g,
+      "&amp;"
+    ).replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const logoUrl = `${baseUrl}/img/paybutton/logo.svg`;
+    html += `  <button type="submit" class="submit" name="submit" style="min-width:${width}px;min-height:${height}px;border-radius:4px;border-style:none;background-color:#0f3b21;cursor:pointer;" title="${defaultTitle}"><span style="color:#fff">${btnText}</span>
+  <img src="${logoUrl}" alt="" style="height:${height}px;display:inline-block;padding:5% 0 5% 5px;vertical-align:middle;">
+</button>
 `;
   } else {
-    // Default BTCPay button
-    html += `  <input type="image" class="submit" name="submit" src="${baseUrl}/img/paybutton/pay.svg" style="width:209px" alt="Pay with BTCPay Server, a Self-Hosted Bitcoin Payment Processor" />
+    const src = form.value.buttonImageUrl
+      ? form.value.buttonImageUrl
+      : `${baseUrl}/img/paybutton/pay.svg`;
+    const width = form.value.buttonImageUrl
+      ? form.value.imageSize.split("x")[0]
+      : "209";
+    html += `  <input type="image" class="submit" name="submit" src="${src}" style="width:${width}px" alt="${defaultTitle}" />
 `;
   }
 
@@ -953,6 +1078,16 @@ function generateHtmlCode(): string {
   html += "            el.addEventListener('input', handlePriceInput);\n";
   html += "            el.dataset.initialized = true;\n";
   html += "        }\n";
+  html += "    });\n";
+  html += "    document.querySelectorAll('.btcpay-range').forEach(function(range) {\n";
+  html += "        var targetId = range.getAttribute('data-sync-target');\n";
+  html += "        if (!targetId) return;\n";
+  html += "        var target = document.getElementById(targetId);\n";
+  html += "        if (!target) return;\n";
+  html += "        function sync() { target.value = range.value; }\n";
+  html += "        range.addEventListener('input', sync);\n";
+  html += "        range.addEventListener('change', sync);\n";
+  html += "        sync();\n";
   html += "    });\n";
   html += "<" + "/script>";
 
