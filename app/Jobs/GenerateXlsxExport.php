@@ -10,7 +10,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\Settings;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -27,6 +29,11 @@ class GenerateXlsxExport implements ShouldQueue
     public function handle(InvoiceService $invoiceService): void
     {
         $this->export->markAsRunning();
+
+        // Use disk-backed cell caching so PhpSpreadsheet stores cell data on disk
+        // instead of accumulating everything in RAM (prevents OOM on large exports).
+        $cacheDir = storage_path('app/spreadsheet_cache/' . $this->export->id);
+        $this->enableDiskCellCaching($cacheDir);
 
         try {
             $store = $this->export->store;
@@ -108,9 +115,14 @@ class GenerateXlsxExport implements ShouldQueue
             } while (count($invoices) === $take);
 
             $writer = new Xlsx($spreadsheet);
+            $writer->setPreCalculateFormulas(false);
             $writer->save($fullPath);
 
-            $ttl = (int) env('EXPORT_SIGNED_URL_TTL', 3600);
+            // Free memory immediately after writing
+            $spreadsheet->disconnectWorksheets();
+            unset($spreadsheet, $writer, $sheet);
+
+            $ttl = (int) config('exports.signed_url_ttl', 3600);
             $signedUrl = Storage::disk('local')->temporaryUrl(
                 $filePath,
                 now()->addSeconds($ttl)
@@ -142,6 +154,55 @@ class GenerateXlsxExport implements ShouldQueue
         } catch (\Exception $e) {
             $this->export->markAsFailed($e->getMessage());
             throw $e;
+        } finally {
+            // Clean up disk cache directory
+            $this->cleanupCacheDir($cacheDir);
+        }
+    }
+
+    /**
+     * Enable disk-backed cell caching for PhpSpreadsheet.
+     * Uses a file-based PSR-16 cache so cell data is stored on disk
+     * instead of accumulating in PHP memory.
+     */
+    protected function enableDiskCellCaching(string $cacheDir): void
+    {
+        if (!is_dir($cacheDir)) {
+            mkdir($cacheDir, 0755, true);
+        }
+
+        try {
+            $cache = new \Illuminate\Cache\Repository(
+                new \Illuminate\Cache\FileStore(
+                    app(\Illuminate\Filesystem\Filesystem::class),
+                    $cacheDir
+                )
+            );
+            Settings::setCache($cache);
+        } catch (\Throwable $e) {
+            // If disk caching fails, fall back to in-memory (default behavior)
+            Log::warning('Failed to enable disk cell caching for XLSX export, using in-memory', [
+                'export_id' => $this->export->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Clean up temporary cache directory after export completes.
+     */
+    protected function cleanupCacheDir(string $cacheDir): void
+    {
+        try {
+            if (is_dir($cacheDir)) {
+                $files = glob($cacheDir . '/*');
+                if ($files) {
+                    array_map('unlink', $files);
+                }
+                rmdir($cacheDir);
+            }
+        } catch (\Throwable $e) {
+            // Non-critical, directory will be cleaned up eventually
         }
     }
 

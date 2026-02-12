@@ -350,7 +350,12 @@ class InvoiceController extends Controller
             } while (count($invoices) === $take);
 
             $writer = new Xlsx($spreadsheet);
+            $writer->setPreCalculateFormulas(false);
             $writer->save('php://output');
+
+            // Free memory after writing
+            $spreadsheet->disconnectWorksheets();
+            unset($spreadsheet, $writer, $sheet);
         }, 200, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
