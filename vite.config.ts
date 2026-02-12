@@ -6,7 +6,7 @@ export default defineConfig({
     build: {
         outDir: 'public/build',
         emptyOutDir: true,
-        minify: false, // Temporarily disable minification to debug the issue
+        minify: true,
         sourcemap: false,
         target: 'es2020',
         cssCodeSplit: true,
