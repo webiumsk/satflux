@@ -78,18 +78,19 @@ class DashboardController extends Controller
             })->values();
         }
 
-        // Total revenue in sats: all settled (paid) PosOrders across user's stores, cached 5 min
+        // Total revenue (sats) and revenue_breakdown by currency: from PosOrders, cached 5 min
         $storeIds = $stores->pluck('id')->toArray();
-        $cacheKey = 'dashboard:user:'.$user->id.':total_revenue_sats';
-        $totalRevenue = Cache::remember($cacheKey, 300, function () use ($storeIds) {
+        $cacheKey = 'dashboard:user:'.$user->id.':revenue';
+        $revenueData = Cache::remember($cacheKey, 300, function () use ($storeIds) {
             if (empty($storeIds)) {
-                return 0;
+                return ['total_sats' => 0, 'breakdown' => []];
             }
             $orders = PosOrder::whereIn('store_id', $storeIds)
                 ->where('status', PosOrder::STATUS_PAID)
                 ->get(['amount', 'currency']);
 
             $sats = 0;
+            $byCurrency = [];
             foreach ($orders as $order) {
                 $currency = strtoupper(trim($order->currency ?? ''));
                 $amount = (float) $order->amount;
@@ -98,14 +99,23 @@ class DashboardController extends Controller
                 } elseif ($currency === 'BTC') {
                     $sats += (int) round($amount * 100_000_000);
                 }
+                if (!isset($byCurrency[$currency])) {
+                    $byCurrency[$currency] = 0;
+                }
+                $byCurrency[$currency] += $amount;
             }
-            return $sats;
+            $breakdown = [];
+            foreach ($byCurrency as $currency => $sum) {
+                $breakdown[] = ['currency' => $currency, 'amount' => round($sum, 2)];
+            }
+            return ['total_sats' => $sats, 'breakdown' => $breakdown];
         });
 
         return response()->json([
             'stores' => $stores,
             'store_count' => $stores->count(),
-            'total_revenue' => (int) $totalRevenue,
+            'total_revenue' => (int) $revenueData['total_sats'],
+            'revenue_breakdown' => $revenueData['breakdown'],
         ]);
     }
 
