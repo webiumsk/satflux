@@ -5,15 +5,44 @@ namespace App\Http\Controllers;
 use App\Models\FaqItem;
 use App\Models\FaqCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class FaqController extends Controller
 {
+    /**
+     * Search in JSON column (locale key is whitelisted).
+     * PostgreSQL: ->>'key' ILIKE; SQLite: json_extract(column, '$.key') LIKE.
+     */
+    private function applyJsonSearch($query, string $localeKey, string $search): void
+    {
+        $pattern = '%' . $search . '%';
+        if (DB::getDriverName() === 'sqlite') {
+            $pathLocale = '$.' . $localeKey;
+            $pathEn = '$.en';
+            $query->where(function ($q) use ($pathLocale, $pathEn, $pattern) {
+                $q->whereRaw('json_extract(question, ?) LIKE ?', [$pathLocale, $pattern])
+                    ->orWhereRaw('json_extract(answer, ?) LIKE ?', [$pathLocale, $pattern])
+                    ->orWhereRaw('json_extract(question, ?) LIKE ?', [$pathEn, $pattern])
+                    ->orWhereRaw('json_extract(answer, ?) LIKE ?', [$pathEn, $pattern]);
+            });
+        } else {
+            $query->where(function ($q) use ($localeKey, $pattern) {
+                $q->whereRaw("question->>'{$localeKey}' ILIKE ?", [$pattern])
+                    ->orWhereRaw("answer->>'{$localeKey}' ILIKE ?", [$pattern])
+                    ->orWhereRaw("question->>'en' ILIKE ?", [$pattern])
+                    ->orWhereRaw("answer->>'en' ILIKE ?", [$pattern]);
+            });
+        }
+    }
     /**
      * Get all published FAQ items with optional filtering.
      */
     public function index(Request $request)
     {
         $locale = app()->getLocale();
+        $allowedLocales = config('localization.json_locale_keys', ['en']);
+        $localeKey = in_array($locale, $allowedLocales, true) ? $locale : 'en';
+
         $categoryId = $request->query('category_id');
         $search = $request->query('search');
 
@@ -28,15 +57,9 @@ class FaqController extends Controller
             $query->where('category_id', $categoryId);
         }
 
-        // Search in question and answer (current locale)
+        // Search in question and answer (current locale; locale key is whitelisted)
         if ($search) {
-            $query->where(function ($q) use ($search, $locale) {
-                $q->whereRaw("question->>'{$locale}' ILIKE ?", ["%{$search}%"])
-                  ->orWhereRaw("answer->>'{$locale}' ILIKE ?", ["%{$search}%"])
-                  // Fallback to English if current locale doesn't have content
-                  ->orWhereRaw("question->>'en' ILIKE ?", ["%{$search}%"])
-                  ->orWhereRaw("answer->>'en' ILIKE ?", ["%{$search}%"]);
-            });
+            $this->applyJsonSearch($query, $localeKey, $search);
         }
 
         $items = $query->get()->map(function ($item) use ($locale) {

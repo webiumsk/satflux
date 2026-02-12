@@ -19,8 +19,8 @@ class BtcPayClient
 
     public function __construct(?string $apiKey = null)
     {
-        $this->baseUrl = rtrim(config('services.btcpay.base_url', env('BTCPAY_BASE_URL')), '/');
-        $this->apiKey = $apiKey ?? config('services.btcpay.api_key', env('BTCPAY_API_KEY'));
+        $this->baseUrl = rtrim(config('services.btcpay.base_url'), '/');
+        $this->apiKey = $apiKey ?? config('services.btcpay.api_key');
 
         $this->initializeClient();
     }

@@ -36,716 +36,50 @@
       <!-- Tabs: General, Payment, Rates, Checkout (one form) -->
       <div v-show="['settings', 'payment', 'rates', 'checkout'].includes(activeSettingsTab)" class="px-6 py-8">
         <form @submit.prevent="handleSettingsSubmit" class="space-y-8">
-          <!-- Tab: Settings -->
-          <div v-show="activeSettingsTab === 'settings'" class="space-y-8">
-          <!-- Store identification -->
-          <div class="space-y-4">
-            <h2 class="text-lg font-semibold text-white border-b border-gray-700 pb-2">{{ t('stores.settings_store_identification') }}</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div class="md:col-span-2 space-y-4">
-                <div v-if="settings?.id" class="grid grid-cols-1 gap-1">
-                  <label class="block text-sm font-medium text-gray-400">{{ t('stores.settings_store_id') }}</label>
-                  <input
-                    type="text"
-                    :value="settings.id"
-                    readonly
-                    class="block w-full px-4 py-3 border border-gray-600 rounded-xl bg-gray-800/50 text-gray-400 font-mono text-sm cursor-not-allowed"
-                  />
-                </div>
-                <div>
-                  <label for="name" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.store_name') }}</label>
-                  <input
-                    id="name"
-                    v-model="settingsForm.name"
-                    type="text"
-                    required
-                    class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                  />
-                </div>
-                <div>
-                  <label for="website" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_store_website') }}</label>
-                  <input
-                    id="website"
-                    v-model="settingsForm.website"
-                    type="url"
-                    placeholder="https://example.com"
-                    class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                  />
-                </div>
-              </div>
-              <div class="md:col-span-1">
-                <p class="text-sm font-medium text-gray-300 mb-3">{{ t('stores.store_logo') }}</p>
-                <div class="flex flex-col items-center gap-4">
-                  <div v-if="storeLogoUrl" class="relative group">
-                    <div class="w-32 h-32 rounded-xl bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-600">
-                      <img :src="storeLogoUrl" alt="Store logo" class="w-full h-full object-contain" />
-                    </div>
-                    <button
-                      type="button"
-                      @click="handleDeleteLogo"
-                      :disabled="deletingLogo"
-                      class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg hover:bg-red-600 transition-colors"
-                      :title="t('stores.delete_logo')"
-                    >
-                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                  </div>
-                  <div v-else class="w-32 h-32 rounded-xl bg-gray-700/50 flex items-center justify-center border-2 border-dashed border-gray-600 text-gray-500">
-                    <span class="text-sm">{{ t('stores.no_logo') }}</span>
-                  </div>
-                  <div class="w-full">
-                    <label class="block text-sm font-medium text-gray-300 mb-2">
-                      {{ storeLogoUrl ? t('stores.update_logo') : t('stores.upload_logo') }}
-                    </label>
-                    <input
-                      ref="logoInputRef"
-                      type="file"
-                      accept="image/*"
-                      @change="handleLogoUpload"
-                      class="block w-full text-sm text-gray-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer bg-gray-700/50 rounded-lg border border-gray-600 focus:outline-none"
-                    />
-                    <p class="mt-2 text-xs text-gray-500">{{ t('stores.settings_logo_format') }}</p>
-                  </div>
-                </div>
-                <div v-if="logoError" class="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 p-4">
-                  <div class="flex">
-                    <svg class="h-5 w-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    <div class="text-sm text-red-400">{{ logoError }}</div>
-                  </div>
-                </div>
-                <div v-if="logoSuccess" class="mt-4 rounded-xl bg-green-500/10 border border-green-500/20 p-4">
-                  <div class="flex">
-                    <svg class="h-5 w-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                    <div class="text-sm text-green-400">{{ logoSuccess }}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Branding (Pro+) -->
-          <div class="space-y-4">
-            <div class="flex items-center gap-2 flex-wrap">
-              <h2 class="text-lg font-semibold text-white border-b border-gray-700 pb-2">{{ t('stores.settings_branding') }}</h2>
-              <button
-                v-if="!canEditBranding"
-                type="button"
-                @click="showBrandingProNotice = !showBrandingProNotice"
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
-              >
-                {{ t('stores.available_in_pro') }}
-                <svg
-                  class="w-3.5 h-3.5 transition-transform duration-200"
-                  :class="{ 'rotate-180': showBrandingProNotice }"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-            </div>
-            <Transition
-              enter-active-class="transition ease-out duration-200"
-              enter-from-class="opacity-0 -translate-y-1"
-              enter-to-class="opacity-100 translate-y-0"
-              leave-active-class="transition ease-in duration-150"
-              leave-from-class="opacity-100 translate-y-0"
-              leave-to-class="opacity-0 -translate-y-1"
-            >
-              <div
-                v-if="!canEditBranding && showBrandingProNotice"
-                class="mb-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-200"
-              >
-                <p class="mb-2">{{ t('stores.pos_advanced_options_pro_only') }}</p>
-                <a
-                  :href="'/account'"
-                  class="inline-flex items-center font-medium text-amber-300 hover:text-amber-200 underline underline-offset-2"
-                >
-                  {{ t('stores.upgrade_to_pro') }}
-                </a>
-              </div>
-            </Transition>
-            <p class="text-sm text-gray-400">{{ t('stores.settings_branding_desc') }}</p>
-            <div
-              :class="[
-                'space-y-4',
-                !canEditBranding && 'pointer-events-none opacity-75 select-none',
-              ]"
-            >
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label for="brand_color" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_brand_color') }}</label>
-                  <div class="flex items-center gap-2">
-                    <input
-                      id="brand_color"
-                      v-model="settingsForm.brand_color"
-                      type="color"
-                      :disabled="!canEditBranding"
-                      class="h-10 w-14 rounded border border-gray-600 bg-gray-800 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                    />
-                    <input
-                      v-model="settingsForm.brand_color"
-                      type="text"
-                      :disabled="!canEditBranding"
-                      class="flex-1 px-4 py-3 border border-gray-600 rounded-xl bg-gray-700/50 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label for="css_url" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_custom_css_url') }}</label>
-                <input
-                  id="css_url"
-                  v-model="settingsForm.css_url"
-                  type="url"
-                  placeholder="https://example.com/theme.css"
-                  :disabled="!canEditBranding"
-                  class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-                />
-              </div>
-              <div>
-                <label for="payment_sound_url" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_payment_sound_url') }}</label>
-                <input
-                  id="payment_sound_url"
-                  v-model="settingsForm.payment_sound_url"
-                  type="url"
-                  placeholder="https://example.com/sound.mp3"
-                  :disabled="!canEditBranding"
-                  class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-                />
-              </div>
-            </div>
-          </div>
-          </div>
-
-          <!-- Tab: Payment -->
-          <div v-show="activeSettingsTab === 'payment'" class="space-y-6">
-            <h2 class="text-lg font-semibold text-white border-b border-gray-700 pb-2">{{ t('stores.settings_tab_payment') }}</h2>
-            <p class="text-sm text-gray-400 max-w-2xl">{{ t('stores.settings_tab_payment_desc') }}</p>
-            <!-- Default Currency & Timezone: available to all -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label for="default_currency" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.default_currency') }}</label>
-                <input
-                  id="default_currency"
-                  v-model="settingsForm.default_currency"
-                  type="text"
-                  list="currency-selection-suggestion"
-                  required
-                  :placeholder="t('stores.currency_placeholder')"
-                  class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                />
-                <datalist id="currency-selection-suggestion">
-                  <option v-for="currency in currencies" :key="currency.code" :value="currency.code">
-                    {{ currency.code }} - {{ currency.name }}
-                  </option>
-                </datalist>
-              </div>
-              <div>
-                <label for="timezone" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.timezone') }}</label>
-                <Select
-                  id="timezone"
-                  v-model="settingsForm.timezone"
-                  :options="timezoneOptions"
-                  :placeholder="t('stores.settings_select_timezone')"
-                />
-              </div>
-            </div>
-            <!-- Allow anyone / Show recommended fee: available to all (Free) -->
-            <div class="space-y-4 pt-4 border-t border-gray-700">
-              <div class="flex flex-wrap gap-x-8 gap-y-4 items-start">
-                <label class="flex items-center">
-                  <input v-model="settingsForm.anyone_can_create_invoice" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                  <span class="ml-2 text-sm text-gray-300">{{ t('stores.settings_allow_anyone_invoice') }}</span>
-                </label>
-                <div>
-                  <label class="flex items-center">
-                    <input v-model="settingsForm.show_recommended_fee" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                    <span class="ml-2 text-sm text-gray-300">{{ t('stores.settings_show_recommended_fee') }}</span>
-                  </label>
-                  <p v-if="settingsForm.show_recommended_fee" class="mt-1 ml-7 text-xs text-gray-500">{{ t('stores.settings_fee_btc_ltc_only') }}</p>
-                </div>
-              </div>
-              <div v-if="settingsForm.show_recommended_fee" class="max-w-xs">
-                <label for="recommended_fee_block_target" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_recommended_fee_blocks') }}</label>
-                <input
-                  id="recommended_fee_block_target"
-                  v-model.number="settingsForm.recommended_fee_block_target"
-                  type="number"
-                  min="1"
-                  class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
-                />
-              </div>
-            </div>
-            <!-- Payment options: Pro only -->
-            <div class="space-y-4 pt-4 border-t border-gray-700">
-              <div class="flex items-center gap-2 flex-wrap">
-                <h3 class="text-base font-semibold text-white">{{ t('stores.settings_payment_options') }}</h3>
-                <button
-                  v-if="!canEditPaymentOptions"
-                  type="button"
-                  @click="showPaymentProNotice = !showPaymentProNotice"
-                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
-                >
-                  {{ t('stores.available_in_pro') }}
-                  <svg
-                    class="w-3.5 h-3.5 transition-transform duration-200"
-                    :class="{ 'rotate-180': showPaymentProNotice }"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              </div>
-              <Transition
-                enter-active-class="transition ease-out duration-200"
-                enter-from-class="opacity-0 -translate-y-1"
-                enter-to-class="opacity-100 translate-y-0"
-                leave-active-class="transition ease-in duration-150"
-                leave-from-class="opacity-100 translate-y-0"
-                leave-to-class="opacity-0 -translate-y-1"
-              >
-                <div
-                  v-if="!canEditPaymentOptions && showPaymentProNotice"
-                  class="mb-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-200"
-                >
-                  <p class="mb-2">{{ t('stores.pos_advanced_options_pro_only') }}</p>
-                  <a
-                    :href="'/account'"
-                    class="inline-flex items-center font-medium text-amber-300 hover:text-indigo-200 underline underline-offset-2"
-                  >
-                    {{ t('stores.upgrade_to_pro') }}
-                  </a>
-                </div>
-              </Transition>
-              <div
-                :class="[
-                  'space-y-6',
-                  !canEditPaymentOptions && 'pointer-events-none opacity-75 select-none',
-                ]"
-              >
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label for="network_fee_mode" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_add_network_fee') }}</label>
-                <Select
-                  id="network_fee_mode"
-                  v-model="settingsForm.network_fee_mode"
-                  :options="networkFeeModeOptions"
-                  :placeholder="t('stores.settings_select')"
-                />
-              </div>
-              <div>
-                <label for="invoice_expiration" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_invoice_expires') }}</label>
-                <input
-                  id="invoice_expiration"
-                  v-model.number="settingsForm.invoice_expiration"
-                  type="number"
-                  min="1"
-                  class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
-                />
-              </div>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label for="payment_tolerance" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_consider_paid_less') }}</label>
-                <input
-                  id="payment_tolerance"
-                  v-model.number="settingsForm.payment_tolerance"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
-                />
-              </div>
-              <div>
-                <label for="refund_bolt11_expiration" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_bolt11_refund_days') }}</label>
-                <input
-                  id="refund_bolt11_expiration"
-                  v-model.number="settingsForm.refund_bolt11_expiration"
-                  type="number"
-                  min="1"
-                  class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
-                />
-              </div>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label for="monitoring_expiration" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_payment_invalid_after') }}</label>
-                <input
-                  id="monitoring_expiration"
-                  v-model.number="settingsForm.monitoring_expiration"
-                  type="number"
-                  min="0"
-                  class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
-                />
-              </div>
-            </div>
-            <div>
-              <label for="speed_policy" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_invoice_settled_when') }}</label>
-                <Select
-                  id="speed_policy"
-                  v-model="settingsForm.speed_policy"
-                  :options="speedPolicyOptions"
-                  :placeholder="t('stores.settings_select')"
-                />
-            </div>
-            <div>
-              <label for="lightning_description_template" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_lightning_description_template') }}</label>
-              <input
-                id="lightning_description_template"
-                v-model="settingsForm.lightning_description_template"
-                type="text"
-                class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
-              />
-            </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Archived (Pro + admin/support only) - at bottom of General tab -->
-          <div v-show="activeSettingsTab === 'settings'" class="space-y-4 pt-8 border-t border-gray-700 mt-8">
-            <div class="flex items-center gap-2 flex-wrap">
-              <h3 class="text-base font-semibold text-white">{{ t('stores.settings_archived') }}</h3>
-              <button
-                v-if="!canEditArchivedOption"
-                type="button"
-                @click="showArchivedProNotice = !showArchivedProNotice"
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
-              >
-                {{ t('stores.available_in_pro') }}
-                <svg
-                  class="w-3.5 h-3.5 transition-transform duration-200"
-                  :class="{ 'rotate-180': showArchivedProNotice }"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-            </div>
-            <Transition
-              enter-active-class="transition ease-out duration-200"
-              enter-from-class="opacity-0 -translate-y-1"
-              enter-to-class="opacity-100 translate-y-0"
-              leave-active-class="transition ease-in duration-150"
-              leave-from-class="opacity-100 translate-y-0"
-              leave-to-class="opacity-0 -translate-y-1"
-            >
-              <div
-                v-if="!canEditArchivedOption && showArchivedProNotice"
-                class="mb-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-200"
-              >
-                <p class="mb-2">{{ t('stores.settings_tab_archived_desc') }}</p>
-                <a
-                  href="/account"
-                  class="inline-flex items-center font-medium text-amber-300 hover:text-amber-200 underline underline-offset-2"
-                >
-                  {{ t('stores.upgrade_to_pro') }}
-                </a>
-              </div>
-            </Transition>
-            <div
-              :class="[
-                'flex flex-wrap gap-x-8 gap-y-4',
-                !canEditArchivedOption && 'pointer-events-none opacity-75 select-none',
-              ]"
-            >
-              <label class="flex items-center">
-                <input v-model="settingsForm.archived" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" :disabled="!canEditArchivedOption" />
-                <span class="ml-2 text-sm text-gray-300">{{ t('stores.settings_archived') }}</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Tab: Rates -->
-          <div v-show="activeSettingsTab === 'rates'" class="space-y-6">
-            <h2 class="text-lg font-semibold text-white">{{ t('stores.settings_tab_rates') }}</h2>
-            <p class="text-sm text-gray-400 max-w-2xl">{{ t('stores.settings_tab_rates_desc') }}</p>
-            <!-- Preferred Price Source: free for all -->
-            <div>
-              <label for="preferred_exchange" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.preferred_price_source') }}</label>
-                <Select
-                  id="preferred_exchange"
-                  v-model="settingsForm.preferred_exchange"
-                  :options="exchanges"
-                  :placeholder="t('stores.settings_select')"
-                />
-              <p class="mt-2 text-xs text-gray-500">{{ t('stores.recommended_price_source') }}</p>
-            </div>
-            <!-- Additional rates: Pro only -->
-            <div class="space-y-4 pt-4 border-t border-gray-700">
-              <div class="flex items-center gap-2 flex-wrap">
-                <h3 class="text-base font-semibold text-white">{{ t('stores.settings_additional_rates') }}</h3>
-                <button
-                  v-if="!canEditRatesOptions"
-                  type="button"
-                  @click="showRatesProNotice = !showRatesProNotice"
-                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
-                >
-                  {{ t('stores.available_in_pro') }}
-                  <svg
-                    class="w-3.5 h-3.5 transition-transform duration-200"
-                    :class="{ 'rotate-180': showRatesProNotice }"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              </div>
-              <Transition
-                enter-active-class="transition ease-out duration-200"
-                enter-from-class="opacity-0 -translate-y-1"
-                enter-to-class="opacity-100 translate-y-0"
-                leave-active-class="transition ease-in duration-150"
-                leave-from-class="opacity-100 translate-y-0"
-                leave-to-class="opacity-0 -translate-y-1"
-              >
-                <div
-                  v-if="!canEditRatesOptions && showRatesProNotice"
-                  class="mb-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-200"
-                >
-                  <p class="mb-2">{{ t('stores.pos_advanced_options_pro_only') }}</p>
-                  <a
-                    :href="'/account'"
-                    class="inline-flex items-center font-medium text-amber-300 hover:text-amber-200 underline underline-offset-2"
-                  >
-                    {{ t('stores.upgrade_to_pro') }}
-                  </a>
-                </div>
-              </Transition>
-              <div
-                :class="[
-                  'space-y-4',
-                  !canEditRatesOptions && 'pointer-events-none opacity-75 select-none',
-                ]"
-              >
-                <div>
-                  <label for="additional_tracked_rates" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_additional_rates_label') }}</label>
-                  <input
-                    id="additional_tracked_rates"
-                    :value="(settingsForm.additional_tracked_rates || []).join(', ')"
-                    type="text"
-                    placeholder="USD, EUR, JPY"
-                    class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
-                    @input="onAdditionalRatesInput"
-                  />
-                  <p class="mt-1 text-xs text-gray-500">{{ t('stores.settings_additional_rates_desc') }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tab: Checkout appearance (Pro only) -->
-          <div v-show="activeSettingsTab === 'checkout'" class="space-y-6">
-            <h2 class="text-lg font-semibold text-white">{{ t('stores.settings_tab_checkout') }}</h2>
-            <p class="text-sm text-gray-400 max-w-2xl">{{ t('stores.settings_tab_checkout_desc') }}</p>
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-base font-medium text-white">{{ t('stores.settings_checkout_options') }}</span>
-              <button
-                v-if="!canEditCheckoutOptions"
-                type="button"
-                @click="showCheckoutProNotice = !showCheckoutProNotice"
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
-              >
-                {{ t('stores.available_in_pro') }}
-                <svg
-                  class="w-3.5 h-3.5 transition-transform duration-200"
-                  :class="{ 'rotate-180': showCheckoutProNotice }"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-            </div>
-            <Transition
-              enter-active-class="transition ease-out duration-200"
-              enter-from-class="opacity-0 -translate-y-1"
-              enter-to-class="opacity-100 translate-y-0"
-              leave-active-class="transition ease-in duration-150"
-              leave-from-class="opacity-100 translate-y-0"
-              leave-to-class="opacity-0 -translate-y-1"
-            >
-              <div
-                v-if="!canEditCheckoutOptions && showCheckoutProNotice"
-                class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-200"
-              >
-                <p class="mb-2">{{ t('stores.pos_advanced_options_pro_only') }}</p>
-                <a
-                  :href="'/account'"
-                  class="inline-flex items-center font-medium text-amber-300 hover:text-amber-200 underline underline-offset-2"
-                >
-                  {{ t('stores.upgrade_to_pro') }}
-                </a>
-              </div>
-            </Transition>
-            <div
-              :class="[
-                'space-y-6 max-w-2xl',
-                !canEditCheckoutOptions && 'pointer-events-none opacity-75 select-none',
-              ]"
-            >
-              <!-- Default payment method -->
-              <div class="form-group mb-4">
-                <label for="default_payment_method" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_default_payment_method') }}</label>
-                <Select
-                  id="default_payment_method"
-                  v-model="settingsForm.default_payment_method"
-                  :options="defaultPaymentMethodOptions"
-                  :placeholder="t('stores.settings_select')"
-                />
-              </div>
-
-              <!-- Enable payment methods only when amount is ... -->
-              <div class="form-group mb-4">
-                <div class="text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_enable_payment_when_amount') }}</div>
-                <div class="mt-2 flex flex-wrap items-center gap-3">
-                  <template v-for="(crit, idx) in settingsForm.payment_method_criteria" :key="idx">
-                    <div class="w-28 min-w-0">
-                      <Select
-                        v-model="crit.payment_method"
-                        :options="defaultPaymentMethodOptions"
-                        :placeholder="t('stores.settings_method')"
-                      />
-                    </div>
-                    <div class="w-36 min-w-0">
-                      <Select
-                        v-model="crit.type"
-                        :options="paymentMethodCriteriaTypeOptions"
-                        :placeholder="t('stores.settings_type')"
-                      />
-                    </div>
-                    <input
-                      v-model="crit.value"
-                      type="text"
-                      placeholder="6.15 USD"
-                      class="w-28 px-3 py-2.5 border border-gray-600 rounded-lg text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </template>
-                </div>
-              </div>
-
-              <!-- Checkout section -->
-              <h3 class="text-base font-semibold text-white mb-3 pt-2 border-t border-gray-700">{{ t('stores.settings_checkout_section') }}</h3>
-              <div class="space-y-4">
-                <div>
-                  <label for="display_expiration_timer" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_timer_before_expiration') }}</label>
-                  <div class="flex items-center gap-2 max-w-[14rem]">
-                    <input
-                      id="display_expiration_timer"
-                      v-model.number="settingsForm.display_expiration_timer"
-                      type="number"
-                      min="1"
-                      max="34560"
-                      inputmode="numeric"
-                      class="w-24 px-4 py-3 border border-gray-600 rounded-xl shadow-sm text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                    <span class="text-sm text-gray-400">{{ t('stores.settings_minutes') }}</span>
-                  </div>
-                </div>
-                <label class="flex items-center gap-3">
-                  <input v-model="settingsForm.celebrate_payment" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                  <span class="text-sm text-gray-300">{{ t('stores.settings_celebrate_payment') }}</span>
-                </label>
-                <label class="flex items-center gap-3">
-                  <input v-model="settingsForm.play_sound_on_payment" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                  <span class="text-sm text-gray-300">{{ t('stores.settings_sounds_on_checkout') }}</span>
-                </label>
-                <label class="flex items-center gap-3">
-                  <input v-model="settingsForm.show_store_header" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                  <span class="text-sm text-gray-300">{{ t('stores.settings_show_store_header') }}</span>
-                </label>
-                <label class="flex items-center gap-3">
-                  <input v-model="settingsForm.show_pay_in_wallet_button" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                  <span class="text-sm text-gray-300">{{ t('stores.settings_show_pay_in_wallet') }}</span>
-                </label>
-              </div>
-
-              <!-- Checkout Experience section -->
-              <h3 class="text-base font-semibold text-white mb-3 pt-4 border-t border-gray-700">{{ t('stores.settings_checkout_experience') }}</h3>
-              <div class="space-y-4">
-                <label class="flex items-center gap-3">
-                  <input v-model="settingsForm.on_chain_with_ln_invoice_fallback" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                  <span class="text-sm text-gray-300">{{ t('stores.settings_unify_onchain_ln') }}</span>
-                  <a href="https://bitcoinqr.dev/" target="_blank" rel="noreferrer noopener" class="text-gray-500 hover:text-gray-400" :title="t('stores.settings_more_info')">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  </a>
-                </label>
-                <label class="flex items-center gap-3">
-                  <input v-model="settingsForm.lightning_amount_in_satoshi" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                  <span class="text-sm text-gray-300">{{ t('stores.settings_lightning_satoshis') }}</span>
-                </label>
-                <div class="flex items-start gap-3">
-                  <input v-model="settingsForm.auto_detect_language" type="checkbox" class="mt-1 h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                  <div>
-                    <label for="auto_detect_language" class="text-sm font-medium text-gray-300">{{ t('stores.settings_auto_detect_language') }}</label>
-                    <p class="text-xs text-gray-500 mt-0.5">{{ t('stores.settings_auto_detect_language_desc') }}</p>
-                  </div>
-                </div>
-                <div>
-                  <label for="default_lang" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_default_language') }}</label>
-                  <Select
-                    id="default_lang"
-                    v-model="settingsForm.default_lang"
-                    :options="defaultLangOptions"
-                    :placeholder="t('stores.settings_select_language')"
-                  />
-                </div>
-                <div>
-                  <label for="html_title" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_html_title') }}</label>
-                  <input
-                    id="html_title"
-                    v-model="settingsForm.html_title"
-                    type="text"
-                    class="w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label for="support_url" class="block text-sm font-medium text-gray-300 mb-1">{{ t('stores.settings_support_url') }}</label>
-                  <input
-                    id="support_url"
-                    v-model="settingsForm.support_url"
-                    type="text"
-                    placeholder="https://example.com/support"
-                    class="w-full px-4 py-3 border border-gray-600 rounded-xl shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                  <p class="mt-1.5 text-xs text-gray-500">{{ t('stores.settings_support_url_desc') }}</p>
-                </div>
-                <label class="flex items-center gap-3">
-                  <input v-model="settingsForm.lazy_payment_methods" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                  <span class="text-sm text-gray-300">{{ t('stores.settings_lazy_payment_methods') }}</span>
-                </label>
-                <label class="flex items-center gap-3">
-                  <input v-model="settingsForm.redirect_automatically" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                  <span class="text-sm text-gray-300">{{ t('stores.settings_redirect_automatically') }}</span>
-                </label>
-              </div>
-
-              <!-- Receipt section -->
-              <h3 class="text-base font-semibold text-white mb-3 pt-4 border-t border-gray-700">{{ t('stores.settings_receipt_section') }}</h3>
-              <div class="space-y-3">
-                <label class="flex items-center gap-3">
-                  <input v-model="settingsForm.receipt.enabled" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" />
-                  <span class="text-sm text-gray-300">{{ t('stores.settings_receipt_enabled') }}</span>
-                </label>
-                <label class="flex items-center gap-3">
-                  <input v-model="settingsForm.receipt.show_payments" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" :disabled="!settingsForm.receipt.enabled" />
-                  <span class="text-sm text-gray-300">{{ t('stores.settings_receipt_show_payments') }}</span>
-                </label>
-                <label class="flex items-center gap-3">
-                  <input v-model="settingsForm.receipt.show_qr" type="checkbox" class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded" :disabled="!settingsForm.receipt.enabled" />
-                  <span class="text-sm text-gray-300">{{ t('stores.settings_receipt_show_qr') }}</span>
-                </label>
-              </div>
-            </div>
-          </div>
+          <StoreSettingsGeneral
+            v-show="activeSettingsTab === 'settings'"
+            :form="settingsForm"
+            :settings="settings"
+            :can-edit-branding="canEditBranding"
+            :show-branding-pro-notice="showBrandingProNotice"
+            @update:show-branding-pro-notice="showBrandingProNotice = $event"
+            :can-edit-archived-option="canEditArchivedOption"
+            :show-archived-pro-notice="showArchivedProNotice"
+            @update:show-archived-pro-notice="showArchivedProNotice = $event"
+            :store-logo-url="storeLogoUrl"
+            :logo-error="logoError"
+            :logo-success="logoSuccess"
+            :deleting-logo="deletingLogo"
+            @logo-upload="handleLogoUpload"
+            @logo-delete="handleDeleteLogo"
+          />
+          <StoreSettingsPayment
+            v-show="activeSettingsTab === 'payment'"
+            :form="settingsForm"
+            :can-edit-payment-options="canEditPaymentOptions"
+            :show-payment-pro-notice="showPaymentProNotice"
+            @update:show-payment-pro-notice="showPaymentProNotice = $event"
+            :timezone-options="timezoneOptions"
+            :speed-policy-options="speedPolicyOptions"
+            :network-fee-mode-options="networkFeeModeOptions"
+          />
+          <StoreSettingsRates
+            v-show="activeSettingsTab === 'rates'"
+            :form="settingsForm"
+            :can-edit-rates-options="canEditRatesOptions"
+            :show-rates-pro-notice="showRatesProNotice"
+            @update:show-rates-pro-notice="showRatesProNotice = $event"
+          />
+          <StoreSettingsCheckout
+            v-show="activeSettingsTab === 'checkout'"
+            :form="settingsForm"
+            :can-edit-checkout-options="canEditCheckoutOptions"
+            :show-checkout-pro-notice="showCheckoutProNotice"
+            @update:show-checkout-pro-notice="showCheckoutProNotice = $event"
+            :default-payment-method-options="defaultPaymentMethodOptions"
+            :payment-method-criteria-type-options="paymentMethodCriteriaTypeOptions"
+            :default-lang-options="defaultLangOptions"
+          />
 
           <template v-if="['settings', 'payment', 'rates', 'checkout'].includes(activeSettingsTab)">
           <div v-if="error" class="rounded-xl bg-red-500/10 border border-red-500/20 p-4">
@@ -872,9 +206,10 @@ import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../../store/auth';
 import { useStoresStore } from '../../store/stores';
 import api from '../../services/api';
-import { currencies } from '../../data/currencies';
-import { exchanges } from '../../data/exchanges';
-import Select from '../ui/Select.vue';
+import StoreSettingsGeneral from './StoreSettingsGeneral.vue';
+import StoreSettingsPayment from './StoreSettingsPayment.vue';
+import StoreSettingsRates from './StoreSettingsRates.vue';
+import StoreSettingsCheckout from './StoreSettingsCheckout.vue';
 
 const { t } = useI18n();
 
@@ -964,7 +299,6 @@ const settingsForm = ref<Record<string, any>>({
 });
 
 // Logo management
-const logoInputRef = ref<HTMLInputElement | null>(null);
 const storeLogoUrl = ref<string | null>(null);
 const uploadingLogo = ref(false);
 const deletingLogo = ref(false);
@@ -1106,11 +440,6 @@ const defaultLangOptions = [
   { label: '日本語', value: 'ja-JP' },
   { label: '英文', value: 'zh-SP' },
 ];
-
-function onAdditionalRatesInput(e: Event) {
-  const raw = (e.target as HTMLInputElement).value;
-  settingsForm.value.additional_tracked_rates = raw.split(',').map((s: string) => s.trim()).filter(Boolean);
-}
 
 onMounted(async () => {
   await fetchSettings();
@@ -1287,8 +616,6 @@ async function handleLogoUpload(event: Event) {
 
     logoSuccess.value = 'Logo uploaded successfully';
     emit('update-store');
-
-    if (logoInputRef.value) logoInputRef.value.value = '';
     setTimeout(() => { logoSuccess.value = ''; }, 3000);
   } catch (err: any) {
     logoError.value = err.response?.data?.message || 'Failed to upload logo';
