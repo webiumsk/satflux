@@ -38,20 +38,23 @@ class StoreApiKeyController extends Controller
             ];
         });
 
-        // Plan limit: total API keys across all user's stores
-        $user = $request->user();
-        $plan = $user->currentSubscriptionPlan();
-        $totalCount = 0;
-        foreach ($user->stores as $s) {
-            $totalCount += $s->apiKeys()->count();
+        // Limit is per store; only active keys count
+        $activeCount = $store->apiKeys()->where('is_active', true)->count();
+        $viewer = $request->user();
+        // Admin/support see Pro-like limit (3 per store) so display shows e.g. 2/3
+        if ($viewer->isSupport()) {
+            $maxApiKeys = 3;
+        } else {
+            $owner = $store->user;
+            $plan = $owner->currentSubscriptionPlan();
+            $maxApiKeys = $plan?->max_api_keys;
         }
-        $maxApiKeys = $plan?->max_api_keys;
 
         return response()->json([
             'data' => $apiKeysData,
             'limit' => [
                 'max' => $maxApiKeys,
-                'current' => $totalCount,
+                'current' => $activeCount,
                 'unlimited' => $maxApiKeys === null,
             ],
         ]);

@@ -216,7 +216,7 @@
                 >
                   <img
                     src="/img/satflux-register.webp"
-                    alt="Register"
+                    :alt="t('landing.alt_register')"
                     class="w-full h-auto block"
                   />
                   <img
@@ -240,10 +240,10 @@
                       <div class="relative group/card cursor-pointer transform md:-translate-x-12 transition-transform duration-500 hover:scale-105">
                           <!-- Card Content -->
                           <div class="bg-gray-800 rounded-2xl p-6 border border-gray-700 shadow-xl flex items-center gap-6 transition-all duration-300 group-hover/card:border-orange-500/50 group-hover/card:bg-gray-800/80">
-                              <img src="/img/wallets/blink.png" alt="Blink Wallet" class="w-20 h-20 rounded-2xl object-contain p-2 bg-white/5 border border-white/10 shadow-inner">
+                              <img src="/img/wallets/blink.png" :alt="t('landing.blink_wallet_title')" class="w-20 h-20 rounded-2xl object-contain p-2 bg-white/5 border border-white/10 shadow-inner">
                               <div>
-                                  <h4 class="text-2xl font-bold text-white mb-1">Blink Wallet</h4>
-                                  <p class="text-sm text-orange-400 font-medium">Lightning Speed</p>
+                                  <h4 class="text-2xl font-bold text-white mb-1">{{ t('landing.blink_wallet_title') }}</h4>
+                                  <p class="text-sm text-orange-400 font-medium">{{ t('landing.blink_wallet_tagline') }}</p>
                               </div>
                           </div>
 
@@ -273,11 +273,11 @@
                           <!-- Card Content -->
                           <div class="bg-gray-800 rounded-2xl p-6 border border-gray-700 shadow-xl flex items-center gap-6 transition-all duration-300 group-hover/card:border-blue-500/50 group-hover/card:bg-gray-800/80">
                               <div class="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center p-2 shadow-inner">
-                                <img src="/img/wallets/aqua.png" alt="Aqua Wallet" class="w-full h-full object-contain">
+                                <img src="/img/wallets/aqua.png" :alt="t('landing.aqua_wallet_title')" class="w-full h-full object-contain">
                               </div>
                               <div>
-                                  <h4 class="text-2xl font-bold text-white mb-1">Aqua Wallet</h4>
-                                  <p class="text-sm text-blue-400 font-medium">Full control</p>
+                                  <h4 class="text-2xl font-bold text-white mb-1">{{ t('landing.aqua_wallet_title') }}</h4>
+                                  <p class="text-sm text-blue-400 font-medium">{{ t('landing.aqua_wallet_tagline') }}</p>
                               </div>
                           </div>
 
@@ -355,7 +355,7 @@
                       />
                       <!-- Overlay hint -->
                       <div class="absolute bottom-4 left-0 right-0 text-center pointer-events-none">
-                         <span class="inline-block px-3 py-1 bg-black/50 text-white/50 text-xs rounded-full backdrop-blur-sm">Live Demo</span>
+                         <span class="inline-block px-3 py-1 bg-black/50 text-white/50 text-xs rounded-full backdrop-blur-sm">{{ t('landing.live_demo') }}</span>
                       </div>
                   </div>
                   <!-- Mobile Visual (Placeholder card instead of full iframe) -->
@@ -378,7 +378,7 @@
                      <div class="bg-[#95BF47] text-white px-4 py-2 rounded-lg font-bold shadow-lg transform group-hover:-translate-y-1 transition-transform delay-100">Shopify</div>
                      <div class="bg-[#F46F25] text-white px-4 py-2 rounded-lg font-bold shadow-lg transform group-hover:-translate-y-1 transition-transform delay-150">Magento</div>
                      <div class="bg-[#0678BE] text-white px-4 py-2 rounded-lg font-bold shadow-lg transform group-hover:-translate-y-1 transition-transform delay-200">Drupal</div>
-                     <div class="w-full text-center text-gray-400 text-xs mt-2 font-mono bg-gray-900/50 p-2 rounded border border-gray-700/50">API Key: sk_live_...</div>
+                     <div class="w-full text-center text-gray-400 text-xs mt-2 font-mono bg-gray-900/50 p-2 rounded border border-gray-700/50">{{ t('landing.api_key_example') }}</div>
                   </div>
                </div>
 
@@ -433,11 +433,11 @@
                      <div class="grid grid-cols-2 gap-4 w-full relative z-10">
                         <div class="bg-gray-700/50 p-4 rounded-xl border border-gray-600 flex flex-col items-center hover:bg-green-500/10 hover:border-green-500/50 transition-colors">
                            <span class="font-bold text-white text-lg mb-1">CSV</span>
-                           <span class="text-xs text-gray-400">Excel / Pohoda</span>
+                           <span class="text-xs text-gray-400">{{ t('landing.export_csv_label') }}</span>
                         </div>
                         <div class="bg-gray-700/50 p-4 rounded-xl border border-gray-600 flex flex-col items-center hover:bg-red-500/10 hover:border-red-500/50 transition-colors">
                            <span class="font-bold text-white text-lg mb-1">PDF</span>
-                           <span class="text-xs text-gray-400">Tlač</span>
+                           <span class="text-xs text-gray-400">{{ t('landing.export_pdf_label') }}</span>
                         </div>
                      </div>
                      <div class="w-full bg-gray-900 rounded-lg p-3 border border-gray-700 flex items-center justify-between text-xs text-gray-400 font-mono">

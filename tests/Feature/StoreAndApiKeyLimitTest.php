@@ -90,9 +90,44 @@ class StoreAndApiKeyLimitTest extends TestCase
 
         $response->assertStatus(403);
         $response->assertJson([
-            'message' => 'You have reached the maximum number of API keys (1) for your plan.',
+            'message' => 'This store has reached the maximum number of active API keys (1) for the plan.',
             'current_count' => 1,
             'max_allowed' => 1,
         ]);
+    }
+
+    public function test_revoked_api_keys_do_not_count_toward_limit(): void
+    {
+        $user = User::factory()->create(['btcpay_user_id' => 'btcpay-user-123']);
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        StoreApiKey::create([
+            'store_id' => $store->id,
+            'label' => 'Revoked Key',
+            'btcpay_api_key' => 'dummy-key',
+            'is_active' => false,
+        ]);
+
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+        $this->app->forgetInstance(\App\Services\BtcPay\BtcPayClient::class);
+        Http::fake(function ($request) {
+            $url = (string) $request->url();
+            if ($request->method() === 'POST' && str_contains($url, '/api/v1/users/') && str_contains($url, '/api-keys')) {
+                return Http::response([
+                    'id' => 'btcpay-key-' . uniqid(),
+                    'label' => 'Test Key',
+                    'apiKey' => 'secret-api-key-' . bin2hex(random_bytes(8)),
+                ], 201);
+            }
+            return Http::response([], 404);
+        });
+
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson("/api/stores/{$store->id}/api-keys", [
+            'label' => 'New Active Key',
+        ]);
+
+        // With only 0 active keys (1 revoked), we are under limit 1
+        $response->assertStatus(201);
     }
 }

@@ -13,6 +13,7 @@ use App\Notifications\WalletConnectionNeedsSupportMerchantNotification;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 
 class WalletConnectionService
 {
@@ -245,28 +246,19 @@ class WalletConnectionService
             }
         }
 
-        $supportUsers = User::whereIn('role', ['support', 'admin'])
-            ->whereNotNull('email')
-            ->whereNotNull('email_verified_at')
-            ->get();
-
-        foreach ($supportUsers as $supportUser) {
-            try {
-                $supportUser->notify(new SupportNeededNotification($connection, $store));
-                Log::info('Support needed notification sent', [
-                    'connection_id' => $connection->id,
-                    'store_id' => $store->id,
-                    'support_user_id' => $supportUser->id,
-                    'support_user_email' => $supportUser->email,
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Failed to send support needed notification', [
-                    'connection_id' => $connection->id,
-                    'store_id' => $store->id,
-                    'support_user_id' => $supportUser->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+        try {
+            Notification::route('mail', 'support@satflux.io')
+                ->notify(new SupportNeededNotification($connection, $store));
+            Log::info('Support needed notification sent to support@satflux.io', [
+                'connection_id' => $connection->id,
+                'store_id' => $store->id,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to send support needed notification', [
+                'connection_id' => $connection->id,
+                'store_id' => $store->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

@@ -1,4 +1,20 @@
 {
+  "upgrade_modal": {
+    "title": "Vyžaduje sa upgrade",
+    "default_message": "Dosiahli ste limit svojho aktuálneho plánu.",
+    "current_limits": "Aktuálne limity plánu:",
+    "unlock_more": "Upgradom odomknete viac:",
+    "processing": "Spracovávam...",
+    "upgrade_now": "Upgradovať teraz",
+    "maybe_later": "Možno neskôr",
+    "checkout_error": "Vytvorenie platby zlyhalo. Skúste to znova.",
+    "unlimited": "neobmedzene",
+    "limits": {
+      "stores": "Obchody",
+      "api_keys": "API kľúče",
+      "ln_addresses": "Lightning adresy"
+    }
+  },
   "plans": {
     "features": {
       "store_1": "1 obchod",
@@ -795,7 +811,16 @@
     "blink_pros": "Rýchlosť (Lightning), Jednoduchosť, Stabilita",
     "blink_cons": "Kustodiálna (Nemáte privátne kľúče)",
     "aqua_pros": "Nekustodiálna (Vlastné kľúče), Liquid + Lightning",
-    "aqua_cons": "Vyššia zložitosť pre začiatočníkov"
+    "aqua_cons": "Vyššia zložitosť pre začiatočníkov",
+    "blink_wallet_title": "Blink Wallet",
+    "blink_wallet_tagline": "Rýchlosť Lightning",
+    "aqua_wallet_title": "Aqua Wallet",
+    "aqua_wallet_tagline": "Plná kontrola",
+    "live_demo": "Živá ukážka",
+    "api_key_example": "API kľúč: sk_live_...",
+    "export_csv_label": "Excel / Pohoda",
+    "export_pdf_label": "Tlač",
+    "alt_register": "Registrácia"
   },
   "support": {
     "title": "Kontakt a podpora",

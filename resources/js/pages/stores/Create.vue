@@ -304,7 +304,7 @@
       v-if="storeLimitReached"
       :show="showUpgradeModal"
       :message="t('stores.store_limit_reached', { max: limits?.stores?.max ?? 1 })"
-      :limits="limits?.stores ? [{ feature: 'Stores', current: limits.stores.current, max: limits.stores.max }] : []"
+      :limits="limits?.stores ? [{ feature: 'stores', current: limits.stores.current, max: limits.stores.max }] : []"
       recommended-plan="pro"
       :upgrade-button-text="t('stores.upgrade_to_pro')"
       @close="showUpgradeModal = false"

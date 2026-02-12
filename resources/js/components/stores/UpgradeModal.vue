@@ -9,7 +9,7 @@
         <!-- Header -->
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-medium text-gray-900">
-            Upgrade Required
+            {{ t('upgrade_modal.title') }}
           </h3>
           <button
             @click="close"
@@ -30,24 +30,24 @@
           </div>
           
           <p class="text-center text-gray-700 mb-4">
-            {{ message }}
+            {{ message || t('upgrade_modal.default_message') }}
           </p>
 
           <div v-if="limits.length > 0" class="bg-gray-50 rounded-lg p-4 mb-4">
             <p class="text-sm text-gray-600 mb-2">
-              <strong>Current plan limits:</strong>
+              <strong>{{ t('upgrade_modal.current_limits') }}</strong>
             </p>
             <ul class="text-sm text-gray-600 space-y-1">
               <li v-for="limit in limits" :key="limit.feature" class="flex justify-between">
-                <span>{{ limit.feature }}:</span>
-                <span class="font-medium">{{ limit.current }}/{{ limit.max === null ? 'unlimited' : limit.max }}</span>
+                <span>{{ limitLabel(limit) }}:</span>
+                <span class="font-medium">{{ limit.current }}/{{ limit.max === null ? t('upgrade_modal.unlimited') : limit.max }}</span>
               </li>
             </ul>
           </div>
 
           <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-4">
             <p class="text-sm font-medium text-indigo-900 mb-2">
-              Upgrade to unlock more:
+              {{ t('upgrade_modal.unlock_more') }}
             </p>
             <ul class="text-sm text-indigo-700 space-y-1">
               <li v-for="benefit in benefits" :key="benefit" class="flex items-start">
@@ -72,7 +72,7 @@
             :disabled="upgrading"
             class="w-full px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {{ upgrading ? 'Processing...' : upgradeButtonText }}
+            {{ upgrading ? t('upgrade_modal.processing') : (upgradeButtonText || t('upgrade_modal.upgrade_now')) }}
           </button>
           
           <button
@@ -80,7 +80,7 @@
             :disabled="upgrading"
             class="w-full px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
-            Maybe Later
+            {{ t('upgrade_modal.maybe_later') }}
           </button>
         </div>
       </div>
@@ -89,26 +89,33 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
+import { usePlanFeatures } from '../../composables/usePlanFeatures';
 
-const isInertia = inject<boolean>('inertia', false);
-const router = !isInertia ? useRouter() : undefined;
+const { t } = useI18n();
+const { planFeatures, load: loadPlanFeatures } = usePlanFeatures();
+
+interface LimitRow {
+  feature: string;
+  current: number;
+  max: number | null;
+}
 
 interface Props {
   show: boolean;
   message?: string;
-  limits?: Array<{ feature: string; current: number; max: number | null }>;
+  limits?: LimitRow[];
   recommendedPlan?: 'pro' | 'enterprise';
   upgradeButtonText?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  message: 'You have reached the limit for your current plan.',
+  message: '',
   limits: () => [],
   recommendedPlan: 'pro',
-  upgradeButtonText: 'Upgrade Now',
+  upgradeButtonText: '',
 });
 
 const emit = defineEmits<{
@@ -118,23 +125,21 @@ const emit = defineEmits<{
 const upgrading = ref(false);
 const error = ref('');
 
+onMounted(() => {
+  loadPlanFeatures();
+});
+
+function limitLabel(limit: LimitRow): string {
+  const key = `upgrade_modal.limits.${limit.feature}`;
+  const translated = t(key);
+  return translated !== key ? translated : limit.feature;
+}
+
 const benefits = computed(() => {
-  if (props.recommendedPlan === 'enterprise') {
-    return [
-      'Unlimited Lightning Addresses',
-      'Unlimited stores',
-      'Priority support',
-      'Custom integrations',
-      'SLA guarantees',
-    ];
-  }
-  return [
-    '3 Lightning Addresses (up from 1)',
-    'Unlimited stores',
-    'Priority support',
-    'CSV exports',
-    'API integrations',
-  ];
+  const plan = props.recommendedPlan === 'enterprise'
+    ? planFeatures.value.enterprise
+    : planFeatures.value.pro;
+  return plan.feature_keys.map((key: string) => t('plans.features.' + key));
 });
 
 function close() {
@@ -153,12 +158,12 @@ async function handleUpgrade() {
     if (response.data.checkoutUrl) {
       window.location.href = response.data.checkoutUrl;
     } else {
-      error.value = 'Failed to create checkout. Please try again.';
+      error.value = t('upgrade_modal.checkout_error');
       upgrading.value = false;
     }
   } catch (err: any) {
     console.error('Failed to create checkout:', err);
-    error.value = err.response?.data?.message || 'Failed to create checkout. Please try again.';
+    error.value = err.response?.data?.message || t('upgrade_modal.checkout_error');
     upgrading.value = false;
   }
 }

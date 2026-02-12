@@ -92,6 +92,7 @@
         <div class="flex items-center gap-2 flex-wrap">
           <h2 class="text-xl font-bold text-white">{{ t('dashboard.all_stores_stats') }}</h2>
           <button
+            v-if="!canViewStats"
             type="button"
             @click="showStatsUpgradeModal = true"
             class="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
