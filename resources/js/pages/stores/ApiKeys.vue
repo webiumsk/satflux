@@ -292,7 +292,7 @@
     <UpgradeModal
       :show="showUpgradeModal"
       :message="limit ? t('stores.api_key_limit_reached', { max: limit.max ?? 1 }) : ''"
-      :limits="limit ? [{ feature: 'API keys', current: limit.current, max: limit.max }] : []"
+      :limits="limit ? [{ feature: 'api_keys', current: limit.current, max: limit.max }] : []"
       recommended-plan="pro"
       upgrade-button-text="Upgrade to Pro"
       @close="showUpgradeModal = false"

@@ -1,4 +1,20 @@
 {
+  "upgrade_modal": {
+    "title": "Upgrade Required",
+    "default_message": "You have reached the limit for your current plan.",
+    "current_limits": "Current plan limits:",
+    "unlock_more": "Upgrade to unlock more:",
+    "processing": "Processing...",
+    "upgrade_now": "Upgrade Now",
+    "maybe_later": "Maybe Later",
+    "checkout_error": "Failed to create checkout. Please try again.",
+    "unlimited": "unlimited",
+    "limits": {
+      "stores": "Stores",
+      "api_keys": "API keys",
+      "ln_addresses": "Lightning Addresses"
+    }
+  },
   "plans": {
     "features": {
       "store_1": "1 store",
@@ -794,7 +810,16 @@
     "blink_pros": "Speed (Lightning), Simplicity, Stability",
     "blink_cons": "Custodial (Not your keys)",
     "aqua_pros": "Non-custodial (Your keys), Liquid + Lightning",
-    "aqua_cons": "Higher complexity for beginners"
+    "aqua_cons": "Higher complexity for beginners",
+    "blink_wallet_title": "Blink Wallet",
+    "blink_wallet_tagline": "Lightning Speed",
+    "aqua_wallet_title": "Aqua Wallet",
+    "aqua_wallet_tagline": "Full control",
+    "live_demo": "Live Demo",
+    "api_key_example": "API Key: sk_live_...",
+    "export_csv_label": "Excel / accounting",
+    "export_pdf_label": "Print",
+    "alt_register": "Register"
   },
   "support": {
     "title": "Contact & Support",

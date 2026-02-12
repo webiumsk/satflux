@@ -100,10 +100,14 @@ class AccountController extends Controller
             $maxLnAddresses = $user->getMaxLightningAddresses();
 
             $storeCount = $user->stores()->count();
+            // API key limit is per store; for account we show max active keys in any single store
             $apiKeyCount = 0;
             $lnAddressesCount = 0;
             foreach ($user->stores as $store) {
-                $apiKeyCount += $store->apiKeys()->count();
+                $activeInStore = $store->apiKeys()->where('is_active', true)->count();
+                if ($activeInStore > $apiKeyCount) {
+                    $apiKeyCount = $activeInStore;
+                }
             }
             if ($maxLnAddresses !== null || $user->hasUnlimitedAccess()) {
                 try {
@@ -134,7 +138,7 @@ class AccountController extends Controller
                 'api_keys' => [
                     'current' => $apiKeyCount,
                     'max' => $maxApiKeys,
-                    'unlimited' => false,
+                    'unlimited' => $maxApiKeys === null,
                 ],
             ];
         });

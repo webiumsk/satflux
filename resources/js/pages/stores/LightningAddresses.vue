@@ -363,7 +363,7 @@
     <UpgradeModal
       :show="showUpgradeModal"
       :message="`You have reached the maximum number of Lightning Addresses (${limit?.max || 1}) for your current plan.`"
-      :limits="limit ? [{ feature: 'Lightning Addresses', current: limit.current, max: limit.max }] : []"
+      :limits="limit ? [{ feature: 'ln_addresses', current: limit.current, max: limit.max }] : []"
       recommended-plan="pro"
       upgrade-button-text="Upgrade to Pro"
       @close="showUpgradeModal = false"
