@@ -103,11 +103,21 @@
           </div>
           <div>
             <p class="text-gray-400 text-sm">{{ t('admin.user_detail.amount_all') }}</p>
-            <p class="text-white font-semibold">{{ formatAmount(stats.overall.paid_amount_all_time) }} {{ primaryCurrency }}</p>
+            <template v-if="stats.overall.has_mixed_currencies && stats.overall.revenue_breakdown_all?.length">
+              <p v-for="item in stats.overall.revenue_breakdown_all" :key="'all-' + item.currency" class="text-white font-semibold">
+                {{ formatAmount(item.amount) }} {{ item.currency }}
+              </p>
+            </template>
+            <p v-else class="text-white font-semibold">{{ formatAmount(stats.overall.paid_amount_all_time) }} {{ stats.overall.currency ?? primaryCurrency }}</p>
           </div>
           <div>
             <p class="text-gray-400 text-sm">{{ t('admin.user_detail.amount_30d') }}</p>
-            <p class="text-white font-semibold">{{ formatAmount(stats.overall.paid_amount_30d) }} {{ primaryCurrency }}</p>
+            <template v-if="stats.overall.has_mixed_currencies && stats.overall.revenue_breakdown_30d?.length">
+              <p v-for="item in stats.overall.revenue_breakdown_30d" :key="'30d-' + item.currency" class="text-white font-semibold">
+                {{ formatAmount(item.amount) }} {{ item.currency }}
+              </p>
+            </template>
+            <p v-else class="text-white font-semibold">{{ formatAmount(stats.overall.paid_amount_30d) }} {{ stats.overall.currency ?? primaryCurrency }}</p>
           </div>
         </div>
       </div>
