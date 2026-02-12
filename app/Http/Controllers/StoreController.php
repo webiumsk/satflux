@@ -7,6 +7,7 @@ use App\Models\Store;
 use App\Services\BtcPay\LightningService;
 use App\Services\BtcPay\StoreService;
 use App\Services\BtcPay\UserService;
+use App\Services\BtcPay\WebhookService;
 use App\Services\StoreChecklistService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -312,6 +313,27 @@ class StoreController extends Controller
                 'wallet_type' => $request->wallet_type,
             ]);
 
+            // Create webhook in BTCPay for this store (server key already set above)
+            try {
+                $webhookService = app(WebhookService::class);
+                $created = $webhookService->createWebhook($store->btcpay_store_id, null);
+                $store->update([
+                    'btcpay_webhook_id' => $created['id'],
+                    'webhook_secret' => $created['secret'],
+                ]);
+                Log::info('Webhook created for store', [
+                    'store_id' => $store->id,
+                    'btcpay_store_id' => $store->btcpay_store_id,
+                    'btcpay_webhook_id' => $created['id'],
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('Failed to create webhook for store (store creation continues)', [
+                    'store_id' => $store->id,
+                    'btcpay_store_id' => $store->btcpay_store_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             // Create wallet connection if connection_string is provided
             $walletConnection = null;
             if ($request->filled('connection_string')) {
@@ -549,6 +571,27 @@ class StoreController extends Controller
         $localStoreId = $store->id;
 
         try {
+            // Delete webhook in BTCPay first (so it stops sending events to our endpoint)
+            if ($store->btcpay_webhook_id) {
+                try {
+                    app(WebhookService::class)->deleteWebhook(
+                        $store->btcpay_store_id,
+                        $store->btcpay_webhook_id,
+                        null
+                    );
+                    Log::info('Webhook deleted from BTCPay', [
+                        'store_id' => $localStoreId,
+                        'btcpay_webhook_id' => $store->btcpay_webhook_id,
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::warning('Failed to delete webhook from BTCPay (continuing with store deletion)', [
+                        'store_id' => $localStoreId,
+                        'btcpay_webhook_id' => $store->btcpay_webhook_id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
             // Delete store in BTCPay Server (DELETE /api/v1/stores/{storeId})
             // Uses server-level API key – user keys typically lack permission to delete stores
             try {
