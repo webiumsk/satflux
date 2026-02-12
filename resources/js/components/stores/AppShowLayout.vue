@@ -26,7 +26,6 @@
 
     <!-- Main Content -->
     <div class="flex-1 overflow-hidden flex flex-col bg-gray-900 border-l border-gray-800">
-      <!-- Scrollable Content Area -->
       <div class="flex-1 overflow-y-auto custom-scrollbar">
         <div class="px-4 sm:px-6 lg:px-8 pt-8">
           <ArchivedStoreBanner :store="store" />

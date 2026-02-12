@@ -190,7 +190,7 @@ class StoreController extends Controller
                 'name' => $request->name,
                 'defaultCurrency' => $request->default_currency,
                 'timeZone' => $request->timezone,
-                'anyoneCanCreateInvoice' => true,
+                'anyoneCanCreateInvoice' => false,
                 'showRecommendedFee' => true,
                 'recommendedFeeBlockTarget' => 1,
             ];
@@ -513,6 +513,9 @@ class StoreController extends Controller
         // Add btcpay_store_id for Pay Button generation
         $data['btcpay_store_id'] = $localStore->btcpay_store_id;
 
+        // Pay Button: anyone can create invoice (needed for Pay Button page)
+        $data['anyone_can_create_invoice'] = $btcpayStore['anyoneCanCreateInvoice'] ?? false;
+
         // Add BTCPay-specific fields that are safe to expose
         if (isset($btcpayStore['website'])) {
             $data['website'] = $btcpayStore['website'];
@@ -693,6 +696,7 @@ class StoreController extends Controller
             'created_at' => $store->created_at,
             'updated_at' => $store->updated_at,
             'logo_url' => null, // Not available from local DB only (would need BTCPay API)
+            'anyone_can_create_invoice' => false, // Unknown when BTCPay API failed; safe default
             'checklist_items' => $store->checklistItems ? $store->checklistItems->map(function ($item) use ($store) {
                 $definition = StoreChecklistService::getChecklistItems($store->wallet_type ?? 'blink');
                 $itemDef = $definition[$item->item_key] ?? null;
