@@ -98,8 +98,26 @@ class BtcPayClient
     }
 
     /**
+     * Safe filename for multipart upload: derived from actual MIME type, not client-provided name.
+     * Prevents "Edit and Resend" / parameter tampering from sending e.g. path traversal or .php names.
+     */
+    protected function getSafeAttachmentFilename($file): string
+    {
+        $mimeToExt = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
+        ];
+        $mime = $file->getMimeType();
+        $ext = $mimeToExt[$mime] ?? 'bin';
+        return 'upload.' . $ext;
+    }
+
+    /**
      * Make a POST request with multipart form data (for file uploads).
-     * 
+     * Uses a server-derived filename (from MIME type), not the client-provided name.
+     *
      * @param string $endpoint API endpoint
      * @param \Illuminate\Http\UploadedFile $file The uploaded file
      * @return array Response data
@@ -120,10 +138,10 @@ class BtcPayClient
                     ])
                     ->timeout(30);
 
-                // $file is the UploadedFile object directly
-                // Use get() method to get file contents - works for both real and fake files
+                // Use server-derived filename to avoid trusting client (Edit and Resend / filename tampering)
+                $safeName = $this->getSafeAttachmentFilename($file);
                 $fileContents = $file->get();
-                $response = $client->attach('file', $fileContents, $file->getClientOriginalName())
+                $response = $client->attach('file', $fileContents, $safeName)
                     ->post($endpoint);
 
                 if ($response->successful()) {

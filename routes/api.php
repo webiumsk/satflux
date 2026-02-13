@@ -253,7 +253,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Store Logo
     Route::post('/stores/{store}/logo', [StoreController::class, 'uploadLogo'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':store.logo.uploaded']);
+        ->middleware(['throttle:uploads', EnsureStoreOwnership::class, AuditLog::class . ':store.logo.uploaded']);
     Route::delete('/stores/{store}/logo', [StoreController::class, 'deleteLogo'])
         ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':store.logo.deleted']);
 
@@ -330,7 +330,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Product Images
     Route::post('/stores/{store}/products/image', [\App\Http\Controllers\ProductImageController::class, 'upload'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':product.image.uploaded']);
+        ->middleware(['throttle:uploads', EnsureStoreOwnership::class, AuditLog::class . ':product.image.uploaded']);
 
     // Plans (public pricing)
     Route::get('/plans', [PlanController::class, 'index']);
@@ -425,7 +425,8 @@ Route::middleware(['auth:sanctum', EnsureSupportOrAdminRole::class])->prefix('ad
         ->middleware(AuditLog::class . ':documentation_article.updated');
     Route::delete('/articles/{article}', [DocumentationArticleController::class, 'destroy'])
         ->middleware(AuditLog::class . ':documentation_article.deleted');
-    Route::post('/upload-image', [DocumentationImageController::class, 'upload']);
+    Route::post('/upload-image', [DocumentationImageController::class, 'upload'])
+        ->middleware('throttle:uploads');
 
     // Categories
     Route::get('/categories', [DocumentationCategoryController::class, 'index']);
