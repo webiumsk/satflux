@@ -26,7 +26,6 @@ use App\Http\Controllers\ReportSettingsController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\LocaleController;
-use App\Http\Controllers\TicketController;
 use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\FaqController;
 use App\Http\Controllers\Admin\DocumentationArticleController;
@@ -51,19 +50,6 @@ use Illuminate\Support\Facades\Route;
 // Health check endpoint
 Route::get('/health', function () {
     return response()->json(['status' => 'ok']);
-});
-
-// Public config (exposes non-sensitive values to frontend)
-Route::get('/config', function () {
-    return response()->json([
-        'btcpay_base_url' => rtrim(config('services.btcpay.base_url', ''), '/'),
-    ]);
-});
-
-// Public Ticket Check-In (no auth required — URL acts as the secret)
-Route::middleware(['throttle:30,1'])->prefix('public/ticket-checkin')->group(function () {
-    Route::get('/{store}/events/{eventId}', [TicketController::class, 'publicEventInfo']);
-    Route::post('/{store}/events/{eventId}/tickets/{ticketNumber}/check-in', [TicketController::class, 'publicCheckIn']);
 });
 
 // Locale endpoints (public - no auth required, but need session)
@@ -267,7 +253,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Store Logo
     Route::post('/stores/{store}/logo', [StoreController::class, 'uploadLogo'])
-        ->middleware(['throttle:uploads', EnsureStoreOwnership::class, AuditLog::class . ':store.logo.uploaded']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':store.logo.uploaded']);
     Route::delete('/stores/{store}/logo', [StoreController::class, 'deleteLogo'])
         ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':store.logo.deleted']);
 
@@ -316,32 +302,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/stores/{store}/apps/{app}', [AppController::class, 'destroy'])
         ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':app.deleted']);
 
-    // SatoshiTickets (Events, Ticket Types, Tickets, Orders)
-    Route::prefix('stores/{store}/tickets')->middleware(EnsureStoreOwnership::class)->group(function () {
-        // Events
-        Route::get('/events', [TicketController::class, 'listEvents']);
-        Route::get('/events/{eventId}', [TicketController::class, 'getEvent']);
-        Route::post('/events', [TicketController::class, 'createEvent']);
-        Route::put('/events/{eventId}', [TicketController::class, 'updateEvent']);
-        Route::delete('/events/{eventId}', [TicketController::class, 'deleteEvent']);
-        Route::put('/events/{eventId}/toggle', [TicketController::class, 'toggleEvent']);
-
-        // Ticket Types
-        Route::get('/events/{eventId}/ticket-types', [TicketController::class, 'listTicketTypes']);
-        Route::post('/events/{eventId}/ticket-types', [TicketController::class, 'createTicketType']);
-        Route::put('/events/{eventId}/ticket-types/{ticketTypeId}', [TicketController::class, 'updateTicketType']);
-        Route::delete('/events/{eventId}/ticket-types/{ticketTypeId}', [TicketController::class, 'deleteTicketType']);
-        Route::put('/events/{eventId}/ticket-types/{ticketTypeId}/toggle', [TicketController::class, 'toggleTicketType']);
-
-        // Tickets
-        Route::get('/events/{eventId}/tickets', [TicketController::class, 'listTickets']);
-        Route::post('/events/{eventId}/tickets/{ticketNumber}/check-in', [TicketController::class, 'checkInTicket']);
-
-        // Orders
-        Route::get('/events/{eventId}/orders', [TicketController::class, 'listOrders']);
-        Route::post('/events/{eventId}/orders/{orderId}/tickets/{ticketId}/send-reminder', [TicketController::class, 'sendReminder']);
-    });
-
     // Lightning Addresses
     Route::get('/stores/{store}/lightning-addresses', [LightningAddressController::class, 'index'])
         ->middleware(EnsureStoreOwnership::class);
@@ -370,7 +330,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Product Images
     Route::post('/stores/{store}/products/image', [\App\Http\Controllers\ProductImageController::class, 'upload'])
-        ->middleware(['throttle:uploads', EnsureStoreOwnership::class, AuditLog::class . ':product.image.uploaded']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':product.image.uploaded']);
 
     // Plans (public pricing)
     Route::get('/plans', [PlanController::class, 'index']);
@@ -465,8 +425,7 @@ Route::middleware(['auth:sanctum', EnsureSupportOrAdminRole::class])->prefix('ad
         ->middleware(AuditLog::class . ':documentation_article.updated');
     Route::delete('/articles/{article}', [DocumentationArticleController::class, 'destroy'])
         ->middleware(AuditLog::class . ':documentation_article.deleted');
-    Route::post('/upload-image', [DocumentationImageController::class, 'upload'])
-        ->middleware('throttle:uploads');
+    Route::post('/upload-image', [DocumentationImageController::class, 'upload']);
 
     // Categories
     Route::get('/categories', [DocumentationCategoryController::class, 'index']);

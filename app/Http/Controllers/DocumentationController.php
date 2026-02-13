@@ -10,39 +10,11 @@ use Illuminate\Support\Facades\DB;
 class DocumentationController extends Controller
 {
     /**
-     * Search in JSON column (locale key is whitelisted).
-     * PostgreSQL: ->>'key' ILIKE; SQLite: json_extract(column, '$.key') LIKE.
-     */
-    private function applyJsonSearch($query, string $localeKey, string $search): void
-    {
-        $pattern = '%' . $search . '%';
-        if (DB::getDriverName() === 'sqlite') {
-            $pathLocale = '$.' . $localeKey;
-            $pathEn = '$.en';
-            $query->where(function ($q) use ($pathLocale, $pathEn, $pattern) {
-                $q->whereRaw('json_extract(title, ?) LIKE ?', [$pathLocale, $pattern])
-                    ->orWhereRaw('json_extract(content, ?) LIKE ?', [$pathLocale, $pattern])
-                    ->orWhereRaw('json_extract(title, ?) LIKE ?', [$pathEn, $pattern])
-                    ->orWhereRaw('json_extract(content, ?) LIKE ?', [$pathEn, $pattern]);
-            });
-        } else {
-            $query->where(function ($q) use ($localeKey, $pattern) {
-                $q->whereRaw("title->>'{$localeKey}' ILIKE ?", [$pattern])
-                    ->orWhereRaw("content->>'{$localeKey}' ILIKE ?", [$pattern])
-                    ->orWhereRaw("title->>'en' ILIKE ?", [$pattern])
-                    ->orWhereRaw("content->>'en' ILIKE ?", [$pattern]);
-            });
-        }
-    }
-    /**
      * Get all published documentation articles with optional filtering.
      */
     public function index(Request $request)
     {
         $locale = app()->getLocale();
-        $allowedLocales = config('localization.json_locale_keys', ['en']);
-        $localeKey = in_array($locale, $allowedLocales, true) ? $locale : 'en';
-
         $categoryId = $request->query('category_id');
         $search = $request->query('search');
 
@@ -57,9 +29,15 @@ class DocumentationController extends Controller
             $query->where('category_id', $categoryId);
         }
 
-        // Search in title and content (current locale; locale key is whitelisted)
+        // Search in title and content (current locale)
         if ($search) {
-            $this->applyJsonSearch($query, $localeKey, $search);
+            $query->where(function ($q) use ($search, $locale) {
+                $q->whereRaw("title->>'{$locale}' ILIKE ?", ["%{$search}%"])
+                  ->orWhereRaw("content->>'{$locale}' ILIKE ?", ["%{$search}%"])
+                  // Fallback to English if current locale doesn't have content
+                  ->orWhereRaw("title->>'en' ILIKE ?", ["%{$search}%"])
+                  ->orWhereRaw("content->>'en' ILIKE ?", ["%{$search}%"]);
+            });
         }
 
         $articles = $query->get()->map(function ($article) use ($locale) {

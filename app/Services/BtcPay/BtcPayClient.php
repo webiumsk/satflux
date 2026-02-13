@@ -19,8 +19,8 @@ class BtcPayClient
 
     public function __construct(?string $apiKey = null)
     {
-        $this->baseUrl = rtrim(config('services.btcpay.base_url'), '/');
-        $this->apiKey = $apiKey ?? config('services.btcpay.api_key');
+        $this->baseUrl = rtrim(config('services.btcpay.base_url', env('BTCPAY_BASE_URL')), '/');
+        $this->apiKey = $apiKey ?? config('services.btcpay.api_key', env('BTCPAY_API_KEY'));
 
         $this->initializeClient();
     }
@@ -98,26 +98,8 @@ class BtcPayClient
     }
 
     /**
-     * Safe filename for multipart upload: derived from actual MIME type, not client-provided name.
-     * Prevents "Edit and Resend" / parameter tampering from sending e.g. path traversal or .php names.
-     */
-    protected function getSafeAttachmentFilename($file): string
-    {
-        $mimeToExt = [
-            'image/jpeg' => 'jpg',
-            'image/png' => 'png',
-            'image/gif' => 'gif',
-            'image/webp' => 'webp',
-        ];
-        $mime = $file->getMimeType();
-        $ext = $mimeToExt[$mime] ?? 'bin';
-        return 'upload.' . $ext;
-    }
-
-    /**
      * Make a POST request with multipart form data (for file uploads).
-     * Uses a server-derived filename (from MIME type), not the client-provided name.
-     *
+     * 
      * @param string $endpoint API endpoint
      * @param \Illuminate\Http\UploadedFile $file The uploaded file
      * @return array Response data
@@ -138,10 +120,10 @@ class BtcPayClient
                     ])
                     ->timeout(30);
 
-                // Use server-derived filename to avoid trusting client (Edit and Resend / filename tampering)
-                $safeName = $this->getSafeAttachmentFilename($file);
+                // $file is the UploadedFile object directly
+                // Use get() method to get file contents - works for both real and fake files
                 $fileContents = $file->get();
-                $response = $client->attach('file', $fileContents, $safeName)
+                $response = $client->attach('file', $fileContents, $file->getClientOriginalName())
                     ->post($endpoint);
 
                 if ($response->successful()) {

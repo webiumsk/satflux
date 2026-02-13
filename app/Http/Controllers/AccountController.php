@@ -21,13 +21,8 @@ class AccountController extends Controller
         $user = $request->user();
         $user->makeVisible('role');
 
-        $user->load([
-            'subscriptions' => fn ($q) => $q->whereIn('status', ['active', 'grace'])
-                ->orderBy('expires_at', 'desc')
-                ->with('plan'),
-        ]);
-        $subscription = $user->subscriptions->first();
-        $plan = $subscription?->plan ?? \App\Models\SubscriptionPlan::where('code', 'free')->orWhere('name', 'free')->first();
+        $subscription = $user->currentSubscription();
+        $plan = $user->currentSubscriptionPlan();
 
         $payload = $user->toArray();
         $payload['plan'] = $plan ? [
@@ -66,9 +61,11 @@ class AccountController extends Controller
 
         // Admin and support have unlimited access to all features
         if ($user->hasUnlimitedAccess()) {
-            $user->load(['stores' => fn ($q) => $q->withCount('apiKeys')]);
-            $storeCount = $user->stores->count();
-            $apiKeyCount = (int) $user->stores->sum('api_keys_count');
+            $storeCount = $user->stores()->count();
+            $apiKeyCount = 0;
+            foreach ($user->stores as $store) {
+                $apiKeyCount += $store->apiKeys()->count();
+            }
             return response()->json([
                 'stores' => [
                     'current' => $storeCount,
@@ -102,12 +99,16 @@ class AccountController extends Controller
             }
             $maxLnAddresses = $user->getMaxLightningAddresses();
 
-            $user->load([
-                'stores' => fn ($q) => $q->withCount(['apiKeys as active_api_keys_count' => fn ($q) => $q->where('is_active', true)]),
-            ]);
-            $storeCount = $user->stores->count();
-            $apiKeyCount = (int) ($user->stores->max('active_api_keys_count') ?? 0);
+            $storeCount = $user->stores()->count();
+            // API key limit is per store; for account we show max active keys in any single store
+            $apiKeyCount = 0;
             $lnAddressesCount = 0;
+            foreach ($user->stores as $store) {
+                $activeInStore = $store->apiKeys()->where('is_active', true)->count();
+                if ($activeInStore > $apiKeyCount) {
+                    $apiKeyCount = $activeInStore;
+                }
+            }
             if ($maxLnAddresses !== null || $user->hasUnlimitedAccess()) {
                 try {
                     $apiKey = $user->getBtcPayApiKeyOrFail();

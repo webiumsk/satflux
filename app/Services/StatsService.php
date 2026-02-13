@@ -72,33 +72,21 @@ class StatsService
 
     /**
      * Advanced: per store, per PoS, overall (includes pos_orders for cash/card).
-     *
-     * Revenue totals are grouped by currency to avoid mixing different
-     * denominations (e.g. EUR + SATS) into a single sum.
      */
     public function getAdvancedStats(User $user): array
     {
         $storesData = [];
         $overallInvoices30d = 0;
         $overallInvoicesAll = 0;
-        // Group revenue by currency to avoid mixing EUR + SATS
-        $amountByCurrency30d = [];
-        $amountByCurrencyAll = [];
+        $overallAmount30d = 0;
+        $overallAmountAll = 0;
 
         foreach ($user->stores as $store) {
             $basic = $this->getBasicStoreStats($store);
             $overallInvoices30d += $basic['invoice_count_30d'];
             $overallInvoicesAll += $basic['invoice_count_all_time'];
-
-            $currency = $basic['currency'] ?? 'EUR';
-            $amountByCurrency30d[$currency] = round(
-                ($amountByCurrency30d[$currency] ?? 0) + $basic['paid_amount_30d'],
-                2
-            );
-            $amountByCurrencyAll[$currency] = round(
-                ($amountByCurrencyAll[$currency] ?? 0) + $basic['paid_amount_all_time'],
-                2
-            );
+            $overallAmount30d += $basic['paid_amount_30d'];
+            $overallAmountAll += $basic['paid_amount_all_time'];
 
             $posData = [];
             foreach ($store->posTerminals as $terminal) {
@@ -123,32 +111,13 @@ class StatsService
             ];
         }
 
-        // Build per-currency breakdown arrays
-        $revenueBreakdown30d = [];
-        foreach ($amountByCurrency30d as $cur => $amount) {
-            $revenueBreakdown30d[] = ['currency' => $cur, 'amount' => $amount];
-        }
-        $revenueBreakdownAll = [];
-        foreach ($amountByCurrencyAll as $cur => $amount) {
-            $revenueBreakdownAll[] = ['currency' => $cur, 'amount' => $amount];
-        }
-
-        // For backward compatibility, provide a single total only when all stores
-        // share the same currency; otherwise sum the primary currency only.
-        $currencies = array_unique(array_keys($amountByCurrencyAll));
-        $primaryCurrency = $currencies[0] ?? 'EUR';
-
         return [
             'stores' => $storesData,
             'overall' => [
                 'invoice_count_30d' => $overallInvoices30d,
                 'invoice_count_all_time' => $overallInvoicesAll,
-                'paid_amount_30d' => $amountByCurrency30d[$primaryCurrency] ?? 0,
-                'paid_amount_all_time' => $amountByCurrencyAll[$primaryCurrency] ?? 0,
-                'currency' => $primaryCurrency,
-                'revenue_breakdown_30d' => $revenueBreakdown30d,
-                'revenue_breakdown_all' => $revenueBreakdownAll,
-                'has_mixed_currencies' => count($currencies) > 1,
+                'paid_amount_30d' => round($overallAmount30d, 2),
+                'paid_amount_all_time' => round($overallAmountAll, 2),
             ],
         ];
     }

@@ -75,13 +75,12 @@ class WalletConnectionTest extends TestCase
 
         $response->assertStatus(201)
             ->assertJsonPath('data.type', 'blink')
-            ->assertJsonPath('data.status', 'pending')
             ->assertJsonPath('message', 'Wallet connection saved successfully');
         $response->assertJsonStructure(['data' => ['id', 'type', 'status', 'masked_secret']]);
         $this->assertDatabaseHas('wallet_connections', [
             'store_id' => $store->id,
             'type' => 'blink',
-            'status' => 'pending',
+            'status' => 'needs_support',
         ]);
     }
 

@@ -30,12 +30,6 @@
                 :app="app" 
                 :store="store" 
             />
-
-            <TicketsShow 
-                v-else-if="app.app_type === 'Tickets'" 
-                :app="app" 
-                :store="store" 
-            />
             
             <!-- Fallback for other types -->
             <div v-else class="flex items-center justify-center h-full bg-gray-900">
@@ -69,7 +63,6 @@ import AppLayout from '../../../components/layout/AppLayout.vue';
 import StoreSidebar from '../../../components/stores/StoreSidebar.vue';
 import PointOfSaleShow from '../PointOfSaleShow.vue';
 import PayButtonShow from '../PayButtonShow.vue';
-import TicketsShow from '../TicketsShow.vue';
 
 const { t } = useI18n();
 

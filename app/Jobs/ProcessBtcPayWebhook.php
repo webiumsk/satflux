@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use App\Models\User;
 use App\Models\WebhookEvent;
-use App\Services\SubscriptionService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -161,18 +160,24 @@ class ProcessBtcPayWebhook implements ShouldQueue
                 return;
             }
 
-            // Activate subscription via SubscriptionService (handles transaction + locking + idempotency)
-            $subscriptionService = app(SubscriptionService::class);
-            $subscription = $subscriptionService->activateSubscription($user, $planRole, $subscriptionId);
+            // Update user role and subscription tracking
+            $oldRole = $user->role;
+            $user->role = $planRole;
 
-            Log::info('Subscription activated after invoice payment webhook', [
+            // Store subscription ID if available from invoice
+            if ($subscriptionId) {
+                $user->btcpay_subscription_id = $subscriptionId;
+            }
+
+            $user->save();
+
+            Log::info('User role updated after subscription payment', [
                 'user_id' => $user->id,
                 'user_email' => $user->email,
-                'plan' => $planRole,
+                'old_role' => $oldRole,
+                'new_role' => $planRole,
                 'invoice_id' => $invoiceId,
                 'plan_id' => $planId,
-                'subscription_id' => $subscription->id,
-                'expires_at' => $subscription->expires_at,
             ]);
 
         } catch (\Exception $e) {

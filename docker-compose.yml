@@ -50,39 +50,6 @@ services:
       - REVERB_SERVER_HOST=0.0.0.0
       - REVERB_SERVER_PORT=8080
 
-  queue:
-    build:
-      context: ./docker/php
-      dockerfile: Dockerfile
-    container_name: satflux.io_queue
-    command: ["php", "artisan", "queue:work", "redis", "--sleep=3", "--tries=3", "--max-time=3600", "--queue=webhooks,exports"]
-    volumes:
-      - .:/var/www
-      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini
-    working_dir: /var/www
-    depends_on:
-      - php
-      - redis
-    networks:
-      - satflux.io
-
-  scheduler:
-    build:
-      context: ./docker/php
-      dockerfile: Dockerfile
-    container_name: satflux.io_scheduler
-    command: ["php", "artisan", "schedule:work"]
-    volumes:
-      - .:/var/www
-      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini
-    working_dir: /var/www
-    depends_on:
-      - php
-      - redis
-      - postgres
-    networks:
-      - satflux.io
-
   postgres:
     image: postgres:16-alpine
     container_name: satflux.io_postgres
@@ -133,6 +100,10 @@ volumes:
 networks:
   satflux.io:
     driver: bridge
+
+
+
+
 
 
 
