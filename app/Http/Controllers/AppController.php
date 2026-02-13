@@ -93,7 +93,7 @@ class AppController extends Controller
     public function store(Request $request, Store $store)
     {
         $request->validate([
-            'app_type' => ['required', 'string', 'in:PointOfSale,PaymentButton,LightningAddress'],
+            'app_type' => ['required', 'string', 'in:PointOfSale,PaymentButton,LightningAddress,Tickets'],
             'name' => ['required', 'string', 'max:255'],
             'config' => ['sometimes', 'array'],
         ]);
@@ -110,6 +110,24 @@ class AppController extends Controller
         }
 
         return DB::transaction(function () use ($request, $store) {
+            // Tickets apps don't use BTCPay standard app API — they use the SatoshiTickets plugin.
+            // Create a local-only record with a generated btcpay_app_id placeholder.
+            if ($request->app_type === 'Tickets') {
+                $app = App::create([
+                    'id' => (string) Str::uuid(),
+                    'store_id' => $store->id,
+                    'btcpay_app_id' => 'tickets-' . (string) Str::uuid(),
+                    'app_type' => 'Tickets',
+                    'name' => $request->name,
+                    'config' => $request->config ?? [],
+                ]);
+
+                return response()->json([
+                    'data' => $this->formatApp($app),
+                    'message' => 'Tickets app created successfully',
+                ], 201);
+            }
+
             // Load merchant API key from store owner
             $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
@@ -308,6 +326,23 @@ class AppController extends Controller
             return response()->json([
                 'message' => 'App not found for this store.',
             ], 404);
+        }
+
+        // Tickets apps are managed via their own API (TicketController), not standard app update
+        if (strtolower($app->app_type) === 'tickets') {
+            // Allow renaming and archiving only
+            if ($request->has('name')) {
+                $app->update(['name' => $request->name]);
+            }
+            if ($request->has('archived')) {
+                $metadata = $app->metadata ?? [];
+                $metadata['archived'] = filter_var($request->archived, FILTER_VALIDATE_BOOLEAN);
+                $app->update(['metadata' => $metadata]);
+            }
+            return response()->json([
+                'data' => $this->formatApp($app->fresh()),
+                'message' => 'App updated successfully',
+            ]);
         }
 
         // Dočasne zakázať update Crowdfund appov (BTCPay API nepodporuje update)
@@ -753,6 +788,9 @@ class AppController extends Controller
                 return $basePath . '/paymentbutton';
             case 'lightningaddress':
                 return $basePath . '/lnaddress';
+            case 'tickets':
+                // Tickets apps don't have a BTCPay app URL; return null-safe empty string
+                return '';
             default:
                 // Default to base path if app type is unknown
                 return $basePath;

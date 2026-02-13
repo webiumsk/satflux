@@ -1,6 +1,7 @@
 <template>
   <PointOfSaleShow v-if="appType === 'PointOfSale'" />
   <PayButtonShow v-else-if="appType === 'PaymentButton'" />
+  <TicketsShow v-else-if="appType === 'Tickets'" />
   <div v-else-if="appType === 'Crowdfund'" class="flex items-center justify-center h-full bg-gray-900">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="bg-gray-800 shadow rounded-lg p-6 border border-gray-700">
@@ -29,6 +30,7 @@ import { useAppsStore } from '../../store/apps';
 import { useStoresStore } from '../../store/stores';
 import PointOfSaleShow from './PointOfSaleShow.vue';
 import PayButtonShow from './PayButtonShow.vue';
+import TicketsShow from './TicketsShow.vue';
 
 const { t } = useI18n();
 

@@ -305,6 +305,50 @@
             </component>
           </div>
 
+          <!-- Tickets -->
+          <div class="mb-2">
+            <component
+              :is="isInertia ? Link : RouterLink"
+              :href="isInertia ? `/stores/${store.id}/apps/create?type=Tickets` : undefined"
+              :to="!isInertia ? { name: 'stores-apps-create', params: { id: store.id }, query: { type: 'Tickets' } } : undefined"
+              class="flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer"
+              :class="
+                isAppsCreateWithType('Tickets')
+                  ? 'bg-gray-900 text-white'
+                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+              "
+              @click="showMobileMenu = false"
+            >
+              <span class="flex items-center min-w-0">
+                <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                </svg>
+                {{ t('apps.tickets') }}
+              </span>
+              <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+            </component>
+            <div v-if="getAppsByType('Tickets').length > 0" class="ml-4 space-y-1">
+              <component
+                v-for="app in getAppsByType('Tickets')"
+                :key="app.id"
+                :is="isInertia ? Link : RouterLink"
+                :href="isInertia ? `/stores/${store.id}/apps/${app.id}` : undefined"
+                :to="!isInertia ? `/stores/${store.id}/apps/${app.id}` : undefined"
+                class="block px-3 py-2 rounded-md text-sm transition-colors"
+                :class="
+                  paramAppId === app.id
+                    ? 'bg-gray-900 text-white'
+                    : 'text-gray-400 hover:bg-gray-700 hover:text-white'
+                "
+                @click="showMobileMenu = false"
+              >
+                {{ app.name }}
+              </component>
+            </div>
+          </div>
+
           <!-- E-shop Integration -->
           <div class="mb-2">
             <component
