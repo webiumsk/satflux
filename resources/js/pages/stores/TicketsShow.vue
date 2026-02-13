@@ -224,6 +224,12 @@
                 class="p-6 cursor-pointer"
                 @click="toggleExpandEvent(event)"
               >
+                <div class="flex items-center gap-4">
+                  <!-- Event image thumbnail -->
+                  <div v-if="event.eventLogoUrl || (event as any).logoUrl" class="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden bg-gray-700 border border-gray-600">
+                    <img :src="event.eventLogoUrl || (event as any).logoUrl" alt="" class="w-full h-full object-cover" @error="(e: Event) => (e.target as HTMLImageElement).style.display = 'none'" />
+                  </div>
+                  <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between mb-3">
                   <div class="flex items-center gap-3">
                     <span :class="[
@@ -270,6 +276,8 @@
                   <button @click="handleDeleteEvent(event)" :title="t('common.delete')" class="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                   </button>
+                </div>
+                  </div>
                 </div>
               </div>
 
@@ -809,7 +817,7 @@ function handleEditEvent(event: TicketEvent) {
     startDate: fromISOToLocal(event.startDate), endDate: event.endDate ? fromISOToLocal(event.endDate) : '', currency: event.currency || '',
     redirectUrl: event.redirectUrl || '', emailSubject: event.emailSubject || '', emailBody: event.emailBody || '',
     hasMaximumCapacity: event.hasMaximumCapacity || false, maximumEventCapacity: event.maximumEventCapacity || null,
-    eventLogoUrl: event.eventLogoUrl || '',
+    eventLogoUrl: event.eventLogoUrl || (event as any).logoUrl || '',
   };
   imagePreview.value = null;
   if (event.emailSubject || event.emailBody) showEmailSettings.value = true;
