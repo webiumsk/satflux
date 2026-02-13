@@ -47,6 +47,18 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('password-reset', function (Request $request) {
             return Limit::perMinute(5)->by($request->ip());
         });
+
+        // Uploads: limit file uploads per user (store logo, product image, documentation image)
+        RateLimiter::for('uploads', function (Request $request) {
+            $key = $request->user()?->id
+                ? 'upload:user:' . $request->user()->id
+                : 'upload:ip:' . $request->ip();
+            return Limit::perMinute(10)->by($key)->response(function (Request $req, array $headers) {
+                return response()->json([
+                    'message' => 'Too many uploads. Please try again in a minute.',
+                ], 429, $headers);
+            });
+        });
     }
 }
 
