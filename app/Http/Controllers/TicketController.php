@@ -6,6 +6,7 @@ use App\Models\Store;
 use App\Services\BtcPay\TicketService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class TicketController extends Controller
 {
@@ -34,6 +35,8 @@ class TicketController extends Controller
             $expired
         );
 
+        $events = array_map([$this, 'normalizeEventLogo'], $events);
+
         return response()->json(['data' => $events]);
     }
 
@@ -50,7 +53,7 @@ class TicketController extends Controller
             $userApiKey
         );
 
-        return response()->json(['data' => $event]);
+        return response()->json(['data' => $this->normalizeEventLogo($event)]);
     }
 
     /**
@@ -71,12 +74,12 @@ class TicketController extends Controller
             'emailBody' => ['sometimes', 'nullable', 'string'],
             'hasMaximumCapacity' => ['sometimes', 'boolean'],
             'maximumEventCapacity' => ['sometimes', 'nullable', 'integer', 'min:1'],
-            'eventLogoUrl' => ['sometimes', 'nullable', 'string', 'url', 'max:500'],
+            'eventLogoUrl' => ['sometimes', 'nullable', 'string', 'max:500', Rule::when($request->filled('eventLogoUrl'), ['url'])],
         ]);
 
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
-        // Build request data — only include non-null fields
+        // Build request data — only include non-null, non-empty logo
         $data = array_filter($request->only([
             'title',
             'description',
@@ -91,7 +94,7 @@ class TicketController extends Controller
             'hasMaximumCapacity',
             'maximumEventCapacity',
             'eventLogoUrl',
-        ]), fn ($v) => $v !== null);
+        ]), (fn ($v, $k) => $v !== null && ($k !== 'eventLogoUrl' || (string) $v !== '')), ARRAY_FILTER_USE_BOTH);
 
         $event = $this->ticketService->createEvent(
             $store->btcpay_store_id,
@@ -99,7 +102,7 @@ class TicketController extends Controller
             $userApiKey
         );
 
-        return response()->json(['data' => $event], 201);
+        return response()->json(['data' => $this->normalizeEventLogo($event)], 201);
     }
 
     /**
@@ -120,7 +123,7 @@ class TicketController extends Controller
             'emailBody' => ['sometimes', 'nullable', 'string'],
             'hasMaximumCapacity' => ['sometimes', 'boolean'],
             'maximumEventCapacity' => ['sometimes', 'nullable', 'integer', 'min:1'],
-            'eventLogoUrl' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'eventLogoUrl' => ['sometimes', 'nullable', 'string', 'max:500', Rule::when($request->filled('eventLogoUrl'), ['url'])],
         ]);
 
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
@@ -139,7 +142,7 @@ class TicketController extends Controller
             'hasMaximumCapacity',
             'maximumEventCapacity',
             'eventLogoUrl',
-        ]), fn ($v) => $v !== null);
+        ]), (fn ($v, $k) => $v !== null && ($k !== 'eventLogoUrl' || (string) $v !== '')), ARRAY_FILTER_USE_BOTH);
 
         $event = $this->ticketService->updateEvent(
             $store->btcpay_store_id,
@@ -148,7 +151,18 @@ class TicketController extends Controller
             $userApiKey
         );
 
-        return response()->json(['data' => $event]);
+        return response()->json(['data' => $this->normalizeEventLogo($event)]);
+    }
+
+    /**
+     * Normalize event response so frontend always gets eventLogoUrl (BTCPay may return logoUrl).
+     */
+    protected function normalizeEventLogo(array $event): array
+    {
+        if (! isset($event['eventLogoUrl']) && ! empty($event['logoUrl'])) {
+            $event['eventLogoUrl'] = $event['logoUrl'];
+        }
+        return $event;
     }
 
     /**

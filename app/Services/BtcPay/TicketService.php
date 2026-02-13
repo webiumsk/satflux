@@ -40,21 +40,25 @@ class TicketService
 
     /**
      * Create a new event.
+     * Sends both eventLogoUrl and logoUrl so the plugin accepts the image either way.
      */
     public function createEvent(string $storeId, array $data, ?string $userApiKey = null): array
     {
-        return $this->withApiKey($userApiKey, function () use ($storeId, $data) {
-            return $this->client->post("/api/v1/stores/{$storeId}/satoshi-tickets/events", $data);
+        $payload = $this->normalizeEventPayloadForBtcPay($data);
+        return $this->withApiKey($userApiKey, function () use ($storeId, $payload) {
+            return $this->client->post("/api/v1/stores/{$storeId}/satoshi-tickets/events", $payload);
         });
     }
 
     /**
      * Update an event.
+     * Sends both eventLogoUrl and logoUrl so the plugin accepts the image either way.
      */
     public function updateEvent(string $storeId, string $eventId, array $data, ?string $userApiKey = null): array
     {
-        return $this->withApiKey($userApiKey, function () use ($storeId, $eventId, $data) {
-            return $this->client->put("/api/v1/stores/{$storeId}/satoshi-tickets/events/{$eventId}", $data);
+        $payload = $this->normalizeEventPayloadForBtcPay($data);
+        return $this->withApiKey($userApiKey, function () use ($storeId, $eventId, $payload) {
+            return $this->client->put("/api/v1/stores/{$storeId}/satoshi-tickets/events/{$eventId}", $payload);
         });
     }
 
@@ -201,6 +205,19 @@ class TicketService
     // ──────────────────────────────────────────────────
     //  HELPER
     // ──────────────────────────────────────────────────
+
+    /**
+     * Ensure event logo is sent under both eventLogoUrl and logoUrl for plugin compatibility.
+     */
+    protected function normalizeEventPayloadForBtcPay(array $data): array
+    {
+        $logo = $data['eventLogoUrl'] ?? $data['logoUrl'] ?? null;
+        if ($logo !== null && $logo !== '') {
+            $data['eventLogoUrl'] = $logo;
+            $data['logoUrl'] = $logo;
+        }
+        return $data;
+    }
 
     /**
      * Execute a callback with an optional user-level API key, restoring the

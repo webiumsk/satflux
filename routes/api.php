@@ -15,6 +15,7 @@ use App\Http\Controllers\StatsController;
 use App\Http\Controllers\StoreChecklistController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\StoreDashboardController;
+use App\Http\Controllers\TicketController;
 use App\Http\Controllers\LightningAddressController;
 use App\Http\Controllers\StoreSettingsController;
 use App\Http\Controllers\WalletConnectionController;
@@ -373,6 +374,25 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/stores/{store}/wallet-connection', [WalletConnectionController::class, 'destroy'])
         ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':wallet_connection.deleted']);
 
+    // SatoshiTickets (Events, Ticket Types, Tickets, Orders)
+    Route::prefix('stores/{store}/tickets')->middleware(EnsureStoreOwnership::class)->group(function () {
+        Route::get('/events', [TicketController::class, 'listEvents']);
+        Route::get('/events/{eventId}', [TicketController::class, 'getEvent']);
+        Route::post('/events', [TicketController::class, 'createEvent']);
+        Route::put('/events/{eventId}', [TicketController::class, 'updateEvent']);
+        Route::delete('/events/{eventId}', [TicketController::class, 'deleteEvent']);
+        Route::put('/events/{eventId}/toggle', [TicketController::class, 'toggleEvent']);
+        Route::get('/events/{eventId}/ticket-types', [TicketController::class, 'listTicketTypes']);
+        Route::post('/events/{eventId}/ticket-types', [TicketController::class, 'createTicketType']);
+        Route::put('/events/{eventId}/ticket-types/{ticketTypeId}', [TicketController::class, 'updateTicketType']);
+        Route::delete('/events/{eventId}/ticket-types/{ticketTypeId}', [TicketController::class, 'deleteTicketType']);
+        Route::put('/events/{eventId}/ticket-types/{ticketTypeId}/toggle', [TicketController::class, 'toggleTicketType']);
+        Route::get('/events/{eventId}/tickets', [TicketController::class, 'listTickets']);
+        Route::post('/events/{eventId}/tickets/{ticketNumber}/check-in', [TicketController::class, 'checkInTicket']);
+        Route::get('/events/{eventId}/orders', [TicketController::class, 'listOrders']);
+        Route::post('/events/{eventId}/orders/{orderId}/tickets/{ticketId}/send-reminder', [TicketController::class, 'sendReminder']);
+    });
+
     // Support routes
     Route::middleware([EnsureSupportRole::class])->group(function () {
         Route::get('/support/wallet-connections', [WalletConnectionController::class, 'indexSupport']);
@@ -413,6 +433,12 @@ Route::get('/documentation/{slug}', [DocumentationController::class, 'show']);
 Route::get('/faq', [FaqController::class, 'index']);
 Route::get('/faq/{slug}', [FaqController::class, 'show']);
 Route::post('/faq/{slug}/helpful', [FaqController::class, 'markHelpful']);
+
+// Public Ticket Check-In (no auth required — URL acts as the secret)
+Route::middleware(['throttle:30,1'])->prefix('public/ticket-checkin')->group(function () {
+    Route::get('/{store}/events/{eventId}', [TicketController::class, 'publicEventInfo']);
+    Route::post('/{store}/events/{eventId}/tickets/{ticketNumber}/check-in', [TicketController::class, 'publicCheckIn']);
+});
 
 // Admin Documentation (requires support or admin role)
 Route::middleware(['auth:sanctum', EnsureSupportOrAdminRole::class])->prefix('admin/documentation')->group(function () {

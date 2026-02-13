@@ -25,12 +25,18 @@
                 :store="store" 
             />
             
-            <PayButtonShow 
-                v-else-if="app.app_type === 'PaymentButton'" 
-                :app="app" 
-                :store="store" 
+            <PayButtonShow
+                v-else-if="app.app_type === 'PaymentButton'"
+                :app="app"
+                :store="store"
             />
-            
+
+            <TicketsShow
+                v-else-if="app.app_type === 'Tickets'"
+                :app="app"
+                :store="store"
+            />
+
             <!-- Fallback for other types -->
             <div v-else class="flex items-center justify-center h-full bg-gray-900">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -63,6 +69,7 @@ import AppLayout from '../../../components/layout/AppLayout.vue';
 import StoreSidebar from '../../../components/stores/StoreSidebar.vue';
 import PointOfSaleShow from '../PointOfSaleShow.vue';
 import PayButtonShow from '../PayButtonShow.vue';
+import TicketsShow from '../TicketsShow.vue';
 
 const { t } = useI18n();
 

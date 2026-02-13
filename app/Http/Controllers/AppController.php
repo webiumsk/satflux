@@ -93,7 +93,7 @@ class AppController extends Controller
     public function store(Request $request, Store $store)
     {
         $request->validate([
-            'app_type' => ['required', 'string', 'in:PointOfSale,PaymentButton,LightningAddress'],
+            'app_type' => ['required', 'string', 'in:PointOfSale,PaymentButton,LightningAddress,Tickets'],
             'name' => ['required', 'string', 'max:255'],
             'config' => ['sometimes', 'array'],
         ]);
