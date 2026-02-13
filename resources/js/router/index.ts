@@ -136,6 +136,12 @@ const router = createRouter({
             meta: { requiresAuth: true },
         },
         {
+            path: '/stores/:id/ticket-check-in/:eventId',
+            name: 'stores-ticket-checkin',
+            component: () => import('../pages/stores/TicketCheckIn.vue'),
+            meta: { public: true },
+        },
+        {
             path: '/stores/:id/invoices',
             name: 'stores-invoices',
             redirect: to => {

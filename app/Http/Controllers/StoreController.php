@@ -314,18 +314,22 @@ class StoreController extends Controller
             ]);
 
             // Create webhook in BTCPay for this store (server key already set above)
+            // Wrapped in nested DB::transaction() to create a PostgreSQL SAVEPOINT.
+            // If the SQL inside fails, only the savepoint is rolled back, keeping the outer transaction valid.
             try {
-                $webhookService = app(WebhookService::class);
-                $created = $webhookService->createWebhook($store->btcpay_store_id, null);
-                $store->update([
-                    'btcpay_webhook_id' => $created['id'],
-                    'webhook_secret' => $created['secret'],
-                ]);
-                Log::info('Webhook created for store', [
-                    'store_id' => $store->id,
-                    'btcpay_store_id' => $store->btcpay_store_id,
-                    'btcpay_webhook_id' => $created['id'],
-                ]);
+                DB::transaction(function () use ($store) {
+                    $webhookService = app(WebhookService::class);
+                    $created = $webhookService->createWebhook($store->btcpay_store_id, null);
+                    $store->update([
+                        'btcpay_webhook_id' => $created['id'],
+                        'webhook_secret' => $created['secret'],
+                    ]);
+                    Log::info('Webhook created for store', [
+                        'store_id' => $store->id,
+                        'btcpay_store_id' => $store->btcpay_store_id,
+                        'btcpay_webhook_id' => $created['id'],
+                    ]);
+                });
             } catch (\Throwable $e) {
                 Log::error('Failed to create webhook for store (store creation continues)', [
                     'store_id' => $store->id,
@@ -335,6 +339,9 @@ class StoreController extends Controller
             }
 
             // Create wallet connection if connection_string is provided
+            // Wrapped in nested DB::transaction() to create a PostgreSQL SAVEPOINT.
+            // If a SQL error occurs, only the savepoint is rolled back, keeping the outer transaction valid.
+            // ValidationException is re-thrown to intentionally roll back the entire outer transaction.
             $walletConnection = null;
             if ($request->filled('connection_string')) {
                 Log::info('Starting wallet connection creation during store creation', [
@@ -346,63 +353,67 @@ class StoreController extends Controller
                 ]);
 
                 try {
-                    $connectionType = $request->wallet_type === 'blink' ? 'blink' : 'aqua_descriptor';
-                    Log::info('Determined connection type', [
-                        'store_id' => $store->id,
-                        'wallet_type' => $request->wallet_type,
-                        'connection_type' => $connectionType,
-                    ]);
+                    $walletConnection = DB::transaction(function () use ($store, $request) {
+                        $connectionType = $request->wallet_type === 'blink' ? 'blink' : 'aqua_descriptor';
+                        Log::info('Determined connection type', [
+                            'store_id' => $store->id,
+                            'wallet_type' => $request->wallet_type,
+                            'connection_type' => $connectionType,
+                        ]);
 
-                    $walletConnectionService = app(\App\Services\WalletConnectionService::class);
+                        $walletConnectionService = app(\App\Services\WalletConnectionService::class);
 
-                    // For Aqua/Boltz descriptors, check for duplicates BEFORE creating the connection
-                    // This prevents creating a store if the descriptor is already in use
-                    if ($connectionType === 'aqua_descriptor') {
-                        $duplicateCheck = $walletConnectionService->checkDescriptorDuplicate(
-                            $request->connection_string,
-                            $store->id
-                        );
-                        if ($duplicateCheck['exists']) {
-                            Log::warning('Aqua descriptor already in use during store creation', [
-                                'store_id' => $store->id,
-                                'existing_store_id' => $duplicateCheck['existing_store_id'],
-                                'existing_store_name' => $duplicateCheck['existing_store_name'],
-                            ]);
-                            // Rollback transaction by throwing validation exception
-                            throw \Illuminate\Validation\ValidationException::withMessages([
-                                'connection_string' => [
-                                    'This descriptor is already in use by another store. ' .
-                                    'BTCPay allows each descriptor to be used only once. ' .
-                                    ($duplicateCheck['existing_store_name']
-                                        ? "It is currently used by store: {$duplicateCheck['existing_store_name']}"
-                                        : 'Please use a different wallet/descriptor.'),
-                                ],
-                            ]);
+                        // For Aqua/Boltz descriptors, check for duplicates BEFORE creating the connection
+                        // This prevents creating a store if the descriptor is already in use
+                        if ($connectionType === 'aqua_descriptor') {
+                            $duplicateCheck = $walletConnectionService->checkDescriptorDuplicate(
+                                $request->connection_string,
+                                $store->id
+                            );
+                            if ($duplicateCheck['exists']) {
+                                Log::warning('Aqua descriptor already in use during store creation', [
+                                    'store_id' => $store->id,
+                                    'existing_store_id' => $duplicateCheck['existing_store_id'],
+                                    'existing_store_name' => $duplicateCheck['existing_store_name'],
+                                ]);
+                                // Rollback transaction by throwing validation exception
+                                throw \Illuminate\Validation\ValidationException::withMessages([
+                                    'connection_string' => [
+                                        'This descriptor is already in use by another store. ' .
+                                        'BTCPay allows each descriptor to be used only once. ' .
+                                        ($duplicateCheck['existing_store_name']
+                                            ? "It is currently used by store: {$duplicateCheck['existing_store_name']}"
+                                            : 'Please use a different wallet/descriptor.'),
+                                    ],
+                                ]);
+                            }
                         }
-                    }
 
-                    Log::info('Calling WalletConnectionService::createOrUpdate', [
-                        'store_id' => $store->id,
-                        'connection_type' => $connectionType,
-                        'user_id' => $request->user()->id,
-                    ]);
+                        Log::info('Calling WalletConnectionService::createOrUpdate', [
+                            'store_id' => $store->id,
+                            'connection_type' => $connectionType,
+                            'user_id' => $request->user()->id,
+                        ]);
 
-                    // Create as pending; config bot runs first. Emails sent only on bot failure (via bot-failed).
-                    $walletConnection = $walletConnectionService->createOrUpdate(
-                        $store,
-                        $connectionType,
-                        $request->connection_string,
-                        $request->user(),
-                        'pending'
-                    );
+                        // Create as pending; config bot runs first. Emails sent only on bot failure (via bot-failed).
+                        $wc = $walletConnectionService->createOrUpdate(
+                            $store,
+                            $connectionType,
+                            $request->connection_string,
+                            $request->user(),
+                            'pending'
+                        );
 
-                    Log::info('Wallet connection created (pending – config bot will run)', [
-                        'store_id' => $store->id,
-                        'wallet_connection_id' => $walletConnection->id ?? 'NULL',
-                        'wallet_type' => $request->wallet_type,
-                        'connection_type' => $connectionType,
-                        'status' => $walletConnection->status ?? 'NULL',
-                    ]);
+                        Log::info('Wallet connection created (pending – config bot will run)', [
+                            'store_id' => $store->id,
+                            'wallet_connection_id' => $wc->id ?? 'NULL',
+                            'wallet_type' => $request->wallet_type,
+                            'connection_type' => $connectionType,
+                            'status' => $wc->status ?? 'NULL',
+                        ]);
+
+                        return $wc;
+                    });
                 } catch (\Illuminate\Validation\ValidationException $e) {
                     throw $e;
                 } catch (\Exception $e) {
