@@ -22,8 +22,6 @@ class LightningAddressController extends Controller
      */
     public function index(Request $request, Store $store)
     {
-        $store->load('user.stores');
-
         // Load merchant API key from store owner
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
@@ -83,8 +81,6 @@ class LightningAddressController extends Controller
      */
     public function show(Request $request, Store $store, string $username)
     {
-        $store->loadMissing('user');
-
         // Load merchant API key from store owner
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
@@ -127,8 +123,6 @@ class LightningAddressController extends Controller
      */
     public function store(Request $request, Store $store, string $username)
     {
-        $store->load('user.stores');
-
         $request->validate([
             'username' => ['required', 'string'],
             'currencyCode' => ['nullable', 'string'],
@@ -294,8 +288,6 @@ class LightningAddressController extends Controller
      */
     public function destroy(Request $request, Store $store, string $username)
     {
-        $store->loadMissing('user');
-
         // Load merchant API key from store owner
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 

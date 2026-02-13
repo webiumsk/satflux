@@ -18,7 +18,7 @@
             <span class="flex h-2 w-2 rounded-full bg-indigo-400 mr-2"></span>
             {{ t('landing.hero_subheadline') }}
           </div>
-          <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight py-2 mb-8 bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-indigo-400">
+          <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-indigo-400">
             {{ t('landing.hero_headline') }}
           </h1>
           <p class="text-xl md:text-2xl mb-10 text-gray-400 max-w-3xl mx-auto leading-relaxed">
@@ -240,7 +240,7 @@
                       <div class="relative group/card cursor-pointer transform md:-translate-x-12 transition-transform duration-500 hover:scale-105">
                           <!-- Card Content -->
                           <div class="bg-gray-800 rounded-2xl p-6 border border-gray-700 shadow-xl flex items-center gap-6 transition-all duration-300 group-hover/card:border-orange-500/50 group-hover/card:bg-gray-800/80">
-                              <img src="/img/wallets/blink.webp" :alt="t('landing.blink_wallet_title')" class="w-20 h-20 rounded-2xl object-contain p-2 bg-white/5 border border-white/10 shadow-inner">
+                              <img src="/img/wallets/blink.png" :alt="t('landing.blink_wallet_title')" class="w-20 h-20 rounded-2xl object-contain p-2 bg-white/5 border border-white/10 shadow-inner">
                               <div>
                                   <h4 class="text-2xl font-bold text-white mb-1">{{ t('landing.blink_wallet_title') }}</h4>
                                   <p class="text-sm text-orange-400 font-medium">{{ t('landing.blink_wallet_tagline') }}</p>
@@ -273,7 +273,7 @@
                           <!-- Card Content -->
                           <div class="bg-gray-800 rounded-2xl p-6 border border-gray-700 shadow-xl flex items-center gap-6 transition-all duration-300 group-hover/card:border-blue-500/50 group-hover/card:bg-gray-800/80">
                               <div class="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center p-2 shadow-inner">
-                                <img src="/img/wallets/aqua.webp" :alt="t('landing.aqua_wallet_title')" class="w-full h-full object-contain">
+                                <img src="/img/wallets/aqua.png" :alt="t('landing.aqua_wallet_title')" class="w-full h-full object-contain">
                               </div>
                               <div>
                                   <h4 class="text-2xl font-bold text-white mb-1">{{ t('landing.aqua_wallet_title') }}</h4>

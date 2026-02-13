@@ -2,8 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\PosOrder;
-use App\Models\PosTerminal;
 use App\Models\Store;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -59,46 +57,22 @@ class DashboardTest extends TestCase
         $baseUrl = 'https://btcpay.test';
         Http::fake(function ($request) use ($baseUrl) {
             $url = (string) $request->url();
-            if ($request->method() === 'GET' && $url === $baseUrl . '/api/v1/stores') {
+            $method = $request->method();
+            if ($method === 'GET' && $url === $baseUrl . '/api/v1/stores') {
                 return Http::response([
                     ['id' => 'btcpay-store-1', 'name' => 'My Store', 'defaultCurrency' => 'EUR', 'timeZone' => 'Europe/Vienna', 'created' => 1704067200],
                 ], 200);
             }
+            if ($method === 'GET' && str_contains($url, '/api/v1/stores/btcpay-store-1/invoices')) {
+                // Dashboard expects listInvoices to return array of invoices (BTCPay may return wrapped; we return direct for controller foreach)
+                return Http::response([
+                    ['id' => 'inv-1', 'status' => 'Settled', 'amount' => 0.00005, 'currency' => 'BTC'],
+                    ['id' => 'inv-2', 'status' => 'Paid', 'amount' => 1000, 'currency' => 'SATS'],
+                    ['id' => 'inv-3', 'status' => 'Complete', 'amount' => 50.5, 'currency' => 'EUR'],
+                ], 200);
+            }
             return Http::response([], 404);
         });
-
-        // Revenue comes from PosOrder (dashboard uses PosOrder, not invoices)
-        $terminal = PosTerminal::create([
-            'store_id' => $store->id,
-            'name' => 'Terminal 1',
-        ]);
-        PosOrder::create([
-            'pos_terminal_id' => $terminal->id,
-            'store_id' => $store->id,
-            'amount' => 5000,
-            'currency' => 'SATS',
-            'status' => PosOrder::STATUS_PAID,
-            'paid_method' => PosOrder::PAID_METHOD_LIGHTNING,
-            'paid_at' => now(),
-        ]);
-        PosOrder::create([
-            'pos_terminal_id' => $terminal->id,
-            'store_id' => $store->id,
-            'amount' => 1000,
-            'currency' => 'SATS',
-            'status' => PosOrder::STATUS_PAID,
-            'paid_method' => PosOrder::PAID_METHOD_LIGHTNING,
-            'paid_at' => now(),
-        ]);
-        PosOrder::create([
-            'pos_terminal_id' => $terminal->id,
-            'store_id' => $store->id,
-            'amount' => 50.5,
-            'currency' => 'EUR',
-            'status' => PosOrder::STATUS_PAID,
-            'paid_method' => PosOrder::PAID_METHOD_CARD,
-            'paid_at' => now(),
-        ]);
 
         $response = $this->actingAs($user)->getJson('/api/dashboard');
 
@@ -106,7 +80,7 @@ class DashboardTest extends TestCase
             ->assertJsonPath('store_count', 1)
             ->assertJsonPath('stores.0.name', 'My Store')
             ->assertJsonPath('stores.0.wallet_type', 'blink');
-        // 5000 + 1000 sats = 6000 total_revenue (EUR not converted to sats)
+        // 0.00005 BTC = 5000 sats, 1000 SATS, EUR in breakdown
         $data = $response->json();
         $this->assertSame(6000, (int) $data['total_revenue']);
         $breakdown = $data['revenue_breakdown'] ?? [];

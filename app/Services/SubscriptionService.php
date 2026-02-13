@@ -6,7 +6,6 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -54,10 +53,6 @@ class SubscriptionService
     /**
      * Activate or extend subscription for a user.
      * Called when payment is successful.
-     *
-     * Uses DB transaction with pessimistic locking to prevent race conditions
-     * when concurrent webhooks or success callbacks arrive simultaneously.
-     * Also updates the user role within the same transaction for consistency.
      */
     public function activateSubscription(User $user, string $planName, ?string $btcpaySubscriptionId = null): Subscription
     {
@@ -66,85 +61,48 @@ class SubscriptionService
             throw new \Exception("Subscription plan '{$planName}' not found.");
         }
 
-        return DB::transaction(function () use ($user, $plan, $planName, $btcpaySubscriptionId) {
-            // Lock the user row to prevent concurrent modifications
-            $user = User::lockForUpdate()->find($user->id);
+        // Get existing subscription
+        $existingSubscription = $user->currentSubscription();
 
-            // Idempotency: if a subscription with this btcpay_subscription_id already exists, return it
+        if ($existingSubscription && $existingSubscription->plan->name === $planName) {
+            // Extend existing subscription by 1 year
+            $existingSubscription->extendOneYear();
             if ($btcpaySubscriptionId) {
-                $existingByBtcpayId = Subscription::where('btcpay_subscription_id', $btcpaySubscriptionId)
-                    ->where('user_id', $user->id)
-                    ->first();
-
-                if ($existingByBtcpayId) {
-                    Log::info('Subscription activation skipped (idempotent)', [
-                        'user_id' => $user->id,
-                        'plan' => $planName,
-                        'btcpay_subscription_id' => $btcpaySubscriptionId,
-                        'subscription_id' => $existingByBtcpayId->id,
-                    ]);
-
-                    return $existingByBtcpayId;
-                }
+                $existingSubscription->btcpay_subscription_id = $btcpaySubscriptionId;
+                $existingSubscription->save();
             }
 
-            // Get existing active subscription (with lock already held on user)
-            $existingSubscription = $user->currentSubscription();
-
-            if ($existingSubscription && $existingSubscription->plan->name === $planName) {
-                // Extend existing subscription by 1 year
-                $existingSubscription->extendOneYear();
-                if ($btcpaySubscriptionId) {
-                    $existingSubscription->btcpay_subscription_id = $btcpaySubscriptionId;
-                    $existingSubscription->save();
-                }
-
-                // Update user role within the same transaction
-                $user->role = $planName;
-                if ($btcpaySubscriptionId) {
-                    $user->btcpay_subscription_id = $btcpaySubscriptionId;
-                }
-                $user->save();
-
-                Log::info('Extended subscription', [
-                    'user_id' => $user->id,
-                    'plan' => $planName,
-                    'expires_at' => $existingSubscription->expires_at,
-                ]);
-
-                return $existingSubscription;
-            }
-
-            // Create new subscription
-            $startsAt = now();
-            $expiresAt = $startsAt->copy()->addYear();
-            $graceEndsAt = $expiresAt->copy()->addDays(14);
-
-            $subscription = Subscription::create([
-                'user_id' => $user->id,
-                'plan_id' => $plan->id,
-                'status' => 'active',
-                'starts_at' => $startsAt,
-                'expires_at' => $expiresAt,
-                'grace_ends_at' => $graceEndsAt,
-                'btcpay_subscription_id' => $btcpaySubscriptionId,
-            ]);
-
-            // Update user role within the same transaction
-            $user->role = $planName;
-            if ($btcpaySubscriptionId) {
-                $user->btcpay_subscription_id = $btcpaySubscriptionId;
-            }
-            $user->save();
-
-            Log::info('Created new subscription', [
+            Log::info('Extended subscription', [
                 'user_id' => $user->id,
                 'plan' => $planName,
-                'expires_at' => $expiresAt,
+                'expires_at' => $existingSubscription->expires_at,
             ]);
 
-            return $subscription;
-        });
+            return $existingSubscription;
+        }
+
+        // Create new subscription
+        $startsAt = now();
+        $expiresAt = $startsAt->copy()->addYear();
+        $graceEndsAt = $expiresAt->copy()->addDays(14);
+
+        $subscription = Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'status' => 'active',
+            'starts_at' => $startsAt,
+            'expires_at' => $expiresAt,
+            'grace_ends_at' => $graceEndsAt,
+            'btcpay_subscription_id' => $btcpaySubscriptionId,
+        ]);
+
+        Log::info('Created new subscription', [
+            'user_id' => $user->id,
+            'plan' => $planName,
+            'expires_at' => $expiresAt,
+        ]);
+
+        return $subscription;
     }
 
     /**

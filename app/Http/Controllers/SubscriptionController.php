@@ -257,23 +257,26 @@ class SubscriptionController extends Controller
             }
 
             // Activate or extend subscription using SubscriptionService
-            // This creates/updates subscription record, handles 1-year extension,
-            // and updates user role -- all within a DB transaction with row locking
-            $oldRole = $user->role;
+            // This creates/updates subscription record and handles 1-year extension
             $subscription = $this->subscriptionService->activateSubscription(
                 $user,
                 $planName,
                 $subscriptionId
             );
 
-            // Refresh user to get updated role from the transaction
-            $user->refresh();
+            // Update user role for backward compatibility (legacy field)
+            $oldRole = $user->role;
+            $user->role = $planName;
+            if ($subscriptionId) {
+                $user->btcpay_subscription_id = $subscriptionId;
+            }
+            $user->save();
 
             Log::info('Subscription activated after checkout success', [
                 'user_id' => $user->id,
                 'user_email' => $user->email,
                 'old_role' => $oldRole,
-                'new_role' => $user->role,
+                'new_role' => $planName,
                 'checkout_id' => $checkoutPlanId,
                 'plan_id' => $planId,
                 'subscription_id' => $subscription->id,

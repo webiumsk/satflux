@@ -20,64 +20,46 @@ class InvoiceController extends Controller
     ) {}
 
     /**
-     * Allowed invoice status values for BTCPay API (whitelist).
-     */
-    private const ALLOWED_INVOICE_STATUSES = ['New', 'Processing', 'Expired', 'Invalid', 'Settled'];
-
-    /**
-     * Max number of invoices per request to avoid DoS and API overload.
-     */
-    private const MAX_TAKE = 500;
-
-    /**
      * List invoices for a store with optional filters.
      */
     public function index(Request $request)
     {
-        $validated = $request->validate([
-            'status' => ['nullable', 'string', 'in:' . implode(',', self::ALLOWED_INVOICE_STATUSES)],
-            'date_from' => ['nullable', 'string', 'date_format:Y-m-d'],
-            'date_to' => [
-                'nullable',
-                'string',
-                'date_format:Y-m-d',
-                function (string $attribute, mixed $value, \Closure $fail) use ($request) {
-                    $from = $request->input('date_from');
-                    if ($from !== null && $from !== '' && $value < $from) {
-                        $fail('date_to must be on or after date_from.');
-                    }
-                },
-            ],
-            'skip' => ['nullable', 'integer', 'min:0'],
-            'take' => ['nullable', 'integer', 'min:1', 'max:' . self::MAX_TAKE],
-        ], [
-            'status.in' => 'The selected status is invalid.',
-            'date_from.date_format' => 'date_from must be Y-m-d (e.g. 2025-01-15).',
-            'date_to.date_format' => 'date_to must be Y-m-d (e.g. 2025-01-15).',
-        ]);
-
         $store = $request->route('store');
-
+        
         // Load merchant API key from store owner
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
-
-        // Build filters from validated query parameters
+        
+        // Build filters from query parameters
         $filters = [];
-
-        if (!empty($validated['status'])) {
-            $filters['status'] = $validated['status'];
+        
+        // Status filter
+        if ($request->has('status') && $request->status) {
+            $filters['status'] = $request->status;
         }
-
-        if (!empty($validated['date_from'])) {
-            $filters['startDate'] = strtotime($validated['date_from']);
+        
+        // Date range filters (BTCPay expects Unix timestamps)
+        if ($request->has('date_from') && $request->date_from) {
+            // Convert date string to Unix timestamp (seconds)
+            $dateFrom = strtotime($request->date_from);
+            if ($dateFrom !== false) {
+                // BTCPay expects startDate as Unix timestamp in seconds
+                $filters['startDate'] = $dateFrom;
+            }
         }
-
-        if (!empty($validated['date_to'])) {
-            $filters['endDate'] = strtotime($validated['date_to'] . ' 23:59:59');
+        
+        if ($request->has('date_to') && $request->date_to) {
+            // Convert date string to Unix timestamp (seconds)
+            // Add 23:59:59 to include the entire day
+            $dateTo = strtotime($request->date_to . ' 23:59:59');
+            if ($dateTo !== false) {
+                // BTCPay expects endDate as Unix timestamp in seconds
+                $filters['endDate'] = $dateTo;
+            }
         }
-
-        $skip = (int) ($validated['skip'] ?? 0);
-        $take = (int) ($validated['take'] ?? 100);
+        
+        // Pagination
+        $skip = $request->get('skip', 0);
+        $take = $request->get('take', 100);
         
         try {
             // Fetch invoices from BTCPay API
@@ -368,12 +350,7 @@ class InvoiceController extends Controller
             } while (count($invoices) === $take);
 
             $writer = new Xlsx($spreadsheet);
-            $writer->setPreCalculateFormulas(false);
             $writer->save('php://output');
-
-            // Free memory after writing
-            $spreadsheet->disconnectWorksheets();
-            unset($spreadsheet, $writer, $sheet);
         }, 200, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',

@@ -5,7 +5,7 @@ import api from '../services/api';
 export interface App {
     id: string;
     name: string;
-    app_type: 'PointOfSale' | 'PaymentButton' | 'LightningAddress' | 'Tickets';
+    app_type: 'PointOfSale' | 'PaymentButton' | 'LightningAddress';
     archived?: boolean;
     config?: any;
     metadata?: any;
