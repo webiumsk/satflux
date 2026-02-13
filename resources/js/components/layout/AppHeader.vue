@@ -37,13 +37,11 @@
         <div class="hidden md:flex items-center space-x-8">
           <!-- Logo -->
           <component :is="isInertia ? Link : RouterLink" :href="isInertia ? '/' : undefined" :to="!isInertia ? '/' : undefined" class="flex items-center gap-3">
-            <div
-              class="w-8 h-8 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg"
-            >
-              SF
+            <div class="w-8 h-8 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-1">
+              <img src="/img/logo-satflux-white.svg" alt="SatFlux" class="w-full h-full" />
             </div>
             <span class="text-xl font-bold text-white tracking-tight"
-              >satflux.io            </span
+              >SATFLUX</span
             >
           </component>
 
@@ -118,13 +116,11 @@
         <!-- Center: Logo on mobile only -->
         <div class="md:hidden absolute left-1/2 transform -translate-x-1/2">
           <component :is="isInertia ? Link : RouterLink" :href="isInertia ? '/' : undefined" :to="!isInertia ? '/' : undefined" class="flex items-center gap-2">
-            <div
-              class="w-7 h-7 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm"
-            >
-              SF
+            <div class="w-7 h-7 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-1">
+              <img src="/img/logo-satflux-white.svg" alt="SatFlux" class="w-full h-full" />
             </div>
             <span class="text-lg font-bold text-white tracking-tight"
-              >satflux.io            </span
+              >SATFLUX</span
               >
             </component>
         </div>
