@@ -46,6 +46,10 @@ api.interceptors.request.use(
         if (csrfToken) {
             config.headers['X-XSRF-TOKEN'] = decodeURIComponent(csrfToken);
         }
+        // Let browser set Content-Type with boundary for FormData (file uploads)
+        if (config.data instanceof FormData) {
+            delete config.headers['Content-Type'];
+        }
         return config;
     },
     (error) => {

@@ -716,9 +716,7 @@ async function onEventImageChange(e: Event) {
   try {
     const formData = new FormData();
     formData.append('image', file);
-    const response = await api.post(`/stores/${props.store.id}/products/image`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const response = await api.post(`/stores/${props.store.id}/tickets/events/image`, formData);
     eventForm.value.eventLogoUrl = response.data.data?.url || response.data.data?.image_url || '';
     showSuccess(t('tickets.image_uploaded'));
   } catch (err: any) {
