@@ -13,8 +13,6 @@
     "version:major": "node scripts/bump-version.js major"
   },
   "dependencies": {
-    "laravel-echo": "^1.16.0",
-    "pusher-js": "^8.4.0-rc2",
     "@inertiajs/vue3": "^2.0",
     "@pinia/nuxt": "^0.5.1",
     "@tiptap/extension-code-block-lowlight": "^2.10.0",
@@ -37,8 +35,11 @@
     "axios": "^1.7.0",
     "bech32": "^2.0.0",
     "dompurify": "^3.2.2",
+    "html5-qrcode": "^2.3.8",
+    "laravel-echo": "^1.16.0",
     "lowlight": "^3.1.0",
     "pinia": "^2.1.7",
+    "pusher-js": "^8.4.0-rc2",
     "qrcode": "^1.5.4",
     "vue": "^3.4.0",
     "vue-i18n": "^9.9.1",
