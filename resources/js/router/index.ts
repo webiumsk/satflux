@@ -143,6 +143,12 @@ const router = createRouter({
             }
         },
         {
+            path: '/stores/:id/ticket-check-in/:eventId',
+            name: 'stores-ticket-check-in',
+            component: () => import('../pages/stores/TicketCheckIn.vue'),
+            meta: { public: true },
+        },
+        {
             path: '/stores/:id/invoices/:invoiceId',
             name: 'stores-invoices-show',
             component: () => import('../pages/stores/InvoiceShow.vue'),
