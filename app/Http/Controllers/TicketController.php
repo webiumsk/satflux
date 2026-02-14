@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Store;
+use App\Services\BtcPay\BtcPayClient;
 use App\Services\BtcPay\TicketService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -10,12 +11,10 @@ use Illuminate\Validation\Rule;
 
 class TicketController extends Controller
 {
-    protected TicketService $ticketService;
-
-    public function __construct(TicketService $ticketService)
-    {
-        $this->ticketService = $ticketService;
-    }
+    public function __construct(
+        protected TicketService $ticketService,
+        protected BtcPayClient $btcPayClient
+    ) {}
 
     // ──────────────────────────────────────────────────
     //  EVENTS
@@ -89,11 +88,12 @@ class TicketController extends Controller
             'hasMaximumCapacity' => ['sometimes', 'boolean'],
             'maximumEventCapacity' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'eventLogoUrl' => ['sometimes', 'nullable', 'string', 'max:500', Rule::when($request->filled('eventLogoUrl'), ['url'])],
+            'eventLogoFileId' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
-        // Build request data — only include non-null, non-empty logo
+        // Build request data — include eventLogoFileId (plugin 1.5) and optional eventLogoUrl
         $data = array_filter($request->only([
             'title',
             'description',
@@ -108,7 +108,12 @@ class TicketController extends Controller
             'hasMaximumCapacity',
             'maximumEventCapacity',
             'eventLogoUrl',
+            'eventLogoFileId',
         ]), (fn ($v, $k) => $v !== null && ($k !== 'eventLogoUrl' || (string) $v !== '')), ARRAY_FILTER_USE_BOTH);
+        if ($request->has('eventLogoFileId')) {
+            $data['eventLogoFileId'] = $request->input('eventLogoFileId');
+        }
+        $this->ensureEventLogoUrl($data);
 
         $event = $this->ticketService->createEvent(
             $store->btcpay_store_id,
@@ -138,6 +143,7 @@ class TicketController extends Controller
             'hasMaximumCapacity' => ['sometimes', 'boolean'],
             'maximumEventCapacity' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'eventLogoUrl' => ['sometimes', 'nullable', 'string', 'max:500', Rule::when($request->filled('eventLogoUrl'), ['url'])],
+            'eventLogoFileId' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
@@ -156,7 +162,12 @@ class TicketController extends Controller
             'hasMaximumCapacity',
             'maximumEventCapacity',
             'eventLogoUrl',
+            'eventLogoFileId',
         ]), (fn ($v, $k) => $v !== null && ($k !== 'eventLogoUrl' || (string) $v !== '')), ARRAY_FILTER_USE_BOTH);
+        if ($request->has('eventLogoFileId')) {
+            $data['eventLogoFileId'] = $request->input('eventLogoFileId');
+        }
+        $this->ensureEventLogoUrl($data);
 
         $event = $this->ticketService->updateEvent(
             $store->btcpay_store_id,
@@ -169,12 +180,64 @@ class TicketController extends Controller
     }
 
     /**
-     * Normalize event response so frontend always gets eventLogoUrl (BTCPay may return logoUrl).
+     * When payload has eventLogoFileId but no eventLogoUrl, resolve URL from BTCPay Files API (GET file)
+     * so the plugin receives a display URL (plugin may not persist eventLogoFileId).
+     */
+    protected function ensureEventLogoUrl(array &$data): void
+    {
+        $fileId = trim((string) ($data['eventLogoFileId'] ?? ''));
+        if ($fileId === '') {
+            return;
+        }
+        $logoUrl = trim((string) ($data['eventLogoUrl'] ?? ''));
+        if ($logoUrl !== '') {
+            return;
+        }
+        $baseUrl = rtrim(config('services.btcpay.base_url', ''), '/');
+        try {
+            $file = $this->btcPayClient->get('/api/v1/files/' . $fileId);
+            Log::debug('Ticket event logo GET file response', ['file_id' => $fileId, 'keys' => array_keys($file)]);
+            $url = $file['url'] ?? null;
+            $storageName = $file['storageName'] ?? $file['storage_name'] ?? null;
+            $uri = $file['uri'] ?? null;
+            if (! empty($url) && ! str_starts_with((string) $url, 'fileid:')) {
+                $data['eventLogoUrl'] = $url;
+                $data['logoUrl'] = $url;
+                Log::debug('Ticket event logo URL resolved from file.url', ['eventLogoUrl' => $url]);
+                return;
+            }
+            if (! empty($storageName)) {
+                $data['eventLogoUrl'] = $baseUrl . '/LocalStorage/' . $storageName;
+                $data['logoUrl'] = $data['eventLogoUrl'];
+                Log::debug('Ticket event logo URL built from storageName', ['eventLogoUrl' => $data['eventLogoUrl']]);
+                return;
+            }
+            if (! empty($uri)) {
+                $resolved = str_starts_with((string) $uri, 'http') ? $uri : $baseUrl . (str_starts_with((string) $uri, '/') ? '' : '/') . $uri;
+                $data['eventLogoUrl'] = $resolved;
+                $data['logoUrl'] = $resolved;
+                Log::debug('Ticket event logo URL from file.uri', ['eventLogoUrl' => $resolved]);
+                return;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Could not resolve event logo URL from file id', ['file_id' => $fileId, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Normalize event response: eventLogoUrl (and logoUrl) and eventLogoFileId for frontend.
+     * If plugin returns only eventLogoFileId, build eventLogoUrl from BTCPay base URL so image displays.
      */
     protected function normalizeEventLogo(array $event): array
     {
         if (! isset($event['eventLogoUrl']) && ! empty($event['logoUrl'])) {
             $event['eventLogoUrl'] = $event['logoUrl'];
+        }
+        $event['eventLogoFileId'] = $event['eventLogoFileId'] ?? '';
+        $fileId = trim((string) ($event['eventLogoFileId'] ?? ''));
+        if (($event['eventLogoUrl'] ?? '') === '' && $fileId !== '') {
+            $baseUrl = rtrim(config('services.btcpay.base_url', ''), '/');
+            $event['eventLogoUrl'] = $baseUrl . '/LocalStorage/' . $fileId;
         }
         return $event;
     }
