@@ -852,7 +852,19 @@
     "delete_ticket_type_confirm": "Zmazať \"{name}\"?",
     "ticket_type_deleted": "Typ vstupenky zmazaný",
     "checkin_confirm": "Check-in {name} (vstupenka {number})?",
-    "checkin_success": "Vstupenka {number} odcheckovaná."
+    "checkin_success": "Vstupenka {number} odcheckovaná.",
+    "checked_in_label": "s check-inom",
+    "scan_qr": "Skenovať QR kód",
+    "scan_hint": "Kliknite na Začať skenovanie pre použitie kamery",
+    "start_scanning": "Začať skenovanie",
+    "stop_scanning": "Zastaviť skenovanie",
+    "manual_entry": "Manuálny vstup",
+    "enter_ticket_code": "Zadajte číslo vstupenky alebo naskenovaný kód",
+    "event_not_found": "Podujatie sa nenašlo",
+    "checkin_ok": "Check-in úspešný",
+    "checkin_fail": "Check-in zlyhal",
+    "recent_checkins": "Nedávne check-iny",
+    "camera_error": "Chyba kamery"
   },
   "landing": {
     "hero_headline": "Prijímajte BTC platby jednoducho.",

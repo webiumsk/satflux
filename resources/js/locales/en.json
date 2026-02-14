@@ -851,7 +851,19 @@
     "delete_ticket_type_confirm": "Delete \"{name}\"?",
     "ticket_type_deleted": "Ticket type deleted",
     "checkin_confirm": "Check in {name} (ticket {number})?",
-    "checkin_success": "Ticket {number} checked in."
+    "checkin_success": "Ticket {number} checked in.",
+    "checked_in_label": "checked in",
+    "scan_qr": "Scan QR code",
+    "scan_hint": "Click Start scanning to use the camera",
+    "start_scanning": "Start scanning",
+    "stop_scanning": "Stop scanning",
+    "manual_entry": "Manual entry",
+    "enter_ticket_code": "Enter ticket number or scan code",
+    "event_not_found": "Event not found",
+    "checkin_ok": "Check-in successful",
+    "checkin_fail": "Check-in failed",
+    "recent_checkins": "Recent check-ins",
+    "camera_error": "Camera error"
   },
   "landing": {
     "hero_headline": "Accept BTC Payments Simply.",
