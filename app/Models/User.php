@@ -210,7 +210,8 @@ class User extends Authenticatable
 
     /**
      * Get the current subscription plan for the user.
-     * Returns the plan for the current subscription, or FREE plan if no subscription.
+     * Returns the plan for the current subscription, or falls back to the plan
+     * matching the user's role (pro, enterprise, free).
      *
      * @return \App\Models\SubscriptionPlan|null
      */
@@ -221,7 +222,17 @@ class User extends Authenticatable
             return $subscription->plan;
         }
 
-        return SubscriptionPlan::where('code', 'free')->orWhere('name', 'free')->first();
+        // When no active subscription exists, resolve plan from the user's role.
+        // This covers admin-assigned roles (e.g. pro, enterprise) without a subscription record.
+        $role = $this->role ?? 'free';
+        if (in_array($role, ['pro', 'enterprise'])) {
+            $plan = SubscriptionPlan::where('code', $role)->first();
+            if ($plan) {
+                return $plan;
+            }
+        }
+
+        return SubscriptionPlan::where('code', 'free')->first();
     }
 
     /**

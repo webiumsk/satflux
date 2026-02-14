@@ -406,6 +406,11 @@ class AdminController extends Controller
 
             $user->save();
 
+            // Clear cached limits when role changes so the new plan takes effect immediately
+            if (isset($updated['role'])) {
+                \Illuminate\Support\Facades\Cache::forget('user_limits_' . $user->id);
+            }
+
             Log::info('Admin updated user', [
                 'admin_id' => $request->user()->id,
                 'user_id' => $user->id,
