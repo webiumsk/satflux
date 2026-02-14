@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Log;
 
 class TicketService
 {
+    /** Sentinel quantity for "unlimited" when event has no max capacity (plugin has no ticket-type unlimited flag). */
+    public const UNLIMITED_QUANTITY = 999999;
+
     protected BtcPayClient $client;
 
     public function __construct(BtcPayClient $client)

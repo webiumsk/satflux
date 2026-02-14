@@ -11,8 +11,6 @@
         save-button-text="Generate Code"
         saving-text="Generating..."
         :saving="formRef?.generating"
-        :error="formRef?.error"
-        :success="formRef?.success"
       />
 
       <PayButtonForm
@@ -193,7 +191,9 @@ async function handleDelete() {
     await appsStore.deleteApp(storeId.value, appId.value);
     router.push({ name: "stores-show", params: { id: storeId.value } });
   } catch (err: any) {
-    deleteError.value = err.response?.data?.message || "Failed to delete app";
+    const msg = err.response?.data?.message || "Failed to delete app";
+    deleteError.value = msg;
+    flashStore.error(msg);
   } finally {
     deleting.value = false;
   }

@@ -11,8 +11,6 @@
         save-button-text="Save Settings"
         saving-text="Saving..."
         :saving="formRef?.saving"
-        :error="formRef?.error"
-        :success="formRef?.success"
       />
 
       <CrowdfundForm
@@ -152,7 +150,9 @@ async function handleDelete() {
     await appsStore.deleteApp(storeId.value, appId.value);
     router.push({ name: "stores-show", params: { id: storeId.value } });
   } catch (err: any) {
-    deleteError.value = err.response?.data?.message || "Failed to delete app";
+    const msg = err.response?.data?.message || "Failed to delete app";
+    deleteError.value = msg;
+    flashStore.error(msg);
   } finally {
     deleting.value = false;
   }

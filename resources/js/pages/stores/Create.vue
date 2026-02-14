@@ -267,13 +267,6 @@
                 </dl>
               </div>
               
-              <div v-if="error" class="rounded-xl bg-red-500/10 border border-red-500/20 p-4">
-                <div class="flex">
-                   <svg class="h-5 w-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                   <div class="text-sm text-red-400">{{ error }}</div>
-                </div>
-              </div>
-              
               <div class="flex justify-between pt-4">
                 <button
                   @click="currentStep = 2"
@@ -317,6 +310,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
+import { useFlashStore } from '../../store/flash';
 import { useAccountLimits } from '../../composables/useAccountLimits';
 import { currencies } from '../../data/currencies';
 import { exchanges } from '../../data/exchanges';
@@ -331,7 +325,7 @@ const { limits, load: loadLimits } = useAccountLimits();
 
 const currentStep = ref(1);
 const loading = ref(false);
-const error = ref('');
+const flashStore = useFlashStore();
 const storeLimitReached = ref(false);
 const showUpgradeModal = ref(false);
 
@@ -452,18 +446,15 @@ onMounted(async () => {
 });
 
 async function handleSubmit() {
-  error.value = '';
   loading.value = true;
-
+  flashStore.clear();
   try {
     const store = await storesStore.createStore(form.value as any);
     router.push(`/stores/${store.id}?setup=1`);
   } catch (err: any) {
-    error.value = err.response?.data?.message || t('create_store.failed_to_create');
-    if (err.response?.data?.errors) {
-      const errors = Object.values(err.response.data.errors).flat();
-      error.value = errors.join(', ');
-    }
+    const msg = err.response?.data?.message || t('create_store.failed_to_create');
+    const errors = err.response?.data?.errors ? Object.values(err.response.data.errors).flat() : [];
+    flashStore.error(errors.length ? errors.join(', ') : msg);
   } finally {
     loading.value = false;
   }

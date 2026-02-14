@@ -23,8 +23,6 @@
           save-button-text=""
           saving-text=""
           :saving="toggleSaving"
-          :error="toggleError"
-          :success="toggleSuccess"
         >
           <template #actions>
             <template v-if="store?.anyone_can_create_invoice">
@@ -102,6 +100,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
 import { useAppsStore } from '../../store/apps';
+import { useFlashStore } from '../../store/flash';
 import api from '../../services/api';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
 import AppShowHeader from '../../components/stores/AppShowHeader.vue';
@@ -112,6 +111,7 @@ const route = useRoute();
 const router = useRouter();
 const storesStore = useStoresStore();
 const appsStore = useAppsStore();
+const flashStore = useFlashStore();
 
 const storeId = route.params.id as string;
 const store = ref<any>(null);
@@ -125,8 +125,6 @@ const canCopy = computed(() => {
 });
 
 const toggleSaving = ref(false);
-const toggleError = ref<string | undefined>(undefined);
-const toggleSuccess = ref<string | undefined>(undefined);
 
 onMounted(async () => {
   try {
@@ -141,18 +139,16 @@ onMounted(async () => {
 async function setPayButtonEnabled(enabled: boolean) {
   if (!store.value) return;
   toggleSaving.value = true;
-  toggleError.value = undefined;
-  toggleSuccess.value = undefined;
+  flashStore.clear();
   try {
     const { data } = await api.get(`/stores/${storeId}/settings`);
     const payload = { ...data.data, anyone_can_create_invoice: enabled };
     await api.put(`/stores/${storeId}/settings`, payload);
     await storesStore.fetchStore(storeId);
     store.value = storesStore.currentStore;
-    toggleSuccess.value = enabled ? t('stores.pay_button_enabled_success') : t('stores.pay_button_disabled_success');
-    setTimeout(() => { toggleSuccess.value = undefined; }, 3000);
+    flashStore.success(enabled ? t('stores.pay_button_enabled_success') : t('stores.pay_button_disabled_success'));
   } catch (err: any) {
-    toggleError.value = err.response?.data?.message || (enabled ? t('stores.pay_button_enable_failed') : t('stores.pay_button_disable_failed'));
+    flashStore.error(err.response?.data?.message || (enabled ? t('stores.pay_button_enable_failed') : t('stores.pay_button_disable_failed')));
   } finally {
     toggleSaving.value = false;
   }

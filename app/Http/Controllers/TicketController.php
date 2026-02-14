@@ -298,6 +298,8 @@ class TicketController extends Controller
 
     /**
      * Create a ticket type.
+     * Unlimited capacity is at event level (hasMaximumCapacity = false). When event has no max capacity
+     * and quantity is omitted or < 1, we send a high quantity so QuantityAvailable stays correct.
      */
     public function createTicketType(Request $request, Store $store, string $eventId)
     {
@@ -305,19 +307,36 @@ class TicketController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0.01'],
             'description' => ['sometimes', 'nullable', 'string'],
-            'quantity' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'quantity' => ['sometimes', 'nullable', 'integer', 'min:0'],
             'isDefault' => ['sometimes', 'boolean'],
         ]);
 
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
+
+        $event = $this->ticketService->getEvent($store->btcpay_store_id, $eventId, $userApiKey);
+        $hasMaxCapacity = $event['hasMaximumCapacity'] ?? false;
 
         $data = array_filter($request->only([
             'name',
             'price',
             'description',
             'quantity',
-            'isDefault',
-        ]), fn ($v) => $v !== null);
+        ]), fn ($v) => $v !== null && $v !== '');
+        $data['isDefault'] = $request->boolean('isDefault');
+        $q = array_key_exists('quantity', $data) ? (int) $data['quantity'] : null;
+        if ($hasMaxCapacity && ($q === null || $q < 1)) {
+            return response()->json(['message' => __('messages.tickets_quantity_required_when_capacity')], 422);
+        }
+        if (! array_key_exists('quantity', $data) || $q < 1) {
+            $data['quantity'] = TicketService::UNLIMITED_QUANTITY;
+        }
+
+        if ($data['isDefault']) {
+            $existing = $this->ticketService->listTicketTypes($store->btcpay_store_id, $eventId, $userApiKey);
+            foreach ($existing as $tt) {
+                $this->ticketService->updateTicketType($store->btcpay_store_id, $eventId, $tt['id'], ['isDefault' => false], $userApiKey);
+            }
+        }
 
         $ticketType = $this->ticketService->createTicketType(
             $store->btcpay_store_id,
@@ -331,6 +350,8 @@ class TicketController extends Controller
 
     /**
      * Update a ticket type.
+     * Unlimited capacity is at event level; when event has no max capacity and quantity omitted or < 1,
+     * we send UNLIMITED_QUANTITY so QuantityAvailable stays correct.
      */
     public function updateTicketType(Request $request, Store $store, string $eventId, string $ticketTypeId)
     {
@@ -338,19 +359,38 @@ class TicketController extends Controller
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'price' => ['sometimes', 'required', 'numeric', 'min:0.01'],
             'description' => ['sometimes', 'nullable', 'string'],
-            'quantity' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'quantity' => ['sometimes', 'nullable', 'integer', 'min:0'],
             'isDefault' => ['sometimes', 'boolean'],
         ]);
 
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
+
+        $event = $this->ticketService->getEvent($store->btcpay_store_id, $eventId, $userApiKey);
+        $hasMaxCapacity = $event['hasMaximumCapacity'] ?? false;
 
         $data = array_filter($request->only([
             'name',
             'price',
             'description',
             'quantity',
-            'isDefault',
-        ]), fn ($v) => $v !== null);
+        ]), fn ($v) => $v !== null && $v !== '');
+        $data['isDefault'] = $request->boolean('isDefault');
+        $q = array_key_exists('quantity', $data) ? (int) $data['quantity'] : null;
+        if ($hasMaxCapacity && ($q === null || $q < 1)) {
+            return response()->json(['message' => __('messages.tickets_quantity_required_when_capacity')], 422);
+        }
+        if (! array_key_exists('quantity', $data) || $q < 1) {
+            $data['quantity'] = TicketService::UNLIMITED_QUANTITY;
+        }
+
+        if ($data['isDefault']) {
+            $existing = $this->ticketService->listTicketTypes($store->btcpay_store_id, $eventId, $userApiKey);
+            foreach ($existing as $tt) {
+                if (($tt['id'] ?? '') !== $ticketTypeId) {
+                    $this->ticketService->updateTicketType($store->btcpay_store_id, $eventId, $tt['id'], ['isDefault' => false], $userApiKey);
+                }
+            }
+        }
 
         $ticketType = $this->ticketService->updateTicketType(
             $store->btcpay_store_id,

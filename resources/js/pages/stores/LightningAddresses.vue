@@ -291,13 +291,6 @@
                 </div>
               </div>
 
-              <div v-if="error" class="rounded-xl bg-red-500/10 border border-red-500/20 p-4">
-                 <div class="flex">
-                    <svg class="h-5 w-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    <div class="text-sm text-red-400">{{ error }}</div>
-                </div>
-              </div>
-
               <div class="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
@@ -414,7 +407,6 @@ const deleting = ref(false);
 const addresses = ref<any[]>([]);
 const store = ref<any>(null);
 const limit = ref<{ max: number | null; current: number; unlimited: boolean } | null>(null);
-const error = ref('');
 const deleteError = ref('');
 const showForm = ref(false);
 const showDeleteModal = ref(false);
@@ -457,14 +449,12 @@ async function loadStore() {
     const response = await api.get(`/stores/${storeId}`);
     store.value = response.data.data;
   } catch (err: any) {
-    console.error('Failed to load store:', err);
-    error.value = 'Failed to load store';
+    flashStore.error('Failed to load store');
   }
 }
 
 async function loadAddresses() {
   loading.value = true;
-  error.value = '';
   try {
     const response = await api.get(`/stores/${storeId}/lightning-addresses`);
     addresses.value = response.data.data || [];
@@ -472,8 +462,7 @@ async function loadAddresses() {
       limit.value = response.data.limit;
     }
   } catch (err: any) {
-    console.error('Failed to load addresses:', err);
-    error.value = err.response?.data?.message || 'Failed to load lightning addresses';
+    flashStore.error(err.response?.data?.message || 'Failed to load lightning addresses');
   } finally {
     loading.value = false;
   }
@@ -500,18 +489,16 @@ async function openAddForm() {
   };
   showAdvancedSettings.value = false;
   showForm.value = true;
-  error.value = '';
+  flashStore.clear();
 }
 
 function closeForm() {
   showForm.value = false;
-  error.value = '';
 }
 
 async function handleSubmit() {
   saving.value = true;
-  error.value = '';
-
+  flashStore.clear();
   try {
     const data: any = {
       username: form.value.username,
@@ -533,12 +520,12 @@ async function handleSubmit() {
           }
           // If empty object, don't include it in the request
         } else {
-          error.value = 'Invoice Metadata must be a valid JSON object (not an array or primitive value)';
+          flashStore.error('Invoice Metadata must be a valid JSON object (not an array or primitive value)');
           saving.value = false;
           return;
         }
       } catch (e) {
-        error.value = 'Invalid JSON format in Invoice Metadata. Please check your syntax.';
+        flashStore.error('Invalid JSON format in Invoice Metadata. Please check your syntax.');
         saving.value = false;
         return;
       }
@@ -560,7 +547,6 @@ async function handleSubmit() {
       showUpgradeModal.value = true;
     } else {
       flashStore.error(errorMessage);
-      error.value = '';
     }
   } finally {
     saving.value = false;
