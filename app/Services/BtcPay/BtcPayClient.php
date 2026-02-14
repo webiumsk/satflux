@@ -120,10 +120,10 @@ class BtcPayClient
                     ])
                     ->timeout(30);
 
-                // $file is the UploadedFile object directly
-                // Use get() method to get file contents - works for both real and fake files
+                // Use safe filename derived from MIME type + uniqid to avoid malicious client names (.php, path traversal, etc.)
+                $safeFilename = $this->getSafeFilenameFromUploadedFile($file);
                 $fileContents = $file->get();
-                $response = $client->attach('file', $fileContents, $file->getClientOriginalName())
+                $response = $client->attach('file', $fileContents, $safeFilename)
                     ->post($endpoint);
 
                 if ($response->successful()) {
@@ -280,6 +280,25 @@ class BtcPayClient
         $this->logRequest($method, $endpoint, [], $response, $json, "Error: {$message}");
 
         throw new BtcPayException($message, $statusCode);
+    }
+
+    /**
+     * Derive a safe filename from the uploaded file (MIME type + uniqid).
+     * Never use getClientOriginalName() for the sent filename to avoid malicious names.
+     */
+    protected function getSafeFilenameFromUploadedFile($file): string
+    {
+        $mimeToExt = [
+            'image/jpeg' => 'jpg',
+            'image/jpg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
+            'image/svg+xml' => 'svg',
+        ];
+        $mime = $file->getMimeType();
+        $ext = $mimeToExt[$mime] ?? 'bin';
+        return 'upload_' . uniqid('', true) . '.' . $ext;
     }
 
     /**
