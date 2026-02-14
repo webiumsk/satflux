@@ -13,8 +13,7 @@ class ProcessBtcPayWebhookTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
-    public function handle_marks_event_as_processed_when_store_is_not_subscription_store(): void
+    public function test_handle_marks_event_as_processed_when_store_is_not_subscription_store(): void
     {
         config(['services.btcpay.subscription_store_id' => 'subscription-store-123']);
         $event = WebhookEvent::create([
@@ -33,8 +32,7 @@ class ProcessBtcPayWebhookTest extends TestCase
         $this->assertNotNull($event->processed_at);
     }
 
-    /** @test */
-    public function handle_processes_subscription_invoice_paid_event_and_marks_complete(): void
+    public function test_handle_processes_subscription_invoice_paid_event_and_marks_complete(): void
     {
         Config::set('services.btcpay.subscription_store_id', 'sub-store-123');
         Config::set('services.btcpay.subscription_plans.pro', 'plan-pro-123');
@@ -64,8 +62,7 @@ class ProcessBtcPayWebhookTest extends TestCase
         $this->assertNotNull($event->processed_at);
     }
 
-    /** @test */
-    public function handle_does_not_update_user_when_customer_email_not_found(): void
+    public function test_handle_does_not_update_user_when_customer_email_not_found(): void
     {
         config(['services.btcpay.subscription_store_id' => 'sub-store-123']);
         config(['services.btcpay.subscription_plans.pro' => 'plan-pro-123']);

@@ -119,4 +119,46 @@ class WebhookTest extends TestCase
         $this->assertFalse(WebhookEvent::first()->verified);
         Queue::assertPushed(ProcessBtcPayWebhook::class);
     }
+
+    public function test_webhook_uses_store_webhook_secret_when_store_has_one(): void
+    {
+        $store = Store::factory()->create([
+            'btcpay_store_id' => 'btcpay-store-per-store',
+            'webhook_secret' => 'store-secret',
+        ]);
+        $payload = ['type' => 'InvoiceSettled', 'storeId' => 'btcpay-store-per-store'];
+        $body = json_encode($payload);
+        $signature = hash_hmac('sha256', $body, 'store-secret');
+
+        $response = $this->postJson('/api/webhooks/btcpay', $payload, [
+            'BTCPay-Sig' => 'sha256=' . $signature,
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['status' => 'received']);
+        $event = WebhookEvent::first();
+        $this->assertTrue($event->verified);
+        $this->assertSame($store->id, $event->store_id);
+        Queue::assertPushed(ProcessBtcPayWebhook::class);
+    }
+
+    public function test_webhook_returns_401_when_store_has_secret_but_request_signed_with_config_secret(): void
+    {
+        Store::factory()->create([
+            'btcpay_store_id' => 'btcpay-store-own-secret',
+            'webhook_secret' => 'store-secret',
+        ]);
+        config(['services.btcpay.webhook_secret' => 'config-secret']);
+        $payload = ['type' => 'InvoiceSettled', 'storeId' => 'btcpay-store-own-secret'];
+        $body = json_encode($payload);
+        $signature = hash_hmac('sha256', $body, 'config-secret');
+
+        $response = $this->postJson('/api/webhooks/btcpay', $payload, [
+            'BTCPay-Sig' => 'sha256=' . $signature,
+        ]);
+
+        $response->assertStatus(401);
+        $response->assertJson(['error' => 'Invalid signature']);
+        $this->assertDatabaseCount('webhook_events', 0);
+    }
 }

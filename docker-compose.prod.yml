@@ -81,6 +81,62 @@ services:
       - REVERB_SERVER_HOST=0.0.0.0
       - REVERB_SERVER_PORT=8080
 
+  queue:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: satflux_queue_prod
+    command: ["php", "artisan", "queue:work", "redis", "--sleep=3", "--tries=3", "--max-time=3600", "--queue=webhooks,exports"]
+    volumes:
+      - .:/var/www:rw
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+    working_dir: /var/www
+    depends_on:
+      php:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - satflux
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'echo \"OK\";' || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  scheduler:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: satflux_scheduler_prod
+    command: ["php", "artisan", "schedule:work"]
+    volumes:
+      - .:/var/www:rw
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+    working_dir: /var/www
+    depends_on:
+      php:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - satflux
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'echo \"OK\";' || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
   postgres:
     image: postgres:16-alpine
     container_name: satflux_postgres_prod

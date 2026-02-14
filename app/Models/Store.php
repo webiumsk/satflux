@@ -30,6 +30,8 @@ class Store extends Model
         'auto_report_enabled',
         'auto_report_email',
         'auto_report_format',
+        'webhook_secret',
+        'btcpay_webhook_id',
     ];
 
     /**

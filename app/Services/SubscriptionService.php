@@ -6,6 +6,7 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -53,6 +54,8 @@ class SubscriptionService
     /**
      * Activate or extend subscription for a user.
      * Called when payment is successful.
+     * Uses a transaction and pessimistic lock to prevent race conditions when
+     * multiple webhooks or callbacks arrive simultaneously.
      */
     public function activateSubscription(User $user, string $planName, ?string $btcpaySubscriptionId = null): Subscription
     {
@@ -61,48 +64,59 @@ class SubscriptionService
             throw new \Exception("Subscription plan '{$planName}' not found.");
         }
 
-        // Get existing subscription
-        $existingSubscription = $user->currentSubscription();
-
-        if ($existingSubscription && $existingSubscription->plan->name === $planName) {
-            // Extend existing subscription by 1 year
-            $existingSubscription->extendOneYear();
-            if ($btcpaySubscriptionId) {
-                $existingSubscription->btcpay_subscription_id = $btcpaySubscriptionId;
-                $existingSubscription->save();
+        return DB::transaction(function () use ($user, $plan, $planName, $btcpaySubscriptionId) {
+            // Lock user row to serialize concurrent webhooks for the same user
+            $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
+            if (!$lockedUser) {
+                throw new \Exception("User not found.");
             }
 
-            Log::info('Extended subscription', [
-                'user_id' => $user->id,
-                'plan' => $planName,
-                'expires_at' => $existingSubscription->expires_at,
+            // Get existing active subscription under lock (same user, so lock is held)
+            $existingSubscription = Subscription::where('user_id', $lockedUser->id)
+                ->whereIn('status', ['active', 'grace'])
+                ->orderBy('expires_at', 'desc')
+                ->lockForUpdate()
+                ->first();
+
+            if ($existingSubscription && $existingSubscription->plan->name === $planName) {
+                $existingSubscription->extendOneYear();
+                if ($btcpaySubscriptionId) {
+                    $existingSubscription->btcpay_subscription_id = $btcpaySubscriptionId;
+                    $existingSubscription->save();
+                }
+
+                Log::info('Extended subscription', [
+                    'user_id' => $lockedUser->id,
+                    'plan' => $planName,
+                    'expires_at' => $existingSubscription->expires_at,
+                ]);
+
+                return $existingSubscription;
+            }
+
+            // Create new subscription
+            $startsAt = now();
+            $expiresAt = $startsAt->copy()->addYear();
+            $graceEndsAt = $expiresAt->copy()->addDays(14);
+
+            $subscription = Subscription::create([
+                'user_id' => $lockedUser->id,
+                'plan_id' => $plan->id,
+                'status' => 'active',
+                'starts_at' => $startsAt,
+                'expires_at' => $expiresAt,
+                'grace_ends_at' => $graceEndsAt,
+                'btcpay_subscription_id' => $btcpaySubscriptionId,
             ]);
 
-            return $existingSubscription;
-        }
+            Log::info('Created new subscription', [
+                'user_id' => $lockedUser->id,
+                'plan' => $planName,
+                'expires_at' => $expiresAt,
+            ]);
 
-        // Create new subscription
-        $startsAt = now();
-        $expiresAt = $startsAt->copy()->addYear();
-        $graceEndsAt = $expiresAt->copy()->addDays(14);
-
-        $subscription = Subscription::create([
-            'user_id' => $user->id,
-            'plan_id' => $plan->id,
-            'status' => 'active',
-            'starts_at' => $startsAt,
-            'expires_at' => $expiresAt,
-            'grace_ends_at' => $graceEndsAt,
-            'btcpay_subscription_id' => $btcpaySubscriptionId,
-        ]);
-
-        Log::info('Created new subscription', [
-            'user_id' => $user->id,
-            'plan' => $planName,
-            'expires_at' => $expiresAt,
-        ]);
-
-        return $subscription;
+            return $subscription;
+        });
     }
 
     /**

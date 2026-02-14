@@ -3,7 +3,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="text-center">
         <p class="text-sm text-gray-400">
-          satflux.io
+          SATFLUX
           <span v-if="version" class="text-gray-600">v{{ version }}</span>
         </p>
         <p class="text-xs text-gray-600 mt-2">

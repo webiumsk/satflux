@@ -72,21 +72,27 @@ class StatsService
 
     /**
      * Advanced: per store, per PoS, overall (includes pos_orders for cash/card).
+     * Amounts are aggregated by currency so we never sum EUR + BTC + SATS.
      */
     public function getAdvancedStats(User $user): array
     {
         $storesData = [];
         $overallInvoices30d = 0;
         $overallInvoicesAll = 0;
-        $overallAmount30d = 0;
-        $overallAmountAll = 0;
+        /** @var array<string, array{paid_amount_30d: float, paid_amount_all_time: float}> */
+        $overallByCurrency = [];
 
         foreach ($user->stores as $store) {
             $basic = $this->getBasicStoreStats($store);
             $overallInvoices30d += $basic['invoice_count_30d'];
             $overallInvoicesAll += $basic['invoice_count_all_time'];
-            $overallAmount30d += $basic['paid_amount_30d'];
-            $overallAmountAll += $basic['paid_amount_all_time'];
+
+            $currency = $basic['currency'] ?? 'EUR';
+            if (!isset($overallByCurrency[$currency])) {
+                $overallByCurrency[$currency] = ['paid_amount_30d' => 0, 'paid_amount_all_time' => 0];
+            }
+            $overallByCurrency[$currency]['paid_amount_30d'] += $basic['paid_amount_30d'];
+            $overallByCurrency[$currency]['paid_amount_all_time'] += $basic['paid_amount_all_time'];
 
             $posData = [];
             foreach ($store->posTerminals as $terminal) {
@@ -111,13 +117,24 @@ class StatsService
             ];
         }
 
+        foreach ($overallByCurrency as $currency => $amounts) {
+            $overallByCurrency[$currency]['paid_amount_30d'] = round($amounts['paid_amount_30d'], 2);
+            $overallByCurrency[$currency]['paid_amount_all_time'] = round($amounts['paid_amount_all_time'], 2);
+        }
+
+        // Primary currency for backward compat: prefer EUR, else first available
+        $primaryCurrency = isset($overallByCurrency['EUR']) ? 'EUR' : (array_key_first($overallByCurrency) ?: 'EUR');
+        $primaryAmounts = $overallByCurrency[$primaryCurrency] ?? ['paid_amount_30d' => 0, 'paid_amount_all_time' => 0];
+
         return [
             'stores' => $storesData,
             'overall' => [
                 'invoice_count_30d' => $overallInvoices30d,
                 'invoice_count_all_time' => $overallInvoicesAll,
-                'paid_amount_30d' => round($overallAmount30d, 2),
-                'paid_amount_all_time' => round($overallAmountAll, 2),
+                'by_currency' => $overallByCurrency,
+                'primary_currency' => $primaryCurrency,
+                'paid_amount_30d' => $primaryAmounts['paid_amount_30d'],
+                'paid_amount_all_time' => $primaryAmounts['paid_amount_all_time'],
             ],
         ];
     }
