@@ -420,12 +420,122 @@
                </div>
             </div>
 
-            <!-- Step 6: Accounting Exports -->
+            <!-- Step 6: Ticket Sale -->
             <div class="flex flex-col md:flex-row items-center justify-between gap-8 md:min-h-[75vh] py-12 relative group">
                <div class="absolute left-1/2 top-1/2 w-4 h-4 bg-gray-900 border-2 border-indigo-500 rounded-full transform -translate-x-1/2 -translate-y-1/2 hidden md:block shadow-[0_0_10px_rgba(99,102,241,0.5)] group-hover:scale-125 transition-transform z-10"></div>
                <div class="absolute left-6 top-12 flex items-center justify-center w-10 h-10 rounded-full bg-gray-900 border-2 border-indigo-500 text-indigo-400 font-bold text-lg transform -translate-x-1/2 md:hidden shadow-[0_0_10px_rgba(99,102,241,0.5)] z-10">6</div>
 
                <div class="md:w-5/12 flex justify-start pl-16 md:justify-end pr-8 md:pr-16 order-2 md:order-1">
+                  <div class="w-full max-w-md bg-gray-800 rounded-2xl border border-gray-700 p-6 flex flex-col items-center gap-4 transform group-hover:scale-105 transition-transform duration-500 relative overflow-hidden">
+                     <!-- Background ticket watermark -->
+                     <div class="absolute top-0 right-0 p-4 opacity-5">
+                        <svg class="w-36 h-36 text-orange-400" fill="currentColor" viewBox="0 0 24 24"><path d="M15.58 16.8L12 14.5l-3.58 2.3 1.08-4.12L6.21 10l4.25-.26L12 5.8l1.54 3.94 4.25.26-3.29 2.68 1.08 4.12zM22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24z"/></svg>
+                     </div>
+
+                     <!-- Event card header -->
+                     <div class="w-full bg-gradient-to-r from-orange-500/20 to-yellow-500/20 rounded-xl border border-orange-500/30 p-4 relative z-10">
+                        <div class="flex items-center gap-3 mb-2">
+                           <div class="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
+                              <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                           </div>
+                           <div>
+                              <div class="text-white font-bold text-sm">{{ t('landing.step6_badge_event') }}</div>
+                              <div class="text-orange-300/70 text-xs">14 Mar 2026 &middot; 18:00</div>
+                           </div>
+                        </div>
+                        <div class="flex gap-4 text-xs">
+                           <div class="flex items-center gap-1.5">
+                              <svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 100 4v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2a2 2 0 100-4V6z" /></svg>
+                              <span class="text-gray-300">{{ t('landing.step6_badge_tickets') }}: <span class="text-green-400 font-bold">142</span></span>
+                           </div>
+                           <div class="flex items-center gap-1.5">
+                              <svg class="w-3.5 h-3.5 text-indigo-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                              <span class="text-gray-300">{{ t('landing.step6_badge_checkin') }}: <span class="text-indigo-400 font-bold">89</span></span>
+                           </div>
+                        </div>
+                     </div>
+
+                     <!-- QR code / scan area -->
+                     <div class="w-full bg-gray-900 rounded-xl border border-gray-700 p-4 flex items-center gap-4 relative z-10">
+                        <div class="w-16 h-16 bg-white rounded-lg p-1.5 flex-shrink-0">
+                           <!-- Stylized QR code -->
+                           <svg viewBox="0 0 100 100" class="w-full h-full">
+                              <rect x="0" y="0" width="100" height="100" fill="white"/>
+                              <rect x="5" y="5" width="25" height="25" rx="3" fill="#1a1a2e"/>
+                              <rect x="10" y="10" width="15" height="15" rx="2" fill="white"/>
+                              <rect x="13" y="13" width="9" height="9" rx="1" fill="#1a1a2e"/>
+                              <rect x="70" y="5" width="25" height="25" rx="3" fill="#1a1a2e"/>
+                              <rect x="75" y="10" width="15" height="15" rx="2" fill="white"/>
+                              <rect x="78" y="13" width="9" height="9" rx="1" fill="#1a1a2e"/>
+                              <rect x="5" y="70" width="25" height="25" rx="3" fill="#1a1a2e"/>
+                              <rect x="10" y="75" width="15" height="15" rx="2" fill="white"/>
+                              <rect x="13" y="78" width="9" height="9" rx="1" fill="#1a1a2e"/>
+                              <rect x="35" y="5" width="8" height="8" rx="1" fill="#1a1a2e"/>
+                              <rect x="48" y="5" width="8" height="8" rx="1" fill="#1a1a2e"/>
+                              <rect x="35" y="18" width="8" height="8" rx="1" fill="#1a1a2e"/>
+                              <rect x="5" y="35" width="8" height="8" rx="1" fill="#1a1a2e"/>
+                              <rect x="18" y="35" width="8" height="8" rx="1" fill="#1a1a2e"/>
+                              <rect x="35" y="35" width="8" height="8" rx="1" fill="#f59e0b"/>
+                              <rect x="48" y="35" width="8" height="8" rx="1" fill="#1a1a2e"/>
+                              <rect x="61" y="35" width="8" height="8" rx="1" fill="#1a1a2e"/>
+                              <rect x="5" y="48" width="8" height="8" rx="1" fill="#1a1a2e"/>
+                              <rect x="35" y="48" width="8" height="8" rx="1" fill="#1a1a2e"/>
+                              <rect x="48" y="48" width="8" height="8" rx="1" fill="#f59e0b"/>
+                              <rect x="61" y="48" width="8" height="8" rx="1" fill="#1a1a2e"/>
+                              <rect x="5" y="61" width="8" height="8" rx="1" fill="#1a1a2e"/>
+                              <rect x="48" y="61" width="8" height="8" rx="1" fill="#1a1a2e"/>
+                              <rect x="70" y="48" width="8" height="8" rx="1" fill="#1a1a2e"/>
+                              <rect x="83" y="48" width="8" height="8" rx="1" fill="#1a1a2e"/>
+                              <rect x="70" y="61" width="8" height="8" rx="1" fill="#1a1a2e"/>
+                              <rect x="83" y="61" width="8" height="8" rx="1" fill="#1a1a2e"/>
+                              <rect x="70" y="70" width="8" height="8" rx="1" fill="#1a1a2e"/>
+                              <rect x="83" y="83" width="12" height="12" rx="2" fill="#f59e0b"/>
+                           </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                           <div class="text-xs text-gray-400 mb-1.5">{{ t('landing.step6_scan_label') }}</div>
+                           <div class="flex items-center gap-2">
+                              <div class="flex-1 bg-gray-800 rounded-lg px-3 py-2 border border-gray-600 text-xs text-gray-500 font-mono truncate">TKT-2026-00482</div>
+                              <div class="w-8 h-8 bg-green-500/20 border border-green-500/40 rounded-lg flex items-center justify-center flex-shrink-0">
+                                 <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" /></svg>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+
+                     <!-- Price in sats -->
+                     <div class="w-full flex items-center justify-between px-1 relative z-10">
+                        <span class="text-xs text-gray-500 font-mono">21,000 sats / ticket</span>
+                        <span class="text-xs font-bold text-orange-400 bg-orange-400/10 px-2.5 py-1 rounded-full border border-orange-400/20">&#9889; Lightning</span>
+                     </div>
+                  </div>
+               </div>
+
+               <div class="md:w-5/12 text-left pl-16 md:pl-16 order-1 md:order-2">
+                 <div class="inline-flex items-center gap-3 mb-4">
+                   <h3 class="text-3xl md:text-5xl font-bold text-white">{{ t('landing.step6_title') }}</h3>
+                 </div>
+                 <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
+                   {{ t('landing.step6_text') }}
+                 </p>
+               </div>
+            </div>
+
+            <!-- Step 7: Accounting Exports -->
+            <div class="flex flex-col md:flex-row items-center justify-between gap-8 md:min-h-[75vh] py-12 relative group">
+               <div class="absolute left-1/2 top-1/2 w-4 h-4 bg-gray-900 border-2 border-indigo-500 rounded-full transform -translate-x-1/2 -translate-y-1/2 hidden md:block shadow-[0_0_10px_rgba(99,102,241,0.5)] group-hover:scale-125 transition-transform z-10"></div>
+               <div class="absolute left-6 top-12 flex items-center justify-center w-10 h-10 rounded-full bg-gray-900 border-2 border-indigo-500 text-indigo-400 font-bold text-lg transform -translate-x-1/2 md:hidden shadow-[0_0_10px_rgba(99,102,241,0.5)] z-10">7</div>
+
+               <div class="md:w-5/12 text-left md:text-right pl-16 md:pl-0 pr-0 md:pr-16 order-1 md:order-1">
+                 <div class="inline-flex items-center gap-3 mb-4 md:flex-row-reverse">
+                   <h3 class="text-3xl md:text-5xl font-bold text-white">{{ t('landing.step7_title') }}</h3>
+                 </div>
+                 <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
+                   {{ t('landing.step7_text') }}
+                 </p>
+               </div>
+
+               <div class="md:w-5/12 flex justify-start pl-16 md:pl-16 order-2 md:order-2">
                   <div class="w-full max-w-md bg-gray-800 rounded-2xl border border-gray-700 p-6 flex flex-col items-center gap-6 transform group-hover:scale-105 transition-transform duration-500 relative overflow-hidden">
                      <div class="absolute top-0 right-0 p-4 opacity-10">
                         <svg class="w-32 h-32 text-indigo-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" /></svg>
@@ -445,15 +555,6 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                      </div>
                   </div>
-               </div>
-
-               <div class="md:w-5/12 text-left pl-16 md:pl-16 order-1 md:order-2">
-                 <div class="inline-flex items-center gap-3 mb-4">
-                   <h3 class="text-3xl md:text-5xl font-bold text-white">{{ t('landing.step6_title') }}</h3>
-                 </div>
-                 <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
-                   {{ t('landing.step6_text') }}
-                 </p>
                </div>
             </div>
            </div>
