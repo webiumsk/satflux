@@ -91,22 +91,21 @@ async function changeLocale(localeCode: SupportedLocale) {
     // Update localStorage first (immediate UI update)
     localStorage.setItem('locale', localeCode);
     
-    // Update frontend locale immediately
+    // Update frontend locale immediately (vue-i18n reactively updates all translations)
     await setI18nLocale(localeCode);
     
-    // Update backend session
-    await setApiLocale(localeCode);
+    // Update <html lang="..."> attribute for accessibility / SEO
+    document.documentElement.lang = localeCode;
+    
+    // Sync backend session (for server-rendered content on next navigation)
+    setApiLocale(localeCode).catch(() => {
+      // Backend sync is best-effort; frontend already switched
+    });
     
     closeDropdown();
-    
-    // Small delay to ensure session is saved, then reload
-    // This ensures backend middleware will use the correct locale
-    setTimeout(() => {
-      window.location.reload();
-    }, 200);
   } catch (error) {
     console.error('Failed to change locale:', error);
-    // Even if backend fails, keep the frontend change
+    // Even if something fails, keep the frontend change
   }
 }
 
