@@ -93,15 +93,19 @@ function getItemColor(index: number): string {
 }
 
 function formatAmount(amount: number, currency: string = 'EUR'): string {
+  const code = (currency || 'EUR').toUpperCase();
+  if (code === 'SATS') {
+    return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(amount ?? 0) + ' sats';
+  }
   try {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: currency || 'EUR',
+      currency: code,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(amount);
-  } catch (error) {
-    return `${amount} ${currency || 'EUR'}`;
+    }).format(amount ?? 0);
+  } catch {
+    return `${amount ?? 0} ${currency || 'EUR'}`;
   }
 }
 </script>
