@@ -376,6 +376,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // SatoshiTickets (Events, Ticket Types, Tickets, Orders)
     Route::prefix('stores/{store}/tickets')->middleware(EnsureStoreOwnership::class)->group(function () {
+        Route::post('/events/image', [\App\Http\Controllers\TicketEventImageController::class, 'upload']);
         Route::get('/events', [TicketController::class, 'listEvents']);
         Route::get('/events/{eventId}', [TicketController::class, 'getEvent']);
         Route::post('/events', [TicketController::class, 'createEvent']);
