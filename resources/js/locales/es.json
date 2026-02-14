@@ -288,7 +288,19 @@
     "delete_ticket_type_confirm": "¿Eliminar \"{name}\"?",
     "ticket_type_deleted": "Tipo de entrada eliminado",
     "checkin_confirm": "¿Check-in de {name} (entrada {number})?",
-    "checkin_success": "Entrada {number} registrada."
+    "checkin_success": "Entrada {number} registrada.",
+    "checked_in_label": "con check-in",
+    "scan_qr": "Escanear código QR",
+    "scan_hint": "Haz clic en Iniciar escaneo para usar la cámara",
+    "start_scanning": "Iniciar escaneo",
+    "stop_scanning": "Detener escaneo",
+    "manual_entry": "Entrada manual",
+    "enter_ticket_code": "Introduce el número de entrada o el código escaneado",
+    "event_not_found": "Evento no encontrado",
+    "checkin_ok": "Check-in correcto",
+    "checkin_fail": "Check-in fallido",
+    "recent_checkins": "Check-ins recientes",
+    "camera_error": "Error de cámara"
   },
   "stores": {
     "title": "Tiendas",
