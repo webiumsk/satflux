@@ -28,30 +28,6 @@
         </div>
 
         <template v-else>
-          <div
-            v-if="error"
-            class="rounded-xl bg-red-500/10 border border-red-500/20 p-4 mb-4"
-          >
-            <div class="flex">
-              <svg class="h-5 w-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div class="text-sm text-red-400">{{ error }}</div>
-            </div>
-          </div>
-
-          <div
-            v-if="settingsSuccess"
-            class="rounded-xl bg-green-500/10 border border-green-500/20 p-4 mb-4"
-          >
-            <div class="flex">
-              <svg class="h-5 w-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-              <div class="text-sm text-green-400">{{ settingsSuccess }}</div>
-            </div>
-          </div>
-
           <!-- Automatic report settings -->
           <div class="mb-6 rounded-xl border border-gray-700 bg-gray-800/50 p-5">
             <h2 class="text-lg font-semibold text-white mb-4">{{ t("stores.auto_report_settings") }}</h2>
@@ -288,11 +264,13 @@
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
+import { useFlashStore } from "../../store/flash";
 import api from "../../services/api";
 import UpgradeModal from "./UpgradeModal.vue";
 
 const { t } = useI18n();
 const authStore = useAuthStore();
+const flashStore = useFlashStore();
 
 const planCode = computed(() => (authStore.user?.plan?.code ?? "free") as string);
 const userRole = computed(() => authStore.user?.role ?? "");
@@ -313,8 +291,6 @@ const props = defineProps({
 
 const loading = ref(false);
 const exports = ref<any[]>([]);
-const error = ref("");
-const settingsSuccess = ref("");
 const downloadingExportId = ref<number | null>(null);
 const retryingExportId = ref<number | null>(null);
 const deletingExportId = ref<number | null>(null);
@@ -377,22 +353,16 @@ async function fetchReportSettings() {
 async function saveSettings() {
   if (!props.store || !canUseReports.value) return;
   savingSettings.value = true;
-  settingsSuccess.value = "";
+  flashStore.clear();
   try {
     await api.put(`/stores/${props.store.id}/report-settings`, {
       auto_report_enabled: settingsForm.value.auto_report_enabled,
       auto_report_email: settingsForm.value.auto_report_email || null,
       auto_report_format: settingsForm.value.auto_report_format,
     });
-    settingsSuccess.value = t("stores.auto_report_saved");
-    setTimeout(() => {
-      settingsSuccess.value = "";
-    }, 3000);
+    flashStore.success(t("stores.auto_report_saved"));
   } catch (err: any) {
-    error.value = err.response?.data?.message || t("stores.auto_report_save_failed");
-    setTimeout(() => {
-      error.value = "";
-    }, 5000);
+    flashStore.error(err.response?.data?.message || t("stores.auto_report_save_failed"));
   } finally {
     savingSettings.value = false;
   }
@@ -421,14 +391,14 @@ async function fetchExports(silent = false) {
   if (!props.store) return;
 
   if (!silent) loading.value = true;
-  if (!silent) error.value = "";
+  if (!silent) flashStore.clear();
 
   try {
     const response = await api.get(`/stores/${props.store.id}/exports`);
     exports.value = response.data.data || [];
   } catch (err: any) {
     if (!silent) {
-      error.value = err.response?.data?.message || "Failed to load reports.";
+      flashStore.error(err.response?.data?.message || "Failed to load reports.");
       exports.value = [];
     }
   } finally {
@@ -443,17 +413,14 @@ async function handleDownloadExport(exportItem: any) {
     if (response.data.data?.download_url) {
       window.open(response.data.data.download_url, "_blank");
     } else {
-      error.value = "Download URL not available.";
+      flashStore.error("Download URL not available.");
     }
   } catch (err: any) {
     if (err.response?.status === 202) {
-      error.value = "Export is not ready yet.";
+      flashStore.error("Export is not ready yet.");
     } else {
-      error.value = err.response?.data?.message || "Failed to download export.";
+      flashStore.error(err.response?.data?.message || "Failed to download export.");
     }
-    setTimeout(() => {
-      error.value = "";
-    }, 5000);
   } finally {
     downloadingExportId.value = null;
   }
@@ -465,10 +432,7 @@ async function handleRetryExport(exportItem: any) {
     await api.post(`/exports/${exportItem.id}/retry`);
     await fetchExports();
   } catch (err: any) {
-    error.value = err.response?.data?.message || "Failed to retry export.";
-    setTimeout(() => {
-      error.value = "";
-    }, 5000);
+    flashStore.error(err.response?.data?.message || "Failed to retry export.");
   } finally {
     retryingExportId.value = null;
   }
@@ -477,12 +441,11 @@ async function handleRetryExport(exportItem: any) {
 async function generatePdfReport() {
   if (!props.store?.id || !canUseReports.value) return;
   if (!pdfDateFrom.value || !pdfDateTo.value) {
-    error.value = t("stores.pdf_report_select_dates");
-    setTimeout(() => { error.value = ""; }, 3000);
+    flashStore.error(t("stores.pdf_report_select_dates"));
     return;
   }
   generatingPdf.value = true;
-  error.value = "";
+  flashStore.clear();
   try {
     const response = await api.get(`/stores/${props.store.id}/report/pdf`, {
       params: { date_from: pdfDateFrom.value, date_to: pdfDateTo.value },
@@ -497,13 +460,12 @@ async function generatePdfReport() {
     window.URL.revokeObjectURL(url);
   } catch (err: any) {
     if (err.response?.status === 401) {
-      error.value = t("stores.pdf_report_unauth");
+      flashStore.error(t("stores.pdf_report_unauth"));
     } else if (err.response?.status === 422) {
-      error.value = err.response?.data?.message || t("stores.pdf_report_select_dates");
+      flashStore.error(err.response?.data?.message || t("stores.pdf_report_select_dates"));
     } else {
-      error.value = err.response?.data?.message || t("stores.pdf_report_failed");
+      flashStore.error(err.response?.data?.message || t("stores.pdf_report_failed"));
     }
-    setTimeout(() => { error.value = ""; }, 5000);
   } finally {
     generatingPdf.value = false;
   }
@@ -516,10 +478,7 @@ async function handleDeleteExport(exportItem: any) {
     await api.delete(`/exports/${exportItem.id}`);
     await fetchExports();
   } catch (err: any) {
-    error.value = err.response?.data?.message || "Failed to delete export.";
-    setTimeout(() => {
-      error.value = "";
-    }, 5000);
+    flashStore.error(err.response?.data?.message || "Failed to delete export.");
   } finally {
     deletingExportId.value = null;
   }

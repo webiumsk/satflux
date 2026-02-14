@@ -76,20 +76,6 @@
           />
 
           <template v-if="['settings', 'payment', 'rates', 'checkout'].includes(activeSettingsTab)">
-          <div v-if="error" class="rounded-xl bg-red-500/10 border border-red-500/20 p-4">
-             <div class="flex">
-                <svg class="h-5 w-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <div class="text-sm text-red-400">{{ error }}</div>
-             </div>
-          </div>
-
-          <div v-if="success" class="rounded-xl bg-green-500/10 border border-green-500/20 p-4">
-             <div class="flex">
-                <svg class="h-5 w-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                <div class="text-sm text-green-400">{{ success }}</div>
-             </div>
-          </div>
-
           <div class="flex justify-end pt-4">
             <button
               type="submit"
@@ -206,6 +192,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../../store/auth';
 import { useStoresStore } from '../../store/stores';
+import { useFlashStore } from '../../store/flash';
 import api from '../../services/api';
 import StoreSettingsGeneral from './StoreSettingsGeneral.vue';
 import StoreSettingsPayment from './StoreSettingsPayment.vue';
@@ -227,6 +214,7 @@ const emit = defineEmits(['update-store']);
 const router = useRouter();
 const authStore = useAuthStore();
 const storesStore = useStoresStore();
+const flashStore = useFlashStore();
 
 const planCode = computed(() => (authStore.user?.plan?.code ?? 'free') as string);
 const userRole = computed(() => authStore.user?.role ?? '');
@@ -251,8 +239,6 @@ const settingsTabs = [
 const loading = ref(false);
 const saving = ref(false);
 const settings = ref<any>(null);
-const error = ref('');
-const success = ref('');
 
 const settingsForm = ref<Record<string, any>>({
   name: '',
@@ -518,9 +504,7 @@ async function fetchSettings() {
 
 async function handleSettingsSubmit() {
   if (!props.store) return;
-  
-  error.value = '';
-  success.value = '';
+  flashStore.clear();
   saving.value = true;
 
   try {
@@ -570,20 +554,14 @@ async function handleSettingsSubmit() {
       checkoutFields.forEach((key) => delete payload[key]);
     }
     await api.put(`/stores/${props.store.id}/settings`, payload);
-    success.value = 'Settings updated successfully';
+    flashStore.success(t('settings.settings_updated'));
     emit('update-store'); // Notify parent to refresh store data if needed
   } catch (err: any) {
-    error.value = err.response?.data?.message || 'Failed to update settings.';
-    if (err.response?.data?.errors) {
-      const errors = Object.values(err.response.data.errors).flat();
-      error.value = errors.join(', ');
-    }
+    const msg = err.response?.data?.message || t('settings.failed_to_update');
+    const errors = err.response?.data?.errors ? Object.values(err.response.data.errors).flat() : [];
+    flashStore.error(errors.length ? errors.join(', ') : msg);
   } finally {
     saving.value = false;
-    // Clear success message
-    if (success.value) {
-      setTimeout(() => { success.value = ''; }, 3000);
-    }
   }
 }
 
@@ -607,11 +585,11 @@ async function handleLogoUpload(event: Event) {
     const data = response.data?.data ?? response.data;
     storeLogoUrl.value = data?.logo_url ?? data?.logoUrl ?? data?.imageUrl ?? storeLogoUrl.value;
 
-    logoSuccess.value = 'Logo uploaded successfully';
+    flashStore.success(t('stores.logo_uploaded') || 'Logo uploaded successfully');
     emit('update-store');
-    setTimeout(() => { logoSuccess.value = ''; }, 3000);
   } catch (err: any) {
     logoError.value = err.response?.data?.message || 'Failed to upload logo';
+    flashStore.error(logoError.value);
   } finally {
     uploadingLogo.value = false;
   }
@@ -629,11 +607,11 @@ async function handleDeleteLogo() {
   try {
     await api.delete(`/stores/${props.store.id}/logo`);
     storeLogoUrl.value = null;
-    logoSuccess.value = 'Logo deleted successfully';
+    flashStore.success(t('stores.logo_deleted') || 'Logo deleted successfully');
     emit('update-store');
-    setTimeout(() => { logoSuccess.value = ''; }, 3000);
   } catch (err: any) {
     logoError.value = err.response?.data?.message || 'Failed to delete logo';
+    flashStore.error(logoError.value);
   } finally {
     deletingLogo.value = false;
   }
@@ -643,7 +621,7 @@ async function handleDeleteStore() {
   if (!props.store) return;
   
   if (deleteStoreConfirmText.value !== 'DELETE') {
-    deleteStoreError.value = 'Please type DELETE to confirm';
+    flashStore.error('Please type DELETE to confirm');
     return;
   }
 
@@ -655,7 +633,9 @@ async function handleDeleteStore() {
     showDeleteStoreModal.value = false;
     router.push({ name: 'home' });
   } catch (err: any) {
-    deleteStoreError.value = err.response?.data?.message || 'Failed to delete store';
+    const msg = err.response?.data?.message || 'Failed to delete store';
+    deleteStoreError.value = msg;
+    flashStore.error(msg);
     deletingStore.value = false;
   }
 }

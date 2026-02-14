@@ -116,26 +116,6 @@
            </div>
         </div>
 
-        <div v-if="error" class="rounded-xl bg-red-500/10 border border-red-500/20 p-4 mb-6">
-          <div class="flex">
-             <svg class="h-5 w-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-             <div class="text-sm text-red-400">{{ error }}</div>
-          </div>
-        </div>
-
-        <div v-if="exportSuccess" class="rounded-xl bg-green-500/10 border border-green-500/20 p-4 mb-6">
-           <div class="flex">
-              <svg class="h-5 w-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-              <div class="text-sm text-green-400">{{ exportSuccess }}</div>
-           </div>
-        </div>
-        
-        <div v-if="exportError" class="rounded-xl bg-red-500/10 border border-red-500/20 p-4 mb-6">
-           <div class="flex">
-              <svg class="h-5 w-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              <div class="text-sm text-red-400">{{ exportError }}</div>
-           </div>
-        </div>
 
         <div v-if="invoices.length === 0 && !loading" class="text-center py-16 bg-gray-700/30 rounded-xl border border-dashed border-gray-600">
           <svg class="mx-auto h-12 w-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -248,6 +228,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../../store/auth';
+import { useFlashStore } from '../../store/flash';
 import api from '../../services/api';
 import DatePicker from '../ui/DatePicker.vue';
 import Select from '../ui/Select.vue';
@@ -255,6 +236,7 @@ import UpgradeModal from './UpgradeModal.vue';
 
 const { t } = useI18n();
 const authStore = useAuthStore();
+const flashStore = useFlashStore();
 
 const planCode = computed(() => (authStore.user?.plan?.code ?? 'free') as string);
 const userRole = computed(() => authStore.user?.role ?? '');
@@ -272,10 +254,7 @@ const props = defineProps({
 
 const loading = ref(false);
 const invoices = ref<any[]>([]);
-const error = ref('');
 const exportingInvoices = ref(false);
-const exportSuccess = ref('');
-const exportError = ref('');
 
 const expandedInvoiceId = ref<string | null>(null);
 
@@ -312,7 +291,6 @@ async function fetchInvoices() {
   if (!props.store) return;
   
   loading.value = true;
-  error.value = '';
   try {
     const params: any = {};
     if (filters.value.status) params.status = filters.value.status;
@@ -322,7 +300,7 @@ async function fetchInvoices() {
     const response = await api.get(`/stores/${props.store.id}/invoices`, { params });
     invoices.value = response.data.data || [];
   } catch (err: any) {
-    error.value = err.response?.data?.message || t('stores.failed_to_load_invoices');
+    flashStore.error(err.response?.data?.message || t('stores.failed_to_load_invoices'));
     invoices.value = [];
   } finally {
     loading.value = false;
@@ -359,8 +337,7 @@ async function handleExportInvoices(format: 'csv' | 'xlsx') {
   if (!props.store) return;
   
   exportingInvoices.value = true;
-  exportError.value = '';
-  exportSuccess.value = '';
+  flashStore.clear();
   
   try {
     const params: any = { format };
@@ -379,26 +356,22 @@ async function handleExportInvoices(format: 'csv' | 'xlsx') {
       const text = new TextDecoder().decode(response.data);
       const jsonData = JSON.parse(text);
       if (jsonData.type === 'asynchronous') {
-        exportSuccess.value = t('stores.export_queued_check_reports');
-        setTimeout(() => { exportSuccess.value = ''; }, 5000);
+        flashStore.success(t('stores.export_queued_check_reports'));
       }
     } else if (contentType.includes('text/csv')) {
       const blob = new Blob([response.data], { type: 'text/csv' });
       downloadBlob(blob, response.headers, 'invoices.csv');
-      exportSuccess.value = t('stores.export_csv_success');
-      setTimeout(() => { exportSuccess.value = ''; }, 3000);
+      flashStore.success(t('stores.export_csv_success'));
     } else if (contentType.includes('spreadsheet') || contentType.includes('vnd.openxmlformats')) {
       const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       downloadBlob(blob, response.headers, 'invoices.xlsx');
-      exportSuccess.value = t('stores.export_xlsx_success');
-      setTimeout(() => { exportSuccess.value = ''; }, 3000);
+      flashStore.success(t('stores.export_xlsx_success'));
     }
   } catch (err: any) {
     if (err.response?.status === 403) {
       showXlsxUpgradeModal.value = true;
     } else {
-      exportError.value = err.response?.data?.message || t('stores.export_failed');
-      setTimeout(() => { exportError.value = ''; }, 5000);
+      flashStore.error(err.response?.data?.message || t('stores.export_failed'));
     }
   } finally {
     exportingInvoices.value = false;

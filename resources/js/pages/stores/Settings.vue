@@ -75,14 +75,6 @@
                 <p class="mt-2 text-sm text-gray-500">{{ t('settings.price_source_description') }}</p>
               </div>
 
-              <div v-if="error" class="rounded-md bg-red-50 p-4">
-                <div class="text-sm text-red-800">{{ error }}</div>
-              </div>
-
-              <div v-if="success" class="rounded-md bg-green-50 p-4">
-                <div class="text-sm text-green-800">{{ success }}</div>
-              </div>
-
               <div class="flex justify-end">
                 <button
                   type="submit"
@@ -112,6 +104,7 @@ import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
+import { useFlashStore } from '../../store/flash';
 import { currencies } from '../../data/currencies';
 import { exchanges } from '../../data/exchanges';
 import Select from '../../components/ui/Select.vue';
@@ -124,8 +117,7 @@ const storeId = route.params.id as string;
 const loading = ref(false);
 const saving = ref(false);
 const settings = ref<any>(null);
-const error = ref('');
-const success = ref('');
+const flashStore = useFlashStore();
 
 const form = ref({
   name: '',
@@ -204,20 +196,16 @@ async function fetchSettings() {
 }
 
 async function handleSubmit() {
-  error.value = '';
-  success.value = '';
   saving.value = true;
-
+  flashStore.clear();
   try {
     await api.put(`/stores/${storeId}/settings`, form.value);
-    success.value = t('settings.settings_updated');
+    flashStore.success(t('settings.settings_updated'));
     await fetchSettings();
   } catch (err: any) {
-    error.value = err.response?.data?.message || t('settings.failed_to_update');
-    if (err.response?.data?.errors) {
-      const errors = Object.values(err.response.data.errors).flat();
-      error.value = errors.join(', ');
-    }
+    const msg = err.response?.data?.message || t('settings.failed_to_update');
+    const errors = err.response?.data?.errors ? Object.values(err.response.data.errors).flat() : [];
+    flashStore.error(errors.length ? errors.join(', ') : msg);
   } finally {
     saving.value = false;
   }

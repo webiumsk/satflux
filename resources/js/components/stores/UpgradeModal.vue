@@ -60,11 +60,6 @@
           </div>
         </div>
 
-        <!-- Error message -->
-        <div v-if="error" class="mb-4 rounded-md bg-red-50 p-3">
-          <p class="text-sm text-red-800">{{ error }}</p>
-        </div>
-
         <!-- Actions -->
         <div class="flex flex-col space-y-2">
           <button
@@ -92,6 +87,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
+import { useFlashStore } from '../../store/flash';
 import { usePlanFeatures } from '../../composables/usePlanFeatures';
 
 const { t } = useI18n();
@@ -123,7 +119,7 @@ const emit = defineEmits<{
 }>();
 
 const upgrading = ref(false);
-const error = ref('');
+const flashStore = useFlashStore();
 
 onMounted(() => {
   loadPlanFeatures();
@@ -148,8 +144,7 @@ function close() {
 
 async function handleUpgrade() {
   upgrading.value = true;
-  error.value = '';
-
+  flashStore.clear();
   try {
     const response = await api.post('/subscriptions/checkout', {
       plan: props.recommendedPlan,
@@ -158,12 +153,11 @@ async function handleUpgrade() {
     if (response.data.checkoutUrl) {
       window.location.href = response.data.checkoutUrl;
     } else {
-      error.value = t('upgrade_modal.checkout_error');
+      flashStore.error(t('upgrade_modal.checkout_error'));
       upgrading.value = false;
     }
   } catch (err: any) {
-    console.error('Failed to create checkout:', err);
-    error.value = err.response?.data?.message || t('upgrade_modal.checkout_error');
+    flashStore.error(err.response?.data?.message || t('upgrade_modal.checkout_error'));
     upgrading.value = false;
   }
 }

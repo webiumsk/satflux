@@ -4,22 +4,6 @@
       <!-- Header -->
       <div class="sticky top-0 z-20 bg-gray-900/80 backdrop-blur-md border-b border-gray-800">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <!-- Error/Success -->
-          <div v-if="errorMsg || successMsg" class="mb-4">
-            <div v-if="errorMsg" class="rounded-xl bg-red-500/10 border border-red-500/20 p-4">
-              <div class="flex items-start">
-                <svg class="w-5 h-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <div class="text-sm text-red-400 font-medium">{{ errorMsg }}</div>
-              </div>
-            </div>
-            <div v-if="successMsg" class="rounded-xl bg-green-500/10 border border-green-500/20 p-4">
-              <div class="flex items-start">
-                <svg class="w-5 h-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <div class="text-sm text-green-400 font-medium">{{ successMsg }}</div>
-              </div>
-            </div>
-          </div>
-
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="flex items-center">
               <button @click="goBack" class="mr-4 text-gray-400 hover:text-white transition-colors">
@@ -53,7 +37,7 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
         <!-- ────── Create / Edit Event Form ────── -->
-        <div v-if="showCreateForm" class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700">
+        <div ref="eventFormRef" v-if="showCreateForm" class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700">
           <div class="p-6 sm:p-8">
             <div class="flex items-center justify-between mb-6">
               <h2 class="text-lg font-semibold text-white">
@@ -132,11 +116,11 @@
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('tickets.start_date') }} <span class="text-red-400">*</span></label>
-                  <DatePicker v-model="eventForm.startDate" type="datetime" :placeholder="t('tickets.start_date')" />
+                  <DatePicker v-model="eventForm.startDate" type="datetime" :placeholder="t('tickets.start_date')" min-date="today" />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('tickets.end_date') }}</label>
-                  <DatePicker v-model="eventForm.endDate" type="datetime" :placeholder="t('tickets.end_date')" />
+                  <DatePicker v-model="eventForm.endDate" type="datetime" :placeholder="t('tickets.end_date')" min-date="today" />
                 </div>
               </div>
 
@@ -169,12 +153,16 @@
                 <div v-if="showEmailSettings" class="px-5 pb-5 space-y-4">
                   <div>
                     <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('tickets.email_subject') }}</label>
-                    <input v-model="eventForm.emailSubject" type="text" class="input-field" placeholder="Your ticket for {{Title}}" />
+                    <input v-model="eventForm.emailSubject" type="text" class="input-field" :placeholder="t('tickets.email_subject_placeholder', { title: '{{Title}}' })" />
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('tickets.email_body') }}</label>
-                    <textarea v-model="eventForm.emailBody" rows="4" class="input-field resize-none" placeholder="Hello {{Name}}, here is your ticket for {{Title}} at {{Location}}."></textarea>
-                    <p class="mt-1 text-xs text-gray-500">{{ t('tickets.email_placeholders_hint') }}</p>
+                    <textarea v-model="eventForm.emailBody" rows="4" class="input-field resize-none" :placeholder="t('tickets.email_body_placeholder', { name: '{{Name}}', title: '{{Title}}', location: '{{Location}}', eventDate: '{{EventDate}}' })"></textarea>
+                    <p class="mt-1 text-xs text-gray-500">
+                      {{ t('tickets.email_placeholders_hint_prefix') }}
+                      <code class="text-gray-400" v-pre>{{Name}}, {{Email}}, {{Title}}, {{Location}}, {{Description}}, {{EventDate}}, {{Currency}}</code>
+                      {{ t('tickets.email_placeholders_hint_suffix') }}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -338,7 +326,8 @@
                         </div>
                         <div class="flex items-center gap-4 text-sm text-gray-400">
                           <span class="font-semibold text-indigo-300">{{ tt.price }} {{ event.currency || '' }}</span>
-                          <span v-if="tt.quantity != null">{{ tt.quantitySold || 0 }} / {{ tt.quantity }} {{ t('tickets.sold') }}</span>
+                          <span v-if="event.hasMaximumCapacity && tt.quantity != null && tt.quantity > 0 && tt.quantity < 999999">{{ tt.quantitySold || 0 }} / {{ tt.quantity }} {{ t('tickets.sold') }}</span>
+                          <span v-else>{{ tt.quantitySold || 0 }} {{ t('tickets.sold') }}</span>
                           <span v-if="tt.description" class="truncate text-gray-500">{{ tt.description }}</span>
                         </div>
                       </div>
@@ -567,9 +556,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, inject } from 'vue';
+import { ref, nextTick, onMounted, inject } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useTicketsStore, type TicketEvent, type TicketType, type Ticket } from '../../store/tickets';
+import { useFlashStore } from '../../store/flash';
 import { useBtcPayUrl } from '../../composables/useBtcPayUrl';
 import api from '../../services/api';
 import AppShowLayout from '../../components/stores/AppShowLayout.vue';
@@ -578,6 +568,7 @@ import UpgradeModal from '../../components/stores/UpgradeModal.vue';
 
 const { t } = useI18n();
 const ticketsStore = useTicketsStore();
+const flashStore = useFlashStore();
 const { btcPayUrl, load: loadBtcPayUrl } = useBtcPayUrl();
 const isInertia = inject<boolean>('inertia', false);
 
@@ -598,11 +589,10 @@ const showUpgradeModal = ref(false);
 const events = ref<TicketEvent[]>([]);
 const loadingEvents = ref(false);
 const showCreateForm = ref(false);
+const eventFormRef = ref<HTMLElement | null>(null);
 const showEmailSettings = ref(false);
 const submitting = ref(false);
 const editingEvent = ref<TicketEvent | null>(null);
-const errorMsg = ref('');
-const successMsg = ref('');
 
 // Event form
 const eventForm = ref({
@@ -655,19 +645,15 @@ const ttForm = ref({
 // ── Helpers ─────────────────────────────────────
 
 function clearMessages() {
-  errorMsg.value = '';
-  successMsg.value = '';
+  flashStore.clear();
 }
 
 function showSuccess(msg: string) {
-  successMsg.value = msg;
-  errorMsg.value = '';
-  setTimeout(() => { successMsg.value = ''; }, 5000);
+  flashStore.success(msg);
 }
 
 function showError(msg: string) {
-  errorMsg.value = msg;
-  successMsg.value = '';
+  flashStore.error(msg);
 }
 
 function formatDate(dateStr: string): string {
@@ -696,6 +682,7 @@ function onCreateEventClick() {
     showUpgradeModal.value = true;
     return;
   }
+  if (!showCreateForm.value) resetForm();
   showCreateForm.value = !showCreateForm.value;
   expandedEventId.value = null;
 }
@@ -786,6 +773,8 @@ function cancelTicketTypeForm() {
 
 function openTicketTypeForm(eventId: string) {
   resetTicketTypeForm();
+  // Only the first ticket type for an event should be default
+  ttForm.value.isDefault = eventTicketTypes.value.length === 0;
   ticketTypeFormEventId.value = eventId;
   showTicketTypeForm.value = true;
 }
@@ -893,6 +882,7 @@ function handleEditEvent(event: TicketEvent) {
   if (event.emailSubject || event.emailBody) showEmailSettings.value = true;
   showCreateForm.value = true;
   expandedEventId.value = null;
+  nextTick(() => eventFormRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
 }
 
 async function handleToggleEvent(event: TicketEvent) {
@@ -925,10 +915,10 @@ async function handleSubmitTicketType(eventId: string) {
   submittingTT.value = true;
   clearMessages();
 
-  const data: any = { name: ttForm.value.name, price: ttForm.value.price };
+  const data: any = { name: ttForm.value.name, price: ttForm.value.price, isDefault: !!ttForm.value.isDefault };
   if (ttForm.value.description) data.description = ttForm.value.description;
-  if (ttForm.value.quantity != null && ttForm.value.quantity > 0) data.quantity = ttForm.value.quantity;
-  if (ttForm.value.isDefault) data.isDefault = true;
+  const q = ttForm.value.quantity;
+  if (q != null && Number(q) > 0) data.quantity = Number(q);
 
   try {
     if (editingTicketType.value) {
@@ -948,9 +938,12 @@ async function handleSubmitTicketType(eventId: string) {
   }
 }
 
+const UNLIMITED_QUANTITY = 999999;
+
 function handleEditTicketType(eventId: string, tt: TicketType) {
   editingTicketType.value = tt;
-  ttForm.value = { name: tt.name, price: tt.price, description: tt.description || '', quantity: tt.quantity || null, isDefault: tt.isDefault };
+  const q = tt.quantity;
+  ttForm.value = { name: tt.name, price: tt.price, description: tt.description || '', quantity: (q != null && q > 0 && q < UNLIMITED_QUANTITY) ? q : null, isDefault: tt.isDefault };
   ticketTypeFormEventId.value = eventId;
   showTicketTypeForm.value = true;
 }
@@ -1029,7 +1022,8 @@ function getPanelCheckInUrl(event: TicketEvent): string {
 }
 
 function openPanelCheckIn(event: TicketEvent) {
-  window.location.href = `/stores/${props.store.id}/ticket-check-in/${event.id}`;
+  const url = `/stores/${props.store.id}/ticket-check-in/${event.id}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 async function copyCheckInUrl(event: TicketEvent) {

@@ -41,7 +41,7 @@
       >
         <!-- Calendar Header -->
         <div class="flex items-center justify-between mb-4">
-          <button @click="prevMonth" type="button" class="p-1 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors">
+          <button @click="prevMonth" type="button" :disabled="isPrevMonthDisabled" :class="['p-1 rounded-lg transition-colors', isPrevMonthDisabled ? 'text-gray-600 cursor-not-allowed opacity-50' : 'hover:bg-white/5 text-gray-400 hover:text-white']">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
           </button>
           
@@ -64,11 +64,12 @@
 
           <template v-for="(day, idx) in calendarDays" :key="idx">
             <div 
-              @click="day.current ? selectDate(day.date) : null"
+              @click="day.current && !isDayDisabled(day.date) ? selectDate(day.date) : null"
               :class="[
-                'h-8 w-8 flex items-center justify-center rounded-lg text-xs font-medium transition-all duration-200 cursor-pointer',
-                day.current ? 'text-gray-300 hover:bg-indigo-600/20 hover:text-white' : 'text-gray-600 cursor-default opacity-20',
-                isToday(day.date) ? 'border border-indigo-500/50' : '',
+                'h-8 w-8 flex items-center justify-center rounded-lg text-xs font-medium transition-all duration-200',
+                day.current && !isDayDisabled(day.date) ? 'text-gray-300 hover:bg-indigo-600/20 hover:text-white cursor-pointer' : 'text-gray-600 cursor-default opacity-20',
+                day.current && isDayDisabled(day.date) ? 'opacity-40 cursor-not-allowed' : '',
+                isToday(day.date) && !isDayDisabled(day.date) ? 'border border-indigo-500/50' : '',
                 isSelected(day.date) ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : ''
               ]"
             >
@@ -77,23 +78,33 @@
           </template>
         </div>
 
-        <!-- Time Picker (if enabled) -->
+        <!-- Time Picker (if enabled): editable inputs + arrow buttons -->
         <div v-if="enableTime" class="border-t border-gray-700/50 pt-4 mt-2">
-            <div class="flex items-center justify-center gap-3">
+            <div class="flex items-center justify-center gap-2">
                 <div class="flex flex-col items-center">
-                    <button @click="adjustTime('h', 1)" type="button" class="p-1 text-gray-500 hover:text-white"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg></button>
-                    <div class="bg-gray-900 border border-gray-700 px-3 py-1 rounded-lg font-mono text-white text-sm">
-                        {{ String(timeData.h).padStart(2, '0') }}
-                    </div>
-                    <button @click="adjustTime('h', -1)" type="button" class="p-1 text-gray-500 hover:text-white"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button>
+                    <button @click="adjustTime('h', 1)" type="button" class="p-1 text-gray-500 hover:text-white" aria-label="Hour up"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg></button>
+                    <input
+                      type="number"
+                      min="0"
+                      max="23"
+                      :value="timeData.h"
+                      @input="onHourInput"
+                      class="w-12 text-center bg-gray-900 border border-gray-700 px-2 py-1.5 rounded-lg font-mono text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <button @click="adjustTime('h', -1)" type="button" class="p-1 text-gray-500 hover:text-white" aria-label="Hour down"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button>
                 </div>
-                <div class="text-gray-600 font-bold">:</div>
+                <div class="text-gray-600 font-bold pt-5">:</div>
                 <div class="flex flex-col items-center">
-                    <button @click="adjustTime('m', 1)" type="button" class="p-1 text-gray-500 hover:text-white"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg></button>
-                    <div class="bg-gray-900 border border-gray-700 px-3 py-1 rounded-lg font-mono text-white text-sm">
-                        {{ String(timeData.m).padStart(2, '0') }}
-                    </div>
-                    <button @click="adjustTime('m', -1)" type="button" class="p-1 text-gray-500 hover:text-white"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button>
+                    <button @click="adjustTime('m', 1)" type="button" class="p-1 text-gray-500 hover:text-white" aria-label="Minute up"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg></button>
+                    <input
+                      type="number"
+                      min="0"
+                      max="59"
+                      :value="timeData.m"
+                      @input="onMinuteInput"
+                      class="w-12 text-center bg-gray-900 border border-gray-700 px-2 py-1.5 rounded-lg font-mono text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <button @click="adjustTime('m', -1)" type="button" class="p-1 text-gray-500 hover:text-white" aria-label="Minute down"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button>
                 </div>
             </div>
         </div>
@@ -129,13 +140,16 @@ interface Props {
   type?: 'date' | 'datetime';
   error?: string | boolean;
   position?: 'left' | 'right';
+  /** Disallow selecting dates before this. Use "today" or ISO date string. */
+  minDate?: string | null;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   placeholder: 'Select date...',
   type: 'date',
   error: false,
-  position: 'left'
+  position: 'left',
+  minDate: null
 });
 
 const emit = defineEmits(['update:modelValue', 'change']);
@@ -144,6 +158,14 @@ const isOpen = ref(false);
 const containerRef = ref<HTMLElement | null>(null);
 const viewDate = ref(new Date());
 const enableTime = computed(() => props.type === 'datetime');
+
+const minDateValue = computed(() => {
+  if (!props.minDate) return null;
+  const d = props.minDate === 'today' ? new Date() : new Date(props.minDate);
+  if (isNaN(d.getTime())) return null;
+  d.setHours(0, 0, 0, 0);
+  return d;
+});
 
 const timeData = reactive({
     h: 0,
@@ -176,6 +198,10 @@ watch(() => selectedDate.value, (newVal) => {
         timeData.h = newVal.getHours();
         timeData.m = newVal.getMinutes();
         viewDate.value = new Date(newVal);
+    } else if (minDateValue.value && enableTime.value) {
+        const now = new Date();
+        timeData.h = now.getHours();
+        timeData.m = now.getMinutes();
     }
 }, { immediate: true });
 
@@ -236,8 +262,17 @@ const calendarDays = computed(() => {
 
 function togglePicker() {
   isOpen.value = !isOpen.value;
-  if (isOpen.value && selectedDate.value) {
+  if (isOpen.value) {
+    if (selectedDate.value) {
       viewDate.value = new Date(selectedDate.value);
+    } else if (minDateValue.value) {
+      const d = enableTime.value ? new Date() : new Date(minDateValue.value);
+      viewDate.value = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      if (enableTime.value) {
+        timeData.h = d.getHours();
+        timeData.m = d.getMinutes();
+      }
+    }
   }
 }
 
@@ -249,7 +284,21 @@ function nextMonth() {
   viewDate.value = new Date(viewDate.value.getFullYear(), viewDate.value.getMonth() + 1, 1);
 }
 
+const isPrevMonthDisabled = computed(() => {
+  if (!minDateValue.value) return false;
+  const v = viewDate.value;
+  return v.getFullYear() < minDateValue.value.getFullYear() ||
+    (v.getFullYear() === minDateValue.value.getFullYear() && v.getMonth() <= minDateValue.value.getMonth());
+});
+
+function isDayDisabled(date: Date) {
+  if (!minDateValue.value) return false;
+  const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return dayStart < minDateValue.value;
+}
+
 function selectDate(date: Date) {
+  if (isDayDisabled(date)) return;
   const newDate = new Date(date);
   if (enableTime.value) {
       newDate.setHours(timeData.h);
@@ -258,7 +307,11 @@ function selectDate(date: Date) {
   } else {
       newDate.setHours(0, 0, 0, 0);
   }
-  
+  if (minDateValue.value && newDate < minDateValue.value && enableTime.value) {
+    newDate.setTime(minDateValue.value.getTime());
+    timeData.h = newDate.getHours();
+    timeData.m = newDate.getMinutes();
+  }
   updateValue(newDate);
   if (!enableTime.value) {
       isOpen.value = false;
@@ -271,13 +324,37 @@ function adjustTime(type: 'h' | 'm', amount: number) {
     } else {
         timeData.m = (timeData.m + amount + 60) % 60;
     }
-    
-    if (selectedDate.value) {
-        const newDate = new Date(selectedDate.value);
-        newDate.setHours(timeData.h);
-        newDate.setMinutes(timeData.m);
-        updateValue(newDate);
-    }
+    emitTimeFromTimeData();
+}
+
+function onHourInput(e: Event) {
+  const v = parseInt((e.target as HTMLInputElement).value, 10);
+  if (!Number.isNaN(v)) {
+    timeData.h = Math.max(0, Math.min(23, v));
+    emitTimeFromTimeData();
+  }
+}
+
+function onMinuteInput(e: Event) {
+  const v = parseInt((e.target as HTMLInputElement).value, 10);
+  if (!Number.isNaN(v)) {
+    timeData.m = Math.max(0, Math.min(59, v));
+    emitTimeFromTimeData();
+  }
+}
+
+function emitTimeFromTimeData() {
+  const base = selectedDate.value || minDateValue.value || new Date();
+  const newDate = new Date(base);
+  newDate.setHours(timeData.h);
+  newDate.setMinutes(timeData.m);
+  newDate.setSeconds(0, 0);
+  if (minDateValue.value && newDate < minDateValue.value) {
+    newDate.setTime(minDateValue.value.getTime());
+    timeData.h = newDate.getHours();
+    timeData.m = newDate.getMinutes();
+  }
+  updateValue(newDate);
 }
 
 function isToday(date: Date) {

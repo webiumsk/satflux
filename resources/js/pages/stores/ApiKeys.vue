@@ -155,13 +155,6 @@
                                         </p>
                                     </div>
 
-                                    <div v-if="error" class="rounded-xl bg-red-500/10 border border-red-500/20 p-4">
-                                        <div class="flex">
-                                            <svg class="h-5 w-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                            <div class="text-sm text-red-400">{{ error }}</div>
-                                        </div>
-                                    </div>
-
                                     <div class="mt-6 flex justify-end gap-3">
                                         <button
                                             type="button"
@@ -328,7 +321,6 @@ const showModal = ref(false);
 const showApiKeyModal = ref(false);
 const showUpgradeModal = ref(false);
 const saving = ref(false);
-const error = ref('');
 const createdApiKey = ref<any>(null);
 const showApiKey = ref(false);
 
@@ -372,7 +364,6 @@ async function fetchStore() {
 
 async function fetchApiKeys() {
   loading.value = true;
-  error.value = '';
   try {
     const response = await api.get(`/stores/${storeId.value}/api-keys`);
     apiKeys.value = response.data.data || [];
@@ -380,8 +371,7 @@ async function fetchApiKeys() {
       limit.value = response.data.limit;
     }
   } catch (err: any) {
-    error.value = err.response?.data?.message || 'Failed to load API keys';
-    console.error('Failed to fetch API keys:', err);
+    flashStore.error(err.response?.data?.message || 'Failed to load API keys');
   } finally {
     loading.value = false;
   }
@@ -404,18 +394,16 @@ function openCreateForm() {
     ],
     callback_url: '',
   };
-  error.value = '';
   showModal.value = true;
 }
 
 function closeModal() {
   showModal.value = false;
-  error.value = '';
 }
 
 async function handleSubmit() {
   saving.value = true;
-  error.value = '';
+  flashStore.clear();
   try {
     const response = await api.post(`/stores/${storeId.value}/api-keys`, {
       label: form.value.label,
@@ -443,7 +431,6 @@ async function handleSubmit() {
       }
     } else {
       flashStore.error(msg);
-      error.value = '';
     }
   } finally {
     saving.value = false;

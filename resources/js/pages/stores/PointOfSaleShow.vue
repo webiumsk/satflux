@@ -11,8 +11,6 @@
         save-button-text="Save Settings"
         saving-text="Saving..."
         :saving="saving"
-        :error="''"
-        :success="''"
       />
 
       <!-- Content Container -->
@@ -1668,7 +1666,9 @@ async function handleArchive() {
       vueRouter!.push({ name: "stores-show", params: { id: storeId.value } });
     }
   } catch (err: any) {
-    error.value = err.response?.data?.message || "Failed to archive app";
+    const msg = err.response?.data?.message || "Failed to archive app";
+    error.value = msg;
+    flashStore.error(msg);
   } finally {
     archiving.value = false;
   }
@@ -1687,7 +1687,9 @@ async function handleUnarchive() {
       layoutApp.value = updatedApp;
     }
   } catch (err: any) {
-    error.value = err.response?.data?.message || "Failed to unarchive app";
+    const msg = err.response?.data?.message || "Failed to unarchive app";
+    error.value = msg;
+    flashStore.error(msg);
   } finally {
     archiving.value = false;
   }
@@ -1708,7 +1710,9 @@ async function handleDelete() {
       vueRouter!.push({ name: "stores-show", params: { id: storeId.value } });
     }
   } catch (err: any) {
-    deleteError.value = err.response?.data?.message || "Failed to delete app";
+    const msg = err.response?.data?.message || "Failed to delete app";
+    deleteError.value = msg;
+    flashStore.error(msg);
   } finally {
     deleting.value = false;
   }

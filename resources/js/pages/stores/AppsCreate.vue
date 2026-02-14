@@ -81,13 +81,6 @@
                   />
                 </div>
 
-                <div v-if="error" class="rounded-xl bg-red-500/10 border border-red-500/20 p-4">
-                   <div class="flex">
-                      <svg class="h-5 w-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      <div class="text-sm text-red-400">{{ error }}</div>
-                  </div>
-                </div>
-
                 <div class="pt-4 border-t border-gray-700/50 flex items-center justify-end gap-3">
                   <router-link
                     :to="`/stores/${storeId}/apps`"
@@ -124,6 +117,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useAppsStore } from '../../store/apps';
 import { useStoresStore } from '../../store/stores';
+import { useFlashStore } from '../../store/flash';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
 import api from '../../services/api';
 
@@ -137,7 +131,7 @@ const storesStore = useStoresStore();
 const storeId = computed(() => route.params.id as string);
 const store = ref<any>(null);
 const saving = ref(false);
-const error = ref('');
+const flashStore = useFlashStore();
 
 const allApps = computed(() => appsStore.apps);
 // We use 'apps' prop for Sidebar which expects the list of apps
@@ -158,26 +152,18 @@ async function loadStore() {
 
 async function handleSubmit() {
   if (!form.value.name || !form.value.appType) return;
-  
   saving.value = true;
-  error.value = '';
-
+  flashStore.clear();
   try {
     const response = await api.post(`/stores/${storeId.value}/apps`, {
       name: form.value.name,
       app_type: form.value.appType,
     });
-    
-    // Refresh apps list
     await appsStore.fetchApps(storeId.value);
-    
-    // Redirect to the new app's settings page
     const newAppId = response.data.data.id;
     router.push(`/stores/${storeId.value}/apps/${newAppId}`);
-    
   } catch (err: any) {
-    console.error('Failed to create app:', err);
-    error.value = err.response?.data?.message || t('apps.failed_to_create');
+    flashStore.error(err.response?.data?.message || t('apps.failed_to_create'));
   } finally {
     saving.value = false;
   }

@@ -52,9 +52,6 @@
                 :class="{ 'border-red-500 ring-1 ring-red-500': confirmText && confirmText !== 'DELETE' }"
                 />
                 
-                <div v-if="error" class="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
-                    <p class="text-sm text-red-400 font-medium">{{ error }}</p>
-                </div>
             </div>
 
             <div class="flex justify-end gap-3 mt-8">
