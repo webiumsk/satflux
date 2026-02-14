@@ -54,6 +54,9 @@ return [
     'lightning_address_username_mismatch' => 'Username in request body must match URL parameter',
     'lightning_address_limit_reached' => 'You have reached the maximum number of Lightning Addresses (:max) for your :plan plan. Please upgrade to add more addresses.',
 
+    // Tickets (events limit)
+    'tickets_event_limit_free' => 'Ticket events are limited to :max per store on the Free plan. Upgrade to Pro for unlimited events.',
+
     // Apps
     'app_created' => 'App created successfully',
     'app_updated' => 'App updated successfully',

@@ -109,6 +109,13 @@ class AppController extends Controller
             ], 503); // Service Unavailable
         }
 
+        // Tickets are a store-level feature (like LN Address): use /stores/{store}/tickets, not apps.
+        if ($request->app_type === 'Tickets') {
+            return response()->json([
+                'message' => 'Tickets are managed per store. Use the Tickets section in the store sidebar.',
+            ], 400);
+        }
+
         return DB::transaction(function () use ($request, $store) {
             // Load merchant API key from store owner
             $userApiKey = $store->user->getBtcPayApiKeyOrFail();

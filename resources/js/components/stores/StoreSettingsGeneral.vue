@@ -92,42 +92,12 @@
         <button
           v-if="!canEditBranding"
           type="button"
-          @click="$emit('update:showBrandingProNotice', !showBrandingProNotice)"
+          @click="$emit('show-upgrade')"
           class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
         >
           {{ t('stores.available_in_pro') }}
-          <svg
-            class="w-3.5 h-3.5 transition-transform duration-200"
-            :class="{ 'rotate-180': showBrandingProNotice }"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
         </button>
       </div>
-      <Transition
-        enter-active-class="transition ease-out duration-200"
-        enter-from-class="opacity-0 -translate-y-1"
-        enter-to-class="opacity-100 translate-y-0"
-        leave-active-class="transition ease-in duration-150"
-        leave-from-class="opacity-100 translate-y-0"
-        leave-to-class="opacity-0 -translate-y-1"
-      >
-        <div
-          v-if="!canEditBranding && showBrandingProNotice"
-          class="mb-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-200"
-        >
-          <p class="mb-2">{{ t('stores.pos_advanced_options_pro_only') }}</p>
-          <a
-            :href="'/account'"
-            class="inline-flex items-center font-medium text-amber-300 hover:text-amber-200 underline underline-offset-2"
-          >
-            {{ t('stores.upgrade_to_pro') }}
-          </a>
-        </div>
-      </Transition>
       <p class="text-sm text-gray-400">{{ t('stores.settings_branding_desc') }}</p>
       <div
         :class="[
@@ -187,42 +157,12 @@
         <button
           v-if="!canEditArchivedOption"
           type="button"
-          @click="$emit('update:showArchivedProNotice', !showArchivedProNotice)"
+          @click="$emit('show-upgrade')"
           class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
         >
           {{ t('stores.available_in_pro') }}
-          <svg
-            class="w-3.5 h-3.5 transition-transform duration-200"
-            :class="{ 'rotate-180': showArchivedProNotice }"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
         </button>
       </div>
-      <Transition
-        enter-active-class="transition ease-out duration-200"
-        enter-from-class="opacity-0 -translate-y-1"
-        enter-to-class="opacity-100 translate-y-0"
-        leave-active-class="transition ease-in duration-150"
-        leave-from-class="opacity-100 translate-y-0"
-        leave-to-class="opacity-0 -translate-y-1"
-      >
-        <div
-          v-if="!canEditArchivedOption && showArchivedProNotice"
-          class="mb-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-200"
-        >
-          <p class="mb-2">{{ t('stores.settings_tab_archived_desc') }}</p>
-          <a
-            href="/account"
-            class="inline-flex items-center font-medium text-amber-300 hover:text-amber-200 underline underline-offset-2"
-          >
-            {{ t('stores.upgrade_to_pro') }}
-          </a>
-        </div>
-      </Transition>
       <div
         :class="[
           'flex flex-wrap gap-x-8 gap-y-4',
@@ -243,8 +183,7 @@ import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 const emit = defineEmits<{
-  'update:showBrandingProNotice': [value: boolean];
-  'update:showArchivedProNotice': [value: boolean];
+  'show-upgrade': [];
   'logo-upload': [event: Event];
   'logo-delete': [];
 }>();
@@ -253,9 +192,7 @@ defineProps<{
   form: Record<string, any>;
   settings: any;
   canEditBranding: boolean;
-  showBrandingProNotice: boolean;
   canEditArchivedOption: boolean;
-  showArchivedProNotice: boolean;
   storeLogoUrl: string | null;
   logoError: string;
   logoSuccess: string;

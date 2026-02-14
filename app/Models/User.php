@@ -147,6 +147,30 @@ class User extends Authenticatable
     }
 
     /**
+     * Get maximum number of ticket events allowed per store.
+     * Admin/support: unlimited. Otherwise from plan: Free=1, Pro=3, Enterprise=unlimited.
+     *
+     * @return int|null Maximum events per store (null = unlimited)
+     */
+    public function getMaxEventsPerStore(): ?int
+    {
+        if ($this->hasUnlimitedAccess()) {
+            return null;
+        }
+
+        $plan = $this->currentSubscriptionPlan();
+        if (!$plan) {
+            return 1; // fallback for free / no plan
+        }
+
+        if ($plan->max_events === null) {
+            return null; // unlimited
+        }
+
+        return (int) $plan->max_events;
+    }
+
+    /**
      * Get the stores for the user.
      */
     public function stores(): HasMany

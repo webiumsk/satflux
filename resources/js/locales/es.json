@@ -229,6 +229,7 @@
     "saving": "Guardando...",
     "update_event": "Actualizar evento",
     "events": "Eventos",
+    "event_limit_modal_message": "En el plan gratuito puedes tener como máximo 1 evento por tienda. Actualiza a Pro para eventos ilimitados.",
     "no_events": "Aún no hay eventos",
     "no_events_description": "Cree su primer evento para vender entradas con Bitcoin.",
     "create_first_event": "Crear primer evento",
@@ -433,7 +434,7 @@
     "delete_address": "Eliminar dirección",
     "loading_lightning_addresses": "Cargando direcciones Lightning...",
     "no_lightning_addresses_yet": "Aún no hay direcciones Lightning",
-    "create_lightning_address_description": "Crea una dirección Lightning para recibir pagos fácilmente con el formato tu-usuario@satflux.org.",
+    "create_lightning_address_description": "Crea una dirección Lightning para recibir pagos fácilmente con el formato tu-usuario{'@'}satflux.org.",
     "add_your_first_address": "Añadir tu primera dirección",
     "add_lightning_address": "Añadir dirección Lightning",
     "remove_lightning_address": "Eliminar dirección Lightning",
@@ -1219,7 +1220,8 @@
     "limits": {
       "stores": "Tiendas",
       "api_keys": "Claves API",
-      "ln_addresses": "Direcciones Lightning"
+      "ln_addresses": "Direcciones Lightning",
+      "events": "Eventos por tienda"
     }
   },
   "plans": {
@@ -1243,7 +1245,10 @@
       "multi_user_roles": "Roles multi-usuario por tienda",
       "custom_reporting_formats": "Formatos de informes personalizados (CSV, JSON, PDF)",
       "integration_support": "Soporte de integración",
-      "pos_cash_card": "PoS: marcar pedidos como \"Pagado en efectivo\" o \"Pagado con tarjeta\" (contabilidad)"
+      "pos_cash_card": "PoS: marcar pedidos como \"Pagado en efectivo\" o \"Pagado con tarjeta\" (contabilidad)",
+      "tickets_1": "1 evento (Entradas)",
+      "tickets_3": "3 eventos (Entradas)",
+      "tickets_unlimited": "Eventos ilimitados (Entradas)"
     }
   },
   "settings": {

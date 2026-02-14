@@ -16,6 +16,7 @@ return [
             'pos_unlimited',
             'ln_addresses_2',
             'api_key_1',
+            'tickets_1',
             'manual_csv',
             'basic_stats',
             'no_tx_fees',
@@ -28,6 +29,7 @@ return [
             'pos_unlimited',
             'ln_unlimited',
             'api_keys_3',
+            'tickets_3',
             'manual_auto_csv',
             'advanced_stats',
             'custom_branding',
@@ -38,6 +40,7 @@ return [
     'enterprise' => [
         'feature_keys' => [
             'stores_unlimited',
+            'tickets_unlimited',
             'webhooks',
             'multi_user_roles',
             'custom_reporting_formats',

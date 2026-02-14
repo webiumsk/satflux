@@ -27,14 +27,18 @@
               </button>
               <div>
                 <h1 class="text-2xl font-bold text-white mb-1">{{ app.name || t('tickets.title') }}</h1>
-                <p class="text-sm text-gray-400">{{ t('tickets.subtitle') }} <span class="text-indigo-400">{{ store.name }}</span></p>
+                <p class="text-sm text-gray-400">
+                  {{ t('tickets.subtitle') }} <span class="text-indigo-400">{{ store.name }}</span>
+                  <span v-if="eventLimit != null" class="ml-2 text-gray-500 bg-gray-800 px-2 py-0.5 rounded-full text-xs">{{ events.length }} / {{ eventLimit }} {{ t('tickets.events') }}</span>
+                  <span v-else-if="events.length > 0" class="ml-2 text-gray-500 bg-gray-800 px-2 py-0.5 rounded-full text-xs">∞</span>
+                </p>
               </div>
             </div>
 
             <div class="flex items-center gap-3">
               <button
                 type="button"
-                @click="showCreateForm = !showCreateForm; expandedEventId = null"
+                @click="onCreateEventClick"
                 class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg shadow-indigo-600/20 transition-all hover:scale-105"
               >
                 <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
@@ -208,7 +212,7 @@
             </div>
             <h3 class="text-xl font-medium text-white mb-2">{{ t('tickets.no_events') }}</h3>
             <p class="text-gray-400 mb-8 max-w-sm mx-auto">{{ t('tickets.no_events_description') }}</p>
-            <button @click="showCreateForm = true" class="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">{{ t('tickets.create_first_event') }}</button>
+            <button @click="onCreateEventClick" class="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">{{ t('tickets.create_first_event') }}</button>
           </div>
 
           <!-- Events Cards -->
@@ -553,6 +557,13 @@
       </div>
     </template>
   </AppShowLayout>
+  <UpgradeModal
+    :show="showUpgradeModal"
+    :message="t('tickets.event_limit_modal_message')"
+    :limits="eventLimit != null ? [{ feature: 'events', current: events.length, max: eventLimit }] : []"
+    recommended-plan="pro"
+    @close="showUpgradeModal = false"
+  />
 </template>
 
 <script setup lang="ts">
@@ -563,18 +574,25 @@ import { useBtcPayUrl } from '../../composables/useBtcPayUrl';
 import api from '../../services/api';
 import AppShowLayout from '../../components/stores/AppShowLayout.vue';
 import DatePicker from '../../components/ui/DatePicker.vue';
+import UpgradeModal from '../../components/stores/UpgradeModal.vue';
 
 const { t } = useI18n();
 const ticketsStore = useTicketsStore();
 const { btcPayUrl, load: loadBtcPayUrl } = useBtcPayUrl();
 const isInertia = inject<boolean>('inertia', false);
 
-const props = defineProps<{
-  app: any;
-  store: any;
-}>();
+const props = withDefaults(
+  defineProps<{
+    app: any;
+    store: any;
+    /** Max events allowed (null = unlimited). When set, Create button is disabled at limit. */
+    eventLimit?: number | null;
+  }>(),
+  { eventLimit: null }
+);
 
 const layoutRef = ref<InstanceType<typeof AppShowLayout> | null>(null);
+const showUpgradeModal = ref(false);
 
 // ── State ───────────────────────────────────────
 const events = ref<TicketEvent[]>([]);
@@ -671,6 +689,15 @@ function resetForm() {
 
 function cancelForm() { resetForm(); showCreateForm.value = false; }
 function goBack() { window.history.back(); }
+
+function onCreateEventClick() {
+  if (props.eventLimit != null && events.value.length >= props.eventLimit) {
+    showUpgradeModal.value = true;
+    return;
+  }
+  showCreateForm.value = !showCreateForm.value;
+  expandedEventId.value = null;
+}
 
 // ── Image Upload ────────────────────────────────
 

@@ -58,9 +58,23 @@ class TicketController extends Controller
 
     /**
      * Create a new event.
+     * Free plan: max 1 event per store. Pro / admin / support: unlimited.
      */
     public function createEvent(Request $request, Store $store)
     {
+        $user = $store->user;
+        $maxEvents = $user->getMaxEventsPerStore();
+        if ($maxEvents !== null) {
+            $userApiKey = $user->getBtcPayApiKeyOrFail();
+            $existing = $this->ticketService->listEvents($store->btcpay_store_id, $userApiKey, false);
+            $count = is_array($existing) ? count($existing) : 0;
+            if ($count >= $maxEvents) {
+                return response()->json([
+                    'message' => __('messages.tickets_event_limit_free', ['max' => $maxEvents]),
+                ], 403);
+            }
+        }
+
         $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'startDate' => ['required', 'string'],

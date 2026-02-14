@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Store;
 use App\Services\BtcPay\LightningAddressService;
+use App\Services\BtcPay\TicketService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
@@ -11,7 +13,8 @@ use Illuminate\Validation\Rules\Password;
 class AccountController extends Controller
 {
     public function __construct(
-        protected LightningAddressService $lightningAddressService
+        protected LightningAddressService $lightningAddressService,
+        protected TicketService $ticketService
     ) {}
     /**
      * Get the authenticated user with plan and subscription info.
@@ -82,6 +85,10 @@ class AccountController extends Controller
                     'max' => null,
                     'unlimited' => true,
                 ],
+                'events' => [
+                    'max' => null,
+                    'unlimited' => true,
+                ],
             ]);
         }
 
@@ -124,6 +131,8 @@ class AccountController extends Controller
                 }
             }
 
+            $maxEvents = $user->getMaxEventsPerStore();
+
             return [
                 'stores' => [
                     'current' => $storeCount,
@@ -140,8 +149,26 @@ class AccountController extends Controller
                     'max' => $maxApiKeys,
                     'unlimited' => $maxApiKeys === null,
                 ],
+                'events' => [
+                    'max' => $maxEvents,
+                    'unlimited' => $maxEvents === null,
+                ],
             ];
         });
+
+        // When store_id is provided, add events.current (event count for that store) for sidebar display
+        if ($request->filled('store_id')) {
+            $store = $user->stores()->find($request->store_id);
+            if ($store) {
+                try {
+                    $apiKey = $user->getBtcPayApiKeyOrFail();
+                    $eventList = $this->ticketService->listEvents($store->btcpay_store_id, $apiKey, false);
+                    $limits['events']['current'] = is_array($eventList) ? count($eventList) : 0;
+                } catch (\Throwable $e) {
+                    $limits['events']['current'] = 0;
+                }
+            }
+        }
 
         return response()->json($limits);
     }

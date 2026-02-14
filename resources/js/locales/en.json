@@ -12,7 +12,8 @@
     "limits": {
       "stores": "Stores",
       "api_keys": "API keys",
-      "ln_addresses": "Lightning Addresses"
+      "ln_addresses": "Lightning Addresses",
+      "events": "Events per store"
     }
   },
   "plans": {
@@ -36,7 +37,10 @@
       "multi_user_roles": "Multi-user roles per store",
       "custom_reporting_formats": "Custom reporting formats (CSV, JSON, PDF)",
       "integration_support": "Integration support",
-      "pos_cash_card": "PoS: mark orders as \"Paid in Cash\" or \"Paid by Card\" (for accounting)"
+      "pos_cash_card": "PoS: mark orders as \"Paid in Cash\" or \"Paid by Card\" (for accounting)",
+      "tickets_1": "1 event (Tickets)",
+      "tickets_3": "3 events (Tickets)",
+      "tickets_unlimited": "Unlimited events (Tickets)"
     }
   },
   "common": {
@@ -285,7 +289,7 @@
     "delete_address": "Delete Address",
     "loading_lightning_addresses": "Loading lightning addresses...",
     "no_lightning_addresses_yet": "No lightning addresses yet",
-    "create_lightning_address_description": "Create a Lightning Address to receive payments easily via a reusable address format your-username@satflux.org.",
+    "create_lightning_address_description": "Create a Lightning Address to receive payments easily via a reusable address format your-username{'@'}satflux.org.",
     "add_your_first_address": "Add Your First Address",
     "add_lightning_address": "Add Lightning Address",
     "remove_lightning_address": "Remove Lightning Address",
@@ -792,6 +796,7 @@
     "saving": "Saving...",
     "update_event": "Update Event",
     "events": "Events",
+    "event_limit_modal_message": "You have reached the maximum number of events (1) per store on the Free plan. Upgrade to Pro for unlimited events.",
     "no_events": "No events yet",
     "no_events_description": "Create your first event to start selling tickets with Bitcoin.",
     "create_first_event": "Create Your First Event",

@@ -25,6 +25,7 @@ class SubscriptionPlanSeeder extends Seeder
                 'max_stores' => 1,
                 'max_api_keys' => 1,
                 'max_ln_addresses' => 2,
+                'max_events' => 1,
                 'features' => [
                     'manual_csv_exports',
                     'basic_payment_overview',
@@ -44,6 +45,7 @@ class SubscriptionPlanSeeder extends Seeder
                 'max_stores' => 3,
                 'max_api_keys' => 3,
                 'max_ln_addresses' => null, // unlimited
+                'max_events' => 3,
                 'features' => [
                     'manual_csv_exports',
                     'automatic_csv_exports',
@@ -67,6 +69,7 @@ class SubscriptionPlanSeeder extends Seeder
                 'max_stores' => null,
                 'max_api_keys' => null,
                 'max_ln_addresses' => null,
+                'max_events' => null, // unlimited
                 'features' => [
                     'manual_csv_exports',
                     'automatic_csv_exports',
