@@ -817,6 +817,8 @@
     "search_tickets_placeholder": "Search by name, email, ticket #...",
     "check_in": "Check In",
     "open_checkin": "Open check-in page",
+    "copy_checkin_url": "Copy check-in URL",
+    "checkin_url_copied": "Check-in URL copied to clipboard",
     "export_csv": "Export CSV",
     "col_ticket_number": "Ticket #",
     "col_name": "Name",

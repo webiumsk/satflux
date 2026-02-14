@@ -818,6 +818,8 @@
     "search_tickets_placeholder": "Hľadať podľa mena, e-mailu, č. vstupenky...",
     "check_in": "Check-in",
     "open_checkin": "Otvoriť stránku check-in",
+    "copy_checkin_url": "Skopírovať URL check-inu",
+    "checkin_url_copied": "URL check-inu skopírovaná do schránky",
     "export_csv": "Exportovať CSV",
     "col_ticket_number": "Č. vstupenky",
     "col_name": "Meno",

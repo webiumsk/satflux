@@ -254,6 +254,8 @@
     "search_tickets_placeholder": "Buscar por nombre, email, nº...",
     "check_in": "Check-in",
     "open_checkin": "Abrir página de check-in",
+    "copy_checkin_url": "Copiar URL de check-in",
+    "checkin_url_copied": "URL de check-in copiada al portapapeles",
     "export_csv": "Exportar CSV",
     "col_ticket_number": "Nº",
     "col_name": "Nombre",

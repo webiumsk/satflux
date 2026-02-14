@@ -437,6 +437,14 @@
                         <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         {{ t('tickets.check_in') }}
                       </button>
+                      <button
+                        type="button"
+                        @click="copyCheckInUrl(event)"
+                        class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                        :title="t('tickets.copy_checkin_url')"
+                      >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                      </button>
                       <a
                         v-if="btcPayUrl"
                         :href="getCheckInUrl(event)"
@@ -953,8 +961,23 @@ function getCheckInUrl(event: TicketEvent): string {
   return `${btcPayUrl.value}/plugins/${storeId}/ticketevent/${event.id}/tickettype/ticket-checkin`;
 }
 
+function getPanelCheckInUrl(event: TicketEvent): string {
+  const path = `/stores/${props.store.id}/ticket-check-in/${event.id}`;
+  return typeof window !== 'undefined' ? `${window.location.origin}${path}` : path;
+}
+
 function openPanelCheckIn(event: TicketEvent) {
   window.location.href = `/stores/${props.store.id}/ticket-check-in/${event.id}`;
+}
+
+async function copyCheckInUrl(event: TicketEvent) {
+  const url = getPanelCheckInUrl(event);
+  try {
+    await navigator.clipboard.writeText(url);
+    showSuccess(t('tickets.checkin_url_copied'));
+  } catch {
+    showError(t('common.copy_failed'));
+  }
 }
 
 function exportTicketsCsv(event: TicketEvent) {
