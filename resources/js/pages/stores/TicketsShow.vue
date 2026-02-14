@@ -53,7 +53,7 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
         <!-- ────── Create / Edit Event Form ────── -->
-        <div v-if="showCreateForm" class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
+        <div v-if="showCreateForm" class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700">
           <div class="p-6 sm:p-8">
             <div class="flex items-center justify-between mb-6">
               <h2 class="text-lg font-semibold text-white">
@@ -619,6 +619,7 @@ const eventForm = ref({
   hasMaximumCapacity: false,
   maximumEventCapacity: null as number | null,
   eventLogoUrl: '' as string,
+  eventLogoFileId: '' as string,
 });
 
 // Image upload
@@ -681,7 +682,7 @@ function shortTicketNumber(ticketNumber: string): string {
 }
 
 function resetForm() {
-  eventForm.value = { title: '', description: '', eventType: 'Physical', location: '', startDate: '', endDate: '', currency: '', redirectUrl: '', emailSubject: '', emailBody: '', hasMaximumCapacity: false, maximumEventCapacity: null, eventLogoUrl: '' };
+  eventForm.value = { title: '', description: '', eventType: 'Physical', location: '', startDate: '', endDate: '', currency: '', redirectUrl: '', emailSubject: '', emailBody: '', hasMaximumCapacity: false, maximumEventCapacity: null, eventLogoUrl: '', eventLogoFileId: '' };
   editingEvent.value = null;
   showEmailSettings.value = false;
   imagePreview.value = null;
@@ -711,14 +712,28 @@ async function onEventImageChange(e: Event) {
   reader.onload = (ev) => { imagePreview.value = ev.target?.result as string; };
   reader.readAsDataURL(file);
 
-  // Upload
   uploadingImage.value = true;
   try {
-    const formData = new FormData();
-    formData.append('image', file);
-    const response = await api.post(`/stores/${props.store.id}/tickets/events/image`, formData);
-    eventForm.value.eventLogoUrl = response.data.data?.url || response.data.data?.image_url || '';
-    showSuccess(t('tickets.image_uploaded'));
+    const eventId = editingEvent.value?.id;
+    if (eventId) {
+      // Plugin endpoint: POST .../events/{eventId}/logo (store-level permission, single request)
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await api.post(`/stores/${props.store.id}/tickets/events/${eventId}/logo`, formData);
+      const d = response.data?.data ?? {};
+      eventForm.value.eventLogoFileId = d.eventLogoFileId ?? d.id ?? '';
+      eventForm.value.eventLogoUrl = d.eventLogoUrl ?? d.logoUrl ?? d.url ?? '';
+      showSuccess(t('tickets.image_uploaded'));
+    } else {
+      // Create flow: POST /events/image (returns file id; we send eventLogoFileId on create)
+      const formData = new FormData();
+      formData.append('image', file);
+      const response = await api.post(`/stores/${props.store.id}/tickets/events/image`, formData);
+      const d = response.data?.data ?? {};
+      eventForm.value.eventLogoFileId = d.id ?? d.eventLogoFileId ?? '';
+      eventForm.value.eventLogoUrl = d.url ?? d.image_url ?? '';
+      showSuccess(t('tickets.image_uploaded'));
+    }
   } catch (err: any) {
     imagePreview.value = null;
     showError(err?.response?.data?.message || err?.message || 'Failed to upload image');
@@ -728,8 +743,21 @@ async function onEventImageChange(e: Event) {
   }
 }
 
-function clearEventImage() {
+async function clearEventImage() {
+  const eventId = editingEvent.value?.id;
+  if (eventId) {
+    try {
+      const response = await api.delete(`/stores/${props.store.id}/tickets/events/${eventId}/logo`);
+      const d = response.data?.data ?? {};
+      eventForm.value.eventLogoFileId = d.eventLogoFileId ?? '';
+      eventForm.value.eventLogoUrl = d.eventLogoUrl ?? '';
+    } catch (err: any) {
+      showError(err?.response?.data?.message || err?.message || 'Failed to remove logo');
+      return;
+    }
+  }
   eventForm.value.eventLogoUrl = '';
+  eventForm.value.eventLogoFileId = '';
   imagePreview.value = null;
 }
 
@@ -823,7 +851,15 @@ async function handleSubmitEvent() {
   if (eventForm.value.emailSubject) data.emailSubject = eventForm.value.emailSubject;
   if (eventForm.value.emailBody) data.emailBody = eventForm.value.emailBody;
   if (eventForm.value.hasMaximumCapacity && eventForm.value.maximumEventCapacity) data.maximumEventCapacity = eventForm.value.maximumEventCapacity;
-  if (eventForm.value.eventLogoUrl) data.eventLogoUrl = eventForm.value.eventLogoUrl;
+  // Plugin 1.5: send eventLogoFileId and eventLogoUrl when available so plugin can display URL
+  if (eventForm.value.eventLogoFileId) {
+    data.eventLogoFileId = eventForm.value.eventLogoFileId;
+    if (eventForm.value.eventLogoUrl) data.eventLogoUrl = eventForm.value.eventLogoUrl;
+  } else if (eventForm.value.eventLogoUrl) {
+    data.eventLogoUrl = eventForm.value.eventLogoUrl;
+  } else {
+    data.eventLogoFileId = '';
+  }
 
   try {
     if (editingEvent.value) {
@@ -851,6 +887,7 @@ function handleEditEvent(event: TicketEvent) {
     redirectUrl: event.redirectUrl || '', emailSubject: event.emailSubject || '', emailBody: event.emailBody || '',
     hasMaximumCapacity: event.hasMaximumCapacity || false, maximumEventCapacity: event.maximumEventCapacity || null,
     eventLogoUrl: event.eventLogoUrl || (event as any).logoUrl || '',
+    eventLogoFileId: (event as any).eventLogoFileId || '',
   };
   imagePreview.value = null;
   if (event.emailSubject || event.emailBody) showEmailSettings.value = true;

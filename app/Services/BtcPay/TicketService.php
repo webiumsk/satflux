@@ -45,9 +45,12 @@ class TicketService
     public function createEvent(string $storeId, array $data, ?string $userApiKey = null): array
     {
         $payload = $this->normalizeEventPayloadForBtcPay($data);
-        return $this->withApiKey($userApiKey, function () use ($storeId, $payload) {
+        Log::debug('TicketService createEvent payload', ['store_id' => $storeId, 'payload_keys' => array_keys($payload), 'eventLogoFileId' => $payload['eventLogoFileId'] ?? null]);
+        $result = $this->withApiKey($userApiKey, function () use ($storeId, $payload) {
             return $this->client->post("/api/v1/stores/{$storeId}/satoshi-tickets/events", $payload);
         });
+        Log::debug('TicketService createEvent response', ['event_id' => $result['id'] ?? null, 'eventLogoUrl' => $result['eventLogoUrl'] ?? null, 'eventLogoFileId' => $result['eventLogoFileId'] ?? null]);
+        return $result;
     }
 
     /**
@@ -57,9 +60,12 @@ class TicketService
     public function updateEvent(string $storeId, string $eventId, array $data, ?string $userApiKey = null): array
     {
         $payload = $this->normalizeEventPayloadForBtcPay($data);
-        return $this->withApiKey($userApiKey, function () use ($storeId, $eventId, $payload) {
+        Log::debug('TicketService updateEvent payload', ['store_id' => $storeId, 'event_id' => $eventId, 'eventLogoFileId' => $payload['eventLogoFileId'] ?? null, 'eventLogoUrl' => $payload['eventLogoUrl'] ?? null]);
+        $result = $this->withApiKey($userApiKey, function () use ($storeId, $eventId, $payload) {
             return $this->client->put("/api/v1/stores/{$storeId}/satoshi-tickets/events/{$eventId}", $payload);
         });
+        Log::debug('TicketService updateEvent response', ['eventLogoUrl' => $result['eventLogoUrl'] ?? null, 'eventLogoFileId' => $result['eventLogoFileId'] ?? null]);
+        return $result;
     }
 
     /**
@@ -79,6 +85,35 @@ class TicketService
     {
         return $this->withApiKey($userApiKey, function () use ($storeId, $eventId) {
             return $this->client->put("/api/v1/stores/{$storeId}/satoshi-tickets/events/{$eventId}/toggle", []);
+        });
+    }
+
+    /**
+     * Upload event logo via plugin endpoint (store-level permission only).
+     * POST /api/v1/stores/{storeId}/satoshi-tickets/events/{eventId}/logo
+     * Returns updated EventData including eventLogoUrl and eventLogoFileId.
+     */
+    public function uploadEventLogo(string $storeId, string $eventId, $file, ?string $userApiKey = null): array
+    {
+        return $this->withApiKey($userApiKey, function () use ($storeId, $eventId, $file) {
+            return $this->client->postMultipart(
+                "/api/v1/stores/{$storeId}/satoshi-tickets/events/{$eventId}/logo",
+                $file
+            );
+        });
+    }
+
+    /**
+     * Delete event logo via plugin endpoint.
+     * DELETE /api/v1/stores/{storeId}/satoshi-tickets/events/{eventId}/logo
+     * Returns updated EventData.
+     */
+    public function deleteEventLogo(string $storeId, string $eventId, ?string $userApiKey = null): array
+    {
+        return $this->withApiKey($userApiKey, function () use ($storeId, $eventId) {
+            return $this->client->delete(
+                "/api/v1/stores/{$storeId}/satoshi-tickets/events/{$eventId}/logo"
+            );
         });
     }
 
@@ -207,16 +242,36 @@ class TicketService
     // ──────────────────────────────────────────────────
 
     /**
-     * Ensure event logo is sent under both eventLogoUrl and logoUrl for plugin compatibility.
+     * Keys allowed in plugin CreateEventRequest / UpdateEventRequest (plugin ignores unknown fields).
+     * Plugin only uses eventLogoFileId on input; eventLogoUrl is resolved server-side for response.
+     */
+    protected const EVENT_PAYLOAD_KEYS = [
+        'title',
+        'description',
+        'eventType',
+        'location',
+        'startDate',
+        'endDate',
+        'currency',
+        'redirectUrl',
+        'emailSubject',
+        'emailBody',
+        'hasMaximumCapacity',
+        'maximumEventCapacity',
+        'eventLogoFileId',
+    ];
+
+    /**
+     * Normalize event payload for plugin: only send fields the plugin expects (UpdateEventRequest).
+     * Plugin expects eventLogoFileId (string, optional); it resolves eventLogoUrl via IFileService for response.
      */
     protected function normalizeEventPayloadForBtcPay(array $data): array
     {
-        $logo = $data['eventLogoUrl'] ?? $data['logoUrl'] ?? null;
-        if ($logo !== null && $logo !== '') {
-            $data['eventLogoUrl'] = $logo;
-            $data['logoUrl'] = $logo;
+        $fileId = isset($data['eventLogoFileId']) ? ($data['eventLogoFileId'] === null ? '' : (string) $data['eventLogoFileId']) : null;
+        if ($fileId !== null) {
+            $data['eventLogoFileId'] = $fileId;
         }
-        return $data;
+        return array_intersect_key($data, array_flip(self::EVENT_PAYLOAD_KEYS));
     }
 
     /**
