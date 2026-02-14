@@ -447,15 +447,19 @@ function formatDate(dateInput: string | number): string {
 
 function formatAmount(amount: string | number, currency: string = 'USD'): string {
   if (!amount) return '-';
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(numAmount)) return '-';
+  const code = (currency || 'USD').toUpperCase();
+  if (code === 'SATS') {
+    return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(numAmount) + ' sats';
+  }
   try {
-    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-    if (isNaN(numAmount)) return '-';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: currency || 'USD',
+      currency: code,
     }).format(numAmount);
-  } catch (error) {
-    return `${amount} ${currency || 'USD'}`;
+  } catch {
+    return `${numAmount} ${currency || 'USD'}`;
   }
 }
 

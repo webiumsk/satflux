@@ -149,10 +149,13 @@ function formatAmount(amount: string | number | null, currency: string | null): 
   if (!amount) return 'N/A';
   const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
   if (isNaN(numAmount)) return 'N/A';
-  
+  const code = (currency || 'EUR').toUpperCase();
+  if (code === 'SATS') {
+    return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(numAmount) + ' sats';
+  }
   return new Intl.NumberFormat('sk-SK', {
     style: 'currency',
-    currency: currency || 'EUR',
+    currency: code,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(numAmount);

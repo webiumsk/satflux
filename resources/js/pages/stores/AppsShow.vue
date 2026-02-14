@@ -18,8 +18,8 @@
       @show-section="handleShowSection"
     />
     <div class="flex-1 overflow-hidden flex flex-col bg-gray-900 border-l border-gray-800">
-      <PointOfSaleShow v-if="appType === 'PointOfSale'" />
-      <PayButtonShow v-else-if="appType === 'PaymentButton'" />
+      <PointOfSaleShow v-if="appType === 'PointOfSale'" :store="storeForRoute" :app="app" />
+      <PayButtonShow v-else-if="appType === 'PaymentButton'" :store="storeForRoute" :app="app" />
       <TicketsShow v-else-if="appType === 'Tickets'" :store="storeForRoute" :app="app" />
       <div v-else-if="appType === 'Crowdfund'" class="flex items-center justify-center h-full bg-gray-900">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
