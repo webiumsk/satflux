@@ -12,7 +12,8 @@
     "limits": {
       "stores": "Obchody",
       "api_keys": "API kľúče",
-      "ln_addresses": "Lightning adresy"
+      "ln_addresses": "Lightning adresy",
+      "events": "Eventy na obchod"
     }
   },
   "plans": {
@@ -36,7 +37,10 @@
       "multi_user_roles": "Viacerí používatelia a role na obchod",
       "custom_reporting_formats": "Vlastné reportovacie formáty (CSV, JSON, PDF)",
       "integration_support": "Integračná podpora",
-      "pos_cash_card": "PoS: označenie objednávok ako \"Zaplatené hotovosťou\" alebo \"Zaplatené kartou\" (pre účtovníctvo)"
+      "pos_cash_card": "PoS: označenie objednávok ako \"Zaplatené hotovosťou\" alebo \"Zaplatené kartou\" (pre účtovníctvo)",
+      "tickets_1": "1 event (Lístky)",
+      "tickets_3": "3 eventy (Lístky)",
+      "tickets_unlimited": "Neobmedzené eventy (Lístky)"
     }
   },
   "common": {
@@ -286,7 +290,7 @@
     "delete_address": "Odstrániť adresu",
     "loading_lightning_addresses": "Načítavanie Lightning adries...",
     "no_lightning_addresses_yet": "Zatiaľ žiadne Lightning adresy",
-    "create_lightning_address_description": "Vytvorte Lightning adresu na jednoduché prijímanie platieb vo formáte vase-meno@satflux.org.",
+    "create_lightning_address_description": "Vytvorte Lightning adresu na jednoduché prijímanie platieb vo formáte vase-meno{'@'}satflux.org.",
     "add_your_first_address": "Pridať prvú adresu",
     "add_lightning_address": "Pridať Lightning adresu",
     "remove_lightning_address": "Odstrániť Lightning adresu",
@@ -793,6 +797,7 @@
     "saving": "Ukladám...",
     "update_event": "Uložiť zmeny",
     "events": "Podujatia",
+    "event_limit_modal_message": "Na voľnom pláne môžete mať maximálne 1 event na obchod. Pre neobmedzené eventy prejdite na Pro.",
     "no_events": "Zatiaľ žiadne podujatia",
     "no_events_description": "Vytvorte prvé podujatie a začnite predávať vstupenky za Bitcoin.",
     "create_first_event": "Vytvoriť prvé podujatie",

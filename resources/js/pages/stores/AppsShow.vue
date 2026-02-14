@@ -102,6 +102,11 @@ async function loadApp() {
   try {
     await storesStore.fetchStore(storeId.value);
     await appsStore.fetchApps(storeId.value);
+    const currentApp = appsStore.apps.find((a: any) => a.id === appId.value);
+    if (currentApp?.app_type === 'Tickets') {
+      router.replace({ name: 'stores-tickets', params: { id: storeId.value } });
+      return;
+    }
   } catch (err) {
     console.error('Failed to load app:', err);
   } finally {

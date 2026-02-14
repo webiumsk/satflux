@@ -24,6 +24,7 @@ class SubscriptionPlan extends Model
         'max_stores',
         'max_api_keys',
         'max_ln_addresses',
+        'max_events',
         'features',
         'is_active',
     ];
@@ -40,6 +41,7 @@ class SubscriptionPlan extends Model
             'max_stores' => 'integer',
             'max_api_keys' => 'integer',
             'max_ln_addresses' => 'integer',
+            'max_events' => 'integer',
             'features' => 'array',
             'is_active' => 'boolean',
         ];
@@ -84,6 +86,14 @@ class SubscriptionPlan extends Model
     public function hasUnlimitedLnAddresses(): bool
     {
         return $this->max_ln_addresses === null;
+    }
+
+    /**
+     * Check if this plan has unlimited ticket events per store.
+     */
+    public function hasUnlimitedEvents(): bool
+    {
+        return $this->max_events === null;
     }
 
     /**

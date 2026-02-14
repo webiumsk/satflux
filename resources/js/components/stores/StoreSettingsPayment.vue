@@ -62,42 +62,12 @@
         <button
           v-if="!canEditPaymentOptions"
           type="button"
-          @click="$emit('update:showPaymentProNotice', !showPaymentProNotice)"
+          @click="$emit('show-upgrade')"
           class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
         >
           {{ t('stores.available_in_pro') }}
-          <svg
-            class="w-3.5 h-3.5 transition-transform duration-200"
-            :class="{ 'rotate-180': showPaymentProNotice }"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
         </button>
       </div>
-      <Transition
-        enter-active-class="transition ease-out duration-200"
-        enter-from-class="opacity-0 -translate-y-1"
-        enter-to-class="opacity-100 translate-y-0"
-        leave-active-class="transition ease-in duration-150"
-        leave-from-class="opacity-100 translate-y-0"
-        leave-to-class="opacity-0 -translate-y-1"
-      >
-        <div
-          v-if="!canEditPaymentOptions && showPaymentProNotice"
-          class="mb-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-200"
-        >
-          <p class="mb-2">{{ t('stores.pos_advanced_options_pro_only') }}</p>
-          <a
-            :href="'/account'"
-            class="inline-flex items-center font-medium text-amber-300 hover:text-indigo-200 underline underline-offset-2"
-          >
-            {{ t('stores.upgrade_to_pro') }}
-          </a>
-        </div>
-      </Transition>
       <div
         :class="[
           'space-y-6',
@@ -191,14 +161,13 @@ import { currencies } from '../../data/currencies';
 const props = defineProps<{
   form: Record<string, any>;
   canEditPaymentOptions: boolean;
-  showPaymentProNotice: boolean;
   timezoneOptions: { label: string; value: string }[];
   speedPolicyOptions: { label: string; value: string }[];
   networkFeeModeOptions: { label: string; value: string }[];
 }>();
 
 defineEmits<{
-  'update:showPaymentProNotice': [value: boolean];
+  'show-upgrade': [];
 }>();
 
 const { t } = useI18n();

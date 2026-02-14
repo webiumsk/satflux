@@ -305,15 +305,15 @@
             </component>
           </div>
 
-          <!-- Tickets -->
+          <!-- Tickets (store-level events, like LN Address) -->
           <div class="mb-2">
             <component
               :is="isInertia ? Link : RouterLink"
-              :href="isInertia ? `/stores/${store.id}/apps/create?type=Tickets` : undefined"
-              :to="!isInertia ? { name: 'stores-apps-create', params: { id: store.id }, query: { type: 'Tickets' } } : undefined"
-              class="flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer"
+              :href="isInertia ? `/stores/${store.id}/tickets` : undefined"
+              :to="!isInertia ? { name: 'stores-tickets', params: { id: store.id } } : undefined"
+              class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="
-                isAppsCreateWithType('Tickets')
+                isLinkActive(`/stores/${store.id}/tickets`, 'stores-tickets')
                   ? 'bg-gray-900 text-white'
                   : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               "
@@ -325,28 +325,9 @@
                 </svg>
                 {{ t('apps.tickets') }}
               </span>
-              <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
+              <span v-if="limits?.events?.max != null" class="ml-2 bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded-full shrink-0">{{ limits.events.current ?? 0 }} / {{ limits.events.max }}</span>
+              <span v-else-if="limits?.events?.unlimited" class="ml-2 text-xs text-gray-500 shrink-0">∞</span>
             </component>
-            <div v-if="getAppsByType('Tickets').length > 0" class="ml-4 space-y-1">
-              <component
-                v-for="app in getAppsByType('Tickets')"
-                :key="app.id"
-                :is="isInertia ? Link : RouterLink"
-                :href="isInertia ? `/stores/${store.id}/apps/${app.id}` : undefined"
-                :to="!isInertia ? `/stores/${store.id}/apps/${app.id}` : undefined"
-                class="block px-3 py-2 rounded-md text-sm transition-colors"
-                :class="
-                  paramAppId === app.id
-                    ? 'bg-gray-900 text-white'
-                    : 'text-gray-400 hover:bg-gray-700 hover:text-white'
-                "
-                @click="showMobileMenu = false"
-              >
-                {{ app.name }}
-              </component>
-            </div>
           </div>
 
           <!-- E-shop Integration -->

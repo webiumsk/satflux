@@ -124,6 +124,12 @@ const router = createRouter({
             meta: { requiresAuth: true },
         },
         {
+            path: '/stores/:id/tickets',
+            name: 'stores-tickets',
+            component: () => import('../pages/stores/StoreTickets.vue'),
+            meta: { requiresAuth: true },
+        },
+        {
             path: '/stores/:id/api-keys',
             name: 'stores-api-keys',
             component: () => import('../pages/stores/ApiKeys.vue'),

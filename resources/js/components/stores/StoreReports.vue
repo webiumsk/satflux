@@ -99,10 +99,7 @@
                 @click="showUpgradeModal = true"
                 class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
               >
-                {{ t("stores.available_in_pro") }}
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
+                {{ t("stores.available_in_pro") }}                
               </button>
             </div>
           </div>
@@ -149,10 +146,7 @@
                 @click="showUpgradeModal = true"
                 class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
               >
-                {{ t("stores.available_in_pro") }}
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
+                {{ t("stores.available_in_pro") }}                
               </button>
             </div>
           </div>

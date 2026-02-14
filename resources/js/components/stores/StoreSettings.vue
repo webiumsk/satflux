@@ -41,12 +41,9 @@
             :form="settingsForm"
             :settings="settings"
             :can-edit-branding="canEditBranding"
-            :show-branding-pro-notice="showBrandingProNotice"
-            @update:show-branding-pro-notice="showBrandingProNotice = $event"
             :can-edit-archived-option="canEditArchivedOption"
-            :show-archived-pro-notice="showArchivedProNotice"
-            @update:show-archived-pro-notice="showArchivedProNotice = $event"
             :store-logo-url="storeLogoUrl"
+            @show-upgrade="showUpgradeModal = true"
             :logo-error="logoError"
             :logo-success="logoSuccess"
             :deleting-logo="deletingLogo"
@@ -57,9 +54,8 @@
             v-show="activeSettingsTab === 'payment'"
             :form="settingsForm"
             :can-edit-payment-options="canEditPaymentOptions"
-            :show-payment-pro-notice="showPaymentProNotice"
-            @update:show-payment-pro-notice="showPaymentProNotice = $event"
             :timezone-options="timezoneOptions"
+            @show-upgrade="showUpgradeModal = true"
             :speed-policy-options="speedPolicyOptions"
             :network-fee-mode-options="networkFeeModeOptions"
           />
@@ -67,16 +63,14 @@
             v-show="activeSettingsTab === 'rates'"
             :form="settingsForm"
             :can-edit-rates-options="canEditRatesOptions"
-            :show-rates-pro-notice="showRatesProNotice"
-            @update:show-rates-pro-notice="showRatesProNotice = $event"
+            @show-upgrade="showUpgradeModal = true"
           />
           <StoreSettingsCheckout
             v-show="activeSettingsTab === 'checkout'"
             :form="settingsForm"
             :can-edit-checkout-options="canEditCheckoutOptions"
-            :show-checkout-pro-notice="showCheckoutProNotice"
-            @update:show-checkout-pro-notice="showCheckoutProNotice = $event"
             :default-payment-method-options="defaultPaymentMethodOptions"
+            @show-upgrade="showUpgradeModal = true"
             :payment-method-criteria-type-options="paymentMethodCriteriaTypeOptions"
             :default-lang-options="defaultLangOptions"
           />
@@ -136,6 +130,13 @@
       </div>
     </div>
   </div>
+
+  <!-- Upgrade to Pro Modal -->
+  <UpgradeModal
+    :show="showUpgradeModal"
+    :message="t('stores.pos_advanced_options_pro_only')"
+    @close="showUpgradeModal = false"
+  />
 
   <!-- Delete Store Confirmation Modal -->
   <div
@@ -210,6 +211,7 @@ import StoreSettingsGeneral from './StoreSettingsGeneral.vue';
 import StoreSettingsPayment from './StoreSettingsPayment.vue';
 import StoreSettingsRates from './StoreSettingsRates.vue';
 import StoreSettingsCheckout from './StoreSettingsCheckout.vue';
+import UpgradeModal from './UpgradeModal.vue';
 
 const { t } = useI18n();
 
@@ -232,15 +234,11 @@ const hasPaidAccess = computed(() =>
   planCode.value === 'pro' || planCode.value === 'enterprise' || userRole.value === 'admin' || userRole.value === 'support'
 );
 const canEditBranding = computed(() => hasPaidAccess.value);
-const showBrandingProNotice = ref(false);
 const canEditPaymentOptions = computed(() => hasPaidAccess.value);
-const showPaymentProNotice = ref(false);
 const canEditRatesOptions = computed(() => hasPaidAccess.value);
-const showRatesProNotice = ref(false);
 const canEditCheckoutOptions = computed(() => hasPaidAccess.value);
-const showCheckoutProNotice = ref(false);
 const canEditArchivedOption = computed(() => hasPaidAccess.value);
-const showArchivedProNotice = ref(false);
+const showUpgradeModal = ref(false);
 
 const activeSettingsTab = ref<'settings' | 'payment' | 'rates' | 'checkout'>('settings');
 const settingsTabs = [
