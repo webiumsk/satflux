@@ -161,7 +161,7 @@ import PublicHeader from "../../components/layout/PublicHeader.vue";
 import AppFooter from "../../components/layout/AppFooter.vue";
 
 const route = useRoute();
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const authStore = useAuthStore();
 
 const canEditArticle = computed(() => {
@@ -205,7 +205,7 @@ const sidebarNav = computed<SidebarGroup[]>(() => {
 const loadSidebar = async () => {
   sidebarLoading.value = true;
   try {
-    const response = await documentationApi.index({});
+    const response = await documentationApi.index({ locale: locale.value });
     sidebarArticles.value = response.data.data || [];
     sidebarCategories.value = response.data.categories || [];
   } catch (error) {
@@ -221,7 +221,7 @@ const loadArticle = async () => {
   loading.value = true;
   try {
     const slug = route.params.slug as string;
-    const response = await documentationApi.show(slug);
+    const response = await documentationApi.show(slug, { locale: locale.value });
     article.value = response.data.data;
   } catch (error: any) {
     console.error('Failed to load article:', error);
@@ -291,6 +291,13 @@ watch(
     }
   }
 );
+
+watch(locale, () => {
+  loadSidebar();
+  if (route.params.slug) {
+    loadArticle();
+  }
+});
 
 watch(article, (a: { title: string; meta_description?: string } | null) => {
   if (a) {

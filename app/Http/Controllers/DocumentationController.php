@@ -9,12 +9,26 @@ use Illuminate\Support\Facades\DB;
 
 class DocumentationController extends Controller
 {
+    /** Supported locales for documentation (query param overrides session/header). */
+    private const SUPPORTED_LOCALES = ['en', 'sk', 'es', 'cz', 'de', 'fr', 'hu', 'pl'];
+
+    private function resolveLocale(Request $request): string
+    {
+        $locale = $request->query('locale');
+        if ($locale && in_array($locale, self::SUPPORTED_LOCALES, true)) {
+            return $locale;
+        }
+        return app()->getLocale();
+    }
+
     /**
      * Get all published documentation articles with optional filtering.
      */
     public function index(Request $request)
     {
-        $locale = app()->getLocale();
+        $locale = $this->resolveLocale($request);
+        app()->setLocale($locale);
+
         $categoryId = $request->query('category_id');
         $search = $request->query('search');
 
@@ -79,10 +93,11 @@ class DocumentationController extends Controller
     /**
      * Get a single documentation article by slug.
      */
-    public function show(string $slug)
+    public function show(Request $request, string $slug)
     {
-        $locale = app()->getLocale();
-        
+        $locale = $this->resolveLocale($request);
+        app()->setLocale($locale);
+
         $article = DocumentationArticle::where('slug', $slug)
             ->published()
             ->with(['category', 'creator', 'updater'])

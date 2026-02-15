@@ -145,7 +145,7 @@ import CategoryFilter from '../../components/documentation/CategoryFilter.vue';
 import PublicHeader from "../../components/layout/PublicHeader.vue";
 import AppFooter from "../../components/layout/AppFooter.vue";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 const loading = ref(false);
 const articles = ref<any[]>([]);
@@ -158,7 +158,7 @@ let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 const loadArticles = async () => {
   loading.value = true;
   try {
-    const params: any = {};
+    const params: any = { locale: locale.value };
     if (selectedCategory.value) {
       params.category_id = selectedCategory.value;
     }
@@ -203,6 +203,10 @@ watch([searchQuery, selectedCategory], () => {
   searchTimeout = setTimeout(() => {
     loadArticles();
   }, 300);
+});
+
+watch(locale, () => {
+  loadArticles();
 });
 
 onMounted(() => {
