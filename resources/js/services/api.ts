@@ -78,12 +78,12 @@ export const setLocale = async (locale: string): Promise<void> => {
     }
 };
 
-// Documentation API
+// Documentation API (locale ensures correct language content from backend)
 export const documentationApi = {
-    index: (params?: { category_id?: string; search?: string }) => 
+    index: (params?: { category_id?: string; search?: string; locale?: string }) =>
         api.get('/documentation', { params }),
-    show: (slug: string) => 
-        api.get(`/documentation/${slug}`),
+    show: (slug: string, params?: { locale?: string }) =>
+        api.get(`/documentation/${slug}`, { params: params ?? {} }),
 };
 
 // FAQ API
