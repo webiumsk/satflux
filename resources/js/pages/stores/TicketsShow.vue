@@ -265,7 +265,13 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                   </a>
                   <div class="flex-1"></div>
-                  <button @click="handleDeleteEvent(event)" :title="t('common.delete')" class="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                  <button
+                    @click="handleDeleteEvent(event)"
+                    :disabled="(event.ticketsSold ?? 0) > 0"
+                    :title="(event.ticketsSold ?? 0) > 0 ? t('tickets.cannot_delete_event_with_sold_tickets') : t('common.delete')"
+                    class="p-2 rounded-lg transition-colors"
+                    :class="(event.ticketsSold ?? 0) > 0 ? 'text-gray-600 cursor-not-allowed opacity-50' : 'text-gray-400 hover:text-red-400 hover:bg-red-500/10'"
+                  >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                   </button>
                 </div>
@@ -897,6 +903,10 @@ async function handleToggleEvent(event: TicketEvent) {
 }
 
 async function handleDeleteEvent(event: TicketEvent) {
+  if ((event.ticketsSold ?? 0) > 0) {
+    showError(t('tickets.cannot_delete_event_with_sold_tickets'));
+    return;
+  }
   if (!confirm(t('tickets.delete_confirm', { title: event.title }))) return;
   clearMessages();
   try {
