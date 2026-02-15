@@ -853,6 +853,7 @@
     "event_activated": "Podujatie zapnuté",
     "delete_confirm": "Zmazať \"{title}\"? Toto nemožno vrátiť späť.",
     "event_deleted": "Podujatie zmazané",
+    "cannot_delete_event_with_sold_tickets": "Podujatie s predanými vstupenkami nie je možné zmazať.",
     "ticket_type_updated": "Typ vstupenky aktualizovaný",
     "ticket_type_created": "Typ vstupenky vytvorený",
     "ticket_type_disabled": "Typ vstupenky vypnutý",

@@ -57,6 +57,7 @@ return [
     // Tickets (events limit)
     'tickets_event_limit_free' => 'Ticket events are limited to :max per store on the Free plan. Upgrade to Pro for unlimited events.',
     'tickets_quantity_required_when_capacity' => 'Quantity is required when the event has a capacity limit.',
+    'tickets_cannot_delete_event_with_sold_tickets' => 'Cannot delete an event that has sold tickets.',
 
     // Apps
     'app_created' => 'App created successfully',

@@ -57,6 +57,7 @@ return [
     // Tickets (events limit)
     'tickets_event_limit_free' => 'Na voľnom pláne môžete mať maximálne :max event na obchod. Pre neobmedzené eventy prejdite na Pro.',
     'tickets_quantity_required_when_capacity' => 'Počet vstupeniek je povinný, ak má event nastavenú kapacitu.',
+    'tickets_cannot_delete_event_with_sold_tickets' => 'Podujatie s predanými vstupenkami nie je možné zmazať.',
 
     // Apps
     'app_created' => 'App created successfully',

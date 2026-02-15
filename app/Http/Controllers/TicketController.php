@@ -243,11 +243,17 @@ class TicketController extends Controller
     }
 
     /**
-     * Delete an event.
+     * Delete an event. Cannot delete if the event has any sold tickets.
      */
     public function deleteEvent(Store $store, string $eventId)
     {
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
+
+        $event = $this->ticketService->getEvent($store->btcpay_store_id, $eventId, $userApiKey);
+        $ticketsSold = (int) ($event['ticketsSold'] ?? 0);
+        if ($ticketsSold > 0) {
+            return response()->json(['message' => __('messages.tickets_cannot_delete_event_with_sold_tickets')], 422);
+        }
 
         $this->ticketService->deleteEvent(
             $store->btcpay_store_id,
