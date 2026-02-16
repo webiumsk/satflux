@@ -22,6 +22,9 @@ RUN docker-php-ext-install pdo_pgsql pgsql mbstring exif pcntl bcmath gd opcache
     && pecl install redis \
     && docker-php-ext-enable redis
 
+# Production PHP-FPM pool: more workers to reduce 504 under load
+COPY php-fpm.d/www.conf /usr/local/etc/php-fpm.d/www.conf
+
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 

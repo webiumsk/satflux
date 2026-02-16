@@ -16,6 +16,9 @@ class GenerateCsvExport implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /** Maximum number of seconds the job may run (worker --timeout must be >= this). */
+    public int $timeout = 600;
+
     public function __construct(
         protected Export $export
     ) {
