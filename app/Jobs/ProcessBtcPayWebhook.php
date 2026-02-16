@@ -15,6 +15,9 @@ class ProcessBtcPayWebhook implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /** Maximum number of seconds the job may run. */
+    public int $timeout = 120;
+
     public function __construct(
         public WebhookEvent $webhookEvent
     ) {

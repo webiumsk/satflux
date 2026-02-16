@@ -226,7 +226,7 @@ class WalletConnectionService
                 $typeLabel = $connection->type === 'blink' ? 'Blink' : 'Aqua';
                 $panelUrl = rtrim(config('app.url'), '/') . '/support/wallet-connections';
 
-                Http::post($webhookUrl, [
+                Http::timeout(10)->post($webhookUrl, [
                     'content' => "🔔 **Wallet connection needs support**: {$storeName} ({$typeLabel})",
                     'embeds' => [
                         [
