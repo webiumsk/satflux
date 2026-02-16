@@ -27,6 +27,10 @@ yarn-error.log
 /scripts/btcpay-config-bot/storage/
 /scripts/btcpay-config-bot/node_modules
 
+# Bootstrap cache (generated per env; dev providers like Collision must not be loaded in production)
+/bootstrap/cache/services.php
+/bootstrap/cache/packages.php
+
 
 
 
