@@ -122,7 +122,7 @@ echo -e "${YELLOW}Step 2: Ensuring containers are running ($COMPOSE_FILE)...${NC
 $DC_CMD up -d --force-recreate 2>/dev/null || {
     echo -e "${YELLOW}Retrying after removing orphaned containers...${NC}"
     if [ "$COMPOSE_FILE" = "docker-compose.standalone.yml" ]; then
-        for c in satflux_caddy_standalone satflux_nginx_standalone satflux_php_standalone satflux_queue_standalone satflux_scheduler_standalone satflux_postgres_standalone satflux_redis_standalone; do
+        for c in satflux_caddy_standalone satflux_nginx_standalone satflux_php_standalone satflux_reverb_standalone satflux_queue_standalone satflux_scheduler_standalone satflux_postgres_standalone satflux_redis_standalone; do
             docker rm -f "$c" 2>/dev/null || true
         done
     else
