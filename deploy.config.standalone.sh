@@ -5,7 +5,7 @@
 #   ln -sf deploy.config.standalone.sh deploy.config.sh
 #   ./deploy.sh
 #
-# Nastav v .env.production:
+# Nastav v .env.standalone:
 #   SITE_ADDRESS=satflux.io          # Pre HTTPS s doménou (Let's Encrypt)
 #   SITE_ADDRESS=localhost:80        # Pre HTTP only (dev/test)
 #   ACME_EMAIL=admin@example.com     # Email pre Let's Encrypt
@@ -14,3 +14,5 @@
 
 COMPOSE_FILE="docker-compose.standalone.yml"
 PROJECT_NAME="satflux_standalone"
+ENV_FILE=".env.standalone"
+PHP_CONTAINER="satflux_php_standalone"

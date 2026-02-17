@@ -3,8 +3,9 @@
 
 COMPOSE_FILE="docker-compose.standalone.yml"
 PROJECT_NAME="satflux_standalone"
-POSTGRES_CONTAINER="satflux_postgres_prod"
-REDIS_CONTAINER="satflux_redis_prod"
+ENV_FILE=".env.standalone"
+POSTGRES_CONTAINER="satflux_postgres_standalone"
+REDIS_CONTAINER="satflux_redis_standalone"
 BACKUP_DIR="./backups"
 
 # To use this with the backup scripts, you can symlink it:

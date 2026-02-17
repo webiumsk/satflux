@@ -59,11 +59,13 @@ BACKUP_FILES="${BACKUP_FILES:-true}"
 BACKUP_ENV="${BACKUP_ENV:-true}"
 
 # Get database credentials from environment
-# Try to load from .env.production first, then .env
-if [ -f ".env.production" ]; then
-    ENV_FILE=".env.production"
-elif [ -f ".env" ]; then
-    ENV_FILE=".env"
+# ENV_FILE may be set by backup.config.sh (e.g. .env.standalone); else .env.production or .env
+if [ -z "$ENV_FILE" ]; then
+    if [ -f ".env.production" ]; then
+        ENV_FILE=".env.production"
+    elif [ -f ".env" ]; then
+        ENV_FILE=".env"
+    fi
 fi
 
 if [ -n "$ENV_FILE" ]; then
@@ -209,12 +211,13 @@ if [ "$BACKUP_FILES" = "true" ]; then
     
     # Backup env files if enabled
     if [ "$BACKUP_ENV" = "true" ]; then
-        if [ -f ".env.production" ]; then
-            mkdir -p "$TMP_DIR/env"
+        mkdir -p "$TMP_DIR/env"
+        if [ -n "$ENV_FILE" ] && [ -f "$ENV_FILE" ]; then
+            cp "$ENV_FILE" "$TMP_DIR/env/$ENV_FILE"
+        elif [ -f ".env.production" ]; then
             cp .env.production "$TMP_DIR/env/.env.production"
         fi
-        if [ -f ".env" ] && [ ! -f ".env.production" ]; then
-            mkdir -p "$TMP_DIR/env"
+        if [ -f ".env" ] && [ "${ENV_FILE:-.env.production}" != ".env" ]; then
             cp .env "$TMP_DIR/env/.env"
         fi
     fi

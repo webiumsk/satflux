@@ -24,11 +24,13 @@ REDIS_CONTAINER="${REDIS_CONTAINER:-satflux_redis_prod}"
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 
 # Get database credentials from environment
-# Try to load from .env.production first, then .env
-if [ -f ".env.production" ]; then
-    ENV_FILE=".env.production"
-elif [ -f ".env" ]; then
-    ENV_FILE=".env"
+# ENV_FILE may be set by backup.config.sh (e.g. .env.standalone); else .env.production or .env
+if [ -z "$ENV_FILE" ]; then
+    if [ -f ".env.production" ]; then
+        ENV_FILE=".env.production"
+    elif [ -f ".env" ]; then
+        ENV_FILE=".env"
+    fi
 fi
 
 if [ -n "$ENV_FILE" ]; then
@@ -284,8 +286,12 @@ restore_files() {
     
     # Restore env files (with confirmation)
     if [ -d "$TMP_DIR/env" ]; then
-        if confirm "Restore environment files (.env.production)?"; then
-            if [ -f "$TMP_DIR/env/.env.production" ]; then
+        if confirm "Restore environment files (${ENV_FILE:-.env.production})?"; then
+            if [ -n "$ENV_FILE" ] && [ -f "$TMP_DIR/env/$ENV_FILE" ]; then
+                cp "$TMP_DIR/env/$ENV_FILE" "${ENV_FILE}.backup.$(date +%Y%m%d_%H%M%S)" 2>/dev/null || true
+                cp "$TMP_DIR/env/$ENV_FILE" "$ENV_FILE"
+                echo -e "${GREEN}✓ Restored $ENV_FILE (old file backed up)${NC}"
+            elif [ -f "$TMP_DIR/env/.env.production" ]; then
                 cp "$TMP_DIR/env/.env.production" .env.production.backup.$(date +%Y%m%d_%H%M%S) 2>/dev/null || true
                 cp "$TMP_DIR/env/.env.production" .env.production
                 echo -e "${GREEN}✓ Restored .env.production (old file backed up)${NC}"
