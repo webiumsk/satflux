@@ -17,7 +17,7 @@ if [ -f "deploy.config.sh" ]; then
 fi
 
 # Configuration
-ENV_FILE=".env.production"
+ENV_FILE="${ENV_FILE:-.env.production}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
 PROJECT_NAME="${PROJECT_NAME:-satflux_prod}"
 DEPLOY_BRANCH="${DEPLOY_BRANCH:-}"
@@ -26,7 +26,7 @@ DEPLOY_BRANCH="${DEPLOY_BRANCH:-}"
 COMPOSE_FILE=$(echo "$COMPOSE_FILE" | tr -d '\r' | xargs)
 PROJECT_NAME=$(echo "$PROJECT_NAME" | tr -d '\r' | xargs)
 
-# Override from .env.production (not in git; survives every deploy)
+# Override from env file (not in git; survives every deploy)
 if [ -f "$ENV_FILE" ]; then
     ENV_COMPOSE=$(grep "^COMPOSE_FILE=" "$ENV_FILE" 2>/dev/null | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
     [ -n "$ENV_COMPOSE" ] && COMPOSE_FILE="$ENV_COMPOSE"
@@ -42,10 +42,10 @@ DC_CMD="docker compose -f $COMPOSE_FILE --env-file $ENV_FILE --project-name $PRO
 
 echo -e "${GREEN}Starting satflux deployment...${NC}"
 
-# Check if .env.production exists
-if [ ! -f .env.production ]; then
-    echo -e "${RED}Error: .env.production file not found!${NC}"
-    echo "Please copy .env.production.example to .env.production and configure it."
+# Check if env file exists
+if [ ! -f "$ENV_FILE" ]; then
+    echo -e "${RED}Error: $ENV_FILE not found!${NC}"
+    echo "Please create $ENV_FILE and configure it (e.g. copy from .env.production.example)."
     exit 1
 fi
 
@@ -121,9 +121,15 @@ echo -e "${YELLOW}Step 2: Ensuring containers are running ($COMPOSE_FILE)...${NC
 # Use --force-recreate to avoid "container name already in use" when run from different project context
 $DC_CMD up -d --force-recreate 2>/dev/null || {
     echo -e "${YELLOW}Retrying after removing orphaned containers...${NC}"
-    for c in satflux_redis_prod satflux_postgres_prod satflux_php_prod satflux_nginx_prod satflux_reverb_prod; do
-        docker rm -f "$c" 2>/dev/null || true
-    done
+    if [ "$COMPOSE_FILE" = "docker-compose.standalone.yml" ]; then
+        for c in satflux_caddy_standalone satflux_nginx_standalone satflux_php_standalone satflux_queue_standalone satflux_scheduler_standalone satflux_postgres_standalone satflux_redis_standalone; do
+            docker rm -f "$c" 2>/dev/null || true
+        done
+    else
+        for c in satflux_redis_prod satflux_postgres_prod satflux_php_prod satflux_nginx_prod satflux_reverb_prod; do
+            docker rm -f "$c" 2>/dev/null || true
+        done
+    fi
     $DC_CMD up -d
 }
 
