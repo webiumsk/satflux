@@ -16,10 +16,10 @@ if [ -f "deploy.config.sh" ]; then
     source deploy.config.sh
 fi
 
-# Configuration
-ENV_FILE="${ENV_FILE:-.env.production}"
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
-PROJECT_NAME="${PROJECT_NAME:-satflux_prod}"
+# Configuration (standalone is default)
+ENV_FILE="${ENV_FILE:-.env.standalone}"
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.standalone.yml}"
+PROJECT_NAME="${PROJECT_NAME:-satflux_standalone}"
 DEPLOY_BRANCH="${DEPLOY_BRANCH:-}"
 
 # Sanitize variables (remove CR and extra whitespace)
@@ -35,7 +35,7 @@ if [ -f "$ENV_FILE" ]; then
 fi
 
 PHP_SERVICE="php"  # Service name
-PHP_CONTAINER="${PHP_CONTAINER:-satflux_php_prod}"
+PHP_CONTAINER="${PHP_CONTAINER:-satflux_php_standalone}"
 
 # Define the base docker compose command
 DC_CMD="docker compose -f $COMPOSE_FILE --env-file $ENV_FILE --project-name $PROJECT_NAME"
@@ -45,11 +45,11 @@ echo -e "${GREEN}Starting satflux deployment...${NC}"
 # Check if env file exists
 if [ ! -f "$ENV_FILE" ]; then
     echo -e "${RED}Error: $ENV_FILE not found!${NC}"
-    echo "Please create $ENV_FILE and configure it (e.g. copy from .env.production.example)."
+    echo "Please create $ENV_FILE and configure it (e.g. copy from .env.example)."
     exit 1
 fi
 
-# Check if docker-compose.prod.yml exists
+# Check if compose file exists
 if [ ! -f "$COMPOSE_FILE" ]; then
     echo -e "${RED}Error: $COMPOSE_FILE not found!${NC}"
     exit 1
@@ -121,12 +121,12 @@ echo -e "${YELLOW}Step 2: Ensuring containers are running ($COMPOSE_FILE)...${NC
 # Use --force-recreate to avoid "container name already in use" when run from different project context
 $DC_CMD up -d --force-recreate 2>/dev/null || {
     echo -e "${YELLOW}Retrying after removing orphaned containers...${NC}"
-    if [ "$COMPOSE_FILE" = "docker-compose.standalone.yml" ]; then
-        for c in satflux_caddy_standalone satflux_nginx_standalone satflux_php_standalone satflux_reverb_standalone satflux_queue_standalone satflux_scheduler_standalone satflux_postgres_standalone satflux_redis_standalone; do
+    if [ "$COMPOSE_FILE" = "docker-compose.prod.yml" ]; then
+        for c in satflux_redis_prod satflux_postgres_prod satflux_php_prod satflux_nginx_prod satflux_reverb_prod; do
             docker rm -f "$c" 2>/dev/null || true
         done
     else
-        for c in satflux_redis_prod satflux_postgres_prod satflux_php_prod satflux_nginx_prod satflux_reverb_prod; do
+        for c in satflux_caddy_standalone satflux_nginx_standalone satflux_php_standalone satflux_reverb_standalone satflux_queue_standalone satflux_scheduler_standalone satflux_postgres_standalone satflux_redis_standalone; do
             docker rm -f "$c" 2>/dev/null || true
         done
     fi
@@ -156,9 +156,15 @@ for i in {1..30}; do
     sleep 1
 done
 
+# Ensure storage and bootstrap/cache exist and are writable by www-data (queue/scheduler/reverb start early and need this)
+echo -e "${YELLOW}Preparing storage and cache directories...${NC}"
+docker exec --user root "$PHP_CONTAINER" mkdir -p /var/www/storage/logs /var/www/storage/framework/views /var/www/storage/framework/sessions /var/www/storage/framework/cache /var/www/bootstrap/cache
+docker exec --user root "$PHP_CONTAINER" chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+docker exec --user root "$PHP_CONTAINER" chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+
 # Step 3: Install/update PHP dependencies
 echo -e "${YELLOW}Step 3: Installing/updating PHP dependencies...${NC}"
-# Clear package manifest so discovery runs with current vendor only (avoids loading dev-only Collision in prod)
+# Clear package manifest so discovery runs with current vendor only (avoids loading dev-only Collision)
 docker exec --user root "$PHP_CONTAINER" rm -f /var/www/bootstrap/cache/packages.php /var/www/bootstrap/cache/services.php 2>/dev/null || true
 docker exec --user root "$PHP_CONTAINER" composer install --optimize-autoloader --no-dev --no-interaction
 
@@ -203,6 +209,9 @@ echo -e "${YELLOW}Step 7: Restarting containers...${NC}"
 RESTART_SERVICES="php nginx"
 if grep -q "caddy:" "$COMPOSE_FILE"; then
     RESTART_SERVICES="$RESTART_SERVICES caddy"
+fi
+if grep -q "reverb:" "$COMPOSE_FILE"; then
+    RESTART_SERVICES="$RESTART_SERVICES reverb queue scheduler"
 fi
 $DC_CMD restart $RESTART_SERVICES
 

@@ -1,7 +1,7 @@
 # backup.config.sh
-COMPOSE_FILE="docker-compose.prod.yml"
-POSTGRES_CONTAINER="satflux_postgres_prod"
-REDIS_CONTAINER="satflux_redis_prod"
+COMPOSE_FILE="docker-compose.standalone.yml"
+POSTGRES_CONTAINER="satflux_postgres_standalone"
+REDIS_CONTAINER="satflux_redis_standalone"
 BACKUP_DIR="./backups"
 RETENTION_DAYS=7
 RETENTION_WEEKS=4
