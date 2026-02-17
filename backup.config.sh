@@ -1,5 +1,6 @@
 # backup.config.sh
 COMPOSE_FILE="docker-compose.standalone.yml"
+ENV_FILE=".env.standalone"
 POSTGRES_CONTAINER="satflux_postgres_standalone"
 REDIS_CONTAINER="satflux_redis_standalone"
 BACKUP_DIR="./backups"
