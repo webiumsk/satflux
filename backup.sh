@@ -17,37 +17,40 @@ if [ -f "backup.config.sh" ]; then
     source backup.config.sh
 fi
 
-# Configuration - auto-detect which compose file is being used
+# Configuration - auto-detect which compose file is being used (standalone is default)
 if [ -z "$COMPOSE_FILE" ]; then
-    # Check which containers are actually running
-    if docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^satflux_postgres_prod$"; then
+    if docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^satflux_postgres_standalone$"; then
+        COMPOSE_FILE="docker-compose.standalone.yml"
+        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux_postgres_standalone}"
+        REDIS_CONTAINER="${REDIS_CONTAINER:-satflux_redis_standalone}"
+    elif docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^satflux_postgres_prod$"; then
         COMPOSE_FILE="docker-compose.prod.yml"
         POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux_postgres_prod}"
         REDIS_CONTAINER="${REDIS_CONTAINER:-satflux_redis_prod}"
-    elif docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^uzol21_postgres_prod$"; then
-        COMPOSE_FILE="docker-compose.prod.yml"
-        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-uzol21_postgres_prod}"
-        REDIS_CONTAINER="${REDIS_CONTAINER:-uzol21_redis_prod}"
     elif docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^satflux.io_postgres$"; then
         COMPOSE_FILE="docker-compose.yml"
         POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux.io_postgres}"
         REDIS_CONTAINER="${REDIS_CONTAINER:-satflux.io_redis}"
     else
-        # Default to uzol21 prod
-        COMPOSE_FILE="docker-compose.prod.yml"
-        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-uzol21_postgres_prod}"
-        REDIS_CONTAINER="${REDIS_CONTAINER:-uzol21_redis_prod}"
+        COMPOSE_FILE="docker-compose.standalone.yml"
+        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux_postgres_standalone}"
+        REDIS_CONTAINER="${REDIS_CONTAINER:-satflux_redis_standalone}"
     fi
 else
-    # COMPOSE_FILE is set, use defaults for container names
-    POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux_postgres_prod}"
-    REDIS_CONTAINER="${REDIS_CONTAINER:-satflux_redis_prod}"
-    
-    # If using docker-compose.yml, adjust container names
-    if [ "$COMPOSE_FILE" = "docker-compose.yml" ]; then
-        POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux.io_postgres}"
-        REDIS_CONTAINER="${REDIS_CONTAINER:-satflux.io_redis}"
-    fi
+    case "$COMPOSE_FILE" in
+        docker-compose.standalone.yml)
+            POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux_postgres_standalone}"
+            REDIS_CONTAINER="${REDIS_CONTAINER:-satflux_redis_standalone}"
+            ;;
+        docker-compose.yml)
+            POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux.io_postgres}"
+            REDIS_CONTAINER="${REDIS_CONTAINER:-satflux.io_redis}"
+            ;;
+        *)
+            POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-satflux_postgres_standalone}"
+            REDIS_CONTAINER="${REDIS_CONTAINER:-satflux_redis_standalone}"
+            ;;
+    esac
 fi
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 RETENTION_DAYS="${RETENTION_DAYS:-7}"
@@ -59,10 +62,10 @@ BACKUP_FILES="${BACKUP_FILES:-true}"
 BACKUP_ENV="${BACKUP_ENV:-true}"
 
 # Get database credentials from environment
-# ENV_FILE may be set by backup.config.sh (e.g. .env.standalone); else .env.production or .env
+# ENV_FILE may be set by backup.config.sh; else .env.standalone or .env
 if [ -z "$ENV_FILE" ]; then
-    if [ -f ".env.production" ]; then
-        ENV_FILE=".env.production"
+    if [ -f ".env.standalone" ]; then
+        ENV_FILE=".env.standalone"
     elif [ -f ".env" ]; then
         ENV_FILE=".env"
     fi
@@ -214,10 +217,10 @@ if [ "$BACKUP_FILES" = "true" ]; then
         mkdir -p "$TMP_DIR/env"
         if [ -n "$ENV_FILE" ] && [ -f "$ENV_FILE" ]; then
             cp "$ENV_FILE" "$TMP_DIR/env/$ENV_FILE"
-        elif [ -f ".env.production" ]; then
-            cp .env.production "$TMP_DIR/env/.env.production"
+        elif [ -f ".env.standalone" ]; then
+            cp .env.standalone "$TMP_DIR/env/.env.standalone"
         fi
-        if [ -f ".env" ] && [ "${ENV_FILE:-.env.production}" != ".env" ]; then
+        if [ -f ".env" ] && [ "${ENV_FILE:-.env.standalone}" != ".env" ]; then
             cp .env "$TMP_DIR/env/.env"
         fi
     fi
