@@ -36,7 +36,10 @@ class LnurlAuthController extends Controller
         }
 
         $k1 = bin2hex(random_bytes(32));
-        $domain = env('LNURL_AUTH_DOMAIN', config('app.url'));
+        $domain = rtrim(env('LNURL_AUTH_DOMAIN', config('app.url')), '/');
+        if (! preg_match('#^https?://#', $domain)) {
+            $domain = 'https://'.$domain;
+        }
 
         LnurlAuthChallenge::create([
             'k1' => $k1,
@@ -55,8 +58,9 @@ class LnurlAuthController extends Controller
     }
 
     /**
-     * Verify LNURL-auth signature.
-     * Unified login/register flow - returns needs_email if user doesn't exist or is unverified.
+     * LNURL-auth endpoint - handles both:
+     * 1. Initial GET (no sig/key): Returns LUD-04 auth params so wallet knows how to proceed.
+     * 2. Callback GET (with sig/key): Verifies signature and completes login/register.
      */
     public function verify(Request $request)
     {
@@ -64,15 +68,44 @@ class LnurlAuthController extends Controller
             return response()->json(['error' => 'LNURL-auth is not enabled'], 403);
         }
 
+        $k1 = $request->input('k1');
+        $signature = $request->input('sig');
+        $publicKey = $request->input('key');
+
+        // Phase 1: Wallet fetches URL first - return LUD-04 auth params (no sig/key yet)
+        if (empty($signature) || empty($publicKey)) {
+            if (! $k1) {
+                return response()->json(['status' => 'ERROR', 'reason' => 'Missing k1'], 200);
+            }
+
+            $challenge = LnurlAuthChallenge::find($k1);
+            if (! $challenge) {
+                return response()->json(['status' => 'ERROR', 'reason' => 'Invalid challenge'], 200);
+            }
+            if ($challenge->isExpired()) {
+                return response()->json(['status' => 'ERROR', 'reason' => 'Challenge expired'], 200);
+            }
+
+            $domain = rtrim(env('LNURL_AUTH_DOMAIN', config('app.url')), '/');
+            if (! preg_match('#^https?://#', $domain)) {
+                $domain = 'https://'.$domain;
+            }
+            $callbackUrl = "{$domain}/api/lnurl-auth/verify?tag=login&k1={$k1}&action=login";
+
+            return response()->json([
+                'tag' => 'login',
+                'k1' => $k1,
+                'callback' => $callbackUrl,
+                'minVersion' => '1',
+            ]);
+        }
+
+        // Phase 2: Wallet sends signed response - verify and complete auth
         $request->validate([
             'k1' => ['required', 'string', 'size:64'],
             'sig' => ['required', 'string'],
             'key' => ['required', 'string'],
         ]);
-
-        $k1 = $request->input('k1');
-        $signature = $request->input('sig');
-        $publicKey = $request->input('key');
 
         // Find challenge
         $challenge = LnurlAuthChallenge::find($k1);
