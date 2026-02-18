@@ -101,6 +101,8 @@
     "online": "En línea",
     "no_transactions_yet": "No hay transacciones aún",
     "all_time_total": "Total de toda la historia",
+    "also_received_sats": "También {sats} sats recibidos",
+    "sats_received": "Recibido en sats: {sats}",
     "help_center": "Centro de ayuda",
     "create_store": "Crear tienda",
     "view_stores": "Ver tiendas",
@@ -113,7 +115,8 @@
     "upgrade_to_see_stats": "Actualiza a Pro para ver estadísticas y gráficos de ventas.",
     "stats_available_in_pro_message": "Las estadísticas de ventas y gráficos por tiendas están disponibles en Pro. Actualiza para ver conteos de pedidos, tendencias y filtrar por tienda.",
     "stats_7d": "pedidos (7 d)",
-    "stats_30d": "pedidos (30 d)"
+    "stats_30d": "pedidos (30 d)",
+    "refresh_stats": "Actualizar estadísticas"
   },
   "create_store": {
     "invalid_blink_format": "Formato no válido. Requerido: type=blink;server=...;api-key=...;wallet-id=...",
@@ -646,6 +649,14 @@
     "no_invoices_yet": "Aún no hay facturas",
     "create_first_invoice": "Crea tu primera factura para empezar a aceptar pagos.",
     "failed_to_load_dashboard": "Error al cargar los datos del panel.",
+    "filter_by_payment_method": "Filtrar por método de pago",
+    "payment_method_all": "Todos",
+    "payment_method_pos": "PoS",
+    "payment_method_pay_button": "Pay Button",
+    "payment_method_ln_address": "Dirección LN",
+    "payment_method_tickets": "Entradas",
+    "payment_method_api": "API",
+    "payment_method_other": "Otros",
     "store_not_found": "Tienda no encontrada",
     "return_to_stores": "Volver a Tiendas",
     "configure_wallet_connection": "Configure your Lightning wallet connection for",

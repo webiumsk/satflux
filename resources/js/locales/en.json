@@ -145,6 +145,8 @@
     "online": "Online",
     "no_transactions_yet": "No transactions yet",
     "all_time_total": "All-time total",
+    "also_received_sats": "Also {sats} sats received",
+    "sats_received": "Received in sats: {sats}",
     "help_center": "Help Center",
     "create_store": "Create Store",
     "view_stores": "View Stores",
@@ -157,7 +159,8 @@
     "upgrade_to_see_stats": "Upgrade to Pro to see sales statistics and charts.",
     "stats_available_in_pro_message": "Sales statistics and charts across your stores are available in Pro. Upgrade to see order counts, trends, and filter by store.",
     "stats_7d": "orders (7d)",
-    "stats_30d": "orders (30d)"
+    "stats_30d": "orders (30d)",
+    "refresh_stats": "Refresh stats"
   },
   "stores": {
     "title": "Stores",
@@ -417,6 +420,14 @@
     "no_invoices_yet": "No invoices yet",
     "create_first_invoice": "Create your first invoice to start accepting payments.",
     "failed_to_load_dashboard": "Failed to load dashboard data.",
+    "filter_by_payment_method": "Filter by payment method",
+    "payment_method_all": "All",
+    "payment_method_pos": "PoS",
+    "payment_method_pay_button": "Pay Button",
+    "payment_method_ln_address": "LN Address",
+    "payment_method_tickets": "Tickets",
+    "payment_method_api": "API",
+    "payment_method_other": "Other",
     "store_not_found": "Store not found",
     "return_to_stores": "Return to Stores",
     "configure_wallet_connection": "Configure your Lightning wallet connection for",

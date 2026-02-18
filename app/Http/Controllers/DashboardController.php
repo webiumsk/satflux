@@ -5,18 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\PosOrder;
 use App\Models\Store;
 use App\Services\BtcPay\StoreService;
+use App\Services\InvoiceSourceService;
+use App\Services\StoreInvoiceStatsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
-    protected StoreService $storeService;
-
-    public function __construct(StoreService $storeService)
-    {
-        $this->storeService = $storeService;
-    }
+    public function __construct(
+        protected StoreService $storeService,
+        protected StoreInvoiceStatsService $storeInvoiceStatsService
+    ) {}
 
     /**
      * Get dashboard data.
@@ -78,50 +78,101 @@ class DashboardController extends Controller
             })->values();
         }
 
-        // Total revenue in sats: all settled (paid) PosOrders across user's stores, cached 5 min
+        // Total revenue by currency: PoS orders (DB) + BTCPay settled invoices, cached 5 min
         $storeIds = $stores->pluck('id')->toArray();
-        $cacheKey = 'dashboard:user:'.$user->id.':total_revenue_sats';
-        $totalRevenue = Cache::remember($cacheKey, 300, function () use ($storeIds) {
-            if (empty($storeIds)) {
-                return 0;
+        $cacheKey = 'dashboard:user:'.$user->id.':total_revenue_v2';
+        if ($request->boolean('refresh')) {
+            Cache::forget($cacheKey);
+            /** @var Store $store */
+            foreach (Store::whereIn('id', $storeIds)->with('user')->get() as $store) {
+                $this->storeInvoiceStatsService->forgetStoreCaches($store);
             }
-            $orders = PosOrder::whereIn('store_id', $storeIds)
-                ->where('status', PosOrder::STATUS_PAID)
-                ->get(['amount', 'currency']);
-
-            $sats = 0;
-            foreach ($orders as $order) {
-                $currency = strtoupper(trim($order->currency ?? ''));
-                $amount = (float) $order->amount;
-                if ($currency === 'SATS') {
-                    $sats += (int) round($amount);
-                } elseif ($currency === 'BTC') {
-                    $sats += (int) round($amount * 100_000_000);
+        }
+        $revenueData = Cache::remember($cacheKey, 3600, function () use ($storeIds) {
+            $byCurrency = [];
+            if (! empty($storeIds)) {
+                $orders = PosOrder::whereIn('store_id', $storeIds)
+                    ->where('status', PosOrder::STATUS_PAID)
+                    ->get(['amount', 'currency', 'store_id', 'btcpay_invoice_id', 'paid_method']);
+                /** @var \Illuminate\Support\Collection<int, Store> $localStoresById */
+                $localStoresById = Store::whereIn('id', $storeIds)->with('user')->get()->keyBy('id');
+                foreach ($orders as $order) {
+                    $currency = strtoupper(trim($order->currency ?? ''));
+                    $amount = (float) $order->amount;
+                    if ($currency === 'SATS') {
+                        $byCurrency['sats'] = ($byCurrency['sats'] ?? 0) + (int) round($amount);
+                    } elseif ($currency === 'BTC') {
+                        $byCurrency['sats'] = ($byCurrency['sats'] ?? 0) + (int) round($amount * 100_000_000);
+                    } else {
+                        if ($currency !== '') {
+                            $key = strtolower($currency);
+                            $byCurrency[$key] = ($byCurrency[$key] ?? 0) + $amount;
+                        }
+                        // PoS v EUR/USD platene cez Lightning/onchain: reálne sats z BTCPay faktúry
+                        $invoiceId = $order->btcpay_invoice_id ?? '';
+                        $paidMethod = $order->paid_method ?? '';
+                        if ($invoiceId !== '' && in_array($paidMethod, [PosOrder::PAID_METHOD_LIGHTNING, PosOrder::PAID_METHOD_ONCHAIN], true)) {
+                            $store = $localStoresById->get($order->store_id);
+                            if ($store instanceof Store) {
+                                $byCurrency['sats'] = ($byCurrency['sats'] ?? 0) + $this->storeInvoiceStatsService->getReceivedSatsForBtcPayInvoiceId($store, $invoiceId);
+                            }
+                        }
+                    }
+                }
+                foreach ($localStoresById as $store) {
+                    $storeTotals = $this->storeInvoiceStatsService->getTotalRevenueByCurrency($store);
+                    foreach ($storeTotals as $key => $value) {
+                        $byCurrency[$key] = ($byCurrency[$key] ?? 0) + $value;
+                    }
                 }
             }
-            return $sats;
+            $byCurrency['sats'] = (int) ($byCurrency['sats'] ?? 0);
+            foreach (array_keys($byCurrency) as $k) {
+                if ($k !== 'sats' && is_numeric($byCurrency[$k])) {
+                    $byCurrency[$k] = round((float) $byCurrency[$k], 2);
+                }
+            }
+            return $byCurrency;
         });
+
+        $totalRevenueByCurrency = $revenueData;
+        $availableCurrencies = array_keys(array_filter($totalRevenueByCurrency, fn ($v) => $v > 0));
+        if ($availableCurrencies === []) {
+            $availableCurrencies = ['sats'];
+        }
+        if (! in_array('sats', $availableCurrencies, true)) {
+            $availableCurrencies = array_merge(['sats'], $availableCurrencies);
+        }
 
         return response()->json([
             'stores' => $stores,
             'store_count' => $stores->count(),
-            'total_revenue' => (int) $totalRevenue,
+            'total_revenue' => (int) ($totalRevenueByCurrency['sats'] ?? 0),
+            'total_revenue_by_currency' => $totalRevenueByCurrency,
+            'available_revenue_currencies' => array_values($availableCurrencies),
         ]);
     }
 
     /**
-     * Dashboard stats (sales by store): list of stores + optional 7d/30d sales.
-     * Data (sales_7d, sales_30d, total_7d, total_30d) only returned for Pro + admin/support.
+     * Dashboard stats (sales by store and by payment method).
+     * Returns per_store with pos (PoS orders) and invoices by_source (BTCPay: LN, Pay Button, Tickets, etc.).
+     * Top-level sales_7d/sales_30d = combined all stores, all methods. Pro + admin/support only.
      */
     public function stats(Request $request)
     {
         $user = $request->user();
-        $storeIdFilter = $request->query('store_id');
 
-        $stores = Store::where('user_id', $user->id)
+        $storesCollection = Store::where('user_id', $user->id)
+            ->with('user')
             ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn ($s) => ['id' => $s->id, 'name' => $s->name]);
+            ->get();
+
+        if ($request->boolean('refresh')) {
+            foreach ($storesCollection as $store) {
+                $this->storeInvoiceStatsService->forgetStoreCaches($store);
+            }
+        }
+        $stores = $storesCollection->map(fn ($s) => ['id' => $s->id, 'name' => $s->name])->values()->all();
 
         $plan = $user->currentSubscriptionPlan();
         $planCode = $plan ? strtolower($plan->code ?? '') : 'free';
@@ -132,56 +183,120 @@ class DashboardController extends Controller
         $sales30d = [];
         $total7d = 0;
         $total30d = 0;
+        $perStore = [];
 
-        if ($canViewStats && $stores->isNotEmpty()) {
-            $storeIds = $storeIdFilter
-                ? (in_array($storeIdFilter, $stores->pluck('id')->toArray()) ? [$storeIdFilter] : [])
-                : $stores->pluck('id')->toArray();
+        if ($canViewStats && $storesCollection->isNotEmpty()) {
+            $sevenDaysAgo = now()->subDays(7)->startOfDay();
+            $thirtyDaysAgo = now()->subDays(30)->startOfDay();
 
-            if (! empty($storeIds)) {
-                $sevenDaysAgo = now()->subDays(7)->startOfDay();
-                $thirtyDaysAgo = now()->subDays(30)->startOfDay();
+            $dateLabels7 = [];
+            $dateLabels30 = [];
+            for ($i = 6; $i >= 0; $i--) {
+                $d = now()->subDays($i)->startOfDay();
+                $dateLabels7[$d->format('Y-m-d')] = ['date' => $d->format('M j'), 'count' => 0];
+            }
+            for ($i = 29; $i >= 0; $i--) {
+                $d = now()->subDays($i)->startOfDay();
+                $dateLabels30[$d->format('Y-m-d')] = ['date' => $d->format('M j'), 'count' => 0];
+            }
 
-                $orders7d = PosOrder::whereIn('store_id', $storeIds)
+            $merged7 = $dateLabels7;
+            $merged30 = $dateLabels30;
+
+            /** @var Store $store */
+            foreach ($storesCollection as $store) {
+                $storeId = $store->id;
+
+                // PoS orders for this store
+                $orders7d = PosOrder::where('store_id', $storeId)
                     ->where('status', PosOrder::STATUS_PAID)
                     ->whereNotNull('paid_at')
                     ->where('paid_at', '>=', $sevenDaysAgo)
                     ->get(['paid_at']);
-                $orders30d = PosOrder::whereIn('store_id', $storeIds)
+                $orders30d = PosOrder::where('store_id', $storeId)
                     ->where('status', PosOrder::STATUS_PAID)
                     ->whereNotNull('paid_at')
                     ->where('paid_at', '>=', $thirtyDaysAgo)
                     ->get(['paid_at']);
 
-                $byDay7 = [];
-                for ($i = 6; $i >= 0; $i--) {
-                    $d = now()->subDays($i)->startOfDay()->format('Y-m-d');
-                    $byDay7[$d] = ['date' => now()->subDays($i)->format('M j'), 'count' => 0];
-                }
-                $byDay30 = [];
-                for ($i = 29; $i >= 0; $i--) {
-                    $d = now()->subDays($i)->startOfDay()->format('Y-m-d');
-                    $byDay30[$d] = ['date' => now()->subDays($i)->format('M j'), 'count' => 0];
-                }
-
+                $pos7 = $dateLabels7;
+                $pos30 = $dateLabels30;
+                $posTotal7d = 0;
+                $posTotal30d = 0;
                 foreach ($orders7d as $o) {
                     $key = $o->paid_at->startOfDay()->format('Y-m-d');
-                    if (isset($byDay7[$key])) {
-                        $byDay7[$key]['count']++;
+                    if (isset($pos7[$key])) {
+                        $pos7[$key]['count']++;
+                        $posTotal7d++;
+                        $merged7[$key]['count']++;
                         $total7d++;
                     }
                 }
                 foreach ($orders30d as $o) {
                     $key = $o->paid_at->startOfDay()->format('Y-m-d');
-                    if (isset($byDay30[$key])) {
-                        $byDay30[$key]['count']++;
+                    if (isset($pos30[$key])) {
+                        $pos30[$key]['count']++;
+                        $posTotal30d++;
+                        $merged30[$key]['count']++;
                         $total30d++;
                     }
                 }
 
-                $sales7d = array_values($byDay7);
-                $sales30d = array_values($byDay30);
+                // Invoice stats by source (BTCPay) – may fail if no API key or BTCPay error
+                try {
+                    $invoiceStats = $this->storeInvoiceStatsService->getInvoiceStatsBySource($store);
+                } catch (\Throwable $e) {
+                    $invoiceStats = ['by_source' => []];
+                    foreach (InvoiceSourceService::SOURCES as $sk) {
+                        $invoiceStats['by_source'][$sk] = ['sales_7d' => array_values($dateLabels7), 'sales_30d' => array_values($dateLabels30), 'total_7d' => 0, 'total_30d' => 0];
+                    }
+                }
+                $invoicesBySource = [];
+                $dayKeys7 = array_keys($dateLabels7);
+                $dayKeys30 = array_keys($dateLabels30);
+                foreach (InvoiceSourceService::SOURCES as $sourceKey) {
+                    $src = $invoiceStats['by_source'][$sourceKey] ?? [];
+                    $invoicesBySource[$sourceKey] = [
+                        'sales_7d' => $src['sales_7d'] ?? [],
+                        'sales_30d' => $src['sales_30d'] ?? [],
+                        'total_7d' => (int) ($src['total_7d'] ?? 0),
+                        'total_30d' => (int) ($src['total_30d'] ?? 0),
+                    ];
+                    $arr7 = $src['sales_7d'] ?? [];
+                    $arr30 = $src['sales_30d'] ?? [];
+                    for ($i = 0; $i < count($dayKeys7) && $i < count($arr7); $i++) {
+                        $k = $dayKeys7[$i] ?? null;
+                        if ($k !== null && isset($merged7[$k])) {
+                            $c = (int) ($arr7[$i]['count'] ?? 0);
+                            $merged7[$k]['count'] += $c;
+                            $total7d += $c;
+                        }
+                    }
+                    for ($i = 0; $i < count($dayKeys30) && $i < count($arr30); $i++) {
+                        $k = $dayKeys30[$i] ?? null;
+                        if ($k !== null && isset($merged30[$k])) {
+                            $c = (int) ($arr30[$i]['count'] ?? 0);
+                            $merged30[$k]['count'] += $c;
+                            $total30d += $c;
+                        }
+                    }
+                }
+
+                $perStore[] = [
+                    'store_id' => $storeId,
+                    'name' => $store->name,
+                    'pos' => [
+                        'sales_7d' => array_values($pos7),
+                        'sales_30d' => array_values($pos30),
+                        'total_7d' => $posTotal7d,
+                        'total_30d' => $posTotal30d,
+                    ],
+                    'invoices' => ['by_source' => $invoicesBySource],
+                ];
             }
+
+            $sales7d = array_values($merged7);
+            $sales30d = array_values($merged30);
         }
 
         return response()->json([
@@ -191,6 +306,7 @@ class DashboardController extends Controller
             'sales_30d' => $sales30d,
             'total_7d' => $total7d,
             'total_30d' => $total30d,
+            'per_store' => $perStore,
         ]);
     }
 }

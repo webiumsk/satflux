@@ -63,27 +63,35 @@
       </div>
     </div>
     
-    <!-- Potential 3rd stat placeholder or specific metric -->
-     <div
-      class="bg-gray-800 overflow-hidden shadow-xl rounded-2xl border border-gray-700 cursor-default hidden lg:block opacity-50"
+    <!-- Total Revenue (store: default currency + sats) -->
+    <div
+      class="bg-gray-800 overflow-hidden shadow-xl rounded-2xl border border-gray-700 hover:border-amber-500/50 hover:shadow-2xl transition-all duration-200 group relative cursor-default hidden lg:block"
     >
-      <div class="p-6">
+      <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+        <svg class="h-12 w-12 text-amber-500" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 512 512.001">
+          <path d="M256 0c141.385 0 256 114.615 256 256 0 141.386-114.615 256.001-256 256.001S0 397.386 0 256C0 114.615 114.615 0 256 0zm84.612 201.62c-3.88-31.345-29.619-40.265-62.659-42.711l-.517-27.705-25.587.077 1.033 26.815-20.994.354-.33-27.003-26.29.266 1.41 28.22-16.4.628-35.288.417 1.158 26.805 17.994-.304c10.59.175 14.582 6.637 14.495 11.934 1.162 41.42 1.777 70.56 2.62 113.775-.464 3.892-2.146 8.86-9.739 8.637l-17.994.302-4.602 30.607 50.985-.858 1.596 28.923 24.696-.592-.518-27.707 19.399-.679 1.222 27.518 25.587-.077-.706-28.41c42.828-3.191 72.804-14.988 75.663-54.919 1.929-32.15-13.13-46.189-37.927-51.596 14.518-7.655 23.639-21.398 21.693-42.717z"/>
+        </svg>
+      </div>
+      <div class="p-6 relative z-10">
         <div class="flex items-center">
-          <div class="flex-shrink-0 bg-gray-700/50 p-3 rounded-xl">
-             <svg class="h-8 w-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+          <div class="flex-shrink-0 bg-amber-500/10 p-3 rounded-xl group-hover:bg-amber-500/20 transition-colors">
+            <svg class="h-8 w-8 text-amber-500" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 512 512.001">
+              <path d="M256 0c141.385 0 256 114.615 256 256 0 141.386-114.615 256.001-256 256.001S0 397.386 0 256C0 114.615 114.615 0 256 0zm84.612 201.62c-3.88-31.345-29.619-40.265-62.659-42.711l-.517-27.705-25.587.077 1.033 26.815-20.994.354-.33-27.003-26.29.266 1.41 28.22-16.4.628-35.288.417 1.158 26.805 17.994-.304c10.59.175 14.582 6.637 14.495 11.934 1.162 41.42 1.777 70.56 2.62 113.775-.464 3.892-2.146 8.86-9.739 8.637l-17.994.302-4.602 30.607 50.985-.858 1.596 28.923 24.696-.592-.518-27.707 19.399-.679 1.222 27.518 25.587-.077-.706-28.41c42.828-3.191 72.804-14.988 75.663-54.919 1.929-32.15-13.13-46.189-37.927-51.596 14.518-7.655 23.639-21.398 21.693-42.717z"/>
+            </svg>
           </div>
-          <div class="ml-5 w-0 flex-1">
+          <div class="ml-5 w-0 flex-1 min-w-0">
             <dl>
-              <dt class="text-sm font-medium text-gray-500 truncate">{{ t('stores.lightning_volume') }}</dt>
-              <dd class="text-3xl font-bold text-gray-600 mt-1">{{ t('stores.coming_soon') }}</dd>
+              <dt class="text-sm font-medium text-gray-400 truncate">{{ t('dashboard.total_revenue') }}</dt>
+              <dd class="text-3xl font-bold text-white mt-1 truncate">{{ formatStoreRevenue(stats.total_revenue_default_currency, stats.default_currency) }}</dd>
             </dl>
           </div>
         </div>
       </div>
-       <div class="bg-gray-900/30 px-6 py-3 border-t border-gray-700/50">
-        <div class="text-sm text-gray-600">
-           {{ t('stores.tracking_unavailable') }}
-        </div>
+      <div class="bg-gray-900/50 px-6 py-3 border-t border-gray-700 flex items-center">
+        <span class="text-xs font-bold text-green-500/80 flex items-center uppercase tracking-wider">
+          <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+          {{ t('dashboard.all_time_total') }}
+        </span>
       </div>
     </div>
   </div>
@@ -98,6 +106,9 @@ interface Props {
   stats: {
     paid_invoices_last_7d: number;
     total_invoices: number;
+    total_revenue_sats: number;
+    total_revenue_default_currency: number;
+    default_currency: string;
   };
 }
 
@@ -106,4 +117,13 @@ defineProps<Props>();
 const emit = defineEmits<{
   'view-invoices': [filters?: any];
 }>();
+
+function formatSats(sats: number): string {
+  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(sats);
+}
+
+function formatStoreRevenue(value: number, currency: string): string {
+  if (currency === 'sats') return formatSats(Math.round(value));
+  return new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value) + ' ' + (currency?.toUpperCase() ?? 'EUR');
+}
 </script>

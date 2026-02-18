@@ -1,8 +1,21 @@
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-white">{{ t('dashboard.title') }}</h1>
-      <p class="text-gray-400 mt-1">{{ t('dashboard.welcome_back', { name: userName }) }}</p>
+    <div class="mb-8 flex flex-row items-start justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-white">{{ t('dashboard.title') }}</h1>
+        <p class="text-gray-400 mt-1">{{ t('dashboard.welcome_back', { name: userName }) }}</p>
+      </div>
+      <button
+        type="button"
+        :disabled="refreshing"
+        :title="t('dashboard.refresh_stats')"
+        class="p-2 rounded-lg border border-gray-600 bg-gray-800 text-gray-400 hover:text-white hover:border-indigo-500/50 hover:bg-gray-750 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        @click="handleRefresh"
+      >
+        <svg class="w-5 h-5" :class="{ 'animate-spin': refreshing }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      </button>
     </div>
     
     <!-- Dashboard Stats / Placeholder -->
@@ -49,12 +62,23 @@
         </div>
         <div class="relative z-10">
           <p class="text-xs font-black text-gray-500 uppercase tracking-widest mb-2">{{ t('dashboard.total_revenue') }}</p>
-          <div class="flex items-baseline gap-2">
-            <h3 class="text-4xl font-black text-white tracking-tighter">{{ loading ? '...' : formatSats(totalRevenue) }}</h3>
-            <span class="text-sm font-bold text-gray-400 uppercase tracking-widest">sats</span>
+          <div class="flex items-baseline gap-2 flex-wrap">
+            <h3 class="text-4xl font-black text-white tracking-tighter">{{ loading ? '...' : formatRevenue(totalRevenueDisplayValue, selectedRevenueCurrency) }}</h3>
+            <span class="text-sm font-bold text-gray-400 uppercase tracking-widest">{{ revenueCurrencyLabel }}</span>
+          </div>
+          <div v-if="availableRevenueCurrencies.length > 1" class="flex gap-1 mt-3">
+            <button
+              v-for="c in availableRevenueCurrencies"
+              :key="c"
+              type="button"
+              :class="['px-2 py-1 text-xs font-medium rounded transition-colors', selectedRevenueCurrency === c ? 'bg-amber-600 text-white' : 'text-gray-500 hover:text-white hover:bg-white/5']"
+              @click="selectedRevenueCurrency = c"
+            >
+              {{ c === 'sats' ? 'sats' : c.toUpperCase() }}
+            </button>
           </div>
           <div class="mt-6 pt-4 border-t border-gray-700/50">
-             <span v-if="totalRevenue === 0" class="text-xs font-bold text-gray-500 flex items-center uppercase tracking-wider">
+             <span v-if="totalRevenueIsZero" class="text-xs font-bold text-gray-500 flex items-center uppercase tracking-wider">
                {{ t('dashboard.no_transactions_yet') }}
              </span>
              <span v-else class="text-xs font-bold text-green-500/80 flex items-center uppercase tracking-wider">
@@ -100,13 +124,21 @@
             {{ t('stores.available_in_pro') }}
           </button>
         </div>
-        <div v-if="statsStores.length > 0" class="flex items-center gap-3">
+        <div v-if="statsStores.length > 0" class="flex flex-wrap items-center gap-3">
           <label class="text-sm font-medium text-gray-400">{{ t('dashboard.filter_by_store') }}</label>
           <Select
             v-model="selectedStoreId"
             :options="storeFilterOptions"
             class="min-w-[180px]"
-            @change="loadStats"
+            @change="onStatsFilterChange"
+          />
+          <label class="text-sm font-medium text-gray-400">{{ t('stores.filter_by_payment_method') }}</label>
+          <Select
+            v-model="selectedStatsSource"
+            :options="paymentMethodOptions"
+            :placeholder="t('stores.payment_method_all')"
+            class="min-w-[180px]"
+            @change="onStatsFilterChange"
           />
         </div>
       </div>
@@ -211,20 +243,48 @@ const userName = computed(() => {
 const loading = ref(true);
 const storeCount = ref(0);
 const totalRevenue = ref(0);
+const totalRevenueByCurrency = ref<Record<string, number>>({});
+const availableRevenueCurrencies = ref<string[]>(['sats']);
+const selectedRevenueCurrency = ref<string>('sats');
 
-async function loadDashboardData() {
+async function loadDashboardData(opts?: { refresh?: boolean }) {
   loading.value = true;
   try {
-    const response = await api.get('/dashboard');
+    const response = await api.get('/dashboard', { params: opts?.refresh ? { refresh: 1 } : {} });
     storeCount.value = response.data.store_count || 0;
     totalRevenue.value = response.data.total_revenue || 0;
+    totalRevenueByCurrency.value = response.data.total_revenue_by_currency || { sats: 0 };
+    availableRevenueCurrencies.value = response.data.available_revenue_currencies || ['sats'];
+    if (!availableRevenueCurrencies.value.includes('sats')) {
+      availableRevenueCurrencies.value = ['sats', ...availableRevenueCurrencies.value];
+    }
   } catch (error: any) {
     console.error('Failed to load dashboard data:', error);
-    // Keep defaults (0) on error
   } finally {
     loading.value = false;
   }
 }
+
+const totalRevenueDisplayValue = computed(() => {
+  const v = totalRevenueByCurrency.value[selectedRevenueCurrency.value];
+  return typeof v === 'number' ? v : 0;
+});
+
+const totalRevenueSats = computed(() => {
+  const v = totalRevenueByCurrency.value.sats;
+  return typeof v === 'number' ? Math.round(v) : 0;
+});
+
+const totalRevenueIsZero = computed(() => {
+  const by = totalRevenueByCurrency.value;
+  return Object.keys(by).every((k) => (by[k] ?? 0) <= 0);
+});
+
+const revenueCurrencyLabel = computed(() => {
+  if (selectedRevenueCurrency.value === 'sats') return 'sats';
+  if (selectedRevenueCurrency.value === 'eur') return '€';
+  return selectedRevenueCurrency.value.toUpperCase();
+});
 
 function formatSats(sats: number): string {
   return new Intl.NumberFormat('en-US', {
@@ -232,26 +292,119 @@ function formatSats(sats: number): string {
   }).format(sats);
 }
 
+function formatRevenue(value: number, currency: string): string {
+  if (currency === 'sats') return formatSats(Math.round(value));
+  return new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+}
+
 // All stores stats (Pro + admin/support see data)
 const statsStores = ref<Array<{ id: string; name: string }>>([]);
 const canViewStats = ref(false);
 const statsLoading = ref(false);
 const selectedStoreId = ref('');
+const selectedStatsSource = ref('all');
 const sales7d = ref<Array<{ date: string; count: number }>>([]);
 const sales30d = ref<Array<{ date: string; count: number }>>([]);
 const total7d = ref(0);
 const total30d = ref(0);
+const perStore = ref<PerStoreEntry[]>([]);
 const statsPeriod = ref<'1W' | '1M'>('1W');
 const showStatsUpgradeModal = ref(false);
+const refreshing = ref(false);
+
+async function handleRefresh() {
+  refreshing.value = true;
+  try {
+    await Promise.all([loadDashboardData({ refresh: true }), loadStats({ refresh: true })]);
+  } finally {
+    refreshing.value = false;
+  }
+}
+
+interface PerStoreEntry {
+  store_id: string;
+  name: string;
+  pos: { sales_7d: Array<{ date: string; count: number }>; sales_30d: Array<{ date: string; count: number }>; total_7d: number; total_30d: number };
+  invoices: { by_source: Record<string, { sales_7d: Array<{ date: string; count: number }>; sales_30d: Array<{ date: string; count: number }>; total_7d: number; total_30d: number }> };
+}
 
 const storeFilterOptions = computed(() => {
   const options = [{ label: t('dashboard.all_stores'), value: '' }];
-  statsStores.value.forEach((s: { id: string; name: string }) => options.push({ label: s.name, value: s.id }));
+  statsStores.value.forEach((s: { id: string | number; name: string }) => options.push({ label: s.name, value: String(s.id) }));
   return options;
 });
 
-const statsChartData = computed(() => (statsPeriod.value === '1W' ? sales7d.value : sales30d.value));
-const statsTotal = computed(() => (statsPeriod.value === '1W' ? total7d.value : total30d.value));
+const paymentMethodOptions = computed(() => [
+  { label: t('stores.payment_method_all'), value: 'all' },
+  { label: t('stores.payment_method_pos'), value: 'pos' },
+  { label: t('stores.payment_method_pay_button'), value: 'pay_button' },
+  { label: t('stores.payment_method_ln_address'), value: 'ln_address' },
+  { label: t('stores.payment_method_tickets'), value: 'tickets' },
+  { label: t('stores.payment_method_api'), value: 'api' },
+  { label: t('stores.payment_method_other'), value: 'other' },
+]);
+
+function mergeSeriesByDay(arrays: Array<Array<{ date: string; count: number }>>): Array<{ date: string; count: number }> {
+  if (arrays.length === 0) return [];
+  const first = arrays[0];
+  const out = first.map((row) => ({ date: row.date, count: 0 }));
+  arrays.forEach((arr) => arr.forEach((row, i) => { if (out[i]) out[i].count += row.count; }));
+  return out;
+}
+
+const effectiveStats = computed(() => {
+  const storeId = selectedStoreId.value;
+  const source = selectedStatsSource.value;
+  const ps = perStore.value;
+  if (!ps.length) {
+    return { sales_7d: sales7d.value, sales_30d: sales30d.value, total_7d: total7d.value, total_30d: total30d.value };
+  }
+  if (!storeId && source === 'all') {
+    return { sales_7d: sales7d.value, sales_30d: sales30d.value, total_7d: total7d.value, total_30d: total30d.value };
+  }
+  if (storeId && source === 'all') {
+    const one = ps.find((s: PerStoreEntry) => String(s.store_id) === String(storeId));
+    if (!one) return { sales_7d: sales7d.value, sales_30d: sales30d.value, total_7d: total7d.value, total_30d: total30d.value };
+    const bySource = one.invoices.by_source as Record<string, { sales_7d: Array<{ date: string; count: number }>; sales_30d: Array<{ date: string; count: number }>; total_7d: number; total_30d: number }>;
+    const all7 = [one.pos.sales_7d, ...Object.values(bySource).map((x) => x.sales_7d)];
+    const all30 = [one.pos.sales_30d, ...Object.values(bySource).map((x) => x.sales_30d)];
+    const t7 = one.pos.total_7d + Object.values(bySource).reduce((sum: number, x) => sum + x.total_7d, 0);
+    const t30 = one.pos.total_30d + Object.values(bySource).reduce((sum: number, x) => sum + x.total_30d, 0);
+    return { sales_7d: mergeSeriesByDay(all7), sales_30d: mergeSeriesByDay(all30), total_7d: t7, total_30d: t30 };
+  }
+  if (!storeId && source !== 'all') {
+    if (source === 'pos') {
+      const all7 = ps.map((s: PerStoreEntry) => s.pos.sales_7d);
+      const all30 = ps.map((s: PerStoreEntry) => s.pos.sales_30d);
+      return {
+        sales_7d: mergeSeriesByDay(all7),
+        sales_30d: mergeSeriesByDay(all30),
+        total_7d: ps.reduce((sum: number, x: PerStoreEntry) => sum + x.pos.total_7d, 0),
+        total_30d: ps.reduce((sum: number, x: PerStoreEntry) => sum + x.pos.total_30d, 0),
+      };
+    }
+    const all7 = ps.map((s: PerStoreEntry) => (s.invoices.by_source[source]?.sales_7d ?? []) as Array<{ date: string; count: number }>).filter((a: Array<unknown>) => a.length > 0);
+    const all30 = ps.map((s: PerStoreEntry) => (s.invoices.by_source[source]?.sales_30d ?? []) as Array<{ date: string; count: number }>).filter((a: Array<unknown>) => a.length > 0);
+    const t7 = ps.reduce((sum: number, x: PerStoreEntry) => sum + (x.invoices.by_source[source]?.total_7d ?? 0), 0);
+    const t30 = ps.reduce((sum: number, x: PerStoreEntry) => sum + (x.invoices.by_source[source]?.total_30d ?? 0), 0);
+    return { sales_7d: mergeSeriesByDay(all7), sales_30d: mergeSeriesByDay(all30), total_7d: t7, total_30d: t30 };
+  }
+  const one = ps.find((s: PerStoreEntry) => String(s.store_id) === String(storeId));
+  if (!one) return { sales_7d: sales7d.value, sales_30d: sales30d.value, total_7d: total7d.value, total_30d: total30d.value };
+  if (source === 'pos') {
+    return { sales_7d: one.pos.sales_7d, sales_30d: one.pos.sales_30d, total_7d: one.pos.total_7d, total_30d: one.pos.total_30d };
+  }
+  const inv = one.invoices.by_source[source];
+  if (!inv) return { sales_7d: [], sales_30d: [], total_7d: 0, total_30d: 0 };
+  return { sales_7d: inv.sales_7d, sales_30d: inv.sales_30d, total_7d: inv.total_7d, total_30d: inv.total_30d };
+});
+
+const statsChartData = computed(() => (statsPeriod.value === '1W' ? effectiveStats.value.sales_7d : effectiveStats.value.sales_30d));
+const statsTotal = computed(() => (statsPeriod.value === '1W' ? effectiveStats.value.total_7d : effectiveStats.value.total_30d));
+
+function onStatsFilterChange() {
+  // Reactive effectiveStats will update; no refetch needed
+}
 const statsMaxCount = computed(() => {
   const max = Math.max(...statsChartData.value.map((d: { date: string; count: number }) => d.count), 0);
   return max === 0 ? 10 : max * 1.2;
@@ -266,18 +419,17 @@ function statsGetY(count: number): number {
   return 100 - (count / statsMaxCount.value) * 100;
 }
 
-async function loadStats() {
+async function loadStats(opts?: { refresh?: boolean }) {
   statsLoading.value = true;
   try {
-    const params: Record<string, string> = {};
-    if (selectedStoreId.value) params.store_id = selectedStoreId.value;
-    const response = await api.get('/dashboard/stats', { params });
+    const response = await api.get('/dashboard/stats', { params: opts?.refresh ? { refresh: 1 } : {} });
     statsStores.value = response.data.stores || [];
     canViewStats.value = !!response.data.can_view_stats;
     sales7d.value = response.data.sales_7d || [];
     sales30d.value = response.data.sales_30d || [];
     total7d.value = response.data.total_7d ?? 0;
     total30d.value = response.data.total_30d ?? 0;
+    perStore.value = response.data.per_store || [];
   } catch (e) {
     console.error('Failed to load dashboard stats', e);
   } finally {

@@ -1,4 +1,5 @@
-/// <reference types="vite/client" />
+///
+<reference types="vite/client" />
 <template>
   <!-- Success state after classic registration -->
   <div v-if="registrationSuccess" class="space-y-6">
@@ -6,8 +7,18 @@
       <div
         class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-500/20 text-green-400 mb-4"
       >
-        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        <svg
+          class="h-6 w-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M5 13l4 4L19 7"
+          />
         </svg>
       </div>
       <p class="text-sm text-gray-300">
@@ -28,7 +39,9 @@
           {{ t("auth.sending") }}
         </template>
         <template v-else-if="resendCooldownSeconds > 0">
-          {{ t("auth.resend_available_in", { seconds: resendCooldownSeconds }) }}
+          {{
+            t("auth.resend_available_in", { seconds: resendCooldownSeconds })
+          }}
         </template>
         <template v-else>
           {{ t("auth.resend_verification_email") }}
@@ -62,7 +75,7 @@
           type="email"
           autocomplete="email"
           required
-          class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+          class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
           :placeholder="t('auth.email_placeholder')"
         />
       </div>
@@ -80,7 +93,7 @@
           type="password"
           autocomplete="new-password"
           required
-          class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+          class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
           placeholder="••••••••"
         />
       </div>
@@ -100,7 +113,7 @@
           type="password"
           autocomplete="new-password"
           required
-          class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+          class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
           placeholder="••••••••"
         />
       </div>
@@ -213,27 +226,52 @@
                     <div
                       class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-500/20 text-green-400 mb-4"
                     >
-                      <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                      <svg
+                        class="h-6 w-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M5 13l4 4L19 7"
+                        />
                       </svg>
                     </div>
                     <h3 class="text-lg leading-6 font-bold text-white mb-2">
                       {{ t("auth.registration_successful") }}
                     </h3>
-                    <p class="text-sm text-gray-500 mb-6">{{ emailForm.email }}</p>
+                    <p class="text-sm text-gray-500 mb-6">
+                      {{ emailForm.email }}
+                    </p>
                     <button
                       type="button"
-                      :disabled="lnurlResendCooldownSeconds > 0 || lnurlResendLoading"
+                      :disabled="
+                        lnurlResendCooldownSeconds > 0 || lnurlResendLoading
+                      "
                       @click="handleLnurlResendVerification"
                       class="w-full mb-3 py-2.5 px-4 border border-gray-600 text-sm font-medium rounded-lg text-white bg-gray-700/50 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
-                      <template v-if="lnurlResendLoading">{{ t("auth.sending") }}</template>
+                      <template v-if="lnurlResendLoading">{{
+                        t("auth.sending")
+                      }}</template>
                       <template v-else-if="lnurlResendCooldownSeconds > 0">
-                        {{ t("auth.resend_available_in", { seconds: lnurlResendCooldownSeconds }) }}
+                        {{
+                          t("auth.resend_available_in", {
+                            seconds: lnurlResendCooldownSeconds,
+                          })
+                        }}
                       </template>
-                      <template v-else>{{ t("auth.resend_verification_email") }}</template>
+                      <template v-else>{{
+                        t("auth.resend_verification_email")
+                      }}</template>
                     </button>
-                    <p v-if="lnurlResendSuccess" class="text-sm text-green-400 mb-4">
+                    <p
+                      v-if="lnurlResendSuccess"
+                      class="text-sm text-green-400 mb-4"
+                    >
                       {{ t("auth.verification_email_resent") }}
                     </p>
                     <button
@@ -267,7 +305,7 @@
                           type="email"
                           required
                           autocomplete="email"
-                          class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+                          class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
                           :placeholder="t('auth.email_placeholder')"
                         />
                         <div
@@ -379,7 +417,10 @@ function startLnurlResendCooldown() {
   lnurlResendCooldownSeconds.value = RESEND_COOLDOWN;
   if (lnurlResendCooldownTimer) clearInterval(lnurlResendCooldownTimer);
   lnurlResendCooldownTimer = window.setInterval(() => {
-    lnurlResendCooldownSeconds.value = Math.max(0, lnurlResendCooldownSeconds.value - 1);
+    lnurlResendCooldownSeconds.value = Math.max(
+      0,
+      lnurlResendCooldownSeconds.value - 1,
+    );
     if (lnurlResendCooldownSeconds.value <= 0 && lnurlResendCooldownTimer) {
       clearInterval(lnurlResendCooldownTimer);
       lnurlResendCooldownTimer = null;
@@ -388,7 +429,12 @@ function startLnurlResendCooldown() {
 }
 
 async function handleLnurlResendVerification() {
-  if (!emailForm.value.email || lnurlResendCooldownSeconds.value > 0 || lnurlResendLoading.value) return;
+  if (
+    !emailForm.value.email ||
+    lnurlResendCooldownSeconds.value > 0 ||
+    lnurlResendLoading.value
+  )
+    return;
   lnurlResendLoading.value = true;
   lnurlResendSuccess.value = false;
   try {
@@ -433,7 +479,12 @@ function startResendCooldown() {
 }
 
 async function handleResendVerification() {
-  if (!registeredEmail.value || resendCooldownSeconds.value > 0 || resendLoading.value) return;
+  if (
+    !registeredEmail.value ||
+    resendCooldownSeconds.value > 0 ||
+    resendLoading.value
+  )
+    return;
   resendLoading.value = true;
   resendSuccess.value = false;
   try {

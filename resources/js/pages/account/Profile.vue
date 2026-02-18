@@ -43,7 +43,7 @@
                     id="name"
                     v-model="profileForm.name"
                     type="text"
-                    class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+                    class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
                     :placeholder="t('account.name_optional')"
                   />
                 </div>
@@ -60,7 +60,7 @@
                     :value="authStore.user?.email"
                     type="email"
                     disabled
-                    class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm text-gray-400 bg-gray-800 cursor-not-allowed sm:text-sm"
+                    class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm text-gray-400 bg-gray-800 cursor-not-allowed sm:text-sm"
                   />
                 </div>
               </div>
@@ -144,14 +144,24 @@
                   v-if="subscriber && subscriber.periodEnd"
                   class="text-sm text-gray-400 mt-2"
                 >
-                  {{ t("account.next_billing", { date: formatDate(subscriber.periodEnd) }) }}
+                  {{
+                    t("account.next_billing", {
+                      date: formatDate(subscriber.periodEnd),
+                    })
+                  }}
                 </div>
               </div>
               <div class="mt-4 md:mt-0 md:text-right">
                 <div class="text-3xl font-bold text-white">
                   {{ currentPlanPrice }}
                 </div>
-                <div class="text-sm text-gray-400">{{ isProPlan ? t("account.per_month_paid_yearly") : t("account.per_month") }}</div>
+                <div class="text-sm text-gray-400">
+                  {{
+                    isProPlan
+                      ? t("account.per_month_paid_yearly")
+                      : t("account.per_month")
+                  }}
+                </div>
               </div>
             </div>
 
@@ -201,11 +211,17 @@
                   v-if="isPaidPlan"
                   class="flex items-center justify-between"
                 >
-                  <span class="text-sm text-gray-400">{{ t("account.payment_method") }}</span>
+                  <span class="text-sm text-gray-400">{{
+                    t("account.payment_method")
+                  }}</span>
                   <div class="flex items-center gap-2">
                     <span
                       class="px-3 py-1 rounded-full bg-gray-700 text-sm text-gray-300"
-                      >{{ t("account.credit_balance", { amount: formatSats(creditBalance) }) }}</span
+                      >{{
+                        t("account.credit_balance", {
+                          amount: formatSats(creditBalance),
+                        })
+                      }}</span
                     >
                     <button
                       @click="showAddCreditModal = true"
@@ -229,7 +245,9 @@
                   </div>
                 </div>
                 <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-400">{{ t("account.notification_email") }}</span>
+                  <span class="text-sm text-gray-400">{{
+                    t("account.notification_email")
+                  }}</span>
                   <span class="text-sm text-gray-300 flex items-center gap-1">
                     <svg
                       class="w-4 h-4"
@@ -251,15 +269,19 @@
                   v-if="isPaidPlan && subscriber && subscriber.periodEnd"
                   class="flex items-center justify-between"
                 >
-                  <span class="text-sm text-gray-400"
-                    >{{ t("account.next_charge_on", { date: formatDate(subscriber.periodEnd) }) }}</span
-                  >
+                  <span class="text-sm text-gray-400">{{
+                    t("account.next_charge_on", {
+                      date: formatDate(subscriber.periodEnd),
+                    })
+                  }}</span>
                   <span class="text-sm font-medium text-white">{{
                     currentPlanPrice
                   }}</span>
                 </div>
                 <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-400">{{ t("account.auto_renewal") }}</span>
+                  <span class="text-sm text-gray-400">{{
+                    t("account.auto_renewal")
+                  }}</span>
                   <div class="flex items-center gap-2">
                     <span class="text-sm text-gray-300">{{
                       subscriber?.autoRenew ? t("account.on") : t("account.off")
@@ -308,11 +330,14 @@
                     class="absolute inset-0 bg-gradient-to-br from-indigo-600/5 to-purple-600/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
                   ></div>
                   <div class="relative z-10">
-                    <h6 class="text-lg font-bold text-white mb-2">{{ t("account.pro_plan") }}</h6>
+                    <h6 class="text-lg font-bold text-white mb-2">
+                      {{ t("account.pro_plan") }}
+                    </h6>
                     <div class="text-2xl font-bold text-indigo-400 mb-4">
-                      {{ formatSats(pricing.pro.sats_per_month_display) }}<span class="text-base font-normal text-gray-500"
-                        >{{ t("account.pro_price_period") }}</span
-                      >
+                      {{ formatSats(pricing.pro.sats_per_month_display)
+                      }}<span class="text-base font-normal text-gray-500">{{
+                        t("account.pro_price_period")
+                      }}</span>
                     </div>
                     <ul class="text-sm text-gray-400 space-y-2 mb-6">
                       <li
@@ -331,7 +356,11 @@
                       :disabled="upgrading"
                       class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {{ upgrading ? t("stores.processing") : t("account.upgrade_to_pro") }}
+                      {{
+                        upgrading
+                          ? t("stores.processing")
+                          : t("account.upgrade_to_pro")
+                      }}
                     </button>
                   </div>
                 </div>
@@ -413,7 +442,7 @@
                     v-model="passwordForm.current_password"
                     type="password"
                     required
-                    class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+                    class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
                   />
                 </div>
               </div>
@@ -429,7 +458,7 @@
                     v-model="passwordForm.password"
                     type="password"
                     required
-                    class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+                    class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
                   />
                 </div>
               </div>
@@ -445,7 +474,7 @@
                     v-model="passwordForm.password_confirmation"
                     type="password"
                     required
-                    class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+                    class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
                   />
                 </div>
               </div>
@@ -478,7 +507,9 @@
         class="bg-gray-800 rounded-xl border border-gray-700 max-w-md w-full p-6"
       >
         <div class="flex items-center justify-between mb-4">
-          <h5 class="text-lg font-bold text-white">{{ t("account.add_credit_modal_title") }}</h5>
+          <h5 class="text-lg font-bold text-white">
+            {{ t("account.add_credit_modal_title") }}
+          </h5>
           <button
             @click="showAddCreditModal = false"
             class="text-gray-400 hover:text-white"
@@ -500,15 +531,15 @@
         </div>
         <div class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2"
-              >{{ t("account.amount_sats") }}</label
-            >
+            <label class="block text-sm font-medium text-gray-300 mb-2">{{
+              t("account.amount_sats")
+            }}</label>
             <input
               v-model.number="creditAmount"
               type="number"
               min="1"
               step="1"
-              class="w-full px-4 py-3 border border-gray-600 rounded-lg text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              class="w-full px-4 py-2 border border-gray-600 rounded-lg text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               :placeholder="t('account.amount_placeholder')"
             />
           </div>
@@ -524,7 +555,11 @@
               :disabled="!creditAmount || creditAmount < 1 || addingCredit"
               class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {{ addingCredit ? t("stores.processing") : t("account.add_credit_btn") }}
+              {{
+                addingCredit
+                  ? t("stores.processing")
+                  : t("account.add_credit_btn")
+              }}
             </button>
           </div>
         </div>
@@ -578,7 +613,8 @@ const currentPlanPrice = computed(() => {
   const role = authStore.user?.role || "free";
   const p = pricing.value;
   if (role === "enterprise") return "—";
-  if (role === "pro") return formatSats(p?.pro?.sats_per_month_display ?? 16_500);
+  if (role === "pro")
+    return formatSats(p?.pro?.sats_per_month_display ?? 16_500);
   return formatSats(p?.free?.sats_per_year ?? 0);
 });
 
@@ -679,10 +715,7 @@ async function handleAddCredit() {
     }
   } catch (error: any) {
     console.error("Failed to add credit:", error);
-    alert(
-      error.response?.data?.message ||
-        t("account.add_credit_failed"),
-    );
+    alert(error.response?.data?.message || t("account.add_credit_failed"));
   } finally {
     addingCredit.value = false;
   }
@@ -694,7 +727,8 @@ function formatDate(timestamp: number | string): string {
     typeof timestamp === "number"
       ? new Date(timestamp * 1000)
       : new Date(timestamp);
-  const localeTag = locale.value === "sk" ? "sk-SK" : locale.value === "es" ? "es-ES" : "en-US";
+  const localeTag =
+    locale.value === "sk" ? "sk-SK" : locale.value === "es" ? "es-ES" : "en-US";
   return date.toLocaleDateString(localeTag, {
     weekday: "long",
     year: "numeric",
@@ -718,10 +752,7 @@ async function upgradePlan(plan: string) {
     }
   } catch (error: any) {
     console.error("Failed to create checkout:", error);
-    alert(
-      error.response?.data?.message ||
-        t("account.checkout_failed"),
-    );
+    alert(error.response?.data?.message || t("account.checkout_failed"));
     upgrading.value = false;
   }
 }
