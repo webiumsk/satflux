@@ -5,6 +5,10 @@
 
 set -e  # Exit on any error
 
+# Run from script directory (so cron uses project root: config, .env, BACKUP_DIR)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
