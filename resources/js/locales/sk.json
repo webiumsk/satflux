@@ -120,7 +120,7 @@
     "registration_failed": "Registrácia zlyhala. Prosím skúste to znova.",
     "failed_to_complete_registration": "Zlyhalo dokončenie registrácie. Prosím skúste to znova.",
     "failed_to_generate_challenge": "Nepodarilo sa vygenerovať výzvu",
-    "email_placeholder": "vyour{'@'}example.com",
+    "email_placeholder": "you{'@'}example.com",
     "password_placeholder": "••••••••",
     "verifying_email": "Overovanie e-mailu...",
     "email_verified_success": "Váš e-mail bol úspešne overený. Presmerovávam...",

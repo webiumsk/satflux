@@ -676,19 +676,14 @@ onUnmounted(() => {
   }
 });
 
-// Convert URL to LNURL format (bech32 encoded)
+// Convert URL to LNURL format (bech32 encoded) per LUD-01
+// URL is encoded as-is; output is uppercased for QR (better density)
 function encodeLnurl(url: string): string {
   try {
-    // Convert URL to uppercase for encoding (LNURL spec requirement)
-    const urlUpper = url.toUpperCase();
-    // Convert string to bytes
     const encoder = new TextEncoder();
-    const bytes = encoder.encode(urlUpper);
-    // Convert bytes to bech32 words (5-bit chunks)
+    const bytes = encoder.encode(url);
     const words = bech32.toWords(Array.from(bytes));
-    // Encode to bech32 with "lnurl" prefix (must be lowercase for checksum)
     const encoded = bech32.encode("lnurl", words, 1023);
-    // Return uppercase LNURL prefix for QR code (some wallets expect uppercase prefix)
     return encoded.toUpperCase();
   } catch (error) {
     console.error("LNURL encoding failed:", error);
