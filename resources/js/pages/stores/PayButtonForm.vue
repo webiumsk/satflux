@@ -75,7 +75,7 @@
                 v-model="form.price"
                 type="text"
                 :placeholder="t('stores.pay_button_price_placeholder')"
-                class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />
             </div>
 
@@ -123,7 +123,7 @@
                 v-model="form.checkoutDescription"
                 type="text"
                 :placeholder="t('stores.pay_button_checkout_description_placeholder')"
-                class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />
             </div>
           </div>
@@ -140,7 +140,7 @@
               v-model="form.orderId"
               type="text"
               :placeholder="t('stores.pay_button_order_id_placeholder')"
-              class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
           </div>
         </div>
@@ -182,7 +182,7 @@
                 v-model="form.buttonText"
                 type="text"
                 :placeholder="t('stores.pay_button_text_placeholder')"
-                class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />
             </div>
           </div>
@@ -199,7 +199,7 @@
               v-model="form.buttonImageUrl"
               type="text"
               placeholder="https://satflux.org/img/paybutton/pay.svg"
-              class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
           </div>
 
@@ -292,7 +292,7 @@
                     type="number"
                     min="0"
                     step="0.01"
-                    class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
@@ -307,7 +307,7 @@
                     type="number"
                     min="0"
                     step="0.01"
-                    class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
@@ -322,7 +322,7 @@
                     type="number"
                     min="0.01"
                     step="0.01"
-                    class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                   />
                 </div>
               </div>
@@ -492,7 +492,7 @@
               v-model="form.serverIpn"
               type="url"
               placeholder="https://example.com/webhook"
-              class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
             <p class="mt-1 text-xs text-gray-500">
               The URL to post purchase data.
@@ -511,7 +511,7 @@
               v-model="form.emailNotifications"
               type="email"
               placeholder="user@example.com"
-              class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
             <div
               class="mt-3 flex items-center bg-gray-900 border border-gray-700 p-4 rounded-xl"
@@ -543,7 +543,7 @@
               v-model="form.browserRedirect"
               type="url"
               placeholder="https://example.com/success"
-              class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
             <p class="mt-1 text-xs text-gray-500">
               Where to redirect the customer after payment is complete.
@@ -575,7 +575,7 @@
               v-model="form.checkoutQueryString"
               type="text"
               placeholder="lang=da-DK"
-              class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
           </div>
         </div>
@@ -650,14 +650,14 @@
               <input
                 :value="alternativeUrl"
                 readonly
-                class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-gray-300 font-mono text-sm focus:outline-none"
+                class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-gray-300 font-mono text-sm focus:outline-none"
               />
             </div>
             <div class="flex items-end">
               <button
                 type="button"
                 @click="copyAlternativeUrl"
-                class="px-4 py-3 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 hover:bg-gray-700 transition-colors"
+                class="px-4 py-2 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 hover:bg-gray-700 transition-colors"
               >
                 Copy
               </button>

@@ -48,7 +48,7 @@
                 v-model="confirmText"
                 type="text"
                 placeholder="Type DELETE"
-                class="block w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
                 :class="{ 'border-red-500 ring-1 ring-red-500': confirmText && confirmText !== 'DELETE' }"
                 />
                 

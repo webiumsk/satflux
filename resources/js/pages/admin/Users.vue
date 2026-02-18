@@ -9,18 +9,26 @@
     <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 mb-6">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label for="search" class="block text-sm font-medium text-gray-300 mb-2">Search by Email</label>
+          <label
+            for="search"
+            class="block text-sm font-medium text-gray-300 mb-2"
+            >Search by Email</label
+          >
           <input
             id="search"
             v-model="searchQuery"
             type="text"
             placeholder="Search users..."
-            class="appearance-none block w-full px-4 py-3 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             @input="handleSearch"
           />
         </div>
         <div>
-          <label for="role-filter" class="block text-sm font-medium text-gray-300 mb-2">Filter by Role</label>
+          <label
+            for="role-filter"
+            class="block text-sm font-medium text-gray-300 mb-2"
+            >Filter by Role</label
+          >
           <Select
             id="role-filter"
             v-model="selectedRole"
@@ -38,22 +46,70 @@
         <table class="min-w-full divide-y divide-gray-700">
           <thead class="bg-gray-900/50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">ID</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Email</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Role</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Stores</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Created</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Last login</th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
+              >
+                ID
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
+              >
+                Email
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
+              >
+                Role
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
+              >
+                Stores
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
+              >
+                Status
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
+              >
+                Created
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
+              >
+                Last login
+              </th>
+              <th
+                class="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider"
+              >
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody class="bg-gray-800 divide-y divide-gray-700">
             <tr v-if="loading" class="bg-gray-800">
               <td colspan="8" class="px-6 py-12 text-center text-gray-400">
-                <svg class="animate-spin h-8 w-8 text-indigo-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  class="animate-spin h-8 w-8 text-indigo-500 mx-auto"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    class="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                  ></circle>
+                  <path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
               </td>
             </tr>
@@ -62,14 +118,21 @@
                 No users found.
               </td>
             </tr>
-            <tr v-else v-for="user in users" :key="user.id" class="hover:bg-gray-700/50 transition-colors">
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{{ user.id }}</td>
+            <tr
+              v-else
+              v-for="user in users"
+              :key="user.id"
+              class="hover:bg-gray-700/50 transition-colors"
+            >
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                {{ user.id }}
+              </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                 <router-link
                   :to="`/admin/users/${user.id}`"
                   class="text-indigo-400 hover:text-indigo-300 transition-colors"
                 >
-                  {{ user.email || '–' }}
+                  {{ user.email || "–" }}
                 </router-link>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
@@ -77,7 +140,7 @@
                   class="px-2 py-1 text-xs font-semibold rounded-full"
                   :class="getRoleBadgeClass(user.role || 'free')"
                 >
-                  {{ formatRole(user.role || 'free') }}
+                  {{ formatRole(user.role || "free") }}
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
@@ -101,9 +164,11 @@
                 {{ formatDate(user.created_at) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                {{ user.last_login_at ? formatDate(user.last_login_at) : '–' }}
+                {{ user.last_login_at ? formatDate(user.last_login_at) : "–" }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <td
+                class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
+              >
                 <button
                   @click="openEditModal(user)"
                   class="text-indigo-400 hover:text-indigo-300 mr-4 transition-colors"
@@ -125,9 +190,14 @@
       </div>
 
       <!-- Pagination -->
-      <div v-if="meta && meta.last_page > 1" class="bg-gray-900/50 px-6 py-4 border-t border-gray-700 flex items-center justify-between">
+      <div
+        v-if="meta && meta.last_page > 1"
+        class="bg-gray-900/50 px-6 py-4 border-t border-gray-700 flex items-center justify-between"
+      >
         <div class="text-sm text-gray-400">
-          Showing {{ (meta.current_page - 1) * meta.per_page + 1 }} to {{ Math.min(meta.current_page * meta.per_page, meta.total) }} of {{ meta.total }} results
+          Showing {{ (meta.current_page - 1) * meta.per_page + 1 }} to
+          {{ Math.min(meta.current_page * meta.per_page, meta.total) }} of
+          {{ meta.total }} results
         </div>
         <div class="flex gap-2">
           <button
@@ -154,12 +224,18 @@
       class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
       @click.self="closeEditModal"
     >
-      <div class="bg-gray-800 rounded-2xl border border-gray-700 shadow-2xl max-w-md w-full p-6">
+      <div
+        class="bg-gray-800 rounded-2xl border border-gray-700 shadow-2xl max-w-md w-full p-6"
+      >
         <h2 class="text-2xl font-bold text-white mb-6">Edit User</h2>
-        
+
         <form @submit.prevent="handleUpdateUser" class="space-y-4">
           <div>
-            <label for="edit-email" class="block text-sm font-medium text-gray-300 mb-2">Email</label>
+            <label
+              for="edit-email"
+              class="block text-sm font-medium text-gray-300 mb-2"
+              >Email</label
+            >
             <input
               id="edit-email"
               v-model="editForm.email"
@@ -170,7 +246,11 @@
           </div>
 
           <div>
-            <label for="edit-role" class="block text-sm font-medium text-gray-300 mb-2">Role</label>
+            <label
+              for="edit-role"
+              class="block text-sm font-medium text-gray-300 mb-2"
+              >Role</label
+            >
             <Select
               id="edit-role"
               v-model="editForm.role"
@@ -179,7 +259,10 @@
             />
           </div>
 
-          <div v-if="editError" class="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
+          <div
+            v-if="editError"
+            class="rounded-lg bg-red-500/10 border border-red-500/20 p-3"
+          >
             <p class="text-sm text-red-400">{{ editError }}</p>
           </div>
 
@@ -196,7 +279,7 @@
               :disabled="updateLoading"
               class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {{ updateLoading ? 'Saving...' : 'Save Changes' }}
+              {{ updateLoading ? "Saving..." : "Save Changes" }}
             </button>
           </div>
         </form>
@@ -209,12 +292,20 @@
       class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
       @click.self="cancelDelete"
     >
-      <div class="bg-gray-800 rounded-2xl border border-gray-700 shadow-2xl max-w-md w-full p-6">
+      <div
+        class="bg-gray-800 rounded-2xl border border-gray-700 shadow-2xl max-w-md w-full p-6"
+      >
         <h2 class="text-2xl font-bold text-white mb-4">Delete User</h2>
         <p class="text-gray-300 mb-6">
-          Are you sure you want to delete user <strong>{{ userToDelete.email }}</strong>? This action cannot be undone and will also delete all associated stores.
+          Are you sure you want to delete user
+          <strong>{{ userToDelete.email }}</strong
+          >? This action cannot be undone and will also delete all associated
+          stores.
         </p>
-        <div v-if="deleteError" class="rounded-lg bg-red-500/10 border border-red-500/20 p-3 mb-4">
+        <div
+          v-if="deleteError"
+          class="rounded-lg bg-red-500/10 border border-red-500/20 p-3 mb-4"
+        >
           <p class="text-sm text-red-400">{{ deleteError }}</p>
         </div>
         <div class="flex justify-end gap-3">
@@ -229,7 +320,7 @@
             :disabled="deleteLoading"
             class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {{ deleteLoading ? 'Deleting...' : 'Delete User' }}
+            {{ deleteLoading ? "Deleting..." : "Delete User" }}
           </button>
         </div>
       </div>
@@ -238,11 +329,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useI18n } from 'vue-i18n';
-import api from '../../services/api';
-import { useAuthStore } from '../../store/auth';
-import Select from '../../components/ui/Select.vue';
+import { ref, computed, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
+import api from "../../services/api";
+import { useAuthStore } from "../../store/auth";
+import Select from "../../components/ui/Select.vue";
 
 const { t } = useI18n();
 const authStore = useAuthStore();
@@ -251,34 +342,34 @@ const currentUser = computed(() => authStore.user);
 const users = ref<any[]>([]);
 const meta = ref<any>(null);
 const loading = ref(false);
-const searchQuery = ref('');
-const selectedRole = ref('all');
+const searchQuery = ref("");
+const selectedRole = ref("all");
 
 const roleOptions = [
-  { label: 'All Roles', value: 'all' },
-  { label: 'Free', value: 'free' },
-  { label: 'Pro', value: 'pro' },
-  { label: 'Enterprise', value: 'enterprise' },
-  { label: 'Support', value: 'support' },
-  { label: 'Admin', value: 'admin' },
+  { label: "All Roles", value: "all" },
+  { label: "Free", value: "free" },
+  { label: "Pro", value: "pro" },
+  { label: "Enterprise", value: "enterprise" },
+  { label: "Support", value: "support" },
+  { label: "Admin", value: "admin" },
 ];
 
-const roleEditOptions = roleOptions.filter(o => o.value !== 'all');
+const roleEditOptions = roleOptions.filter((o) => o.value !== "all");
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const showEditModal = ref(false);
 const editForm = ref({
   id: null as number | null,
-  email: '',
-  role: 'free',
+  email: "",
+  role: "free",
 });
 const updateLoading = ref(false);
-const editError = ref('');
+const editError = ref("");
 
 const userToDelete = ref<any>(null);
 const deleteLoading = ref(false);
-const deleteError = ref('');
+const deleteError = ref("");
 
 const loadUsers = async (page = 1) => {
   loading.value = true;
@@ -287,15 +378,15 @@ const loadUsers = async (page = 1) => {
     if (searchQuery.value) {
       params.search = searchQuery.value;
     }
-    if (selectedRole.value !== 'all') {
+    if (selectedRole.value !== "all") {
       params.role = selectedRole.value;
     }
 
-    const response = await api.get('/admin/users', { params });
+    const response = await api.get("/admin/users", { params });
     users.value = response.data.data || [];
     meta.value = response.data.meta || null;
   } catch (error: any) {
-    console.error('Failed to load users:', error);
+    console.error("Failed to load users:", error);
     users.value = [];
   } finally {
     loading.value = false;
@@ -321,9 +412,9 @@ const openEditModal = (user: any) => {
   editForm.value = {
     id: user.id,
     email: user.email,
-    role: user.role || 'merchant',
+    role: user.role || "merchant",
   };
-  editError.value = '';
+  editError.value = "";
   showEditModal.value = true;
 };
 
@@ -331,17 +422,17 @@ const closeEditModal = () => {
   showEditModal.value = false;
   editForm.value = {
     id: null,
-    email: '',
-    role: 'free',
+    email: "",
+    role: "free",
   };
-  editError.value = '';
+  editError.value = "";
 };
 
 const handleUpdateUser = async () => {
   if (!editForm.value.id) return;
 
   updateLoading.value = true;
-  editError.value = '';
+  editError.value = "";
 
   try {
     await api.put(`/admin/users/${editForm.value.id}`, {
@@ -352,7 +443,9 @@ const handleUpdateUser = async () => {
     closeEditModal();
     await loadUsers(meta.value?.current_page || 1);
   } catch (error: any) {
-    editError.value = error.response?.data?.message || 'Failed to update user. Please try again.';
+    editError.value =
+      error.response?.data?.message ||
+      "Failed to update user. Please try again.";
   } finally {
     updateLoading.value = false;
   }
@@ -360,27 +453,29 @@ const handleUpdateUser = async () => {
 
 const confirmDelete = (user: any) => {
   userToDelete.value = user;
-  deleteError.value = '';
+  deleteError.value = "";
 };
 
 const cancelDelete = () => {
   userToDelete.value = null;
-  deleteError.value = '';
+  deleteError.value = "";
 };
 
 const handleDeleteUser = async () => {
   if (!userToDelete.value) return;
 
   deleteLoading.value = true;
-  deleteError.value = '';
+  deleteError.value = "";
 
   try {
     await api.delete(`/admin/users/${userToDelete.value.id}`);
-    
+
     cancelDelete();
     await loadUsers(meta.value?.current_page || 1);
   } catch (error: any) {
-    deleteError.value = error.response?.data?.message || 'Failed to delete user. Please try again.';
+    deleteError.value =
+      error.response?.data?.message ||
+      "Failed to delete user. Please try again.";
   } finally {
     deleteLoading.value = false;
   }
@@ -392,21 +487,21 @@ const formatRole = (role: string) => {
 
 const getRoleBadgeClass = (role: string) => {
   const classes: Record<string, string> = {
-    free: 'bg-gray-500/20 text-gray-300',
-    pro: 'bg-blue-500/20 text-blue-300',
-    enterprise: 'bg-purple-500/20 text-purple-300',
-    support: 'bg-yellow-500/20 text-yellow-300',
-    admin: 'bg-red-500/20 text-red-300',
+    free: "bg-gray-500/20 text-gray-300",
+    pro: "bg-blue-500/20 text-blue-300",
+    enterprise: "bg-purple-500/20 text-purple-300",
+    support: "bg-yellow-500/20 text-yellow-300",
+    admin: "bg-red-500/20 text-red-300",
   };
   return classes[role] || classes.free;
 };
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
   });
 };
 
@@ -414,10 +509,3 @@ onMounted(() => {
   loadUsers();
 });
 </script>
-
-
-
-
-
-
-

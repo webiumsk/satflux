@@ -127,12 +127,46 @@
               </div>
             </div>
 
+            <!-- Pro: Filter by payment method + Refresh -->
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div v-if="dashboard?.can_filter_by_source" class="flex flex-wrap items-center gap-3">
+                <label class="text-sm font-medium text-gray-400">{{ t('stores.filter_by_payment_method') }}</label>
+                <select
+                :value="dashboardSourceFilter"
+                @change="onDashboardSourceChange"
+                class="rounded-lg border border-gray-600 bg-gray-800 text-white text-sm px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              >
+                <option value="all">{{ t('stores.payment_method_all') }}</option>
+                <option value="pos">{{ t('stores.payment_method_pos') }}</option>
+                <option value="pay_button">{{ t('stores.payment_method_pay_button') }}</option>
+                <option value="ln_address">{{ t('stores.payment_method_ln_address') }}</option>
+                <option value="tickets">{{ t('stores.payment_method_tickets') }}</option>
+                <option value="api">{{ t('stores.payment_method_api') }}</option>
+                <option value="other">{{ t('stores.payment_method_other') }}</option>
+              </select>
+              </div>
+              <button
+                type="button"
+                :disabled="dashboardRefreshing"
+                :title="t('dashboard.refresh_stats')"
+                class="p-2 rounded-lg border border-gray-600 bg-gray-800 text-gray-400 hover:text-white hover:border-indigo-500/50 hover:bg-gray-750 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ml-auto"
+                @click="handleRefreshDashboard"
+              >
+                <svg class="w-5 h-5" :class="{ 'animate-spin': dashboardRefreshing }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
+
             <!-- Dashboard Statistics -->
             <DashboardStats
               v-if="dashboard"
               :stats="{
                 paid_invoices_last_7d: dashboard.paid_invoices_last_7d || 0,
-                total_invoices: dashboard.total_invoices || 0
+                total_invoices: dashboard.total_invoices || 0,
+                total_revenue_sats: dashboard.total_revenue_sats ?? 0,
+                total_revenue_default_currency: dashboard.total_revenue_default_currency ?? 0,
+                default_currency: dashboard.default_currency || 'eur'
               }"
               @view-invoices="handleViewInvoices"
             />
@@ -236,14 +270,39 @@ const showSettings = ref(false);
 const showInvoices = ref(false);
 const showReports = ref(false);
 const showSetupWizard = ref(false);
+const dashboardSourceFilter = ref<string>('all');
+const dashboardRefreshing = ref(false);
 
 const dashboard = computed(() => storesStore.dashboard);
+
+async function handleRefreshDashboard() {
+  const storeId = route.params.id as string;
+  if (!storeId) return;
+  dashboardRefreshing.value = true;
+  try {
+    await storesStore.fetchDashboard(storeId, { refresh: true });
+  } finally {
+    dashboardRefreshing.value = false;
+  }
+}
+
+async function onDashboardSourceChange(e: Event) {
+  const value = (e.target as HTMLSelectElement).value;
+  dashboardSourceFilter.value = value;
+  if (!store.value?.id) return;
+  try {
+    await storesStore.fetchDashboard(store.value.id, { source: value === 'all' ? undefined : value });
+  } catch (err) {
+    console.error('Failed to filter dashboard', err);
+  }
+}
 const allApps = computed(() => appsStore.apps);
 
 // Watch route params for store changes (when switching stores in dropdown)
 watch(() => route.params.id, async (newStoreId, oldStoreId) => {
   if (newStoreId && newStoreId !== oldStoreId) {
     loading.value = true;
+    dashboardSourceFilter.value = 'all';
     try {
       store.value = await storesStore.fetchStore(newStoreId as string);
       

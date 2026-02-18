@@ -63,7 +63,7 @@ class InvoiceService
         $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
         $cacheKey = "btcpay:invoice:{$storeId}:{$invoiceId}:{$apiKeyHash}";
         
-        return Cache::remember($cacheKey, 30, function () use ($storeId, $invoiceId, $userApiKey) {
+        return Cache::remember($cacheKey, 3600, function () use ($storeId, $invoiceId, $userApiKey) {
             $originalApiKey = null;
             if ($userApiKey) {
                 // Temporarily use user-level API key
@@ -92,12 +92,104 @@ class InvoiceService
         $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
         $cacheKey = "btcpay:invoice:count:{$storeId}:{$apiKeyHash}:" . md5(serialize($filters));
         
-        return Cache::remember($cacheKey, 60, function () use ($storeId, $filters, $userApiKey) {
+        return Cache::remember($cacheKey, 3600, function () use ($storeId, $filters, $userApiKey) {
             // BTCPay API doesn't have a direct count endpoint, so we fetch a small page
             $result = $this->listInvoices($storeId, $filters, 0, 1, $userApiKey);
             // Note: BTCPay API may return total count in response, adjust based on actual API response
             return count($result) ?? 0;
         });
+    }
+
+    /**
+     * Get payment methods for an invoice (actual crypto received per method).
+     * Used to compute real sats received for invoices denominated in fiat (EUR/USD).
+     * Cached 5 min.
+     *
+     * @return array Array of payment method data (paymentMethod, receivedAmount, payments, etc.)
+     */
+    public function getInvoicePaymentMethods(string $storeId, string $invoiceId, ?string $userApiKey = null): array
+    {
+        $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
+        $cacheKey = "btcpay:invoice:payment_methods:{$storeId}:{$invoiceId}:{$apiKeyHash}";
+
+        return Cache::remember($cacheKey, 3600, function () use ($storeId, $invoiceId, $userApiKey) {
+            $originalApiKey = null;
+            if ($userApiKey) {
+                $originalApiKey = $this->client->getApiKey();
+                $this->client->setApiKey($userApiKey);
+            }
+
+            try {
+                $result = $this->client->get("/api/v1/stores/{$storeId}/invoices/{$invoiceId}/payment-methods");
+                return is_array($result) ? $result : [];
+            } finally {
+                if ($userApiKey && $originalApiKey) {
+                    $this->client->setApiKey($originalApiKey);
+                }
+            }
+        });
+    }
+
+    /**
+     * Extract total received sats from invoice payment methods (BTC/Lightning only).
+     * BTCPay Greenfield returns: paymentMethodId (e.g. BTC-CHAIN, BTC-LN), currency, paymentMethodPaid, totalPaid, payments[].
+     *
+     * @param array $paymentMethods Result of getInvoicePaymentMethods()
+     * @return int Total sats received
+     */
+    public static function sumReceivedSatsFromPaymentMethods(array $paymentMethods): int
+    {
+        $sats = 0;
+        foreach ($paymentMethods as $pm) {
+            $methodId = (string) ($pm['paymentMethodId'] ?? $pm['paymentMethod'] ?? '');
+            $currency = strtoupper((string) ($pm['currency'] ?? ''));
+            if ($currency !== 'BTC' && stripos($methodId, 'BTC') === false) {
+                continue;
+            }
+            $amount = null;
+            if (isset($pm['paymentMethodPaid']) && (is_numeric($pm['paymentMethodPaid']) || is_string($pm['paymentMethodPaid']))) {
+                $amount = (float) $pm['paymentMethodPaid'];
+            }
+            if ($amount === null && isset($pm['totalPaid']) && (is_numeric($pm['totalPaid']) || is_string($pm['totalPaid']))) {
+                $amount = (float) $pm['totalPaid'];
+            }
+            if ($amount === null && isset($pm['receivedAmount']) && is_numeric($pm['receivedAmount'])) {
+                $amount = (float) $pm['receivedAmount'];
+            }
+            if ($amount !== null && $amount > 0) {
+                $sats += self::btcAmountToSats($amount);
+                continue;
+            }
+            $payments = $pm['payments'] ?? [];
+            if (is_array($payments)) {
+                foreach ($payments as $p) {
+                    if (isset($p['value']) && (is_numeric($p['value']) || is_string($p['value']))) {
+                        $v = (float) $p['value'];
+                        if ($v > 0) {
+                            $sats += self::btcAmountToSats($v);
+                        }
+                    }
+                }
+            }
+        }
+        return $sats;
+    }
+
+    /**
+     * Convert BTCPay amount to sats. API may return in BTC (e.g. 0.00005) or in sats (e.g. 5000).
+     */
+    private static function btcAmountToSats(float $amount): int
+    {
+        if ($amount <= 0) {
+            return 0;
+        }
+        if ($amount < 0.00000001) {
+            return 0;
+        }
+        if ($amount < 1) {
+            return (int) round($amount * 100_000_000);
+        }
+        return (int) round($amount);
     }
 
     /**

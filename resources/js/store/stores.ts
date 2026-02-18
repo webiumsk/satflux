@@ -28,6 +28,8 @@ export interface ChecklistItem {
     is_completed: boolean;
 }
 
+export type InvoiceSource = 'pos' | 'pay_button' | 'ln_address' | 'tickets' | 'api' | 'other';
+
 export interface DashboardData {
     paid_invoices_last_7d: number;
     total_invoices: number;
@@ -38,6 +40,7 @@ export interface DashboardData {
         amount: string;
         currency: string;
         created_time: string;
+        source?: InvoiceSource;
     }>;
     apps: {
         crowdfund: any[];
@@ -58,6 +61,8 @@ export interface DashboardData {
         total: number;
         currency: string;
     }>;
+    can_filter_by_source?: boolean;
+    by_source?: Record<InvoiceSource, unknown>;
 }
 
 export const useStoresStore = defineStore('stores', () => {
@@ -108,10 +113,13 @@ export const useStoresStore = defineStore('stores', () => {
         }
     }
 
-    async function fetchDashboard(storeId: string) {
+    async function fetchDashboard(storeId: string, params?: { source?: string; refresh?: boolean }) {
         loading.value = true;
         try {
-            const response = await api.get(`/stores/${storeId}/dashboard`);
+            const apiParams: Record<string, string | number> = {};
+            if (params?.source) apiParams.source = params.source;
+            if (params?.refresh) apiParams.refresh = 1;
+            const response = await api.get(`/stores/${storeId}/dashboard`, { params: apiParams });
             dashboard.value = response.data.data;
             return dashboard.value;
         } catch (error: any) {
