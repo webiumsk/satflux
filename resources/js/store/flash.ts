@@ -3,6 +3,8 @@ import { ref } from 'vue';
 
 export type FlashType = 'success' | 'error' | 'warning';
 
+const HIDE_DELAY_MS = 8000;
+
 export const useFlashStore = defineStore('flash', () => {
     const message = ref('');
     const type = ref<FlashType>('success');
@@ -43,7 +45,20 @@ export const useFlashStore = defineStore('flash', () => {
         timeout = setTimeout(() => {
             show.value = false;
             timeout = null;
-        }, 5000);
+        }, HIDE_DELAY_MS);
+    }
+
+    function pauseAutoHide() {
+        if (timeout) {
+            clearTimeout(timeout);
+            timeout = null;
+        }
+    }
+
+    function resumeAutoHide() {
+        if (show.value && !timeout) {
+            scheduleHide();
+        }
     }
 
     return {
@@ -54,5 +69,7 @@ export const useFlashStore = defineStore('flash', () => {
         error,
         warning,
         clear,
+        pauseAutoHide,
+        resumeAutoHide,
     };
 });

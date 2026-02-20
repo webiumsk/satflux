@@ -15,6 +15,7 @@ return [
     'login_successful' => 'Login successful',
     'logout_successful' => 'Logout successful',
     'registration_successful' => 'Registration successful! Please check your email to verify your account.',
+    'verification_email_failed' => 'Unable to send verification email. Please verify your email address is valid and try again.',
     'email_verified' => 'Your email has been verified successfully. Please login to continue.',
     'password_reset_sent' => 'If an account with that email exists, we have sent a password reset link.',
     'password_reset_successful' => 'Your password has been reset.',

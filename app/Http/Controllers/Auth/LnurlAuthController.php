@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use kornrunner\Secp256k1;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class LnurlAuthController extends Controller
 {
@@ -274,7 +275,17 @@ class LnurlAuthController extends Controller
 
         // Send verification email
         $verificationUrl = $this->verificationUrl($user);
-        $user->notify(new VerifyEmailNotification($verificationUrl));
+        try {
+            $user->notify(new VerifyEmailNotification($verificationUrl));
+        } catch (TransportExceptionInterface $e) {
+            Log::warning('Failed to send verification email (LnurlAuth)', [
+                'email' => $user->email,
+                'error' => $e->getMessage(),
+            ]);
+            throw ValidationException::withMessages([
+                'email' => [__('messages.verification_email_failed')],
+            ]);
+        }
 
         return response()->json([
             'message' => 'Email saved. Please check your email to verify your account.',
