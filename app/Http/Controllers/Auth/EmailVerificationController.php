@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class EmailVerificationController extends Controller
 {
@@ -50,8 +51,17 @@ class EmailVerificationController extends Controller
         // Generate verification URL
         $verificationUrl = $this->verificationUrl($user);
 
-        // Send notification
-        $user->notify(new VerifyEmailNotification($verificationUrl));
+        try {
+            $user->notify(new VerifyEmailNotification($verificationUrl));
+        } catch (TransportExceptionInterface $e) {
+            Log::warning('Failed to send verification email', [
+                'email' => $user->email,
+                'error' => $e->getMessage(),
+            ]);
+            throw ValidationException::withMessages([
+                'email' => [__('messages.verification_email_failed')],
+            ]);
+        }
 
         return response()->json([
             'message' => 'Verification email sent. Please check your inbox.',

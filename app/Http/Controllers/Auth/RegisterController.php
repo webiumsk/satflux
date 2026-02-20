@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class RegisterController extends Controller
 {
@@ -82,7 +83,17 @@ class RegisterController extends Controller
             // BTCPay user will be created with random password during email verification
             // Merchant never needs BTCPay UI access, so password is not needed
             $verificationUrl = $this->verificationUrl($user);
-            $user->notify(new VerifyEmailNotification($verificationUrl));
+            try {
+                $user->notify(new VerifyEmailNotification($verificationUrl));
+            } catch (TransportExceptionInterface $e) {
+                Log::warning('Failed to send verification email during registration', [
+                    'email' => $user->email,
+                    'error' => $e->getMessage(),
+                ]);
+                throw ValidationException::withMessages([
+                    'email' => [__('messages.verification_email_failed')],
+                ]);
+            }
 
             event(new Registered($user));
 
