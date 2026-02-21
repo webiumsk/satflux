@@ -34,6 +34,7 @@ return [
             'advanced_stats',
             'custom_branding',
             'priority_support',
+            'stripe',
         ],
     ],
 

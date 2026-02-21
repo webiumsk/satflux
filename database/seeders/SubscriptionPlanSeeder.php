@@ -53,6 +53,7 @@ class SubscriptionPlanSeeder extends Seeder
                     'basic_payment_overview',
                     'offline_payment_methods',
                     'priority_support',
+                    'stripe',
                 ],
                 'is_active' => true,
             ]
@@ -78,6 +79,7 @@ class SubscriptionPlanSeeder extends Seeder
                     'offline_payment_methods',
                     'per_store_user_management',
                     'priority_support',
+                    'stripe',
                 ],
                 'is_active' => true,
             ]

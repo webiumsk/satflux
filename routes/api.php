@@ -24,6 +24,7 @@ use App\Http\Controllers\EshopIntegrationController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportSettingsController;
+use App\Http\Controllers\StripeController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\LocaleController;
@@ -41,6 +42,7 @@ use App\Http\Middleware\EnsureActiveSubscription;
 use App\Http\Middleware\EnsurePlanAllowsExportsAccess;
 use App\Http\Middleware\EnsurePlanAllowsLnAddressCreation;
 use App\Http\Middleware\EnsurePlanAllowsOfflinePaymentMethods;
+use App\Http\Middleware\EnsurePlanAllowsStripe;
 use App\Http\Middleware\EnsurePlanAllowsUserApiKeyCreation;
 use App\Http\Middleware\EnsureStoreLimit;
 use App\Http\Middleware\EnsureStoreOwnership;
@@ -314,6 +316,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsLnAddressCreation::class, AuditLog::class . ':lightning-address.updated']);
     Route::delete('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'destroy'])
         ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':lightning-address.deleted']);
+
+    // Stripe (Pro+ only)
+    Route::middleware([EnsureStoreOwnership::class, EnsurePlanAllowsStripe::class])->group(function () {
+        Route::get('/stores/{store}/stripe/settings', [StripeController::class, 'getSettings']);
+        Route::put('/stores/{store}/stripe/settings', [StripeController::class, 'updateSettings']);
+        Route::delete('/stores/{store}/stripe/settings', [StripeController::class, 'deleteSettings']);
+        Route::post('/stores/{store}/stripe/test', [StripeController::class, 'testConnection']);
+        Route::post('/stores/{store}/stripe/webhook/register', [StripeController::class, 'registerWebhook']);
+        Route::get('/stores/{store}/stripe/webhook/status', [StripeController::class, 'getWebhookStatus']);
+    });
 
     // Store API Keys
     Route::get('/stores/{store}/api-keys', [\App\Http\Controllers\StoreApiKeyController::class, 'index'])

@@ -355,6 +355,27 @@
             </component>
           </div>
 
+          <!-- Stripe (Pro only) -->
+          <div v-if="canAccessStripe" class="mb-2">
+            <component
+              :is="isInertia ? Link : RouterLink"
+              :href="isInertia ? `/stores/${store.id}/stripe` : undefined"
+              :to="!isInertia ? { name: 'stores-stripe', params: { id: store.id } } : undefined"
+              class="flex items-center w-full px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              :class="
+                isLinkActive(`/stores/${store.id}/stripe`, 'stores-stripe')
+                  ? 'bg-gray-900 text-white'
+                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+              "
+              @click="showMobileMenu = false"
+            >
+              <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+              {{ t('stores.stripe') }}
+            </component>
+          </div>
+
           <!-- Archived Apps link -->
           <div v-if="archivedAppsCount > 0" class="mb-2">
             <component
@@ -449,6 +470,9 @@ const authUser = computed(() => {
 const planCode = computed(() => (authUser.value?.plan?.code ?? 'free') as string);
 const userRole = computed(() => authUser.value?.role ?? '');
 const canAccessReports = computed(() =>
+  planCode.value === 'pro' || planCode.value === 'enterprise' || userRole.value === 'admin' || userRole.value === 'support'
+);
+const canAccessStripe = computed(() =>
   planCode.value === 'pro' || planCode.value === 'enterprise' || userRole.value === 'admin' || userRole.value === 'support'
 );
 
