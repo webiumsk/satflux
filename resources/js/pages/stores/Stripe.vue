@@ -59,6 +59,17 @@
 
       <div class="flex-1 overflow-y-auto custom-scrollbar">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+          <!-- Test Mode banner -->
+          <div
+            v-if="settings?.isTestMode"
+            class="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 flex items-center gap-3 text-amber-400"
+          >
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span class="text-sm font-medium">{{ t('stores.stripe_test_mode_banner') }}</span>
+          </div>
+
           <div v-if="flashMessage" :class="flashType === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'" class="rounded-xl border p-4 mb-6">
             {{ flashMessage }}
           </div>
@@ -94,7 +105,24 @@
             <!-- API Configuration -->
             <div class="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
               <h2 class="text-lg font-semibold text-white mb-4">{{ t('stores.stripe_api_config') }}</h2>
-              <div class="space-y-5">
+
+              <!-- Configured: read-only status + Clear Credentials -->
+              <div v-if="settings?.isConfigured" class="rounded-xl bg-gray-700/30 border border-gray-600 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <p class="font-medium text-emerald-400">{{ t('stores.stripe_api_keys_configured') }}</p>
+                  <p class="mt-1 text-sm text-gray-400 font-mono">{{ t('stores.stripe_publishable_key') }}: {{ settings.publishableKey }}</p>
+                </div>
+                <button
+                  type="button"
+                  @click="showDeleteConfirm = true"
+                  class="flex-shrink-0 inline-flex items-center px-4 py-2 border border-red-500/60 text-sm font-medium rounded-xl text-red-400 hover:bg-red-500/10 transition-all"
+                >
+                  {{ t('stores.stripe_clear_credentials') }}
+                </button>
+              </div>
+
+              <!-- Not configured: editable form -->
+              <div v-else class="space-y-5">
                 <div>
                   <label for="publishableKey" class="block text-sm font-medium text-gray-300 mb-1">
                     {{ t('stores.stripe_publishable_key') }} <span v-if="form.enabled" class="text-red-400">*</span>
@@ -104,7 +132,7 @@
                     v-model="form.publishableKey"
                     type="password"
                     autocomplete="off"
-                    :placeholder="settings?.publishableKey ? t('stores.stripe_key_keep_placeholder') : 'pk_live_... or pk_test_...'"
+                    placeholder="pk_live_... or pk_test_..."
                     class="block w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-700/50 text-white placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono text-sm"
                   />
                   <p class="mt-1.5 text-xs text-gray-500">{{ t('stores.stripe_publishable_key_help') }} <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener" class="text-indigo-400 hover:text-indigo-300">{{ t('stores.stripe_get_from_dashboard') }}</a></p>
@@ -119,7 +147,7 @@
                     v-model="form.secretKey"
                     type="password"
                     autocomplete="off"
-                    :placeholder="settings?.secretKey ? t('stores.stripe_key_keep_placeholder') : 'sk_live_... or sk_test_...'"
+                    placeholder="sk_live_... or sk_test_..."
                     class="block w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-700/50 text-white placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono text-sm"
                   />
                   <p class="mt-1.5 text-xs text-gray-500">{{ t('stores.stripe_secret_key_help') }} <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener" class="text-indigo-400 hover:text-indigo-300">{{ t('stores.stripe_get_from_dashboard') }}</a></p>
@@ -141,6 +169,22 @@
                   <p v-if="fieldErrors.settlementCurrency" class="mt-1 text-sm text-red-400">{{ fieldErrors.settlementCurrency }}</p>
                 </div>
               </div>
+
+              <!-- Settlement currency when configured (editable without re-entering keys) -->
+              <div v-if="settings?.isConfigured" class="mt-5 pt-5 border-t border-gray-600">
+                <label for="settlementCurrencyConfigured" class="block text-sm font-medium text-gray-300 mb-1">
+                  {{ t('stores.stripe_settlement_currency') }}
+                </label>
+                <select
+                  id="settlementCurrencyConfigured"
+                  v-model="form.settlementCurrency"
+                  class="block w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-700/50 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 max-w-xs"
+                >
+                  <option value="">—</option>
+                  <option v-for="c in settlementCurrencies" :key="c.code" :value="c.code">{{ c.code }} – {{ c.name }}</option>
+                </select>
+                <p class="mt-1.5 text-xs text-gray-500">{{ t('stores.stripe_settlement_currency_help') }}</p>
+              </div>
             </div>
 
             <!-- Webhook Configuration -->
@@ -150,11 +194,40 @@
                 {{ t('stores.stripe_save_keys_first') }}
               </div>
               <div v-else class="space-y-3">
-                <div class="rounded-xl bg-gray-700/30 border border-gray-600 p-4 text-sm">
+                <!-- Webhook active (green box) -->
+                <div
+                  v-if="webhookStatus?.configured"
+                  class="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm"
+                >
+                  <div class="flex items-start gap-3">
+                    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                      <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p class="font-medium text-emerald-400">{{ t('stores.stripe_webhook_active') }}</p>
+                      <p v-if="webhookStatus.webhookId" class="mt-1 text-gray-300 text-xs">
+                        {{ t('stores.stripe_webhook_id') }}: <span class="font-mono">{{ webhookStatus.webhookId }}</span>
+                      </p>
+                      <p class="mt-1 text-gray-400 text-xs">{{ t('stores.stripe_webhook_signing_configured') }}</p>
+                      <p v-if="webhookStatus.webhookUrl" class="mt-2 text-gray-500 font-mono text-xs break-all">
+                        {{ t('stores.stripe_webhook_url') }}: {{ webhookStatus.webhookUrl }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <!-- Webhook not configured or status message -->
+                <div
+                  v-else
+                  class="rounded-xl bg-gray-700/30 border border-gray-600 p-4 text-sm"
+                >
                   <p class="text-gray-300">{{ webhookStatus?.message || t('common.loading') }}</p>
                   <p v-if="webhookStatus?.webhookUrl" class="mt-2 text-gray-500 font-mono text-xs break-all">{{ webhookStatus.webhookUrl }}</p>
                 </div>
+                <!-- Register Webhook: only when not yet active -->
                 <button
+                  v-if="!webhookStatus?.configured"
                   type="button"
                   @click="registerWebhook"
                   :disabled="registeringWebhook"
@@ -163,6 +236,22 @@
                   <svg v-if="registeringWebhook" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                   {{ registeringWebhook ? t('common.loading') : t('stores.stripe_register_webhook') }}
                 </button>
+                <!-- Webhook Signing Secret -->
+                <div class="pt-4 border-t border-gray-600">
+                  <label for="webhookSigningSecret" class="block text-sm font-medium text-gray-300 mb-1">
+                    {{ t('stores.stripe_webhook_signing_secret') }}
+                  </label>
+                  <input
+                    id="webhookSigningSecret"
+                    v-model="form.webhookSigningSecret"
+                    type="password"
+                    autocomplete="off"
+                    :placeholder="settings?.webhookSigningSecret ? t('stores.stripe_key_keep_placeholder') : 'whsec_...'"
+                    class="block w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-700/50 text-white placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono text-sm"
+                  />
+                  <p class="mt-1.5 text-xs text-gray-500">{{ t('stores.stripe_webhook_signing_secret_help') }} <a href="https://dashboard.stripe.com/webhooks" target="_blank" rel="noopener" class="text-indigo-400 hover:text-indigo-300">{{ t('stores.stripe_get_from_dashboard') }}</a></p>
+                  <p v-if="fieldErrors.webhookSigningSecret" class="mt-1 text-sm text-red-400">{{ fieldErrors.webhookSigningSecret }}</p>
+                </div>
               </div>
             </div>
 
@@ -183,19 +272,6 @@
               </div>
             </div>
 
-            <!-- Clear Credentials -->
-            <div class="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
-              <h2 class="text-lg font-semibold text-white mb-2">{{ t('stores.stripe_danger_zone') }}</h2>
-              <p class="text-sm text-gray-400 mb-4">{{ t('stores.stripe_clear_credentials_description') }}</p>
-              <button
-                type="button"
-                @click="showDeleteConfirm = true"
-                :disabled="!settings?.isConfigured"
-                class="inline-flex items-center px-4 py-2 border border-red-500/50 text-sm font-medium rounded-xl text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {{ t('stores.stripe_clear_credentials') }}
-              </button>
-            </div>
           </form>
         </div>
       </div>
@@ -294,6 +370,7 @@ const form = ref({
   secretKey: '',
   settlementCurrency: '',
   advancedConfig: '',
+  webhookSigningSecret: '',
 });
 
 const allApps = computed(() => appsStore.apps);
@@ -330,6 +407,7 @@ async function loadSettings() {
       secretKey: '',
       settlementCurrency: settings.value.settlementCurrency || '',
       advancedConfig: settings.value.advancedConfig ? (typeof settings.value.advancedConfig === 'string' ? settings.value.advancedConfig : JSON.stringify(settings.value.advancedConfig, null, 2)) : '',
+      webhookSigningSecret: '',
     };
   } catch (err: any) {
     const msg = err.response?.data?.message || 'Failed to load Stripe settings';
@@ -349,6 +427,7 @@ function buildPayload() {
   if (form.value.publishableKey?.trim()) p.publishableKey = form.value.publishableKey.trim();
   if (form.value.secretKey?.trim()) p.secretKey = form.value.secretKey.trim();
   if (form.value.settlementCurrency?.trim()) p.settlementCurrency = form.value.settlementCurrency.trim();
+  if (form.value.webhookSigningSecret?.trim()) p.webhookSigningSecret = form.value.webhookSigningSecret.trim();
   if (form.value.advancedConfig?.trim()) {
     try {
       JSON.parse(form.value.advancedConfig.trim());
