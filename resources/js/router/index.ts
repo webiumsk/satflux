@@ -136,6 +136,12 @@ const router = createRouter({
             meta: { requiresAuth: true },
         },
         {
+            path: '/stores/:id/stripe',
+            name: 'stores-stripe',
+            component: () => import('../pages/stores/Stripe.vue'),
+            meta: { requiresAuth: true },
+        },
+        {
             path: '/stores/:id/apps/:appId',
             name: 'stores-apps-show',
             component: () => import('../pages/stores/AppsShow.vue'),

@@ -48,6 +48,9 @@ return [
     'lightning_node_connect_failed' => 'Failed to connect Lightning node: :error',
     'lightning_node_connect_error' => 'An error occurred while connecting Lightning node: :error',
 
+    // Stripe
+    'stripe_available_in_pro' => 'Stripe está disponible en Pro. Actualice para configurar pagos Stripe para su tienda.',
+
     // Lightning Addresses
     'lightning_address_saved' => 'Lightning address saved successfully',
     'lightning_address_deleted' => 'Lightning address deleted successfully',

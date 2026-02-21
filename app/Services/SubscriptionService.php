@@ -172,6 +172,17 @@ class SubscriptionService
     }
 
     /**
+     * Check if user can access Stripe (Pro+ or admin/support).
+     */
+    public function canAccessStripe(User $user): bool
+    {
+        if ($user->hasUnlimitedAccess()) {
+            return true;
+        }
+        return $user->planFeature('stripe');
+    }
+
+    /**
      * Check if user can manage store users (per-store user management).
      */
     public function canManageStoreUsers(User $user): bool
