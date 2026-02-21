@@ -41,9 +41,10 @@ class StripeController extends Controller
             'secretKey' => ['nullable', 'string'],
             'settlementCurrency' => ['nullable', 'string', 'max:10'],
             'advancedConfig' => ['nullable', 'string'],
+            'webhookSigningSecret' => ['nullable', 'string'],
         ]);
 
-        // Build payload - only include non-null values (unchanged fields stay)
+        // Build payload - only include non-null, non-empty values (unchanged fields stay)
         $payload = array_filter($validated, fn ($v) => $v !== null && $v !== '');
         if (isset($payload['advancedConfig']) && $payload['advancedConfig'] === '') {
             unset($payload['advancedConfig']);
