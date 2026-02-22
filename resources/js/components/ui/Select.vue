@@ -2,13 +2,14 @@
   <div class="relative select-container" ref="containerRef">
     <!-- Trigger -->
     <div 
-      @click="toggleDropdown"
-      class="relative group cursor-pointer"
+      @click="!disabled && toggleDropdown()"
+      :class="['relative group', disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer']"
     >
       <div
         :class="[
-          'flex items-center justify-between w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white transition-all cursor-pointer select-none min-h-[42px]',
-          isOpen ? 'ring-2 ring-indigo-500/50 border-indigo-500' : 'hover:border-gray-500',
+          'flex items-center justify-between w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white transition-all select-none min-h-[42px]',
+          !disabled && 'cursor-pointer',
+          isOpen ? 'ring-2 ring-indigo-500/50 border-indigo-500' : !disabled && 'hover:border-gray-500',
           error ? 'border-red-500/50 ring-1 ring-red-500/20' : ''
         ]"
       >
@@ -77,11 +78,13 @@ interface Props {
   options: Option[];
   placeholder?: string;
   error?: string | boolean;
+  disabled?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   placeholder: 'Select an option...',
-  error: false
+  error: false,
+  disabled: false
 });
 
 const emit = defineEmits(['update:modelValue', 'change']);
@@ -94,6 +97,7 @@ const selectedOption = computed(() => {
 });
 
 function toggleDropdown() {
+  if (props.disabled) return;
   isOpen.value = !isOpen.value;
 }
 
