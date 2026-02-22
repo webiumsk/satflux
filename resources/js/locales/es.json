@@ -1275,6 +1275,7 @@
     "upgrade_now": "Actualizar ahora",
     "maybe_later": "Quizá más tarde",
     "checkout_error": "Error al crear el pago. Inténtalo de nuevo.",
+    "stripe_available_in_pro": "Stripe está disponible en Pro. Actualice para configurar pagos con tarjeta para su tienda.",
     "unlimited": "ilimitado",
     "limits": {
       "stores": "Tiendas",

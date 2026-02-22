@@ -8,6 +8,7 @@
     "upgrade_now": "Upgradovať teraz",
     "maybe_later": "Možno neskôr",
     "checkout_error": "Vytvorenie platby zlyhalo. Skúste to znova.",
+    "stripe_available_in_pro": "Stripe je dostupný v Pro. Prejdite na vyšší plán pre nastavenie platieb kartou pre váš obchod.",
     "unlimited": "neobmedzene",
     "limits": {
       "stores": "Obchody",

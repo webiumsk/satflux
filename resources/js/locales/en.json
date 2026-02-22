@@ -8,6 +8,7 @@
     "upgrade_now": "Upgrade Now",
     "maybe_later": "Maybe Later",
     "checkout_error": "Failed to create checkout. Please try again.",
+    "stripe_available_in_pro": "Stripe is available in Pro. Upgrade to configure card payments for your store.",
     "unlimited": "unlimited",
     "limits": {
       "stores": "Stores",

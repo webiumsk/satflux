@@ -355,13 +355,13 @@
             </component>
           </div>
 
-          <!-- Stripe (Pro only) -->
-          <div v-if="canAccessStripe" class="mb-2">
+          <!-- Stripe (visible for all, Pro badge for Free) -->
+          <div class="mb-2">
             <component
               :is="isInertia ? Link : RouterLink"
               :href="isInertia ? `/stores/${store.id}/stripe` : undefined"
               :to="!isInertia ? { name: 'stores-stripe', params: { id: store.id } } : undefined"
-              class="flex items-center w-full px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="
                 isLinkActive(`/stores/${store.id}/stripe`, 'stores-stripe')
                   ? 'bg-gray-900 text-white'
@@ -369,10 +369,13 @@
               "
               @click="showMobileMenu = false"
             >
-              <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-              </svg>
-              {{ t('stores.stripe') }}
+              <span class="flex items-center min-w-0">
+                <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                {{ t('stores.stripe') }}
+              </span>
+              <span v-if="!canAccessStripe" class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">{{ t('stores.available_in_pro') }}</span>
             </component>
           </div>
 
