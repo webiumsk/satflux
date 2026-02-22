@@ -277,6 +277,16 @@
       </div>
     </div>
 
+    <!-- Upgrade Modal (shown when Free user tries to access Stripe) -->
+    <UpgradeModal
+      :show="showUpgradeModal"
+      :message="t('upgrade_modal.stripe_available_in_pro', { default: 'Stripe is available in Pro. Upgrade to configure card payments for your store.' })"
+      :limits="[]"
+      recommended-plan="pro"
+      upgrade-button-text="Upgrade to Pro"
+      @close="showUpgradeModal = false"
+    />
+
     <!-- Delete confirmation modal -->
     <div
       v-if="showDeleteConfirm"
@@ -330,6 +340,7 @@ import { useStoresStore } from '../../store/stores';
 import { useAppsStore } from '../../store/apps';
 import { useFlashStore } from '../../store/flash';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
+import UpgradeModal from '../../components/stores/UpgradeModal.vue';
 import api from '../../services/api';
 
 const { t } = useI18n();
@@ -350,6 +361,7 @@ const testingConnection = ref(false);
 const registeringWebhook = ref(false);
 const deleting = ref(false);
 const showDeleteConfirm = ref(false);
+const showUpgradeModal = ref(false);
 const flashMessage = ref('');
 const flashType = ref<'success' | 'error'>('success');
 const fieldErrors = ref<Record<string, string>>({});
@@ -412,7 +424,7 @@ async function loadSettings() {
   } catch (err: any) {
     const msg = err.response?.data?.message || 'Failed to load Stripe settings';
     if (err.response?.status === 403) {
-      setFlash(msg, 'error');
+      showUpgradeModal.value = true;
     } else {
       setFlash(msg, 'error');
     }
