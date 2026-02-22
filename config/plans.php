@@ -30,11 +30,12 @@ return [
             'ln_unlimited',
             'api_keys_3',
             'tickets_3',
+            'stripe',
             'manual_auto_csv',
             'advanced_stats',
             'custom_branding',
             'priority_support',
-            'stripe',
+            
         ],
     ],
 

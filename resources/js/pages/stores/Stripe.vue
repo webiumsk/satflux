@@ -25,7 +25,7 @@
 
     <div class="flex-1 flex flex-col overflow-hidden bg-gray-900 border-l border-gray-800">
       <div class="sticky top-0 z-20 bg-gray-900/80 backdrop-blur-md border-b border-gray-800">
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 class="text-2xl font-bold text-white mb-1">{{ t('stores.stripe_settings_title') }}</h1>
@@ -37,7 +37,7 @@
               <button
                 type="button"
                 @click="testConnection"
-                :disabled="!settings?.isConfigured || testingConnection"
+                :disabled="formReadonly || !settings?.isConfigured || testingConnection"
                 class="inline-flex items-center px-4 py-2 border border-gray-600 text-sm font-medium rounded-xl text-gray-300 hover:bg-gray-700 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg v-if="testingConnection" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
@@ -46,8 +46,8 @@
               <button
                 type="button"
                 @click="saveSettings"
-                :disabled="saving"
-                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-emerald-600 hover:bg-emerald-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="formReadonly || saving"
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg shadow-indigo-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg v-if="saving" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                 {{ saving ? t('common.loading') : t('common.save') }}
@@ -58,7 +58,21 @@
       </div>
 
       <div class="flex-1 overflow-y-auto custom-scrollbar">
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+          <!-- Free tier: Upgrade prompt -->
+          <div
+            v-if="formReadonly"
+            class="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 flex items-center justify-between gap-4"
+          >
+            <p class="text-sm text-amber-400 font-medium">{{ t('stores.available_in_pro') }} – {{ t('upgrade_modal.stripe_available_in_pro') }}</p>
+            <a
+              href="/pricing"
+              class="flex-shrink-0 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg shadow-indigo-600/20 transition-all"
+            >
+              {{ t('upgrade_modal.upgrade_now') }}
+            </a>
+          </div>
+
           <!-- Test Mode banner -->
           <div
             v-if="settings?.isTestMode"
@@ -70,7 +84,7 @@
             <span class="text-sm font-medium">{{ t('stores.stripe_test_mode_banner') }}</span>
           </div>
 
-          <div v-if="flashMessage" :class="flashType === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'" class="rounded-xl border p-4 mb-6">
+          <div v-if="flashMessage" :class="flashType === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'" class="rounded-xl border p-4 mb-6">
             {{ flashMessage }}
           </div>
 
@@ -86,10 +100,12 @@
                   type="button"
                   role="switch"
                   :aria-checked="form.enabled"
-                  @click="form.enabled = !form.enabled"
+                  :disabled="formReadonly"
+                  @click="!formReadonly && (form.enabled = !form.enabled)"
                   :class="[
-                    form.enabled ? 'bg-emerald-600' : 'bg-gray-600',
-                    'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
+                    form.enabled ? 'bg-indigo-600' : 'bg-gray-600',
+                    'relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors',
+                    formReadonly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
                   ]"
                 >
                   <span
@@ -109,10 +125,11 @@
               <!-- Configured: read-only status + Clear Credentials -->
               <div v-if="settings?.isConfigured" class="rounded-xl bg-gray-700/30 border border-gray-600 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <p class="font-medium text-emerald-400">{{ t('stores.stripe_api_keys_configured') }}</p>
+                  <p class="font-medium text-indigo-400">{{ t('stores.stripe_api_keys_configured') }}</p>
                   <p class="mt-1 text-sm text-gray-400 font-mono">{{ t('stores.stripe_publishable_key') }}: {{ settings.publishableKey }}</p>
                 </div>
                 <button
+                  v-if="!formReadonly"
                   type="button"
                   @click="showDeleteConfirm = true"
                   class="flex-shrink-0 inline-flex items-center px-4 py-2 border border-red-500/60 text-sm font-medium rounded-xl text-red-400 hover:bg-red-500/10 transition-all"
@@ -132,8 +149,9 @@
                     v-model="form.publishableKey"
                     type="password"
                     autocomplete="off"
+                    :disabled="formReadonly"
                     placeholder="pk_live_... or pk_test_..."
-                    class="block w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-700/50 text-white placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono text-sm"
+                    class="block w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-700/50 text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                   <p class="mt-1.5 text-xs text-gray-500">{{ t('stores.stripe_publishable_key_help') }} <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener" class="text-indigo-400 hover:text-indigo-300">{{ t('stores.stripe_get_from_dashboard') }}</a></p>
                   <p v-if="fieldErrors.publishableKey" class="mt-1 text-sm text-red-400">{{ fieldErrors.publishableKey }}</p>
@@ -147,8 +165,9 @@
                     v-model="form.secretKey"
                     type="password"
                     autocomplete="off"
+                    :disabled="formReadonly"
                     placeholder="sk_live_... or sk_test_..."
-                    class="block w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-700/50 text-white placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono text-sm"
+                    class="block w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-700/50 text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                   <p class="mt-1.5 text-xs text-gray-500">{{ t('stores.stripe_secret_key_help') }} <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener" class="text-indigo-400 hover:text-indigo-300">{{ t('stores.stripe_get_from_dashboard') }}</a></p>
                   <p v-if="fieldErrors.secretKey" class="mt-1 text-sm text-red-400">{{ fieldErrors.secretKey }}</p>
@@ -157,14 +176,14 @@
                   <label for="settlementCurrency" class="block text-sm font-medium text-gray-300 mb-1">
                     {{ t('stores.stripe_settlement_currency') }} <span v-if="form.enabled" class="text-red-400">*</span>
                   </label>
-                  <select
+                  <Select
                     id="settlementCurrency"
                     v-model="form.settlementCurrency"
-                    class="block w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-700/50 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  >
-                    <option value="">—</option>
-                    <option v-for="c in settlementCurrencies" :key="c.code" :value="c.code">{{ c.code }} – {{ c.name }}</option>
-                  </select>
+                    :options="settlementCurrencyOptions"
+                    :placeholder="t('stores.pay_button_select_currency')"
+                    :disabled="formReadonly"
+                    :error="fieldErrors.settlementCurrency"
+                  />
                   <p class="mt-1.5 text-xs text-gray-500">{{ t('stores.stripe_settlement_currency_help') }}</p>
                   <p v-if="fieldErrors.settlementCurrency" class="mt-1 text-sm text-red-400">{{ fieldErrors.settlementCurrency }}</p>
                 </div>
@@ -175,14 +194,15 @@
                 <label for="settlementCurrencyConfigured" class="block text-sm font-medium text-gray-300 mb-1">
                   {{ t('stores.stripe_settlement_currency') }}
                 </label>
-                <select
-                  id="settlementCurrencyConfigured"
-                  v-model="form.settlementCurrency"
-                  class="block w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-700/50 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 max-w-xs"
-                >
-                  <option value="">—</option>
-                  <option v-for="c in settlementCurrencies" :key="c.code" :value="c.code">{{ c.code }} – {{ c.name }}</option>
-                </select>
+                <div class="max-w-xs">
+                  <Select
+                    id="settlementCurrencyConfigured"
+                    v-model="form.settlementCurrency"
+                    :options="settlementCurrencyOptions"
+                    :placeholder="t('stores.pay_button_select_currency')"
+                    :disabled="formReadonly"
+                  />
+                </div>
                 <p class="mt-1.5 text-xs text-gray-500">{{ t('stores.stripe_settlement_currency_help') }}</p>
               </div>
             </div>
@@ -197,16 +217,16 @@
                 <!-- Webhook active (green box) -->
                 <div
                   v-if="webhookStatus?.configured"
-                  class="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm"
+                  class="rounded-xl border border-indigo-500/40 bg-indigo-500/10 p-4 text-sm"
                 >
                   <div class="flex items-start gap-3">
-                    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                      <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center">
+                      <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
                     <div class="min-w-0 flex-1">
-                      <p class="font-medium text-emerald-400">{{ t('stores.stripe_webhook_active') }}</p>
+                      <p class="font-medium text-indigo-400">{{ t('stores.stripe_webhook_active') }}</p>
                       <p v-if="webhookStatus.webhookId" class="mt-1 text-gray-300 text-xs">
                         {{ t('stores.stripe_webhook_id') }}: <span class="font-mono">{{ webhookStatus.webhookId }}</span>
                       </p>
@@ -227,7 +247,7 @@
                 </div>
                 <!-- Register Webhook: only when not yet active -->
                 <button
-                  v-if="!webhookStatus?.configured"
+                  v-if="!webhookStatus?.configured && !formReadonly"
                   type="button"
                   @click="registerWebhook"
                   :disabled="registeringWebhook"
@@ -246,8 +266,9 @@
                     v-model="form.webhookSigningSecret"
                     type="password"
                     autocomplete="off"
+                    :disabled="formReadonly"
                     :placeholder="settings?.webhookSigningSecret ? t('stores.stripe_key_keep_placeholder') : 'whsec_...'"
-                    class="block w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-700/50 text-white placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono text-sm"
+                    class="block w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-700/50 text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                   <p class="mt-1.5 text-xs text-gray-500">{{ t('stores.stripe_webhook_signing_secret_help') }} <a href="https://dashboard.stripe.com/webhooks" target="_blank" rel="noopener" class="text-indigo-400 hover:text-indigo-300">{{ t('stores.stripe_get_from_dashboard') }}</a></p>
                   <p v-if="fieldErrors.webhookSigningSecret" class="mt-1 text-sm text-red-400">{{ fieldErrors.webhookSigningSecret }}</p>
@@ -264,8 +285,9 @@
                   id="advancedConfig"
                   v-model="form.advancedConfig"
                   rows="5"
+                  :disabled="formReadonly"
                   placeholder='{"payment_method_types":["card"], "metadata":{"custom_field":"value"}}'
-                  class="block w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-700/50 text-white placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono text-sm"
+                  class="block w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-700/50 text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                 ></textarea>
                 <p class="mt-1.5 text-xs text-gray-500">{{ t('stores.stripe_advanced_config_help') }} <a href="https://stripe.com/docs/api/payment_intents/create" target="_blank" rel="noopener" class="text-indigo-400 hover:text-indigo-300">Stripe API docs</a></p>
                 <p v-if="fieldErrors.advancedConfig" class="mt-1 text-sm text-red-400">{{ fieldErrors.advancedConfig }}</p>
@@ -336,19 +358,28 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
+import { useAuthStore } from '../../store/auth';
 import { useStoresStore } from '../../store/stores';
 import { useAppsStore } from '../../store/apps';
 import { useFlashStore } from '../../store/flash';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
 import UpgradeModal from '../../components/stores/UpgradeModal.vue';
+import Select from '../../components/ui/Select.vue';
 import api from '../../services/api';
 
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
-const storesStore = useStoresStore();
+const authStore = useAuthStore();
 const appsStore = useAppsStore();
 const flashStore = useFlashStore();
+const authUser = computed(() => authStore.user);
+const planCode = computed(() => (authUser.value?.plan?.code ?? 'free') as string);
+const userRole = computed(() => authUser.value?.role ?? '');
+const canAccessStripe = computed(() =>
+  planCode.value === 'pro' || planCode.value === 'enterprise' || userRole.value === 'admin' || userRole.value === 'support'
+);
+const formReadonly = computed(() => !canAccessStripe.value);
 
 const storeId = computed(() => route.params.id as string);
 const store = ref<any>(null);
@@ -376,11 +407,13 @@ const settlementCurrencies = [
   { code: 'JPY', name: 'Japanese Yen' },
 ];
 
+const settlementCurrencyOptions = settlementCurrencies.map(c => ({ value: c.code, label: `${c.code} – ${c.name}` }));
+
 const form = ref({
   enabled: false,
   publishableKey: '',
   secretKey: '',
-  settlementCurrency: '',
+  settlementCurrency: 'EUR',
   advancedConfig: '',
   webhookSigningSecret: '',
 });
@@ -417,7 +450,7 @@ async function loadSettings() {
       enabled: settings.value.enabled ?? false,
       publishableKey: '',
       secretKey: '',
-      settlementCurrency: settings.value.settlementCurrency || '',
+      settlementCurrency: settings.value.settlementCurrency || 'EUR',
       advancedConfig: settings.value.advancedConfig ? (typeof settings.value.advancedConfig === 'string' ? settings.value.advancedConfig : JSON.stringify(settings.value.advancedConfig, null, 2)) : '',
       webhookSigningSecret: '',
     };
