@@ -19,6 +19,7 @@ class LnurlAuthChallenge extends Model
         'k1',
         'expires_at',
         'consumed_at',
+        'lightning_public_key',
         'pending_user_id',
         'ip_address',
         'user_agent',

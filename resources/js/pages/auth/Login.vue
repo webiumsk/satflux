@@ -454,9 +454,9 @@ function startPolling(k1: string) {
         closeLnurlModal();
         await authStore.fetchUser();
         router.push("/dashboard");
-      } else if (status === "pending_email" && user_id) {
+      } else if (status === "pending_email" && (user_id || payload.k1 || lnurlK1.value)) {
         stopPolling();
-        emailForm.value.user_id = user_id;
+        emailForm.value.user_id = user_id ?? null;
         showEmailStep.value = true;
         await nextTick();
       } else if (status === "expired") {
@@ -483,7 +483,9 @@ function startPolling(k1: string) {
 }
 
 async function handleCompleteRegistration() {
-  if (!emailForm.value.user_id) {
+  const hasUserId = emailForm.value.user_id != null;
+  const hasK1 = !!lnurlK1.value;
+  if (!hasUserId && !hasK1) {
     emailError.value = t("auth.invalid_session");
     return;
   }
@@ -493,7 +495,7 @@ async function handleCompleteRegistration() {
 
   try {
     await api.post("/lnurl-auth/complete-registration", {
-      user_id: emailForm.value.user_id,
+      ...(hasUserId ? { user_id: emailForm.value.user_id } : { k1: lnurlK1.value }),
       email: emailForm.value.email,
     });
 

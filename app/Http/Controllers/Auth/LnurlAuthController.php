@@ -178,17 +178,11 @@ class LnurlAuthController extends Controller
                 ]);
             }
         } else {
-            // User doesn't exist - create new user without email
-            $user = User::create([
-                'email' => null, // Will be set later
-                'password' => Hash::make(Str::random(32)), // Random password, not used for LNURL-auth
-                'lightning_public_key' => $publicKey,
-            ]);
-
-            // Store user_id in challenge for email completion step
+            // New key: do not create user yet. Store public key on challenge;
+            // user is created in completeRegistration() after email is validated (unique in DB + BTCPay).
             $challenge->update([
                 'consumed_at' => now(),
-                'pending_user_id' => $user->id,
+                'lightning_public_key' => $publicKey,
             ]);
 
             return response()->json([
@@ -199,6 +193,8 @@ class LnurlAuthController extends Controller
 
     /**
      * Complete registration by providing email address.
+     * Accepts either user_id (existing LNURL user without verified email) or k1 (new key: no user yet).
+     * Email is validated as unique in our DB and on BTCPay before creating/updating any user.
      */
     public function completeRegistration(Request $request)
     {
@@ -207,62 +203,86 @@ class LnurlAuthController extends Controller
         }
 
         $request->validate([
-            'user_id' => ['required', 'integer', 'exists:users,id'],
+            'user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'k1' => ['nullable', 'string', 'size:64'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255'],
         ]);
 
-        $user = User::findOrFail($request->user_id);
+        $userId = $request->input('user_id');
+        $k1 = $request->input('k1');
 
-        // Verify user has lightning_public_key (is LNURL-auth user)
-        if (! $user->lightning_public_key) {
-            return response()->json(['error' => 'Invalid user'], 400);
+        if ($userId && $k1) {
+            return response()->json(['error' => 'Provide either user_id or k1, not both.'], 422);
+        }
+        if (! $userId && ! $k1) {
+            return response()->json(['error' => 'Provide user_id or k1.'], 422);
         }
 
-        // Check if email already exists on BTCPay Server
+        $user = null;
+        $publicKey = null;
+
+        if ($userId) {
+            $user = User::findOrFail($userId);
+            if (! $user->lightning_public_key) {
+                return response()->json(['error' => 'Invalid user'], 400);
+            }
+            $publicKey = $user->lightning_public_key;
+        } else {
+            $challenge = LnurlAuthChallenge::find($k1);
+            if (! $challenge || ! $challenge->isConsumed() || ! $challenge->lightning_public_key) {
+                return response()->json(['error' => 'Invalid or expired challenge.'], 400);
+            }
+            $publicKey = $challenge->lightning_public_key;
+        }
+
+        // Validate email uniqueness before creating/updating any user
         try {
-            $emailExists = $this->userService->checkEmailExists($request->email);
-            
-            if ($emailExists) {
+            if ($this->userService->checkEmailExists($request->email)) {
                 throw ValidationException::withMessages([
                     'email' => ['This email is already registered on BTCPay Server.'],
                 ]);
             }
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
             Log::warning('BTCPay email check failed during LNURL-auth registration', [
-                'user_id' => $user->id,
                 'email' => $request->email,
                 'error' => $e->getMessage(),
             ]);
-            // Continue even if check fails - we'll try to create BTCPay user anyway
         }
 
-        // Check if email already exists in local database (unverified user)
         $existingUser = User::where('email', $request->email)->first();
-        
-        if ($existingUser && $existingUser->id !== $user->id) {
+
+        if ($existingUser) {
             if ($existingUser->hasVerifiedEmail()) {
                 throw ValidationException::withMessages([
                     'email' => ['The email has already been taken.'],
                 ]);
             }
-            
-            // If unverified user exists, reuse that account
-            // Transfer lightning_public_key to existing user
-            $existingUser->update([
-                'lightning_public_key' => $user->lightning_public_key,
-            ]);
-            
-            // Delete the new user we just created
-            $user->delete();
+            // Reuse unverified user: attach this Lightning key
+            $existingUser->update(['lightning_public_key' => $publicKey]);
+            if ($user && $user->id !== $existingUser->id) {
+                $user->delete();
+            }
             $user = $existingUser;
+            if ($k1) {
+                $challenge = LnurlAuthChallenge::find($k1);
+                if ($challenge) {
+                    $challenge->update(['pending_user_id' => $existingUser->id]);
+                }
+            }
+        } elseif ($user) {
+            $user->update(['email' => $request->email]);
         } else {
-            // Update user with email
-            $user->update([
+            $user = User::create([
                 'email' => $request->email,
+                'password' => Hash::make(Str::random(32)),
+                'lightning_public_key' => $publicKey,
             ]);
+            $challenge = LnurlAuthChallenge::find($k1);
+            if ($challenge) {
+                $challenge->update(['pending_user_id' => $user->id]);
+            }
         }
 
-        // Send verification email
         $verificationUrl = $this->verificationUrl($user);
         try {
             $user->notify(new VerifyEmailNotification($verificationUrl));
@@ -367,6 +387,14 @@ class LnurlAuthController extends Controller
                     'user_id' => $user->id,
                 ]));
             }
+        }
+
+        // New key: consumed but no user yet; user will be created after email in completeRegistration()
+        if ($challenge->lightning_public_key) {
+            return $noCache(response()->json([
+                'status' => 'pending_email',
+                'k1' => $challenge->k1,
+            ]));
         }
 
         if (Auth::check()) {
