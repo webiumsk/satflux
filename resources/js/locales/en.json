@@ -73,7 +73,8 @@
     "confirm": "Confirm",
     "documentation": "Documentation",
     "language": "Language",
-    "retry": "Retry"
+    "retry": "Retry",
+    "qr_code": "QR code"
   },
   "auth": {
     "welcome_back": "Welcome back",
@@ -182,6 +183,9 @@
     "loading_store": "Loading store...",
     "store_settings": "Store Settings",
     "copy_app_url": "Copy app URL",
+    "show_app_qr": "Show QR code",
+    "app_url_qr": "App URL",
+    "pos_url_qr": "Point of Sale URL",
     "store_name": "Store Name",
     "store_description": "Store Description",
     "not_set": "Not set",
@@ -891,6 +895,8 @@
     "check_in": "Check In",
     "open_checkin": "Open check-in page",
     "copy_checkin_url": "Copy check-in URL",
+    "show_checkin_qr": "Show check-in QR code",
+    "checkin_url_qr": "Check-in URL",
     "checkin_url_copied": "Check-in URL copied to clipboard",
     "export_csv": "Export CSV",
     "col_ticket_number": "Ticket #",

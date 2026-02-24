@@ -43,6 +43,17 @@
             </svg>
           </button>
           <button
+            v-if="appUrl"
+            type="button"
+            :title="t('stores.show_app_qr')"
+            class="inline-flex items-center justify-center p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-700 border border-transparent hover:border-gray-600 transition-colors"
+            @click="showQrModal = true"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+            </svg>
+          </button>
+          <button
             type="submit"
             :form="formId"
             :disabled="saving"
@@ -57,6 +68,13 @@
         </div>
       </div>
     </div>
+
+    <UrlQrModal
+      :open="showQrModal"
+      :url="appUrl || ''"
+      :title="qrModalTitle || t('stores.app_url_qr')"
+      @close="showQrModal = false"
+    />
   </div>
 </template>
 
@@ -64,6 +82,7 @@
 import { ref, inject } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
+import UrlQrModal from '../ui/UrlQrModal.vue';
 
 const props = defineProps<{
   title: string;
@@ -74,12 +93,14 @@ const props = defineProps<{
   saveButtonText: string;
   savingText?: string;
   saving: boolean;
+  qrModalTitle?: string;
 }>();
 
 const { t } = useI18n();
 const isInertia = inject<boolean>('inertia', false);
 const vueRouter = !isInertia ? useRouter() : null;
 const copied = ref(false);
+const showQrModal = ref(false);
 let copiedTimeout: ReturnType<typeof setTimeout> | null = null;
 
 async function copyAppUrl() {
