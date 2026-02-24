@@ -299,7 +299,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onUnmounted, nextTick } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { usePage } from "@inertiajs/vue3";
@@ -310,6 +310,17 @@ import QRCode from "qrcode";
 import { bech32 } from "bech32";
 
 const { t } = useI18n();
+
+// LNURL: fetch from server so LNURL_AUTH_ENABLED=false is respected without rebuild
+const lnurlEnabledFromServer = ref<boolean | null>(null);
+onMounted(async () => {
+  try {
+    const { data } = await api.get<{ enabled: boolean }>("/lnurl-auth/enabled");
+    lnurlEnabledFromServer.value = data?.enabled === true;
+  } catch {
+    lnurlEnabledFromServer.value = false;
+  }
+});
 
 const router = useRouter();
 const route = useRoute();
@@ -339,12 +350,14 @@ const emailLoading = ref(false);
 const emailError = ref("");
 let pollingInterval: number | null = null;
 
-// LNURL auth: server value from Inertia props or data attribute (#app) for direct /login load
+// LNURL auth: prefer server response; only then data attribute / Vite (so false on server hides the option)
 const page = usePage();
 const lnurlAuthEnabled = computed(() => {
-  if (page.props?.app?.lnurlAuthEnabled === true) return true;
+  if (lnurlEnabledFromServer.value !== null) return lnurlEnabledFromServer.value;
   const el = document.getElementById("app");
-  if (el?.getAttribute("data-lnurl-auth-enabled") === "true") return true;
+  const dataVal = el?.getAttribute("data-lnurl-auth-enabled");
+  if (dataVal !== null && dataVal !== undefined) return dataVal === "true";
+  if (page.props?.app?.lnurlAuthEnabled !== undefined) return page.props.app.lnurlAuthEnabled === true;
   return import.meta.env.VITE_LNURL_AUTH_ENABLED === "true";
 });
 
@@ -407,31 +420,26 @@ async function handleLnurlAuth() {
 function startPolling(k1: string) {
   lnurlPolling.value = true;
   const startTime = Date.now();
-  const timeout = 300000; // 5 minutes (challenge expiration time)
+  const timeout = 300000; // 5 minutes
 
-  pollingInterval = window.setInterval(async () => {
-    // Check if challenge expired
+  const doPoll = async () => {
     if (Date.now() - startTime > timeout) {
       lnurlError.value = "Challenge expired. Please try again.";
       stopPolling();
       return;
     }
-
     try {
-      // Poll challenge status endpoint
-      const statusResponse = await api.get(
-        `/lnurl-auth/challenge-status/${k1}`,
-      );
-      const { status, user_id } = statusResponse.data;
+      const statusResponse = await api.get(`/lnurl-auth/challenge-status/${k1}`);
+      const data = statusResponse.data ?? {};
+      const status = data.status;
+      const user_id = data.user_id;
 
       if (status === "authenticated") {
-        // User is authenticated
         stopPolling();
         closeLnurlModal();
         await authStore.fetchUser();
         router.push("/dashboard");
-      } else if (status === "pending_email") {
-        // User needs to provide email
+      } else if (status === "pending_email" && user_id) {
         stopPolling();
         emailForm.value.user_id = user_id;
         showEmailStep.value = true;
@@ -439,15 +447,21 @@ function startPolling(k1: string) {
         lnurlError.value = "Challenge expired. Please try again.";
         stopPolling();
       } else if (status === "error") {
+        lnurlError.value = (data as { message?: string }).message || t("auth.error_occurred");
+        stopPolling();
+      }
+    } catch (err: any) {
+      if (err.response?.status === 403) {
         lnurlError.value = t("auth.error_occurred");
         stopPolling();
       }
-      // status === "pending" means challenge not yet consumed, continue polling
-    } catch (err: any) {
-      // Network or other errors - continue polling
       console.error("Polling error:", err);
     }
-  }, 3000); // Poll every 3 seconds
+  };
+
+  // First poll soon, then every 2s so we notice wallet success quickly
+  doPoll();
+  pollingInterval = window.setInterval(doPoll, 2000);
 }
 
 async function handleCompleteRegistration() {

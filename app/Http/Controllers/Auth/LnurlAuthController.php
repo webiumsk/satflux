@@ -315,16 +315,25 @@ class LnurlAuthController extends Controller
     }
 
     /**
+     * Return whether LNURL-auth is enabled (for frontend; no auth required).
+     */
+    public function enabled(): \Illuminate\Http\JsonResponse
+    {
+        $enabled = filter_var(env('LNURL_AUTH_ENABLED', false), FILTER_VALIDATE_BOOLEAN);
+
+        return response()->json(['enabled' => $enabled]);
+    }
+
+    /**
      * Check challenge status (for frontend polling).
      */
     public function challengeStatus(Request $request, string $k1)
     {
-        if (! env('LNURL_AUTH_ENABLED', false)) {
+        if (! filter_var(env('LNURL_AUTH_ENABLED', false), FILTER_VALIDATE_BOOLEAN)) {
             return response()->json(['error' => 'LNURL-auth is not enabled'], 403);
         }
 
         $challenge = LnurlAuthChallenge::find($k1);
-        
         if (! $challenge) {
             return response()->json([
                 'status' => 'error',
@@ -332,24 +341,18 @@ class LnurlAuthController extends Controller
             ], 404);
         }
 
-        // Check if challenge is expired
         if ($challenge->isExpired()) {
-            return response()->json([
-                'status' => 'expired',
-            ]);
+            return response()->json(['status' => 'expired']);
         }
 
-        // Check if challenge has been consumed
         if (! $challenge->isConsumed()) {
-            return response()->json([
-                'status' => 'pending',
-            ]);
+            return response()->json(['status' => 'pending']);
         }
 
-        // Challenge is consumed - check if user needs email
-        if ($challenge->pending_user_id) {
-            $user = User::find($challenge->pending_user_id);
-            
+        // Challenge consumed by wallet: show email step if user exists and is not verified
+        $pendingUserId = $challenge->pending_user_id;
+        if ($pendingUserId) {
+            $user = User::find($pendingUserId);
             if ($user && ! $user->hasVerifiedEmail()) {
                 return response()->json([
                     'status' => 'pending_email',

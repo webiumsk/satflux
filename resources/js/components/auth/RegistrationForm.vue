@@ -360,7 +360,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onUnmounted, nextTick } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { usePage } from "@inertiajs/vue3";
@@ -378,6 +378,16 @@ const props = defineProps({
 });
 
 const { t } = useI18n();
+
+const lnurlEnabledFromServer = ref<boolean | null>(null);
+onMounted(async () => {
+  try {
+    const { data } = await api.get<{ enabled: boolean }>("/lnurl-auth/enabled");
+    lnurlEnabledFromServer.value = data?.enabled === true;
+  } catch {
+    lnurlEnabledFromServer.value = false;
+  }
+});
 
 const RESEND_COOLDOWN = 60; // seconds before resend button is available again
 
@@ -455,12 +465,13 @@ async function handleLnurlResendVerification() {
   }
 }
 
-// LNURL auth: server value from Inertia props or data attribute (#app) for direct /register load
 const page = usePage();
 const lnurlAuthEnabled = computed(() => {
-  if (page.props?.app?.lnurlAuthEnabled === true) return true;
+  if (lnurlEnabledFromServer.value !== null) return lnurlEnabledFromServer.value;
   const el = document.getElementById("app");
-  if (el?.getAttribute("data-lnurl-auth-enabled") === "true") return true;
+  const dataVal = el?.getAttribute("data-lnurl-auth-enabled");
+  if (dataVal !== null && dataVal !== undefined) return dataVal === "true";
+  if (page.props?.app?.lnurlAuthEnabled !== undefined) return page.props.app.lnurlAuthEnabled === true;
   return import.meta.env.VITE_LNURL_AUTH_ENABLED === "true";
 });
 
@@ -574,26 +585,24 @@ function startPolling(k1: string) {
   const startTime = Date.now();
   const timeout = 300000; // 5 minutes
 
-  pollingInterval = window.setInterval(async () => {
+  const doPoll = async () => {
     if (Date.now() - startTime > timeout) {
       lnurlError.value = "Challenge expired. Please try again.";
       stopPolling();
       return;
     }
-
     try {
-      const statusResponse = await api.get(
-        `/lnurl-auth/challenge-status/${k1}`,
-      );
-      const { status, user_id } = statusResponse.data;
+      const statusResponse = await api.get(`/lnurl-auth/challenge-status/${k1}`);
+      const data = statusResponse.data ?? {};
+      const status = data.status;
+      const user_id = data.user_id;
 
       if (status === "authenticated") {
         stopPolling();
         closeLnurlModal();
         await authStore.fetchUser();
-        // Here it DOES redirect
         router.push("/");
-      } else if (status === "pending_email") {
+      } else if (status === "pending_email" && user_id) {
         stopPolling();
         emailForm.value.user_id = user_id;
         showEmailStep.value = true;
@@ -601,13 +610,20 @@ function startPolling(k1: string) {
         lnurlError.value = "Challenge expired. Please try again.";
         stopPolling();
       } else if (status === "error") {
-        lnurlError.value = t("auth.error_occurred");
+        lnurlError.value = (data as { message?: string }).message || t("auth.error_occurred");
         stopPolling();
       }
     } catch (err: any) {
+      if (err.response?.status === 403) {
+        lnurlError.value = t("auth.error_occurred");
+        stopPolling();
+      }
       console.error("Polling error:", err);
     }
-  }, 3000);
+  };
+
+  doPoll();
+  pollingInterval = window.setInterval(doPoll, 2000);
 }
 
 async function handleCompleteRegistration() {
