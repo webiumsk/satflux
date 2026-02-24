@@ -688,7 +688,11 @@
     "challenge_expired": "Challenge expired. Please try again.",
     "lightning_login_added": "Lightning login was added successfully.",
     "or_confirm_with_lightning": "Or confirm with your Lightning wallet",
-    "confirm_with_lightning_wallet": "Confirm with Lightning wallet"
+    "confirm_with_lightning_wallet": "Confirm with Lightning wallet",
+    "copy_lnurl": "Copy LNURL",
+    "open_in_wallet": "Open in Wallet",
+    "expires_in": "Expires in",
+    "try_again": "Try again"
   },
   "header": {
     "dashboard": "Dashboard",
