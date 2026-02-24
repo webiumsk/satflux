@@ -20,6 +20,8 @@ class LnurlAuthChallenge extends Model
         'expires_at',
         'consumed_at',
         'lightning_public_key',
+        'link_user_id',
+        'purpose',
         'pending_user_id',
         'ip_address',
         'user_agent',
@@ -60,6 +62,14 @@ class LnurlAuthChallenge extends Model
     public function pendingUser()
     {
         return $this->belongsTo(User::class, 'pending_user_id');
+    }
+
+    /**
+     * Get the user this challenge is for (link or reveal confirm).
+     */
+    public function linkUser()
+    {
+        return $this->belongsTo(User::class, 'link_user_id');
     }
 }
 

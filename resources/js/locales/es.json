@@ -824,7 +824,17 @@
     "feature_unlimited_ln": "Unlimited Lightning Addresses",
     "feature_dedicated_support": "Dedicated support",
     "feature_custom_integrations": "Custom integrations",
-    "feature_sla": "SLA guarantees"
+    "feature_sla": "SLA guarantees",
+    "login_methods": "Métodos de inicio de sesión",
+    "login_methods_desc": "Puedes añadir inicio de sesión Lightning para entrar con tu billetera.",
+    "lightning_login_enabled": "Inicio de sesión Lightning activado",
+    "add_lightning_login": "Añadir inicio de sesión Lightning",
+    "scan_qr_with_wallet": "Escanea el código QR con tu billetera Lightning para vincularla.",
+    "waiting_for_wallet": "Esperando billetera",
+    "challenge_expired": "Desafío expirado. Inténtalo de nuevo.",
+    "lightning_login_added": "Inicio de sesión Lightning añadido correctamente.",
+    "or_confirm_with_lightning": "O confirma con tu billetera Lightning",
+    "confirm_with_lightning_wallet": "Confirmar con billetera Lightning"
   },
   "header": {
     "dashboard": "Tablero de control",

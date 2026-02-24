@@ -46,6 +46,7 @@ class AccountController extends Controller
             'automatic_exports' => $user->planFeature('automatic_csv_exports'),
             'offline_payment_methods' => $user->planFeature('offline_payment_methods'),
         ];
+        $payload['has_lightning_login'] = ! empty($user->lightning_public_key);
 
         return response()->json($payload);
     }

@@ -16,5 +16,6 @@ return [
     'password' => 'The provided password is incorrect.',
     'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
     'lightning_key_already_registered' => 'Esta billetera Lightning ya está registrada.',
+    'invalid_password_or_confirm_lnurl' => 'Contraseña incorrecta o confirme con su billetera Lightning.',
 ];
 

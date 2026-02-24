@@ -9,6 +9,7 @@ use App\Notifications\VerifyEmailNotification;
 use App\Services\BtcPay\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -55,6 +56,82 @@ class LnurlAuthController extends Controller
             'k1' => $k1,
             'lnurl' => $lnurlAuthUrl,
             'qr' => $lnurlAuthUrl, // QR code data URL can be generated on frontend
+        ]);
+    }
+
+    /**
+     * Create a challenge to link Lightning key to the authenticated user (profile).
+     */
+    public function linkChallenge(Request $request)
+    {
+        if (! config('services.lnurl_auth.enabled', false)) {
+            return response()->json(['error' => 'LNURL-auth is not enabled'], 403);
+        }
+
+        $user = $request->user();
+        if ($user->lightning_public_key) {
+            return response()->json(['error' => __('auth.lightning_key_already_registered')], 400);
+        }
+
+        $k1 = bin2hex(random_bytes(32));
+        $domain = rtrim(config('services.lnurl_auth.domain') ?: config('app.url'), '/');
+        if (! preg_match('#^https?://#', $domain)) {
+            $domain = 'https://'.$domain;
+        }
+
+        LnurlAuthChallenge::create([
+            'k1' => $k1,
+            'expires_at' => now()->addMinutes(5),
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'link_user_id' => $user->id,
+            'purpose' => 'link',
+        ]);
+
+        $lnurlAuthUrl = "{$domain}/api/lnurl-auth/verify?tag=login&k1={$k1}&action=login";
+
+        return response()->json([
+            'k1' => $k1,
+            'lnurl' => $lnurlAuthUrl,
+            'qr' => $lnurlAuthUrl,
+        ]);
+    }
+
+    /**
+     * Create a challenge to confirm wallet-connection reveal via LNURL (for users without password).
+     */
+    public function revealConfirmChallenge(Request $request)
+    {
+        if (! config('services.lnurl_auth.enabled', false)) {
+            return response()->json(['error' => 'LNURL-auth is not enabled'], 403);
+        }
+
+        $user = $request->user();
+        if (! $user->lightning_public_key) {
+            return response()->json(['error' => 'Lightning login required to confirm via wallet.'], 400);
+        }
+
+        $k1 = bin2hex(random_bytes(32));
+        $domain = rtrim(config('services.lnurl_auth.domain') ?: config('app.url'), '/');
+        if (! preg_match('#^https?://#', $domain)) {
+            $domain = 'https://'.$domain;
+        }
+
+        LnurlAuthChallenge::create([
+            'k1' => $k1,
+            'expires_at' => now()->addMinutes(5),
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'link_user_id' => $user->id,
+            'purpose' => 'reveal',
+        ]);
+
+        $lnurlAuthUrl = "{$domain}/api/lnurl-auth/verify?tag=login&k1={$k1}&action=login";
+
+        return response()->json([
+            'k1' => $k1,
+            'lnurl' => $lnurlAuthUrl,
+            'qr' => $lnurlAuthUrl,
         ]);
     }
 
@@ -145,6 +222,28 @@ class LnurlAuthController extends Controller
                 'ip' => $request->ip(),
             ]);
             return response()->json(['status' => 'ERROR', 'reason' => 'Signature verification failed'], 200);
+        }
+
+        // Link or reveal-confirm challenge (authenticated user bound to challenge)
+        if ($challenge->link_user_id) {
+            if ($challenge->purpose === 'reveal') {
+                Cache::put('reveal_confirmed:'.$challenge->link_user_id, true, now()->addSeconds(120));
+                $challenge->update(['consumed_at' => now()]);
+
+                return response()->json(['status' => 'OK']);
+            }
+            // purpose === 'link': attach this Lightning key to the user
+            $existing = User::where('lightning_public_key', $publicKey)->where('id', '!=', $challenge->link_user_id)->first();
+            if ($existing) {
+                return response()->json(['status' => 'ERROR', 'reason' => 'Key already linked to another account.'], 200);
+            }
+            User::where('id', $challenge->link_user_id)->update(['lightning_public_key' => $publicKey]);
+            $challenge->update([
+                'consumed_at' => now(),
+                'lightning_public_key' => $publicKey,
+            ]);
+
+            return response()->json(['status' => 'OK']);
         }
 
         // Find user by lightning public key (including unverified users)
@@ -400,6 +499,19 @@ class LnurlAuthController extends Controller
                     'user_id' => $user->id,
                 ]));
             }
+        }
+
+        // Link or reveal-confirm: consumed challenge with link_user_id
+        if ($challenge->link_user_id) {
+            if ($challenge->purpose === 'reveal') {
+                return $noCache(response()->json(['status' => 'reveal_confirmed']));
+            }
+            $linkUser = User::find($challenge->link_user_id);
+
+            return $noCache(response()->json([
+                'status' => 'linked',
+                'user' => $linkUser,
+            ]));
         }
 
         // Consumed with lightning_public_key: existing verified user → log in (browser has session)

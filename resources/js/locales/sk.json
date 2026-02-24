@@ -679,7 +679,17 @@
     "feature_unlimited_ln": "Neobmedzené Lightning adresy",
     "feature_dedicated_support": "Vyhradená podpora",
     "feature_custom_integrations": "Vlastné integrácie",
-    "feature_sla": "SLA záruky"
+    "feature_sla": "SLA záruky",
+    "login_methods": "Spôsoby prihlásenia",
+    "login_methods_desc": "Môžete pridať Lightning prihlásenie a prihlásiť sa peňaženkou.",
+    "lightning_login_enabled": "Lightning prihlásenie je zapnuté",
+    "add_lightning_login": "Pridať Lightning prihlásenie",
+    "scan_qr_with_wallet": "Naskenujte QR kód Lightning peňaženkou a prepojte ju.",
+    "waiting_for_wallet": "Čakám na peňaženku",
+    "challenge_expired": "Výzva vypršala. Skúste to znova.",
+    "lightning_login_added": "Lightning prihlásenie bolo úspešne pridané.",
+    "or_confirm_with_lightning": "Alebo potvrdíte Lightning peňaženkou",
+    "confirm_with_lightning_wallet": "Potvrdiť Lightning peňaženkou"
   },
   "header": {
     "dashboard": "Nástenka",

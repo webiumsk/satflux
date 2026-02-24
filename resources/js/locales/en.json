@@ -678,7 +678,17 @@
     "feature_unlimited_ln": "Unlimited Lightning Addresses",
     "feature_dedicated_support": "Dedicated support",
     "feature_custom_integrations": "Custom integrations",
-    "feature_sla": "SLA guarantees"
+    "feature_sla": "SLA guarantees",
+    "login_methods": "Login methods",
+    "login_methods_desc": "You can add Lightning login to sign in with your wallet.",
+    "lightning_login_enabled": "Lightning login is enabled",
+    "add_lightning_login": "Add Lightning login",
+    "scan_qr_with_wallet": "Scan the QR code with your Lightning wallet to link it.",
+    "waiting_for_wallet": "Waiting for wallet",
+    "challenge_expired": "Challenge expired. Please try again.",
+    "lightning_login_added": "Lightning login was added successfully.",
+    "or_confirm_with_lightning": "Or confirm with your Lightning wallet",
+    "confirm_with_lightning_wallet": "Confirm with Lightning wallet"
   },
   "header": {
     "dashboard": "Dashboard",
