@@ -55,7 +55,7 @@ services:
       context: ./docker/php
       dockerfile: Dockerfile
     container_name: satflux.io_queue
-    command: ["php", "artisan", "queue:work", "redis", "--sleep=3", "--tries=3", "--max-time=3600", "--queue=webhooks,exports"]
+    command: ["sh", "-c", "php artisan queue:work $${QUEUE_CONNECTION:-redis} --sleep=3 --tries=3 --max-time=3600 --queue=webhooks,exports"]
     volumes:
       - .:/var/www
       - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini

@@ -86,7 +86,8 @@ services:
       context: ./docker/php
       dockerfile: Dockerfile
     container_name: satflux_queue_prod
-    command: ["php", "artisan", "queue:work", "redis", "--sleep=3", "--tries=3", "--max-time=3600", "--timeout=600", "--queue=webhooks,exports"]
+    # Use QUEUE_CONNECTION from env (default redis). Set QUEUE_CONNECTION=database and CACHE_STORE=file if Redis is unavailable.
+    command: ["sh", "-c", "php artisan queue:work $${QUEUE_CONNECTION:-redis} --sleep=3 --tries=3 --max-time=3600 --timeout=600 --queue=webhooks,exports"]
     volumes:
       - .:/var/www:rw
       - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
