@@ -153,14 +153,11 @@ class LnurlAuthController extends Controller
         if ($user) {
             // User exists
             if ($user->hasVerifiedEmail()) {
-                // User is verified - login and return success
-                Auth::login($user);
-                $request->session()->regenerate();
-                $user->update(['last_login_at' => now()]);
-
-                // Mark challenge as consumed (user is authenticated)
+                // Wallet request has no session; do not Auth::login() here. Store public key on challenge
+                // so the browser's next challenge-status poll can log the user in (with session).
                 $challenge->update([
                     'consumed_at' => now(),
+                    'lightning_public_key' => $publicKey,
                 ]);
 
                 return response()->json([
@@ -405,8 +402,20 @@ class LnurlAuthController extends Controller
             }
         }
 
-        // New key: consumed but no user yet; user will be created after email in completeRegistration()
+        // Consumed with lightning_public_key: existing verified user → log in (browser has session)
         if ($challenge->lightning_public_key) {
+            $userByKey = User::where('lightning_public_key', $challenge->lightning_public_key)->first();
+            if ($userByKey && $userByKey->hasVerifiedEmail()) {
+                Auth::login($userByKey);
+                $request->session()->regenerate();
+                $userByKey->update(['last_login_at' => now()]);
+
+                return $noCache(response()->json([
+                    'status' => 'authenticated',
+                    'user' => $userByKey,
+                ]));
+            }
+            // New key: no user or unverified; user completes registration with email
             return $noCache(response()->json([
                 'status' => 'pending_email',
                 'k1' => $challenge->k1,
