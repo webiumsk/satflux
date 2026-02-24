@@ -28,6 +28,7 @@ export interface User {
         automatic_exports: boolean;
         offline_payment_methods: boolean;
     };
+    has_lightning_login?: boolean;
 }
 
 export const useAuthStore = defineStore('auth', () => {

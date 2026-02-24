@@ -82,6 +82,50 @@
         </div>
       </div>
 
+      <!-- Login methods (Lightning) -->
+      <div
+        v-if="lnurlAuthEnabled"
+        class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
+      >
+        <div class="px-6 py-8 sm:p-10">
+          <h4 class="text-lg font-semibold text-white mb-6 flex items-center">
+            <svg
+              class="w-5 h-5 mr-2 text-indigo-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+              />
+            </svg>
+            {{ t("account.login_methods") }}
+          </h4>
+          <div class="space-y-4">
+            <p class="text-sm text-gray-400">{{ t("account.login_methods_desc") }}</p>
+            <div v-if="authStore.user?.has_lightning_login" class="flex items-center gap-2 text-green-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              <span>{{ t("account.lightning_login_enabled") }}</span>
+            </div>
+            <button
+              v-else
+              type="button"
+              :disabled="lnurlLinkLoading"
+              @click="handleAddLightningLogin"
+              class="inline-flex items-center px-4 py-2 border border-indigo-500 rounded-lg text-sm font-medium text-indigo-400 hover:bg-indigo-500/10 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+            >
+              <span v-if="lnurlLinkLoading">{{ t("common.loading") }}</span>
+              <span v-else>{{ t("account.add_lightning_login") }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Subscription Plan -->
       <div
         class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
@@ -497,6 +541,30 @@
       </div>
     </div>
 
+    <!-- Add Lightning Login Modal -->
+    <div
+      v-if="showLnurlLinkModal"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      @click.self="closeLnurlLinkModal"
+    >
+      <div class="bg-gray-800 rounded-xl border border-gray-700 max-w-sm w-full p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h5 class="text-lg font-bold text-white">{{ t("account.add_lightning_login") }}</h5>
+          <button type="button" @click="closeLnurlLinkModal" class="text-gray-400 hover:text-white">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <p class="text-sm text-gray-400 mb-4">{{ t("account.scan_qr_with_wallet") }}</p>
+        <div class="flex justify-center mb-4">
+          <canvas ref="lnurlLinkQrCanvas" class="rounded-lg bg-white"></canvas>
+        </div>
+        <p v-if="lnurlLinkError" class="text-sm text-red-400 mb-2">{{ lnurlLinkError }}</p>
+        <p v-if="lnurlLinkPolling" class="text-sm text-gray-500">{{ t("account.waiting_for_wallet") }}...</p>
+      </div>
+    </div>
+
     <!-- Add Credit Modal -->
     <div
       v-if="showAddCreditModal"
@@ -569,12 +637,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, nextTick, onUnmounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
 import { usePricing } from "../../composables/usePricing";
 import { usePlanFeatures } from "../../composables/usePlanFeatures";
 import api from "../../services/api";
+import { bech32 } from "bech32";
+import QRCode from "qrcode";
 
 const { t, locale } = useI18n();
 const authStore = useAuthStore();
@@ -600,6 +670,15 @@ const showAddCreditModal = ref(false);
 const creditAmount = ref<number | null>(null);
 const addingCredit = ref(false);
 const loadingSubscription = ref(false);
+
+const lnurlAuthEnabled = ref(false);
+const showLnurlLinkModal = ref(false);
+const lnurlLinkQrCanvas = ref<HTMLCanvasElement | null>(null);
+const lnurlK1 = ref("");
+const lnurlLinkLoading = ref(false);
+const lnurlLinkError = ref("");
+const lnurlLinkPolling = ref(false);
+let linkPollingInterval: number | null = null;
 
 // Plan information
 const currentPlanName = computed(() => {
@@ -667,7 +746,13 @@ onMounted(async () => {
     profileForm.value.name = authStore.user.name || "";
   }
 
-  // Load subscription details if user has paid plan or might have subscription
+  try {
+    const { data } = await api.get<{ enabled: boolean }>("/lnurl-auth/enabled");
+    lnurlAuthEnabled.value = data?.enabled === true;
+  } catch {
+    lnurlAuthEnabled.value = false;
+  }
+
   await loadSubscriptionDetails();
 });
 
@@ -756,6 +841,101 @@ async function upgradePlan(plan: string) {
     upgrading.value = false;
   }
 }
+
+function encodeLnurl(url: string): string {
+  try {
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(url);
+    const words = bech32.toWords(Array.from(bytes));
+    const encoded = bech32.encode("lnurl", words, 1023);
+    return encoded.toUpperCase();
+  } catch {
+    return url;
+  }
+}
+
+function stopLinkPolling() {
+  if (linkPollingInterval != null) {
+    window.clearInterval(linkPollingInterval);
+    linkPollingInterval = null;
+  }
+  lnurlLinkPolling.value = false;
+}
+
+function closeLnurlLinkModal() {
+  stopLinkPolling();
+  showLnurlLinkModal.value = false;
+  lnurlK1.value = "";
+  lnurlLinkError.value = "";
+}
+
+async function handleAddLightningLogin() {
+  lnurlLinkLoading.value = true;
+  lnurlLinkError.value = "";
+  try {
+    const response = await api.post("/lnurl-auth/link-challenge");
+    const raw = response.data ?? {};
+    const data = typeof raw === "object" && raw !== null && "data" in raw ? (raw as { data: { k1?: string; lnurl?: string } }).data : raw;
+    const k1 = data?.k1 ?? (data as { K1?: string })?.K1;
+    const lnurl = data?.lnurl ?? (data as { lnurlAuthUrl?: string })?.lnurlAuthUrl;
+    if (!k1 || !lnurl) {
+      lnurlLinkError.value = t("auth.error_occurred");
+      lnurlLinkLoading.value = false;
+      return;
+    }
+    lnurlK1.value = k1;
+    showLnurlLinkModal.value = true;
+    await nextTick();
+    if (lnurlLinkQrCanvas.value) {
+      const encoded = encodeLnurl(lnurl);
+      await QRCode.toCanvas(lnurlLinkQrCanvas.value, encoded, { width: 256, margin: 2 });
+    }
+    startLinkPolling(k1);
+  } catch (err: any) {
+    lnurlLinkError.value = err.response?.data?.error || t("auth.error_occurred");
+  } finally {
+    lnurlLinkLoading.value = false;
+  }
+}
+
+function startLinkPolling(k1: string) {
+  lnurlLinkPolling.value = true;
+  const startTime = Date.now();
+  const timeout = 300000;
+  const doPoll = async () => {
+    if (Date.now() - startTime > timeout) {
+      lnurlLinkError.value = t("account.challenge_expired");
+      closeLnurlLinkModal();
+      return;
+    }
+    try {
+      const res = await api.get(`/lnurl-auth/challenge-status/${k1}?_=${Date.now()}`);
+      const raw = res.data ?? {};
+      const data = typeof raw === "object" && raw !== null && "data" in raw ? (raw as { data: { status?: string } }).data : raw;
+      const status = (data as { status?: string })?.status;
+      if (status === "linked") {
+        stopLinkPolling();
+        closeLnurlLinkModal();
+        await authStore.fetchUser();
+        alert(t("account.lightning_login_added"));
+      } else if (status === "expired") {
+        lnurlLinkError.value = t("account.challenge_expired");
+        closeLnurlLinkModal();
+      } else if (status === "error") {
+        lnurlLinkError.value = (data as { message?: string }).message || t("auth.error_occurred");
+        closeLnurlLinkModal();
+      }
+    } catch (err: any) {
+      if (err.response?.status === 403) closeLnurlLinkModal();
+    }
+  };
+  doPoll();
+  linkPollingInterval = window.setInterval(doPoll, 1000);
+}
+
+onUnmounted(() => {
+  stopLinkPolling();
+});
 
 async function handleUpdateProfile() {
   profileLoading.value = true;

@@ -43,6 +43,17 @@
                             {{ submitting ? 'Revealing...' : 'Reveal' }}
                         </button>
                     </div>
+                    <div v-if="hasLightningLogin" class="mt-4 pt-4 border-t border-gray-200">
+                        <p class="text-sm text-gray-600 mb-2">Or confirm with Lightning wallet</p>
+                        <button
+                            type="button"
+                            :disabled="lnurlRevealLoading || lnurlRevealPolling"
+                            @click="handleConfirmWithLightning"
+                            class="px-4 py-2 border border-indigo-500 rounded-md text-sm font-medium text-indigo-600 hover:bg-indigo-50 disabled:opacity-50"
+                        >
+                            {{ (lnurlRevealLoading || lnurlRevealPolling) ? 'Loading...' : 'Confirm with Lightning wallet' }}
+                        </button>
+                    </div>
                 </div>
 
                 <div v-else class="space-y-4">
@@ -187,13 +198,25 @@
                 </div>
             </div>
         </div>
+        <!-- LNURL reveal confirm modal -->
+        <div v-if="showLnurlRevealModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" @click.self="closeLnurlRevealModal">
+            <div class="bg-white rounded-lg border p-6 max-w-sm w-full shadow-xl">
+                <h4 class="text-lg font-semibold text-gray-900 mb-2">Confirm with Lightning wallet</h4>
+                <p class="text-sm text-gray-600 mb-4">Scan the QR code with your wallet to confirm.</p>
+                <div class="flex justify-center mb-4"><canvas ref="lnurlRevealQrCanvas" class="rounded bg-white border"></canvas></div>
+                <p v-if="lnurlRevealError" class="text-sm text-red-600 mb-2">{{ lnurlRevealError }}</p>
+            </div>
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, nextTick, onUnmounted, watch } from 'vue';
+import { useAuthStore } from '../../store/auth';
 import api from '../../services/api';
 import WalletTypeIcon from '../WalletTypeIcon.vue';
+import { bech32 } from 'bech32';
+import QRCode from 'qrcode';
 
 interface Props {
     connection: any;
@@ -204,6 +227,9 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
     close: [];
 }>();
+
+const authStore = useAuthStore();
+const hasLightningLogin = computed(() => !!authStore.user?.has_lightning_login);
 
 const password = ref('');
 const submitting = ref(false);
@@ -219,6 +245,115 @@ const btcPayStoreUrl = ref<string | null>(null);
 const btcPayStoreId = ref<string | null>(null);
 let countdownTimer: ReturnType<typeof setInterval> | null = null;
 let copySuccessTimer: ReturnType<typeof setTimeout> | null = null;
+
+const showLnurlRevealModal = ref(false);
+const lnurlRevealQrCanvas = ref<HTMLCanvasElement | null>(null);
+const lnurlRevealK1 = ref('');
+const lnurlRevealLoading = ref(false);
+const lnurlRevealError = ref('');
+const lnurlRevealPolling = ref(false);
+let lnurlRevealPollingInterval: ReturnType<typeof setInterval> | null = null;
+
+function encodeLnurl(url: string): string {
+    try {
+        const words = bech32.toWords(Array.from(new TextEncoder().encode(url)));
+        return bech32.encode('lnurl', words, 1023).toUpperCase();
+    } catch {
+        return url;
+    }
+}
+
+function closeLnurlRevealModal() {
+    if (lnurlRevealPollingInterval != null) {
+        clearInterval(lnurlRevealPollingInterval);
+        lnurlRevealPollingInterval = null;
+    }
+    lnurlRevealPolling.value = false;
+    showLnurlRevealModal.value = false;
+    lnurlRevealK1.value = '';
+    lnurlRevealError.value = '';
+}
+
+async function handleConfirmWithLightning() {
+    lnurlRevealLoading.value = true;
+    lnurlRevealError.value = '';
+    try {
+        const res = await api.post('/lnurl-auth/reveal-confirm-challenge');
+        const raw = res.data ?? {};
+        const data = typeof raw === 'object' && raw !== null && 'data' in raw ? (raw as { data: { k1?: string; lnurl?: string } }).data : raw;
+        const k1 = data?.k1 ?? (data as { K1?: string })?.K1;
+        const lnurl = data?.lnurl ?? (data as { lnurlAuthUrl?: string })?.lnurlAuthUrl;
+        if (!k1 || !lnurl) {
+            lnurlRevealError.value = 'Failed to get challenge';
+            lnurlRevealLoading.value = false;
+            return;
+        }
+        lnurlRevealK1.value = k1;
+        showLnurlRevealModal.value = true;
+        await nextTick();
+        if (lnurlRevealQrCanvas.value) {
+            await QRCode.toCanvas(lnurlRevealQrCanvas.value, encodeLnurl(lnurl), { width: 256, margin: 2 });
+        }
+        lnurlRevealLoading.value = false;
+        lnurlRevealPolling.value = true;
+        const startTime = Date.now();
+        const doPoll = async () => {
+            if (Date.now() - startTime > 300000) {
+                lnurlRevealError.value = 'Challenge expired';
+                closeLnurlRevealModal();
+                return;
+            }
+            try {
+                const statusRes = await api.get(`/lnurl-auth/challenge-status/${k1}?_=${Date.now()}`);
+                const sRaw = statusRes.data ?? {};
+                const sData = typeof sRaw === 'object' && sRaw !== null && 'data' in sRaw ? (sRaw as { data: { status?: string } }).data : sRaw;
+                const status = (sData as { status?: string })?.status;
+                if (status === 'reveal_confirmed') {
+                    if (lnurlRevealPollingInterval != null) clearInterval(lnurlRevealPollingInterval);
+                    lnurlRevealPollingInterval = null;
+                    lnurlRevealPolling.value = false;
+                    showLnurlRevealModal.value = false;
+                    submitting.value = true;
+                    try {
+                        const response = await api.post(`/support/wallet-connections/${props.connection.id}/reveal`, { confirm_via_lnurl: true });
+                        revealedSecret.value = response.data.data.secret;
+                        revealed.value = true;
+                        await fetchBtcPayStoreUrl();
+                        countdown.value = 60;
+                        countdownTimer = setInterval(() => {
+                            countdown.value--;
+                            if (countdown.value <= 0) emit('close');
+                        }, 1000);
+                        setTimeout(() => {
+                            if (secretInput.value) {
+                                secretInput.value.focus();
+                                secretInput.value.select();
+                            }
+                        }, 100);
+                    } catch (err: any) {
+                        lnurlRevealError.value = err.response?.data?.errors?.password?.[0] || err.response?.data?.message || 'Failed to reveal secret';
+                        showLnurlRevealModal.value = true;
+                    } finally {
+                        submitting.value = false;
+                    }
+                } else if (status === 'expired' || status === 'error') {
+                    lnurlRevealError.value = status === 'expired' ? 'Challenge expired' : (sData as { message?: string })?.message || 'Error';
+                }
+            } catch {
+                // keep polling
+            }
+        };
+        doPoll();
+        lnurlRevealPollingInterval = setInterval(doPoll, 1000);
+    } catch (err: any) {
+        lnurlRevealError.value = err.response?.data?.error || 'Failed to get challenge';
+        lnurlRevealLoading.value = false;
+    }
+}
+
+onUnmounted(() => {
+    if (lnurlRevealPollingInterval != null) clearInterval(lnurlRevealPollingInterval);
+});
 
 async function handleReveal() {
     submitting.value = true;
@@ -351,6 +486,9 @@ onUnmounted(() => {
     }
     if (copySuccessTimer) {
         clearTimeout(copySuccessTimer);
+    }
+    if (lnurlRevealPollingInterval != null) {
+        clearInterval(lnurlRevealPollingInterval);
     }
 });
 </script>

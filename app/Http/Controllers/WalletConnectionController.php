@@ -9,6 +9,7 @@ use App\Models\WalletConnection;
 use App\Services\BtcPay\LightningService;
 use App\Services\WalletConnectionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -50,26 +51,39 @@ class WalletConnectionController extends Controller
     }
 
     /**
-     * Reveal wallet connection secret for store owner (requires password confirmation).
-     * Allows the merchant to view/edit their connection string when changing wallet.
+     * Reveal wallet connection secret for store owner.
+     * Requires password, or LNURL confirm (confirm_via_lnurl: true) for users with Lightning login.
      */
     public function revealForOwner(Request $request)
     {
         $request->validate([
-            'password' => ['required', 'string'],
+            'password' => ['nullable', 'string'],
+            'confirm_via_lnurl' => ['nullable', 'boolean'],
         ]);
 
         $store = $request->route('store');
         $connection = WalletConnection::where('store_id', $store->id)->first();
 
-        if (!$connection) {
+        if (! $connection) {
             return response()->json(['message' => 'No wallet connection found for this store.'], 404);
         }
 
         $user = $request->user();
-        if (!Hash::check($request->password, $user->password)) {
+        $allowed = false;
+
+        if ($request->filled('password')) {
+            $allowed = Hash::check($request->password, $user->password);
+        } elseif ($request->boolean('confirm_via_lnurl') && $user->lightning_public_key) {
+            $cacheKey = 'reveal_confirmed:'.$user->id;
+            if (Cache::get($cacheKey)) {
+                $allowed = true;
+                Cache::forget($cacheKey);
+            }
+        }
+
+        if (! $allowed) {
             throw ValidationException::withMessages([
-                'password' => ['Invalid password.'],
+                'password' => [__('auth.invalid_password_or_confirm_lnurl')],
             ]);
         }
 
@@ -299,21 +313,32 @@ class WalletConnectionController extends Controller
     }
 
     /**
-     * Reveal wallet connection secret (support role only, requires password confirmation).
+     * Reveal wallet connection secret (support role only).
+     * Requires password, or LNURL confirm (confirm_via_lnurl: true) for users with Lightning login.
      */
     public function reveal(Request $request, WalletConnection $connection)
     {
-        // Validate password
         $request->validate([
-            'password' => ['required', 'string'],
+            'password' => ['nullable', 'string'],
+            'confirm_via_lnurl' => ['nullable', 'boolean'],
         ]);
 
         $user = $request->user();
+        $allowed = false;
 
-        // Verify password
-        if (!Hash::check($request->password, $user->password)) {
+        if ($request->filled('password')) {
+            $allowed = Hash::check($request->password, $user->password);
+        } elseif ($request->boolean('confirm_via_lnurl') && $user->lightning_public_key) {
+            $cacheKey = 'reveal_confirmed:'.$user->id;
+            if (Cache::get($cacheKey)) {
+                $allowed = true;
+                Cache::forget($cacheKey);
+            }
+        }
+
+        if (! $allowed) {
             throw ValidationException::withMessages([
-                'password' => ['Invalid password.'],
+                'password' => [__('auth.invalid_password_or_confirm_lnurl')],
             ]);
         }
 
