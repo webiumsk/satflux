@@ -272,14 +272,30 @@ class LnurlAuthController extends Controller
         } elseif ($user) {
             $user->update(['email' => $request->email]);
         } else {
-            $user = User::create([
-                'email' => $request->email,
-                'password' => Hash::make(Str::random(32)),
-                'lightning_public_key' => $publicKey,
-            ]);
-            $challenge = LnurlAuthChallenge::find($k1);
-            if ($challenge) {
-                $challenge->update(['pending_user_id' => $user->id]);
+            // k1 path: before creating, check if this Lightning key is already registered (e.g. old flow or double submit)
+            $existingByKey = User::where('lightning_public_key', $publicKey)->first();
+            if ($existingByKey) {
+                if ($existingByKey->hasVerifiedEmail()) {
+                    throw ValidationException::withMessages([
+                        'email' => [__('auth.lightning_key_already_registered')],
+                    ]);
+                }
+                $user = $existingByKey;
+                $user->update(['email' => $request->email]);
+                $challenge = LnurlAuthChallenge::find($k1);
+                if ($challenge) {
+                    $challenge->update(['pending_user_id' => $user->id]);
+                }
+            } else {
+                $user = User::create([
+                    'email' => $request->email,
+                    'password' => Hash::make(Str::random(32)),
+                    'lightning_public_key' => $publicKey,
+                ]);
+                $challenge = LnurlAuthChallenge::find($k1);
+                if ($challenge) {
+                    $challenge->update(['pending_user_id' => $user->id]);
+                }
             }
         }
 
