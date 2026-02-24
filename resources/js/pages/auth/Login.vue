@@ -339,10 +339,13 @@ const emailLoading = ref(false);
 const emailError = ref("");
 let pollingInterval: number | null = null;
 
-// LNURL auth: from server (Inertia shared props) so it works on live without rebuild
+// LNURL auth: server value from Inertia props or data attribute (#app) for direct /login load
 const page = usePage();
 const lnurlAuthEnabled = computed(() => {
-  return page.props?.app?.lnurlAuthEnabled === true || import.meta.env.VITE_LNURL_AUTH_ENABLED === "true";
+  if (page.props?.app?.lnurlAuthEnabled === true) return true;
+  const el = document.getElementById("app");
+  if (el?.getAttribute("data-lnurl-auth-enabled") === "true") return true;
+  return import.meta.env.VITE_LNURL_AUTH_ENABLED === "true";
 });
 
 async function handleLogin() {

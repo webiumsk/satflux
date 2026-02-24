@@ -61,10 +61,13 @@
 </head>
 
 <body class="font-sans antialiased">
+    <?php
+        $lnurlAuthEnabled = filter_var(env('LNURL_AUTH_ENABLED', false), FILTER_VALIDATE_BOOLEAN);
+    ?>
     <?php if(isset($page)): ?>
-        <div id="app" data-page="<?php echo e(is_array($page) ? json_encode($page) : $page); ?>"></div>
+        <div id="app" data-page="<?php echo e(is_array($page) ? json_encode($page) : $page); ?>" data-lnurl-auth-enabled="<?php echo e($lnurlAuthEnabled ? 'true' : 'false'); ?>"></div>
     <?php else: ?>
-        <div id="app"></div>
+        <div id="app" data-lnurl-auth-enabled="<?php echo e($lnurlAuthEnabled ? 'true' : 'false'); ?>"></div>
     <?php endif; ?>
 </body>
 
