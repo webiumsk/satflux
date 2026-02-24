@@ -32,12 +32,12 @@ class LnurlAuthController extends Controller
      */
     public function challenge(Request $request)
     {
-        if (! env('LNURL_AUTH_ENABLED', false)) {
+        if (! config('services.lnurl_auth.enabled', false)) {
             return response()->json(['error' => 'LNURL-auth is not enabled'], 403);
         }
 
         $k1 = bin2hex(random_bytes(32));
-        $domain = rtrim(env('LNURL_AUTH_DOMAIN', config('app.url')), '/');
+        $domain = rtrim(config('services.lnurl_auth.domain') ?: config('app.url'), '/');
         if (! preg_match('#^https?://#', $domain)) {
             $domain = 'https://'.$domain;
         }
@@ -65,7 +65,7 @@ class LnurlAuthController extends Controller
      */
     public function verify(Request $request)
     {
-        if (! env('LNURL_AUTH_ENABLED', false)) {
+        if (! config('services.lnurl_auth.enabled', false)) {
             return response()->json(['error' => 'LNURL-auth is not enabled'], 403);
         }
 
@@ -87,7 +87,7 @@ class LnurlAuthController extends Controller
                 return response()->json(['status' => 'ERROR', 'reason' => 'Challenge expired'], 200);
             }
 
-            $domain = rtrim(env('LNURL_AUTH_DOMAIN', config('app.url')), '/');
+            $domain = rtrim(config('services.lnurl_auth.domain') ?: config('app.url'), '/');
             if (! preg_match('#^https?://#', $domain)) {
                 $domain = 'https://'.$domain;
             }
@@ -202,7 +202,7 @@ class LnurlAuthController extends Controller
      */
     public function completeRegistration(Request $request)
     {
-        if (! env('LNURL_AUTH_ENABLED', false)) {
+        if (! config('services.lnurl_auth.enabled', false)) {
             return response()->json(['error' => 'LNURL-auth is not enabled'], 403);
         }
 
@@ -287,7 +287,7 @@ class LnurlAuthController extends Controller
      */
     public function checkEmailExists(Request $request)
     {
-        if (! env('LNURL_AUTH_ENABLED', false)) {
+        if (! config('services.lnurl_auth.enabled', false)) {
             return response()->json(['error' => 'LNURL-auth is not enabled'], 403);
         }
 
@@ -316,63 +316,67 @@ class LnurlAuthController extends Controller
 
     /**
      * Return whether LNURL-auth is enabled (for frontend; no auth required).
+     * No-cache headers so browser always gets current value after .env change.
      */
     public function enabled(): \Illuminate\Http\JsonResponse
     {
-        $enabled = filter_var(env('LNURL_AUTH_ENABLED', false), FILTER_VALIDATE_BOOLEAN);
-
-        return response()->json(['enabled' => $enabled]);
+        return response()
+            ->json(['enabled' => config('services.lnurl_auth.enabled', false)])
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache');
     }
 
     /**
      * Check challenge status (for frontend polling).
+     * All responses no-cache so polling always gets fresh state.
      */
     public function challengeStatus(Request $request, string $k1)
     {
-        if (! filter_var(env('LNURL_AUTH_ENABLED', false), FILTER_VALIDATE_BOOLEAN)) {
-            return response()->json(['error' => 'LNURL-auth is not enabled'], 403);
+        $noCache = function ($response) {
+            return $response
+                ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+                ->header('Pragma', 'no-cache');
+        };
+
+        if (! config('services.lnurl_auth.enabled', false)) {
+            return $noCache(response()->json(['error' => 'LNURL-auth is not enabled'], 403));
         }
 
         $challenge = LnurlAuthChallenge::find($k1);
         if (! $challenge) {
-            return response()->json([
+            return $noCache(response()->json([
                 'status' => 'error',
                 'message' => 'Challenge not found',
-            ], 404);
+            ], 404));
         }
 
         if ($challenge->isExpired()) {
-            return response()->json(['status' => 'expired']);
+            return $noCache(response()->json(['status' => 'expired']));
         }
 
         if (! $challenge->isConsumed()) {
-            return response()->json(['status' => 'pending']);
+            return $noCache(response()->json(['status' => 'pending']));
         }
 
-        // Challenge consumed by wallet: show email step if user exists and is not verified
         $pendingUserId = $challenge->pending_user_id;
         if ($pendingUserId) {
             $user = User::find($pendingUserId);
             if ($user && ! $user->hasVerifiedEmail()) {
-                return response()->json([
+                return $noCache(response()->json([
                     'status' => 'pending_email',
                     'user_id' => $user->id,
-                ]);
+                ]));
             }
         }
 
-        // Check if user is authenticated
         if (Auth::check()) {
-            return response()->json([
+            return $noCache(response()->json([
                 'status' => 'authenticated',
                 'user' => Auth::user(),
-            ]);
+            ]));
         }
 
-        // Challenge consumed but user not authenticated (shouldn't happen normally)
-        return response()->json([
-            'status' => 'pending',
-        ]);
+        return $noCache(response()->json(['status' => 'pending']));
     }
 
     /**

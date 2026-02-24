@@ -62,7 +62,7 @@
 
 <body class="font-sans antialiased">
     @php
-        $lnurlAuthEnabled = filter_var(env('LNURL_AUTH_ENABLED', false), FILTER_VALIDATE_BOOLEAN);
+        $lnurlAuthEnabled = config('services.lnurl_auth.enabled', false);
     @endphp
     @if(isset($page))
         <div id="app" data-page="{{ is_array($page) ? json_encode($page) : $page }}" data-lnurl-auth-enabled="{{ $lnurlAuthEnabled ? 'true' : 'false' }}"></div>

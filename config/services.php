@@ -34,6 +34,11 @@ return [
         'support_webhook_url' => env('SUPPORT_DISCORD_WEBHOOK_URL'),
     ],
 
+    'lnurl_auth' => [
+        'enabled' => filter_var(env('LNURL_AUTH_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
+        'domain' => env('LNURL_AUTH_DOMAIN'),
+    ],
+
 ];
 
 
