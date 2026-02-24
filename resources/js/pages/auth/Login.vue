@@ -391,18 +391,24 @@ async function handleLnurlAuth() {
   emailError.value = "";
 
   try {
-    // Request challenge
     const response = await api.post("/lnurl-auth/challenge");
-    const { k1, lnurl } = response.data;
+    const raw = response.data ?? {};
+    const challengeData = typeof raw === "object" && raw !== null && "data" in raw ? raw.data : raw;
+    const k1 = challengeData?.k1 ?? challengeData?.K1;
+    const lnurl = challengeData?.lnurl ?? challengeData?.lnurlAuthUrl;
+
+    if (!k1 || !lnurl) {
+      lnurlError.value = "Invalid challenge response. Please try again.";
+      lnurlLoading.value = false;
+      return;
+    }
 
     lnurlK1.value = k1;
     showLnurlModal.value = true;
     lnurlLoading.value = false;
 
-    // Wait for modal to be rendered, then generate QR code
     await nextTick();
     if (qrCanvas.value) {
-      // Convert URL to LNURL format (bech32 encoded) for QR code
       const lnurlEncoded = encodeLnurl(lnurl);
       await QRCode.toCanvas(qrCanvas.value, lnurlEncoded, {
         width: 256,
@@ -410,7 +416,6 @@ async function handleLnurlAuth() {
       });
     }
 
-    // Start polling for verification
     startPolling(k1);
   } catch (err: any) {
     lnurlError.value =
@@ -434,9 +439,15 @@ function startPolling(k1: string) {
       const statusResponse = await api.get(
         `/lnurl-auth/challenge-status/${k1}?_=${Date.now()}`,
       );
-      const data = statusResponse.data ?? {};
-      const status = data.status;
-      const user_id = data.user_id != null ? Number(data.user_id) : null;
+      const raw = statusResponse.data ?? {};
+      const data = typeof raw === "object" && raw !== null && "data" in raw ? raw.data : raw;
+      const payload = typeof data === "object" && data !== null ? data : {};
+      const status = payload.status;
+      const user_id = payload.user_id != null ? Number(payload.user_id) : null;
+
+      if (!status && typeof payload === "object" && payload !== null && Object.keys(payload).length > 0) {
+        console.warn("[LNURL] challenge-status response missing .status:", payload);
+      }
 
       if (status === "authenticated") {
         stopPolling();
@@ -452,7 +463,7 @@ function startPolling(k1: string) {
         lnurlError.value = "Challenge expired. Please try again.";
         stopPolling();
       } else if (status === "error") {
-        lnurlError.value = (data as { message?: string }).message || t("auth.error_occurred");
+        lnurlError.value = (payload as { message?: string }).message || t("auth.error_occurred");
         stopPolling();
       }
     } catch (err: any) {
