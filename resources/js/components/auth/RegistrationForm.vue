@@ -382,10 +382,12 @@ const { t } = useI18n();
 const lnurlEnabledFromServer = ref<boolean | null>(null);
 onMounted(async () => {
   try {
-    const { data } = await api.get<{ enabled: boolean }>("/lnurl-auth/enabled");
+    const { data } = await api.get<{ enabled: boolean }>(
+      `/lnurl-auth/enabled?_=${Date.now()}`,
+    );
     lnurlEnabledFromServer.value = data?.enabled === true;
   } catch {
-    lnurlEnabledFromServer.value = false;
+    // Leave null so fallback (data attribute / Vite) is used
   }
 });
 
@@ -595,7 +597,7 @@ function startPolling(k1: string) {
       const statusResponse = await api.get(`/lnurl-auth/challenge-status/${k1}`);
       const data = statusResponse.data ?? {};
       const status = data.status;
-      const user_id = data.user_id;
+      const user_id = data.user_id != null ? Number(data.user_id) : null;
 
       if (status === "authenticated") {
         stopPolling();
@@ -604,8 +606,9 @@ function startPolling(k1: string) {
         router.push("/");
       } else if (status === "pending_email" && user_id) {
         stopPolling();
-        emailForm.value.user_id = user_id;
+        emailForm.value.user_id = user_id != null ? Number(user_id) : null;
         showEmailStep.value = true;
+        await nextTick();
       } else if (status === "expired") {
         lnurlError.value = "Challenge expired. Please try again.";
         stopPolling();
@@ -623,7 +626,7 @@ function startPolling(k1: string) {
   };
 
   doPoll();
-  pollingInterval = window.setInterval(doPoll, 2000);
+  pollingInterval = window.setInterval(doPoll, 1000);
 }
 
 async function handleCompleteRegistration() {

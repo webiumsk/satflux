@@ -211,9 +211,9 @@ Route::get('/auth/verify-email/{id}/{hash}', [EmailVerificationController::class
 
 // LNURL-auth: public config (so frontend can always respect LNURL_AUTH_ENABLED without rebuild)
 Route::get('/lnurl-auth/enabled', [LnurlAuthController::class, 'enabled']);
-// LNURL-auth challenge status (separate rate limiter for polling - needs higher limit)
+// LNURL-auth challenge status (polling every 1s = 60/min)
 Route::get('/lnurl-auth/challenge-status/{k1}', [LnurlAuthController::class, 'challengeStatus'])
-    ->middleware(['throttle:30,1']); // 30/min so polling every 2s doesn't hit limit
+    ->middleware(['throttle:60,1']);
 
 // Authenticated routes
 Route::middleware(['auth:sanctum'])->group(function () {
