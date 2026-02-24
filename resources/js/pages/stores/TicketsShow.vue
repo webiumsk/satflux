@@ -1401,6 +1401,26 @@
                         </svg>
                       </a>
                       <button
+                        type="button"
+                        @click="showCheckInQrEventId = event.id"
+                        class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                        :title="t('tickets.show_checkin_qr')"
+                      >
+                        <svg
+                          class="w-3.5 h-3.5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
+                          />
+                        </svg>
+                      </button>
+                      <button
                         @click="exportTicketsCsv(event)"
                         :disabled="eventTickets.length === 0"
                         class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg text-gray-300 bg-gray-700/50 border border-gray-600 hover:bg-gray-700 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
@@ -1665,10 +1685,16 @@
     recommended-plan="pro"
     @close="showUpgradeModal = false"
   />
+  <UrlQrModal
+    :open="showCheckInQrEventId !== null"
+    :url="checkInQrUrl"
+    :title="t('tickets.checkin_url_qr')"
+    @close="showCheckInQrEventId = null"
+  />
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted, inject } from "vue";
+import { ref, computed, nextTick, onMounted, inject } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   useTicketsStore,
@@ -1682,6 +1708,7 @@ import api from "../../services/api";
 import AppShowLayout from "../../components/stores/AppShowLayout.vue";
 import DatePicker from "../../components/ui/DatePicker.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
+import UrlQrModal from "../../components/ui/UrlQrModal.vue";
 
 const { t } = useI18n();
 const ticketsStore = useTicketsStore();
@@ -1705,6 +1732,7 @@ const showUpgradeModal = ref(false);
 // ── State ───────────────────────────────────────
 const events = ref<TicketEvent[]>([]);
 const loadingEvents = ref(false);
+const showCheckInQrEventId = ref<number | null>(null);
 const showCreateForm = ref(false);
 const eventFormRef = ref<HTMLElement | null>(null);
 const showEmailSettings = ref(false);
@@ -2295,6 +2323,12 @@ function getPanelCheckInUrl(event: TicketEvent): string {
     ? `${window.location.origin}${path}`
     : path;
 }
+
+const checkInQrUrl = computed(() => {
+  if (showCheckInQrEventId.value == null) return "";
+  const event = events.value.find((e) => e.id === showCheckInQrEventId.value);
+  return event ? getPanelCheckInUrl(event) : "";
+});
 
 function openPanelCheckIn(event: TicketEvent) {
   const url = `/stores/${props.store.id}/ticket-check-in/${event.id}`;

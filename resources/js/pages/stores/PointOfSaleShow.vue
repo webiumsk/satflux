@@ -6,6 +6,7 @@
         :title="app.name || 'Point of Sale'"
         :subtitle="`PoS - ${store.name}`"
         :app-url="btcpayAppUrl"
+        :qr-modal-title="t('stores.pos_url_qr')"
         open-button-text="Open PoS"
         form-id="pos-settings-form"
         save-button-text="Save Settings"

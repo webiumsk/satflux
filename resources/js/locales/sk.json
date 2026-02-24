@@ -73,7 +73,8 @@
     "confirm": "Potvrdiť",
     "documentation": "Dokumentácia",
     "language": "Jazyk",
-    "retry": "Skúsiť znova"
+    "retry": "Skúsiť znova",
+    "qr_code": "QR kód"
   },
   "auth": {
     "welcome_back": "Vitajte späť",
@@ -183,6 +184,9 @@
     "loading_store": "Načítavanie obchodu...",
     "store_settings": "Nastavenia obchodu",
     "copy_app_url": "Skopírovať URL aplikácie",
+    "show_app_qr": "Zobraziť QR kód",
+    "app_url_qr": "URL aplikácie",
+    "pos_url_qr": "URL Point of Sale",
     "store_name": "Názov obchodu",
     "store_description": "Popis obchodu",
     "not_set": "Nenastavené",
@@ -892,6 +896,8 @@
     "check_in": "Check-in",
     "open_checkin": "Otvoriť stránku check-in",
     "copy_checkin_url": "Skopírovať URL check-inu",
+    "show_checkin_qr": "Zobraziť QR kód check-inu",
+    "checkin_url_qr": "URL check-inu",
     "checkin_url_copied": "URL check-inu skopírovaná do schránky",
     "export_csv": "Exportovať CSV",
     "col_ticket_number": "Č. vstupenky",
