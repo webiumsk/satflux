@@ -542,28 +542,16 @@
     </div>
 
     <!-- Add Lightning Login Modal -->
-    <div
-      v-if="showLnurlLinkModal"
-      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      @click.self="closeLnurlLinkModal"
-    >
-      <div class="bg-gray-800 rounded-xl border border-gray-700 max-w-sm w-full p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h5 class="text-lg font-bold text-white">{{ t("account.add_lightning_login") }}</h5>
-          <button type="button" @click="closeLnurlLinkModal" class="text-gray-400 hover:text-white">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <p class="text-sm text-gray-400 mb-4">{{ t("account.scan_qr_with_wallet") }}</p>
-        <div class="flex justify-center mb-4">
-          <canvas ref="lnurlLinkQrCanvas" class="rounded-lg bg-white"></canvas>
-        </div>
-        <p v-if="lnurlLinkError" class="text-sm text-red-400 mb-2">{{ lnurlLinkError }}</p>
-        <p v-if="lnurlLinkPolling" class="text-sm text-gray-500">{{ t("account.waiting_for_wallet") }}...</p>
-      </div>
-    </div>
+    <LnurlQrModal
+      :open="showLnurlLinkModal"
+      :title="t('account.add_lightning_login')"
+      :lnurl="lnurlLinkUrl"
+      :error="lnurlLinkError"
+      :polling="lnurlLinkPolling"
+      :expires-in-seconds="300"
+      @close="closeLnurlLinkModal"
+      @regenerate="requestNewLinkChallenge"
+    />
 
     <!-- Add Credit Modal -->
     <div
@@ -637,14 +625,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick, onUnmounted } from "vue";
+import { ref, onMounted, computed, onUnmounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
 import { usePricing } from "../../composables/usePricing";
 import { usePlanFeatures } from "../../composables/usePlanFeatures";
 import api from "../../services/api";
-import { bech32 } from "bech32";
-import QRCode from "qrcode";
+import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
 
 const { t, locale } = useI18n();
 const authStore = useAuthStore();
@@ -673,7 +660,7 @@ const loadingSubscription = ref(false);
 
 const lnurlAuthEnabled = ref(false);
 const showLnurlLinkModal = ref(false);
-const lnurlLinkQrCanvas = ref<HTMLCanvasElement | null>(null);
+const lnurlLinkUrl = ref("");
 const lnurlK1 = ref("");
 const lnurlLinkLoading = ref(false);
 const lnurlLinkError = ref("");
@@ -842,18 +829,6 @@ async function upgradePlan(plan: string) {
   }
 }
 
-function encodeLnurl(url: string): string {
-  try {
-    const encoder = new TextEncoder();
-    const bytes = encoder.encode(url);
-    const words = bech32.toWords(Array.from(bytes));
-    const encoded = bech32.encode("lnurl", words, 1023);
-    return encoded.toUpperCase();
-  } catch {
-    return url;
-  }
-}
-
 function stopLinkPolling() {
   if (linkPollingInterval != null) {
     window.clearInterval(linkPollingInterval);
@@ -866,35 +841,47 @@ function closeLnurlLinkModal() {
   stopLinkPolling();
   showLnurlLinkModal.value = false;
   lnurlK1.value = "";
+  lnurlLinkUrl.value = "";
   lnurlLinkError.value = "";
+}
+
+async function fetchLinkChallengeAndOpen() {
+  const response = await api.post("/lnurl-auth/link-challenge");
+  const raw = response.data ?? {};
+  const data = typeof raw === "object" && raw !== null && "data" in raw ? (raw as { data: { k1?: string; lnurl?: string } }).data : raw;
+  const k1 = data?.k1 ?? (data as { K1?: string })?.K1;
+  const lnurl = data?.lnurl ?? (data as { lnurlAuthUrl?: string })?.lnurlAuthUrl;
+  if (!k1 || !lnurl) {
+    lnurlLinkError.value = t("auth.error_occurred");
+    return false;
+  }
+  lnurlK1.value = k1;
+  lnurlLinkUrl.value = lnurl;
+  showLnurlLinkModal.value = true;
+  startLinkPolling(k1);
+  return true;
 }
 
 async function handleAddLightningLogin() {
   lnurlLinkLoading.value = true;
   lnurlLinkError.value = "";
   try {
-    const response = await api.post("/lnurl-auth/link-challenge");
-    const raw = response.data ?? {};
-    const data = typeof raw === "object" && raw !== null && "data" in raw ? (raw as { data: { k1?: string; lnurl?: string } }).data : raw;
-    const k1 = data?.k1 ?? (data as { K1?: string })?.K1;
-    const lnurl = data?.lnurl ?? (data as { lnurlAuthUrl?: string })?.lnurlAuthUrl;
-    if (!k1 || !lnurl) {
-      lnurlLinkError.value = t("auth.error_occurred");
-      lnurlLinkLoading.value = false;
-      return;
-    }
-    lnurlK1.value = k1;
-    showLnurlLinkModal.value = true;
-    await nextTick();
-    if (lnurlLinkQrCanvas.value) {
-      const encoded = encodeLnurl(lnurl);
-      await QRCode.toCanvas(lnurlLinkQrCanvas.value, encoded, { width: 256, margin: 2 });
-    }
-    startLinkPolling(k1);
+    await fetchLinkChallengeAndOpen();
   } catch (err: any) {
     lnurlLinkError.value = err.response?.data?.error || t("auth.error_occurred");
   } finally {
     lnurlLinkLoading.value = false;
+  }
+}
+
+async function requestNewLinkChallenge() {
+  lnurlLinkError.value = "";
+  stopLinkPolling();
+  try {
+    const ok = await fetchLinkChallengeAndOpen();
+    if (!ok) lnurlLinkError.value = t("auth.error_occurred");
+  } catch (err: any) {
+    lnurlLinkError.value = err.response?.data?.error || t("auth.error_occurred");
   }
 }
 

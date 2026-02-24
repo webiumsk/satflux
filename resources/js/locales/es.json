@@ -834,7 +834,11 @@
     "challenge_expired": "Desafío expirado. Inténtalo de nuevo.",
     "lightning_login_added": "Inicio de sesión Lightning añadido correctamente.",
     "or_confirm_with_lightning": "O confirma con tu billetera Lightning",
-    "confirm_with_lightning_wallet": "Confirmar con billetera Lightning"
+    "confirm_with_lightning_wallet": "Confirmar con billetera Lightning",
+    "copy_lnurl": "Copiar LNURL",
+    "open_in_wallet": "Abrir en billetera",
+    "expires_in": "Expira en",
+    "try_again": "Reintentar"
   },
   "header": {
     "dashboard": "Tablero de control",

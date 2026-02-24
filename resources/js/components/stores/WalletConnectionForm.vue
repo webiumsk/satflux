@@ -113,14 +113,16 @@
                 </div>
             </div>
             <!-- LNURL reveal confirm modal -->
-            <div v-if="showLnurlRevealModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="closeLnurlRevealModal">
-                <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 max-w-sm w-full">
-                    <h5 class="text-lg font-bold text-white mb-2">{{ t('account.confirm_with_lightning_wallet') }}</h5>
-                    <p class="text-sm text-gray-400 mb-4">{{ t('account.scan_qr_with_wallet') }}</p>
-                    <div class="flex justify-center mb-4"><canvas ref="lnurlRevealQrCanvas" class="rounded-lg bg-white"></canvas></div>
-                    <p v-if="lnurlRevealError" class="text-sm text-red-400 mb-2">{{ lnurlRevealError }}</p>
-                </div>
-            </div>
+            <LnurlQrModal
+                :open="showLnurlRevealModal"
+                :title="t('account.confirm_with_lightning_wallet')"
+                :lnurl="lnurlRevealUrl"
+                :error="lnurlRevealError"
+                :polling="lnurlRevealPolling"
+                :expires-in-seconds="300"
+                @close="closeLnurlRevealModal"
+                @regenerate="requestNewRevealChallenge"
+            />
         </template>
 
         <!-- Edit form: type + secret + Test + Save/Cancel (create flow or after password) -->
@@ -280,13 +282,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, nextTick, onUnmounted } from 'vue';
+import { ref, reactive, computed, watch, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../../store/auth';
 import api from '../../services/api';
 import WalletTypeIcon from '../WalletTypeIcon.vue';
-import { bech32 } from 'bech32';
-import QRCode from 'qrcode';
+import LnurlQrModal from '../auth/LnurlQrModal.vue';
 
 interface Props {
     storeId: string;
@@ -313,7 +314,7 @@ const revealing = ref(false);
 
 const hasLightningLogin = computed(() => !!authStore.user?.has_lightning_login);
 const showLnurlRevealModal = ref(false);
-const lnurlRevealQrCanvas = ref<HTMLCanvasElement | null>(null);
+const lnurlRevealUrl = ref('');
 const lnurlRevealK1 = ref('');
 const lnurlRevealLoading = ref(false);
 const lnurlRevealError = ref('');
@@ -360,16 +361,6 @@ function formatLastChangeDate(dateString: string): string {
     return new Date(dateString).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-function encodeLnurl(url: string): string {
-    try {
-        const encoder = new TextEncoder();
-        const words = bech32.toWords(Array.from(encoder.encode(url)));
-        return bech32.encode('lnurl', words, 1023).toUpperCase();
-    } catch {
-        return url;
-    }
-}
-
 function closeLnurlRevealModal() {
     if (lnurlRevealPollingInterval != null) {
         window.clearInterval(lnurlRevealPollingInterval);
@@ -378,12 +369,11 @@ function closeLnurlRevealModal() {
     lnurlRevealPolling.value = false;
     showLnurlRevealModal.value = false;
     lnurlRevealK1.value = '';
+    lnurlRevealUrl.value = '';
     lnurlRevealError.value = '';
 }
 
-async function handleConfirmWithLightning() {
-    lnurlRevealLoading.value = true;
-    lnurlRevealError.value = '';
+async function fetchRevealChallengeAndOpen(): Promise<boolean> {
     try {
         const res = await api.post('/lnurl-auth/reveal-confirm-challenge');
         const raw = res.data ?? {};
@@ -392,16 +382,11 @@ async function handleConfirmWithLightning() {
         const lnurl = data?.lnurl ?? (data as { lnurlAuthUrl?: string })?.lnurlAuthUrl;
         if (!k1 || !lnurl) {
             lnurlRevealError.value = t('auth.error_occurred');
-            lnurlRevealLoading.value = false;
-            return;
+            return false;
         }
         lnurlRevealK1.value = k1;
+        lnurlRevealUrl.value = lnurl;
         showLnurlRevealModal.value = true;
-        await nextTick();
-        if (lnurlRevealQrCanvas.value) {
-            await QRCode.toCanvas(lnurlRevealQrCanvas.value, encodeLnurl(lnurl), { width: 256, margin: 2 });
-        }
-        lnurlRevealLoading.value = false;
         lnurlRevealPolling.value = true;
         const startTime = Date.now();
         const doPoll = async () => {
@@ -441,10 +426,31 @@ async function handleConfirmWithLightning() {
         };
         doPoll();
         lnurlRevealPollingInterval = window.setInterval(doPoll, 1000);
+        return true;
     } catch (err: any) {
         lnurlRevealError.value = err.response?.data?.error || t('auth.error_occurred');
+        return false;
+    }
+}
+
+async function handleConfirmWithLightning() {
+    lnurlRevealLoading.value = true;
+    lnurlRevealError.value = '';
+    try {
+        await fetchRevealChallengeAndOpen();
+    } finally {
         lnurlRevealLoading.value = false;
     }
+}
+
+async function requestNewRevealChallenge() {
+    if (lnurlRevealPollingInterval != null) {
+        window.clearInterval(lnurlRevealPollingInterval);
+        lnurlRevealPollingInterval = null;
+    }
+    lnurlRevealPolling.value = false;
+    lnurlRevealError.value = '';
+    await fetchRevealChallengeAndOpen();
 }
 
 onUnmounted(() => {

@@ -689,7 +689,11 @@
     "challenge_expired": "Výzva vypršala. Skúste to znova.",
     "lightning_login_added": "Lightning prihlásenie bolo úspešne pridané.",
     "or_confirm_with_lightning": "Alebo potvrdíte Lightning peňaženkou",
-    "confirm_with_lightning_wallet": "Potvrdiť Lightning peňaženkou"
+    "confirm_with_lightning_wallet": "Potvrdiť Lightning peňaženkou",
+    "copy_lnurl": "Kopírovať LNURL",
+    "open_in_wallet": "Otvoriť v peňaženke",
+    "expires_in": "Vyprší za",
+    "try_again": "Skúsiť znova"
   },
   "header": {
     "dashboard": "Nástenka",
