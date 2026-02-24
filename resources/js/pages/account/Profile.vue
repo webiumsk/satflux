@@ -378,7 +378,8 @@
                       {{ t("account.pro_plan") }}
                     </h6>
                     <div class="text-2xl font-bold text-indigo-400 mb-4">
-                      {{ formatSats(pricing.pro.sats_per_month_display)
+                      <span v-if="pricing.pro.sats_per_month_display !== BETA_PRO_SATS_PER_MONTH" class="text-base font-normal text-gray-500 line-through mr-2">{{ formatSats(pricing.pro.sats_per_month_display) }}</span>
+                      {{ formatSats(BETA_PRO_SATS_PER_MONTH)
                       }}<span class="text-base font-normal text-gray-500">{{
                         t("account.pro_price_period")
                       }}</span>
@@ -628,7 +629,7 @@
 import { ref, onMounted, computed, onUnmounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
-import { usePricing } from "../../composables/usePricing";
+import { usePricing, BETA_PRO_SATS_PER_MONTH } from "../../composables/usePricing";
 import { usePlanFeatures } from "../../composables/usePlanFeatures";
 import api from "../../services/api";
 import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
@@ -680,7 +681,7 @@ const currentPlanPrice = computed(() => {
   const p = pricing.value;
   if (role === "enterprise") return "—";
   if (role === "pro")
-    return formatSats(p?.pro?.sats_per_month_display ?? 16_500);
+    return formatSats(BETA_PRO_SATS_PER_MONTH);
   return formatSats(p?.free?.sats_per_year ?? 0);
 });
 
