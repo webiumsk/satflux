@@ -620,8 +620,9 @@ function startPolling(k1: string) {
       if (err.response?.status === 403) {
         lnurlError.value = t("auth.error_occurred");
         stopPolling();
+      } else {
+        lnurlError.value = "";
       }
-      console.error("Polling error:", err);
     }
   };
 
