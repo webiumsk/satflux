@@ -136,6 +136,16 @@ class WalletConnectionService
                 'user_id' => $user->id,
                 'is_new' => $isNew,
             ]);
+
+            // Keep stores.wallet_type in sync with wallet_connection type
+            // wallet_connections.type: 'blink' | 'aqua_descriptor'  ->  stores.wallet_type: 'blink' | 'aqua_boltz'
+            $storeWalletType = $connection->type === 'aqua_descriptor' ? 'aqua_boltz' : 'blink';
+            $store->update(['wallet_type' => $storeWalletType]);
+
+            Log::info('Store wallet_type synced', [
+                'store_id' => $store->id,
+                'wallet_type' => $storeWalletType,
+            ]);
         } catch (\Exception $e) {
             Log::error('Failed to create/update wallet connection in database', [
                 'store_id' => $store->id,

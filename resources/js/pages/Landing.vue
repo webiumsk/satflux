@@ -283,15 +283,15 @@
 
                            <!-- Hover Details -->
                           <div class="absolute inset-0 bg-gray-900/95 backdrop-blur-xl rounded-2xl p-6 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex flex-col justify-center border border-blue-500/50 z-20 pointer-events-none group-hover/card:pointer-events-auto shadow-[0_0_30px_rgba(59,130,246,0.3)]">
-                             <div class="space-4">
-                                 <div class="pt-4">
+                             <div class="space-y-4">
+                                 <div>
                                      <span class="text-green-400 font-bold text-xs uppercase tracking-wider flex items-center gap-2 mb-1">
                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                                        {{ t('landing.wallet_pros') }}
                                      </span>
                                      <p class="text-gray-300 text-sm leading-relaxed">{{ t('landing.aqua_pros') }}</p>
                                  </div>
-                                 <div class="pb-4">
+                                 <div>
                                      <span class="text-red-400 font-bold text-xs uppercase tracking-wider flex items-center gap-2 mb-1">
                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path></svg>
                                        {{ t('landing.wallet_cons') }}
