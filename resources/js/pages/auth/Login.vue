@@ -302,6 +302,7 @@
 import { ref, computed, onUnmounted, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
+import { usePage } from "@inertiajs/vue3";
 import { useAuthStore } from "../../store/auth";
 import { useFlashStore } from "../../store/flash";
 import api from "../../services/api";
@@ -338,9 +339,10 @@ const emailLoading = ref(false);
 const emailError = ref("");
 let pollingInterval: number | null = null;
 
-// Check if LNURL auth is enabled (this should come from API/env config)
+// LNURL auth: from server (Inertia shared props) so it works on live without rebuild
+const page = usePage();
 const lnurlAuthEnabled = computed(() => {
-  return import.meta.env.VITE_LNURL_AUTH_ENABLED === "true";
+  return page.props?.app?.lnurlAuthEnabled === true || import.meta.env.VITE_LNURL_AUTH_ENABLED === "true";
 });
 
 async function handleLogin() {
