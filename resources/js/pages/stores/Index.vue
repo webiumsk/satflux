@@ -116,17 +116,17 @@
               </h3>
 
               <div class="space-y-3 mt-4">
-                <div class="flex items-center text-sm">
+                <div class="flex items-center text-sm gap-2">
                   <span class="text-gray-500 w-24">{{
                     t("stores.wallet")
                   }}</span>
-                  <span class="text-gray-300 font-medium">{{
-                    store.wallet_type === "blink"
-                      ? "Blink"
-                      : store.wallet_type === "aqua_boltz"
-                        ? "Aqua (Boltz)"
-                        : t("stores.not_set")
-                  }}</span>
+                  <WalletTypeIcon
+                    :type="store.wallet_type"
+                    size="lg"
+                    :show-label="false"
+                    :fallback-text="t('stores.not_set')"
+                    class="text-gray-300"
+                  />
                 </div>
 
                 <div class="flex items-center text-sm">
@@ -199,6 +199,7 @@ import { useI18n } from "vue-i18n";
 import { storeToRefs } from "pinia";
 import { useStoresStore } from "../../store/stores";
 import { useAccountLimits } from "../../composables/useAccountLimits";
+import WalletTypeIcon from "../../components/WalletTypeIcon.vue";
 
 const { t } = useI18n();
 

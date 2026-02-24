@@ -26,8 +26,15 @@
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
             <div>
                 <h1 class="text-3xl font-extrabold text-white mb-2 tracking-tight">{{ t('stores.wallet_onboarding') }}</h1>
-                <p class="text-gray-400">
-                  {{ t('stores.complete_steps_setup') }} <span class="text-indigo-400 font-semibold">{{ store.wallet_type === 'blink' ? t('stores.blink_wallet') : t('stores.aqua_wallet') }}</span> {{ t('stores.wallet') }}
+                <p class="text-gray-400 flex items-center gap-2">
+                  {{ t('stores.complete_steps_setup') }}
+                  <WalletTypeIcon
+                    :type="store.wallet_type"
+                    size="sm"
+                    :show-label="true"
+                    class="text-indigo-400 font-semibold"
+                  />
+                  {{ t('stores.wallet') }}
                 </p>
             </div>
             <div class="flex-shrink-0">
@@ -65,6 +72,7 @@ import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
 import WalletChecklist from '../../components/stores/WalletChecklist.vue';
+import WalletTypeIcon from '../../components/WalletTypeIcon.vue';
 
 const { t } = useI18n();
 

@@ -55,8 +55,12 @@
                             </div>
                             <div>
                                 <span class="font-medium text-gray-700">Type:</span>
-                                <span class="ml-2 px-2 py-1 text-xs rounded-full" :class="connection.type === 'blink' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'">
-                                    {{ connection.type === 'blink' ? 'Blink' : 'Aqua' }}
+                                <span class="ml-2 inline-flex items-center gap-1.5">
+                                    <WalletTypeIcon
+                                      :type="connection.type"
+                                      size="sm"
+                                      :show-label="true"
+                                    />
                                 </span>
                             </div>
                             <div v-if="btcPayStoreId" class="col-span-2">
@@ -189,6 +193,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import api from '../../services/api';
+import WalletTypeIcon from '../WalletTypeIcon.vue';
 
 interface Props {
     connection: any;
