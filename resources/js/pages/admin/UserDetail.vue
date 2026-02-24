@@ -126,8 +126,13 @@
           >
             <div>
               <p class="font-medium text-white">{{ store.name }}</p>
-              <div class="flex flex-wrap gap-2 mt-1 text-sm text-gray-400">
-                <span>{{ store.wallet_type || '—' }}</span>
+              <div class="flex flex-wrap gap-2 mt-1 text-sm text-gray-400 items-center">
+                <WalletTypeIcon
+                  :type="store.wallet_type"
+                  size="sm"
+                  :show-label="true"
+                  fallback-text="—"
+                />
                 <span>•</span>
                 <span>{{ t('admin.user_detail.pos_terminals') }}: {{ store.pos_terminal_count }}</span>
                 <span
@@ -222,6 +227,7 @@ import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../../store/auth';
 import api from '../../services/api';
 import Select from '../../components/ui/Select.vue';
+import WalletTypeIcon from '../../components/WalletTypeIcon.vue';
 
 const { t } = useI18n();
 const route = useRoute();

@@ -13,7 +13,12 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
                     <div>
                         <span class="block text-gray-500 text-xs uppercase tracking-wider mb-1">{{ t('stores.type') }}</span>
-                        <span class="font-medium text-white">{{ existingConnection.type === 'blink' ? t('create_store.wallet_type_blink') : t('create_store.wallet_type_aqua') }}</span>
+                        <WalletTypeIcon
+                          :type="existingConnection.type"
+                          size="lg"
+                          :show-label="true"
+                          class="font-medium text-white"
+                        />
                     </div>
                     <div>
                         <span class="block text-gray-500 text-xs uppercase tracking-wider mb-1">{{ t('stores.status') }}</span>
@@ -257,6 +262,7 @@
 import { ref, reactive, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
+import WalletTypeIcon from '../WalletTypeIcon.vue';
 
 interface Props {
     storeId: string;

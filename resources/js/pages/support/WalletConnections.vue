@@ -84,9 +84,9 @@
                                 <div class="text-sm text-gray-400">{{ connection.submitted_by }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                                <span class="px-2 py-1 inline-flex items-center gap-1.5 text-xs leading-5 font-semibold rounded-full"
                                     :class="connection.type === 'blink' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'">
-                                    {{ connection.type === 'blink' ? 'Blink' : 'Aqua' }}
+                                    <WalletTypeIcon :type="connection.type" size="lg" />
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -145,9 +145,9 @@
                             <div class="text-sm text-gray-400">{{ connection.submitted_by }}</div>
                         </div>
                         <div class="flex flex-col items-end space-y-2">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                            <span class="px-2 py-1 inline-flex items-center gap-1.5 text-xs leading-5 font-semibold rounded-full"
                                 :class="connection.type === 'blink' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'">
-                                {{ connection.type === 'blink' ? 'Blink' : 'Aqua' }}
+                                <WalletTypeIcon :type="connection.type" size="lg" />
                             </span>
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
                                 :class="getStatusBadgeClass(connection.status)">
@@ -209,6 +209,7 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import api from '../../services/api';
 import RevealSecretModal from '../../components/support/RevealSecretModal.vue';
+import WalletTypeIcon from '../../components/WalletTypeIcon.vue';
 import Select from '../../components/ui/Select.vue';
 
 const loading = ref(true);

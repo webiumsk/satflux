@@ -66,9 +66,13 @@
               <div class="flex flex-col items-end gap-2">
                  <div class="flex items-center bg-gray-800/80 rounded-lg px-3 py-1.5 border border-gray-700">
                     <span class="text-xs text-gray-500 uppercase tracking-wider mr-2 font-semibold">{{ t('stores.wallet_type') }}</span>
-                    <span class="text-sm font-bold text-indigo-400">
-                       {{ store.wallet_type === 'blink' ? 'Blink' : store.wallet_type === 'aqua_boltz' ? 'Aqua (Boltz)' : t('stores.not_configured') }}
-                    </span>
+                    <WalletTypeIcon
+                      :type="store.wallet_type"
+                      size="lg"
+                      :show-label="false"
+                      :fallback-text="t('stores.not_configured')"
+                      class="text-indigo-400"
+                    />
                  </div>
                  <div class="flex items-center bg-gray-800/80 rounded-lg px-3 py-1.5 border border-gray-700">
                     <span class="text-xs text-gray-500 uppercase tracking-wider mr-2 font-semibold">{{ t('stores.connection') }}</span>
@@ -247,6 +251,7 @@ import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
 import { useAppsStore } from '../../store/apps';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
+import WalletTypeIcon from '../../components/WalletTypeIcon.vue';
 import DashboardStats from '../../components/stores/DashboardStats.vue';
 import RecentInvoices from '../../components/stores/RecentInvoices.vue';
 import SalesChart from '../../components/stores/SalesChart.vue';
