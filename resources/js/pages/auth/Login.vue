@@ -456,11 +456,14 @@ function startPolling(k1: string) {
         stopPolling();
       }
     } catch (err: any) {
+      // 403 = LNURL disabled, stop. Network errors (ERR_NETWORK_CHANGED, etc.) = keep polling
       if (err.response?.status === 403) {
         lnurlError.value = t("auth.error_occurred");
         stopPolling();
+      } else {
+        // Transient network error – clear error on next successful poll
+        lnurlError.value = "";
       }
-      console.error("Polling error:", err);
     }
   };
 
