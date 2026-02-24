@@ -123,25 +123,14 @@ class LnurlAuthController extends Controller
             return response()->json(['status' => 'ERROR', 'reason' => 'Challenge already used'], 200);
         }
 
-        // Verify signature
+        // Verify signature (LUD-04: wallet signs the raw 32-byte k1 as digest; sends DER-encoded sig)
         try {
             $secp256k1 = new Secp256k1();
-            
-            // k1 is hex, convert to binary
-            $k1Binary = hex2bin($k1);
-            
-            // Hash k1 with SHA256
-            $messageHash = hash('sha256', $k1Binary, true);
-            
-            // Signature is DER-encoded hex
-            $signatureBinary = hex2bin($signature);
-            
-            // Public key is hex (33 bytes compressed or 65 bytes uncompressed)
-            $publicKeyBinary = hex2bin($publicKey);
-            
-            // Verify signature
-            $isValid = $secp256k1->verify($signatureBinary, $messageHash, $publicKeyBinary);
-            
+            // kornrunner verify($hashHex, $signature, $publicKeyHex): hash and key must be hex strings
+            // Signature from wallet is DER; kornrunner expects 128-char flat hex (r||s)
+            $signatureFlatHex = $this->derSignatureToFlatHex($signature);
+            $isValid = $secp256k1->verify($k1, $signatureFlatHex, $publicKey);
+
             if (! $isValid) {
                 Log::warning('LNURL-auth signature verification failed', [
                     'k1' => $k1,
@@ -410,5 +399,41 @@ class LnurlAuthController extends Controller
         $url = str_replace('/api/auth/verify-email/', '/auth/verify-email/', $url);
         
         return $url;
+    }
+
+    /**
+     * Convert DER-encoded ECDSA signature (hex) to 128-char flat hex (r||s) for kornrunner.
+     * DER: 0x30 [totalLen] 0x02 [rLen] [r] 0x02 [sLen] [s]
+     */
+    protected function derSignatureToFlatHex(string $derHex): string
+    {
+        $bytes = hex2bin($derHex);
+        $pos = 0;
+        if ($bytes[$pos++] !== "\x30") {
+            throw new \InvalidArgumentException('Invalid DER: expected 0x30');
+        }
+        $totalLen = ord($bytes[$pos++]);
+        if ($pos + $totalLen > strlen($bytes)) {
+            throw new \InvalidArgumentException('Invalid DER length');
+        }
+        // 0x02 rLen r
+        if ($bytes[$pos++] !== "\x02") {
+            throw new \InvalidArgumentException('Invalid DER: expected 0x02 for r');
+        }
+        $rLen = ord($bytes[$pos++]);
+        $rBytes = substr($bytes, $pos, $rLen);
+        $pos += $rLen;
+        // 0x02 sLen s
+        if ($bytes[$pos++] !== "\x02") {
+            throw new \InvalidArgumentException('Invalid DER: expected 0x02 for s');
+        }
+        $sLen = ord($bytes[$pos++]);
+        $sBytes = substr($bytes, $pos, $sLen);
+
+        $r = gmp_init(bin2hex($rBytes), 16);
+        $s = gmp_init(bin2hex($sBytes), 16);
+
+        return str_pad(gmp_strval($r, 16), 64, '0', STR_PAD_LEFT)
+            . str_pad(gmp_strval($s, 16), 64, '0', STR_PAD_LEFT);
     }
 }
