@@ -19,7 +19,18 @@
             <canvas ref="qrCanvas" class="block"></canvas>
           </div>
         </div>
-        <div class="flex justify-end pt-2">
+        <div class="flex flex-wrap justify-end gap-2 pt-2">
+          <button
+            v-if="showDownload && url"
+            type="button"
+            @click="downloadQr"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            {{ t('common.download') }}
+          </button>
           <button
             type="button"
             @click="emit('close')"
@@ -43,8 +54,10 @@ const props = withDefaults(
     open: boolean;
     url: string;
     title?: string;
+    showDownload?: boolean;
+    downloadFilename?: string;
   }>(),
-  { title: '' }
+  { title: '', showDownload: false, downloadFilename: 'qrcode.png' }
 );
 
 const emit = defineEmits<{
@@ -54,12 +67,33 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const qrCanvas = ref<HTMLCanvasElement | null>(null);
 
+const DOWNLOAD_SIZE = 1024;
+
 async function drawQr() {
   if (!props.open || !props.url || !qrCanvas.value) return;
   try {
     await QRCode.toCanvas(qrCanvas.value, props.url, { width: 256, margin: 2 });
   } catch (e) {
     console.error('QR draw failed', e);
+  }
+}
+
+async function downloadQr() {
+  if (!props.url) return;
+  try {
+    const canvas = document.createElement('canvas');
+    await QRCode.toCanvas(canvas, props.url, { width: DOWNLOAD_SIZE, margin: 2 });
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = props.downloadFilename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  } catch (e) {
+    console.error('QR download failed', e);
   }
 }
 

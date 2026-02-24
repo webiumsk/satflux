@@ -16,6 +16,9 @@ export interface PricingData {
   pro: PricingPro;
 }
 
+/** Beta pricing: Pro plan during Beta period (sats/month). */
+export const BETA_PRO_SATS_PER_MONTH = 5000;
+
 const fallback: PricingData = {
   free: { sats_per_year: 0 },
   pro: { sats_per_year: 99_000, sats_per_month_display: 16_500 },

@@ -672,7 +672,8 @@
              <h3 class="text-2xl font-bold text-white mb-2">{{ t('landing.pricing_pro_name') }}</h3>
              <p class="text-gray-400 text-sm mb-4">{{ t('landing.pricing_pro_tagline') }}</p>
              <div class="flex items-baseline flex-wrap gap-x-1 mb-6">
-                <span class="text-5xl font-extrabold text-white">{{ formatSats(pricing.pro.sats_per_month_display) }}</span>
+                <span v-if="pricing.pro.sats_per_month_display !== BETA_PRO_SATS_PER_MONTH" class="text-xl font-medium text-gray-500 line-through mr-2">{{ formatSats(pricing.pro.sats_per_month_display) }}</span>
+                <span class="text-5xl font-extrabold text-white">{{ formatSats(BETA_PRO_SATS_PER_MONTH) }}</span>
                 <span class="text-indigo-300">{{ t('landing.pricing_pro_price_period') }}</span>
                 <span class="text-indigo-300/80 text-sm">{{ t('landing.pricing_pro_price_note') }}</span>
              </div>
@@ -783,7 +784,7 @@
 
 <script setup lang="ts">
 import { useAuthStore } from '../store/auth';
-import { usePricing } from '../composables/usePricing';
+import { usePricing, BETA_PRO_SATS_PER_MONTH } from '../composables/usePricing';
 import { usePlanFeatures } from '../composables/usePlanFeatures';
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';

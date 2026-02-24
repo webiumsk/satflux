@@ -114,6 +114,14 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
+                        type="button"
+                        @click="showQrForAddress(address)"
+                        class="text-gray-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-gray-700 mr-1"
+                        :title="t('stores.show_address_qr')"
+                      >
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
+                      </button>
+                      <button
                         @click="confirmDelete(address)"
                         class="text-red-400 hover:text-red-300 transition-colors p-2 rounded-lg hover:bg-red-500/10"
                         :title="t('stores.delete_address')"
@@ -368,6 +376,16 @@
       </div>
     </div>
 
+    <!-- QR code modal for Lightning Address -->
+    <UrlQrModal
+      :open="qrModalAddress !== null"
+      :url="qrModalAddress || ''"
+      :title="qrModalAddress || ''"
+      :show-download="true"
+      :download-filename="qrModalDownloadFilename"
+      @close="qrModalAddress = null"
+    />
+
     <!-- Upgrade Modal -->
     <UpgradeModal
       :show="showUpgradeModal"
@@ -390,6 +408,7 @@ import { useFlashStore } from '../../store/flash';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
 import InfoTooltip from '../../components/ui/InfoTooltip.vue';
 import UpgradeModal from '../../components/stores/UpgradeModal.vue';
+import UrlQrModal from '../../components/ui/UrlQrModal.vue';
 import { currencies } from '../../data/currencies';
 import api from '../../services/api';
 
@@ -413,7 +432,18 @@ const showDeleteModal = ref(false);
 const showUpgradeModal = ref(false);
 const addCheckLoading = ref(false);
 const addressToDelete = ref<any>(null);
+const qrModalAddress = ref<string | null>(null);
 const showAdvancedSettings = ref(false);
+
+const qrModalDownloadFilename = computed(() => {
+  if (!qrModalAddress.value) return 'lightning-address.png';
+  const username = qrModalAddress.value.replace(/@.*$/, '').replace(/[^a-zA-Z0-9_-]/g, '_');
+  return `lightning-address-${username || 'qrcode'}.png`;
+});
+
+function showQrForAddress(address: any) {
+  qrModalAddress.value = `${address.username}@satflux.org`;
+}
 
 const allApps = computed(() => appsStore.apps);
 
