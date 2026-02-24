@@ -182,9 +182,22 @@
       </div>
     </div>
 
-    <!-- LNURL-auth QR Modal -->
+    <!-- LNURL-auth QR step: use shared modal -->
+    <LnurlQrModal
+      v-if="showLnurlModal && !showEmailStep"
+      :open="true"
+      :title="t('auth.scan_with_lightning_wallet')"
+      :lnurl="lnurlAuthUrl"
+      :error="lnurlError"
+      :polling="lnurlPolling"
+      :expires-in-seconds="300"
+      @close="closeLnurlModal"
+      @regenerate="requestNewAuthChallenge"
+    />
+
+    <!-- LNURL-auth Email step (complete registration) -->
     <div
-      v-if="showLnurlModal"
+      v-if="showLnurlModal && showEmailStep"
       class="fixed z-50 inset-0 overflow-y-auto"
       @click.self="closeLnurlModal"
     >
@@ -201,35 +214,8 @@
           <div class="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
             <div class="sm:flex sm:items-start">
               <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
-                <!-- QR Code Step -->
-                <div v-if="!showEmailStep">
-                  <h3 class="text-lg leading-6 font-bold text-white mb-4">
-                    {{ t("auth.scan_with_lightning_wallet") }}
-                  </h3>
-                  <div class="flex justify-center mb-6">
-                    <div class="p-4 bg-white rounded-xl">
-                      <canvas ref="qrCanvas" class="block"></canvas>
-                    </div>
-                  </div>
-                  <p class="text-sm text-gray-400 mb-4 text-center">
-                    {{ t("auth.scan_qr_code") }}
-                  </p>
-                  <div
-                    v-if="lnurlPolling"
-                    class="text-sm text-indigo-400 text-center animate-pulse"
-                  >
-                    {{ t("auth.waiting_for_authentication") }}
-                  </div>
-                  <div
-                    v-if="lnurlError"
-                    class="text-sm text-red-400 mb-4 text-center"
-                  >
-                    {{ lnurlError }}
-                  </div>
-                </div>
-
                 <!-- Email Input Step -->
-                <div v-else>
+                <div>
                   <h3 class="text-lg leading-6 font-bold text-white mb-4">
                     {{ t("auth.complete_registration") }}
                   </h3>
@@ -280,18 +266,6 @@
               </div>
             </div>
           </div>
-          <div
-            v-if="!showEmailStep"
-            class="bg-gray-800/50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-gray-700"
-          >
-            <button
-              type="button"
-              @click="closeLnurlModal"
-              class="w-full inline-flex justify-center rounded-lg border border-gray-600 px-4 py-2 bg-gray-700 text-base font-medium text-white hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors"
-            >
-              {{ t("common.cancel") }}
-            </button>
-          </div>
         </div>
       </div>
     </div>
@@ -299,15 +273,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { usePage } from "@inertiajs/vue3";
 import { useAuthStore } from "../../store/auth";
 import { useFlashStore } from "../../store/flash";
 import api from "../../services/api";
-import QRCode from "qrcode";
-import { bech32 } from "bech32";
+import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
 
 const { t } = useI18n();
 
@@ -338,11 +311,11 @@ const form = ref({
 const loading = ref(false);
 
 const showLnurlModal = ref(false);
+const lnurlAuthUrl = ref("");
 const lnurlLoading = ref(false);
 const lnurlPolling = ref(false);
 const lnurlError = ref("");
 const lnurlK1 = ref("");
-const qrCanvas = ref<HTMLCanvasElement | null>(null);
 const showEmailStep = ref(false);
 const emailForm = ref({
   email: "",
@@ -384,12 +357,7 @@ async function handleLogin() {
   }
 }
 
-async function handleLnurlAuth() {
-  lnurlLoading.value = true;
-  lnurlError.value = "";
-  showEmailStep.value = false;
-  emailError.value = "";
-
+async function fetchAuthChallengeAndOpen(): Promise<boolean> {
   try {
     const response = await api.post("/lnurl-auth/challenge");
     const raw = response.data ?? {};
@@ -398,30 +366,39 @@ async function handleLnurlAuth() {
     const lnurl = challengeData?.lnurl ?? challengeData?.lnurlAuthUrl;
 
     if (!k1 || !lnurl) {
-      lnurlError.value = "Invalid challenge response. Please try again.";
-      lnurlLoading.value = false;
-      return;
+      lnurlError.value = t("auth.error_occurred");
+      return false;
     }
 
     lnurlK1.value = k1;
+    lnurlAuthUrl.value = lnurl;
     showLnurlModal.value = true;
-    lnurlLoading.value = false;
-
-    await nextTick();
-    if (qrCanvas.value) {
-      const lnurlEncoded = encodeLnurl(lnurl);
-      await QRCode.toCanvas(qrCanvas.value, lnurlEncoded, {
-        width: 256,
-        margin: 2,
-      });
-    }
-
     startPolling(k1);
+    return true;
   } catch (err: any) {
     lnurlError.value =
       err.response?.data?.error || "Failed to generate challenge";
+    return false;
+  }
+}
+
+async function handleLnurlAuth() {
+  lnurlLoading.value = true;
+  lnurlError.value = "";
+  showEmailStep.value = false;
+  emailError.value = "";
+
+  try {
+    await fetchAuthChallengeAndOpen();
+  } finally {
     lnurlLoading.value = false;
   }
+}
+
+async function requestNewAuthChallenge() {
+  lnurlError.value = "";
+  stopPolling();
+  await fetchAuthChallengeAndOpen();
 }
 
 function startPolling(k1: string) {
@@ -431,7 +408,7 @@ function startPolling(k1: string) {
 
   const doPoll = async () => {
     if (Date.now() - startTime > timeout) {
-      lnurlError.value = "Challenge expired. Please try again.";
+      lnurlError.value = t("account.challenge_expired");
       stopPolling();
       return;
     }
@@ -460,7 +437,7 @@ function startPolling(k1: string) {
         showEmailStep.value = true;
         await nextTick();
       } else if (status === "expired") {
-        lnurlError.value = "Challenge expired. Please try again.";
+        lnurlError.value = t("account.challenge_expired");
         stopPolling();
       } else if (status === "error") {
         lnurlError.value = (payload as { message?: string }).message || t("auth.error_occurred");
@@ -528,6 +505,7 @@ function closeLnurlModal() {
   showLnurlModal.value = false;
   showEmailStep.value = false;
   lnurlError.value = "";
+  lnurlAuthUrl.value = "";
   lnurlK1.value = "";
   emailForm.value = {
     email: "",
@@ -539,19 +517,4 @@ function closeLnurlModal() {
 onUnmounted(() => {
   stopPolling();
 });
-
-// Convert URL to LNURL format (bech32 encoded) per LUD-01
-// URL is encoded as-is; output is uppercased for QR (better density)
-function encodeLnurl(url: string): string {
-  try {
-    const encoder = new TextEncoder();
-    const bytes = encoder.encode(url);
-    const words = bech32.toWords(Array.from(bytes));
-    const encoded = bech32.encode("lnurl", words, 1023);
-    return encoded.toUpperCase();
-  } catch (error) {
-    console.error("LNURL encoding failed:", error);
-    return url;
-  }
-}
 </script>
