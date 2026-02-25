@@ -6,6 +6,7 @@ use App\Models\Store;
 use App\Models\User;
 use App\Models\WalletConnection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Tests\TestCase;
 
@@ -306,5 +307,29 @@ class WalletConnectionTest extends TestCase
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['secret']);
+    }
+
+    /** @test */
+    public function owner_can_reveal_wallet_connection_with_confirm_via_lnurl_when_lightning_confirmed(): void
+    {
+        $user = User::factory()->create(['lightning_public_key' => '02abc123']);
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        WalletConnection::create([
+            'store_id' => $store->id,
+            'type' => 'blink',
+            'encrypted_secret' => Crypt::encryptString(self::VALID_BLINK_SECRET),
+            'status' => 'needs_support',
+            'submitted_by_user_id' => $user->id,
+        ]);
+        Cache::put('reveal_confirmed:' . $user->id, true, now()->addSeconds(120));
+
+        $response = $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection/reveal", [
+            'confirm_via_lnurl' => true,
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.secret', self::VALID_BLINK_SECRET)
+            ->assertJsonPath('data.type', 'blink');
+        $this->assertNull(Cache::get('reveal_confirmed:' . $user->id));
     }
 }
