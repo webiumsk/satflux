@@ -129,7 +129,7 @@
               {{ loading ? t("auth.signing_in") : t("auth.sign_in") }}
             </button>
 
-            <div v-if="lnurlAuthEnabled">
+            <div v-if="lnurlAuthEnabled || nostrAuthEnabled">
               <div class="relative mb-4">
                 <div class="absolute inset-0 flex items-center">
                   <div class="w-full border-t border-gray-600"></div>
@@ -142,6 +142,7 @@
               </div>
 
               <button
+                v-if="lnurlAuthEnabled"
                 type="button"
                 @click="handleLnurlAuth"
                 :disabled="lnurlLoading"
@@ -166,6 +167,15 @@
                     : t("auth.lightning_login")
                 }}
               </button>
+              <button
+                v-if="nostrAuthEnabled"
+                type="button"
+                @click="showNostrModal = true"
+                class="mt-3 group relative w-full flex justify-center items-center py-3 px-4 border border-gray-600 text-sm font-bold rounded-xl text-white bg-gray-700/50 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 transition-all"
+              >
+                <span class="mr-2 text-lg">🟠</span>
+                {{ t("auth.nostr_login") }}
+              </button>
             </div>
           </div>
 
@@ -181,6 +191,12 @@
         </form>
       </div>
     </div>
+
+    <NostrAuthModal
+      :open="showNostrModal"
+      mode="login"
+      @close="showNostrModal = false"
+    />
 
     <!-- LNURL-auth QR step: use shared modal -->
     <LnurlQrModal
@@ -281,19 +297,23 @@ import { useAuthStore } from "../../store/auth";
 import { useFlashStore } from "../../store/flash";
 import api from "../../services/api";
 import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
+import NostrAuthModal from "../../components/auth/NostrAuthModal.vue";
 
 const { t } = useI18n();
 
-// LNURL: fetch from server (cache-buster so .env change is seen after config:clear)
+// LNURL / Nostr: fetch from server
 const lnurlEnabledFromServer = ref<boolean | null>(null);
+const nostrEnabledFromServer = ref<boolean | null>(null);
 onMounted(async () => {
   try {
-    const { data } = await api.get<{ enabled: boolean }>(
-      `/lnurl-auth/enabled?_=${Date.now()}`,
-    );
-    lnurlEnabledFromServer.value = data?.enabled === true;
+    const [lnurlRes, nostrRes] = await Promise.all([
+      api.get<{ enabled: boolean }>(`/lnurl-auth/enabled?_=${Date.now()}`),
+      api.get<{ enabled: boolean }>(`/nostr-auth/enabled?_=${Date.now()}`),
+    ]);
+    lnurlEnabledFromServer.value = lnurlRes.data?.enabled === true;
+    nostrEnabledFromServer.value = nostrRes.data?.enabled === true;
   } catch {
-    // Leave null so fallback (data attribute / Vite) is used
+    // Leave null so fallback is used
   }
 });
 
@@ -311,6 +331,7 @@ const form = ref({
 const loading = ref(false);
 
 const showLnurlModal = ref(false);
+const showNostrModal = ref(false);
 const lnurlAuthUrl = ref("");
 const lnurlLoading = ref(false);
 const lnurlPolling = ref(false);
@@ -335,6 +356,7 @@ const lnurlAuthEnabled = computed(() => {
   if (page.props?.app?.lnurlAuthEnabled !== undefined) return page.props.app.lnurlAuthEnabled === true;
   return import.meta.env.VITE_LNURL_AUTH_ENABLED === "true";
 });
+const nostrAuthEnabled = computed(() => nostrEnabledFromServer.value === true);
 
 async function handleLogin() {
   loading.value = true;

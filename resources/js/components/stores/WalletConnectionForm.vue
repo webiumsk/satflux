@@ -99,17 +99,28 @@
                         </button>
                     </div>
                 </form>
-                <div v-if="hasLightningLogin" class="mt-4 pt-4 border-t border-gray-700">
+                <div v-if="hasLightningLogin || hasNostrLogin" class="mt-4 pt-4 border-t border-gray-700 space-y-2">
                     <p class="text-sm text-gray-400 mb-2">{{ t('account.or_confirm_with_lightning') }}</p>
-                    <button
-                        type="button"
-                        :disabled="lnurlRevealLoading || lnurlRevealPolling"
-                        @click="handleConfirmWithLightning"
-                        class="px-4 py-2 border border-indigo-500 rounded-xl text-sm font-medium text-indigo-400 hover:bg-indigo-500/10 disabled:opacity-50"
-                    >
-                        <span v-if="lnurlRevealLoading || lnurlRevealPolling">{{ t('common.loading') }}</span>
-                        <span v-else>{{ t('account.confirm_with_lightning_wallet') }}</span>
-                    </button>
+                    <div class="flex flex-wrap gap-2">
+                        <button
+                            v-if="hasLightningLogin"
+                            type="button"
+                            :disabled="lnurlRevealLoading || lnurlRevealPolling"
+                            @click="handleConfirmWithLightning"
+                            class="px-4 py-2 border border-indigo-500 rounded-xl text-sm font-medium text-indigo-400 hover:bg-indigo-500/10 disabled:opacity-50"
+                        >
+                            <span v-if="lnurlRevealLoading || lnurlRevealPolling">{{ t('common.loading') }}</span>
+                            <span v-else>{{ t('account.confirm_with_lightning_wallet') }}</span>
+                        </button>
+                        <button
+                            v-if="hasNostrLogin"
+                            type="button"
+                            @click="showNostrRevealModal = true"
+                            class="px-4 py-2 border border-amber-500/50 rounded-xl text-sm font-medium text-amber-400 hover:bg-amber-500/10"
+                        >
+                            🟠 {{ t('auth.nostr_confirm_reveal') }}
+                        </button>
+                    </div>
                 </div>
             </div>
             <!-- LNURL reveal confirm modal -->
@@ -122,6 +133,13 @@
                 :expires-in-seconds="300"
                 @close="closeLnurlRevealModal"
                 @regenerate="requestNewRevealChallenge"
+            />
+            <NostrAuthModal
+                :open="showNostrRevealModal"
+                mode="reveal"
+                :store-id="Number(storeId)"
+                @close="showNostrRevealModal = false"
+                @success="onNostrRevealSuccess"
             />
         </template>
 
@@ -288,6 +306,7 @@ import { useAuthStore } from '../../store/auth';
 import api from '../../services/api';
 import WalletTypeIcon from '../WalletTypeIcon.vue';
 import LnurlQrModal from '../auth/LnurlQrModal.vue';
+import NostrAuthModal from '../auth/NostrAuthModal.vue';
 
 interface Props {
     storeId: string;
@@ -313,6 +332,8 @@ const passwordError = ref('');
 const revealing = ref(false);
 
 const hasLightningLogin = computed(() => !!authStore.user?.has_lightning_login);
+const hasNostrLogin = computed(() => !!authStore.user?.has_nostr_login);
+const showNostrRevealModal = ref(false);
 const showLnurlRevealModal = ref(false);
 const lnurlRevealUrl = ref('');
 const lnurlRevealK1 = ref('');
@@ -451,6 +472,15 @@ async function requestNewRevealChallenge() {
     lnurlRevealPolling.value = false;
     lnurlRevealError.value = '';
     await fetchRevealChallengeAndOpen();
+}
+
+function onNostrRevealSuccess(payload?: { secret?: string; type?: string }) {
+    showNostrRevealModal.value = false;
+    if (payload?.secret) {
+        form.secret = payload.secret;
+        form.type = (payload.type || props.existingConnection?.type || 'blink') as 'blink' | 'aqua_descriptor';
+        viewMode.value = 'editing';
+    }
 }
 
 onUnmounted(() => {

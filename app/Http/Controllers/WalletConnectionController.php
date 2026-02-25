@@ -59,6 +59,7 @@ class WalletConnectionController extends Controller
         $request->validate([
             'password' => ['nullable', 'string'],
             'confirm_via_lnurl' => ['nullable', 'boolean'],
+            'confirm_via_nostr' => ['nullable', 'boolean'],
         ]);
 
         $store = $request->route('store');
@@ -73,11 +74,16 @@ class WalletConnectionController extends Controller
 
         if ($request->filled('password')) {
             $allowed = Hash::check($request->password, $user->password);
-        } elseif ($request->boolean('confirm_via_lnurl') && $user->lightning_public_key) {
+        } else {
             $cacheKey = 'reveal_confirmed:'.$user->id;
             if (Cache::get($cacheKey)) {
-                $allowed = true;
-                Cache::forget($cacheKey);
+                if ($request->boolean('confirm_via_lnurl') && $user->lightning_public_key) {
+                    $allowed = true;
+                    Cache::forget($cacheKey);
+                } elseif ($request->boolean('confirm_via_nostr') && $user->nostr_public_key) {
+                    $allowed = true;
+                    Cache::forget($cacheKey);
+                }
             }
         }
 
@@ -321,6 +327,7 @@ class WalletConnectionController extends Controller
         $request->validate([
             'password' => ['nullable', 'string'],
             'confirm_via_lnurl' => ['nullable', 'boolean'],
+            'confirm_via_nostr' => ['nullable', 'boolean'],
         ]);
 
         $user = $request->user();
@@ -328,11 +335,16 @@ class WalletConnectionController extends Controller
 
         if ($request->filled('password')) {
             $allowed = Hash::check($request->password, $user->password);
-        } elseif ($request->boolean('confirm_via_lnurl') && $user->lightning_public_key) {
+        } else {
             $cacheKey = 'reveal_confirmed:'.$user->id;
             if (Cache::get($cacheKey)) {
-                $allowed = true;
-                Cache::forget($cacheKey);
+                if ($request->boolean('confirm_via_lnurl') && $user->lightning_public_key) {
+                    $allowed = true;
+                    Cache::forget($cacheKey);
+                } elseif ($request->boolean('confirm_via_nostr') && $user->nostr_public_key) {
+                    $allowed = true;
+                    Cache::forget($cacheKey);
+                }
             }
         }
 

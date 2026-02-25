@@ -24,6 +24,7 @@ class User extends Authenticatable
         'last_login_at',
         'password',
         'lightning_public_key',
+        'nostr_public_key',
         'btcpay_user_id',
         'btcpay_api_key',
         'role',

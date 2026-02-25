@@ -39,6 +39,11 @@ return [
         'domain' => env('LNURL_AUTH_DOMAIN'),
     ],
 
+    'nostr_auth' => [
+        'enabled' => filter_var(env('NOSTR_AUTH_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
+        'challenge_ttl_seconds' => (int) env('NOSTR_AUTH_CHALLENGE_TTL', 300),
+    ],
+
 ];
 
 

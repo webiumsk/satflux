@@ -16,6 +16,7 @@ return [
     'password' => 'The provided password is incorrect.',
     'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
     'lightning_key_already_registered' => 'This Lightning wallet is already registered.',
-    'invalid_password_or_confirm_lnurl' => 'Invalid password or confirm with your Lightning wallet.',
+    'nostr_key_already_registered' => 'This Nostr key is already linked to an account.',
+    'invalid_password_or_confirm_lnurl' => 'Invalid password or confirm with your Lightning wallet or Nostr.',
 ];
 

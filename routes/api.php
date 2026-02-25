@@ -5,6 +5,7 @@ use App\Http\Controllers\AppController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LnurlAuthController;
+use App\Http\Controllers\Auth\NostrAuthController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExportController;
@@ -202,6 +203,12 @@ Route::middleware(['throttle:auth'])->group(function () {
     Route::get('/lnurl-auth/verify', [LnurlAuthController::class, 'verify']);
     Route::post('/lnurl-auth/complete-registration', [LnurlAuthController::class, 'completeRegistration']);
     Route::post('/lnurl-auth/check-email', [LnurlAuthController::class, 'checkEmailExists']);
+
+    // Nostr auth
+    Route::post('/nostr-auth/challenge', [NostrAuthController::class, 'challenge']);
+    Route::post('/nostr-auth/verify', [NostrAuthController::class, 'verify']);
+    Route::post('/nostr-auth/complete-registration', [NostrAuthController::class, 'completeRegistration']);
+    Route::post('/nostr-auth/check-email', [NostrAuthController::class, 'checkEmailExists']);
 });
 
 // Email verification (GET request from email link - no auth required, separate from main auth group)
@@ -214,6 +221,9 @@ Route::get('/lnurl-auth/enabled', [LnurlAuthController::class, 'enabled']);
 // LNURL-auth challenge status (polling every 1s = 60/min)
 Route::get('/lnurl-auth/challenge-status/{k1}', [LnurlAuthController::class, 'challengeStatus'])
     ->middleware(['throttle:60,1']);
+Route::get('/nostr-auth/enabled', [NostrAuthController::class, 'enabled']);
+Route::get('/nostr-auth/challenge-status/{id}', [NostrAuthController::class, 'challengeStatus'])
+    ->middleware(['throttle:60,1']);
 
 // Authenticated routes
 Route::middleware(['auth:sanctum'])->group(function () {
@@ -221,6 +231,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/user', [AccountController::class, 'user']);
     Route::post('/lnurl-auth/link-challenge', [LnurlAuthController::class, 'linkChallenge']);
     Route::post('/lnurl-auth/reveal-confirm-challenge', [LnurlAuthController::class, 'revealConfirmChallenge']);
+    Route::post('/nostr-auth/link-challenge', [NostrAuthController::class, 'linkChallenge']);
+    Route::post('/nostr-auth/reveal-confirm-challenge', [NostrAuthController::class, 'revealConfirmChallenge']);
     Route::get('/user/limits', [AccountController::class, 'limits']);
     Route::put('/user', [AccountController::class, 'updateProfile']);
     Route::put('/user/password', [AccountController::class, 'updatePassword']);
