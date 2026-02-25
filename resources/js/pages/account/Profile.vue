@@ -82,9 +82,9 @@
         </div>
       </div>
 
-      <!-- Login methods (Lightning) -->
+      <!-- Login methods (Lightning + Nostr) -->
       <div
-        v-if="lnurlAuthEnabled"
+        v-if="lnurlAuthEnabled || nostrAuthEnabled"
         class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
       >
         <div class="px-6 py-8 sm:p-10">
@@ -106,22 +106,41 @@
           </h4>
           <div class="space-y-4">
             <p class="text-sm text-gray-400">{{ t("account.login_methods_desc") }}</p>
-            <div v-if="authStore.user?.has_lightning_login" class="flex items-center gap-2 text-green-400">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-              <span>{{ t("account.lightning_login_enabled") }}</span>
+            <div v-if="lnurlAuthEnabled" class="flex items-center justify-between gap-2">
+              <div v-if="authStore.user?.has_lightning_login" class="flex items-center gap-2 text-green-400">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>{{ t("account.lightning_login_enabled") }}</span>
+              </div>
+              <button
+                v-else
+                type="button"
+                :disabled="lnurlLinkLoading"
+                @click="handleAddLightningLogin"
+                class="inline-flex items-center px-4 py-2 border border-indigo-500 rounded-lg text-sm font-medium text-indigo-400 hover:bg-indigo-500/10 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+              >
+                <span v-if="lnurlLinkLoading">{{ t("common.loading") }}</span>
+                <span v-else>{{ t("account.add_lightning_login") }}</span>
+              </button>
             </div>
-            <button
-              v-else
-              type="button"
-              :disabled="lnurlLinkLoading"
-              @click="handleAddLightningLogin"
-              class="inline-flex items-center px-4 py-2 border border-indigo-500 rounded-lg text-sm font-medium text-indigo-400 hover:bg-indigo-500/10 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
-              <span v-if="lnurlLinkLoading">{{ t("common.loading") }}</span>
-              <span v-else>{{ t("account.add_lightning_login") }}</span>
-            </button>
+            <div v-if="nostrAuthEnabled" class="flex items-center justify-between gap-2">
+              <div v-if="authStore.user?.has_nostr_login" class="flex items-center gap-2 text-green-400">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>{{ t("account.nostr_login_enabled") }}</span>
+              </div>
+              <button
+                v-else
+                type="button"
+                @click="showNostrLinkModal = true"
+                class="inline-flex items-center px-4 py-2 border border-amber-500/50 rounded-lg text-sm font-medium text-amber-400 hover:bg-amber-500/10 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              >
+                <span class="mr-1">🟠</span>
+                {{ t("account.add_nostr_login") }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -554,6 +573,17 @@
       @regenerate="requestNewLinkChallenge"
     />
 
+    <NostrAuthModal
+      :open="showNostrLinkModal"
+      mode="link"
+      @close="showNostrLinkModal = false"
+      @success="
+        showNostrLinkModal = false;
+        authStore.fetchUser();
+        flashStore.success(t('account.nostr_login_added'));
+      "
+    />
+
     <!-- Add Credit Modal -->
     <div
       v-if="showAddCreditModal"
@@ -629,13 +659,16 @@
 import { ref, onMounted, computed, onUnmounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
+import { useFlashStore } from "../../store/flash";
 import { usePricing, BETA_PRO_SATS_PER_MONTH } from "../../composables/usePricing";
 import { usePlanFeatures } from "../../composables/usePlanFeatures";
 import api from "../../services/api";
 import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
+import NostrAuthModal from "../../components/auth/NostrAuthModal.vue";
 
 const { t, locale } = useI18n();
 const authStore = useAuthStore();
+const flashStore = useFlashStore();
 const { pricing, formatSats, load: loadPricing } = usePricing();
 const { planFeatures, load: loadPlanFeatures } = usePlanFeatures();
 
@@ -660,7 +693,9 @@ const addingCredit = ref(false);
 const loadingSubscription = ref(false);
 
 const lnurlAuthEnabled = ref(false);
+const nostrAuthEnabled = ref(false);
 const showLnurlLinkModal = ref(false);
+const showNostrLinkModal = ref(false);
 const lnurlLinkUrl = ref("");
 const lnurlK1 = ref("");
 const lnurlLinkLoading = ref(false);
@@ -735,10 +770,15 @@ onMounted(async () => {
   }
 
   try {
-    const { data } = await api.get<{ enabled: boolean }>("/lnurl-auth/enabled");
-    lnurlAuthEnabled.value = data?.enabled === true;
+    const [lnurlRes, nostrRes] = await Promise.all([
+      api.get<{ enabled: boolean }>("/lnurl-auth/enabled"),
+      api.get<{ enabled: boolean }>("/nostr-auth/enabled"),
+    ]);
+    lnurlAuthEnabled.value = lnurlRes.data?.enabled === true;
+    nostrAuthEnabled.value = nostrRes.data?.enabled === true;
   } catch {
     lnurlAuthEnabled.value = false;
+    nostrAuthEnabled.value = false;
   }
 
   await loadSubscriptionDetails();

@@ -47,6 +47,7 @@ class AccountController extends Controller
             'offline_payment_methods' => $user->planFeature('offline_payment_methods'),
         ];
         $payload['has_lightning_login'] = ! empty($user->lightning_public_key);
+        $payload['has_nostr_login'] = ! empty($user->nostr_public_key);
 
         return response()->json($payload);
     }

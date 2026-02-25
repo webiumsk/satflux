@@ -43,16 +43,27 @@
                             {{ submitting ? 'Revealing...' : 'Reveal' }}
                         </button>
                     </div>
-                    <div v-if="hasLightningLogin" class="mt-4 pt-4 border-t border-gray-200">
-                        <p class="text-sm text-gray-600 mb-2">Or confirm with Lightning wallet</p>
-                        <button
-                            type="button"
-                            :disabled="lnurlRevealLoading || lnurlRevealPolling"
-                            @click="handleConfirmWithLightning"
-                            class="px-4 py-2 border border-indigo-500 rounded-md text-sm font-medium text-indigo-600 hover:bg-indigo-50 disabled:opacity-50"
-                        >
-                            {{ (lnurlRevealLoading || lnurlRevealPolling) ? 'Loading...' : 'Confirm with Lightning wallet' }}
-                        </button>
+                    <div v-if="hasLightningLogin || hasNostrLogin" class="mt-4 pt-4 border-t border-gray-200 space-y-3">
+                        <p class="text-sm text-gray-600 mb-2">Or confirm with wallet</p>
+                        <div class="flex flex-wrap gap-2">
+                            <button
+                                v-if="hasLightningLogin"
+                                type="button"
+                                :disabled="lnurlRevealLoading || lnurlRevealPolling"
+                                @click="handleConfirmWithLightning"
+                                class="px-4 py-2 border border-indigo-500 rounded-md text-sm font-medium text-indigo-600 hover:bg-indigo-50 disabled:opacity-50"
+                            >
+                                {{ (lnurlRevealLoading || lnurlRevealPolling) ? t('common.loading') : t('account.confirm_with_lightning_wallet') }}
+                            </button>
+                            <button
+                                v-if="hasNostrLogin"
+                                type="button"
+                                @click="showNostrRevealModal = true"
+                                class="px-4 py-2 border border-amber-500/50 rounded-md text-sm font-medium text-amber-600 hover:bg-amber-50"
+                            >
+                                🟠 {{ t('auth.nostr_confirm_reveal') }}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -210,6 +221,13 @@
             @close="closeLnurlRevealModal"
             @regenerate="requestNewRevealChallenge"
         />
+        <NostrAuthModal
+            :open="showNostrRevealModal"
+            mode="reveal"
+            :connection-id="connection?.id"
+            @close="showNostrRevealModal = false"
+            @success="onNostrRevealSuccess"
+        />
     </div>
 </template>
 
@@ -220,6 +238,7 @@ import { useAuthStore } from '../../store/auth';
 import api from '../../services/api';
 import WalletTypeIcon from '../WalletTypeIcon.vue';
 import LnurlQrModal from '../auth/LnurlQrModal.vue';
+import NostrAuthModal from '../auth/NostrAuthModal.vue';
 
 interface Props {
     connection: any;
@@ -234,6 +253,8 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const authStore = useAuthStore();
 const hasLightningLogin = computed(() => !!authStore.user?.has_lightning_login);
+const hasNostrLogin = computed(() => !!authStore.user?.has_nostr_login);
+const showNostrRevealModal = ref(false);
 
 const password = ref('');
 const submitting = ref(false);
@@ -410,6 +431,26 @@ async function handleReveal() {
     } finally {
         submitting.value = false;
     }
+}
+
+async function onNostrRevealSuccess(payload?: { secret?: string }) {
+    showNostrRevealModal.value = false;
+    const secret = payload?.secret;
+    if (!secret) return;
+    revealedSecret.value = secret;
+    revealed.value = true;
+    await fetchBtcPayStoreUrl();
+    countdown.value = 60;
+    countdownTimer = setInterval(() => {
+        countdown.value--;
+        if (countdown.value <= 0) emit('close');
+    }, 1000);
+    setTimeout(() => {
+        if (secretInput.value) {
+            secretInput.value.focus();
+            secretInput.value.select();
+        }
+    }, 100);
 }
 
 async function copyToClipboard() {
