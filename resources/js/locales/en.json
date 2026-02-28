@@ -904,7 +904,7 @@
     "new_ticket_type": "New Ticket Type",
     "tt_name": "Name",
     "tt_name_placeholder": "e.g. General Admission",
-    "tt_price": "Price (sats)",
+    "tt_price": "Price",
     "tt_description": "Description",
     "tt_description_placeholder": "Optional",
     "tt_quantity": "Quantity",
