@@ -173,7 +173,10 @@ class TicketService
     public function deleteTicketType(string $storeId, string $eventId, string $ticketTypeId, ?string $userApiKey = null): array
     {
         return $this->withApiKey($userApiKey, function () use ($storeId, $eventId, $ticketTypeId) {
-            return $this->client->delete("/api/v1/stores/{$storeId}/satoshi-tickets/events/{$eventId}/ticket-types/{$ticketTypeId}");
+            return $this->client->delete(
+                "/api/v1/stores/{$storeId}/satoshi-tickets/ticket-types/{$ticketTypeId}",
+                ['eventId' => $eventId]
+            );
         });
     }
 
@@ -183,7 +186,11 @@ class TicketService
     public function toggleTicketType(string $storeId, string $eventId, string $ticketTypeId, ?string $userApiKey = null): array
     {
         return $this->withApiKey($userApiKey, function () use ($storeId, $eventId, $ticketTypeId) {
-            return $this->client->put("/api/v1/stores/{$storeId}/satoshi-tickets/events/{$eventId}/ticket-types/{$ticketTypeId}/toggle", []);
+            return $this->client->put(
+                "/api/v1/stores/{$storeId}/satoshi-tickets/ticket-types/{$ticketTypeId}/toggle",
+                [],
+                ['eventId' => $eventId]
+            );
         });
     }
 
