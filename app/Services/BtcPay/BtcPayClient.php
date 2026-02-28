@@ -75,10 +75,17 @@ class BtcPayClient
 
     /**
      * Make a PUT request to BTCPay API.
+     *
+     * @param  array<string, string|int|bool>  $query  Optional query parameters
      */
-    public function put(string $endpoint, array $data = []): array
+    public function put(string $endpoint, array $data = [], array $query = []): array
     {
-        return $this->request('PUT', $endpoint, ['json' => $data]);
+        $options = ['json' => $data];
+        if ($query !== []) {
+            $options['query'] = $query;
+        }
+
+        return $this->request('PUT', $endpoint, $options);
     }
 
     /**
@@ -91,10 +98,14 @@ class BtcPayClient
 
     /**
      * Make a DELETE request to BTCPay API.
+     *
+     * @param  array<string, string|int|bool>  $query  Optional query parameters
      */
-    public function delete(string $endpoint): array
+    public function delete(string $endpoint, array $query = []): array
     {
-        return $this->request('DELETE', $endpoint);
+        $options = $query !== [] ? ['query' => $query] : [];
+
+        return $this->request('DELETE', $endpoint, $options);
     }
 
     /**
