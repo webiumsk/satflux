@@ -268,7 +268,7 @@
     "new_ticket_type": "Nuevo tipo de entrada",
     "tt_name": "Nombre",
     "tt_name_placeholder": "ej. Entrada general",
-    "tt_price": "Precio (sats)",
+    "tt_price": "Precio",
     "tt_description": "Descripción",
     "tt_description_placeholder": "Opcional",
     "tt_quantity": "Cantidad",

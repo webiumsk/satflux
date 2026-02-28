@@ -905,7 +905,7 @@
     "new_ticket_type": "Nový typ vstupenky",
     "tt_name": "Názov",
     "tt_name_placeholder": "napr. Všeobecný vstup",
-    "tt_price": "Cena (sats)",
+    "tt_price": "Cena",
     "tt_description": "Popis",
     "tt_description_placeholder": "Voliteľne",
     "tt_quantity": "Množstvo",
