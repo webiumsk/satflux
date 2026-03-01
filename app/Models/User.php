@@ -196,6 +196,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's messages (notifications).
+     */
+    public function messages(): HasMany
+    {
+        return $this->hasMany(UserMessage::class);
+    }
+
+    /**
      * Get the current active subscription for the user.
      * Returns the most recent active subscription, or null if none exists.
      * 

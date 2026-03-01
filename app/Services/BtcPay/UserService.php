@@ -163,20 +163,15 @@ class UserService
     public function createApiKey(string $userId, array $permissions = [], array $specificStores = [], string $label = 'satflux.io API Key'): array
     {
         try {
-            // Default permissions if none provided
-            // Note: Some permissions may not be available in all BTCPay versions
-            // 'btcpay.store.cancreatestores' is not a valid permission string
-            // 'btcpay.store.canmanagepaymentrequests' may not be available in some versions
-            // Store creation is handled via user permissions/roles, not API key permissions
-            $defaultPermissions = [
+            $defaultPermissions = config('btcpay_merchant_permissions.merchant_api_key', [
                 'btcpay.store.cancreateinvoice',
                 'btcpay.store.canviewstoresettings',
                 'btcpay.store.canmodifyinvoices',
                 'btcpay.store.canmodifystoresettings',
                 'btcpay.store.canviewinvoices',
-            ];
-
-            // Use provided permissions if not empty, otherwise use defaults
+                'btcpay.user.canviewnotificationsforuser',
+                'btcpay.user.canmanagenotificationsforuser',
+            ]);
             $finalPermissions = !empty($permissions) ? $permissions : $defaultPermissions;
 
             $data = [
@@ -204,18 +199,22 @@ class UserService
     }
 
     /**
-     * List API keys for a user in BTCPay Server.
-     * 
-     * @param string $userId BTCPay user ID
-     * @return array List of API keys
+     * Revoke (delete) an API key for a user in BTCPay Server.
+     * Requires server-level API key with user management permissions.
+     *
+     * BTCPay Greenfield API accepts the API key string itself (not an ID).
+     * There is no GET endpoint to list user API keys.
+     *
+     * @param  string  $userId  BTCPay user ID
+     * @param  string  $apiKey  The API key string to revoke
      * @throws \App\Services\BtcPay\Exceptions\BtcPayException
      */
-    public function listApiKeys(string $userId): array
+    public function deleteUserApiKey(string $userId, string $apiKey): void
     {
         try {
-            return $this->client->get("/api/v1/users/{$userId}/api-keys");
+            $this->client->delete("/api/v1/users/{$userId}/api-keys/{$apiKey}");
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
-            Log::error('BTCPay API keys listing failed', [
+            Log::error('BTCPay API key revocation failed', [
                 'error' => $e->getMessage(),
                 'userId' => $userId,
             ]);

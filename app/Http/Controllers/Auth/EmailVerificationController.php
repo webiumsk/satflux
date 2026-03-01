@@ -294,11 +294,10 @@ class EmailVerificationController extends Controller
                                 'email_confirmed' => $emailConfirmed,
                             ]);
 
-                            // Create API key with default permissions for store management
-                            // Empty array will use defaults from UserService
+                            // Create API key with permissions from config/btcpay_merchant_permissions.php
                             $apiKeyData = $this->userService->createApiKey(
                                 $user->btcpay_user_id,
-                                [], // Empty array will trigger default permissions in UserService
+                                [], // Empty = use config('btcpay_merchant_permissions.merchant_api_key')
                                 [], // Allow access to all user's stores (empty = no restriction)
                                 'satflux.io API Key - ' . $user->email
                             );

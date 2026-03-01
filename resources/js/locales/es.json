@@ -868,6 +868,7 @@
   },
   "header": {
     "dashboard": "Tablero de control",
+    "messages": "Mensajes",
     "stores": "Tiendas",
     "support": "Soporte",
     "admin": "Administración",
@@ -884,6 +885,19 @@
     "sign_in": "Iniciar sesión",
     "my_stores": "Mis tiendas",
     "view_support": "View support"
+  },
+  "messages": {
+    "title": "Mensajes",
+    "subtitle": "Tus notificaciones de BTCPay",
+    "mark_all_read": "Marcar todo como leído",
+    "not_available_title": "Notificaciones no disponibles",
+    "not_available_subtitle": "Las notificaciones de BTCPay no están disponibles para tu cuenta. Si necesitas ayuda, contacta a soporte.",
+    "empty_title": "Aún no hay mensajes",
+    "empty_subtitle": "Cuando recibas notificaciones, aparecerán aquí.",
+    "view": "Ver",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "yesterday": "Ayer"
   },
   "errors": {
     "generic": "Ocurrió un error",

@@ -89,7 +89,7 @@ class StoreSettingsController extends Controller
             'payment_method_criteria' => $get('paymentMethodCriteria', []),
             'timezone' => $get('timeZone', $get('timezone', 'UTC')),
             'preferred_exchange' => $get('preferredExchange', $get('preferred_exchange')),
-            'btcpay_store_url' => config('services.btcpay.base_url') . '/stores/' . $store->btcpay_store_id,
+            'store_url' => rtrim(config('app.url', ''), '/') . '/stores/' . $store->id,
         ];
     }
 
@@ -189,7 +189,7 @@ class StoreSettingsController extends Controller
             'payment_method_criteria' => $request->input('payment_method_criteria', []),
             'timezone' => $request->timezone,
             'preferred_exchange' => $request->input('preferred_exchange'),
-            'btcpay_store_url' => config('services.btcpay.base_url') . '/stores/' . $store->btcpay_store_id,
+            'store_url' => rtrim(config('app.url', ''), '/') . '/stores/' . $store->id,
         ];
     }
 
