@@ -208,6 +208,8 @@ class InvoiceController extends Controller
                 'amount',
                 'currency',
                 'paidAmount',
+                'paidSats',
+                'paymentRate',
                 'tax',
                 'tip',
                 'discount',
@@ -257,6 +259,19 @@ class InvoiceController extends Controller
 
                     $posData = $this->parsePosData($invoice['metadata'] ?? []);
 
+                    $paidSats = '';
+                    $paymentRate = '';
+                    if (in_array($invoice['status'] ?? '', ['Settled', 'Complete'], true)) {
+                        $sats = $this->invoiceService->getReceivedSatsForInvoice($store->btcpay_store_id, $invoice, $userApiKey);
+                        $paidSats = $sats !== null ? (string) $sats : '';
+                        $rate = $this->invoiceService->getPaymentRateForInvoice(
+                            $store->btcpay_store_id,
+                            $invoice['id'] ?? '',
+                            $userApiKey
+                        );
+                        $paymentRate = $rate ?? '';
+                    }
+
                     fputcsv($handle, [
                         $invoice['id'] ?? '',
                         $store->name ?? '',
@@ -266,6 +281,8 @@ class InvoiceController extends Controller
                         $invoice['amount'] ?? '',
                         $invoice['currency'] ?? '',
                         $invoice['paidAmount'] ?? '',
+                        $paidSats,
+                        $paymentRate,
                         $posData['tax'],
                         $posData['tip'],
                         $posData['discount'],
@@ -300,7 +317,7 @@ class InvoiceController extends Controller
 
             $headers = [
                 'invoiceId', 'store', 'pos', 'createdTime', 'status', 'amount', 'currency',
-                'paidAmount', 'tax', 'tip', 'discount', 'paymentMethod', 'buyerEmail', 'orderId', 'checkoutLink',
+                'paidAmount', 'paidSats', 'paymentRate', 'tax', 'tip', 'discount', 'paymentMethod', 'buyerEmail', 'orderId', 'checkoutLink',
             ];
             $sheet->fromArray($headers, null, 'A1');
 
@@ -326,6 +343,19 @@ class InvoiceController extends Controller
                     $paymentMethods = isset($invoice['availablePaymentMethods']) && is_array($invoice['availablePaymentMethods'])
                         ? implode(',', $invoice['availablePaymentMethods']) : '';
 
+                    $paidSats = '';
+                    $paymentRate = '';
+                    if (in_array($invoice['status'] ?? '', ['Settled', 'Complete'], true)) {
+                        $sats = $this->invoiceService->getReceivedSatsForInvoice($store->btcpay_store_id, $invoice, $userApiKey);
+                        $paidSats = $sats !== null ? (string) $sats : '';
+                        $rate = $this->invoiceService->getPaymentRateForInvoice(
+                            $store->btcpay_store_id,
+                            $invoice['id'] ?? '',
+                            $userApiKey
+                        );
+                        $paymentRate = $rate ?? '';
+                    }
+
                     $sheet->fromArray([
                         $invoice['id'] ?? '',
                         $store->name ?? '',
@@ -335,6 +365,8 @@ class InvoiceController extends Controller
                         $invoice['amount'] ?? '',
                         $invoice['currency'] ?? '',
                         $invoice['paidAmount'] ?? '',
+                        $paidSats,
+                        $paymentRate,
                         $posData['tax'],
                         $posData['tip'],
                         $posData['discount'],

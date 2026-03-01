@@ -60,7 +60,7 @@ class GenerateXlsxExport implements ShouldQueue
 
             $headers = [
                 'invoiceId', 'store', 'pos', 'createdTime', 'status', 'amount', 'currency',
-                'paidAmount', 'tax', 'tip', 'discount', 'paymentMethod', 'buyerEmail', 'orderId', 'checkoutLink',
+                'paidAmount', 'paidSats', 'paymentRate', 'tax', 'tip', 'discount', 'paymentMethod', 'buyerEmail', 'orderId', 'checkoutLink',
             ];
             $sheet->fromArray($headers, null, 'A1');
 
@@ -87,6 +87,19 @@ class GenerateXlsxExport implements ShouldQueue
                     $paymentMethods = isset($invoice['availablePaymentMethods']) && is_array($invoice['availablePaymentMethods'])
                         ? implode(',', $invoice['availablePaymentMethods']) : '';
 
+                    $paidSats = '';
+                    $paymentRate = '';
+                    if (in_array($invoice['status'] ?? '', ['Settled', 'Complete'], true)) {
+                        $sats = $invoiceService->getReceivedSatsForInvoice($store->btcpay_store_id, $invoice, $userApiKey);
+                        $paidSats = $sats !== null ? (string) $sats : '';
+                        $rate = $invoiceService->getPaymentRateForInvoice(
+                            $store->btcpay_store_id,
+                            $invoice['id'] ?? '',
+                            $userApiKey
+                        );
+                        $paymentRate = $rate ?? '';
+                    }
+
                     $sheet->fromArray([
                         $invoice['id'] ?? '',
                         $store->name ?? '',
@@ -96,6 +109,8 @@ class GenerateXlsxExport implements ShouldQueue
                         $invoice['amount'] ?? '',
                         $invoice['currency'] ?? '',
                         $invoice['paidAmount'] ?? '',
+                        $paidSats,
+                        $paymentRate,
                         $posData['tax'],
                         $posData['tip'],
                         $posData['discount'],
