@@ -44,6 +44,7 @@ class StoreApiKeyService
             'btcpay.store.canmodifyinvoices',
             'btcpay.store.webhooks.canmodifywebhooks',
             'btcpay.store.canviewstoresettings',
+            'btcpay.store.canmodifystoresettings',
             'btcpay.store.cancreatenonapprovedpullpayments',
         ];
 
