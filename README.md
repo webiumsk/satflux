@@ -167,7 +167,7 @@ The system provides two CSV export formats:
 
 ### Standard CSV Format
 
-- Columns: invoiceId, createdTime, status, amount, currency, paidAmount, paymentMethod, buyerEmail, orderId, checkoutLink
+- Columns: invoiceId, createdTime, status, amount, currency, paidAmount, paidSats, paymentRate, paymentMethod, buyerEmail, orderId, checkoutLink
 - Suitable for general invoice management
 
 ### Accounting-Friendly CSV Format

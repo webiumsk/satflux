@@ -131,6 +131,59 @@ class InvoiceService
     }
 
     /**
+     * Get the payment rate (exchange rate vs fiat at time of payment) for an invoice.
+     * BTCPay Greenfield payment-methods return "rate" (e.g. 1 BTC = 64392.23 USD).
+     * Returns rate from the first payment method that received payment; null if unavailable.
+     */
+    public function getPaymentRateForInvoice(string $storeId, string $invoiceId, ?string $userApiKey = null): ?string
+    {
+        $methods = $this->getInvoicePaymentMethods($storeId, $invoiceId, $userApiKey);
+        foreach ($methods as $pm) {
+            $paid = null;
+            if (isset($pm['paymentMethodPaid']) && (is_numeric($pm['paymentMethodPaid']) || is_string($pm['paymentMethodPaid']))) {
+                $paid = (float) $pm['paymentMethodPaid'];
+            }
+            if ($paid === null && isset($pm['totalPaid']) && (is_numeric($pm['totalPaid']) || is_string($pm['totalPaid']))) {
+                $paid = (float) $pm['totalPaid'];
+            }
+            if (($paid !== null && $paid > 0) || ! empty($pm['payments'] ?? [])) {
+                $rate = $pm['rate'] ?? null;
+                if ($rate !== null && $rate !== '') {
+                    return (string) $rate;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get received amount in satoshis for an invoice.
+     * For SATS: uses amount directly. For BTC: amount × 10⁸.
+     * For fiat (EUR, USD, etc.): fetches payment-methods and sums actual BTC received.
+     */
+    public function getReceivedSatsForInvoice(string $storeId, array $invoice, ?string $userApiKey = null): ?int
+    {
+        $currency = strtoupper(trim((string) ($invoice['currency'] ?? '')));
+        $amount = (float) ($invoice['amount'] ?? 0);
+
+        if ($currency === 'SATS') {
+            return $amount > 0 ? (int) round($amount) : null;
+        }
+        if ($currency === 'BTC') {
+            return $amount > 0 ? (int) round($amount * 100_000_000) : null;
+        }
+
+        $invoiceId = $invoice['id'] ?? '';
+        if ($invoiceId === '') {
+            return null;
+        }
+        $methods = $this->getInvoicePaymentMethods($storeId, $invoiceId, $userApiKey);
+        $sats = self::sumReceivedSatsFromPaymentMethods($methods);
+
+        return $sats > 0 ? $sats : null;
+    }
+
+    /**
      * Extract total received sats from invoice payment methods (BTC/Lightning only).
      * BTCPay Greenfield returns: paymentMethodId (e.g. BTC-CHAIN, BTC-LN), currency, paymentMethodPaid, totalPaid, payments[].
      *

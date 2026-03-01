@@ -135,6 +135,8 @@ class GenerateCsvExport implements ShouldQueue
             'amount',
             'currency',
             'paidAmount',
+            'paidSats',
+            'paymentRate',
             'tax',
             'tip',
             'discount',
@@ -165,6 +167,19 @@ class GenerateCsvExport implements ShouldQueue
             foreach ($invoices as $invoice) {
                 $posData = $this->parsePosData($invoice['metadata'] ?? []);
 
+                $paidSats = '';
+                $paymentRate = '';
+                if (in_array($invoice['status'] ?? '', ['Settled', 'Complete'], true)) {
+                    $sats = $invoiceService->getReceivedSatsForInvoice($store->btcpay_store_id, $invoice, $userApiKey);
+                    $paidSats = $sats !== null ? (string) $sats : '';
+                    $rate = $invoiceService->getPaymentRateForInvoice(
+                        $store->btcpay_store_id,
+                        $invoice['id'] ?? '',
+                        $userApiKey
+                    );
+                    $paymentRate = $rate ?? '';
+                }
+
                 fputcsv($handle, [
                     $invoice['id'] ?? '',
                     $store->name ?? '',
@@ -174,6 +189,8 @@ class GenerateCsvExport implements ShouldQueue
                     $invoice['amount'] ?? '',
                     $invoice['currency'] ?? '',
                     $invoice['paidAmount'] ?? '',
+                    $paidSats,
+                    $paymentRate,
                     $posData['tax'],
                     $posData['tip'],
                     $posData['discount'],
