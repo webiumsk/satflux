@@ -338,6 +338,7 @@ const availablePermissions = [
   { value: 'btcpay.store.canmodifyinvoices', label: 'Modify invoices' },
   { value: 'btcpay.store.webhooks.canmodifywebhooks', label: "Modify selected stores' webhooks" },
   { value: 'btcpay.store.canviewstoresettings', label: 'View your stores' },
+  { value: 'btcpay.store.canmodifystoresettings', label: 'Modify store settings' },
   { value: 'btcpay.store.cancreatenonapprovedpullpayments', label: 'Create non-approved pull payments in selected stores' },
 ];
 
@@ -349,6 +350,7 @@ const form = ref({
     'btcpay.store.canmodifyinvoices',
     'btcpay.store.canmodifywebhooks',
     'btcpay.store.canviewstoresettings',
+    'btcpay.store.canmodifystoresettings',
     'btcpay.store.canmodifypullpayments',
   ],
   callback_url: '',
@@ -390,6 +392,7 @@ function openCreateForm() {
       'btcpay.store.canmodifyinvoices',
       'btcpay.store.webhooks.canmodifywebhooks',
       'btcpay.store.canviewstoresettings',
+      'btcpay.store.canmodifystoresettings',
       'btcpay.store.cancreatenonapprovedpullpayments',
     ],
     callback_url: '',
