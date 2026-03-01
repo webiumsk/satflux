@@ -149,7 +149,7 @@
                                 <div v-if="connection.type === 'blink'" class="space-y-2 text-sm text-gray-700">
                                     <p><strong>Steps to configure Blink wallet:</strong></p>
                                     <ol class="list-decimal list-inside space-y-1 ml-2">
-                                        <li>Click "Open BTCPay Store Settings" button below to open Lightning settings in a new tab</li>
+                                        <li>Click "Open Wallet Connection" button below to open Store settings in a new tab</li>
                                         <li>Select "Use custom lightning node"</li>
                                         <li>In the Connection String field, paste the connection string above</li>
                                         <li>Save the settings</li>
@@ -162,7 +162,7 @@
                                 <div v-else class="space-y-2 text-sm text-gray-700">
                                     <p><strong>Steps to configure Aqua (Boltz) wallet:</strong></p>
                                     <ol class="list-decimal list-inside space-y-1 ml-2">
-                                        <li>Click "Open BTCPay Store Settings" button below to open Lightning settings in a new tab</li>
+                                        <li>Click "Open Wallet Connection" button below to open Store settings in a new tab</li>
                                         <li>Select Boltz plugin (enable it first if not already enabled)</li>
                                         <li>In the Core Descriptor field, paste the descriptor above</li>
                                         <li>Save the settings</li>
@@ -188,7 +188,7 @@
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                             </svg>
-                            Open BTCPay Store Settings
+                            Open Wallet Connection
                         </a>
                         <div class="flex space-x-3 ml-auto">
                             <button

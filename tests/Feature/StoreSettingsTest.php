@@ -72,7 +72,7 @@ class StoreSettingsTest extends TestCase
             ->assertJsonPath('data.default_currency', 'EUR')
             ->assertJsonPath('data.timezone', 'Europe/Vienna')
             ->assertJsonPath('data.preferred_exchange', 'kraken')
-            ->assertJsonPath('data.btcpay_store_url', 'https://btcpay.test/stores/store-1');
+            ->assertJsonPath('data.store_url', rtrim(config('app.url'), '/') . '/stores/' . $store->id);
     }
 
     public function test_user_cannot_get_store_settings_for_other_users_store(): void

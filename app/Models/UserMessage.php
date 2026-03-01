@@ -1,0 +1,74 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class UserMessage extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'user_id',
+        'type',
+        'title',
+        'body',
+        'link',
+        'link_text',
+        'read_at',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'read_at' => 'datetime',
+        ];
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function isUnread(): bool
+    {
+        return $this->read_at === null;
+    }
+
+    public function markAsRead(): void
+    {
+        if ($this->read_at === null) {
+            $this->update(['read_at' => now()]);
+        }
+    }
+
+    /**
+     * Create a message for a user. Use from webhooks, jobs, or controllers.
+     *
+     * @param  int  $userId
+     * @param  string  $title
+     * @param  string|null  $body
+     * @param  string  $type  info|success|warning|invoice|subscription|support
+     * @param  string|null  $link  Optional URL
+     * @param  string|null  $linkText  Optional link label
+     */
+    public static function createForUser(
+        int $userId,
+        string $title,
+        ?string $body = null,
+        string $type = 'info',
+        ?string $link = null,
+        ?string $linkText = null
+    ): self {
+        return self::create([
+            'user_id' => $userId,
+            'type' => $type,
+            'title' => $title,
+            'body' => $body,
+            'link' => $link,
+            'link_text' => $linkText,
+        ]);
+    }
+}

@@ -721,6 +721,7 @@
   },
   "header": {
     "dashboard": "Nástenka",
+    "messages": "Správy",
     "stores": "Obchody",
     "support": "Podpora",
     "view_support": "Zobraziť podporu",
@@ -737,6 +738,19 @@
     "features": "Features",
     "how_it_works": "Ako to funguje",
     "my_stores": "Moje obchody"
+  },
+  "messages": {
+    "title": "Správy",
+    "subtitle": "Vaše notifikácie z BTCPay",
+    "mark_all_read": "Označiť všetko ako prečítané",
+    "not_available_title": "Notifikácie nie sú dostupné",
+    "not_available_subtitle": "Notifikácie z BTCPay nie sú pre váš účet dostupné. Ak potrebujete pomoc, kontaktujte podporu.",
+    "empty_title": "Zatiaľ žiadne správy",
+    "empty_subtitle": "Keď dostanete notifikácie, zobrazia sa tu.",
+    "view": "Zobraziť",
+    "previous": "Predchádzajúca",
+    "next": "Ďalšia",
+    "yesterday": "Včera"
   },
   "errors": {
     "generic": "Vyskytla sa chyba",

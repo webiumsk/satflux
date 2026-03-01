@@ -424,7 +424,8 @@ class WalletConnectionController extends Controller
     }
 
     /**
-     * Get BTCPay Store Settings URL for wallet connection (support role only).
+     * Get Satflux store wallet-connection URL for wallet connection (support role only).
+     * Users never log in to BTCPay - links must stay within Satflux.
      */
     public function getBtcPayStoreUrl(Request $request, WalletConnection $connection)
     {
@@ -432,17 +433,18 @@ class WalletConnectionController extends Controller
         if (!$connection->relationLoaded('store')) {
             $connection->load('store');
         }
-        
+
         $store = $connection->store;
         if (!$store) {
             return response()->json(['error' => 'Store not found'], 404);
         }
-        
-        $baseUrl = config('services.btcpay.base_url');
-        
+
+        $panelUrl = rtrim(config('app.url', ''), '/');
+        $url = "{$panelUrl}/stores/{$store->id}/wallet-connection";
+
         return response()->json([
             'data' => [
-                'url' => "{$baseUrl}/stores/{$store->btcpay_store_id}/lightning/BTC/setup",
+                'url' => $url,
                 'store_id' => $store->btcpay_store_id,
                 'store_name' => $store->name,
             ],

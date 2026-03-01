@@ -148,8 +148,28 @@
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               "
             >
-              {{ t("header.docs") }}
-            </component>
+            {{ t("header.docs") }}
+          </component>
+
+          <!-- Messages icon with unread badge -->
+          <component
+            :is="isInertia ? Link : RouterLink"
+            :href="isInertia ? '/messages' : undefined"
+            :to="!isInertia ? '/messages' : undefined"
+            class="relative p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+            :class="isActive('/messages') ? 'text-indigo-400 bg-indigo-600/20' : ''"
+            :aria-label="t('header.messages')"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            <span
+              v-if="messageCount > 0"
+              class="absolute top-0.5 right-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full"
+            >
+              {{ messageCount > 99 ? "99+" : messageCount }}
+            </span>
+          </component>
 
           <!-- Mobile menu button (right side, mobile only) -->
           <button
@@ -221,6 +241,29 @@
                   </p>
                 </div>
                 <div class="py-1">
+                  <component
+                    :is="isInertia ? Link : RouterLink"
+                    :href="isInertia ? '/messages' : undefined"
+                    :to="!isInertia ? '/messages' : undefined"
+                    @click="closeUserMenu"
+                    class="group flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors relative"
+                  >
+                    <svg
+                      class="mr-3 h-5 w-5 text-gray-400 group-hover:text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    {{ t("header.messages") }}
+                    <span
+                      v-if="messageCount > 0"
+                      class="ml-auto inline-flex items-center justify-center min-w-[20px] px-1.5 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full"
+                    >
+                      {{ messageCount > 99 ? "99+" : messageCount }}
+                    </span>
+                  </component>
                   <component
                     :is="isInertia ? Link : RouterLink"
                     :href="isInertia ? '/account' : undefined"
@@ -501,6 +544,29 @@
         </div>
         <component
           :is="isInertia ? Link : RouterLink"
+          :href="isInertia ? '/messages' : undefined"
+          :to="!isInertia ? '/messages' : undefined"
+          @click="closeMobileMenu"
+          class="flex items-center px-4 py-3 rounded-xl text-base font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-colors relative"
+        >
+          <svg
+            class="w-5 h-5 mr-3"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+          {{ t("header.messages") }}
+          <span
+            v-if="messageCount > 0"
+            class="ml-auto inline-flex items-center justify-center min-w-[20px] px-1.5 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full"
+          >
+            {{ messageCount > 99 ? "99+" : messageCount }}
+          </span>
+        </component>
+        <component
+          :is="isInertia ? Link : RouterLink"
           :href="isInertia ? '/account' : undefined"
           :to="!isInertia ? '/account' : undefined"
           @click="closeMobileMenu"
@@ -565,6 +631,7 @@ const authStore = useAuthStore();
 const showUserMenu = ref(false);
 const showMobileMenu = ref(false);
 const supportCount = ref(0);
+const messageCount = ref(0);
 const supportToastMessage = ref("");
 const supportToastUrl = ref("/support/wallet-connections");
 const supportToastVisible = ref(false);
@@ -638,6 +705,16 @@ const loadSupportCount = async () => {
   }
 };
 
+const loadMessageCount = async () => {
+  try {
+    const response = await api.get("/messages/count");
+    messageCount.value = response.data.data?.unread ?? 0;
+  } catch (error) {
+    console.error("Failed to load message count:", error);
+    messageCount.value = 0;
+  }
+};
+
 function showSupportToast(message: string, url = "/support/wallet-connections") {
   if (supportToastTimeout) clearTimeout(supportToastTimeout);
   supportToastMessage.value = message;
@@ -663,6 +740,7 @@ if (vueRouter) {
     if (authStore.user?.role === "support" || authStore.user?.role === "admin") {
       setTimeout(() => loadSupportCount(), 1000);
     }
+    setTimeout(() => loadMessageCount(), 500);
   });
 } else if (isInertia) {
   inertiaRouter.on("navigate", () => {
@@ -670,10 +748,21 @@ if (vueRouter) {
     if (authStore.user?.role === "support" || authStore.user?.role === "admin") {
       setTimeout(() => loadSupportCount(), 1000);
     }
+    setTimeout(() => loadMessageCount(), 500);
   });
 }
 
+let messagesUpdatedUnsub: (() => void) | null = null;
+
 onMounted(() => {
+  // Load message count for all authenticated users
+  loadMessageCount();
+
+  // Listen for messages updated (e.g. from Messages page)
+  const onMessagesUpdated = () => loadMessageCount();
+  window.addEventListener("messages-updated", onMessagesUpdated);
+  messagesUpdatedUnsub = () => window.removeEventListener("messages-updated", onMessagesUpdated);
+
   // Load support count if user has support/admin role
   if (authStore.user?.role === "support" || authStore.user?.role === "admin") {
     loadSupportCount();
@@ -698,6 +787,7 @@ onMounted(() => {
 onUnmounted(() => {
   if (supportCountInterval) clearInterval(supportCountInterval);
   if (echoUnsub) echoUnsub();
+  if (messagesUpdatedUnsub) messagesUpdatedUnsub();
 });
 
 // Click outside directive

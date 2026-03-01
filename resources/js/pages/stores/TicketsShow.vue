@@ -1380,8 +1380,8 @@
                         </svg>
                       </button>
                       <a
-                        v-if="btcPayUrl"
-                        :href="getCheckInUrl(event)"
+                        v-if="props.store"
+                        :href="getPanelCheckInUrl(event)"
                         target="_blank"
                         class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
                         :title="t('tickets.open_checkin')"
@@ -1703,7 +1703,6 @@ import {
   type Ticket,
 } from "../../store/tickets";
 import { useFlashStore } from "../../store/flash";
-import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
 import api from "../../services/api";
 import AppShowLayout from "../../components/stores/AppShowLayout.vue";
 import DatePicker from "../../components/ui/DatePicker.vue";
@@ -1713,7 +1712,6 @@ import UrlQrModal from "../../components/ui/UrlQrModal.vue";
 const { t } = useI18n();
 const ticketsStore = useTicketsStore();
 const flashStore = useFlashStore();
-const { btcPayUrl, load: loadBtcPayUrl } = useBtcPayUrl();
 const isInertia = inject<boolean>("inertia", false);
 
 const props = withDefaults(
@@ -2311,12 +2309,6 @@ async function handleCheckIn(eventId: string, ticket: Ticket) {
   }
 }
 
-function getCheckInUrl(event: TicketEvent): string {
-  const storeId = props.store?.btcpay_store_id;
-  if (!btcPayUrl.value || !storeId) return "#";
-  return `${btcPayUrl.value}/plugins/${storeId}/ticketevent/${event.id}/tickettype/ticket-checkin`;
-}
-
 function getPanelCheckInUrl(event: TicketEvent): string {
   const path = `/stores/${props.store.id}/ticket-check-in/${event.id}`;
   return typeof window !== "undefined"
@@ -2409,7 +2401,6 @@ function exportTicketsCsv(event: TicketEvent) {
 // ── Lifecycle ───────────────────────────────────
 onMounted(() => {
   loadEvents();
-  loadBtcPayUrl();
 });
 </script>
 

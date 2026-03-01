@@ -29,6 +29,7 @@ use App\Http\Controllers\StripeController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\MessageController;
 use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\FaqController;
 use App\Http\Controllers\Admin\DocumentationArticleController;
@@ -242,6 +243,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/user/api-keys', [\App\Http\Controllers\UserApiKeyController::class, 'store'])
         ->middleware(EnsurePlanAllowsUserApiKeyCreation::class);
     Route::delete('/user/api-keys/{user_api_key}', [\App\Http\Controllers\UserApiKeyController::class, 'destroy']);
+
+    // Messages (notifications)
+    Route::get('/messages', [MessageController::class, 'index']);
+    Route::get('/messages/count', [MessageController::class, 'count']);
+    Route::patch('/messages/{id}/read', [MessageController::class, 'markAsRead'])->where('id', '[a-zA-Z0-9_-]+');
+    Route::post('/messages/mark-all-read', [MessageController::class, 'markAllAsRead']);
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index']);

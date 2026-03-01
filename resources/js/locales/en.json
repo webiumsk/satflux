@@ -720,6 +720,7 @@
   },
   "header": {
     "dashboard": "Dashboard",
+    "messages": "Messages",
     "stores": "Stores",
     "support": "Support",
     "view_support": "View support",
@@ -736,6 +737,19 @@
     "features": "Features",
     "how_it_works": "How it works",
     "my_stores": "My Stores"
+  },
+  "messages": {
+    "title": "Messages",
+    "subtitle": "Your BTCPay notifications",
+    "mark_all_read": "Mark all as read",
+    "not_available_title": "Notifications not available",
+    "not_available_subtitle": "BTCPay notifications are not available for your account. If you need help, please contact support.",
+    "empty_title": "No messages yet",
+    "empty_subtitle": "When you receive notifications, they will appear here.",
+    "view": "View",
+    "previous": "Previous",
+    "next": "Next",
+    "yesterday": "Yesterday"
   },
   "errors": {
     "generic": "An error occurred",
