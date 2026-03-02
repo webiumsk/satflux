@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\OgImageController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StoreAppPageController;
+use App\Http\Controllers\WooCommerceSatoshiTicketsController;
 use App\Http\Middleware\EnsureStoreOwnership;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -60,6 +61,12 @@ Route::get('/login', function () {
 Route::get('/auth/verify-email/{id}/{hash}', function () {
     return view('app');
 })->where(['id' => '[0-9]+', 'hash' => '[a-f0-9]+']);
+
+// WooCommerce Satoshi Tickets - Connect flow for WP plugin
+Route::middleware(['auth'])->group(function () {
+    Route::get('/woocommerce/satoshi-tickets/connect', [WooCommerceSatoshiTicketsController::class, 'connect']);
+    Route::post('/woocommerce/satoshi-tickets/connect/select-store', [WooCommerceSatoshiTicketsController::class, 'selectStore']);
+});
 
 // Inertia routes: store apps (must be before SPA catch-all)
 Route::middleware(['auth'])->group(function () {
