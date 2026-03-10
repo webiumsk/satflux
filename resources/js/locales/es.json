@@ -1174,6 +1174,8 @@
     "step6_badge_tickets": "Entradas vendidas",
     "step6_badge_checkin": "Registrado",
     "step6_scan_label": "Escanear QR o buscar entrada",
+    "step6_plugins_title": "Plugins",
+    "step6_plugin_woocommerce": "WooCommerce",
     "step7_title": "Exportes contables",
     "step7_text": "Descarga exportes CSV/PDF de transacciones compatibles con software contable estándar.",
     "features_analytics_title": "Análisis y exportes",

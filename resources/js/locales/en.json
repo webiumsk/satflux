@@ -1005,6 +1005,8 @@
     "step6_badge_tickets": "Tickets sold",
     "step6_badge_checkin": "Checked-in",
     "step6_scan_label": "Scan QR or search ticket",
+    "step6_plugins_title": "Plugins",
+    "step6_plugin_woocommerce": "WooCommerce",
     "step7_title": "Accounting Exports",
     "step7_text": "Download CSV/PDF transaction exports compatible with standard accounting software.",
     "features_analytics_title": "Analytics & Exports",
