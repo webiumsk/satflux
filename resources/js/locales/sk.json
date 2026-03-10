@@ -1006,6 +1006,8 @@
     "step6_badge_tickets": "Predaných lístkov",
     "step6_badge_checkin": "Checked-in",
     "step6_scan_label": "Skenujte QR alebo hľadajte lístok",
+    "step6_plugins_title": "Pluginy",
+    "step6_plugin_woocommerce": "WooCommerce",
     "step7_title": "Export do účtovníctva",
     "step7_text": "Stiahnite si CSV/PDF exporty transakcií kompatibilné s bežnými účtovnými softvérmi.",
     "features_analytics_title": "Prehľady a Exporty",

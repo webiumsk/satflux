@@ -515,9 +515,26 @@
                  <div class="inline-flex items-center gap-3 mb-4">
                    <h3 class="text-3xl md:text-5xl font-bold text-white">{{ t('landing.step6_title') }}</h3>
                  </div>
-                 <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
+                 <p class="text-gray-400 text-lg md:text-xl leading-relaxed mb-6">
                    {{ t('landing.step6_text') }}
                  </p>
+                 <div class="space-y-3">
+                   <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">{{ t('landing.step6_plugins_title') }}</p>
+                   <div class="flex flex-wrap gap-3">
+                     <a
+                       href="https://github.com/webiumsk/btcpay-greenfield-tickets/releases"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       title="BTCPay Satoshi Tickets for WooCommerce - GitHub Releases"
+                       class="inline-flex flex-wrap items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-600 hover:border-orange-500/50 hover:bg-gray-800/80 transition-all group"
+                     >
+                       <span class="font-semibold text-white group-hover:text-orange-400 transition-colors">{{ t('landing.step6_plugin_woocommerce') }}</span>
+                       <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT" class="h-4" />
+                       <img src="https://img.shields.io/github/v/release/webiumsk/btcpay-greenfield-tickets?label=release" alt="release" class="h-4" />
+                     </a>
+                     <!-- Future platforms can be added here -->
+                   </div>
+                 </div>
                </div>
             </div>
 
