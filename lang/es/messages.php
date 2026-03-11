@@ -62,6 +62,7 @@ return [
     'tickets_event_limit_free' => 'En el plan gratuito puedes tener como máximo :max evento por tienda. Actualiza a Pro para eventos ilimitados.',
     'tickets_quantity_required_when_capacity' => 'La cantidad es obligatoria cuando el evento tiene límite de capacidad.',
     'tickets_cannot_delete_event_with_sold_tickets' => 'No se puede eliminar un evento con entradas vendidas.',
+    'tickets_cannot_deactivate_event_with_ticket_types' => 'No se puede desactivar un evento con tipos de entrada configurados.',
 
     // Apps
     'app_created' => 'App created successfully',

@@ -22,11 +22,20 @@ class TicketService
 
     /**
      * List all events for a store.
+     * By default includes only active events. Set includeInactive=true to also return inactive/disabled events
+     * (newly created events start as inactive on BTCPay until activated).
+     * Requires Satoshi Tickets plugin to support includeInactive query param (plugin PR may be needed).
      */
-    public function listEvents(string $storeId, ?string $userApiKey = null, bool $expired = false): array
+    public function listEvents(string $storeId, ?string $userApiKey = null, bool $expired = false, bool $includeInactive = true): array
     {
-        return $this->withApiKey($userApiKey, function () use ($storeId, $expired) {
-            $query = $expired ? ['expired' => 'true'] : [];
+        return $this->withApiKey($userApiKey, function () use ($storeId, $expired, $includeInactive) {
+            $query = [];
+            if ($expired) {
+                $query['expired'] = 'true';
+            }
+            if ($includeInactive) {
+                $query['includeInactive'] = 'true';
+            }
             return $this->client->get("/api/v1/stores/{$storeId}/satoshi-tickets/events", $query);
         });
     }
@@ -254,6 +263,7 @@ class TicketService
     /**
      * Keys allowed in plugin CreateEventRequest / UpdateEventRequest (plugin ignores unknown fields).
      * Plugin only uses eventLogoFileId on input; eventLogoUrl is resolved server-side for response.
+     * enable: when true, event is created as Active; when false, as Disabled (inactive).
      */
     protected const EVENT_PAYLOAD_KEYS = [
         'title',
@@ -269,6 +279,7 @@ class TicketService
         'hasMaximumCapacity',
         'maximumEventCapacity',
         'eventLogoFileId',
+        'enable',
     ];
 
     /**

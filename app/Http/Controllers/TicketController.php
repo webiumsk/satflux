@@ -36,6 +36,20 @@ class TicketController extends Controller
 
         $events = array_map([$this, 'normalizeEventLogo'], $events);
 
+        // Add ticketTypesCount so UI can disable "deactivate" when event has ticket types
+        foreach ($events as &$event) {
+            try {
+                $types = $this->ticketService->listTicketTypes(
+                    $store->btcpay_store_id,
+                    $event['id'] ?? '',
+                    $userApiKey
+                );
+                $event['ticketTypesCount'] = is_array($types) ? count($types) : 0;
+            } catch (\Throwable) {
+                $event['ticketTypesCount'] = 0;
+            }
+        }
+
         return response()->json(['data' => $events]);
     }
 
@@ -89,11 +103,12 @@ class TicketController extends Controller
             'maximumEventCapacity' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'eventLogoUrl' => ['sometimes', 'nullable', 'string', 'max:500', Rule::when($request->filled('eventLogoUrl'), ['url'])],
             'eventLogoFileId' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'enable' => ['sometimes', 'boolean'],
         ]);
 
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
-        // Build request data — include eventLogoFileId (plugin 1.5) and optional eventLogoUrl
+        // Build request data — include eventLogoFileId (plugin 1.5), optional eventLogoUrl, and enable (default true = Active)
         $data = array_filter($request->only([
             'title',
             'description',
@@ -109,7 +124,12 @@ class TicketController extends Controller
             'maximumEventCapacity',
             'eventLogoUrl',
             'eventLogoFileId',
+            'enable',
         ]), (fn ($v, $k) => $v !== null && ($k !== 'eventLogoUrl' || (string) $v !== '')), ARRAY_FILTER_USE_BOTH);
+        // Default enable to true so new events are Active and visible in the list immediately
+        if (! array_key_exists('enable', $data)) {
+            $data['enable'] = true;
+        }
         if ($request->has('eventLogoFileId')) {
             $data['eventLogoFileId'] = $request->input('eventLogoFileId');
         }
@@ -266,10 +286,36 @@ class TicketController extends Controller
 
     /**
      * Toggle event status (Active/Disabled).
+     * Events with ticket types configured cannot be deactivated.
      */
     public function toggleEvent(Store $store, string $eventId)
     {
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
+
+        try {
+            $current = $this->ticketService->getEvent(
+                $store->btcpay_store_id,
+                $eventId,
+                $userApiKey
+            );
+        } catch (\Throwable) {
+            $current = null;
+        }
+
+        // Only active events are returned by getEvent; if we have it and it's Active, we're about to deactivate
+        if ($current !== null && ($current['eventState'] ?? '') === 'Active') {
+            $types = $this->ticketService->listTicketTypes(
+                $store->btcpay_store_id,
+                $eventId,
+                $userApiKey
+            );
+            $ticketTypesCount = is_array($types) ? count($types) : 0;
+            if ($ticketTypesCount > 0) {
+                return response()->json([
+                    'message' => __('messages.tickets_cannot_deactivate_event_with_ticket_types'),
+                ], 422);
+            }
+        }
 
         $event = $this->ticketService->toggleEvent(
             $store->btcpay_store_id,
