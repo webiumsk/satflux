@@ -308,6 +308,7 @@
     "delete_confirm": "¿Eliminar \"{title}\"? No se puede deshacer.",
     "event_deleted": "Evento eliminado",
     "cannot_delete_event_with_sold_tickets": "No se puede eliminar un evento con entradas vendidas.",
+    "cannot_deactivate_event_with_ticket_types": "No se puede desactivar un evento con tipos de entrada configurados.",
     "ticket_type_updated": "Tipo de entrada actualizado",
     "ticket_type_created": "Tipo de entrada creado",
     "ticket_type_disabled": "Tipo desactivado",

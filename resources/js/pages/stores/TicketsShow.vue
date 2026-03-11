@@ -753,16 +753,26 @@
                     >
                       <button
                         @click="handleToggleEvent(event)"
+                        :disabled="
+                          event.eventState === 'Active' &&
+                          (event.ticketTypesCount ?? 0) > 0
+                        "
                         :title="
-                          event.eventState === 'Active'
-                            ? t('tickets.disable')
-                            : t('tickets.activate')
+                          event.eventState === 'Active' &&
+                          (event.ticketTypesCount ?? 0) > 0
+                            ? t('tickets.cannot_deactivate_event_with_ticket_types')
+                            : event.eventState === 'Active'
+                              ? t('tickets.disable')
+                              : t('tickets.activate')
                         "
                         :class="[
                           'p-2 rounded-lg transition-colors text-sm',
-                          event.eventState === 'Active'
-                            ? 'text-yellow-400 hover:bg-yellow-500/10'
-                            : 'text-green-400 hover:bg-green-500/10',
+                          event.eventState === 'Active' &&
+                          (event.ticketTypesCount ?? 0) > 0
+                            ? 'cursor-not-allowed opacity-50'
+                            : event.eventState === 'Active'
+                              ? 'text-yellow-400 hover:bg-yellow-500/10'
+                              : 'text-green-400 hover:bg-green-500/10',
                         ]"
                       >
                         <svg
@@ -2117,6 +2127,13 @@ function handleEditEvent(event: TicketEvent) {
 }
 
 async function handleToggleEvent(event: TicketEvent) {
+  if (
+    event.eventState === "Active" &&
+    (event.ticketTypesCount ?? 0) > 0
+  ) {
+    showError(t("tickets.cannot_deactivate_event_with_ticket_types"));
+    return;
+  }
   clearMessages();
   try {
     await ticketsStore.toggleEvent(props.store.id, event.id);
