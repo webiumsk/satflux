@@ -86,6 +86,9 @@ class StoreUpdateRequest extends FormRequest
             'payment_method_criteria' => ['nullable', 'array'],
             'timezone' => ['required', 'string', 'timezone'],
             'preferred_exchange' => ['nullable', 'string', 'max:255'],
+            'lnurl_enabled' => ['nullable', 'boolean'],
+            'lnurl_classic_mode' => ['nullable', 'boolean'],
+            'lnurl_allow_payee_comment' => ['nullable', 'boolean'],
         ];
     }
 }

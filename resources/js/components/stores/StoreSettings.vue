@@ -33,8 +33,8 @@
         </button>
       </nav>
 
-      <!-- Tabs: General, Payment, Rates, Checkout (one form) -->
-      <div v-show="['settings', 'payment', 'rates', 'checkout'].includes(activeSettingsTab)" class="px-6 py-8">
+      <!-- Tabs: General, Payment, Rates, Checkout, Lightning (one form) -->
+      <div v-show="['settings', 'payment', 'rates', 'checkout', 'lightning'].includes(activeSettingsTab)" class="px-6 py-8">
         <form @submit.prevent="handleSettingsSubmit" class="space-y-8">
           <StoreSettingsGeneral
             v-show="activeSettingsTab === 'settings'"
@@ -74,8 +74,12 @@
             :payment-method-criteria-type-options="paymentMethodCriteriaTypeOptions"
             :default-lang-options="defaultLangOptions"
           />
+          <StoreSettingsLightning
+            v-show="activeSettingsTab === 'lightning'"
+            :form="settingsForm"
+          />
 
-          <template v-if="['settings', 'payment', 'rates', 'checkout'].includes(activeSettingsTab)">
+          <template v-if="['settings', 'payment', 'rates', 'checkout', 'lightning'].includes(activeSettingsTab)">
           <div class="flex justify-end pt-4">
             <button
               type="submit"
@@ -198,6 +202,7 @@ import StoreSettingsGeneral from './StoreSettingsGeneral.vue';
 import StoreSettingsPayment from './StoreSettingsPayment.vue';
 import StoreSettingsRates from './StoreSettingsRates.vue';
 import StoreSettingsCheckout from './StoreSettingsCheckout.vue';
+import StoreSettingsLightning from './StoreSettingsLightning.vue';
 import UpgradeModal from './UpgradeModal.vue';
 
 const { t } = useI18n();
@@ -228,12 +233,13 @@ const canEditCheckoutOptions = computed(() => hasPaidAccess.value);
 const canEditArchivedOption = computed(() => hasPaidAccess.value);
 const showUpgradeModal = ref(false);
 
-const activeSettingsTab = ref<'settings' | 'payment' | 'rates' | 'checkout'>('settings');
+const activeSettingsTab = ref<'settings' | 'payment' | 'rates' | 'checkout' | 'lightning'>('settings');
 const settingsTabs = [
   { id: 'settings' as const, labelKey: 'stores.settings_tab_general' },
   { id: 'payment' as const, labelKey: 'stores.settings_tab_payment' },
   { id: 'rates' as const, labelKey: 'stores.settings_tab_rates' },
   { id: 'checkout' as const, labelKey: 'stores.settings_tab_checkout' },
+  { id: 'lightning' as const, labelKey: 'stores.settings_tab_lightning' },
 ];
 
 const loading = ref(false);
@@ -263,6 +269,9 @@ const settingsForm = ref<Record<string, any>>({
   lightning_amount_in_satoshi: false,
   lightning_private_route_hints: false,
   on_chain_with_ln_invoice_fallback: false,
+  lnurl_enabled: true,
+  lnurl_classic_mode: true,
+  lnurl_allow_payee_comment: true,
   redirect_automatically: false,
   show_recommended_fee: true,
   recommended_fee_block_target: 1,
@@ -469,6 +478,9 @@ async function fetchSettings() {
     settingsForm.value.lightning_amount_in_satoshi = !!d.lightning_amount_in_satoshi;
     settingsForm.value.lightning_private_route_hints = !!d.lightning_private_route_hints;
     settingsForm.value.on_chain_with_ln_invoice_fallback = !!d.on_chain_with_ln_invoice_fallback;
+    settingsForm.value.lnurl_enabled = d.lnurl_enabled !== false;
+    settingsForm.value.lnurl_classic_mode = d.lnurl_classic_mode !== false;
+    settingsForm.value.lnurl_allow_payee_comment = d.lnurl_allow_payee_comment !== false;
     settingsForm.value.redirect_automatically = !!d.redirect_automatically;
     settingsForm.value.show_recommended_fee = d.show_recommended_fee !== false;
     settingsForm.value.recommended_fee_block_target = d.recommended_fee_block_target ?? 1;
@@ -546,7 +558,6 @@ async function handleSettingsSubmit() {
     if (!canEditCheckoutOptions.value) {
       const checkoutFields = [
         'default_lang', 'html_title', 'receipt', 'support_url', 'display_expiration_timer',
-        'lightning_amount_in_satoshi', 'lightning_private_route_hints', 'on_chain_with_ln_invoice_fallback',
         'redirect_automatically', 'pay_join_enabled', 'auto_detect_language', 'show_pay_in_wallet_button',
         'show_store_header', 'celebrate_payment', 'play_sound_on_payment', 'lazy_payment_methods',
         'default_payment_method', 'payment_method_criteria',
