@@ -24,7 +24,7 @@
     <meta property="og:url" content="{{ url()->current() }}">
     <meta property="og:title" content="{{ config('app.name', 'satflux.io') }} - Bitcoin Payment Control Panel">
     <meta property="og:description" content="Accept Bitcoin & Lightning payments without limits. Non-custodial BTCPay Server control panel with multi-store management, PoS terminals, and advanced analytics.">
-    <meta property="og:image" content="{{ config('app.url') }}/og-image.png">
+    <meta property="og:image" content="{{ config('app.url') }}/og-image.webp">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
 
@@ -33,7 +33,7 @@
     <meta name="twitter:url" content="{{ url()->current() }}">
     <meta name="twitter:title" content="{{ config('app.name', 'satflux.io') }} - Bitcoin Payment Control Panel">
     <meta name="twitter:description" content="Accept Bitcoin & Lightning payments without limits. Non-custodial BTCPay Server control panel with multi-store management, PoS terminals, and advanced analytics.">
-    <meta name="twitter:image" content="{{ config('app.url') }}/og-image.png">
+    <meta name="twitter:image" content="{{ config('app.url') }}/og-image.webp">
 
     @vite(['resources/css/app.css', 'resources/js/app.ts'])
 
