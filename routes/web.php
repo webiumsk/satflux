@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Route;
 // /storage/* is served by Laravel 12 built-in (ServeFile). Deploy runs storage:link.
 
 // OG Image for social media sharing
-Route::get('/og-image.png', [OgImageController::class, 'generate']);
+Route::get('/og-image.webp', [OgImageController::class, 'generate']);
 
 // SEO: robots.txt with dynamic sitemap URL
 Route::get('/robots.txt', function () {
