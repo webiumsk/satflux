@@ -90,6 +90,10 @@ class StoreSettingsController extends Controller
             'timezone' => $get('timeZone', $get('timezone', 'UTC')),
             'preferred_exchange' => $get('preferredExchange', $get('preferred_exchange')),
             'store_url' => rtrim(config('app.url', ''), '/') . '/stores/' . $store->id,
+            // LNURL: default enabled so Lightning Addresses work; BTCPay may expose lnurlEnabled, lnurlClassicMode, allowPayeeToPassComment
+            'lnurl_enabled' => $get('lnurlEnabled', true),
+            'lnurl_classic_mode' => $get('lnurlClassicMode', true),
+            'lnurl_allow_payee_comment' => $get('allowPayeeToPassComment', true),
         ];
     }
 
@@ -190,6 +194,9 @@ class StoreSettingsController extends Controller
             'timezone' => $request->timezone,
             'preferred_exchange' => $request->input('preferred_exchange'),
             'store_url' => rtrim(config('app.url', ''), '/') . '/stores/' . $store->id,
+            'lnurl_enabled' => $request->boolean('lnurl_enabled'),
+            'lnurl_classic_mode' => $request->boolean('lnurl_classic_mode'),
+            'lnurl_allow_payee_comment' => $request->boolean('lnurl_allow_payee_comment'),
         ];
     }
 
@@ -239,6 +246,9 @@ class StoreSettingsController extends Controller
             'payment_method_criteria' => 'paymentMethodCriteria',
             'timezone' => 'timeZone',
             'preferred_exchange' => 'preferredExchange',
+            'lnurl_enabled' => 'lnurlEnabled',
+            'lnurl_classic_mode' => 'lnurlClassicMode',
+            'lnurl_allow_payee_comment' => 'allowPayeeToPassComment',
         ];
 
         $payload = [];

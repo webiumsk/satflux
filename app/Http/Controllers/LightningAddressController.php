@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Store;
 use App\Services\BtcPay\LightningAddressService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
@@ -252,6 +253,11 @@ class LightningAddressController extends Controller
                 $data,
                 $userApiKey
             );
+
+            // When creating the first LN Address, ensure store settings cache is cleared so
+            // next load of Store Settings shows fresh data (LNURL is defaulted to enabled in our API).
+            $apiKeyHash = md5($userApiKey);
+            Cache::forget("btcpay:store:{$store->btcpay_store_id}:{$apiKeyHash}");
 
             return response()->json([
                 'data' => $address,
