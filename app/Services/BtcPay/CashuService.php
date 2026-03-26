@@ -35,7 +35,7 @@ class CashuService
     public function saveSettings(string $storeId, array $data, string $apiKey): array
     {
         return $this->withUserKey($apiKey, function () use ($storeId, $data) {
-            // $data = ['mintUrl' => ..., 'unit' => ..., 'lightningAddress' => ..., 'enabled' => true]
+            // $data = ['mintUrl' => ..., 'lightningAddress' => ..., 'enabled' => true]
             return $this->client->put("/api/v1/stores/{$storeId}/plugins/cashumelt/settings", $data);
         });
     }

@@ -418,7 +418,6 @@ Získanie Cashu nastavení obchodu.
 {
   "storeId": "abc123",
   "mintUrl": "https://mint.example.com",
-  "unit": "sat",
   "lightningAddress": "merchant@blink.sv",
   "enabled": true
 }
@@ -431,7 +430,6 @@ Uloženie nastavení.
 ```json
 {
   "mintUrl": "https://mint.example.com",
-  "unit": "sat",
   "lightningAddress": "merchant@blink.sv",
   "enabled": true
 }
@@ -440,7 +438,6 @@ Uloženie nastavení.
 Validácia:
 - `mintUrl` musí začínať `https://`
 - `lightningAddress` musí mať formát `user@domain`
-- `unit` musí byť `"sat"` alebo `"usd"`
 
 **Odpoveď 400** pri validačnej chybe:
 ```json
@@ -466,7 +463,6 @@ Limit: 1–200 (default 50).
     "quoteId": "abc-xyz",
     "invoiceId": "btcpay-invoice-id",
     "amountSats": 1000,
-    "unit": "sat",
     "state": "PAID",
     "settlementState": "SETTLED",
     "settlementError": null,
@@ -536,7 +532,6 @@ created_at, updated_at
 ```
 StoreId            PK varchar(100)
 MintUrl            varchar(500) — musí byť HTTPS
-Unit               varchar(20) — "sat" alebo "usd"
 LightningAddress   varchar(500) — formát user@domain
 Enabled            boolean
 CreatedAt, UpdatedAt
@@ -547,7 +542,7 @@ CreatedAt, UpdatedAt
 QuoteId            PK — ID mint quote
 InvoiceId          — ID BTCPay faktúry
 StoreId
-AmountSats, Unit
+AmountSats
 Bolt11Invoice      — Lightning invoice od mint-u
 State              UNPAID → PAID
 SettlementState    PENDING → SETTLED alebo FAILED

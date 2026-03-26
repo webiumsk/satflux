@@ -415,40 +415,21 @@
                     </p>
                   </div>
 
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label for="unit" class="block text-sm font-medium text-gray-500 mb-2">
-                        {{ t("stores.cashu_unit_label") }}
-                      </label>
-                      <select
-                        id="unit"
-                        v-model="form.unit"
-                        class="block w-full rounded-lg p-2 border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                      >
-                        <option value="sat">{{ t("stores.cashu_unit_sat_option") }}</option>
-                        <option value="usd">{{ t("stores.cashu_unit_usd_option") }}</option>
-                      </select>
-                      <p class="mt-2 text-sm text-gray-500 leading-relaxed">
-                        {{ t("stores.cashu_unit_hint") }}
-                      </p>
-                    </div>
-
-                    <div>
-                      <label for="lightning_address" class="block text-sm font-medium text-gray-500 mb-2">
-                        {{ t("stores.cashu_lightning_address_label") }}
-                      </label>
-                      <input
-                        id="lightning_address"
-                        v-model="form.lightning_address"
-                        type="text"
-                        required
-                        :placeholder="t('stores.cashu_lightning_address_placeholder')"
-                        class="block w-full rounded-lg p-2 border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                      />
-                      <p class="mt-2 text-sm text-gray-500 leading-relaxed">
-                        {{ t("stores.cashu_lightning_address_hint") }}
-                      </p>
-                    </div>
+                  <div>
+                    <label for="lightning_address" class="block text-sm font-medium text-gray-500 mb-2">
+                      {{ t("stores.cashu_lightning_address_label") }}
+                    </label>
+                    <input
+                      id="lightning_address"
+                      v-model="form.lightning_address"
+                      type="text"
+                      required
+                      :placeholder="t('stores.cashu_lightning_address_placeholder')"
+                      class="block w-full rounded-lg p-2 border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    />
+                    <p class="mt-2 text-sm text-gray-500 leading-relaxed">
+                      {{ t("stores.cashu_lightning_address_hint") }}
+                    </p>
                   </div>
 
                   <p class="text-sm text-gray-500 leading-relaxed border-t border-gray-700 pt-4">
@@ -818,7 +799,6 @@ const form = ref({
   connection_string: "",
   // Cashu fields (default mint prefilled as a starting point)
   mint_url: DEFAULT_CASHU_MINT_URL,
-  unit: "sat" as "sat" | "usd",
   lightning_address: "",
 });
 
@@ -878,7 +858,6 @@ const canProceedFromStep2 = computed(() => {
     const lnAddress = (form.value.lightning_address ?? "").trim();
     if (!mintUrl || !mintUrl.startsWith("https://")) return false;
     if (!lnAddress.match(/^[^@]+@[^@]+$/)) return false;
-    if (!form.value.unit) return false;
     return true;
   }
 
@@ -972,7 +951,6 @@ async function handleSubmit() {
 
     if (form.value.wallet_type === 'cashu') {
       payload.mint_url = form.value.mint_url;
-      payload.unit = form.value.unit;
       payload.lightning_address = form.value.lightning_address;
     } else {
       payload.connection_string = form.value.connection_string;

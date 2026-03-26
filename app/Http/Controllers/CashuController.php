@@ -24,7 +24,6 @@ class CashuController extends Controller
         return response()->json([
             'data' => [
                 'mint_url' => $settings['mintUrl'] ?? null,
-                'unit' => $settings['unit'] ?? null,
                 'lightning_address' => $settings['lightningAddress'] ?? null,
                 'enabled' => $settings['enabled'] ?? true,
             ],
@@ -37,7 +36,6 @@ class CashuController extends Controller
 
         $request->validate([
             'mint_url' => ['required', 'string', 'url', 'starts_with:https://'],
-            'unit' => ['required', 'string', Rule::in(['sat', 'usd'])],
             'lightning_address' => ['required', 'string', 'regex:/^[^@]+@[^@]+$/'],
             'enabled' => ['sometimes', 'boolean'],
         ]);
@@ -46,7 +44,6 @@ class CashuController extends Controller
 
         $payload = [
             'mintUrl' => $request->mint_url,
-            'unit' => $request->unit,
             'lightningAddress' => $request->lightning_address,
             'enabled' => $request->boolean('enabled', true),
         ];
@@ -56,7 +53,6 @@ class CashuController extends Controller
         return response()->json([
             'data' => [
                 'mint_url' => $updated['mintUrl'] ?? $request->mint_url,
-                'unit' => $updated['unit'] ?? $request->unit,
                 'lightning_address' => $updated['lightningAddress'] ?? $request->lightning_address,
                 'enabled' => $updated['enabled'] ?? ($payload['enabled'] ?? true),
             ],
@@ -95,7 +91,6 @@ class CashuController extends Controller
                 'quote_id' => $item['quoteId'] ?? null,
                 'invoice_id' => $item['invoiceId'] ?? null,
                 'amount_sats' => $item['amountSats'] ?? null,
-                'unit' => $item['unit'] ?? null,
                 'state' => $item['state'] ?? null,
                 'settlement_state' => $item['settlementState'] ?? null,
                 'settlement_error' => $item['settlementError'] ?? null,

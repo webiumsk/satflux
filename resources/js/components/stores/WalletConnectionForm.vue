@@ -52,37 +52,19 @@
                 <p v-if="cashuErrors.mint_url" class="mt-2 text-sm text-red-400">{{ cashuErrors.mint_url }}</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label for="cashu-unit" class="block text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">
-                        {{ t('stores.cashu_unit_label') }}
-                    </label>
-                    <select
-                        id="cashu-unit"
-                        v-model="cashuForm.unit"
-                        class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3"
-                    >
-                        <option value="sat">{{ t('stores.cashu_unit_sat_option') }}</option>
-                        <option value="usd">{{ t('stores.cashu_unit_usd_option') }}</option>
-                    </select>
-                    <p class="mt-2 text-sm text-gray-500 leading-relaxed">{{ t('stores.cashu_unit_hint') }}</p>
-                    <p v-if="cashuErrors.unit" class="mt-2 text-sm text-red-400">{{ cashuErrors.unit }}</p>
-                </div>
-
-                <div>
-                    <label for="cashu-lightning-address" class="block text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">
-                        {{ t('stores.cashu_lightning_address_label') }}
-                    </label>
-                    <input
-                        id="cashu-lightning-address"
-                        v-model="cashuForm.lightning_address"
-                        type="text"
-                        class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3"
-                        :placeholder="t('stores.cashu_lightning_address_placeholder')"
-                    />
-                    <p class="mt-2 text-sm text-gray-500 leading-relaxed">{{ t('stores.cashu_lightning_address_hint') }}</p>
-                    <p v-if="cashuErrors.lightning_address" class="mt-2 text-sm text-red-400">{{ cashuErrors.lightning_address }}</p>
-                </div>
+            <div>
+                <label for="cashu-lightning-address" class="block text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">
+                    {{ t('stores.cashu_lightning_address_label') }}
+                </label>
+                <input
+                    id="cashu-lightning-address"
+                    v-model="cashuForm.lightning_address"
+                    type="text"
+                    class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3"
+                    :placeholder="t('stores.cashu_lightning_address_placeholder')"
+                />
+                <p class="mt-2 text-sm text-gray-500 leading-relaxed">{{ t('stores.cashu_lightning_address_hint') }}</p>
+                <p v-if="cashuErrors.lightning_address" class="mt-2 text-sm text-red-400">{{ cashuErrors.lightning_address }}</p>
             </div>
 
             <p class="text-sm text-gray-500 leading-relaxed border-t border-gray-700 pt-4">
@@ -475,13 +457,11 @@ const cashuErrorMessage = ref('');
 const cashuErrors = reactive<Record<string, string>>({});
 const cashuForm = reactive({
     mint_url: '',
-    unit: 'sat' as 'sat' | 'usd',
     lightning_address: '',
     enabled: true,
 });
 const cashuOriginal = reactive({
     mint_url: '',
-    unit: 'sat' as 'sat' | 'usd',
     lightning_address: '',
     enabled: true,
 });
@@ -491,7 +471,6 @@ const canSaveCashu = computed(() => {
     const lnAddress = (cashuForm.lightning_address ?? '').trim();
     if (!mintUrl || !mintUrl.startsWith('https://')) return false;
     if (!lnAddress.match(/^[^@]+@[^@]+$/)) return false;
-    if (!cashuForm.unit) return false;
     return true;
 });
 
@@ -509,12 +488,10 @@ async function fetchCashuSettings() {
         const d = response.data?.data ?? {};
 
         cashuForm.mint_url = d.mint_url ?? '';
-        cashuForm.unit = (d.unit ?? 'sat') as 'sat' | 'usd';
         cashuForm.lightning_address = d.lightning_address ?? '';
         cashuForm.enabled = d.enabled ?? true;
 
         cashuOriginal.mint_url = cashuForm.mint_url;
-        cashuOriginal.unit = cashuForm.unit;
         cashuOriginal.lightning_address = cashuForm.lightning_address;
         cashuOriginal.enabled = cashuForm.enabled;
     } catch (err: any) {
@@ -534,7 +511,6 @@ async function handleSaveCashu() {
     try {
         const payload = {
             mint_url: cashuForm.mint_url,
-            unit: cashuForm.unit,
             lightning_address: cashuForm.lightning_address,
             enabled: true,
         };
@@ -543,12 +519,10 @@ async function handleSaveCashu() {
         const d = response.data?.data ?? {};
 
         cashuForm.mint_url = d.mint_url ?? cashuForm.mint_url;
-        cashuForm.unit = (d.unit ?? cashuForm.unit) as 'sat' | 'usd';
         cashuForm.lightning_address = d.lightning_address ?? cashuForm.lightning_address;
         cashuForm.enabled = d.enabled ?? cashuForm.enabled;
 
         cashuOriginal.mint_url = cashuForm.mint_url;
-        cashuOriginal.unit = cashuForm.unit;
         cashuOriginal.lightning_address = cashuForm.lightning_address;
         cashuOriginal.enabled = cashuForm.enabled;
 
