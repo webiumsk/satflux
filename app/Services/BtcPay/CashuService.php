@@ -28,7 +28,7 @@ class CashuService
     public function getSettings(string $storeId, string $apiKey): array
     {
         return $this->withUserKey($apiKey, function () use ($storeId) {
-            return $this->client->get("/api/v1/stores/{$storeId}/plugins/cashu/settings");
+            return $this->client->get("/api/v1/stores/{$storeId}/plugins/cashumelt/settings");
         });
     }
 
@@ -36,7 +36,7 @@ class CashuService
     {
         return $this->withUserKey($apiKey, function () use ($storeId, $data) {
             // $data = ['mintUrl' => ..., 'unit' => ..., 'lightningAddress' => ..., 'enabled' => true]
-            return $this->client->put("/api/v1/stores/{$storeId}/plugins/cashu/settings", $data);
+            return $this->client->put("/api/v1/stores/{$storeId}/plugins/cashumelt/settings", $data);
         });
     }
 
@@ -44,7 +44,7 @@ class CashuService
     {
         return $this->withUserKey($apiKey, function () use ($storeId, $params) {
             // $params = ['limit' => ..., 'offset' => ..., 'settlementState' => 'SETTLED'|'PENDING'|'FAILED']
-            return $this->client->get("/api/v1/stores/{$storeId}/plugins/cashu/payments", $params);
+            return $this->client->get("/api/v1/stores/{$storeId}/plugins/cashumelt/payments", $params);
         });
     }
 
@@ -52,7 +52,7 @@ class CashuService
     {
         return $this->withUserKey($apiKey, function () use ($storeId, $quoteId) {
             return $this->client->post(
-                "/api/v1/stores/{$storeId}/plugins/cashu/payments/{$quoteId}/retry",
+                "/api/v1/stores/{$storeId}/plugins/cashumelt/payments/{$quoteId}/retry",
                 []
             );
         });

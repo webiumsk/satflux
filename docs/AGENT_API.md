@@ -408,7 +408,7 @@ Authorization: token <btcpay_api_key>
 
 ### Endpointy
 
-**Základná cesta**: `https://{btcpay_host}/api/v1/stores/{storeId}/plugins/cashu`
+**Základná cesta**: `https://{btcpay_host}/api/v1/stores/{storeId}/plugins/cashumelt`
 
 #### GET `/settings`
 Získanie Cashu nastavení obchodu.
@@ -509,7 +509,7 @@ Funguje len ak:
 
 ### Cashu Checkout Polling (verejný endpoint)
 
-`GET /plugins/cashu/poll/{quoteId}`
+`GET /plugins/cashumelt/poll/{quoteId}`
 
 Volá sa každé 2 sekundy z checkout stránky. Bez autentifikácie.
 

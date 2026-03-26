@@ -16,7 +16,7 @@ Satflux iba vie, že store má `wallet_type = 'cashu'`.
 ## Čo existuje na BTCPay strane (Cashu Plugin API)
 
 ```
-Base: https://{btcpay_host}/api/v1/stores/{btcpayStoreId}/plugins/cashu
+Base: https://{btcpay_host}/api/v1/stores/{btcpayStoreId}/plugins/cashumelt
 Auth: token {merchant_btcpay_api_key}   ← oprávnenie CanModifyStoreSettings
 ```
 
@@ -97,7 +97,7 @@ class CashuService
     public function getSettings(string $btcpayStoreId, string $apiKey): ?array
     {
         return $this->client->get(
-            "/api/v1/stores/{$btcpayStoreId}/plugins/cashu/settings",
+            "/api/v1/stores/{$btcpayStoreId}/plugins/cashumelt/settings",
             $apiKey
         );
     }
@@ -106,7 +106,7 @@ class CashuService
     {
         // $data = ['mintUrl' => ..., 'unit' => ..., 'lightningAddress' => ..., 'enabled' => true]
         return $this->client->put(
-            "/api/v1/stores/{$btcpayStoreId}/plugins/cashu/settings",
+            "/api/v1/stores/{$btcpayStoreId}/plugins/cashumelt/settings",
             $data,
             $apiKey
         );
@@ -116,7 +116,7 @@ class CashuService
     {
         // $params: limit, offset, settlementState
         return $this->client->get(
-            "/api/v1/stores/{$btcpayStoreId}/plugins/cashu/payments",
+            "/api/v1/stores/{$btcpayStoreId}/plugins/cashumelt/payments",
             $apiKey,
             $params
         );
@@ -125,7 +125,7 @@ class CashuService
     public function retryPayment(string $btcpayStoreId, string $quoteId, string $apiKey): array
     {
         return $this->client->post(
-            "/api/v1/stores/{$btcpayStoreId}/plugins/cashu/payments/{$quoteId}/retry",
+            "/api/v1/stores/{$btcpayStoreId}/plugins/cashumelt/payments/{$quoteId}/retry",
             [],
             $apiKey
         );
