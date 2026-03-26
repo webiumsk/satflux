@@ -6,7 +6,7 @@
 Merchant zadá connection string/descriptor → uloží sa ako `encrypted_secret` do `wallet_connections` → bot nakonfiguruje BTCPay → ak bot zlyhá → support zásah.
 
 **Cashu flow:**
-Merchant zadá Mint URL + Unit + Lightning Address → Satflux okamžite zavolá BTCPay Cashu Plugin API → hotovo. Žiadny secret, žiadny bot, žiadny support.
+Merchant zadá Mint URL + Lightning Address → Satflux okamžite zavolá BTCPay Cashu Plugin API → hotovo. Žiadny secret, žiadny bot, žiadny support.
 
 Cashu nastavenia žijú v BTCPay (Cashu plugin DB schéma), nie v Satflux DB.
 Satflux iba vie, že store má `wallet_type = 'cashu'`.
@@ -25,7 +25,6 @@ Auth: token {merchant_btcpay_api_key}   ← oprávnenie CanModifyStoreSettings
 {
   "storeId": "string",
   "mintUrl": "https://mint.example.com",
-  "unit": "sat",
   "lightningAddress": "merchant@blink.sv",
   "enabled": true
 }
@@ -34,12 +33,11 @@ Auth: token {merchant_btcpay_api_key}   ← oprávnenie CanModifyStoreSettings
 ### PUT `/settings`
 ```json
 // Request body:
-{ "mintUrl": "https://...", "unit": "sat|usd", "lightningAddress": "user@domain", "enabled": true }
+{ "mintUrl": "https://...", "lightningAddress": "user@domain", "enabled": true }
 
 // Validácia na BTCPay strane:
 // - mintUrl musí začínať https://
 // - lightningAddress musí mať formát user@domain
-// - unit musí byť "sat" alebo "usd"
 // Chyba: 400 { "error": "MintUrl must use HTTPS" }
 ```
 
@@ -51,7 +49,6 @@ Auth: token {merchant_btcpay_api_key}   ← oprávnenie CanModifyStoreSettings
     "quoteId": "abc-xyz",
     "invoiceId": "btcpay-invoice-id",
     "amountSats": 1000,
-    "unit": "sat",
     "state": "PAID",
     "settlementState": "SETTLED|PENDING|FAILED",
     "settlementError": null,
@@ -104,7 +101,7 @@ class CashuService
 
     public function saveSettings(string $btcpayStoreId, array $data, string $apiKey): array
     {
-        // $data = ['mintUrl' => ..., 'unit' => ..., 'lightningAddress' => ..., 'enabled' => true]
+        // $data = ['mintUrl' => ..., 'lightningAddress' => ..., 'enabled' => true]
         return $this->client->put(
             "/api/v1/stores/{$btcpayStoreId}/plugins/cashumelt/settings",
             $data,
@@ -141,7 +138,6 @@ Pridaj validáciu Cashu polí do `StoreRequest` (alebo priamo v controlleri):
 ```php
 // Ak wallet_type === 'cashu':
 'mint_url'          => 'required_if:wallet_type,cashu|url|starts_with:https',
-'unit'              => 'required_if:wallet_type,cashu|in:sat,usd',
 'lightning_address' => 'required_if:wallet_type,cashu|string|regex:/^[^@]+@[^@]+$/',
 ```
 
@@ -160,7 +156,6 @@ if ($request->wallet_type === 'cashu') {
         $btcpayStore['id'],   // btcpay_store_id čerstvé z BTCPay
         [
             'mintUrl'          => $request->mint_url,
-            'unit'             => $request->unit,
             'lightningAddress' => $request->lightning_address,
             'enabled'          => true,
         ],
@@ -180,12 +175,12 @@ class CashuController extends Controller
     public function getSettings(Store $store): JsonResponse
     {
         // Zavolá CashuService::getSettings s merchant API kľúčom
-        // Vráti mintUrl, unit, lightningAddress, enabled
+        // Vráti mintUrl, lightningAddress, enabled
     }
 
     public function updateSettings(Request $request, Store $store): JsonResponse
     {
-        // Validácia: mintUrl (https), unit (sat|usd), lightningAddress (user@domain)
+        // Validácia: mintUrl (https), lightningAddress (user@domain)
         // Zavolá CashuService::saveSettings
         // Vráti aktualizované nastavenia
     }
@@ -243,11 +238,6 @@ Pridaj tretiu možnosť vedľa Blink a Aqua:
          placeholder="https://mint.minibits.cash/Bitcoin"
          label="Cashu Mint URL" />
 
-  <select v-model="form.unit" label="Jednotka">
-    <option value="sat">Satoshi (sat)</option>
-    <option value="usd">USD (stablesats)</option>
-  </select>
-
   <input v-model="form.lightning_address"
          placeholder="merchant@blink.sv"
          label="Lightning Address pre výplatu" />
@@ -259,7 +249,6 @@ Pridaj tretiu možnosť vedľa Blink a Aqua:
 if (form.wallet_type === 'cashu') {
   if (!form.mint_url.startsWith('https://')) errors.mint_url = 'Mint URL musí začínať https://'
   if (!form.lightning_address.match(/^[^@]+@[^@]+$/)) errors.lightning_address = 'Formát: user@domain'
-  if (!form.unit) errors.unit = 'Vyber jednotku'
 }
 ```
 
@@ -271,7 +260,6 @@ const payload = {
   wallet_type: form.wallet_type,
   // Cashu-specific (backend ignoruje ak nie sú relevantné):
   mint_url: form.mint_url,
-  unit: form.unit,
   lightning_address: form.lightning_address,
   // Blink/Aqua (prázdne pre Cashu):
   connection_string: form.connection_string,
@@ -280,7 +268,7 @@ const payload = {
 
 ### 7. WalletConnectionForm — `resources/js/components/stores/WalletConnectionForm.vue`
 
-Pre existujúce store s `wallet_type === 'cashu'` — namiesto connection string formulára zobraz Cashu settings formulár (rovnaké polia: Mint URL, Unit, Lightning Address) a pri Save volaj `PUT /stores/{store}/cashu/settings`.
+Pre existujúce store s `wallet_type === 'cashu'` — namiesto connection string formulára zobraz Cashu settings formulár (Mint URL, Lightning Address) a pri Save volaj `PUT /stores/{store}/cashu/settings`.
 
 Cashu nemá žiadny "secret" — nepotrebuje password confirmation pre reveal.
 Stav je vždy `connected` (nie `pending`/`needs_support`).

@@ -103,7 +103,6 @@ export const useStoresStore = defineStore('stores', () => {
         preferred_exchange?: string;
         connection_string?: string;
         mint_url?: string;
-        unit?: 'sat' | 'usd';
         lightning_address?: string;
     }) {
         loading.value = true;

@@ -330,7 +330,6 @@ class StoreController extends Controller
                         $btcpayStoreId,
                         [
                             'mintUrl' => $request->mint_url,
-                            'unit' => $request->unit,
                             'lightningAddress' => $request->lightning_address,
                             'enabled' => true,
                         ],
