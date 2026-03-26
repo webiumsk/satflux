@@ -106,6 +106,12 @@ const router = createRouter({
             meta: { requiresAuth: true },
         },
         {
+            path: '/stores/:id/cashu',
+            name: 'stores-cashu',
+            component: () => import('../pages/stores/CashuPayments.vue'),
+            meta: { requiresAuth: true },
+        },
+        {
             path: '/stores/:id/apps',
             name: 'stores-apps',
             component: () => import('../pages/stores/Apps.vue'),

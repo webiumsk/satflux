@@ -6,7 +6,7 @@ export interface Store {
     id: string;
     name: string;
     archived?: boolean;
-    wallet_type: 'blink' | 'aqua_boltz' | null;
+    wallet_type: 'blink' | 'aqua_boltz' | 'cashu' | null;
     created_at: string;
     updated_at: string;
     logo_url?: string | null;
@@ -99,7 +99,12 @@ export const useStoresStore = defineStore('stores', () => {
         name: string;
         default_currency: string;
         timezone: string;
-        wallet_type: 'blink' | 'aqua_boltz';
+        wallet_type: 'blink' | 'aqua_boltz' | 'cashu';
+        preferred_exchange?: string;
+        connection_string?: string;
+        mint_url?: string;
+        unit?: 'sat' | 'usd';
+        lightning_address?: string;
     }) {
         loading.value = true;
         try {

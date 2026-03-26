@@ -300,5 +300,23 @@ class StoreTest extends TestCase
         $response->assertStatus(200);
         $response->assertJsonPath('data.0.wallet_connection.status', 'connected');
     }
+
+    public function test_store_list_includes_synthetic_wallet_connection_for_cashu(): void
+    {
+        $user = User::factory()->create();
+        // setUp() Http fake returns GET /api/v1/stores with id test-store-id first; merged fakes use first match.
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'btcpay_store_id' => 'test-store-id',
+            'wallet_type' => 'cashu',
+        ]);
+
+        $response = $this->actingAs($user)->getJson('/api/stores');
+
+        $response->assertStatus(200);
+        $response->assertJsonCount(1, 'data');
+        $response->assertJsonPath('data.0.wallet_connection.type', 'cashu');
+        $response->assertJsonPath('data.0.wallet_connection.status', 'connected');
+    }
 }
 

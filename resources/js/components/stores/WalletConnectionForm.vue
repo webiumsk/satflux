@@ -1,5 +1,120 @@
 <template>
-    <div class="space-y-8">
+    <div
+        v-if="walletType === 'cashu'"
+        class="bg-gray-900/50 border border-gray-700 rounded-2xl p-8"
+    >
+        <h3 class="text-sm font-bold text-indigo-400 mb-6 uppercase tracking-wider">
+            {{ t('stores.cashu_settings_title') }}
+        </h3>
+
+        <div class="mb-4 p-4 rounded-xl border border-green-500/20 bg-green-500/10 text-sm">
+            <span class="font-medium text-green-400">
+                {{ t('stores.connected') }}
+            </span>
+            <span class="text-gray-300 ml-2">{{ t('stores.cashu_connected_via_plugin') }}</span>
+        </div>
+
+        <div class="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-2">
+            <p class="text-sm font-medium text-amber-300">
+                {{ t('stores.cashu_warning_title') }}
+            </p>
+            <ul class="text-sm text-amber-400 list-disc list-inside space-y-1.5">
+                <li>{{ t('stores.cashu_warning_https') }}</li>
+                <li>{{ t('stores.cashu_warning_mint_reachable') }}</li>
+                <li>{{ t('stores.cashu_warning_ln_address') }}</li>
+            </ul>
+        </div>
+
+        <div v-if="cashuLoading" class="flex items-center justify-center py-10">
+            <svg class="animate-spin h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        </div>
+
+        <form
+            v-else
+            @submit.prevent="handleSaveCashu"
+            class="space-y-6"
+        >
+            <div>
+                <label for="cashu-mint-url" class="block text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">
+                    {{ t('stores.cashu_mint_url_label') }}
+                </label>
+                <input
+                    id="cashu-mint-url"
+                    v-model="cashuForm.mint_url"
+                    type="text"
+                    class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 font-mono"
+                    :placeholder="t('stores.cashu_mint_url_placeholder')"
+                />
+                <p class="mt-2 text-sm text-gray-500 leading-relaxed whitespace-pre-line">{{ t('stores.cashu_mint_url_hint') }}</p>
+                <p v-if="cashuErrors.mint_url" class="mt-2 text-sm text-red-400">{{ cashuErrors.mint_url }}</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="cashu-unit" class="block text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">
+                        {{ t('stores.cashu_unit_label') }}
+                    </label>
+                    <select
+                        id="cashu-unit"
+                        v-model="cashuForm.unit"
+                        class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3"
+                    >
+                        <option value="sat">{{ t('stores.cashu_unit_sat_option') }}</option>
+                        <option value="usd">{{ t('stores.cashu_unit_usd_option') }}</option>
+                    </select>
+                    <p class="mt-2 text-sm text-gray-500 leading-relaxed">{{ t('stores.cashu_unit_hint') }}</p>
+                    <p v-if="cashuErrors.unit" class="mt-2 text-sm text-red-400">{{ cashuErrors.unit }}</p>
+                </div>
+
+                <div>
+                    <label for="cashu-lightning-address" class="block text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">
+                        {{ t('stores.cashu_lightning_address_label') }}
+                    </label>
+                    <input
+                        id="cashu-lightning-address"
+                        v-model="cashuForm.lightning_address"
+                        type="text"
+                        class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3"
+                        :placeholder="t('stores.cashu_lightning_address_placeholder')"
+                    />
+                    <p class="mt-2 text-sm text-gray-500 leading-relaxed">{{ t('stores.cashu_lightning_address_hint') }}</p>
+                    <p v-if="cashuErrors.lightning_address" class="mt-2 text-sm text-red-400">{{ cashuErrors.lightning_address }}</p>
+                </div>
+            </div>
+
+            <p class="text-sm text-gray-500 leading-relaxed border-t border-gray-700 pt-4">
+                {{ t('stores.cashu_footer_help') }}
+            </p>
+
+            <div v-if="cashuErrorMessage" class="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
+                {{ cashuErrorMessage }}
+            </div>
+
+            <div class="flex flex-col-reverse sm:flex-row justify-between items-center gap-3 pt-4 border-t border-gray-700">
+                <button
+                    type="button"
+                    @click="$emit('cancel')"
+                    class="px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all w-full sm:w-auto"
+                    :disabled="cashuSubmitting"
+                >
+                    {{ t('common.cancel') }}
+                </button>
+                <button
+                    type="submit"
+                    :disabled="cashuSubmitting || !canSaveCashu"
+                    class="px-6 py-3 border border-transparent rounded-xl shadow-lg shadow-indigo-600/20 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all w-full sm:w-auto"
+                >
+                    <span v-if="cashuSubmitting">{{ t('common.loading') }}</span>
+                    <span v-else>{{ t('stores.cashu_save_settings') }}</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div v-else class="space-y-8">
         <!-- Read-only: Current Connection + Change button (when connection exists and not editing) -->
         <template v-if="existingConnection && viewMode === 'readonly'">
             <div class="bg-gray-900/50 border border-gray-700 rounded-2xl p-8">
@@ -311,6 +426,7 @@ import NostrAuthModal from '../auth/NostrAuthModal.vue';
 interface Props {
     storeId: string;
     existingConnection?: any;
+    walletType?: 'blink' | 'aqua_boltz' | 'cashu' | null;
 }
 
 const props = defineProps<Props>();
@@ -351,6 +467,117 @@ const form = reactive({
     type: (props.existingConnection?.type || 'blink') as 'blink' | 'aqua_descriptor',
     secret: '',
 });
+
+// Cashu settings UI (wallet_type=cashu) - configured directly via BTCPay plugin, no wallet_connections secrets.
+const cashuLoading = ref(false);
+const cashuSubmitting = ref(false);
+const cashuErrorMessage = ref('');
+const cashuErrors = reactive<Record<string, string>>({});
+const cashuForm = reactive({
+    mint_url: '',
+    unit: 'sat' as 'sat' | 'usd',
+    lightning_address: '',
+    enabled: true,
+});
+const cashuOriginal = reactive({
+    mint_url: '',
+    unit: 'sat' as 'sat' | 'usd',
+    lightning_address: '',
+    enabled: true,
+});
+
+const canSaveCashu = computed(() => {
+    const mintUrl = (cashuForm.mint_url ?? '').trim();
+    const lnAddress = (cashuForm.lightning_address ?? '').trim();
+    if (!mintUrl || !mintUrl.startsWith('https://')) return false;
+    if (!lnAddress.match(/^[^@]+@[^@]+$/)) return false;
+    if (!cashuForm.unit) return false;
+    return true;
+});
+
+function resetCashuErrors() {
+    Object.keys(cashuErrors).forEach((k) => delete cashuErrors[k]);
+    cashuErrorMessage.value = '';
+}
+
+async function fetchCashuSettings() {
+    cashuLoading.value = true;
+    resetCashuErrors();
+
+    try {
+        const response = await api.get(`/stores/${props.storeId}/cashu/settings`);
+        const d = response.data?.data ?? {};
+
+        cashuForm.mint_url = d.mint_url ?? '';
+        cashuForm.unit = (d.unit ?? 'sat') as 'sat' | 'usd';
+        cashuForm.lightning_address = d.lightning_address ?? '';
+        cashuForm.enabled = d.enabled ?? true;
+
+        cashuOriginal.mint_url = cashuForm.mint_url;
+        cashuOriginal.unit = cashuForm.unit;
+        cashuOriginal.lightning_address = cashuForm.lightning_address;
+        cashuOriginal.enabled = cashuForm.enabled;
+    } catch (err: any) {
+        cashuErrorMessage.value =
+            err.response?.data?.message || 'Failed to load Cashu settings';
+    } finally {
+        cashuLoading.value = false;
+    }
+}
+
+async function handleSaveCashu() {
+    if (!canSaveCashu.value) return;
+
+    cashuSubmitting.value = true;
+    resetCashuErrors();
+
+    try {
+        const payload = {
+            mint_url: cashuForm.mint_url,
+            unit: cashuForm.unit,
+            lightning_address: cashuForm.lightning_address,
+            enabled: true,
+        };
+
+        const response = await api.put(`/stores/${props.storeId}/cashu/settings`, payload);
+        const d = response.data?.data ?? {};
+
+        cashuForm.mint_url = d.mint_url ?? cashuForm.mint_url;
+        cashuForm.unit = (d.unit ?? cashuForm.unit) as 'sat' | 'usd';
+        cashuForm.lightning_address = d.lightning_address ?? cashuForm.lightning_address;
+        cashuForm.enabled = d.enabled ?? cashuForm.enabled;
+
+        cashuOriginal.mint_url = cashuForm.mint_url;
+        cashuOriginal.unit = cashuForm.unit;
+        cashuOriginal.lightning_address = cashuForm.lightning_address;
+        cashuOriginal.enabled = cashuForm.enabled;
+
+        emit('submitted');
+    } catch (err: any) {
+        if (err.response?.status === 422 && err.response?.data?.errors) {
+            const validationErrors = err.response.data.errors || {};
+            Object.keys(validationErrors).forEach((key) => {
+                const v = validationErrors[key];
+                cashuErrors[key] = Array.isArray(v) ? v[0] : v;
+            });
+        } else {
+            cashuErrorMessage.value =
+                err.response?.data?.message || 'Failed to save Cashu settings';
+        }
+    } finally {
+        cashuSubmitting.value = false;
+    }
+}
+
+watch(
+    () => props.walletType,
+    (wt: Props['walletType']) => {
+        if (wt === 'cashu') {
+            fetchCashuSettings();
+        }
+    },
+    { immediate: true }
+);
 
 watch(() => props.existingConnection, (conn: any) => {
     if (conn) {

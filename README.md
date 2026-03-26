@@ -4,7 +4,7 @@ A production-ready multi-tenant control panel for managing BTCPay Server stores 
 
 ## Tech Stack
 
-- **Backend**: Laravel 11 (PHP 8.3), Sanctum, PostgreSQL, Redis
+- **Backend**: Laravel 12 (PHP 8.3), Sanctum, PostgreSQL, Redis
 - **Frontend**: Vue 3 + TypeScript + Vite + TailwindCSS
 - **Infrastructure**: Docker Compose (nginx + php-fpm + postgres + redis)
 

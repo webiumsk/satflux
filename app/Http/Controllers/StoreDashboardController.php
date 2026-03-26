@@ -167,7 +167,7 @@ class StoreDashboardController extends Controller
                     if (is_array($btcpayApps)) {
                         foreach ($btcpayApps as $btcpayApp) {
                             $btcpayAppId = $btcpayApp['id'] ?? null;
-                            if (!$btcpayAppId) {
+                            if (! $btcpayAppId) {
                                 continue;
                             }
 
@@ -223,7 +223,8 @@ class StoreDashboardController extends Controller
 
                 // Determine store status (ready to accept payments if has wallet connection)
                 $store->load('walletConnection');
-                $hasWalletConnection = $store->walletConnection !== null;
+                $hasWalletConnection = ($store->wallet_type ?? null) === 'cashu'
+                    || $store->walletConnection !== null;
                 $isReady = $hasWalletConnection;
 
                 // Total revenue for this store (sats + default currency) – BTCPay + PoS, visible for all tiers
@@ -283,6 +284,7 @@ class StoreDashboardController extends Controller
                     'store_id' => $store->id,
                     'error' => $e->getMessage(),
                 ]);
+
                 return [
                     'paid_invoices_last_7d' => 0,
                     'total_invoices' => 0,
@@ -351,6 +353,7 @@ class StoreDashboardController extends Controller
             $date = now()->subDays($i)->startOfDay();
             $arr[$date->format('Y-m-d')] = ['date' => $date->format('M j'), 'count' => 0];
         }
+
         return $arr;
     }
 
@@ -366,12 +369,14 @@ class StoreDashboardController extends Controller
                 return $posData['itemCode'];
             }
         }
+
         return $meta['itemName'] ?? null;
     }
 
     /**
      * Aggregate a list of paid invoices into dashboard stats (for one source).
-     * @param array<int, array> $invoices
+     *
+     * @param  array<int, array>  $invoices
      */
     private function aggregateInvoicesBySource(array $invoices): array
     {
@@ -431,6 +436,7 @@ class StoreDashboardController extends Controller
                 'source' => $this->invoiceSourceService->detectSource($inv),
             ];
         }
+
         return [
             'paid_invoices_last_7d' => $paid7d,
             'total_invoices' => count($invoices),
@@ -445,4 +451,3 @@ class StoreDashboardController extends Controller
         ];
     }
 }
-

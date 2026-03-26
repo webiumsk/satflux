@@ -215,7 +215,7 @@
             >
               {{ t("create_store.choose_wallet_backend") }}
             </p>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <label
                 class="relative flex flex-col p-6 border-2 rounded-2xl cursor-pointer transition-all hover:bg-gray-700/50"
                 :class="
@@ -307,6 +307,52 @@
                   class="hidden"
                 />
               </label>
+
+              <label
+                class="relative flex flex-col p-6 border-2 rounded-2xl cursor-pointer transition-all hover:bg-gray-700/50"
+                :class="
+                  form.wallet_type === 'cashu'
+                    ? 'border-indigo-500 bg-indigo-900/10'
+                    : 'border-gray-600 bg-gray-800'
+                "
+              >
+                <div class="flex items-center justify-between mb-2">
+                  <span class="font-bold text-white text-lg">{{
+                    t("create_store.wallet_type_cashu")
+                  }}</span>
+                  <div
+                    v-if="form.wallet_type === 'cashu'"
+                    class="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-white"
+                  >
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="3"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </div>
+                  <div
+                    v-else
+                    class="w-6 h-6 rounded-full border-2 border-gray-500"
+                  ></div>
+                </div>
+                <p class="text-sm text-gray-400">
+                  {{ t("create_store.cashu_description") }}
+                </p>
+                <input
+                  type="radio"
+                  v-model="form.wallet_type"
+                  value="cashu"
+                  class="hidden"
+                />
+              </label>
             </div>
             <div
               v-if="form.wallet_type === 'aqua_boltz'"
@@ -318,6 +364,19 @@
               <p class="text-sm text-amber-400 mt-2">
                 {{ t("stores.aqua_limits_warning") }}
               </p>
+            </div>
+            <div
+              v-if="form.wallet_type === 'cashu'"
+              class="mt-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-2"
+            >
+              <p class="text-sm font-medium text-amber-300">
+                {{ t("stores.cashu_warning_title") }}
+              </p>
+              <ul class="text-sm text-amber-400 list-disc list-inside space-y-1.5">
+                <li>{{ t("stores.cashu_warning_https") }}</li>
+                <li>{{ t("stores.cashu_warning_mint_reachable") }}</li>
+                <li>{{ t("stores.cashu_warning_ln_address") }}</li>
+              </ul>
             </div>
           </div>
 
@@ -334,6 +393,71 @@
               v-if="form.wallet_type"
               class="bg-gray-900/50 rounded-xl p-6 border border-gray-700"
             >
+              <template v-if="form.wallet_type === 'cashu'">
+                <div class="space-y-5">
+                  <div>
+                    <label
+                      for="mint_url"
+                      class="block text-sm font-medium text-gray-500 mb-2"
+                    >
+                      {{ t("stores.cashu_mint_url_label") }}
+                    </label>
+                    <input
+                      id="mint_url"
+                      v-model="form.mint_url"
+                      type="text"
+                      required
+                      :placeholder="t('stores.cashu_mint_url_placeholder')"
+                      class="block w-full rounded-lg p-2 border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono text-sm"
+                    />
+                    <p class="mt-2 text-sm text-gray-500 leading-relaxed whitespace-pre-line">
+                      {{ t("stores.cashu_mint_url_hint") }}
+                    </p>
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label for="unit" class="block text-sm font-medium text-gray-500 mb-2">
+                        {{ t("stores.cashu_unit_label") }}
+                      </label>
+                      <select
+                        id="unit"
+                        v-model="form.unit"
+                        class="block w-full rounded-lg p-2 border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      >
+                        <option value="sat">{{ t("stores.cashu_unit_sat_option") }}</option>
+                        <option value="usd">{{ t("stores.cashu_unit_usd_option") }}</option>
+                      </select>
+                      <p class="mt-2 text-sm text-gray-500 leading-relaxed">
+                        {{ t("stores.cashu_unit_hint") }}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label for="lightning_address" class="block text-sm font-medium text-gray-500 mb-2">
+                        {{ t("stores.cashu_lightning_address_label") }}
+                      </label>
+                      <input
+                        id="lightning_address"
+                        v-model="form.lightning_address"
+                        type="text"
+                        required
+                        :placeholder="t('stores.cashu_lightning_address_placeholder')"
+                        class="block w-full rounded-lg p-2 border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      />
+                      <p class="mt-2 text-sm text-gray-500 leading-relaxed">
+                        {{ t("stores.cashu_lightning_address_hint") }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p class="text-sm text-gray-500 leading-relaxed border-t border-gray-700 pt-4">
+                    {{ t("stores.cashu_footer_help") }}
+                  </p>
+                </div>
+              </template>
+
+              <template v-else>
               <label
                 :for="
                   form.wallet_type === 'blink'
@@ -434,6 +558,7 @@
                   </a>
                 </template>
               </p>
+              </template>
             </div>
           </transition>
 
@@ -535,16 +660,22 @@
                   {{
                     form.wallet_type === "blink"
                       ? t("create_store.wallet_type_blink")
-                      : t("create_store.wallet_type_aqua")
+                      : form.wallet_type === "aqua_boltz"
+                        ? t("create_store.wallet_type_aqua")
+                        : t("create_store.wallet_type_cashu")
                   }}
                 </dd>
               </div>
               <div
                 class="flex justify-between items-center"
-                v-if="form.connection_string"
+                v-if="form.wallet_type === 'cashu' ? (form.mint_url && form.lightning_address) : form.connection_string"
               >
                 <dt class="text-sm text-gray-400">
-                  {{ t("create_store.connection_label") }}
+                  {{
+                    form.wallet_type === "cashu"
+                      ? t("create_store.cashu_connection_summary")
+                      : t("create_store.connection_label")
+                  }}
                 </dt>
                 <dd class="text-sm font-medium text-white flex items-center">
                   <span class="flex items-center text-green-400">
@@ -652,7 +783,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useStoresStore } from "../../store/stores";
@@ -664,6 +795,9 @@ import Select from "../../components/ui/Select.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 
 const { t } = useI18n();
+
+/** Example public mint; replace with your own mint in production. */
+const DEFAULT_CASHU_MINT_URL = "https://mint.minibits.cash/Bitcoin";
 
 const router = useRouter();
 const storesStore = useStoresStore();
@@ -680,8 +814,12 @@ const form = ref({
   default_currency: "EUR",
   timezone: "UTC",
   preferred_exchange: "",
-  wallet_type: "" as "blink" | "aqua_boltz" | "",
+  wallet_type: "" as "blink" | "aqua_boltz" | "cashu" | "",
   connection_string: "",
+  // Cashu fields (default mint prefilled as a starting point)
+  mint_url: DEFAULT_CASHU_MINT_URL,
+  unit: "sat" as "sat" | "usd",
+  lightning_address: "",
 });
 
 const docBlinkPath = "/documentation/blink-wallet";
@@ -723,12 +861,38 @@ function validateDescriptor(s: string): boolean {
 
 const canProceedFromStep2 = computed(() => {
   const wt = form.value.wallet_type;
-  const cs = form.value.connection_string?.trim() ?? "";
-  if (!wt || !cs) return false;
-  if (wt === "blink") return validateBlinkConnectionString(cs);
-  if (wt === "aqua_boltz") return validateDescriptor(cs);
+  if (!wt) return false;
+
+  if (wt === "blink") {
+    const cs = form.value.connection_string?.trim() ?? "";
+    return validateBlinkConnectionString(cs);
+  }
+
+  if (wt === "aqua_boltz") {
+    const cs = form.value.connection_string?.trim() ?? "";
+    return validateDescriptor(cs);
+  }
+
+  if (wt === "cashu") {
+    const mintUrl = (form.value.mint_url ?? "").trim();
+    const lnAddress = (form.value.lightning_address ?? "").trim();
+    if (!mintUrl || !mintUrl.startsWith("https://")) return false;
+    if (!lnAddress.match(/^[^@]+@[^@]+$/)) return false;
+    if (!form.value.unit) return false;
+    return true;
+  }
+
   return false;
 });
+
+watch(
+  () => form.value.wallet_type,
+  (wt) => {
+    if (wt === "cashu" && !(form.value.mint_url ?? "").trim()) {
+      form.value.mint_url = DEFAULT_CASHU_MINT_URL;
+    }
+  }
+);
 
 // Common timezones - you can expand this list
 const timezones = [
@@ -798,7 +962,23 @@ async function handleSubmit() {
   loading.value = true;
   flashStore.clear();
   try {
-    const store = await storesStore.createStore(form.value as any);
+    const payload: any = {
+      name: form.value.name,
+      default_currency: form.value.default_currency,
+      timezone: form.value.timezone,
+      preferred_exchange: form.value.preferred_exchange || undefined,
+      wallet_type: form.value.wallet_type,
+    };
+
+    if (form.value.wallet_type === 'cashu') {
+      payload.mint_url = form.value.mint_url;
+      payload.unit = form.value.unit;
+      payload.lightning_address = form.value.lightning_address;
+    } else {
+      payload.connection_string = form.value.connection_string;
+    }
+
+    const store = await storesStore.createStore(payload);
     router.push(`/stores/${store.id}?setup=1`);
   } catch (err: any) {
     const msg =

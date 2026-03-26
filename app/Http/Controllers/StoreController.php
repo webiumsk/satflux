@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreCreateRequest;
 use App\Models\Store;
+use App\Models\WalletConnection;
 use App\Services\BtcPay\LightningService;
 use App\Services\BtcPay\StoreService;
 use App\Services\BtcPay\UserService;
@@ -16,7 +17,9 @@ use Illuminate\Support\Str;
 class StoreController extends Controller
 {
     protected StoreService $storeService;
+
     protected UserService $userService;
+
     protected LightningService $lightningService;
 
     public function __construct(StoreService $storeService, UserService $userService, LightningService $lightningService)
@@ -101,6 +104,7 @@ class StoreController extends Controller
                     'btcpay_store_id' => $localStore->btcpay_store_id,
                     'matches' => $matches,
                 ]);
+
                 return $matches;
             });
 
@@ -113,15 +117,17 @@ class StoreController extends Controller
                 // Find matching BTCPay store data
                 $btcpayStore = collect($btcpayStores)->first(function ($bs) use ($localStore) {
                     $btcpayStoreId = $bs['id'] ?? $bs['storeId'] ?? null;
+
                     return $btcpayStoreId === $localStore->btcpay_store_id;
                 });
 
-                if (!$btcpayStore) {
+                if (! $btcpayStore) {
                     Log::warning('BTCPay store not found for local store', [
                         'user_id' => $user->id,
                         'local_store_id' => $localStore->id,
                         'btcpay_store_id' => $localStore->btcpay_store_id,
                     ]);
+
                     return null; // Skip this store
                 }
 
@@ -133,6 +139,7 @@ class StoreController extends Controller
                         'store_id' => $formatted['id'] ?? null,
                         'store_name' => $formatted['name'] ?? null,
                     ]);
+
                     return $formatted;
                 } catch (\Exception $e) {
                     Log::error('Error formatting store', [
@@ -141,6 +148,7 @@ class StoreController extends Controller
                         'error' => $e->getMessage(),
                         'trace' => $e->getTraceAsString(),
                     ]);
+
                     return null; // Skip this store
                 }
             })->filter()->values(); // Filter out null values
@@ -177,7 +185,7 @@ class StoreController extends Controller
 
             // Get server-level API key (unrestricted - has all permissions)
             $serverApiKey = config('services.btcpay.api_key', env('BTCPAY_API_KEY'));
-            if (!$serverApiKey) {
+            if (! $serverApiKey) {
                 abort(500, 'Server-level BTCPay API key not configured.');
             }
 
@@ -259,7 +267,7 @@ class StoreController extends Controller
                 // Add admin as Owner (for support access)
                 try {
                     $adminBtcPayUserId = $this->userService->getAdminBtcPayUserId();
-                    if (!$adminBtcPayUserId) {
+                    if (! $adminBtcPayUserId) {
                         Log::error('Could not determine admin BTCPay user ID - admin will not have access to store', [
                             'store_id' => $btcpayStoreId,
                             'merchant_user_id' => $user->id,
@@ -294,9 +302,9 @@ class StoreController extends Controller
 
             // Create local store record
             // $btcpayStoreId was already set above, but verify it's still valid
-            if (!$btcpayStoreId) {
+            if (! $btcpayStoreId) {
                 $btcpayStoreId = $btcpayStore['id'] ?? $btcpayStore['storeId'] ?? null;
-                if (!$btcpayStoreId) {
+                if (! $btcpayStoreId) {
                     abort(500, 'Failed to create store: BTCPay did not return a store ID.');
                 }
             }
@@ -312,15 +320,48 @@ class StoreController extends Controller
                 'wallet_type' => $request->wallet_type,
             ]);
 
+            // Cashu setup (no wallet_connection secret, configured via BTCPay Cashu plugin).
+            if ($request->wallet_type === 'cashu') {
+                try {
+                    $userApiKey = $user->getBtcPayApiKeyOrFail();
+                    $cashuService = app(\App\Services\BtcPay\CashuService::class);
+
+                    $cashuService->saveSettings(
+                        $btcpayStoreId,
+                        [
+                            'mintUrl' => $request->mint_url,
+                            'unit' => $request->unit,
+                            'lightningAddress' => $request->lightning_address,
+                            'enabled' => true,
+                        ],
+                        $userApiKey
+                    );
+                } catch (\Illuminate\Validation\ValidationException $e) {
+                    throw $e;
+                } catch (\Exception $e) {
+                    Log::error('Failed to save Cashu settings during store creation', [
+                        'store_id' => $store->id,
+                        'btcpay_store_id' => $btcpayStoreId,
+                        'wallet_type' => $request->wallet_type,
+                        'error' => $e->getMessage(),
+                        'error_class' => get_class($e),
+                    ]);
+
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'cashu' => ['Failed to configure BTCPay Cashu plugin: '.$e->getMessage()],
+                    ]);
+                }
+            }
+
             // Create wallet connection if connection_string is provided
             $walletConnection = null;
-            if ($request->filled('connection_string')) {
+            if ($request->wallet_type !== 'cashu' && $request->filled('connection_string')) {
                 Log::info('Starting wallet connection creation during store creation', [
                     'store_id' => $store->id,
                     'btcpay_store_id' => $store->btcpay_store_id,
                     'wallet_type' => $request->wallet_type,
                     'connection_string_length' => strlen($request->connection_string),
-                    'connection_string_preview' => substr($request->connection_string, 0, 50) . '...',
+                    'connection_string_preview' => substr($request->connection_string, 0, 50).'...',
                 ]);
 
                 try {
@@ -349,8 +390,8 @@ class StoreController extends Controller
                             // Rollback transaction by throwing validation exception
                             throw \Illuminate\Validation\ValidationException::withMessages([
                                 'connection_string' => [
-                                    'This descriptor is already in use by another store. ' .
-                                    'BTCPay allows each descriptor to be used only once. ' .
+                                    'This descriptor is already in use by another store. '.
+                                    'BTCPay allows each descriptor to be used only once. '.
                                     ($duplicateCheck['existing_store_name']
                                         ? "It is currently used by store: {$duplicateCheck['existing_store_name']}"
                                         : 'Please use a different wallet/descriptor.'),
@@ -443,7 +484,7 @@ class StoreController extends Controller
 
             // Merge BTCPay data with local metadata
             return response()->json([
-                'data' => $this->formatStoreFromBtcPay($btcpayStore, $store)
+                'data' => $this->formatStoreFromBtcPay($btcpayStore, $store),
             ]);
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
             // If API fails, return store from local DB as fallback
@@ -454,8 +495,41 @@ class StoreController extends Controller
             ]);
 
             $store->load('checklistItems');
+
             return response()->json(['data' => $this->formatStore($store)]);
         }
+    }
+
+    /**
+     * Wallet payload for API: Cashu has no wallet_connections row but is configured via BTCPay plugin.
+     */
+    protected function formatWalletConnectionPayload(Store $localStore, ?WalletConnection $walletConnection): ?array
+    {
+        if (($localStore->wallet_type ?? null) === 'cashu') {
+            return [
+                'id' => null,
+                'type' => 'cashu',
+                'status' => 'connected',
+                'masked_secret' => null,
+                'submitted_at' => $localStore->created_at,
+                'secret_updated_at' => null,
+                'submitted_by_user_id' => null,
+            ];
+        }
+
+        if (! $walletConnection) {
+            return null;
+        }
+
+        return [
+            'id' => $walletConnection->id,
+            'type' => $walletConnection->type,
+            'status' => $walletConnection->status,
+            'masked_secret' => $walletConnection->masked_secret,
+            'submitted_at' => $walletConnection->created_at,
+            'secret_updated_at' => $walletConnection->secret_updated_at,
+            'submitted_by_user_id' => $walletConnection->submitted_by_user_id,
+        ];
     }
 
     /**
@@ -488,25 +562,17 @@ class StoreController extends Controller
                     'is_completed' => $item->isCompleted(),
                 ];
             })->values() : collect([]),
-            'wallet_connection' => $walletConnection ? [
-                'id' => $walletConnection->id,
-                'type' => $walletConnection->type,
-                'status' => $walletConnection->status,
-                'masked_secret' => $walletConnection->masked_secret,
-                'submitted_at' => $walletConnection->created_at,
-                'secret_updated_at' => $walletConnection->secret_updated_at,
-                'submitted_by_user_id' => $walletConnection->submitted_by_user_id,
-            ] : null,
+            'wallet_connection' => $this->formatWalletConnectionPayload($localStore, $walletConnection),
         ];
 
         // Use local store values first, fallback to BTCPay values
-        if (!isset($data['default_currency'])) {
+        if (! isset($data['default_currency'])) {
             $data['default_currency'] = $localStore->default_currency ?? ($btcpayStore['defaultCurrency'] ?? 'EUR');
         }
-        if (!isset($data['timezone'])) {
+        if (! isset($data['timezone'])) {
             $data['timezone'] = $localStore->timezone ?? ($btcpayStore['timeZone'] ?? 'Europe/Vienna');
         }
-        if (!isset($data['preferred_exchange'])) {
+        if (! isset($data['preferred_exchange'])) {
             $data['preferred_exchange'] = $localStore->preferred_exchange ?? ($btcpayStore['preferredExchange'] ?? 'kraken');
         }
 
@@ -595,7 +661,7 @@ class StoreController extends Controller
                 'error_class' => get_class($e),
             ]);
 
-            return response()->json(['message' => 'Failed to delete store: ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'Failed to delete store: '.$e->getMessage()], 500);
         }
     }
 
@@ -709,16 +775,7 @@ class StoreController extends Controller
                     'is_completed' => $item->isCompleted(),
                 ];
             })->values() : collect([]),
-            'wallet_connection' => $walletConnection ? [
-                'id' => $walletConnection->id,
-                'type' => $walletConnection->type,
-                'status' => $walletConnection->status,
-                'masked_secret' => $walletConnection->masked_secret,
-                'submitted_at' => $walletConnection->created_at,
-                'secret_updated_at' => $walletConnection->secret_updated_at,
-                'submitted_by_user_id' => $walletConnection->submitted_by_user_id,
-            ] : null,
+            'wallet_connection' => $this->formatWalletConnectionPayload($store, $walletConnection),
         ];
     }
 }
-
