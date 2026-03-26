@@ -301,6 +301,58 @@
                              </div>
                           </div>
                       </div>
+
+                      <!-- Cashu Card (Beta): hover panel grows with content and expands beyond card -->
+                      <div class="group/card cursor-pointer md:translate-x-6 transition-transform duration-500">
+                          <div class="relative overflow-visible">
+                              <div
+                                class="relative z-10 flex w-full items-center gap-6 rounded-2xl border border-gray-700 bg-gray-800 p-6 shadow-xl ring-1 ring-amber-500/20 transition-all duration-300 group-hover/card:border-emerald-500/50 group-hover/card:bg-gray-800/80"
+                              >
+                                  <div class="w-20 h-20 shrink-0 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-2 shadow-inner flex items-center justify-center">
+                                    <svg class="h-11 w-11 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                  </div>
+                                  <div class="min-w-0 flex-1">
+                                      <h4 class="mb-1 text-2xl font-bold text-white">
+                                        {{ t('landing.cashu_wallet_title') }}
+                                      </h4>
+                                      <p class="text-sm font-medium text-emerald-400/90">{{ t('landing.cashu_wallet_tagline') }}</p>
+                                  </div>
+                              </div>
+                              <span
+                                class="pointer-events-none absolute right-3 top-3 z-40 rounded-full bg-amber-400 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-gray-900 shadow-lg ring-2 ring-gray-900 transition-all duration-300 group-hover/card:right-4 group-hover/card:top-4"
+                                aria-label="Beta"
+                              >
+                                {{ t('landing.cashu_beta_badge') }}
+                              </span>
+                              <div
+                                class="pointer-events-none absolute left-0 right-0 top-0 z-30 min-h-full h-auto rounded-2xl border border-emerald-500/50 bg-gray-900/95 opacity-0 shadow-lg shadow-emerald-950/20 ring-1 ring-emerald-500/20 backdrop-blur-xl transition-all duration-300 ease-out group-hover/card:pointer-events-auto group-hover/card:opacity-100 group-hover/card:-inset-x-4 group-hover/card:-top-3 group-hover/card:min-h-[calc(100%+0.75rem)] group-hover/card:shadow-[0_0_42px_rgba(16,185,129,0.35)] group-hover/card:ring-2 md:group-hover/card:-inset-x-5"
+                              >
+                                  <div class="flex flex-col gap-3 p-5 md:p-6">
+                                      <p class="border-b border-amber-500/25 pb-2 text-[11px] font-bold uppercase leading-snug tracking-wide text-amber-300">
+                                        {{ t('landing.cashu_beta_notice') }}
+                                      </p>
+                                      <div class="space-y-4">
+                                          <div>
+                                              <span class="mb-1.5 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-green-400">
+                                                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                                {{ t('landing.wallet_pros') }}
+                                              </span>
+                                              <p class="text-sm leading-relaxed text-gray-300">{{ t('landing.cashu_pros') }}</p>
+                                          </div>
+                                          <div>
+                                              <span class="mb-1.5 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-red-400">
+                                                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                {{ t('landing.wallet_cons') }}
+                                              </span>
+                                              <p class="text-sm leading-relaxed text-gray-300">{{ t('landing.cashu_cons') }}</p>
+                                          </div>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
                   </div>
                </div>
 

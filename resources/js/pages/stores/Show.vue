@@ -69,7 +69,7 @@
                     <WalletTypeIcon
                       :type="store.wallet_type"
                       size="lg"
-                      :show-label="false"
+                      :show-label="store.wallet_type === 'cashu'"
                       :fallback-text="t('stores.not_configured')"
                       class="text-indigo-400"
                     />
@@ -95,8 +95,17 @@
           <!-- Dashboard content -->
           <div v-else-if="dashboard" class="space-y-8">
             <!-- Store Status Banner -->
+            <!-- Cashu (always connected) -->
+            <div v-if="store.wallet_type === 'cashu'" class="bg-green-500/10 border border-green-500/20 rounded-xl p-4 flex items-start">
+              <svg class="h-5 w-5 text-green-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+              <div>
+                <h3 class="text-sm font-medium text-green-400">{{ t('stores.connection_active') }}</h3>
+                <p class="text-sm text-green-500/80 mt-1">{{ t('stores.connection_active_description') }}</p>
+              </div>
+            </div>
+
             <!-- Connected -->
-            <div v-if="store.wallet_connection?.status === 'connected'" class="bg-green-500/10 border border-green-500/20 rounded-xl p-4 flex items-start">
+            <div v-else-if="store.wallet_connection?.status === 'connected'" class="bg-green-500/10 border border-green-500/20 rounded-xl p-4 flex items-start">
               <svg class="h-5 w-5 text-green-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
               <div>
                 <h3 class="text-sm font-medium text-green-400">{{ t('stores.connection_active') }}</h3>
@@ -439,6 +448,9 @@ async function handleStoreUpdate() {
 }
 
 function getWalletConnectionStatusClass(store: any): string {
+  if (store.wallet_type === 'cashu') {
+    return 'text-green-400';
+  }
   if (!store.wallet_connection) {
     return 'text-red-400';
   }
@@ -456,6 +468,9 @@ function getWalletConnectionStatusClass(store: any): string {
 }
 
 function getWalletConnectionStatusKey(store: any): string {
+  if (store.wallet_type === 'cashu') {
+    return 'stores.connected';
+  }
   if (!store.wallet_connection) {
     return 'stores.not_config';
   }

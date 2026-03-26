@@ -24,8 +24,19 @@
       <div class="flex-1 overflow-y-auto">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div class="mb-8">
-            <h1 class="text-3xl font-bold text-white">{{ t('stores.wallet_connection') }}</h1>
-            <p class="mt-2 text-sm text-gray-400">{{ t('stores.configure_wallet_connection') }} <span class="text-indigo-400 font-semibold">{{ store.name }}</span></p>
+            <h1 class="text-3xl font-bold text-white">
+              {{
+                store.wallet_type === 'cashu'
+                  ? t('stores.cashu_settings_title')
+                  : t('stores.wallet_connection')
+              }}
+            </h1>
+            <p class="mt-2 text-sm text-gray-400">
+              {{ store.wallet_type === 'cashu'
+                ? 'Configure Cashu Mint URL + Lightning Address'
+                : t('stores.configure_wallet_connection') }}
+              <span v-if="store.wallet_type !== 'cashu'" class="text-indigo-400 font-semibold">{{ store.name }}</span>
+            </p>
           </div>
 
           <div v-if="loading" class="text-center py-24">
@@ -47,6 +58,7 @@
               <WalletConnectionForm
                 :store-id="storeId"
                 :existing-connection="connection"
+                :wallet-type="store?.wallet_type"
                 @submitted="handleSubmitted"
                 @cancel="handleCancel"
               />
@@ -99,6 +111,10 @@ async function loadConnection() {
     loading.value = true;
     error.value = null;
     try {
+        if (store.value?.wallet_type === 'cashu') {
+            connection.value = null;
+            return;
+        }
         const response = await api.get(`/stores/${storeId.value}/wallet-connection`);
         connection.value = response.data.data;
     } catch (err: any) {

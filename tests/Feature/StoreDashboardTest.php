@@ -77,6 +77,23 @@ class StoreDashboardTest extends TestCase
             ]);
     }
 
+    public function test_cashu_store_dashboard_reports_wallet_connection_without_row(): void
+    {
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'btcpay_store_id' => 'store-cashu',
+            'wallet_type' => 'cashu',
+        ]);
+        $this->fakeStoreDashboardApi('store-cashu', [], []);
+
+        $response = $this->actingAs($user)->getJson("/api/stores/{$store->id}/dashboard");
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.is_ready', true)
+            ->assertJsonPath('data.has_wallet_connection', true);
+    }
+
     public function test_user_cannot_get_store_dashboard_for_other_users_store(): void
     {
         $owner = User::factory()->create(['btcpay_api_key' => 'key']);

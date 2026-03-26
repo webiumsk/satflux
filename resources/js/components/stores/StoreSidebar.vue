@@ -149,7 +149,7 @@
             @click="showMobileMenu = false"
           >
             <!-- Link (connected) vs LinkSlash (disconnected / needs support / pending) -->
-            <svg v-if="store?.wallet_connection?.status === 'connected'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg v-if="store?.wallet_type === 'cashu' || store?.wallet_connection?.status === 'connected'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
             </svg>
             <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -191,6 +191,25 @@
             </svg>
             {{ t('stores.invoices') }}
           </button>
+
+          <component
+            v-if="store?.wallet_type === 'cashu'"
+            :is="isInertia ? Link : RouterLink"
+            :href="isInertia ? `/stores/${store.id}/cashu` : undefined"
+            :to="!isInertia ? `/stores/${store.id}/cashu` : undefined"
+            class="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors text-left"
+            :class="
+              isLinkActive(`/stores/${store.id}/cashu`, 'stores-cashu')
+                ? 'bg-gray-900 text-white'
+                : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+            "
+            @click="showMobileMenu = false"
+          >
+            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Cashu Payments
+          </component>
           <button
             @click="handleReportsClick"
             class="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors text-left"
@@ -446,6 +465,7 @@ interface Props {
   store: {
     id: string;
     name: string;
+    wallet_type?: 'blink' | 'aqua_boltz' | 'cashu' | null;
     wallet_connection?: {
       status: 'pending' | 'needs_support' | 'connected';
     } | null;
@@ -649,6 +669,9 @@ function handleReportsClick() {
 }
 
 function getWalletConnectionIconClass(): string {
+  if (props.store?.wallet_type === 'cashu') {
+    return 'text-green-400';
+  }
   if (!props.store?.wallet_connection) {
     return 'text-red-400'; // Non-existent - red
   }

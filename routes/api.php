@@ -37,6 +37,7 @@ use App\Http\Controllers\Admin\DocumentationCategoryController;
 use App\Http\Controllers\Admin\DocumentationImageController;
 use App\Http\Controllers\Admin\FaqItemController;
 use App\Http\Controllers\Admin\FaqCategoryController;
+use App\Http\Controllers\CashuController;
 use App\Http\Middleware\AuditLog;
 use App\Http\Middleware\EnsureAdminRole;
 use App\Http\Middleware\EnsureApiKeyLimit;
@@ -57,7 +58,7 @@ Route::get('/health', function () {
     return response()->json(['status' => 'ok']);
 });
 
-// Locale endpoints (public - no auth required, but need session)
+// Locale endpoints (public - no auth required, but need session) (public - no auth required, but need session)
 Route::middleware([\Illuminate\Session\Middleware\StartSession::class])->group(function () {
     Route::get('/locale', [LocaleController::class, 'index']);
     Route::post('/locale', [LocaleController::class, 'setLocale']);
@@ -276,6 +277,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->middleware(EnsureStoreOwnership::class);
     Route::put('/stores/{store}/settings', [StoreSettingsController::class, 'update'])
         ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':store.updated']);
+
+    // Cashu (wallet_type=cashu)
+    Route::middleware([EnsureStoreOwnership::class])->prefix('stores/{store}/cashu')->group(function () {
+        Route::get('settings', [CashuController::class, 'getSettings']);
+        Route::put('settings', [CashuController::class, 'updateSettings']);
+
+        Route::get('payments', [CashuController::class, 'listPayments']);
+        Route::post('payments/{quoteId}/retry', [CashuController::class, 'retryPayment']);
+    });
 
     // Store Logo
     Route::post('/stores/{store}/logo', [StoreController::class, 'uploadLogo'])

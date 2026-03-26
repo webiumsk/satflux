@@ -16,7 +16,14 @@
       {{ labelText }}
     </span>
   </component>
-  <span v-else-if="showLabel && fallbackText" class="font-medium text-gray-500">
+  <span
+    v-else-if="type && !iconSrc"
+    class="inline-flex items-center font-semibold text-inherit"
+    :class="[sizeClass, type === 'cashu' ? 'text-emerald-400/95' : '']"
+  >
+    {{ labelText }}
+  </span>
+  <span v-else-if="fallbackText" class="font-medium text-gray-500" :class="sizeClass">
     {{ fallbackText }}
   </span>
 </template>
@@ -28,7 +35,7 @@ import { useI18n } from 'vue-i18n';
 const props = withDefaults(
   defineProps<{
     /** store.wallet_type: 'blink' | 'aqua_boltz' | null, or connection.type: 'blink' | 'aqua_descriptor' */
-    type: 'blink' | 'aqua_boltz' | 'aqua_descriptor' | null | undefined;
+    type: 'blink' | 'aqua_boltz' | 'cashu' | 'aqua_descriptor' | null | undefined;
     size?: 'sm' | 'md' | 'lg';
     showLabel?: boolean;
     fallbackText?: string;
@@ -47,18 +54,22 @@ const iconSrc = computed(() => {
   if (!props.type) return null;
   if (props.type === 'blink') return '/img/wallets/blink-64.webp';
   if (props.type === 'aqua_boltz' || props.type === 'aqua_descriptor') return '/img/wallets/aqua-64.webp';
+    // Cashu currently has no bundled icon; we still show the label when requested.
+    if (props.type === 'cashu') return null;
   return null;
 });
 
 const altText = computed(() => {
   if (!props.type) return props.fallbackText ?? '';
   if (props.type === 'blink') return t('create_store.wallet_type_blink');
+    if (props.type === 'cashu') return t('create_store.wallet_type_cashu');
   return t('create_store.wallet_type_aqua');
 });
 
 const labelText = computed(() => {
   if (!props.type) return props.fallbackText ?? '';
   if (props.type === 'blink') return t('create_store.wallet_type_blink');
+    if (props.type === 'cashu') return t('create_store.wallet_type_cashu');
   return t('create_store.wallet_type_aqua');
 });
 

@@ -27,8 +27,21 @@ class StoreCreateRequest extends FormRequest
             'default_currency' => ['required', 'string', 'max:10'], // Allow BTC, SATS, and 3-letter codes
             'timezone' => ['required', 'string', 'timezone'],
             'preferred_exchange' => ['nullable', 'string', 'max:255'],
-            'wallet_type' => ['required', 'string', Rule::in(['blink', 'aqua_boltz'])],
-            'connection_string' => ['nullable', 'string', 'max:2000'], // Connection string or descriptor
+            'wallet_type' => ['required', 'string', Rule::in(['blink', 'aqua_boltz', 'cashu'])],
+
+            // Blink/Aqua wallet connection string (Blink token or Aqua descriptor).
+            'connection_string' => [
+                'nullable',
+                'string',
+                'max:2000',
+                // Cashu doesn't use wallet_connections secrets; it's configured directly via BTCPay Cashu plugin.
+                'prohibited_if:wallet_type,cashu',
+            ],
+
+            // Cashu plugin settings.
+            'mint_url' => ['required_if:wallet_type,cashu', 'string', 'url', 'starts_with:https://'],
+            'unit' => ['required_if:wallet_type,cashu', 'string', Rule::in(['sat', 'usd'])],
+            'lightning_address' => ['required_if:wallet_type,cashu', 'string', 'regex:/^[^@]+@[^@]+$/'],
         ];
     }
 
@@ -63,6 +76,8 @@ class StoreCreateRequest extends FormRequest
                             $validator->errors()->add('connection_string', $error);
                         }
                     }
+                } elseif ($walletType === 'cashu') {
+                    // connection_string is prohibited by validation rules; no extra validation needed.
                 }
             }
         });
