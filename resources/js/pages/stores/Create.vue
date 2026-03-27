@@ -366,6 +366,17 @@
               </p>
             </div>
             <div
+              v-if="form.wallet_type === 'aqua_boltz'"
+              class="mt-4 p-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10"
+            >
+              <p class="text-sm font-medium text-indigo-300">
+                {{ t("create_store.samrock_hint_title") }}
+              </p>
+              <p class="text-sm text-gray-300 mt-2 leading-relaxed">
+                {{ t("create_store.samrock_hint_body") }}
+              </p>
+            </div>
+            <div
               v-if="form.wallet_type === 'cashu'"
               class="mt-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-2"
             >
@@ -452,6 +463,12 @@
                     ? t("create_store.connection_string")
                     : t("create_store.descriptor")
                 }}
+                <span
+                  v-if="form.wallet_type === 'aqua_boltz'"
+                  class="block text-xs font-normal text-gray-500 mt-1"
+                >
+                  {{ t("create_store.descriptor_optional_samrock") }}
+                </span>
               </label>
               <textarea
                 :id="
@@ -648,20 +665,33 @@
                 </dd>
               </div>
               <div
-                class="flex justify-between items-center"
-                v-if="form.wallet_type === 'cashu' ? (form.mint_url && form.lightning_address) : form.connection_string"
+                class="flex justify-between items-center gap-4"
+                v-if="
+                  form.wallet_type === 'cashu'
+                    ? form.mint_url && form.lightning_address
+                    : form.wallet_type === 'aqua_boltz'
+                      ? true
+                      : !!form.connection_string?.trim()
+                "
               >
-                <dt class="text-sm text-gray-400">
+                <dt class="text-sm text-gray-400 shrink-0">
                   {{
                     form.wallet_type === "cashu"
                       ? t("create_store.cashu_connection_summary")
                       : t("create_store.connection_label")
                   }}
                 </dt>
-                <dd class="text-sm font-medium text-white flex items-center">
-                  <span class="flex items-center text-green-400">
+                <dd class="text-sm font-medium text-white flex items-center justify-end text-right">
+                  <template
+                    v-if="form.wallet_type === 'aqua_boltz' && !form.connection_string?.trim()"
+                  >
+                    <span class="text-indigo-300">{{
+                      t("create_store.aqua_configure_later")
+                    }}</span>
+                  </template>
+                  <span v-else class="flex items-center text-green-400">
                     <svg
-                      class="w-4 h-4 mr-1.5"
+                      class="w-4 h-4 mr-1.5 shrink-0"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -850,6 +880,10 @@ const canProceedFromStep2 = computed(() => {
 
   if (wt === "aqua_boltz") {
     const cs = form.value.connection_string?.trim() ?? "";
+    if (cs === "") {
+      return true;
+    }
+
     return validateDescriptor(cs);
   }
 

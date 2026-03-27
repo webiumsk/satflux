@@ -866,7 +866,11 @@
     "back": "Back",
     "create_store": "Create Store",
     "creating": "Creating...",
-    "failed_to_create": "Failed to create store. Please try again."
+    "failed_to_create": "Failed to create store. Please try again.",
+    "samrock_hint_title": "Aqua via QR (SamRock)",
+    "samrock_hint_body": "You can leave the descriptor empty and finish setup after the store is created: open Wallet connection for this store and use “Generate QR code” (requires the SamRock Protocol plugin on your BTCPay Server). Or paste the watch-only descriptor below now.",
+    "descriptor_optional_samrock": "Optional if you will scan the SamRock QR in Wallet connection after creating the store.",
+    "aqua_configure_later": "After create: Wallet connection (SamRock QR or descriptor)"
   },
   "apps": {
     "title": "Apps",

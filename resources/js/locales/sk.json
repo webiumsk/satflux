@@ -867,7 +867,11 @@
     "back": "Späť",
     "create_store": "Vytvoriť obchod",
     "creating": "Vytváram...",
-    "failed_to_create": "Zlyhalo vytvorenie obchodu. Prosím skúste to znova."
+    "failed_to_create": "Zlyhalo vytvorenie obchodu. Prosím skúste to znova.",
+    "samrock_hint_title": "Aqua cez QR (SamRock)",
+    "samrock_hint_body": "Deskriptor môžete nechať prázdny a dokončiť nastavenie po vytvorení obchodu: otvorte Pripojenie peňaženky pre tento obchod a použite „Vygenerovať QR kód“ (vyžaduje SamRock Protocol plugin na BTCPay Serveri). Alebo vložte watch-only deskriptor nižšie hneď teraz.",
+    "descriptor_optional_samrock": "Voliteľné, ak po vytvorení obchodu naskenujete SamRock QR v sekcii Pripojenie peňaženky.",
+    "aqua_configure_later": "Po vytvorení: Pripojenie peňaženky (SamRock QR alebo deskriptor)"
   },
   "apps": {
     "title": "Aplikácie",
