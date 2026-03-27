@@ -17,6 +17,7 @@ use Illuminate\Validation\ValidationException;
 class WalletConnectionController extends Controller
 {
     protected WalletConnectionService $service;
+
     protected LightningService $lightningService;
 
     public function __construct(WalletConnectionService $service, LightningService $lightningService)
@@ -33,7 +34,7 @@ class WalletConnectionController extends Controller
         $store = $request->route('store');
         $connection = WalletConnection::where('store_id', $store->id)->first();
 
-        if (!$connection) {
+        if (! $connection) {
             return response()->json(['data' => null]);
         }
 
@@ -47,6 +48,7 @@ class WalletConnectionController extends Controller
                 'submitted_at' => $connection->created_at,
                 'secret_updated_at' => $connection->secret_updated_at,
                 'submitted_by_user_id' => $connection->submitted_by_user_id,
+                'bot_failure_message' => $connection->bot_failure_message,
             ],
         ]);
     }
@@ -134,7 +136,7 @@ class WalletConnectionController extends Controller
         // Get store from route, but handle case where store doesn't exist yet (for new stores)
         $store = $request->route('store');
         $storeId = null;
-        
+
         // If store is 'new' or doesn't exist, use null to check against all stores
         if ($store && $store !== 'new' && is_object($store) && isset($store->id)) {
             $storeId = $store->id;
@@ -149,7 +151,7 @@ class WalletConnectionController extends Controller
             'duplicate' => $result['exists'],
             'existing_store_id' => $result['existing_store_id'],
             'existing_store_name' => $result['existing_store_name'],
-            'message' => $result['exists'] 
+            'message' => $result['exists']
                 ? "This descriptor is already in use by store: {$result['existing_store_name']}. BTCPay allows each descriptor to be used only once. Please use a different wallet/descriptor."
                 : null,
         ]);
@@ -184,7 +186,7 @@ class WalletConnectionController extends Controller
             'duplicate' => $result['exists'],
             'existing_store_id' => $result['existing_store_id'],
             'existing_store_name' => $result['existing_store_name'],
-            'message' => $result['exists'] 
+            'message' => $result['exists']
                 ? "This descriptor is already in use by store: {$result['existing_store_name']}. BTCPay allows each descriptor to be used only once. Please use a different wallet/descriptor."
                 : null,
         ]);
@@ -238,7 +240,7 @@ class WalletConnectionController extends Controller
         $store = $request->route('store');
         $connection = WalletConnection::where('store_id', $store->id)->first();
 
-        if (!$connection) {
+        if (! $connection) {
             return response()->json(['message' => 'Wallet connection not found'], 404);
         }
 
@@ -431,12 +433,12 @@ class WalletConnectionController extends Controller
     public function getBtcPayStoreUrl(Request $request, WalletConnection $connection)
     {
         // Load store relationship if not already loaded
-        if (!$connection->relationLoaded('store')) {
+        if (! $connection->relationLoaded('store')) {
             $connection->load('store');
         }
 
         $store = $connection->store;
-        if (!$store) {
+        if (! $store) {
             return response()->json(['error' => 'Store not found'], 404);
         }
 
@@ -454,7 +456,7 @@ class WalletConnectionController extends Controller
 
     /**
      * Test Lightning connection.
-     * 
+     *
      * Validates connection string format and attempts to verify Lightning configuration.
      */
     public function testConnection(Request $request)
@@ -501,7 +503,7 @@ class WalletConnectionController extends Controller
 
     /**
      * Configure Lightning node in BTCPay.
-     * 
+     *
      * Attempts to configure Lightning node via BTCPay API.
      * If successful, updates wallet connection status to 'connected'.
      * If API doesn't support custom connection strings, stores in DB with 'needs_support' status.
@@ -523,7 +525,7 @@ class WalletConnectionController extends Controller
 
         // Find or create wallet connection in DB
         $connection = WalletConnection::where('store_id', $store->id)->first();
-        if (!$connection) {
+        if (! $connection) {
             // Determine type from connection string
             $type = 'blink'; // Default
             if (strpos($request->connection_string, 'ct(') !== false ||
@@ -555,7 +557,7 @@ class WalletConnectionController extends Controller
                 $this->service->markConnected($connection, $user);
                 $result['status'] = 'connected';
                 $result['message'] = 'Lightning node connected successfully to BTCPay.';
-                
+
                 Log::info('Lightning node connected successfully via configureLightning', [
                     'store_id' => $store->id,
                     'wallet_connection_id' => $connection->id,
@@ -568,7 +570,7 @@ class WalletConnectionController extends Controller
                 }
                 $result['status'] = $connection->status;
                 $result['message'] = $result['message'] ?? 'Failed to connect Lightning node. Support will configure it manually.';
-                
+
                 Log::info('Lightning node connection failed via configureLightning', [
                     'store_id' => $store->id,
                     'wallet_connection_id' => $connection->id,
@@ -581,10 +583,10 @@ class WalletConnectionController extends Controller
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
             // BTCPay API error
             $connection->update(['status' => 'needs_support']);
-            
+
             $result = [
                 'success' => false,
-                'message' => 'Failed to connect Lightning node: ' . $e->getMessage(),
+                'message' => 'Failed to connect Lightning node: '.$e->getMessage(),
                 'requires_manual_config' => true,
                 'connection_id' => $connection->id,
                 'status' => 'needs_support',
@@ -600,10 +602,10 @@ class WalletConnectionController extends Controller
         } catch (\Exception $e) {
             // Other errors
             $connection->update(['status' => 'needs_support']);
-            
+
             $result = [
                 'success' => false,
-                'message' => 'An error occurred while connecting Lightning node: ' . $e->getMessage(),
+                'message' => 'An error occurred while connecting Lightning node: '.$e->getMessage(),
                 'requires_manual_config' => true,
                 'connection_id' => $connection->id,
                 'status' => 'needs_support',
@@ -636,5 +638,3 @@ class WalletConnectionController extends Controller
         return response()->json($result);
     }
 }
-
-

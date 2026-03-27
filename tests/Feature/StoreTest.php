@@ -8,7 +8,6 @@ use App\Models\WalletConnection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class StoreTest extends TestCase
@@ -32,7 +31,7 @@ class StoreTest extends TestCase
         Http::fake(function ($request) use ($baseUrl) {
             $url = (string) $request->url();
             $method = $request->method();
-            if ($method === 'POST' && $url === $baseUrl . '/api/v1/stores') {
+            if ($method === 'POST' && $url === $baseUrl.'/api/v1/stores') {
                 return Http::response([
                     'id' => 'test-store-id',
                     'storeId' => 'test-store-id',
@@ -42,26 +41,27 @@ class StoreTest extends TestCase
                     'preferredExchange' => 'kraken',
                 ], 201);
             }
-            if ($method === 'GET' && $url === $baseUrl . '/api/v1/stores') {
+            if ($method === 'GET' && $url === $baseUrl.'/api/v1/stores') {
                 return Http::response([
                     ['id' => 'test-store-id', 'name' => 'Test Store', 'defaultCurrency' => 'EUR', 'timeZone' => 'Europe/Vienna', 'preferredExchange' => 'kraken', 'logoUrl' => null],
                 ], 200);
             }
-            if (str_contains($url, $baseUrl . '/api/v1/stores/') && str_contains($url, '/users')) {
+            if (str_contains($url, $baseUrl.'/api/v1/stores/') && str_contains($url, '/users')) {
                 return Http::response(['userId' => 'user-id', 'role' => 'Owner'], 200);
             }
-            if (str_contains($url, $baseUrl . '/api/v1/stores/') && !str_contains($url, '/logo')) {
+            if (str_contains($url, $baseUrl.'/api/v1/stores/') && ! str_contains($url, '/logo')) {
                 return Http::response(['id' => 'test-store-id', 'name' => 'Test Store', 'defaultCurrency' => 'EUR', 'timeZone' => 'Europe/Vienna', 'preferredExchange' => 'kraken', 'logoUrl' => null], 200);
             }
             if (str_contains($url, '/logo')) {
                 return Http::response(['id' => 'test-store-id', 'logoUrl' => 'https://example.com/logo.jpg'], 200);
             }
-            if (str_contains($url, $baseUrl . '/api/v1/users/me') || str_contains($url, $baseUrl . '/api/v1/api-keys/current')) {
+            if (str_contains($url, $baseUrl.'/api/v1/users/me') || str_contains($url, $baseUrl.'/api/v1/api-keys/current')) {
                 return Http::response(['id' => 'admin-user-id', 'email' => 'admin@example.com'], 200);
             }
-            if (str_contains($url, $baseUrl . '/api/v1/users')) {
+            if (str_contains($url, $baseUrl.'/api/v1/users')) {
                 return Http::response([['id' => 'admin-user-id', 'email' => 'admin@example.com', 'isAdministrator' => true]], 200);
             }
+
             return Http::response([], 404);
         });
     }
@@ -86,6 +86,31 @@ class StoreTest extends TestCase
         $this->assertDatabaseHas('stores', [
             'user_id' => $user->id,
             'name' => 'My Test Store',
+        ]);
+    }
+
+    public function test_store_can_be_created_without_wallet_type(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->postJson('/api/stores', [
+            'name' => 'Store No Wallet Yet',
+            'default_currency' => 'EUR',
+            'timezone' => 'Europe/Vienna',
+            'preferred_exchange' => 'kraken',
+        ]);
+
+        $response->assertStatus(201);
+        $response->assertJsonPath('data.wallet_type', null);
+
+        $this->assertDatabaseHas('stores', [
+            'user_id' => $user->id,
+            'name' => 'Store No Wallet Yet',
+            'wallet_type' => null,
+        ]);
+
+        $this->assertDatabaseMissing('wallet_connections', [
+            'store_id' => $response->json('data.id'),
         ]);
     }
 
@@ -141,7 +166,7 @@ class StoreTest extends TestCase
         // Mock store list API - returns stores that user has access to
         $baseUrl = config('services.btcpay.base_url', 'http://localhost');
         Http::fake([
-            $baseUrl . '/api/v1/stores' => Http::response([
+            $baseUrl.'/api/v1/stores' => Http::response([
                 [
                     'id' => 'test-store-id',
                     'name' => $store->name,
@@ -168,7 +193,7 @@ class StoreTest extends TestCase
         ]);
 
         Http::fake([
-            config('services.btcpay.base_url') . '/stores/' . $store->btcpay_store_id => Http::response([
+            config('services.btcpay.base_url').'/stores/'.$store->btcpay_store_id => Http::response([
                 'id' => $store->btcpay_store_id,
                 'name' => 'New Name',
                 'defaultCurrency' => 'USD',
@@ -202,7 +227,7 @@ class StoreTest extends TestCase
 
         $baseUrl = config('services.btcpay.base_url');
         Http::fake([
-            $baseUrl . '/api/v1/stores/' . $store->btcpay_store_id . '/logo' => Http::response([
+            $baseUrl.'/api/v1/stores/'.$store->btcpay_store_id.'/logo' => Http::response([
                 'id' => $store->btcpay_store_id,
                 'logoUrl' => 'https://example.com/logo.jpg',
             ], 200),
@@ -222,7 +247,7 @@ class StoreTest extends TestCase
         $store = Store::factory()->create(['user_id' => $user->id]);
 
         Http::fake([
-            config('services.btcpay.base_url') . '/stores/' . $store->btcpay_store_id . '/logo' => Http::response([], 204),
+            config('services.btcpay.base_url').'/stores/'.$store->btcpay_store_id.'/logo' => Http::response([], 204),
         ]);
 
         $response = $this->actingAs($user)->deleteJson("/api/stores/{$store->id}/logo");
@@ -236,7 +261,7 @@ class StoreTest extends TestCase
         $store = Store::factory()->create(['user_id' => $user->id]);
 
         Http::fake([
-            config('services.btcpay.base_url') . '/stores/' . $store->btcpay_store_id => Http::response([], 200),
+            config('services.btcpay.base_url').'/stores/'.$store->btcpay_store_id => Http::response([], 200),
         ]);
 
         $response = $this->actingAs($user)->deleteJson("/api/stores/{$store->id}");
@@ -284,7 +309,7 @@ class StoreTest extends TestCase
         // Mock store list API - returns stores that user has access to
         $baseUrl = config('services.btcpay.base_url', 'http://localhost');
         Http::fake([
-            $baseUrl . '/api/v1/stores' => Http::response([
+            $baseUrl.'/api/v1/stores' => Http::response([
                 [
                     'id' => 'test-store-id',
                     'name' => $store->name,
@@ -318,5 +343,84 @@ class StoreTest extends TestCase
         $response->assertJsonPath('data.0.wallet_connection.type', 'cashu');
         $response->assertJsonPath('data.0.wallet_connection.status', 'connected');
     }
-}
 
+    public function test_patch_wallet_type_sets_type_when_null(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => null,
+        ]);
+
+        $response = $this->actingAs($user)->patchJson("/api/stores/{$store->id}/wallet-type", [
+            'wallet_type' => 'aqua_boltz',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.wallet_type', 'aqua_boltz');
+        $this->assertSame('aqua_boltz', $store->fresh()->wallet_type);
+    }
+
+    public function test_patch_wallet_type_idempotent_when_same(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'aqua_boltz',
+        ]);
+
+        $response = $this->actingAs($user)->patchJson("/api/stores/{$store->id}/wallet-type", [
+            'wallet_type' => 'aqua_boltz',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.wallet_type', 'aqua_boltz');
+    }
+
+    public function test_patch_wallet_type_422_when_already_different(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'blink',
+        ]);
+
+        $response = $this->actingAs($user)->patchJson("/api/stores/{$store->id}/wallet-type", [
+            'wallet_type' => 'aqua_boltz',
+        ]);
+
+        $response->assertStatus(422);
+    }
+
+    public function test_cashu_first_settings_update_sets_wallet_type_on_store(): void
+    {
+        $baseUrl = rtrim(config('services.btcpay.base_url'), '/');
+        $btcpaySid = 'cashu-store-btcpay-id';
+
+        Http::fake([
+            $baseUrl.'/api/v1/stores/'.$btcpaySid.'/plugins/cashumelt/settings' => Http::response([
+                'mintUrl' => 'https://mint.example.com/Bitcoin',
+                'lightningAddress' => 'u@example.com',
+                'enabled' => true,
+            ], 200),
+        ]);
+
+        $user = User::factory()->create([
+            'btcpay_api_key' => 'merchant-api-key-cashu',
+        ]);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'btcpay_store_id' => $btcpaySid,
+            'wallet_type' => null,
+        ]);
+
+        $response = $this->actingAs($user)->putJson("/api/stores/{$store->id}/cashu/settings", [
+            'mint_url' => 'https://mint.example.com/Bitcoin',
+            'lightning_address' => 'u@example.com',
+        ]);
+
+        $response->assertStatus(200);
+        $store->refresh();
+        $this->assertSame('cashu', $store->wallet_type);
+    }
+}
