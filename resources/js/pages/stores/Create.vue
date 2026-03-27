@@ -419,11 +419,16 @@
                     <p class="mt-2 text-sm text-gray-500 leading-relaxed">
                       {{ t("stores.cashu_lightning_address_hint") }}
                     </p>
+                    <p class="mt-2 text-sm text-gray-500 leading-relaxed">
+                      <span>{{ t("stores.cashu_lightning_address_coinos_prefix") }}</span>
+                      <a
+                        href="https://coinos.io"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-indigo-400 hover:text-indigo-300 underline font-medium"
+                      >coinos.io</a>
+                    </p>
                   </div>
-
-                  <p class="text-sm text-gray-500 leading-relaxed border-t border-gray-700 pt-4">
-                    {{ t("stores.cashu_footer_help") }}
-                  </p>
                 </div>
               </template>
 
@@ -526,9 +531,6 @@
                   </p>
                   <p class="text-sm text-gray-300 leading-relaxed">
                     {{ t("create_store.samrock_hint_body") }}
-                  </p>
-                  <p class="text-xs text-gray-500">
-                    {{ t("stores.samrock_require_plugin") }}
                   </p>
                 </div>
 
