@@ -64,12 +64,17 @@
                     :placeholder="t('stores.cashu_lightning_address_placeholder')"
                 />
                 <p class="mt-2 text-sm text-gray-500 leading-relaxed">{{ t('stores.cashu_lightning_address_hint') }}</p>
+                <p class="mt-2 text-sm text-gray-500 leading-relaxed">
+                    <span>{{ t('stores.cashu_lightning_address_coinos_prefix') }}</span>
+                    <a
+                        href="https://coinos.io"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-indigo-400 hover:text-indigo-300 underline font-medium"
+                    >coinos.io</a>
+                </p>
                 <p v-if="cashuErrors.lightning_address" class="mt-2 text-sm text-red-400">{{ cashuErrors.lightning_address }}</p>
             </div>
-
-            <p class="text-sm text-gray-500 leading-relaxed border-t border-gray-700 pt-4">
-                {{ t('stores.cashu_footer_help') }}
-            </p>
 
             <div v-if="cashuErrorMessage" class="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
                 {{ cashuErrorMessage }}
@@ -126,8 +131,6 @@
                     {{ t('stores.samrock_title') }}
                 </h3>
                 <p class="text-sm text-gray-400 mb-2 leading-relaxed">{{ t('stores.samrock_description') }}</p>
-                <p class="text-xs text-gray-500 mb-6">{{ t('stores.samrock_require_plugin') }}</p>
-
                 <p v-if="samrockErrorMessage && !samrockQrObjectUrl" class="text-red-400 text-sm mb-4">{{ samrockErrorMessage }}</p>
 
                 <div v-if="!samrockOtp && !samrockBusy" class="flex flex-wrap gap-3">

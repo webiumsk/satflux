@@ -288,7 +288,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('payments/{quoteId}/retry', [CashuController::class, 'retryPayment']);
     });
 
-    // SamRock (Aqua + Boltz — BTCPay SamRock Protocol plugin)
+    // SamRock (Aqua + Boltz)
     Route::middleware([EnsureStoreOwnership::class])->prefix('stores/{store}/samrock')->group(function () {
         Route::post('otps', [SamRockController::class, 'createOtp']);
         Route::get('otps/{otp}', [SamRockController::class, 'getOtpStatus']);
