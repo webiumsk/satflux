@@ -20,21 +20,19 @@
         <div class="mb-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-4">
           <div class="flex flex-col gap-1.5 sm:min-w-[12rem]">
             <label
-              class="text-xs font-medium text-gray-400 uppercase tracking-wider"
+              class="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider"
               for="cashu-settlement-filter"
             >
               {{ t('stores.cashu_settlement_filter') }}
             </label>
-            <select
+            <Select
               id="cashu-settlement-filter"
               v-model="settlementState"
-              class="w-full rounded-lg border border-gray-600 bg-gray-900/80 text-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            >
-              <option value="">{{ t('stores.cashu_filter_all') }}</option>
-              <option value="SETTLED">SETTLED</option>
-              <option value="PENDING">PENDING</option>
-              <option value="FAILED">FAILED</option>
-            </select>
+              :options="settlementStateOptions"
+              :placeholder="t('stores.cashu_filter_all')"
+              :disabled="loading"
+              @change="onSettlementFilterChange"
+            />
           </div>
         </div>
 
@@ -176,9 +174,10 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
+import Select from '../ui/Select.vue';
 
 const { t } = useI18n();
 
@@ -206,6 +205,13 @@ interface CashuPaymentsResponse {
 const limit = 50;
 const offset = ref(0);
 const settlementState = ref<string>('');
+
+const settlementStateOptions = computed(() => [
+  { label: t('stores.cashu_filter_all'), value: '' },
+  { label: 'SETTLED', value: 'SETTLED' },
+  { label: 'PENDING', value: 'PENDING' },
+  { label: 'FAILED', value: 'FAILED' },
+]);
 
 const payments = ref<CashuPaymentsResponse>({
   total: 0,
@@ -316,10 +322,10 @@ function changeOffset(delta: number) {
   fetchPayments();
 }
 
-watch(settlementState, () => {
+function onSettlementFilterChange() {
   offset.value = 0;
   fetchPayments();
-});
+}
 
 watch(
   () => props.store.id,
