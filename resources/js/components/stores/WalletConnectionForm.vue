@@ -97,13 +97,86 @@
     </div>
 
     <div v-else class="space-y-8">
+        <!-- SamRock QR (Aqua + Boltz stores, no connection yet or pending manual) -->
+        <div
+            v-if="samrockPanelVisible"
+            class="bg-gray-900/50 border border-indigo-500/30 rounded-2xl p-8"
+        >
+            <h3 class="text-sm font-bold text-indigo-400 mb-3 uppercase tracking-wider">
+                {{ t('stores.samrock_title') }}
+            </h3>
+            <p class="text-sm text-gray-400 mb-2 leading-relaxed">{{ t('stores.samrock_description') }}</p>
+            <p class="text-xs text-gray-500 mb-6">{{ t('stores.samrock_require_plugin') }}</p>
+
+            <p v-if="samrockErrorMessage && !samrockQrObjectUrl" class="text-red-400 text-sm mb-4">{{ samrockErrorMessage }}</p>
+
+            <div v-if="!samrockOtp && !samrockBusy" class="flex flex-wrap gap-3">
+                <button
+                    type="button"
+                    class="px-6 py-3 rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
+                    :disabled="samrockBusy"
+                    @click="startSamRockPairing"
+                >
+                    {{ t('stores.samrock_generate_qr') }}
+                </button>
+                <button
+                    v-if="samrockErrorMessage"
+                    type="button"
+                    class="px-6 py-3 rounded-xl text-sm font-medium border border-gray-600 text-gray-300 hover:bg-gray-800"
+                    @click="samrockErrorMessage = ''; startSamRockPairing()"
+                >
+                    {{ t('stores.samrock_try_again') }}
+                </button>
+            </div>
+
+            <div v-else-if="samrockBusy && !samrockQrObjectUrl" class="flex items-center gap-3 py-6 text-gray-400">
+                <svg class="animate-spin h-6 w-6 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span>{{ t('common.loading') }}</span>
+            </div>
+
+            <div v-else-if="samrockQrObjectUrl" class="space-y-4">
+                <p class="text-sm text-gray-300">{{ t('stores.samrock_waiting_scan') }}</p>
+                <div class="flex flex-col sm:flex-row gap-6 items-start">
+                    <img
+                        :src="samrockQrObjectUrl"
+                        alt="SamRock QR"
+                        class="w-48 h-48 rounded-xl border border-gray-600 bg-white p-2"
+                    />
+                    <div class="text-sm space-y-2">
+                        <p v-if="samrockExpiresAt" class="text-gray-500">
+                            {{ t('stores.samrock_expires') }}: {{ formatSamRockExpiry(samrockExpiresAt) }}
+                        </p>
+                        <p v-if="samrockPollStatus" class="font-mono text-indigo-300">{{ samrockPollStatus }}</p>
+                        <p v-if="samrockErrorMessage" class="text-red-400">{{ samrockErrorMessage }}</p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-3 pt-2">
+                    <button
+                        type="button"
+                        class="px-4 py-2 rounded-xl text-sm border border-gray-600 text-gray-300 hover:bg-gray-800"
+                        @click="cancelSamRockPairing"
+                    >
+                        {{ t('stores.samrock_cancel') }}
+                    </button>
+                </div>
+            </div>
+
+            <p class="mt-8 pt-6 border-t border-gray-700 text-sm text-gray-500">{{ t('stores.samrock_or_manual') }}</p>
+        </div>
+
         <!-- Read-only: Current Connection + Change button (when connection exists and not editing) -->
         <template v-if="existingConnection && viewMode === 'readonly'">
             <div class="bg-gray-900/50 border border-gray-700 rounded-2xl p-8">
                 <h3 class="text-sm font-bold text-indigo-400 mb-6 uppercase tracking-wider">
                     {{ t('stores.current_connection') }}
                 </h3>
-                <div v-if="existingConnection.type === 'aqua_descriptor'" class="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10">
+                <div v-if="existingConnection.configuration_source === 'samrock'" class="mb-6 p-4 rounded-xl border border-green-500/30 bg-green-500/10">
+                    <p class="text-sm text-green-300">{{ t('stores.samrock_connected_note') }}</p>
+                </div>
+                <div v-else-if="existingConnection.type === 'aqua_descriptor'" class="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10">
                     <p class="text-sm text-amber-400">{{ t('stores.aqua_warning_btcpay') }}</p>
                     <p class="text-sm text-amber-400 mt-2">{{ t('stores.aqua_limits_warning') }}</p>
                 </div>
@@ -440,6 +513,122 @@ const lnurlRevealError = ref('');
 const lnurlRevealPolling = ref(false);
 let lnurlRevealPollingInterval: number | null = null;
 
+const samrockPanelVisible = computed(() => {
+    if (props.walletType !== 'aqua_boltz') return false;
+    if (viewMode.value !== 'create') return false;
+    if (!props.existingConnection) return true;
+    if (props.existingConnection.configuration_source === 'samrock') return false;
+    return props.existingConnection.status === 'pending';
+});
+
+const samrockOtp = ref('');
+const samrockExpiresAt = ref<string | null>(null);
+const samrockQrObjectUrl = ref<string | null>(null);
+const samrockBusy = ref(false);
+const samrockPollStatus = ref('');
+const samrockErrorMessage = ref('');
+let samrockPollInterval: number | null = null;
+
+function revokeSamRockQr() {
+    if (samrockQrObjectUrl.value) {
+        URL.revokeObjectURL(samrockQrObjectUrl.value);
+        samrockQrObjectUrl.value = null;
+    }
+}
+
+function formatSamRockExpiry(iso: string) {
+    try {
+        return new Date(iso).toLocaleString();
+    } catch {
+        return iso;
+    }
+}
+
+function stopSamRockPolling() {
+    if (samrockPollInterval != null) {
+        window.clearInterval(samrockPollInterval);
+        samrockPollInterval = null;
+    }
+}
+
+async function cancelSamRockPairing() {
+    stopSamRockPolling();
+    revokeSamRockQr();
+    if (samrockOtp.value) {
+        try {
+            await api.delete(`/stores/${props.storeId}/samrock/otps/${encodeURIComponent(samrockOtp.value)}`);
+        } catch {
+            /* ignore */
+        }
+    }
+    samrockOtp.value = '';
+    samrockExpiresAt.value = null;
+    samrockErrorMessage.value = '';
+    samrockPollStatus.value = '';
+    samrockBusy.value = false;
+}
+
+async function startSamRockPairing() {
+    samrockBusy.value = true;
+    samrockErrorMessage.value = '';
+    revokeSamRockQr();
+    samrockOtp.value = '';
+    stopSamRockPolling();
+
+    try {
+        const res = await api.post(`/stores/${props.storeId}/samrock/otps`, {
+            btc: true,
+            btcln: true,
+            lbtc: false,
+            expires_in_seconds: 300,
+        });
+        const d = res.data?.data ?? {};
+        const otp = d.otp ?? '';
+        if (!otp) {
+            samrockErrorMessage.value = t('stores.samrock_error');
+            samrockBusy.value = false;
+            return;
+        }
+        samrockOtp.value = otp;
+        samrockExpiresAt.value = d.expires_at ?? null;
+
+        const qrRes = await api.get(`/stores/${props.storeId}/samrock/otps/${encodeURIComponent(otp)}/qr`, {
+            responseType: 'blob',
+            params: { format: 'png' },
+        });
+        samrockQrObjectUrl.value = URL.createObjectURL(qrRes.data);
+        samrockBusy.value = false;
+        samrockPollStatus.value = 'pending';
+
+        const pollOnce = async () => {
+            if (!samrockOtp.value) return;
+            try {
+                const st = await api.get(`/stores/${props.storeId}/samrock/otps/${encodeURIComponent(samrockOtp.value)}`);
+                const status = st.data?.data?.status ?? '';
+                samrockPollStatus.value = status;
+                if (status === 'success') {
+                    stopSamRockPolling();
+                    await api.post(`/stores/${props.storeId}/samrock/complete`, { otp: samrockOtp.value });
+                    revokeSamRockQr();
+                    samrockOtp.value = '';
+                    emit('submitted');
+                } else if (status === 'error') {
+                    stopSamRockPolling();
+                    samrockErrorMessage.value = st.data?.data?.error_message ?? t('stores.samrock_error');
+                }
+            } catch {
+                /* ignore */
+            }
+        };
+
+        await pollOnce();
+        samrockPollInterval = window.setInterval(pollOnce, 3000);
+    } catch (err: any) {
+        samrockErrorMessage.value = err.response?.data?.message ?? t('stores.samrock_error');
+        samrockBusy.value = false;
+    }
+}
+
 const submitting = ref(false);
 const testing = ref(false);
 const errors = reactive<Record<string, string>>({});
@@ -686,6 +875,8 @@ function onNostrRevealSuccess(payload?: { secret?: string; type?: string }) {
 
 onUnmounted(() => {
     if (lnurlRevealPollingInterval != null) window.clearInterval(lnurlRevealPollingInterval);
+    stopSamRockPolling();
+    revokeSamRockQr();
 });
 
 async function handleConfirmPassword() {

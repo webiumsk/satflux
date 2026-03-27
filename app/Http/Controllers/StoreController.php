@@ -524,6 +524,7 @@ class StoreController extends Controller
             'id' => $walletConnection->id,
             'type' => $walletConnection->type,
             'status' => $walletConnection->status,
+            'configuration_source' => $walletConnection->configuration_source,
             'masked_secret' => $walletConnection->masked_secret,
             'submitted_at' => $walletConnection->created_at,
             'secret_updated_at' => $walletConnection->secret_updated_at,
