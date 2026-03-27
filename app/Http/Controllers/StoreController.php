@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class StoreController extends Controller
 {
@@ -321,7 +322,7 @@ class StoreController extends Controller
             ]);
 
             // Cashu setup (no wallet_connection secret, configured via BTCPay Cashu plugin).
-            if ($request->wallet_type === 'cashu') {
+            if ($request->filled('wallet_type') && $request->wallet_type === 'cashu') {
                 try {
                     $userApiKey = $user->getBtcPayApiKeyOrFail();
                     $cashuService = app(\App\Services\BtcPay\CashuService::class);
@@ -352,9 +353,9 @@ class StoreController extends Controller
                 }
             }
 
-            // Create wallet connection if connection_string is provided
+            // Create wallet connection if connection_string is provided (Blink / Aqua descriptor only)
             $walletConnection = null;
-            if ($request->wallet_type !== 'cashu' && $request->filled('connection_string')) {
+            if ($request->filled('wallet_type') && $request->wallet_type !== 'cashu' && $request->filled('connection_string')) {
                 Log::info('Starting wallet connection creation during store creation', [
                     'store_id' => $store->id,
                     'btcpay_store_id' => $store->btcpay_store_id,
@@ -463,6 +464,37 @@ class StoreController extends Controller
     }
 
     /**
+     * Set local wallet_type once (e.g. create-wizard step 2 before SamRock QR — backend requires aqua_boltz for SamRock).
+     */
+    public function setWalletType(Request $request, Store $store)
+    {
+        $validated = $request->validate([
+            'wallet_type' => ['required', 'string', Rule::in(['blink', 'aqua_boltz', 'cashu'])],
+        ]);
+
+        $next = $validated['wallet_type'];
+
+        if ($store->wallet_type === $next) {
+            $store->load('checklistItems', 'walletConnection');
+
+            return response()->json([
+                'data' => $this->formatStore($store),
+            ]);
+        }
+
+        if ($store->wallet_type !== null) {
+            abort(422, 'Wallet type is already set for this store.');
+        }
+
+        $store->update(['wallet_type' => $next]);
+        $store->load('checklistItems', 'walletConnection');
+
+        return response()->json([
+            'data' => $this->formatStore($store->fresh()),
+        ]);
+    }
+
+    /**
      * Get a specific store.
      * Store is loaded from BTCPay API, then merged with local metadata.
      */
@@ -551,7 +583,7 @@ class StoreController extends Controller
             'created_at' => $localStore->created_at,
             'updated_at' => $localStore->updated_at,
             'checklist_items' => ($localStore->checklistItems && $localStore->checklistItems->count() > 0) ? $localStore->checklistItems->map(function ($item) use ($localStore) {
-                $definition = StoreChecklistService::getChecklistItems($localStore->wallet_type ?? 'blink');
+                $definition = StoreChecklistService::getChecklistItems($localStore->wallet_type ?? '');
                 $itemDef = $definition[$item->item_key] ?? null;
 
                 return [
@@ -764,7 +796,7 @@ class StoreController extends Controller
             'logo_url' => null, // Not available from local DB only (would need BTCPay API)
             'anyone_can_create_invoice' => false, // Unknown when BTCPay API failed; safe default
             'checklist_items' => $store->checklistItems ? $store->checklistItems->map(function ($item) use ($store) {
-                $definition = StoreChecklistService::getChecklistItems($store->wallet_type ?? 'blink');
+                $definition = StoreChecklistService::getChecklistItems($store->wallet_type ?? '');
                 $itemDef = $definition[$item->item_key] ?? null;
 
                 return [

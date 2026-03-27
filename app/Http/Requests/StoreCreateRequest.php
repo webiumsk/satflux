@@ -27,15 +27,16 @@ class StoreCreateRequest extends FormRequest
             'default_currency' => ['required', 'string', 'max:10'], // Allow BTC, SATS, and 3-letter codes
             'timezone' => ['required', 'string', 'timezone'],
             'preferred_exchange' => ['nullable', 'string', 'max:255'],
-            'wallet_type' => ['required', 'string', Rule::in(['blink', 'aqua_boltz', 'cashu'])],
+            // Omit on first-step create; set later when user picks Blink / Aqua / Cashu.
+            'wallet_type' => ['nullable', 'string', Rule::in(['blink', 'aqua_boltz', 'cashu'])],
 
             // Blink/Aqua wallet connection string (Blink token or Aqua descriptor).
             'connection_string' => [
                 'nullable',
                 'string',
                 'max:2000',
-                // Cashu doesn't use wallet_connections secrets; it's configured directly via BTCPay Cashu plugin.
-                'prohibited_if:wallet_type,cashu',
+                // Only when configuring Blink or Aqua descriptor during create; Cashu uses mint/LN fields.
+                'prohibited_unless:wallet_type,blink,aqua_boltz',
             ],
 
             // Cashu plugin settings.
@@ -51,7 +52,7 @@ class StoreCreateRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             // If connection_string is provided, validate it matches the wallet_type
-            if ($this->filled('connection_string') && $this->filled('wallet_type')) {
+            if ($this->filled('connection_string') && in_array($this->wallet_type, ['blink', 'aqua_boltz'], true)) {
                 $connectionString = $this->connection_string;
                 $walletType = $this->wallet_type;
 
@@ -60,7 +61,7 @@ class StoreCreateRequest extends FormRequest
                 if ($walletType === 'blink') {
                     // Validate Blink connection string format
                     $validation = $connectionValidator->validate('blink', $connectionString);
-                    if (!$validation['valid']) {
+                    if (! $validation['valid']) {
                         $errors = $validation['errors'] ?? ['Invalid Blink connection string format. Expected: type=blink;server=https://...;api-key=...;wallet-id=...'];
                         foreach ($errors as $error) {
                             $validator->errors()->add('connection_string', $error);
@@ -69,7 +70,7 @@ class StoreCreateRequest extends FormRequest
                 } elseif ($walletType === 'aqua_boltz') {
                     // Validate Aqua descriptor format
                     $validation = $connectionValidator->validate('aqua_descriptor', $connectionString);
-                    if (!$validation['valid']) {
+                    if (! $validation['valid']) {
                         $errors = $validation['errors'] ?? ['Invalid descriptor format. Must be a valid Aqua wallet output descriptor (e.g., wpkh(), tr(), wsh(), or complex formats like ct(slip77(...),elsh(wpkh(...)))) and must not contain private keys.'];
                         foreach ($errors as $error) {
                             $validator->errors()->add('connection_string', $error);
@@ -82,11 +83,3 @@ class StoreCreateRequest extends FormRequest
         });
     }
 }
-
-
-
-
-
-
-
-

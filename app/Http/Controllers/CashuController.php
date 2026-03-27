@@ -5,16 +5,25 @@ namespace App\Http\Controllers;
 use App\Models\Store;
 use App\Services\BtcPay\CashuService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class CashuController extends Controller
 {
-    public function __construct(protected CashuService $cashuService)
-    {
-    }
+    public function __construct(protected CashuService $cashuService) {}
 
     public function getSettings(Store $store): \Illuminate\Http\JsonResponse
     {
+        if (($store->wallet_type ?? null) === null) {
+            return response()->json([
+                'data' => [
+                    'mint_url' => null,
+                    'lightning_address' => null,
+                    'enabled' => true,
+                ],
+            ]);
+        }
+
         $this->ensureCashuStore($store);
 
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
@@ -32,7 +41,10 @@ class CashuController extends Controller
 
     public function updateSettings(Request $request, Store $store): \Illuminate\Http\JsonResponse
     {
-        $this->ensureCashuStore($store);
+        $wt = $store->wallet_type ?? null;
+        if ($wt !== null && $wt !== 'cashu') {
+            abort(422, 'Cashu is not the wallet type for this store.');
+        }
 
         $request->validate([
             'mint_url' => ['required', 'string', 'url', 'starts_with:https://'],
@@ -48,7 +60,14 @@ class CashuController extends Controller
             'enabled' => $request->boolean('enabled', true),
         ];
 
-        $updated = $this->cashuService->saveSettings($store->btcpay_store_id, $payload, $userApiKey);
+        $updated = DB::transaction(function () use ($store, $payload, $userApiKey) {
+            if (($store->wallet_type ?? null) === null) {
+                $store->update(['wallet_type' => 'cashu']);
+                $store->refresh();
+            }
+
+            return $this->cashuService->saveSettings($store->btcpay_store_id, $payload, $userApiKey);
+        });
 
         return response()->json([
             'data' => [
@@ -138,4 +157,3 @@ class CashuController extends Controller
         }
     }
 }
-

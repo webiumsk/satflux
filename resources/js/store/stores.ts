@@ -99,7 +99,8 @@ export const useStoresStore = defineStore('stores', () => {
         name: string;
         default_currency: string;
         timezone: string;
-        wallet_type: 'blink' | 'aqua_boltz' | 'cashu';
+        /** Omit on first-step create; configure wallet in a follow-up step. */
+        wallet_type?: 'blink' | 'aqua_boltz' | 'cashu' | null;
         preferred_exchange?: string;
         connection_string?: string;
         mint_url?: string;
