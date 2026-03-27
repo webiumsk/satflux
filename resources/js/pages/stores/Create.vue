@@ -355,28 +355,6 @@
               </label>
             </div>
             <div
-              v-if="form.wallet_type === 'aqua_boltz'"
-              class="mt-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10"
-            >
-              <p class="text-sm text-amber-400">
-                {{ t("stores.aqua_warning_btcpay") }}
-              </p>
-              <p class="text-sm text-amber-400 mt-2">
-                {{ t("stores.aqua_limits_warning") }}
-              </p>
-            </div>
-            <div
-              v-if="form.wallet_type === 'aqua_boltz'"
-              class="mt-4 p-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10"
-            >
-              <p class="text-sm font-medium text-indigo-300">
-                {{ t("create_store.samrock_hint_title") }}
-              </p>
-              <p class="text-sm text-gray-300 mt-2 leading-relaxed">
-                {{ t("create_store.samrock_hint_body") }}
-              </p>
-            </div>
-            <div
               v-if="form.wallet_type === 'cashu'"
               class="mt-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-2"
             >
@@ -449,67 +427,37 @@
                 </div>
               </template>
 
-              <template v-else>
-              <label
-                :for="
-                  form.wallet_type === 'blink'
-                    ? 'connection_string_blink'
-                    : 'connection_string_aqua'
-                "
-                class="block text-sm font-medium text-indigo-300 mb-2"
-              >
-                {{
-                  form.wallet_type === "blink"
-                    ? t("create_store.connection_string")
-                    : t("create_store.descriptor")
-                }}
-                <span
-                  v-if="form.wallet_type === 'aqua_boltz'"
-                  class="block text-xs font-normal text-gray-500 mt-1"
+              <template v-else-if="form.wallet_type === 'blink'">
+                <label
+                  for="connection_string_blink"
+                  class="block text-sm font-medium text-indigo-300 mb-2"
                 >
-                  {{ t("create_store.descriptor_optional_samrock") }}
-                </span>
-              </label>
-              <textarea
-                :id="
-                  form.wallet_type === 'blink'
-                    ? 'connection_string_blink'
-                    : 'connection_string_aqua'
-                "
-                v-model="form.connection_string"
-                rows="4"
-                class="block w-full rounded-lg p-2 border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono text-sm placeholder-gray-600"
-                :placeholder="
-                  form.wallet_type === 'blink'
-                    ? 'type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx'
-                    : 'ct(slip77(...),elsh(wpkh(...))))'
-                "
-              ></textarea>
-              <p
-                v-if="form.wallet_type === 'blink'"
-                class="mt-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-sm text-amber-400"
-              >
-                {{ t("stores.blink_keys_warning") }}
-                <a
-                  href="https://dashboard.blink.sv/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="underline hover:text-amber-300 ml-1"
-                  >{{ t("stores.blink_dashboard_link") }}</a
+                  {{ t("create_store.connection_string") }}
+                </label>
+                <textarea
+                  id="connection_string_blink"
+                  v-model="form.connection_string"
+                  rows="4"
+                  class="block w-full rounded-lg p-2 border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono text-sm placeholder-gray-600"
+                  placeholder="type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx"
+                ></textarea>
+                <p
+                  class="mt-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-sm text-amber-400"
                 >
-              </p>
-              <p class="mt-3 text-sm text-gray-400 leading-relaxed">
-                <span v-if="form.wallet_type === 'blink'">
+                  {{ t("stores.blink_keys_warning") }}
+                  <a
+                    href="https://dashboard.blink.sv/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="underline hover:text-amber-300 ml-1"
+                    >{{ t("stores.blink_dashboard_link") }}</a
+                  >
+                </p>
+                <p class="mt-3 text-sm text-gray-400 leading-relaxed">
                   {{ t("create_store.connection_string_format") }}<br />
                   {{ t("create_store.connection_string_help") }}
-                </span>
-                <span v-else>
-                  {{ t("create_store.descriptor_help") }}<br />
-                  {{ t("create_store.descriptor_example") }}
-                </span>
-              </p>
-              <p class="mt-2 text-sm text-gray-400">
-                <template v-if="form.wallet_type === 'blink'">
+                </p>
+                <p class="mt-2 text-sm text-gray-400">
                   <a
                     :href="docBlinkPath"
                     target="_blank"
@@ -531,31 +479,101 @@
                       />
                     </svg>
                   </a>
-                </template>
-                <template v-else>
-                  <a
-                    :href="docAquaPath"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="text-indigo-400 hover:text-indigo-300 hover:underline"
+                </p>
+              </template>
+
+              <template v-else-if="form.wallet_type === 'aqua_boltz'">
+                <div
+                  class="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10"
+                >
+                  <p class="text-sm text-amber-400">
+                    {{ t("stores.aqua_warning_btcpay") }}
+                  </p>
+                  <p class="text-sm text-amber-400 mt-2">
+                    {{ t("stores.aqua_limits_warning") }}
+                  </p>
+                </div>
+                <div class="flex gap-1 p-1 rounded-xl bg-gray-800/90 border border-gray-600 w-full sm:w-auto mb-6">
+                  <button
+                    type="button"
+                    class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-semibold transition-all"
+                    :class="
+                      aquaSetupTab === 'samrock'
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'text-gray-400 hover:text-white hover:bg-gray-700/80'
+                    "
+                    @click="aquaSetupTab = 'samrock'"
                   >
-                    {{ t("create_store.doc_link_aqua") }}
-                    <svg
-                      class="inline w-3.5 h-3.5 ml-0.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                    {{ t("create_store.tab_samrock") }}
+                  </button>
+                  <button
+                    type="button"
+                    class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
+                    :class="
+                      aquaSetupTab === 'descriptor'
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'text-gray-400 hover:text-white hover:bg-gray-700/80'
+                    "
+                    @click="aquaSetupTab = 'descriptor'"
+                  >
+                    {{ t("create_store.tab_descriptor") }}
+                  </button>
+                </div>
+
+                <div v-show="aquaSetupTab === 'samrock'" class="space-y-4">
+                  <p class="text-sm font-medium text-indigo-300">
+                    {{ t("create_store.samrock_hint_title") }}
+                  </p>
+                  <p class="text-sm text-gray-300 leading-relaxed">
+                    {{ t("create_store.samrock_hint_body") }}
+                  </p>
+                  <p class="text-xs text-gray-500">
+                    {{ t("stores.samrock_require_plugin") }}
+                  </p>
+                </div>
+
+                <div v-show="aquaSetupTab === 'descriptor'" class="space-y-3">
+                  <label
+                    for="connection_string_aqua"
+                    class="block text-sm font-medium text-indigo-300 mb-2"
+                  >
+                    {{ t("create_store.descriptor") }}
+                  </label>
+                  <textarea
+                    id="connection_string_aqua"
+                    v-model="form.connection_string"
+                    rows="4"
+                    class="block w-full rounded-lg p-2 border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono text-sm placeholder-gray-600"
+                    placeholder="ct(slip77(...),elsh(wpkh(...))))"
+                  ></textarea>
+                  <p class="mt-3 text-sm text-gray-400 leading-relaxed">
+                    {{ t("create_store.descriptor_help") }}<br />
+                    {{ t("create_store.descriptor_example") }}
+                  </p>
+                  <p class="mt-2 text-sm text-gray-400">
+                    <a
+                      :href="docAquaPath"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-indigo-400 hover:text-indigo-300 hover:underline"
                     >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                      />
-                    </svg>
-                  </a>
-                </template>
-              </p>
+                      {{ t("create_store.doc_link_aqua") }}
+                      <svg
+                        class="inline w-3.5 h-3.5 ml-0.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                        />
+                      </svg>
+                    </a>
+                  </p>
+                </div>
               </template>
             </div>
           </transition>
@@ -683,7 +701,14 @@
                 </dt>
                 <dd class="text-sm font-medium text-white flex items-center justify-end text-right">
                   <template
-                    v-if="form.wallet_type === 'aqua_boltz' && !form.connection_string?.trim()"
+                    v-if="form.wallet_type === 'aqua_boltz' && aquaSetupTab === 'samrock'"
+                  >
+                    <span class="text-indigo-300">{{
+                      t("create_store.aqua_summary_samrock")
+                    }}</span>
+                  </template>
+                  <template
+                    v-else-if="form.wallet_type === 'aqua_boltz' && !form.connection_string?.trim()"
                   >
                     <span class="text-indigo-300">{{
                       t("create_store.aqua_configure_later")
@@ -820,6 +845,9 @@ const flashStore = useFlashStore();
 const storeLimitReached = ref(false);
 const showUpgradeModal = ref(false);
 
+/** Aqua step 2: primary SamRock tab vs secondary manual descriptor tab */
+const aquaSetupTab = ref<"samrock" | "descriptor">("samrock");
+
 const form = ref({
   name: "",
   default_currency: "EUR",
@@ -879,10 +907,10 @@ const canProceedFromStep2 = computed(() => {
   }
 
   if (wt === "aqua_boltz") {
-    const cs = form.value.connection_string?.trim() ?? "";
-    if (cs === "") {
+    if (aquaSetupTab.value === "samrock") {
       return true;
     }
+    const cs = form.value.connection_string?.trim() ?? "";
 
     return validateDescriptor(cs);
   }
@@ -903,6 +931,9 @@ watch(
   (wt) => {
     if (wt === "cashu" && !(form.value.mint_url ?? "").trim()) {
       form.value.mint_url = DEFAULT_CASHU_MINT_URL;
+    }
+    if (wt === "aqua_boltz") {
+      aquaSetupTab.value = "samrock";
     }
   }
 );
@@ -991,7 +1022,15 @@ async function handleSubmit() {
     }
 
     const store = await storesStore.createStore(payload);
-    router.push(`/stores/${store.id}?setup=1`);
+    if (form.value.wallet_type === "aqua_boltz" && aquaSetupTab.value === "samrock") {
+      router.push({
+        name: "stores-wallet-connection",
+        params: { id: store.id },
+        query: { samrock: "1", setup: "1" },
+      });
+    } else {
+      router.push(`/stores/${store.id}?setup=1`);
+    }
   } catch (err: any) {
     const msg =
       err.response?.data?.message || t("create_store.failed_to_create");
