@@ -37,6 +37,17 @@
            <StoreInvoices :store="store" />
         </div>
 
+        <!-- Cashu settlements (wallet_type=cashu) -->
+        <div v-else-if="showCashu" class="max-w-7xl">
+          <StoreCashuPayments v-if="store.wallet_type === 'cashu'" :store="store" />
+          <div
+            v-else
+            class="rounded-2xl border border-amber-500/25 bg-amber-500/10 px-6 py-5 text-sm text-amber-100"
+          >
+            {{ t('stores.cashu_section_requires_cashu_wallet') }}
+          </div>
+        </div>
+
         <!-- Reports View -->
         <div v-else-if="showReports" class="max-w-7xl">
            <StoreReports :store="store" />
@@ -268,6 +279,7 @@ import TopItems from '../../components/stores/TopItems.vue';
 import StoreSettings from '../../components/stores/StoreSettings.vue';
 import ArchivedStoreBanner from '../../components/stores/ArchivedStoreBanner.vue';
 import StoreInvoices from '../../components/stores/StoreInvoices.vue';
+import StoreCashuPayments from '../../components/stores/StoreCashuPayments.vue';
 import StoreReports from '../../components/stores/StoreReports.vue';
 import SetupWizardModal from '../../components/stores/SetupWizardModal.vue';
 import { useOnboardingStore } from '../../store/onboarding';
@@ -282,6 +294,7 @@ const loading = ref(false);
 const store = ref<any>(null);
 const showSettings = ref(false);
 const showInvoices = ref(false);
+const showCashu = ref(false);
 const showReports = ref(false);
 const showSetupWizard = ref(false);
 const dashboardSourceFilter = ref<string>('all');
@@ -355,6 +368,7 @@ watch(() => route.query.section, async (newSection, oldSection) => {
 function updateSection(section: string) {
   showSettings.value = section === 'settings';
   showInvoices.value = section === 'invoices';
+  showCashu.value = section === 'cashu';
   showReports.value = section === 'reports' || section === 'exports'; // support legacy exports query
 }
 

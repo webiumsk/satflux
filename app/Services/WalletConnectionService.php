@@ -27,12 +27,11 @@ class WalletConnectionService
     /**
      * Create or update a wallet connection for a store.
      *
-     * @param Store $store
-     * @param string $type Connection type ('blink' or 'aqua_descriptor')
-     * @param string $secret Secret value (will be encrypted)
-     * @param User $user User submitting the connection
-     * @param string $initialStatus 'pending' = bot will run first, no support emails yet; 'needs_support' = notify support immediately
-     * @return WalletConnection
+     * @param  string  $type  Connection type ('blink' or 'aqua_descriptor')
+     * @param  string  $secret  Secret value (will be encrypted)
+     * @param  User  $user  User submitting the connection
+     * @param  string  $initialStatus  'pending' = bot will run first, no support emails yet; 'needs_support' = notify support immediately
+     *
      * @throws \Illuminate\Validation\ValidationException
      */
     public function createOrUpdate(Store $store, string $type, string $secret, User $user, string $initialStatus = 'needs_support'): WalletConnection
@@ -42,26 +41,26 @@ class WalletConnectionService
             'store_btcpay_store_id' => $store->btcpay_store_id ?? 'NULL',
             'type' => $type,
             'secret_length' => strlen($secret),
-            'secret_preview' => substr($secret, 0, 50) . '...',
+            'secret_preview' => substr($secret, 0, 50).'...',
             'user_id' => $user->id,
         ]);
-        
+
         // Validate the secret
         Log::info('Validating wallet connection secret', [
             'store_id' => $store->id,
             'type' => $type,
         ]);
-        
+
         $validation = $this->validator->validate($type, $secret);
-        
+
         Log::info('Wallet connection validation result', [
             'store_id' => $store->id,
             'type' => $type,
             'valid' => $validation['valid'] ?? 'NOT_SET',
             'errors' => $validation['errors'] ?? [],
         ]);
-        
-        if (!$validation['valid']) {
+
+        if (! $validation['valid']) {
             Log::error('Wallet connection validation failed', [
                 'store_id' => $store->id,
                 'type' => $type,
@@ -84,9 +83,9 @@ class WalletConnectionService
                 ]);
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'secret' => [
-                        'This descriptor is already in use by another store. ' .
-                        'BTCPay allows each descriptor to be used only once. ' .
-                        ($duplicateCheck['existing_store_name'] 
+                        'This descriptor is already in use by another store. '.
+                        'BTCPay allows each descriptor to be used only once. '.
+                        ($duplicateCheck['existing_store_name']
                             ? "It is currently used by store: {$duplicateCheck['existing_store_name']}"
                             : 'Please use a different wallet/descriptor.'),
                     ],
@@ -142,6 +141,8 @@ class WalletConnectionService
             // wallet_connections.type: 'blink' | 'aqua_descriptor'  ->  stores.wallet_type: 'blink' | 'aqua_boltz'
             $storeWalletType = $connection->type === 'aqua_descriptor' ? 'aqua_boltz' : 'blink';
             $store->update(['wallet_type' => $storeWalletType]);
+            $store->refresh();
+            StoreChecklistService::ensureChecklistInitialized($store);
 
             Log::info('Store wallet_type synced', [
                 'store_id' => $store->id,
@@ -259,7 +260,7 @@ class WalletConnectionService
             try {
                 $storeName = $store->name;
                 $typeLabel = $connection->type === 'blink' ? 'Blink' : 'Aqua';
-                $panelUrl = rtrim(config('app.url'), '/') . '/support/wallet-connections';
+                $panelUrl = rtrim(config('app.url'), '/').'/support/wallet-connections';
 
                 Http::timeout(10)->post($webhookUrl, [
                     'content' => "🔔 **Wallet connection needs support**: {$storeName} ({$typeLabel})",
@@ -300,8 +301,7 @@ class WalletConnectionService
     /**
      * Reveal the plaintext secret (for support/admin use).
      *
-     * @param WalletConnection $connection
-     * @param User $revealedBy User revealing the secret
+     * @param  User  $revealedBy  User revealing the secret
      * @return string Plaintext secret
      */
     public function reveal(WalletConnection $connection, User $revealedBy): string
@@ -340,20 +340,20 @@ class WalletConnectionService
      * Check if a descriptor is already used in another store.
      * BTCPay limitation: each descriptor can only be used once.
      *
-     * @param string $descriptor The descriptor to check
-     * @param string|null $currentStoreId Current store ID (to exclude from check), or null/'new' for new stores
+     * @param  string  $descriptor  The descriptor to check
+     * @param  string|null  $currentStoreId  Current store ID (to exclude from check), or null/'new' for new stores
      * @return array ['exists' => bool, 'existing_store_id' => string|null, 'existing_store_name' => string|null]
      */
     public function checkDescriptorDuplicate(string $descriptor, ?string $currentStoreId = null): array
     {
         // Get all Aqua descriptor connections (excluding current store if provided)
         $query = WalletConnection::where('type', 'aqua_descriptor');
-        
+
         // Exclude current store if it exists (not 'new' or null)
         if ($currentStoreId && $currentStoreId !== 'new') {
             $query->where('store_id', '!=', $currentStoreId);
         }
-        
+
         $connections = $query->get();
 
         foreach ($connections as $connection) {
@@ -362,6 +362,7 @@ class WalletConnectionService
                 // Compare descriptors (normalize by trimming)
                 if (trim($decrypted) === trim($descriptor)) {
                     $store = $connection->store;
+
                     return [
                         'exists' => true,
                         'existing_store_id' => $store->id,
@@ -374,6 +375,7 @@ class WalletConnectionService
                     'connection_id' => $connection->id,
                     'error' => $e->getMessage(),
                 ]);
+
                 continue;
             }
         }
@@ -388,14 +390,12 @@ class WalletConnectionService
     /**
      * Mark wallet connection as connected.
      *
-     * @param WalletConnection $connection
-     * @param User $markedBy User marking as connected
-     * @return void
+     * @param  User  $markedBy  User marking as connected
      */
     public function markConnected(WalletConnection $connection, User $markedBy): void
     {
         $wasNeedsSupport = $connection->status === 'needs_support';
-        
+
         $connection->update([
             'status' => 'connected',
         ]);
@@ -417,7 +417,7 @@ class WalletConnectionService
         if ($wasNeedsSupport) {
             $store = $connection->store;
             $merchant = $store->user;
-            
+
             if ($merchant && $merchant->email) {
                 try {
                     $merchant->notify(new \App\Notifications\WalletConnectionReadyNotification($store, $connection));
@@ -446,5 +446,3 @@ class WalletConnectionService
         ]);
     }
 }
-
-

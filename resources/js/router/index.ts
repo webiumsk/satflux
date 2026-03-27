@@ -108,7 +108,11 @@ const router = createRouter({
         {
             path: '/stores/:id/cashu',
             name: 'stores-cashu',
-            component: () => import('../pages/stores/CashuPayments.vue'),
+            redirect: (to) => ({
+                name: 'stores-show',
+                params: { id: to.params.id as string },
+                query: { section: 'cashu' },
+            }),
             meta: { requiresAuth: true },
         },
         {

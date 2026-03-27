@@ -443,6 +443,8 @@ class StoreController extends Controller
                 ]);
             }
 
+            StoreChecklistService::ensureChecklistInitialized($store);
+
             // Ensure checklistItems relationship is loaded
             $store->load('checklistItems', 'walletConnection');
 
@@ -475,6 +477,7 @@ class StoreController extends Controller
         $next = $validated['wallet_type'];
 
         if ($store->wallet_type === $next) {
+            StoreChecklistService::ensureChecklistInitialized($store);
             $store->load('checklistItems', 'walletConnection');
 
             return response()->json([
@@ -487,6 +490,7 @@ class StoreController extends Controller
         }
 
         $store->update(['wallet_type' => $next]);
+        StoreChecklistService::ensureChecklistInitialized($store);
         $store->load('checklistItems', 'walletConnection');
 
         return response()->json([

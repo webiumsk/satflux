@@ -1,5 +1,16 @@
 <template>
-  <div class="space-y-4">
+  <div>
+    <div v-if="loading" class="flex flex-col items-center justify-center py-16 text-gray-400">
+      <svg class="animate-spin h-8 w-8 text-indigo-500 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+      </svg>
+      <span class="text-sm">{{ t('common.loading') }}</span>
+    </div>
+    <p v-else-if="checklistItems.length === 0" class="text-center text-gray-400 py-12 text-sm">
+      {{ t('stores.checklist_no_items') }}
+    </p>
+    <div v-else class="space-y-4">
     <div
       v-for="item in checklistItems"
       :key="item.key"
@@ -52,11 +63,12 @@
       <!-- Indicator current/next -->
       <div v-if="!item.is_completed && isFirstUncomplete(item.key)" class="absolute -left-1 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-indigo-500 rounded-full shadow-[0_0_12px_rgba(99,102,241,0.5)]"></div>
     </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
 
@@ -75,14 +87,26 @@ const props = defineProps<{
   storeId: string;
 }>();
 
+const emit = defineEmits<{
+  stats: [{ total: number; completed: number }];
+}>();
+
 const checklistItems = ref<ChecklistItem[]>([]);
 const loading = ref(false);
+
+function emitStats() {
+  const items = checklistItems.value;
+  const total = items.length;
+  const completed = items.filter((i) => i.is_completed).length;
+  emit('stats', { total, completed });
+}
 
 async function fetchChecklist() {
   loading.value = true;
   try {
     const response = await api.get(`/stores/${props.storeId}/checklist`);
     checklistItems.value = response.data.data || [];
+    emitStats();
   } finally {
     loading.value = false;
   }
@@ -98,6 +122,7 @@ async function handleToggle(itemKey: string, completed: boolean) {
     if (index !== -1) {
       checklistItems.value[index] = updatedItem;
     }
+    emitStats();
   } catch (error) {
     // Revert checkbox on error
     await fetchChecklist();
@@ -108,6 +133,13 @@ function isFirstUncomplete(key: string) {
     const firstUncomplete = checklistItems.value.find(item => !item.is_completed);
     return firstUncomplete?.key === key;
 }
+
+watch(
+  () => props.storeId,
+  () => {
+    fetchChecklist();
+  }
+);
 
 onMounted(() => {
   fetchChecklist();
