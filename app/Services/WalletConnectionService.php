@@ -118,6 +118,7 @@ class WalletConnectionService
                 ['store_id' => $store->id],
                 [
                     'type' => $type,
+                    'configuration_source' => null,
                     'encrypted_secret' => Crypt::encryptString($secret),
                     'status' => $initialStatus,
                     'reconfig' => $wasConnected,
@@ -177,6 +178,30 @@ class WalletConnectionService
         }
 
         return $connection;
+    }
+
+    /**
+     * Persist a connected Aqua/Boltz wallet that was configured via BTCPay SamRock OTP (no manual descriptor in Satflux).
+     */
+    public function markSamRockConnected(Store $store, User $user): WalletConnection
+    {
+        $secret = $this->samRockPlaceholderDescriptor($store);
+        $connection = $this->createOrUpdate($store, 'aqua_descriptor', $secret, $user, 'connected');
+        $connection->update(['configuration_source' => 'samrock']);
+
+        return $connection->fresh();
+    }
+
+    /**
+     * Deterministic watch-only-shaped placeholder unique per store (BTCPay holds real keys; SamRock flow does not store descriptors in Satflux).
+     */
+    protected function samRockPlaceholderDescriptor(Store $store): string
+    {
+        $seed = hash('sha256', 'samrock:'.$store->id);
+        $fp = substr($seed, 0, 8);
+        $xpubBody = 'tpub'.str_pad(substr($seed, 0, 100), 100, '0');
+
+        return "wpkh([{$fp}/84'/0'/0']{$xpubBody}/0/*)";
     }
 
     /**

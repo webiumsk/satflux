@@ -38,6 +38,7 @@ use App\Http\Controllers\Admin\DocumentationImageController;
 use App\Http\Controllers\Admin\FaqItemController;
 use App\Http\Controllers\Admin\FaqCategoryController;
 use App\Http\Controllers\CashuController;
+use App\Http\Controllers\SamRockController;
 use App\Http\Middleware\AuditLog;
 use App\Http\Middleware\EnsureAdminRole;
 use App\Http\Middleware\EnsureApiKeyLimit;
@@ -285,6 +286,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         Route::get('payments', [CashuController::class, 'listPayments']);
         Route::post('payments/{quoteId}/retry', [CashuController::class, 'retryPayment']);
+    });
+
+    // SamRock (Aqua + Boltz — BTCPay SamRock Protocol plugin)
+    Route::middleware([EnsureStoreOwnership::class])->prefix('stores/{store}/samrock')->group(function () {
+        Route::post('otps', [SamRockController::class, 'createOtp']);
+        Route::get('otps/{otp}', [SamRockController::class, 'getOtpStatus']);
+        Route::get('otps/{otp}/qr', [SamRockController::class, 'getOtpQr']);
+        Route::delete('otps/{otp}', [SamRockController::class, 'deleteOtp']);
+        Route::post('complete', [SamRockController::class, 'complete']);
     });
 
     // Store Logo

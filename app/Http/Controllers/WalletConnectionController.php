@@ -42,6 +42,7 @@ class WalletConnectionController extends Controller
                 'id' => $connection->id,
                 'type' => $connection->type,
                 'status' => $connection->status,
+                'configuration_source' => $connection->configuration_source,
                 'masked_secret' => $connection->masked_secret,
                 'submitted_at' => $connection->created_at,
                 'secret_updated_at' => $connection->secret_updated_at,

@@ -313,6 +313,66 @@ class BtcPayClient
     }
 
     /**
+     * GET non-JSON body (e.g. SamRock QR image). Uses current API key Bearer auth.
+     */
+    public function getBinary(string $endpoint, string $accept = 'image/png'): string
+    {
+        $attempt = 0;
+        $backoff = $this->initialBackoff;
+
+        while ($attempt <= $this->maxRetries) {
+            try {
+                $response = Http::baseUrl($this->baseUrl)
+                    ->withHeaders([
+                        'Authorization' => "Bearer {$this->apiKey}",
+                        'Accept' => $accept,
+                    ])
+                    ->timeout(30)
+                    ->get($endpoint);
+
+                if ($response->successful()) {
+                    $this->logRequest('GET', $endpoint, ['accept' => $accept], $response, null, 'binary response');
+
+                    return $response->body();
+                }
+
+                if ($response->status() === 429) {
+                    $retryAfter = (int) ($response->header('Retry-After') ?? $backoff);
+                    $this->logRequest('GET', $endpoint, ['accept' => $accept], $response, null, "Rate limit exceeded, retry after {$retryAfter}s");
+
+                    if ($attempt < $this->maxRetries) {
+                        sleep($backoff);
+                        $backoff = $this->exponentialBackoff($backoff);
+                        $attempt++;
+                        continue;
+                    }
+
+                    throw new BtcPayRateLimitException('Rate limit exceeded', $retryAfter);
+                }
+
+                $this->handleErrorResponse($response, 'GET', $endpoint);
+            } catch (BtcPayRateLimitException $e) {
+                throw $e;
+            } catch (BtcPayException $e) {
+                throw $e;
+            } catch (\Exception $e) {
+                $this->logRequest('GET', $endpoint, ['accept' => $accept], null, null, "Exception: {$e->getMessage()}");
+
+                if ($attempt < $this->maxRetries) {
+                    sleep($backoff);
+                    $backoff = $this->exponentialBackoff($backoff);
+                    $attempt++;
+                    continue;
+                }
+
+                throw new BtcPayException("Request failed after {$this->maxRetries} retries: {$e->getMessage()}", 0, $e);
+            }
+        }
+
+        throw new BtcPayException("Request failed after {$this->maxRetries} retries");
+    }
+
+    /**
      * Calculate exponential backoff delay.
      */
     protected function exponentialBackoff(int $currentBackoff): int
