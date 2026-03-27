@@ -22,7 +22,7 @@ class StoreChecklistServiceTest extends TestCase
         $this->assertArrayHasKey('test_invoice', $items);
 
         $this->assertSame('connect_wallet', $items['connect_wallet']['key']);
-        $this->assertSame('Connect Blink wallet via Wallet Connection settings', $items['connect_wallet']['description']);
+        $this->assertStringContainsString('Blink', $items['connect_wallet']['description']);
         $this->assertArrayHasKey('order', $items['connect_wallet']);
     }
 
@@ -49,15 +49,37 @@ class StoreChecklistServiceTest extends TestCase
         $this->assertEmpty($items);
     }
 
-    public function test_get_all_checklist_items_has_blink_and_aqua_boltz(): void
+    public function test_get_all_checklist_items_has_blink_aqua_and_cashu(): void
     {
         $all = StoreChecklistService::getAllChecklistItems();
 
         $this->assertIsArray($all);
         $this->assertArrayHasKey('blink', $all);
         $this->assertArrayHasKey('aqua_boltz', $all);
+        $this->assertArrayHasKey('cashu', $all);
         $this->assertIsArray($all['blink']);
         $this->assertIsArray($all['aqua_boltz']);
+        $this->assertIsArray($all['cashu']);
+    }
+
+    public function test_get_checklist_items_for_cashu_returns_three_keys(): void
+    {
+        $items = StoreChecklistService::getChecklistItems('cashu');
+
+        $this->assertCount(3, $items);
+        $this->assertArrayHasKey('verify_mint_ln', $items);
+        $this->assertArrayHasKey('confirm_cashu_enabled', $items);
+        $this->assertArrayHasKey('test_cashu_payment', $items);
+    }
+
+    public function test_ensure_checklist_initialized_creates_only_missing_rows(): void
+    {
+        $store = Store::factory()->create(['wallet_type' => 'blink']);
+        StoreChecklistService::ensureChecklistInitialized($store);
+        $this->assertSame(3, StoreChecklist::where('store_id', $store->id)->count());
+
+        StoreChecklistService::ensureChecklistInitialized($store);
+        $this->assertSame(3, StoreChecklist::where('store_id', $store->id)->count());
     }
 
     public function test_initialize_checklist_creates_records_for_store(): void

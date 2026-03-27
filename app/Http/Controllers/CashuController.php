@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Store;
 use App\Services\BtcPay\CashuService;
+use App\Services\StoreChecklistService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -69,6 +70,9 @@ class CashuController extends Controller
             return $this->cashuService->saveSettings($store->btcpay_store_id, $payload, $userApiKey);
         });
 
+        $store->refresh();
+        StoreChecklistService::ensureChecklistInitialized($store);
+
         return response()->json([
             'data' => [
                 'mint_url' => $updated['mintUrl'] ?? $request->mint_url,
@@ -105,20 +109,7 @@ class CashuController extends Controller
 
         $raw = $this->cashuService->listPayments($store->btcpay_store_id, $userApiKey, $params);
 
-        $items = collect($raw['items'] ?? [])->map(function (array $item) {
-            return [
-                'quote_id' => $item['quoteId'] ?? null,
-                'invoice_id' => $item['invoiceId'] ?? null,
-                'amount_sats' => $item['amountSats'] ?? null,
-                'state' => $item['state'] ?? null,
-                'settlement_state' => $item['settlementState'] ?? null,
-                'settlement_error' => $item['settlementError'] ?? null,
-                'settlement_reference' => $item['settlementReference'] ?? null,
-                'created_at' => $item['createdAt'] ?? null,
-                'paid_at' => $item['paidAt'] ?? null,
-                'settled_at' => $item['settledAt'] ?? null,
-            ];
-        })->values();
+        $items = collect($raw['items'] ?? [])->map(fn (array $item) => $this->formatCashuPaymentItem($item))->values();
 
         return response()->json([
             'data' => [
@@ -155,5 +146,40 @@ class CashuController extends Controller
         if (($store->wallet_type ?? null) !== 'cashu') {
             abort(404, 'Cashu wallet is not configured for this store.');
         }
+    }
+
+    /**
+     * Map BTCPay Cashu plugin payment row to API shape.
+     *
+     * The plugin sometimes leaves settlementState as PENDING even after settlement
+     * finished; settledAt is the reliable completion timestamp from the plugin.
+     */
+    private function formatCashuPaymentItem(array $item): array
+    {
+        $reportedRaw = $item['settlementState'] ?? $item['settlement_state'] ?? null;
+        $reported = is_string($reportedRaw) ? strtoupper(trim($reportedRaw)) : null;
+        $settledAt = $item['settledAt'] ?? $item['settled_at'] ?? null;
+        $hasSettledAt = $settledAt !== null && $settledAt !== '';
+
+        $settlementState = $reported;
+        if ($hasSettledAt && $reported === 'PENDING') {
+            $settlementState = 'SETTLED';
+        }
+        if ($hasSettledAt && ($reported === null || $reported === '')) {
+            $settlementState = 'SETTLED';
+        }
+
+        return [
+            'quote_id' => $item['quoteId'] ?? $item['quote_id'] ?? null,
+            'invoice_id' => $item['invoiceId'] ?? $item['invoice_id'] ?? null,
+            'amount_sats' => $item['amountSats'] ?? $item['amount_sats'] ?? null,
+            'state' => $item['state'] ?? null,
+            'settlement_state' => $settlementState,
+            'settlement_error' => $item['settlementError'] ?? $item['settlement_error'] ?? null,
+            'settlement_reference' => $item['settlementReference'] ?? $item['settlement_reference'] ?? null,
+            'created_at' => $item['createdAt'] ?? $item['created_at'] ?? null,
+            'paid_at' => $item['paidAt'] ?? $item['paid_at'] ?? null,
+            'settled_at' => $settledAt,
+        ];
     }
 }

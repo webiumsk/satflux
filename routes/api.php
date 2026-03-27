@@ -94,7 +94,7 @@ Route::get('/plan-features', function () {
 Route::get('/version', function () {
     // Try to read version from package.json
     $packageJsonPath = base_path('package.json');
-    $version = '1.0.0'; // Default fallback
+    $version = '1.1.0'; // Default fallback
 
     if (file_exists($packageJsonPath)) {
         try {

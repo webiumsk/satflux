@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Store;
+use App\Models\StoreChecklist;
+
 class StoreChecklistService
 {
     /**
@@ -10,6 +13,7 @@ class StoreChecklistService
     public static function getChecklistItems(string $walletType): array
     {
         $items = self::getAllChecklistItems();
+
         return $items[$walletType] ?? [];
     }
 
@@ -24,19 +28,19 @@ class StoreChecklistService
             'blink' => [
                 'connect_wallet' => [
                     'key' => 'connect_wallet',
-                    'description' => 'Connect Blink wallet via Wallet Connection settings',
+                    'description' => 'Confirm Blink wallet connection is active (Wallet connection — status should show configured or pending → connected)',
                     'link' => null, // No direct BTCPay UI links - configure via satflux.io
                     'order' => 1,
                 ],
                 'enable_lightning' => [
                     'key' => 'enable_lightning',
-                    'description' => 'Confirm Lightning payments are enabled',
+                    'description' => 'Confirm Lightning is enabled for this store once configuration has finished',
                     'link' => null,
                     'order' => 2,
                 ],
                 'test_invoice' => [
                     'key' => 'test_invoice',
-                    'description' => 'Create and test a test invoice payment',
+                    'description' => 'Create a small test invoice or PoS payment to verify payouts',
                     'link' => null,
                     'order' => 3,
                 ],
@@ -44,33 +48,53 @@ class StoreChecklistService
             'aqua_boltz' => [
                 'configure_wallet' => [
                     'key' => 'configure_wallet',
-                    'description' => 'Configure Aqua wallet connection via Wallet Connection settings',
+                    'description' => 'Confirm Aqua / Boltz wallet connection is saved (Wallet connection)',
                     'link' => null,
                     'order' => 1,
                 ],
                 'enable_boltz_plugin' => [
                     'key' => 'enable_boltz_plugin',
-                    'description' => 'Enable Boltz plugin for the store (requires support assistance)',
+                    'description' => 'Confirm Boltz plugin is enabled for the store (contact support if needed)',
                     'link' => null,
                     'order' => 2,
                 ],
                 'connect_aqua_wallet' => [
                     'key' => 'connect_aqua_wallet',
-                    'description' => 'Connect Aqua wallet via Boltz (requires support assistance)',
+                    'description' => 'Confirm Aqua is routed via Boltz as expected (support can help)',
                     'link' => null,
                     'order' => 3,
                 ],
                 'verify_swap_routing' => [
                     'key' => 'verify_swap_routing',
-                    'description' => 'Verify swap routing works correctly',
+                    'description' => 'Verify swap routing works for a small test amount',
                     'link' => null,
                     'order' => 4,
                 ],
                 'test_lightning_invoice' => [
                     'key' => 'test_lightning_invoice',
-                    'description' => 'Create and test a Lightning invoice payment',
+                    'description' => 'Create and pay a test Lightning invoice',
                     'link' => null,
                     'order' => 5,
+                ],
+            ],
+            'cashu' => [
+                'verify_mint_ln' => [
+                    'key' => 'verify_mint_ln',
+                    'description' => 'Confirm mint URL and Lightning address in Cashu settings match the wallet you use',
+                    'link' => null,
+                    'order' => 1,
+                ],
+                'confirm_cashu_enabled' => [
+                    'key' => 'confirm_cashu_enabled',
+                    'description' => 'Confirm Cashu is enabled for this store in settings',
+                    'link' => null,
+                    'order' => 2,
+                ],
+                'test_cashu_payment' => [
+                    'key' => 'test_cashu_payment',
+                    'description' => 'Run a small test invoice or PoS payment to verify ecash / Lightning flow',
+                    'link' => null,
+                    'order' => 3,
                 ],
             ],
         ];
@@ -84,18 +108,38 @@ class StoreChecklistService
         $items = self::getChecklistItems($walletType);
 
         foreach ($items as $item) {
-            \App\Models\StoreChecklist::create([
+            StoreChecklist::create([
                 'store_id' => $storeId,
                 'item_key' => $item['key'],
             ]);
         }
     }
+
+    /**
+     * Create missing checklist rows for the store's current wallet type (idempotent).
+     * Fixes stores that never had initializeChecklist run and adds new wallet types (e.g. cashu).
+     */
+    public static function ensureChecklistInitialized(Store $store): void
+    {
+        $walletType = $store->wallet_type;
+        if ($walletType === null || $walletType === '') {
+            return;
+        }
+
+        $definitions = self::getChecklistItems($walletType);
+        if ($definitions === []) {
+            return;
+        }
+
+        $existingKeys = $store->checklistItems()->pluck('item_key')->all();
+
+        foreach ($definitions as $item) {
+            if (! in_array($item['key'], $existingKeys, true)) {
+                StoreChecklist::create([
+                    'store_id' => $store->id,
+                    'item_key' => $item['key'],
+                ]);
+            }
+        }
+    }
 }
-
-
-
-
-
-
-
-

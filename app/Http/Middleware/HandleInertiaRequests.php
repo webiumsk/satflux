@@ -81,7 +81,7 @@ class HandleInertiaRequests extends Middleware
                 'user' => $authUser,
             ],
             'app' => [
-                'version' => config('app.version', '1.0.0'),
+                'version' => config('app.version', '1.1.0'),
                 'name' => config('app.name', 'satflux.io'),
                 'lnurlAuthEnabled' => config('services.lnurl_auth.enabled', false),
             ],

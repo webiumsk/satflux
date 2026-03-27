@@ -192,24 +192,22 @@
             {{ t('stores.invoices') }}
           </button>
 
-          <component
+          <button
             v-if="store?.wallet_type === 'cashu'"
-            :is="isInertia ? Link : RouterLink"
-            :href="isInertia ? `/stores/${store.id}/cashu` : undefined"
-            :to="!isInertia ? `/stores/${store.id}/cashu` : undefined"
+            type="button"
             class="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors text-left"
             :class="
-              isLinkActive(`/stores/${store.id}/cashu`, 'stores-cashu')
+              querySection === 'cashu'
                 ? 'bg-gray-900 text-white'
                 : 'text-gray-300 hover:bg-gray-700 hover:text-white'
             "
-            @click="showMobileMenu = false"
+            @click="handleSectionClick('cashu')"
           >
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Cashu Payments
-          </component>
+            {{ t('stores.cashu_nav_payments') }}
+          </button>
           <button
             @click="handleReportsClick"
             class="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors text-left"

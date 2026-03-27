@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Store;
 use App\Models\StoreChecklist;
+use App\Services\StoreChecklistService;
 use Illuminate\Http\Request;
 
 class StoreChecklistController extends Controller
@@ -13,8 +14,9 @@ class StoreChecklistController extends Controller
      */
     public function index(Request $request, Store $store)
     {
+        StoreChecklistService::ensureChecklistInitialized($store);
 
-        $definition = \App\Services\StoreChecklistService::getChecklistItems($store->wallet_type ?? '');
+        $definition = StoreChecklistService::getChecklistItems($store->wallet_type ?? '');
         $btcpayStoreId = $store->btcpay_store_id;
 
         $checklistItems = $store->checklistItems()->get()
@@ -60,7 +62,7 @@ class StoreChecklistController extends Controller
             $item->markAsIncomplete();
         }
 
-        $definition = \App\Services\StoreChecklistService::getChecklistItems($store->wallet_type ?? '');
+        $definition = StoreChecklistService::getChecklistItems($store->wallet_type ?? '');
         $itemDef = $definition[$itemKey] ?? null;
         $btcpayStoreId = $store->btcpay_store_id;
 
