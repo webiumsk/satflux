@@ -59,6 +59,7 @@
                 :store-id="storeId"
                 :existing-connection="connection"
                 :wallet-type="store?.wallet_type"
+                :auto-samrock="route.query.samrock === '1'"
                 @submitted="handleSubmitted"
                 @cancel="handleCancel"
               />
