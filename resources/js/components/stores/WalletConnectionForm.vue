@@ -496,7 +496,19 @@ const authStore = useAuthStore();
 
 type ViewMode = 'readonly' | 'password' | 'editing' | 'create';
 
-const viewMode = ref<ViewMode>(props.existingConnection ? 'readonly' : 'create');
+/** Pending = user can still use SamRock QR or finish manual descriptor; do not lock to readonly. */
+function initialWalletViewMode(conn: Props['existingConnection']): ViewMode {
+    if (!conn) {
+        return 'create';
+    }
+    if (conn.status === 'pending') {
+        return 'create';
+    }
+
+    return 'readonly';
+}
+
+const viewMode = ref<ViewMode>(initialWalletViewMode(props.existingConnection));
 
 const passwordInput = ref('');
 const passwordError = ref('');
@@ -743,9 +755,16 @@ watch(
 );
 
 watch(() => props.existingConnection, (conn: any) => {
-    if (conn) {
-        form.type = (conn.type || 'blink') as 'blink' | 'aqua_descriptor';
-        if (viewMode.value === 'create') viewMode.value = 'readonly';
+    if (!conn) {
+        viewMode.value = 'create';
+
+        return;
+    }
+    form.type = (conn.type || 'blink') as 'blink' | 'aqua_descriptor';
+    if (conn.status === 'pending') {
+        viewMode.value = 'create';
+    } else if (viewMode.value === 'create') {
+        viewMode.value = 'readonly';
     }
 }, { immediate: true });
 
