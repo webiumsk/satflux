@@ -32,10 +32,8 @@ yarn-error.log
 /bootstrap/cache/services.php
 /bootstrap/cache/packages.php
 
+# Internal documentation (not published with the open repo)
+/docs/
 
-
-
-
-
-
-
+# Cursor / AI workspace notes at repo root only
+CLAUDE.md
