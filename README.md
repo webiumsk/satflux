@@ -153,6 +153,10 @@ When `LNURL_AUTH_ENABLED` is configured, the app can offer Lightning-based login
 - Webhook signature verification when `BTCPAY_WEBHOOK_SECRET` is set.
 - Rate limiting on authentication-related endpoints.
 
+**Reporting vulnerabilities:** do not use public issues for undisclosed problems. See **[SECURITY.md](SECURITY.md)** for contact, scope, and (on GitHub) private vulnerability reporting.
+
+**Dependencies:** [`.github/dependabot.yml`](.github/dependabot.yml) configures Dependabot version updates; in the GitHub repo enable **Dependabot alerts** and **Dependabot security updates** under *Settings → Code security and analysis*.
+
 ## BTCPay API key (server)
 
 The server-level **`BTCPAY_API_KEY`** should be limited to what provisioning and global jobs need (store lifecycle, admin assignments, webhooks, etc.). Per-merchant operations use **merchant API keys** stored encrypted and never sent to the browser.
