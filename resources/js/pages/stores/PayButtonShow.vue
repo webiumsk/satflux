@@ -131,7 +131,7 @@ const archiving = ref(false);
 const btcpayAppUrl = computed(() => {
   const app = layoutRef.value?.app;
   if (!app) return "";
-  const baseUrl = import.meta.env.VITE_BTCPAY_BASE_URL || "https://satflux.org";
+  const baseUrl = import.meta.env.VITE_BTCPAY_BASE_URL || "https://satflux.io";
 
   let id =
     app.btcpay_app_id ||

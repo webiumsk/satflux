@@ -198,7 +198,7 @@
               id="buttonImageUrl"
               v-model="form.buttonImageUrl"
               type="text"
-              placeholder="https://satflux.org/img/paybutton/pay.svg"
+              placeholder="https://pay.example.com/img/paybutton/pay.svg"
               class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
           </div>
@@ -706,7 +706,7 @@ const form = ref({
   orderId: "",
   customizeButtonText: true,
   buttonText: "Pay with",
-  buttonImageUrl: "https://satflux.org/img/paybutton/pay.svg",
+  buttonImageUrl: "",
   imageSize: "209x57",
   buttonType: "custom" as "fixed" | "custom" | "slider",
   minAmount: 1,
@@ -765,7 +765,7 @@ const imageSizes = [
   { value: "209x57", label: "209 x 57 px" },
 ];
 
-const baseUrl = (import.meta as any).env.VITE_BTCPAY_BASE_URL || "https://satflux.org";
+const baseUrl = (import.meta as any).env.VITE_BTCPAY_BASE_URL || "https://satflux.io";
 const storeId = computed(() => props.store?.btcpay_store_id || "");
 
 const alternativeUrl = computed(() => {

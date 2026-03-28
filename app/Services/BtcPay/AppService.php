@@ -887,7 +887,7 @@ class AppService
             }
 
             // Log what we're sending for debugging
-            $baseUrl = config('services.btcpay.base_url', env('BTCPAY_BASE_URL', 'https://satflux.org'));
+            $baseUrl = config('services.btcpay.base_url', env('BTCPAY_BASE_URL'));
 
             Log::info('BTCPay app update request', [
                 'base_url' => $baseUrl,

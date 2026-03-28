@@ -72,8 +72,8 @@ try {
     echo "\n📝 Add this to your .env file:\n";
     echo "SUBSCRIPTION_STORE_UUID={$store->id}\n";
     echo "\nAnd also add:\n";
-    echo "SUBSCRIPTION_OFFERING_ID=offering_GpWCnNRm6W9qqmgwdC\n";
-    echo "SUBSCRIPTION_PLAN_PRO_ID=plan_9UQMqk4vbAFyQinRpL\n";
+    echo "SUBSCRIPTION_OFFERING_ID=<copy_from_btcpay_offering>\n";
+    echo "SUBSCRIPTION_PLAN_PRO_ID=<copy_from_btcpay_plan>\n";
     
 } catch (\Exception $e) {
     echo "❌ Error creating store: {$e->getMessage()}\n";

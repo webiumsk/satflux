@@ -15,7 +15,7 @@ class SubscriptionTest extends TestCase
     {
         parent::setUp();
 
-        config(['services.btcpay.base_url' => 'https://satflux.org']);
+        config(['services.btcpay.base_url' => 'https://btcpay.example.test']);
         $this->app->forgetInstance(\App\Services\BtcPay\BtcPayClient::class);
     }
 
@@ -25,15 +25,15 @@ class SubscriptionTest extends TestCase
         Http::fake(function ($request) {
             $url = (string) $request->url();
             if (str_contains($url, '/api/v1/stores/') && str_contains($url, '/offerings/') && str_contains($url, '/plans/')) {
-                return Http::response(['id' => 'plan_9UQMqk4vbAFyQinRpL', 'name' => 'Pro Plan']);
+                return Http::response(['id' => 'plan_pro_test', 'name' => 'Pro Plan']);
             }
             if (str_contains($url, '/api/v1/stores/') && str_contains($url, '/offerings/')) {
-                return Http::response(['id' => 'offering_GpWCnNRm6W9qqmgwdC', 'name' => 'Test Offering']);
+                return Http::response(['id' => 'offering_test', 'name' => 'Test Offering']);
             }
             if (str_contains($url, '/api/v1/plan-checkout') && $request->method() === 'POST') {
                 return Http::response([
                     'id' => 'checkout_test123',
-                    'url' => 'https://satflux.org/plan-checkout/checkout_test123',
+                    'url' => 'https://btcpay.example.test/plan-checkout/checkout_test123',
                     'expiration' => now()->addHours(24)->timestamp,
                 ]);
             }
@@ -46,9 +46,9 @@ class SubscriptionTest extends TestCase
     {
         $user = User::factory()->create();
 
-        config(['services.btcpay.subscription_store_id' => 'GVQwmBoEfPpYY4j7YysmVDbTKmFp24XsFvUZATANVqAY']);
-        config(['services.btcpay.subscription_offering_id' => 'offering_GpWCnNRm6W9qqmgwdC']);
-        config(['services.btcpay.subscription_plans.pro' => 'plan_9UQMqk4vbAFyQinRpL']);
+        config(['services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store']);
+        config(['services.btcpay.subscription_offering_id' => 'offering_test']);
+        config(['services.btcpay.subscription_plans.pro' => 'plan_pro_test']);
 
         $this->fakeBtcPayCheckoutSuccess();
 
@@ -63,13 +63,13 @@ class SubscriptionTest extends TestCase
                 'expiresAt',
             ])
             ->assertJson([
-                'checkoutUrl' => 'https://satflux.org/plan-checkout/checkout_test123',
+                'checkoutUrl' => 'https://btcpay.example.test/plan-checkout/checkout_test123',
                 'checkoutId' => 'checkout_test123',
             ]);
 
         // Verify we never expose BTCPay store ID in response
         $responseData = $response->json();
-        $this->assertStringNotContainsString('GVQwmBoEfPpYY4j7YysmVDbTKmFp24XsFvUZATANVqAY', json_encode($responseData));
+        $this->assertStringNotContainsString('test_subscription_btcpay_store', json_encode($responseData));
     }
 
     /** @test */
@@ -77,9 +77,9 @@ class SubscriptionTest extends TestCase
     {
         $user = User::factory()->create();
 
-        config(['services.btcpay.subscription_store_id' => 'GVQwmBoEfPpYY4j7YysmVDbTKmFp24XsFvUZATANVqAY']);
-        config(['services.btcpay.subscription_offering_id' => 'offering_GpWCnNRm6W9qqmgwdC']);
-        config(['services.btcpay.subscription_plans.pro' => 'plan_9UQMqk4vbAFyQinRpL']);
+        config(['services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store']);
+        config(['services.btcpay.subscription_offering_id' => 'offering_test']);
+        config(['services.btcpay.subscription_plans.pro' => 'plan_pro_test']);
 
         $this->app->forgetInstance(\App\Services\BtcPay\BtcPayClient::class);
 
@@ -98,8 +98,8 @@ class SubscriptionTest extends TestCase
     /** @test */
     public function unauthenticated_user_cannot_create_checkout_by_default()
     {
-        config(['services.btcpay.subscription_store_id' => 'GVQwmBoEfPpYY4j7YysmVDbTKmFp24XsFvUZATANVqAY']);
-        config(['services.btcpay.subscription_plans.pro' => 'plan_9UQMqk4vbAFyQinRpL']);
+        config(['services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store']);
+        config(['services.btcpay.subscription_plans.pro' => 'plan_pro_test']);
         config(['services.btcpay.allow_guest_subscriptions' => false]);
 
         $response = $this->postJson('/api/subscriptions/checkout', [
@@ -129,9 +129,9 @@ class SubscriptionTest extends TestCase
             'email' => 'test@example.com',
         ]);
 
-        config(['services.btcpay.subscription_store_id' => 'GVQwmBoEfPpYY4j7YysmVDbTKmFp24XsFvUZATANVqAY']);
-        config(['services.btcpay.subscription_offering_id' => 'offering_GpWCnNRm6W9qqmgwdC']);
-        config(['services.btcpay.subscription_plans.pro' => 'plan_9UQMqk4vbAFyQinRpL']);
+        config(['services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store']);
+        config(['services.btcpay.subscription_offering_id' => 'offering_test']);
+        config(['services.btcpay.subscription_plans.pro' => 'plan_pro_test']);
 
         $this->fakeBtcPayCheckoutSuccess();
 
@@ -147,9 +147,9 @@ class SubscriptionTest extends TestCase
     {
         $user = User::factory()->create();
 
-        config(['services.btcpay.subscription_store_id' => 'GVQwmBoEfPpYY4j7YysmVDbTKmFp24XsFvUZATANVqAY']);
-        config(['services.btcpay.subscription_offering_id' => 'offering_GpWCnNRm6W9qqmgwdC']);
-        config(['services.btcpay.subscription_plans.pro' => 'plan_9UQMqk4vbAFyQinRpL']);
+        config(['services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store']);
+        config(['services.btcpay.subscription_offering_id' => 'offering_test']);
+        config(['services.btcpay.subscription_plans.pro' => 'plan_pro_test']);
 
         $this->app->forgetInstance(\App\Services\BtcPay\BtcPayClient::class);
 
@@ -161,10 +161,10 @@ class SubscriptionTest extends TestCase
                 return Http::response(['message' => 'Invalid request'], 422);
             }
             if (str_contains($url, '/api/v1/stores/') && str_contains($url, '/offerings/') && str_contains($url, '/plans/')) {
-                return Http::response(['id' => 'plan_9UQMqk4vbAFyQinRpL', 'name' => 'Pro Plan']);
+                return Http::response(['id' => 'plan_pro_test', 'name' => 'Pro Plan']);
             }
             if (str_contains($url, '/api/v1/stores/') && str_contains($url, '/offerings/')) {
-                return Http::response(['id' => 'offering_GpWCnNRm6W9qqmgwdC', 'name' => 'Test Offering']);
+                return Http::response(['id' => 'offering_test', 'name' => 'Test Offering']);
             }
             return Http::response([], 404);
         });

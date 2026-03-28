@@ -124,7 +124,7 @@ class WooCommerceSatoshiTicketsController extends Controller
 
     private function redirectToReturnUrl(string $returnUrl, Store $store, $user, bool $includeSatfluxStoreId = false): \Illuminate\Http\RedirectResponse
     {
-        $btcpayUrl = rtrim(config('services.btcpay.base_url', 'https://satflux.org'), '/');
+        $btcpayUrl = rtrim((string) config('services.btcpay.base_url'), '/');
         $apiKey = $user->getBtcPayApiKeyOrFail();
 
         $params = [

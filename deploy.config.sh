@@ -1,4 +1,4 @@
-# D21Panel Deployment Configuration
+# satflux.io — deployment configuration
 # Caddy + docker-compose.standalone.yml
 #
 # Nastav v .env.standalone:
