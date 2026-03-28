@@ -1,11 +1,11 @@
 # satflux.io — standalone deployment
-# Samostatné nasadenie bez závislosti na Traefik - Caddy ako reverse proxy + SSL
+# Standalone stack without Traefik: Caddy as reverse proxy and TLS (Let's Encrypt).
 #
-# Použitie:
-#   1. Skopíruj .env.production.example do .env.standalone a vyplň
-#   2. Pre produkciu s doménou: SITE_ADDRESS=satflux.io, porty 80:80, 443:443
-#   3. Pre dev/test: SITE_ADDRESS=localhost:80, porty 8090:80
-#   4. docker compose -f docker-compose.standalone.yml up -d
+# Usage:
+#   1. Copy .env.example to .env.standalone and fill in values
+#   2. Production with a domain: SITE_ADDRESS=example.com, map ports 80:80 and 443:443
+#   3. Dev / HTTP-only lab: SITE_ADDRESS=localhost:80, e.g. map 8090:80
+#   4. docker compose -f docker-compose.standalone.yml --env-file .env.standalone up -d
 
 services:
   caddy:

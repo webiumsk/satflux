@@ -61,7 +61,8 @@ Single Docker stack with **Caddy** as the reverse proxy and automatic HTTPS (Let
 
 ## Backup and restore
 
-- **Backup:** `./backup.sh` (uses `backup.config.sh`; optional S3 upload).
+- **Config:** copy `backup.config.example.sh` to `backup.config.sh` (ignored by git) and set paths, containers, and optional S3 upload.
+- **Backup:** `./backup.sh` (sources `backup.config.sh` when present; optional S3 upload).
 - **Restore:** `./restore.sh` and pick metadata under `backups/metadata/`.
 
 ## Production checklist
@@ -75,3 +76,11 @@ Single Docker stack with **Caddy** as the reverse proxy and automatic HTTPS (Let
 
 - **Let’s Encrypt fails:** Confirm public DNS, open firewall for 80/443, and that nothing else binds those ports unexpectedly.
 - **Compose warnings about variables:** Always pass `--env-file .env.standalone` when running `docker compose` manually for this stack.
+- **`storage/framework/views` permission denied (Blade compile):** The bind-mounted `storage` (and `bootstrap/cache`) must be writable by PHP-FPM (`www-data` in the official image). After fixing ownership on the host (e.g. `chown` to your user), reset for Docker:
+
+  ```bash
+  docker compose -f docker-compose.standalone.yml --env-file .env.standalone exec -u root php \
+    chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+  ```
+
+  For the dev stack (`docker-compose.yml`), use the same `chown` against the `php` service. On the host you can instead run `sudo chown -R 33:33 storage bootstrap/cache` if UID/GID `33` matches `www-data` in the PHP image.

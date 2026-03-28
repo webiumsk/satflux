@@ -4,13 +4,17 @@
 /public/storage
 /storage/*.key
 /vendor
+/.composer
 /backups
 .env
 .env.backup
+backup.config.sh
+setup-root-ssh.sh
 .env.production
 .env.standalone
 .phpunit.result.cache
 docker-compose.override.yml
+docker-compose.prod.yml
 Homestead.json
 Homestead.yaml
 auth.json
@@ -19,6 +23,7 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+/.claude
 
 # Log files (these change frequently and should not be committed)
 /storage/logs/*.log
@@ -44,6 +49,3 @@ docs/SUBSCRIPTION_IMPLEMENTATION.md
 docs/TESTING_PLAN.md
 docs/satflux.md
 docs/satoshi-tickets-includeInactive-patch.md
-
-# Cursor / AI workspace notes at repo root
-CLAUDE.md
