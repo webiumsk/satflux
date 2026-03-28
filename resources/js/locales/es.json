@@ -712,7 +712,7 @@
     "cashu_mint_url_placeholder": "https://mint.minibits.cash/Bitcoin",
     "cashu_lightning_address_label": "Lightning Address",
     "cashu_lightning_address_hint": "Formato usuario{'@'}dominio — debe poder recibir; el plugin la usa en flujos Lightning.",
-    "cashu_lightning_address_placeholder": "nombre@coinos.io",
+    "cashu_lightning_address_placeholder": "nombre{'@'}coinos.io",
     "cashu_lightning_address_coinos_prefix": "¿No tienes Lightning Address? Puedes obtenerla en ",
     "cashu_warning_title": "Antes de continuar",
     "cashu_warning_https": "La URL del mint debe usar https:// — no se aceptan URLs HTTP.",

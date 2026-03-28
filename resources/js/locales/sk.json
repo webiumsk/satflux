@@ -253,7 +253,7 @@
     "cashu_mint_url_placeholder": "https://mint.minibits.cash/Bitcoin",
     "cashu_lightning_address_label": "Lightning adresa",
     "cashu_lightning_address_hint": "Formát meno{'@'}doména — musí vedieť prijímať; plugin ju používa pri Lightning tokoch.",
-    "cashu_lightning_address_placeholder": "meno@coinos.io",
+    "cashu_lightning_address_placeholder": "meno{'@'}coinos.io",
     "cashu_lightning_address_coinos_prefix": "Ak ešte nemáte Lightning adresu, vytvorte si ju na ",
     "cashu_warning_title": "Skôr než pokračujete",
     "cashu_warning_https": "URL mintu musí začínať na https:// — nezabezpečené HTTP sa neakceptuje.",
