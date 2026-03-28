@@ -27,6 +27,17 @@ return [
             'pro' => env('SUBSCRIPTION_PLAN_PRO_ID'),
             'enterprise' => env('SUBSCRIPTION_PLAN_ENTERPRISE_ID'),
         ],
+        // Lightning Address host in the UI (user@host). Explicit env, else hostname of BTCPAY_BASE_URL (same default as base_url).
+        'lightning_address_domain' => (static function (): string {
+            $explicit = env('BTCPAY_LIGHTNING_ADDRESS_DOMAIN');
+            if (is_string($explicit) && $explicit !== '') {
+                return $explicit;
+            }
+            $base = (string) env('BTCPAY_BASE_URL', 'http://127.0.0.1:14142');
+            $host = parse_url($base, PHP_URL_HOST);
+
+            return is_string($host) && $host !== '' ? $host : '';
+        })(),
         // Note: Grace period is configured per plan in BTCPay Server, not here
     ],
 

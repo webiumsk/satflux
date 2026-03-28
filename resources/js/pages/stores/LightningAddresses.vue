@@ -85,12 +85,12 @@
                       <div class="flex items-center">
                         <div class="relative flex-grow max-w-sm">
                             <input
-                            :value="`${address.username}@satflux.io`"
+                            :value="formatLnAddress(address.username)"
                             readonly
                             class="block w-full border-gray-600 rounded-lg bg-gray-900/50 text-white font-mono text-sm focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 pr-10"
                             />
                              <button
-                            @click="copyToClipboard(`${address.username}@satflux.io`)"
+                            @click="copyToClipboard(formatLnAddress(address.username))"
                             class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-white"
                             title="Copy to clipboard"
                             >
@@ -150,7 +150,7 @@
                 <svg class="h-8 w-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
              </div>
             <h3 class="text-lg font-medium text-white mb-2">{{ t('stores.no_lightning_addresses_yet') }}</h3>
-            <p class="text-gray-400 mb-6 max-w-sm mx-auto">{{ t('stores.create_lightning_address_description') }}</p>
+            <p class="text-gray-400 mb-6 max-w-sm mx-auto">{{ t('stores.create_lightning_address_description', { domain: displayLightningDomain || '…' }) }}</p>
             <button
               @click="openAddForm"
               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg shadow-indigo-600/20 transition-all hover:scale-105"
@@ -204,11 +204,13 @@
                       class="flex-1 min-w-0 block w-full px-4 py-3 rounded-none rounded-l-xl border border-gray-600 bg-gray-700/50 text-white placeholder-gray-500 focus:ring-indigo-500 focus:border-indigo-500 focus:z-10"
                       placeholder="username"
                     />
-                  <span class="inline-flex items-center px-4 rounded-r-xl border border-l-0 border-gray-600 bg-gray-700 text-gray-400 text-sm font-medium">
-                    @satflux.io
+                  <span
+                    class="inline-flex items-center px-4 rounded-r-xl border border-l-0 border-gray-600 bg-gray-700 text-gray-400 text-sm font-medium"
+                  >
+                    {{ displayLightningDomain ? `@${displayLightningDomain}` : '' }}
                   </span>
                 </div>
-                <p class="mt-2 text-sm text-gray-400">Full address: <span class="text-white font-mono">{{ form.username || 'username' }}@satflux.io</span></p>
+                <p class="mt-2 text-sm text-gray-400">Full address: <span class="text-white font-mono">{{ formatLnAddress(form.username || 'username') }}</span></p>
               </div>
 
               <!-- Advanced Settings Accordion -->
@@ -347,8 +349,7 @@
                     <h3 class="text-lg leading-6 font-bold text-white mb-2" id="modal-title">{{ t('stores.remove_lightning_address') }}</h3>
                     <div class="mt-2">
                        <p class="text-sm text-gray-400">
-                          Are you sure you want to remove <strong class="text-white">{{ addressToDelete?.username }}@satflux.io</strong>?
-                          This action cannot be undone.
+                          {{ t('stores.remove_lightning_address_confirm_before') }}<strong class="text-white font-mono">{{ addressToDelete ? formatLnAddress(addressToDelete.username) : '' }}</strong>{{ t('stores.remove_lightning_address_confirm_after') }}
                        </p>
                     </div>
                      <div v-if="deleteError" class="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 p-3">
@@ -411,8 +412,15 @@ import UpgradeModal from '../../components/stores/UpgradeModal.vue';
 import UrlQrModal from '../../components/ui/UrlQrModal.vue';
 import { currencies } from '../../data/currencies';
 import api from '../../services/api';
+import { useBtcPayUrl } from '../../composables/useBtcPayUrl';
 
 const { t } = useI18n();
+const { displayLightningDomain, load: loadBtcpayConfig } = useBtcPayUrl();
+
+function formatLnAddress(username: string) {
+  const d = displayLightningDomain.value;
+  return d ? `${username}@${d}` : username;
+}
 const route = useRoute();
 const router = useRouter();
 const storesStore = useStoresStore();
@@ -442,7 +450,7 @@ const qrModalDownloadFilename = computed(() => {
 });
 
 function showQrForAddress(address: any) {
-  qrModalAddress.value = `${address.username}@satflux.io`;
+  qrModalAddress.value = formatLnAddress(address.username);
 }
 
 const allApps = computed(() => appsStore.apps);
@@ -462,9 +470,12 @@ const form = ref({
 });
 
 onMounted(async () => {
-  await loadStore();
-  await loadAddresses();
-  await appsStore.fetchApps(storeId);
+  await Promise.all([
+    loadBtcpayConfig(),
+    loadStore(),
+    loadAddresses(),
+    appsStore.fetchApps(storeId),
+  ]);
 });
 
 // Watch for route changes to reload apps if store ID changes

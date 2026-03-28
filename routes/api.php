@@ -113,6 +113,16 @@ Route::get('/version', function () {
     ]);
 });
 
+// Public BTCPay URL for SPA (matches server .env BTCPAY_BASE_URL; no Vite rebuild needed)
+Route::get('/config', function () {
+    $base = rtrim((string) config('services.btcpay.base_url', ''), '/');
+
+    return response()->json([
+        'btcpay_base_url' => $base,
+        'btcpay_lightning_address_domain' => (string) (config('services.btcpay.lightning_address_domain') ?? ''),
+    ]);
+});
+
 // Debug route for local development - verify stores exist in DB
 Route::get('/debug/stores', function (\Illuminate\Http\Request $request) {
     if (! app()->environment('local')) {

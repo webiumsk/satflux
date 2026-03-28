@@ -1349,8 +1349,11 @@
                     </div>
                     <!-- Actions -->
                     <div class="flex items-center gap-2">
-                      <button
-                        @click="openPanelCheckIn(event)"
+                      <a
+                        v-if="props.store"
+                        :href="getPanelCheckInUrl(event)"
+                        target="_blank"
+                        rel="noopener noreferrer"
                         class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors"
                         :title="t('tickets.check_in')"
                       >
@@ -1368,47 +1371,6 @@
                           />
                         </svg>
                         {{ t("tickets.check_in") }}
-                      </button>
-                      <button
-                        type="button"
-                        @click="copyCheckInUrl(event)"
-                        class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                        :title="t('tickets.copy_checkin_url')"
-                      >
-                        <svg
-                          class="w-3.5 h-3.5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
-                          />
-                        </svg>
-                      </button>
-                      <a
-                        v-if="props.store"
-                        :href="getPanelCheckInUrl(event)"
-                        target="_blank"
-                        class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                        :title="t('tickets.open_checkin')"
-                      >
-                        <svg
-                          class="w-3.5 h-3.5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                          />
-                        </svg>
                       </a>
                       <button
                         type="button"
@@ -2338,21 +2300,6 @@ const checkInQrUrl = computed(() => {
   const event = events.value.find((e) => e.id === showCheckInQrEventId.value);
   return event ? getPanelCheckInUrl(event) : "";
 });
-
-function openPanelCheckIn(event: TicketEvent) {
-  const url = `/stores/${props.store.id}/ticket-check-in/${event.id}`;
-  window.open(url, "_blank", "noopener,noreferrer");
-}
-
-async function copyCheckInUrl(event: TicketEvent) {
-  const url = getPanelCheckInUrl(event);
-  try {
-    await navigator.clipboard.writeText(url);
-    showSuccess(t("tickets.checkin_url_copied"));
-  } catch {
-    showError(t("common.copy_failed"));
-  }
-}
 
 function exportTicketsCsv(event: TicketEvent) {
   if (eventTickets.value.length === 0) return;
