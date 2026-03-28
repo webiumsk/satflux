@@ -1,13 +1,16 @@
 <template>
     <div
-        v-if="walletType === 'cashu'"
+        v-if="isCashuFlow"
         class="bg-gray-900/50 border border-gray-700 rounded-2xl p-8"
     >
         <h3 class="text-sm font-bold text-indigo-400 mb-6 uppercase tracking-wider">
             {{ t('stores.cashu_settings_title') }}
         </h3>
 
-        <div class="mb-4 p-4 rounded-xl border border-green-500/20 bg-green-500/10 text-sm">
+        <div
+            v-if="walletType === 'cashu'"
+            class="mb-4 p-4 rounded-xl border border-green-500/20 bg-green-500/10 text-sm"
+        >
             <span class="font-medium text-green-400">
                 {{ t('stores.connected') }}
             </span>
@@ -102,8 +105,35 @@
     </div>
 
     <div v-else class="space-y-8">
+        <!-- wallet_type null (e.g. store created step 1 only): pick Cashu vs Lightning path -->
+        <template v-if="isUnsetWalletType && unsetWalletChoice === 'choose'">
+            <div class="bg-gray-900/50 border border-gray-700 rounded-2xl p-8 space-y-6">
+                <p class="text-sm text-gray-300 leading-relaxed">
+                    {{ t('stores.wallet_connection_choose_wallet') }}
+                </p>
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <button
+                        type="button"
+                        class="flex flex-col items-start p-5 rounded-xl border border-gray-600 bg-gray-800/80 hover:border-indigo-500 hover:bg-indigo-500/10 text-left transition-all"
+                        @click="unsetWalletChoice = 'cashu'"
+                    >
+                        <span class="font-semibold text-white">{{ t('stores.wallet_connection_choose_cashu') }}</span>
+                        <span class="text-sm text-gray-400 mt-2">{{ t('create_store.wallet_type_cashu') }} — {{ t('stores.cashu_description') }}</span>
+                    </button>
+                    <button
+                        type="button"
+                        class="flex flex-col items-start p-5 rounded-xl border border-gray-600 bg-gray-800/80 hover:border-indigo-500 hover:bg-indigo-500/10 text-left transition-all"
+                        @click="unsetWalletChoice = 'lightning'"
+                    >
+                        <span class="font-semibold text-white">{{ t('stores.wallet_connection_choose_lightning') }}</span>
+                        <span class="text-sm text-gray-400 mt-2">{{ t('stores.wallet_connection_choose_lightning_hint') }}</span>
+                    </button>
+                </div>
+            </div>
+        </template>
+
         <!-- Aqua (Boltz): primary SamRock tab | secondary Descriptor tab -->
-        <template v-if="isAquaTabbedUi">
+        <template v-else-if="isAquaTabbedUi">
             <div class="flex gap-1 p-1 rounded-xl bg-gray-800/90 border border-gray-600 w-full sm:w-fit">
                 <button
                     type="button"
@@ -285,7 +315,7 @@
         </template>
 
         <!-- Read-only: Current Connection + Change button (when connection exists and not editing) -->
-        <template v-if="existingConnection && viewMode === 'readonly'">
+        <template v-else-if="existingConnection && viewMode === 'readonly'">
             <div class="bg-gray-900/50 border border-gray-700 rounded-2xl p-8">
                 <h3 class="text-sm font-bold text-indigo-400 mb-6 uppercase tracking-wider">
                     {{ t('stores.current_connection') }}
@@ -430,8 +460,12 @@
             />
         </template>
 
-        <!-- Blink: wallet type + connection string (Aqua uses tabbed UI above) -->
-        <form v-else-if="walletType === 'blink'" @submit.prevent="handleSubmit" class="space-y-8">
+        <!-- Blink / legacy NWC / Lightning path after explicit choice when wallet_type unset -->
+        <form
+            v-else-if="showLightningWalletForm"
+            @submit.prevent="handleSubmit"
+            class="space-y-8"
+        >
             <div>
                 <label class="block text-sm font-medium text-gray-300 mb-4 uppercase tracking-wider">
                     {{ t('create_store.wallet_type_label') }}
@@ -583,6 +617,18 @@
                 </div>
             </div>
         </form>
+
+        <div
+            v-else
+            class="rounded-xl border border-amber-500/25 bg-amber-500/10 p-6 text-sm text-gray-200 space-y-2"
+        >
+            <p class="font-medium text-amber-200">
+                {{ t('stores.wallet_connection_unsupported_title') }}
+            </p>
+            <p class="text-gray-400">
+                {{ t('stores.wallet_connection_unsupported_body', { type: walletTypeLabel }) }}
+            </p>
+        </div>
     </div>
 </template>
 
@@ -599,12 +645,32 @@ import NostrAuthModal from '../auth/NostrAuthModal.vue';
 interface Props {
     storeId: string;
     existingConnection?: any;
-    walletType?: 'blink' | 'aqua_boltz' | 'cashu' | null;
+    walletType?: 'blink' | 'aqua_boltz' | 'cashu' | 'nwc' | string | null;
     /** After create-store redirect: auto-open SamRock QR flow */
     autoSamrock?: boolean;
 }
 
 const props = defineProps<Props>();
+
+type UnsetWalletChoice = 'choose' | 'cashu' | 'lightning';
+const unsetWalletChoice = ref<UnsetWalletChoice>('choose');
+
+const isUnsetWalletType = computed(() => {
+    const w = props.walletType;
+    return w === null || w === undefined || w === '';
+});
+
+const isCashuFlow = computed(() => {
+    if (props.walletType === 'cashu') return true;
+    if (isUnsetWalletType.value && unsetWalletChoice.value === 'cashu') return true;
+    return false;
+});
+
+const showLightningWalletForm = computed(() => {
+    if (props.walletType === 'blink' || props.walletType === 'nwc') return true;
+    if (isUnsetWalletType.value && unsetWalletChoice.value === 'lightning') return true;
+    return false;
+});
 
 const emit = defineEmits<{
     submitted: [];
@@ -612,6 +678,13 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const walletTypeLabel = computed(() => {
+    const w = props.walletType;
+    if (w === null || w === undefined || w === '') return t('stores.wallet_type_not_set');
+    return String(w);
+});
+
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
@@ -879,9 +952,11 @@ async function handleSaveCashu() {
 }
 
 watch(
-    () => props.walletType,
-    (wt: Props['walletType']) => {
-        if (wt === 'cashu') {
+    () => [props.walletType, unsetWalletChoice.value] as const,
+    ([wt, unset]: [Props['walletType'], UnsetWalletChoice]) => {
+        const cashuActive =
+            wt === 'cashu' || ((wt == null || wt === '') && unset === 'cashu');
+        if (cashuActive) {
             fetchCashuSettings();
         }
         if (wt === 'aqua_boltz') {
@@ -889,6 +964,13 @@ watch(
         }
     },
     { immediate: true }
+);
+
+watch(
+    () => props.storeId,
+    () => {
+        unsetWalletChoice.value = 'choose';
+    }
 );
 
 watch(() => props.existingConnection, (conn: any) => {
