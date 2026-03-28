@@ -103,7 +103,7 @@ Multi-tenant web app for merchants to manage **BTCPay Server** stores (invoices,
 
 ## Production deployment
 
-For the standalone stack (Caddy + Docker Compose), use `docker-compose.standalone.yml`, `.env.standalone`, and `./deploy.sh` as described in the compose file comments. Typical expectations:
+See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for the standalone (Caddy + Docker Compose) guide. Typical expectations:
 
 - App behind a reverse proxy (e.g. Cloudflare) with `TrustProxies` and correct forwarded headers
 - `APP_URL`, `SESSION_DOMAIN`, `SESSION_SECURE_COOKIE=true`, `SANCTUM_STATEFUL_DOMAINS` aligned with your real host
@@ -171,4 +171,4 @@ MIT
 
 ## Contributors
 
-Contributions are welcome: issues, pull requests, and translations. Locale files live in `resources/js/locales/` (Vue) and `lang/` (Laravel); add new languages in `LocaleController` and `SetLocale` middleware.
+Contributions are welcome: issues, pull requests, and translations. See **[docs/TRANSLATION.md](docs/TRANSLATION.md)** and the locale files in `resources/js/locales/` and `lang/`.
