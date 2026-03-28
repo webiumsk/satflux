@@ -447,7 +447,7 @@
                   >
                     <span style="color: #fff">{{ form.buttonText || t('stores.pay_button_text_placeholder') }}</span>
                     <img
-                      :src="baseUrl + '/img/paybutton/logo.svg'"
+                      :src="btcpayPublicBase + '/img/paybutton/logo.svg'"
                       :style="{
                         height: getImageHeight(),
                         display: 'inline-block',
@@ -460,7 +460,7 @@
                 </template>
                 <template v-else>
                   <img
-                    :src="baseUrl + '/img/paybutton/pay.svg'"
+                    :src="btcpayPublicBase + '/img/paybutton/pay.svg'"
                     style="width: 209px"
                     alt="Pay with BTCPay Server, a Self-Hosted Bitcoin Payment Processor"
                   />
@@ -676,12 +676,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { currencies } from "../../data/currencies";
 import Select from "../../components/ui/Select.vue";
+import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
 
 const { t } = useI18n();
+const { btcPayUrl, load: loadBtcpayConfig } = useBtcPayUrl();
+
+onMounted(() => {
+  void loadBtcpayConfig();
+});
+
+const btcpayPublicBase = computed(
+  () =>
+    btcPayUrl.value ||
+    ((import.meta.env.VITE_BTCPAY_BASE_URL as string) || "")
+);
 const props = defineProps<{
   store: any;
 }>();
@@ -765,11 +777,13 @@ const imageSizes = [
   { value: "209x57", label: "209 x 57 px" },
 ];
 
-const baseUrl = (import.meta as any).env.VITE_BTCPAY_BASE_URL || "https://satflux.io";
 const storeId = computed(() => props.store?.btcpay_store_id || "");
 
 const alternativeUrl = computed(() => {
   if (!storeId.value) return "";
+
+  const base = btcpayPublicBase.value;
+  if (!base) return "";
 
   const params = new URLSearchParams();
   if (form.value.price) params.append("price", form.value.price);
@@ -780,10 +794,10 @@ const alternativeUrl = computed(() => {
 
   if (alternativeType.value === "lnurl") {
     // LNURL would need to be generated server-side
-    return `${baseUrl}/i/${storeId.value}?${params.toString()}`;
+    return `${base}/i/${storeId.value}?${params.toString()}`;
   }
 
-  return `${baseUrl}/i/${storeId.value}?${params.toString()}`;
+  return `${base}/i/${storeId.value}?${params.toString()}`;
 });
 
 const qrCodeUrl = computed(() => {
@@ -813,6 +827,11 @@ const generatedCode = computed(() => {
 function generateHtmlCode(): string {
   if (!storeId.value) {
     throw new Error("Store ID is required");
+  }
+
+  const baseUrl = btcpayPublicBase.value;
+  if (!baseUrl) {
+    return "<!-- BTCPay base URL unavailable (set BTCPAY_BASE_URL on the server) -->";
   }
 
   const formClass =

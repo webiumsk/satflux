@@ -1060,7 +1060,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, watchEffect, inject } from "vue";
+import { ref, computed, watch, watchEffect, inject, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { router as inertiaRouter, Link as InertiaLink } from "@inertiajs/vue3";
@@ -1076,8 +1076,14 @@ import AppShowHeader from "../../components/stores/AppShowHeader.vue";
 import DeleteAppModal from "../../components/stores/DeleteAppModal.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 import { currencies } from "../../data/currencies";
+import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
 
 const { t } = useI18n();
+const { btcPayUrl, load: loadBtcpayConfig } = useBtcPayUrl();
+
+onMounted(() => {
+  void loadBtcpayConfig();
+});
 const flashStore = useFlashStore();
 const isInertia = inject<boolean>("inertia", false);
 const route = !isInertia ? useRoute() : null;
@@ -1186,7 +1192,9 @@ const shouldShowProductsEditor = computed(() => {
 const btcpayAppUrl = computed(() => {
   const app = layoutRef.value?.app;
   if (!app) return "";
-  const baseUrl = (import.meta as any).env.VITE_BTCPAY_BASE_URL || "https://satflux.io";
+  const baseUrl =
+    btcPayUrl.value ||
+    ((import.meta.env.VITE_BTCPAY_BASE_URL as string) || "");
   let id =
     app.btcpay_app_id ||
     (app.config && app.config.id) ||

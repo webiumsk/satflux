@@ -454,7 +454,7 @@
                    <h3 class="text-3xl md:text-5xl font-bold text-white">{{ t('landing.step5_title') }}</h3>
                  </div>
                  <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
-                   {{ t('landing.step5_text') }}
+                   {{ t('landing.step5_text', { domain: displayLightningDomain || '…' }) }}
                  </p>
                </div>
                
@@ -466,7 +466,9 @@
                         <div class="w-16 h-16 bg-gray-800 rounded-full mb-4 flex items-center justify-center shadow-inner mx-auto">
                           <svg class="w-8 h-8 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" /></svg>
                         </div>
-                        <div class="text-white font-mono text-lg md:text-xl">satoshi<span class="text-indigo-400">@satflux.io</span></div>
+                        <div class="text-white font-mono text-lg md:text-xl">
+                          satoshi<span v-if="displayLightningDomain" class="text-indigo-400">@{{ displayLightningDomain }}</span>
+                        </div>
                      </div>
                   </div>
                </div>
@@ -855,13 +857,15 @@
 import { useAuthStore } from '../store/auth';
 import { usePricing, BETA_PRO_SATS_PER_MONTH } from '../composables/usePricing';
 import { usePlanFeatures } from '../composables/usePlanFeatures';
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import PublicHeader from '../components/layout/PublicHeader.vue';
 import AppFooter from '../components/layout/AppFooter.vue';
 import api from '../services/api';
+import { useBtcPayUrl } from '../composables/useBtcPayUrl';
 
 const { t } = useI18n();
+const { btcPayUrl, load: loadBtcpayConfig, displayLightningDomain } = useBtcPayUrl();
 const { pricing, formatSats, load: loadPricing } = usePricing();
 const { planFeatures, load: loadPlanFeatures } = usePlanFeatures();
 
@@ -871,12 +875,17 @@ const subscribing = ref(false);
 const subscribeError = ref('');
 const showPosModal = ref(false);
 
-/** Set `VITE_POS_DEMO_URL` in `.env` to a public PoS URL (e.g. your BTCPay app link). */
-const posDemoUrl = (import.meta.env.VITE_POS_DEMO_URL as string) || 'https://satflux.io';
+/** Prefer `VITE_POS_DEMO_URL`; otherwise uses `BTCPAY_BASE_URL` from the server via `/api/config`. */
+const posDemoUrl = computed(() => {
+  const vite = (import.meta.env.VITE_POS_DEMO_URL as string) || '';
+  if (vite) return vite;
+  const b = btcPayUrl.value;
+  return b ? `${b}/` : '';
+});
 
 // Ensure user, pricing and plan features are fetched on mount
 onMounted(async () => {
-  await Promise.all([loadPricing(), loadPlanFeatures()]);
+  await Promise.all([loadPricing(), loadPlanFeatures(), loadBtcpayConfig()]);
   if (!authStore.user) {
     try {
       await authStore.fetchUser();
