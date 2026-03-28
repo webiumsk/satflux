@@ -801,11 +801,9 @@ import { exchanges } from "../../data/exchanges";
 import Select from "../../components/ui/Select.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 import api from "../../services/api";
+import { DEFAULT_CASHU_MINT_URL } from "../../constants/cashu";
 
 const { t } = useI18n();
-
-/** Example public mint; replace with your own mint in production. */
-const DEFAULT_CASHU_MINT_URL = "https://mint.minibits.cash/Bitcoin";
 
 const router = useRouter();
 const storesStore = useStoresStore();

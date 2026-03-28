@@ -3,105 +3,240 @@
         v-if="isCashuFlow"
         class="bg-gray-900/50 border border-gray-700 rounded-2xl p-8"
     >
-        <h3 class="text-sm font-bold text-indigo-400 mb-6 uppercase tracking-wider">
-            {{ t('stores.cashu_settings_title') }}
-        </h3>
-
         <div
-            v-if="walletType === 'cashu'"
-            class="mb-4 p-4 rounded-xl border border-green-500/20 bg-green-500/10 text-sm"
+            v-if="switchToCashuIntent && walletType !== 'cashu'"
+            class="mb-6"
         >
-            <span class="font-medium text-green-400">
-                {{ t('stores.connected') }}
-            </span>
-            <span class="text-gray-300 ml-2">{{ t('stores.cashu_connected_via_plugin') }}</span>
+            <button
+                type="button"
+                class="text-sm font-medium text-indigo-400 hover:text-indigo-300"
+                @click="switchToCashuIntent = false"
+            >
+                ← {{ t('stores.wallet_connection_back_from_cashu') }}
+            </button>
         </div>
 
-        <div class="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-2">
-            <p class="text-sm font-medium text-amber-300">
-                {{ t('stores.cashu_warning_title') }}
-            </p>
-            <ul class="text-sm text-amber-400 list-disc list-inside space-y-1.5">
-                <li>{{ t('stores.cashu_warning_https') }}</li>
-                <li>{{ t('stores.cashu_warning_mint_reachable') }}</li>
-                <li>{{ t('stores.cashu_warning_ln_address') }}</li>
-            </ul>
-        </div>
-
-        <div v-if="cashuLoading" class="flex items-center justify-center py-10">
-            <svg class="animate-spin h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-        </div>
-
-        <form
-            v-else
-            @submit.prevent="handleSaveCashu"
-            class="space-y-6"
-        >
-            <div>
-                <label for="cashu-mint-url" class="block text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">
-                    {{ t('stores.cashu_mint_url_label') }}
-                </label>
-                <input
-                    id="cashu-mint-url"
-                    v-model="cashuForm.mint_url"
-                    type="text"
-                    class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 font-mono"
-                    :placeholder="t('stores.cashu_mint_url_placeholder')"
-                />
-                <p class="mt-2 text-sm text-gray-500 leading-relaxed whitespace-pre-line">{{ t('stores.cashu_mint_url_hint') }}</p>
-                <p v-if="cashuErrors.mint_url" class="mt-2 text-sm text-red-400">{{ cashuErrors.mint_url }}</p>
+        <!-- Cashu store: read-only summary until user confirms password -->
+        <template v-if="walletType === 'cashu' && cashuSectionMode === 'readonly' && !preferLightningFromCashu">
+            <h3 class="text-sm font-bold text-indigo-400 mb-6 uppercase tracking-wider">
+                {{ t('stores.cashu_settings_title') }}
+            </h3>
+            <div class="mb-6 p-4 rounded-xl border border-green-500/20 bg-green-500/10 text-sm">
+                <span class="font-medium text-green-400">{{ t('stores.connected') }}</span>
+                <span class="text-gray-300 ml-2">{{ t('stores.cashu_connected_via_plugin') }}</span>
             </div>
-
-            <div>
-                <label for="cashu-lightning-address" class="block text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">
-                    {{ t('stores.cashu_lightning_address_label') }}
-                </label>
-                <input
-                    id="cashu-lightning-address"
-                    v-model="cashuForm.lightning_address"
-                    type="text"
-                    class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3"
-                    :placeholder="t('stores.cashu_lightning_address_placeholder')"
-                />
-                <p class="mt-2 text-sm text-gray-500 leading-relaxed">{{ t('stores.cashu_lightning_address_hint') }}</p>
-                <p class="mt-2 text-sm text-gray-500 leading-relaxed">
-                    <span>{{ t('stores.cashu_lightning_address_coinos_prefix') }}</span>
-                    <a
-                        href="https://coinos.io"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="text-indigo-400 hover:text-indigo-300 underline font-medium"
-                    >coinos.io</a>
-                </p>
-                <p v-if="cashuErrors.lightning_address" class="mt-2 text-sm text-red-400">{{ cashuErrors.lightning_address }}</p>
+            <div class="space-y-5 text-sm mb-8">
+                <div>
+                    <span class="block text-gray-500 text-xs uppercase tracking-wider mb-1">{{ t('stores.cashu_mint_url_label') }}</span>
+                    <p class="font-mono text-gray-200 break-all">{{ maskCashuMintUrl(cashuForm.mint_url) }}</p>
+                </div>
+                <div>
+                    <span class="block text-gray-500 text-xs uppercase tracking-wider mb-1">{{ t('stores.cashu_lightning_address_label') }}</span>
+                    <p class="text-gray-200">{{ maskCashuLightningAddress(cashuForm.lightning_address) }}</p>
+                </div>
             </div>
-
-            <div v-if="cashuErrorMessage" class="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
-                {{ cashuErrorMessage }}
-            </div>
-
-            <div class="flex flex-col-reverse sm:flex-row justify-between items-center gap-3 pt-4 border-t border-gray-700">
+            <div class="flex flex-wrap gap-3">
                 <button
                     type="button"
+                    class="inline-flex items-center px-6 py-3 border border-indigo-500 rounded-xl text-sm font-medium text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 transition-all"
+                    @click="cashuSectionMode = 'password'; passwordError = ''; passwordInput = ''"
+                >
+                    {{ t('stores.change_connection') }}
+                </button>
+                <button
+                    type="button"
+                    class="px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all"
                     @click="$emit('cancel')"
-                    class="px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all w-full sm:w-auto"
-                    :disabled="cashuSubmitting"
                 >
                     {{ t('common.cancel') }}
                 </button>
+            </div>
+        </template>
+
+        <!-- Cashu: confirm password / LNURL / Nostr before editing -->
+        <template v-else-if="walletType === 'cashu' && cashuSectionMode === 'password'">
+            <h3 class="text-sm font-bold text-indigo-400 mb-4 uppercase tracking-wider">
+                {{ t('stores.cashu_settings_title') }}
+            </h3>
+            <div class="bg-gray-900/50 border border-gray-700 rounded-xl p-6 max-w-md">
+                <p class="text-sm text-gray-400 mb-4">{{ t('stores.confirm_password_to_change') }}</p>
+                <form @submit.prevent="handleCashuConfirmPassword" class="space-y-4">
+                    <div>
+                        <label for="cashu-wc-password" class="block text-sm font-medium text-gray-300 mb-1">{{ t('account.current_password') }}</label>
+                        <input
+                            id="cashu-wc-password"
+                            v-model="passwordInput"
+                            type="password"
+                            autocomplete="current-password"
+                            :placeholder="t('stores.password_placeholder')"
+                            class="block w-full rounded-xl border border-gray-600 bg-gray-800 text-white placeholder-gray-500 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3"
+                        />
+                        <p v-if="passwordError" class="mt-2 text-sm text-red-400">{{ passwordError }}</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button
+                            type="button"
+                            @click="cashuSectionMode = 'readonly'; passwordError = ''; passwordInput = ''"
+                            class="px-5 py-2.5 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 transition-all"
+                        >
+                            {{ t('common.cancel') }}
+                        </button>
+                        <button
+                            type="submit"
+                            :disabled="revealing || !passwordInput.trim()"
+                            class="px-5 py-2.5 border border-transparent rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
+                            <span v-if="revealing">{{ t('common.loading') }}</span>
+                            <span v-else>{{ t('common.confirm') }}</span>
+                        </button>
+                    </div>
+                </form>
+                <div v-if="hasLightningLogin || hasNostrLogin" class="mt-4 pt-4 border-t border-gray-700 space-y-2">
+                    <p class="text-sm text-gray-400 mb-2">{{ t('account.or_confirm_with_lightning') }}</p>
+                    <div class="flex flex-wrap gap-2">
+                        <button
+                            v-if="hasLightningLogin"
+                            type="button"
+                            :disabled="lnurlRevealLoading || lnurlRevealPolling"
+                            @click="handleCashuEditWithLightning"
+                            class="px-4 py-2 border border-indigo-500 rounded-xl text-sm font-medium text-indigo-400 hover:bg-indigo-500/10 disabled:opacity-50"
+                        >
+                            <span v-if="lnurlRevealLoading || lnurlRevealPolling">{{ t('common.loading') }}</span>
+                            <span v-else>{{ t('account.confirm_with_lightning_wallet') }}</span>
+                        </button>
+                        <button
+                            v-if="hasNostrLogin"
+                            type="button"
+                            @click="showNostrRevealModal = true"
+                            class="px-4 py-2 border border-amber-500/50 rounded-xl text-sm font-medium text-amber-400 hover:bg-amber-500/10"
+                        >
+                            🟠 {{ t('auth.nostr_confirm_reveal') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- Cashu: editing (first-time setup, after password, or switching from Lightning) -->
+        <template v-else>
+            <h3 class="text-sm font-bold text-indigo-400 mb-6 uppercase tracking-wider">
+                {{ t('stores.cashu_settings_title') }}
+            </h3>
+
+            <div
+                v-if="walletType === 'cashu' && (cashuForm.mint_url || '').trim() && (cashuForm.lightning_address || '').trim()"
+                class="mb-4 p-4 rounded-xl border border-green-500/20 bg-green-500/10 text-sm"
+            >
+                <span class="font-medium text-green-400">{{ t('stores.connected') }}</span>
+                <span class="text-gray-300 ml-2">{{ t('stores.cashu_connected_via_plugin') }}</span>
+            </div>
+
+            <div
+                v-if="walletType === 'cashu' && cashuSectionMode === 'editing'"
+                class="flex flex-wrap gap-3 text-sm mb-6"
+            >
                 <button
-                    type="submit"
-                    :disabled="cashuSubmitting || !canSaveCashu"
-                    class="px-6 py-3 border border-transparent rounded-xl shadow-lg shadow-indigo-600/20 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all w-full sm:w-auto"
+                    type="button"
+                    class="px-4 py-2 rounded-xl border border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white transition-all"
+                    @click="preferLightningFromCashu = true; form.type = 'blink'; form.secret = ''; lightningFormAquaTab = 'samrock'"
                 >
-                    <span v-if="cashuSubmitting">{{ t('common.loading') }}</span>
-                    <span v-else>{{ t('stores.cashu_save_settings') }}</span>
+                    {{ t('stores.wallet_connection_switch_to_blink') }}
+                </button>
+                <button
+                    type="button"
+                    class="px-4 py-2 rounded-xl border border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white transition-all"
+                    @click="preferLightningFromCashu = true; form.type = 'aqua_descriptor'; form.secret = ''; lightningFormAquaTab = 'samrock'"
+                >
+                    {{ t('stores.wallet_connection_switch_to_aqua') }}
                 </button>
             </div>
-        </form>
+
+            <div class="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-2">
+                <p class="text-sm font-medium text-amber-300">
+                    {{ t('stores.cashu_warning_title') }}
+                </p>
+                <ul class="text-sm text-amber-400 list-disc list-inside space-y-1.5">
+                    <li>{{ t('stores.cashu_warning_https') }}</li>
+                    <li>{{ t('stores.cashu_warning_mint_reachable') }}</li>
+                    <li>{{ t('stores.cashu_warning_ln_address') }}</li>
+                </ul>
+            </div>
+
+            <div v-if="cashuLoading" class="flex items-center justify-center py-10">
+                <svg class="animate-spin h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+
+            <form
+                v-else
+                @submit.prevent="handleSaveCashu"
+                class="space-y-6"
+            >
+                <div>
+                    <label for="cashu-mint-url" class="block text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">
+                        {{ t('stores.cashu_mint_url_label') }}
+                    </label>
+                    <input
+                        id="cashu-mint-url"
+                        v-model="cashuForm.mint_url"
+                        type="text"
+                        class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 font-mono"
+                        :placeholder="t('stores.cashu_mint_url_placeholder')"
+                    />
+                    <p class="mt-2 text-sm text-gray-500 leading-relaxed whitespace-pre-line">{{ t('stores.cashu_mint_url_hint') }}</p>
+                    <p v-if="cashuErrors.mint_url" class="mt-2 text-sm text-red-400">{{ cashuErrors.mint_url }}</p>
+                </div>
+
+                <div>
+                    <label for="cashu-lightning-address" class="block text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">
+                        {{ t('stores.cashu_lightning_address_label') }}
+                    </label>
+                    <input
+                        id="cashu-lightning-address"
+                        v-model="cashuForm.lightning_address"
+                        type="text"
+                        class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3"
+                        :placeholder="t('stores.cashu_lightning_address_placeholder')"
+                    />
+                    <p class="mt-2 text-sm text-gray-500 leading-relaxed">{{ t('stores.cashu_lightning_address_hint') }}</p>
+                    <p class="mt-2 text-sm text-gray-500 leading-relaxed">
+                        <span>{{ t('stores.cashu_lightning_address_coinos_prefix') }}</span>
+                        <a
+                            href="https://coinos.io"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="text-indigo-400 hover:text-indigo-300 underline font-medium"
+                        >coinos.io</a>
+                    </p>
+                    <p v-if="cashuErrors.lightning_address" class="mt-2 text-sm text-red-400">{{ cashuErrors.lightning_address }}</p>
+                </div>
+
+                <div v-if="cashuErrorMessage" class="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
+                    {{ cashuErrorMessage }}
+                </div>
+
+                <div class="flex flex-col-reverse sm:flex-row justify-between items-center gap-3 pt-4 border-t border-gray-700">
+                    <button
+                        type="button"
+                        @click="$emit('cancel')"
+                        class="px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all w-full sm:w-auto"
+                        :disabled="cashuSubmitting"
+                    >
+                        {{ t('common.cancel') }}
+                    </button>
+                    <button
+                        type="submit"
+                        :disabled="cashuSubmitting || !canSaveCashu"
+                        class="px-6 py-3 border border-transparent rounded-xl shadow-lg shadow-indigo-600/20 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all w-full sm:w-auto"
+                    >
+                        <span v-if="cashuSubmitting">{{ t('common.loading') }}</span>
+                        <span v-else>{{ t('stores.cashu_save_settings') }}</span>
+                    </button>
+                </div>
+            </form>
+        </template>
     </div>
 
     <div v-else class="space-y-8">
@@ -154,9 +289,36 @@
             </div>
 
             <div
+                v-if="viewMode === 'editing'"
+                class="flex flex-wrap gap-3 text-sm"
+            >
+                <button
+                    type="button"
+                    class="px-4 py-2 rounded-xl border border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white transition-all"
+                    @click="preferLightningWalletForm = true; form.type = 'blink'; form.secret = ''; aquaWalletTab = 'descriptor'"
+                >
+                    {{ t('stores.wallet_connection_switch_to_blink') }}
+                </button>
+                <button
+                    type="button"
+                    class="px-4 py-2 rounded-xl border border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white transition-all"
+                    @click="switchToCashuIntent = true; preferLightningWalletForm = false"
+                >
+                    {{ t('stores.wallet_connection_switch_to_cashu') }}
+                </button>
+            </div>
+
+            <div
                 v-show="aquaWalletTab === 'samrock'"
                 class="bg-gray-900/50 border border-indigo-500/30 rounded-2xl p-8"
             >
+                <div
+                    v-if="viewMode === 'editing' && existingConnection && existingConnection.status === 'connected'"
+                    class="mb-5 p-4 rounded-xl border border-green-500/25 bg-green-500/10 text-sm text-green-100 space-y-1"
+                >
+                    <p class="font-medium text-green-400">{{ t('stores.aqua_wallet_connected_title') }}</p>
+                    <p class="text-gray-300 leading-relaxed">{{ t('stores.aqua_wallet_connected_samrock_hint') }}</p>
+                </div>
                 <h3 class="text-sm font-bold text-indigo-400 mb-3 uppercase tracking-wider">
                     {{ t('stores.samrock_title') }}
                 </h3>
@@ -440,24 +602,6 @@
                     </div>
                 </div>
             </div>
-            <!-- LNURL reveal confirm modal -->
-            <LnurlQrModal
-                :open="showLnurlRevealModal"
-                :title="t('account.confirm_with_lightning_wallet')"
-                :lnurl="lnurlRevealUrl"
-                :error="lnurlRevealError"
-                :polling="lnurlRevealPolling"
-                :expires-in-seconds="300"
-                @close="closeLnurlRevealModal"
-                @regenerate="requestNewRevealChallenge"
-            />
-            <NostrAuthModal
-                :open="showNostrRevealModal"
-                mode="reveal"
-                :store-id="Number(storeId)"
-                @close="showNostrRevealModal = false"
-                @success="onNostrRevealSuccess"
-            />
         </template>
 
         <!-- Blink / legacy NWC / Lightning path after explicit choice when wallet_type unset -->
@@ -466,6 +610,18 @@
             @submit.prevent="handleSubmit"
             class="space-y-8"
         >
+            <div
+                v-if="preferLightningFromCashu"
+                class="mb-2"
+            >
+                <button
+                    type="button"
+                    class="text-sm font-medium text-indigo-400 hover:text-indigo-300"
+                    @click="preferLightningFromCashu = false"
+                >
+                    ← {{ t('stores.wallet_connection_back_to_cashu') }}
+                </button>
+            </div>
             <div>
                 <label class="block text-sm font-medium text-gray-300 mb-4 uppercase tracking-wider">
                     {{ t('create_store.wallet_type_label') }}
@@ -513,6 +669,13 @@
                         </div>
                     </label>
                 </div>
+                <button
+                    type="button"
+                    class="w-full mt-2 px-4 py-3 rounded-xl border border-gray-600 text-sm text-gray-300 hover:bg-gray-800 hover:border-indigo-500/50 transition-all text-left"
+                    @click="switchToCashuIntent = true; preferLightningWalletForm = false"
+                >
+                    {{ t('create_store.wallet_type_cashu') }} — {{ t('stores.wallet_connection_switch_to_cashu_hint') }}
+                </button>
                 <div v-if="form.type === 'aqua_descriptor'" class="mt-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10">
                     <p class="text-sm text-amber-400">{{ t('stores.aqua_warning_btcpay') }}</p>
                     <p class="text-sm text-amber-400 mt-2">{{ t('stores.aqua_limits_warning') }}</p>
@@ -521,36 +684,163 @@
             </div>
 
             <div>
-                <label for="secret" class="block text-sm font-medium text-indigo-300 mb-2 uppercase tracking-wider">
-                    {{ form.type === 'blink' ? t('create_store.connection_string') : t('create_store.descriptor') }}
-                </label>
-                <textarea
-                    id="secret"
-                    v-model="form.secret"
-                    rows="5"
-                    class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono p-4"
-                    :placeholder="form.type === 'blink'
-                        ? 'type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx'
-                        : 'ct(slip77(...),elsh(wpkh(...))))'"
-                    required
-                ></textarea>
-                <div v-if="form.type === 'blink'" class="mt-3 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10">
-                    <p class="text-sm text-amber-400 font-medium">
-                        {{ t('stores.blink_keys_warning') }}
-                        <a href="https://dashboard.blink.sv/" target="_blank" rel="noopener noreferrer" class="underline hover:text-amber-300 ml-1">{{ t('stores.blink_dashboard_link') }}</a>
-                    </p>
-                </div>
-                <div class="mt-3 text-sm text-gray-400 bg-gray-900/30 p-4 rounded-xl border border-gray-700/50">
-                    <p class="font-medium text-gray-300 mb-2">{{ t('stores.format_help') }}</p>
-                    <div v-if="form.type === 'blink'" class="space-y-1">
-                        <p>{{ t('create_store.connection_string_format') }}</p>
-                        <p>{{ t('create_store.connection_string_help') }}</p>
+                <!-- Blink -->
+                <template v-if="form.type === 'blink'">
+                    <label for="secret-blink" class="block text-sm font-medium text-indigo-300 mb-2 uppercase tracking-wider">
+                        {{ t('create_store.connection_string') }}
+                    </label>
+                    <textarea
+                        id="secret-blink"
+                        v-model="form.secret"
+                        rows="5"
+                        class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono p-4"
+                        placeholder="type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx"
+                        required
+                    ></textarea>
+                    <div class="mt-3 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10">
+                        <p class="text-sm text-amber-400 font-medium">
+                            {{ t('stores.blink_keys_warning') }}
+                            <a href="https://dashboard.blink.sv/" target="_blank" rel="noopener noreferrer" class="underline hover:text-amber-300 ml-1">{{ t('stores.blink_dashboard_link') }}</a>
+                        </p>
                     </div>
-                    <div v-else class="space-y-1">
-                        <p>{{ t('create_store.descriptor_help') }}</p>
-                        <p>{{ t('create_store.descriptor_example') }}</p>
+                    <div class="mt-3 text-sm text-gray-400 bg-gray-900/30 p-4 rounded-xl border border-gray-700/50">
+                        <p class="font-medium text-gray-300 mb-2">{{ t('stores.format_help') }}</p>
+                        <div class="space-y-1">
+                            <p>{{ t('create_store.connection_string_format') }}</p>
+                            <p>{{ t('create_store.connection_string_help') }}</p>
+                        </div>
                     </div>
-                </div>
+                </template>
+
+                <!-- Aqua in this form: SamRock QR + Descriptor (same as dedicated Aqua flow) -->
+                <template v-else-if="showSamrockTabsInLightningForm">
+                    <div class="flex gap-1 p-1 rounded-xl bg-gray-800/90 border border-gray-600 w-full sm:w-fit mb-6">
+                        <button
+                            type="button"
+                            class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-semibold transition-all"
+                            :class="lightningFormAquaTab === 'samrock' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-700/80'"
+                            @click="lightningFormAquaTab = 'samrock'"
+                        >
+                            {{ t('stores.samrock_tab') }}
+                        </button>
+                        <button
+                            type="button"
+                            class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
+                            :class="lightningFormAquaTab === 'descriptor' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-700/80'"
+                            @click="lightningFormAquaTab = 'descriptor'"
+                        >
+                            {{ t('stores.descriptor_tab') }}
+                        </button>
+                    </div>
+
+                    <div
+                        v-show="lightningFormAquaTab === 'samrock'"
+                        class="bg-gray-900/50 border border-indigo-500/30 rounded-2xl p-8 mb-6"
+                    >
+                        <h3 class="text-sm font-bold text-indigo-400 mb-3 uppercase tracking-wider">
+                            {{ t('stores.samrock_title') }}
+                        </h3>
+                        <p class="text-sm text-gray-400 mb-2 leading-relaxed">{{ t('stores.samrock_description') }}</p>
+                        <p v-if="samrockErrorMessage && !samrockQrObjectUrl" class="text-red-400 text-sm mb-4">{{ samrockErrorMessage }}</p>
+
+                        <div v-if="!samrockOtp && !samrockBusy" class="flex flex-wrap gap-3">
+                            <button
+                                type="button"
+                                class="px-6 py-3 rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
+                                :disabled="samrockBusy"
+                                @click="startSamRockPairing"
+                            >
+                                {{ t('stores.samrock_generate_qr') }}
+                            </button>
+                            <button
+                                v-if="samrockErrorMessage"
+                                type="button"
+                                class="px-6 py-3 rounded-xl text-sm font-medium border border-gray-600 text-gray-300 hover:bg-gray-800"
+                                @click="samrockErrorMessage = ''; startSamRockPairing()"
+                            >
+                                {{ t('stores.samrock_try_again') }}
+                            </button>
+                        </div>
+
+                        <div v-else-if="samrockBusy && !samrockQrObjectUrl" class="flex items-center gap-3 py-6 text-gray-400">
+                            <svg class="animate-spin h-6 w-6 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            <span>{{ t('common.loading') }}</span>
+                        </div>
+
+                        <div v-else-if="samrockQrObjectUrl" class="space-y-4">
+                            <p class="text-sm text-gray-300">{{ t('stores.samrock_waiting_scan') }}</p>
+                            <div class="flex flex-col sm:flex-row gap-6 items-start">
+                                <img
+                                    :src="samrockQrObjectUrl"
+                                    alt="SamRock QR"
+                                    class="w-48 h-48 rounded-xl border border-gray-600 bg-white p-2"
+                                />
+                                <div class="text-sm space-y-2">
+                                    <p v-if="samrockExpiresAt" class="text-gray-500">
+                                        {{ t('stores.samrock_expires') }}: {{ formatSamRockExpiry(samrockExpiresAt) }}
+                                    </p>
+                                    <p v-if="samrockPollStatus" class="font-mono text-indigo-300">{{ samrockPollStatus }}</p>
+                                    <p v-if="samrockErrorMessage" class="text-red-400">{{ samrockErrorMessage }}</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    class="px-4 py-2 rounded-xl text-sm border border-gray-600 text-gray-300 hover:bg-gray-800"
+                                    @click="cancelSamRockPairing"
+                                >
+                                    {{ t('stores.samrock_cancel') }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-show="lightningFormAquaTab === 'descriptor'" class="rounded-2xl border border-gray-700 bg-gray-900/30 p-6">
+                        <label for="secret-lightning-aqua" class="block text-sm font-medium text-indigo-300 mb-2 uppercase tracking-wider">
+                            {{ t('create_store.descriptor') }}
+                        </label>
+                        <textarea
+                            id="secret-lightning-aqua"
+                            v-model="form.secret"
+                            rows="5"
+                            class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono p-4"
+                            placeholder="ct(slip77(...),elsh(wpkh(...))))"
+                        ></textarea>
+                        <div class="mt-3 text-sm text-gray-400 bg-gray-900/30 p-4 rounded-xl border border-gray-700/50">
+                            <p class="font-medium text-gray-300 mb-2">{{ t('stores.format_help') }}</p>
+                            <div class="space-y-1">
+                                <p>{{ t('create_store.descriptor_help') }}</p>
+                                <p>{{ t('create_store.descriptor_example') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Aqua without tabbed UI (should not occur in lightning form) -->
+                <template v-else>
+                    <label for="secret-fallback" class="block text-sm font-medium text-indigo-300 mb-2 uppercase tracking-wider">
+                        {{ t('create_store.descriptor') }}
+                    </label>
+                    <textarea
+                        id="secret-fallback"
+                        v-model="form.secret"
+                        rows="5"
+                        class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono p-4"
+                        placeholder="ct(slip77(...),elsh(wpkh(...))))"
+                        required
+                    ></textarea>
+                    <div class="mt-3 text-sm text-gray-400 bg-gray-900/30 p-4 rounded-xl border border-gray-700/50">
+                        <p class="font-medium text-gray-300 mb-2">{{ t('stores.format_help') }}</p>
+                        <div class="space-y-1">
+                            <p>{{ t('create_store.descriptor_help') }}</p>
+                            <p>{{ t('create_store.descriptor_example') }}</p>
+                        </div>
+                    </div>
+                </template>
+
                 <p v-if="errors.secret" class="mt-2 text-sm text-red-400">{{ errors.secret }}</p>
             </div>
 
@@ -630,6 +920,25 @@
             </p>
         </div>
     </div>
+
+    <LnurlQrModal
+        :open="showLnurlRevealModal"
+        :title="t('account.confirm_with_lightning_wallet')"
+        :lnurl="lnurlRevealUrl"
+        :error="lnurlRevealError"
+        :polling="lnurlRevealPolling"
+        :expires-in-seconds="300"
+        @close="closeLnurlRevealModal"
+        @regenerate="requestNewRevealChallenge"
+    />
+    <NostrAuthModal
+        :open="showNostrRevealModal"
+        mode="reveal"
+        :store-id="Number(storeId)"
+        :confirm-purpose="nostrRevealConfirmPurpose"
+        @close="showNostrRevealModal = false"
+        @success="onNostrRevealSuccess"
+    />
 </template>
 
 <script setup lang="ts">
@@ -638,6 +947,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../../store/auth';
 import api from '../../services/api';
+import { DEFAULT_CASHU_MINT_URL } from '../../constants/cashu';
 import WalletTypeIcon from '../WalletTypeIcon.vue';
 import LnurlQrModal from '../auth/LnurlQrModal.vue';
 import NostrAuthModal from '../auth/NostrAuthModal.vue';
@@ -655,22 +965,55 @@ const props = defineProps<Props>();
 type UnsetWalletChoice = 'choose' | 'cashu' | 'lightning';
 const unsetWalletChoice = ref<UnsetWalletChoice>('choose');
 
+/** User chose Lightning (Blink) instead of Aqua tabs while store is aqua_boltz. */
+const preferLightningWalletForm = ref(false);
+/** User opened Cashu settings while store wallet type is not yet cashu. */
+const switchToCashuIntent = ref(false);
+/** Cashu store: switching to Blink/Aqua Lightning form (after unlock). */
+const preferLightningFromCashu = ref(false);
+/** Native Cashu store: readonly summary → password → editing. */
+const cashuSectionMode = ref<'readonly' | 'password' | 'editing'>('editing');
+const cashuInitializedFromFetch = ref(false);
+/** LNURL challenge completion targets Cashu confirm-edit instead of wallet reveal. */
+const lnurlRevealForCashuEdit = ref(false);
+/** SamRock vs descriptor tab inside the shared Lightning wallet form (Blink/NWC path). */
+const lightningFormAquaTab = ref<'samrock' | 'descriptor'>('samrock');
+
 const isUnsetWalletType = computed(() => {
     const w = props.walletType;
     return w === null || w === undefined || w === '';
 });
 
 const isCashuFlow = computed(() => {
+    if (preferLightningFromCashu.value) return false;
     if (props.walletType === 'cashu') return true;
     if (isUnsetWalletType.value && unsetWalletChoice.value === 'cashu') return true;
+    if (switchToCashuIntent.value) return true;
     return false;
 });
 
-const showLightningWalletForm = computed(() => {
-    if (props.walletType === 'blink' || props.walletType === 'nwc') return true;
-    if (isUnsetWalletType.value && unsetWalletChoice.value === 'lightning') return true;
-    return false;
-});
+function maskCashuMintUrl(url: string): string {
+    const u = (url || '').trim();
+    if (!u) return '—';
+    try {
+        const parsed = new URL(u);
+        const path = parsed.pathname && parsed.pathname !== '/' ? ' ···' : '';
+        return `${parsed.hostname}${path}`;
+    } catch {
+        return '···';
+    }
+}
+
+function maskCashuLightningAddress(addr: string): string {
+    const a = (addr || '').trim();
+    if (!a) return '—';
+    const i = a.indexOf('@');
+    if (i <= 0) return '···';
+    const local = a.slice(0, i);
+    const domain = a.slice(i + 1);
+    const showLocal = local.length <= 2 ? '•••' : `${local.slice(0, 2)}···`;
+    return `${showLocal}@${domain}`;
+}
 
 const emit = defineEmits<{
     submitted: [];
@@ -720,6 +1063,15 @@ const lnurlRevealError = ref('');
 const lnurlRevealPolling = ref(false);
 let lnurlRevealPollingInterval: number | null = null;
 
+watch(
+    () => props.walletType,
+    () => {
+        if (props.walletType !== 'cashu') {
+            cashuInitializedFromFetch.value = false;
+        }
+    }
+);
+
 const samrockPanelVisible = computed(() => {
     if (props.walletType !== 'aqua_boltz') return false;
     if (viewMode.value !== 'create') return false;
@@ -728,7 +1080,11 @@ const samrockPanelVisible = computed(() => {
     return props.existingConnection.status === 'pending';
 });
 
-const isAquaTabbedUi = computed(() => props.walletType === 'aqua_boltz' && samrockPanelVisible.value);
+const isAquaTabbedUi = computed(() => {
+    if (props.walletType !== 'aqua_boltz') return false;
+    if (preferLightningWalletForm.value) return false;
+    return samrockPanelVisible.value || viewMode.value === 'editing';
+});
 
 const aquaWalletTab = ref<'samrock' | 'descriptor'>('samrock');
 
@@ -858,18 +1214,36 @@ const form = reactive({
     secret: '',
 });
 
+const showLightningWalletForm = computed(() => {
+    if (props.walletType === 'blink' || props.walletType === 'nwc') return true;
+    if (isUnsetWalletType.value && unsetWalletChoice.value === 'lightning') return true;
+    if (props.walletType === 'aqua_boltz' && preferLightningWalletForm.value && viewMode.value === 'editing') {
+        return true;
+    }
+    if (props.walletType === 'cashu' && preferLightningFromCashu.value) return true;
+    return false;
+});
+
+const showSamrockTabsInLightningForm = computed(
+    () => showLightningWalletForm.value && form.type === 'aqua_descriptor'
+);
+
+const nostrRevealConfirmPurpose = computed(() =>
+    props.walletType === 'cashu' && cashuSectionMode.value === 'password' ? 'cashu_edit' : 'wallet_reveal'
+);
+
 // Cashu settings UI (wallet_type=cashu) - configured directly via BTCPay plugin, no wallet_connections secrets.
 const cashuLoading = ref(false);
 const cashuSubmitting = ref(false);
 const cashuErrorMessage = ref('');
 const cashuErrors = reactive<Record<string, string>>({});
 const cashuForm = reactive({
-    mint_url: '',
+    mint_url: DEFAULT_CASHU_MINT_URL,
     lightning_address: '',
     enabled: true,
 });
 const cashuOriginal = reactive({
-    mint_url: '',
+    mint_url: DEFAULT_CASHU_MINT_URL,
     lightning_address: '',
     enabled: true,
 });
@@ -895,13 +1269,26 @@ async function fetchCashuSettings() {
         const response = await api.get(`/stores/${props.storeId}/cashu/settings`);
         const d = response.data?.data ?? {};
 
-        cashuForm.mint_url = d.mint_url ?? '';
+        const mintFromApi = (d.mint_url ?? '').trim();
+        cashuForm.mint_url = mintFromApi || DEFAULT_CASHU_MINT_URL;
         cashuForm.lightning_address = d.lightning_address ?? '';
         cashuForm.enabled = d.enabled ?? true;
 
         cashuOriginal.mint_url = cashuForm.mint_url;
         cashuOriginal.lightning_address = cashuForm.lightning_address;
         cashuOriginal.enabled = cashuForm.enabled;
+
+        if (
+            props.walletType === 'cashu' &&
+            !switchToCashuIntent.value &&
+            !preferLightningFromCashu.value &&
+            !cashuInitializedFromFetch.value
+        ) {
+            cashuInitializedFromFetch.value = true;
+            const has =
+                (cashuForm.mint_url || '').trim() && (cashuForm.lightning_address || '').trim();
+            cashuSectionMode.value = has ? 'readonly' : 'editing';
+        }
     } catch (err: any) {
         cashuErrorMessage.value =
             err.response?.data?.message || 'Failed to load Cashu settings';
@@ -934,6 +1321,9 @@ async function handleSaveCashu() {
         cashuOriginal.lightning_address = cashuForm.lightning_address;
         cashuOriginal.enabled = cashuForm.enabled;
 
+        switchToCashuIntent.value = false;
+        cashuInitializedFromFetch.value = true;
+        cashuSectionMode.value = 'readonly';
         emit('submitted');
     } catch (err: any) {
         if (err.response?.status === 422 && err.response?.data?.errors) {
@@ -952,14 +1342,17 @@ async function handleSaveCashu() {
 }
 
 watch(
-    () => [props.walletType, unsetWalletChoice.value] as const,
-    ([wt, unset]: [Props['walletType'], UnsetWalletChoice]) => {
+    () =>
+        [props.walletType, unsetWalletChoice.value, switchToCashuIntent.value, preferLightningWalletForm.value] as const,
+    ([wt, unset, cashuIntent, _preferLightning]: [Props['walletType'], UnsetWalletChoice, boolean, boolean]) => {
         const cashuActive =
-            wt === 'cashu' || ((wt == null || wt === '') && unset === 'cashu');
+            wt === 'cashu' ||
+            ((wt == null || wt === '') && unset === 'cashu') ||
+            cashuIntent;
         if (cashuActive) {
             fetchCashuSettings();
         }
-        if (wt === 'aqua_boltz') {
+        if (wt === 'aqua_boltz' && !preferLightningWalletForm.value) {
             form.type = 'aqua_descriptor';
         }
     },
@@ -970,6 +1363,13 @@ watch(
     () => props.storeId,
     () => {
         unsetWalletChoice.value = 'choose';
+        preferLightningWalletForm.value = false;
+        preferLightningFromCashu.value = false;
+        switchToCashuIntent.value = false;
+        cashuSectionMode.value = 'editing';
+        cashuInitializedFromFetch.value = false;
+        lightningFormAquaTab.value = 'samrock';
+        lnurlRevealForCashuEdit.value = false;
     }
 );
 
@@ -979,7 +1379,9 @@ watch(() => props.existingConnection, (conn: any) => {
 
         return;
     }
-    form.type = (conn.type || 'blink') as 'blink' | 'aqua_descriptor';
+    if (viewMode.value !== 'editing') {
+        form.type = (conn.type || 'blink') as 'blink' | 'aqua_descriptor';
+    }
     if (conn.status === 'pending') {
         viewMode.value = 'create';
     } else if (viewMode.value === 'create') {
@@ -1033,6 +1435,7 @@ function closeLnurlRevealModal() {
     lnurlRevealK1.value = '';
     lnurlRevealUrl.value = '';
     lnurlRevealError.value = '';
+    lnurlRevealForCashuEdit.value = false;
 }
 
 async function fetchRevealChallengeAndOpen(): Promise<boolean> {
@@ -1068,11 +1471,22 @@ async function fetchRevealChallengeAndOpen(): Promise<boolean> {
                     lnurlRevealPolling.value = false;
                     showLnurlRevealModal.value = false;
                     revealing.value = true;
+                    const forCashuEdit = lnurlRevealForCashuEdit.value;
+                    lnurlRevealForCashuEdit.value = false;
                     try {
-                        const response = await api.post(`/stores/${props.storeId}/wallet-connection/reveal`, { confirm_via_lnurl: true });
-                        form.type = (response.data.data?.type || props.existingConnection?.type || 'blink') as 'blink' | 'aqua_descriptor';
-                        form.secret = response.data.data?.secret || '';
-                        viewMode.value = 'editing';
+                        if (forCashuEdit) {
+                            await api.post(`/stores/${props.storeId}/cashu/confirm-edit`, {
+                                confirm_via_lnurl: true,
+                            });
+                            cashuSectionMode.value = 'editing';
+                        } else {
+                            const response = await api.post(`/stores/${props.storeId}/wallet-connection/reveal`, { confirm_via_lnurl: true });
+                            form.type = (response.data.data?.type || props.existingConnection?.type || 'blink') as 'blink' | 'aqua_descriptor';
+                            form.secret = response.data.data?.secret || '';
+                            sanitizeSecretForDeclaredType();
+                            syncWalletFormAquaTabAfterReveal();
+                            viewMode.value = 'editing';
+                        }
                     } catch (err: any) {
                         lnurlRevealError.value = err.response?.data?.errors?.password?.[0] || err.response?.data?.message || t('stores.invalid_password');
                         showLnurlRevealModal.value = true;
@@ -1096,6 +1510,18 @@ async function fetchRevealChallengeAndOpen(): Promise<boolean> {
 }
 
 async function handleConfirmWithLightning() {
+    lnurlRevealForCashuEdit.value = false;
+    lnurlRevealLoading.value = true;
+    lnurlRevealError.value = '';
+    try {
+        await fetchRevealChallengeAndOpen();
+    } finally {
+        lnurlRevealLoading.value = false;
+    }
+}
+
+async function handleCashuEditWithLightning() {
+    lnurlRevealForCashuEdit.value = true;
     lnurlRevealLoading.value = true;
     lnurlRevealError.value = '';
     try {
@@ -1115,11 +1541,17 @@ async function requestNewRevealChallenge() {
     await fetchRevealChallengeAndOpen();
 }
 
-function onNostrRevealSuccess(payload?: { secret?: string; type?: string }) {
+function onNostrRevealSuccess(payload?: { secret?: string; type?: string; ok?: boolean }) {
     showNostrRevealModal.value = false;
+    if (props.walletType === 'cashu' && cashuSectionMode.value === 'password') {
+        cashuSectionMode.value = 'editing';
+        return;
+    }
     if (payload?.secret) {
         form.secret = payload.secret;
         form.type = (payload.type || props.existingConnection?.type || 'blink') as 'blink' | 'aqua_descriptor';
+        sanitizeSecretForDeclaredType();
+        syncWalletFormAquaTabAfterReveal();
         viewMode.value = 'editing';
     }
 }
@@ -1140,6 +1572,8 @@ async function handleConfirmPassword() {
         });
         form.type = (response.data.data?.type || props.existingConnection?.type || 'blink') as 'blink' | 'aqua_descriptor';
         form.secret = response.data.data?.secret || '';
+        sanitizeSecretForDeclaredType();
+        syncWalletFormAquaTabAfterReveal();
         passwordInput.value = '';
         viewMode.value = 'editing';
     } catch (err: any) {
@@ -1150,8 +1584,39 @@ async function handleConfirmPassword() {
     }
 }
 
+async function handleCashuConfirmPassword() {
+    if (!passwordInput.value.trim()) return;
+    passwordError.value = '';
+    revealing.value = true;
+    try {
+        await api.post(`/stores/${props.storeId}/cashu/confirm-edit`, {
+            password: passwordInput.value,
+        });
+        passwordInput.value = '';
+        cashuSectionMode.value = 'editing';
+    } catch (err: any) {
+        const msg = err.response?.data?.errors?.password?.[0] || err.response?.data?.message || t('stores.invalid_password');
+        passwordError.value = msg;
+    } finally {
+        revealing.value = false;
+    }
+}
+
 function handleCancelEdit() {
+    if (preferLightningFromCashu.value) {
+        preferLightningFromCashu.value = false;
+        form.secret = '';
+        testResult.value = null;
+        Object.keys(errors).forEach(k => delete errors[k]);
+        return;
+    }
+    preferLightningWalletForm.value = false;
+    switchToCashuIntent.value = false;
+    lightningFormAquaTab.value = 'samrock';
     form.secret = '';
+    if (props.existingConnection) {
+        form.type = (props.existingConnection.type || 'blink') as 'blink' | 'aqua_descriptor';
+    }
     viewMode.value = 'readonly';
     testResult.value = null;
     Object.keys(errors).forEach(k => delete errors[k]);
@@ -1185,6 +1650,50 @@ function validateDescriptor(descriptor: string): boolean {
     const lower = trimmed.toLowerCase();
     return lower.startsWith('ct(slip77') && lower.includes(',elsh(wpkh(');
 }
+
+/** Drop Blink-shaped secrets when the form expects a descriptor (and vice versa). */
+function sanitizeSecretForDeclaredType() {
+    const raw = form.secret.trim();
+    if (!raw) return;
+    if (form.type === 'aqua_descriptor') {
+        if (validateBlinkConnectionString(raw) || raw.toLowerCase().startsWith('type=blink')) {
+            form.secret = '';
+        }
+    } else if (form.type === 'blink' && validateDescriptor(raw)) {
+        form.secret = '';
+    }
+}
+
+function syncWalletFormAquaTabAfterReveal() {
+    if (form.type !== 'aqua_descriptor') return;
+    const hasDescriptor = validateDescriptor(form.secret);
+    if (showLightningWalletForm.value) {
+        lightningFormAquaTab.value = hasDescriptor ? 'descriptor' : 'samrock';
+    } else if (isAquaTabbedUi.value) {
+        aquaWalletTab.value = hasDescriptor ? 'descriptor' : 'samrock';
+    }
+}
+
+watch(
+    () => form.type,
+    (newType, oldType) => {
+        if (oldType === undefined || !oldType || newType === oldType) return;
+        if (newType === 'aqua_descriptor' && oldType === 'blink') {
+            const s = form.secret.trim();
+            if (s && (s.toLowerCase().startsWith('type=blink') || validateBlinkConnectionString(s))) {
+                form.secret = '';
+            }
+        } else if (newType === 'blink' && oldType === 'aqua_descriptor') {
+            const s = form.secret.trim();
+            if (s && validateDescriptor(s)) {
+                form.secret = '';
+            }
+        }
+        if (newType === 'aqua_descriptor' && showLightningWalletForm.value) {
+            lightningFormAquaTab.value = 'samrock';
+        }
+    }
+);
 
 async function handleTestConnection() {
     if (!form.secret.trim()) {

@@ -167,8 +167,10 @@ const props = withDefaults(
     /** For reveal: after confirm, call this with connectionId to POST reveal with confirm_via_nostr */
     connectionId?: number;
     storeId?: number;
+    /** When reveal + storeId: wallet secret vs Cashu edit gate (no wallet_connections row). */
+    confirmPurpose?: 'wallet_reveal' | 'cashu_edit';
   }>(),
-  { connectionId: undefined, storeId: undefined }
+  { connectionId: undefined, storeId: undefined, confirmPurpose: 'wallet_reveal' }
 );
 
 const emit = defineEmits<{
@@ -320,8 +322,10 @@ function startPolling() {
         stopPolling();
         if (props.mode === 'reveal' && (props.connectionId !== undefined || props.storeId !== undefined)) {
           try {
-            let res: { data?: { data?: { secret?: string } } };
-            if (props.storeId !== undefined) {
+            let res: { data?: { data?: { secret?: string; ok?: boolean } } };
+            if (props.storeId !== undefined && props.confirmPurpose === 'cashu_edit') {
+              res = await api.post(`/stores/${props.storeId}/cashu/confirm-edit`, { confirm_via_nostr: true });
+            } else if (props.storeId !== undefined) {
               res = await api.post(`/stores/${props.storeId}/wallet-connection/reveal`, { confirm_via_nostr: true });
             } else if (props.connectionId !== undefined) {
               res = await api.post(`/support/wallet-connections/${props.connectionId}/reveal`, { confirm_via_nostr: true });

@@ -297,6 +297,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Cashu (wallet_type=cashu)
     Route::middleware([EnsureStoreOwnership::class])->prefix('stores/{store}/cashu')->group(function () {
+        Route::post('confirm-edit', [CashuController::class, 'confirmEdit']);
         Route::get('settings', [CashuController::class, 'getSettings']);
         Route::put('settings', [CashuController::class, 'updateSettings']);
 
