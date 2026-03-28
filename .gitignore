@@ -10,6 +10,7 @@
 .env.backup
 backup.config.sh
 setup-root-ssh.sh
+scripts/create-subscription-store.php
 .env.production
 .env.standalone
 .phpunit.result.cache
