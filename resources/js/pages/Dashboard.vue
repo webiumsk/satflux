@@ -96,11 +96,17 @@
            <svg class="w-24 h-24 text-purple-500" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
         </div>
         <div class="relative z-10">
-          <p class="text-gray-400 text-sm font-medium mb-1">{{ t('dashboard.system_status') }}</p>
+          <p class="text-gray-400 text-sm font-medium mb-1">{{ t('dashboard.btcpay_status_title') }}</p>
           <h3 class="text-3xl font-bold text-white flex items-center">
-             <span class="flex h-3 w-3 rounded-full bg-green-500 mr-3"></span>
-             {{ t('dashboard.online') }}
+            <span
+              class="flex h-3 w-3 rounded-full mr-3 shrink-0"
+              :class="btcpayStatusDotClass"
+            />
+            {{ btcpayStatusLabel }}
           </h3>
+          <p v-if="btcpayPing?.http_status != null" class="mt-1 text-xs text-gray-500 font-mono">
+            {{ t('dashboard.btcpay_http_code', { code: btcpayPing.http_status }) }}
+          </p>
           <div class="mt-4">
              <router-link to="/support" class="text-sm font-medium text-purple-400 hover:text-purple-300 flex items-center">
                {{ t('dashboard.help_center') }} <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
@@ -247,6 +253,31 @@ const totalRevenueByCurrency = ref<Record<string, number>>({});
 const availableRevenueCurrencies = ref<string[]>(['sats']);
 const selectedRevenueCurrency = ref<string>('sats');
 
+type BtcpayPing = { http_status: number | null; state: string };
+const btcpayPing = ref<BtcpayPing | null>(null);
+
+const btcpayStatusDotClass = computed(() => {
+  const s = btcpayPing.value?.state ?? 'unknown';
+  if (s === 'online') return 'bg-green-500';
+  if (s === 'client_error') return 'bg-amber-500';
+  if (s === 'server_error' || s === 'unreachable') return 'bg-red-500';
+  return 'bg-gray-500';
+});
+
+const btcpayStatusLabel = computed(() => {
+  const s = btcpayPing.value?.state ?? 'unknown';
+  const code = btcpayPing.value?.http_status;
+  if (s === 'online') return t('dashboard.btcpay_reachable');
+  if (s === 'client_error') {
+    return code != null ? t('dashboard.btcpay_client_error_with_code', { code }) : t('dashboard.btcpay_client_error');
+  }
+  if (s === 'server_error') {
+    return code != null ? t('dashboard.btcpay_server_error_with_code', { code }) : t('dashboard.btcpay_server_error');
+  }
+  if (s === 'unreachable') return t('dashboard.btcpay_unreachable');
+  return t('dashboard.btcpay_unknown');
+});
+
 async function loadDashboardData(opts?: { refresh?: boolean }) {
   loading.value = true;
   try {
@@ -258,6 +289,7 @@ async function loadDashboardData(opts?: { refresh?: boolean }) {
     if (!availableRevenueCurrencies.value.includes('sats')) {
       availableRevenueCurrencies.value = ['sats', ...availableRevenueCurrencies.value];
     }
+    btcpayPing.value = response.data.btcpay_ping ?? null;
   } catch (error: any) {
     console.error('Failed to load dashboard data:', error);
   } finally {
