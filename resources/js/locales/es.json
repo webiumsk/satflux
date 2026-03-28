@@ -30,7 +30,16 @@
     "language": "Idioma",
     "created": "Creado",
     "retry": "Reintentar",
-    "qr_code": "Código QR"
+    "qr_code": "Código QR",
+    "footer_github_aria": "Código fuente en GitHub",
+    "footer_created_with": "creado con",
+    "footer_love_aria": "amor",
+    "footer_open_source": "Código abierto bajo la licencia ",
+    "footer_license_link": "MIT",
+    "footer_period": ".",
+    "footer_support_me": "Apóyame",
+    "footer_ln_copy_aria": "Copiar dirección Lightning",
+    "footer_ln_copied": "¡Copiado!"
   },
   "auth": {
     "welcome_back": "Bienvenido de nuevo",

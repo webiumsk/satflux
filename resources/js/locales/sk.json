@@ -76,7 +76,16 @@
     "documentation": "Dokumentácia",
     "language": "Jazyk",
     "retry": "Skúsiť znova",
-    "qr_code": "QR kód"
+    "qr_code": "QR kód",
+    "footer_github_aria": "Zdrojový kód na GitHub-e",
+    "footer_created_with": "vytvorené s",
+    "footer_love_aria": "láskou",
+    "footer_open_source": "Open source pod licenciou ",
+    "footer_license_link": "MIT",
+    "footer_period": ".",
+    "footer_support_me": "Podporte ma",
+    "footer_ln_copy_aria": "Skopírovať Lightning adresu",
+    "footer_ln_copied": "Skopírované!"
   },
   "auth": {
     "welcome_back": "Vitajte späť",

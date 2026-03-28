@@ -4,6 +4,21 @@
       <div class="text-center">
         <div class="flex justify-center gap-4 mb-4">
           <a
+            href="https://github.com/webiumsk/Satflux"
+            target="_blank"
+            rel="noopener noreferrer"
+            :aria-label="t('common.footer_github_aria')"
+            class="text-gray-500 hover:text-gray-300 transition-colors"
+          >
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path
+                fill-rule="evenodd"
+                clip-rule="evenodd"
+                d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+              />
+            </svg>
+          </a>
+          <a
             href="https://x.com/satflux"
             target="_blank"
             rel="noopener noreferrer"
@@ -43,9 +58,70 @@
           SATFLUX
           <span v-if="version" class="text-gray-600">v{{ version }}</span>
         </p>
-        <p class="text-xs text-gray-600 mt-2">
-          &copy; {{ new Date().getFullYear() }} satflux.io. All rights reserved.
+        <p
+          class="text-xs text-gray-600 mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 leading-none"
+        >
+          <span class="inline-flex items-center gap-1 text-gray-600 leading-none">
+            <span class="leading-none">{{ t('common.footer_created_with') }}</span>
+            <svg
+              class="h-[1.08em] w-[1.08em] text-rose-500 shrink-0 block translate-y-[0.03em]"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              role="img"
+              :aria-label="t('common.footer_love_aria')"
+            >
+              <path
+                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+              />
+            </svg>
+          </span>
+          <span class="text-gray-600 leading-none" aria-hidden="true">—</span>
+          <span class="text-gray-600 leading-none inline-flex items-center">
+            {{ t('common.footer_open_source') }}&nbsp;
+            <a
+              href="https://github.com/webiumsk/Satflux/blob/master/LICENSE"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="underline hover:text-gray-400 focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-500 rounded leading-none"
+            >{{ t('common.footer_license_link') }}</a>
+          </span>
         </p>
+        <div class="mt-3 flex w-full justify-center">
+          <div
+            class="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-gray-500"
+          >
+            <span
+              class="inline-flex h-5 items-center leading-none text-gray-500"
+            >{{ t('common.footer_support_me') }}</span>
+            <span>
+              <a
+                :href="`lightning:${lnAddress}`"
+                class="inline-flex items-center font-mono text-indigo-200/95 leading-none hover:text-indigo-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-indigo-400 rounded"
+              >{{ lnAddress }}</a>
+            </span>
+            <button
+              type="button"
+              class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-500 hover:text-gray-300 focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-500"
+              :aria-label="t('common.footer_ln_copy_aria')"
+              :title="t('common.footer_ln_copy_aria')"
+              @click="copyLnAddress"
+            >
+              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                />
+              </svg>
+            </button>
+            <span
+              v-if="lnCopied"
+              class="inline-flex h-5 items-center text-emerald-500/90 leading-none"
+              role="status"
+            >{{ t('common.footer_ln_copied') }}</span>
+          </div>
+        </div>
       </div>
     </div>
   </footer>
@@ -53,9 +129,31 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import api from "../../services/api";
 
+const { t } = useI18n();
 const version = ref<string | null>(null);
+
+/** Public Lightning Address for tips (shown in footer; default donate link uses lightning: URI). */
+const lnAddress = "hello@satflux.org";
+
+const lnCopied = ref(false);
+let lnCopyResetTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function copyLnAddress() {
+  try {
+    await navigator.clipboard.writeText(lnAddress);
+    lnCopied.value = true;
+    if (lnCopyResetTimer) clearTimeout(lnCopyResetTimer);
+    lnCopyResetTimer = setTimeout(() => {
+      lnCopied.value = false;
+      lnCopyResetTimer = null;
+    }, 2000);
+  } catch {
+    // Clipboard may be denied; ignore
+  }
+}
 
 onMounted(async () => {
   try {

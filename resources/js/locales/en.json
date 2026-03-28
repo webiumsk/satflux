@@ -76,7 +76,16 @@
     "documentation": "Documentation",
     "language": "Language",
     "retry": "Retry",
-    "qr_code": "QR code"
+    "qr_code": "QR code",
+    "footer_github_aria": "Source code on GitHub",
+    "footer_created_with": "created with",
+    "footer_love_aria": "love",
+    "footer_open_source": "Open source under the ",
+    "footer_license_link": "MIT License",
+    "footer_period": ".",
+    "footer_support_me": "Support me",
+    "footer_ln_copy_aria": "Copy Lightning address",
+    "footer_ln_copied": "Copied!"
   },
   "auth": {
     "welcome_back": "Welcome back",
