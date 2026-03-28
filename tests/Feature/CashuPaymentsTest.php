@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Store;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -98,5 +99,43 @@ class CashuPaymentsTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('data.items.0.settlement_state', 'PENDING');
+    }
+
+    public function test_cashu_confirm_edit_accepts_account_password(): void
+    {
+        $user = User::factory()->create([
+            'password' => Hash::make('correct-password'),
+        ]);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'cashu',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->postJson("/api/stores/{$store->id}/cashu/confirm-edit", [
+            'password' => 'wrong',
+        ])->assertUnprocessable();
+
+        $this->postJson("/api/stores/{$store->id}/cashu/confirm-edit", [
+            'password' => 'correct-password',
+        ])->assertOk()->assertJsonPath('data.ok', true);
+    }
+
+    public function test_cashu_confirm_edit_rejects_when_wallet_type_is_not_cashu(): void
+    {
+        $user = User::factory()->create([
+            'password' => Hash::make('secret'),
+        ]);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'blink',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->postJson("/api/stores/{$store->id}/cashu/confirm-edit", [
+            'password' => 'secret',
+        ])->assertUnprocessable();
     }
 }

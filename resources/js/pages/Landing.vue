@@ -152,22 +152,106 @@
              <p class="text-gray-400">{{ t('landing.invoicing_description') }}</p>
           </div>
 
-          <!-- API & Secure (Large Card) -->
-          <div class="md:col-span-2 bg-gradient-to-br from-indigo-900/50 to-gray-900 rounded-3xl p-8 border border-gray-700 shadow-xl relative overflow-hidden group">
-            <div class="absolute z-0 right-0 bottom-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl"></div>
-             <div class="relative z-10 flex flex-col md:flex-row items-center gap-8">
-               <div class="flex-1">
-                 <h3 class="text-2xl font-bold text-white mb-4">{{ t('landing.developer_friendly_api') }}</h3>
-                 <p class="text-gray-400 text-lg mb-6">{{ t('landing.api_description') }}</p>
-                 <div class="flex gap-2">
-                   <span class="px-3 py-1 rounded-md bg-gray-800 border border-gray-600 text-xs font-mono text-gray-300">REST API</span>
-                   <span class="px-3 py-1 rounded-md bg-gray-800 border border-gray-600 text-xs font-mono text-gray-300">Webhooks</span>
-                 </div>
-               </div>
-               <div class="w-16 h-16 bg-indigo-500/20 rounded-full flex items-center justify-center text-indigo-400 shrink-0 animation-pulse">
-                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
-               </div>
-             </div>
+          <!-- Lightning & Cashu (Large Card) -->
+          <div class="md:col-span-2 bg-gradient-to-br from-amber-950/40 via-gray-900 to-indigo-950/50 rounded-3xl p-8 border border-gray-700 shadow-xl relative overflow-hidden group">
+            <div class="absolute z-0 right-0 bottom-0 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl"></div>
+            <div class="absolute z-0 left-1/3 top-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl"></div>
+            <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-8">
+              <div class="flex-1">
+                <h3 class="text-2xl font-bold text-white mb-4">{{ t('landing.feature_lightning_ecash_title') }}</h3>
+                <p class="text-gray-400 text-lg mb-6 leading-relaxed">{{ t('landing.feature_lightning_ecash_description') }}</p>
+                <ul class="space-y-2 text-sm text-gray-300 mb-6">
+                  <li class="flex items-start gap-2">
+                    <span class="text-amber-400 mt-0.5 shrink-0" aria-hidden="true">✓</span>
+                    <span>{{ t('landing.feature_lightning_ecash_bullet_ln') }}</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <span class="text-amber-400 mt-0.5 shrink-0" aria-hidden="true">✓</span>
+                    <span>{{ t('landing.feature_lightning_ecash_bullet_cashu') }}</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <span class="text-amber-400 mt-0.5 shrink-0" aria-hidden="true">✓</span>
+                    <span>{{ t('landing.feature_lightning_ecash_bullet_control') }}</span>
+                  </li>
+                </ul>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-3 py-1 rounded-md bg-gray-800/80 border border-amber-500/30 text-xs font-medium text-amber-200/90">Lightning</span>
+                  <span class="px-3 py-1 rounded-md bg-gray-800/80 border border-indigo-500/30 text-xs font-medium text-indigo-200/90">Cashu</span>
+                  <span class="px-3 py-1 rounded-md bg-gray-800/80 border border-gray-600 text-xs font-medium text-gray-300">SamRock</span>
+                </div>
+              </div>
+              <div class="flex shrink-0 gap-3 self-center md:self-auto">
+                <div class="w-14 h-14 bg-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-400 ring-1 ring-indigo-500/30">
+                  <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <div class="w-14 h-14 bg-amber-500/15 rounded-2xl flex items-center justify-center text-amber-400 ring-1 ring-amber-500/25">
+                  <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tickets, LN addresses, Pay Button -->
+          <div class="md:col-span-2 bg-gray-800 rounded-3xl p-8 border border-gray-700 shadow-xl relative group hover:bg-gray-750 transition-colors">
+            <div class="absolute inset-0 bg-emerald-600/[0.04] rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+            <div class="relative z-10">
+              <div class="w-12 h-12 bg-emerald-500/15 rounded-xl flex items-center justify-center mb-6 text-emerald-400 ring-1 ring-emerald-500/25">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"
+                  />
+                </svg>
+              </div>
+              <h3 class="text-2xl font-bold text-white mb-4">{{ t('landing.feature_checkout_tools_title') }}</h3>
+              <p class="text-gray-400 text-lg mb-6 leading-relaxed">{{ t('landing.feature_checkout_tools_intro') }}</p>
+              <ul class="space-y-2 text-sm text-gray-300">
+                <li class="flex items-start gap-2">
+                  <span class="text-emerald-400 mt-0.5 shrink-0" aria-hidden="true">✓</span>
+                  <span>{{ t('landing.feature_checkout_tools_bullet_tickets') }}</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-emerald-400 mt-0.5 shrink-0" aria-hidden="true">✓</span>
+                  <span>{{ t('landing.feature_checkout_tools_bullet_ln') }}</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-emerald-400 mt-0.5 shrink-0" aria-hidden="true">✓</span>
+                  <span>{{ t('landing.feature_checkout_tools_bullet_pay') }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Crowdfund (coming soon) -->
+          <div
+            class="relative bg-gradient-to-br from-gray-800/90 to-gray-900 rounded-3xl p-8 border border-dashed border-violet-500/35 shadow-xl overflow-hidden group"
+          >
+            <span
+              class="absolute right-4 top-4 z-20 rounded-full bg-violet-500/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-violet-200 ring-1 ring-violet-400/30"
+            >
+              {{ t('landing.coming_soon_badge') }}
+            </span>
+            <div class="absolute inset-0 bg-violet-600/[0.04] pointer-events-none"></div>
+            <div class="relative z-10 pt-2">
+              <div class="w-12 h-12 bg-violet-500/15 rounded-xl flex items-center justify-center mb-6 text-violet-300 ring-1 ring-violet-500/25">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
+                  />
+                </svg>
+              </div>
+              <h3 class="text-xl font-bold text-white mb-2 pr-24">{{ t('landing.feature_crowdfund_title') }}</h3>
+              <p class="text-gray-400 leading-relaxed">{{ t('landing.feature_crowdfund_description') }}</p>
+            </div>
           </div>
         </div>
       </div>
