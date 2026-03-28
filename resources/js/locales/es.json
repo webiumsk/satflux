@@ -1293,7 +1293,7 @@
     "feature_checkout_tools_intro": "Más allá de facturas: vende accesos, endpoints de cobro con tu marca y checkout embebido en tu web.",
     "feature_checkout_tools_bullet_tickets": "Entradas a eventos con check-in por QR en la app.",
     "feature_checkout_tools_bullet_ln": "Lightning Addresses enlazadas a tu monedero conectado.",
-    "feature_checkout_tools_bullet_pay": "Botón de pago embebible para blogs, landings y tiendas.",
+    "feature_checkout_tools_bullet_pay": "Botón de pago embebible para blogs y landings (el e-commerce usa claves API de BTCPay).",
     "learn_more": "Saber más",
     "transparent_pricing": "Precios transparentes",
     "pricing_description": "Paga en sats. Sin tarjeta de crédito.",

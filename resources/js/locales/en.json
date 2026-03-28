@@ -1144,7 +1144,7 @@
     "feature_checkout_tools_intro": "Go beyond invoices: sell access, share branded receive endpoints, and embed checkout on your site.",
     "feature_checkout_tools_bullet_tickets": "Event tickets with QR check-in from the app.",
     "feature_checkout_tools_bullet_ln": "Lightning Addresses routed to your connected wallet.",
-    "feature_checkout_tools_bullet_pay": "Embeddable Pay Button for blogs, landing pages, and shops.",
+    "feature_checkout_tools_bullet_pay": "Embeddable Pay Button for blogs and landing pages (e-commerce uses BTCPay API keys).",
     "learn_more": "Learn more",
     "transparent_pricing": "Transparent Pricing",
     "pricing_description": "Pay with sats. No credit card required.",
