@@ -466,7 +466,7 @@
                         <div class="w-16 h-16 bg-gray-800 rounded-full mb-4 flex items-center justify-center shadow-inner mx-auto">
                           <svg class="w-8 h-8 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" /></svg>
                         </div>
-                        <div class="text-white font-mono text-lg md:text-xl">satoshi<span class="text-indigo-400">@satflux.org</span></div>
+                        <div class="text-white font-mono text-lg md:text-xl">satoshi<span class="text-indigo-400">@satflux.io</span></div>
                      </div>
                   </div>
                </div>
@@ -871,7 +871,8 @@ const subscribing = ref(false);
 const subscribeError = ref('');
 const showPosModal = ref(false);
 
-const posDemoUrl = 'https://satflux.org/apps/rivBmZNgktMaJ3CqMrtCuekoDex/pos';
+/** Set `VITE_POS_DEMO_URL` in `.env` to a public PoS URL (e.g. your BTCPay app link). */
+const posDemoUrl = (import.meta.env.VITE_POS_DEMO_URL as string) || 'https://satflux.io';
 
 // Ensure user, pricing and plan features are fetched on mount
 onMounted(async () => {

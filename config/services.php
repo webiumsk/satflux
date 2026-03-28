@@ -15,19 +15,24 @@ return [
     */
 
     'btcpay' => [
-        'base_url' => env('BTCPAY_BASE_URL', 'https://satflux.org'),
+        'base_url' => env('BTCPAY_BASE_URL', 'http://127.0.0.1:14142'),
         'api_key' => env('BTCPAY_API_KEY'),
         'webhook_secret' => env('BTCPAY_WEBHOOK_SECRET'),
         'subscription_success_url' => env('SUBSCRIPTION_SUCCESS_URL'),
         'subscription_cancel_url' => env('SUBSCRIPTION_CANCEL_URL'),
         'allow_guest_subscriptions' => env('ALLOW_GUEST_SUBSCRIPTIONS', false),
-        'subscription_store_id' => env('SUBSCRIPTION_STORE_ID', 'REDACTED_BTCPAY_STORE_ID'),
-        'subscription_offering_id' => env('SUBSCRIPTION_OFFERING_ID', 'offering_GpWCnNRm6W9qqmgwdC'),
+        'subscription_store_id' => env('SUBSCRIPTION_STORE_ID'),
+        'subscription_offering_id' => env('SUBSCRIPTION_OFFERING_ID'),
         'subscription_plans' => [
-            'pro' => env('SUBSCRIPTION_PLAN_PRO_ID', 'plan_9UQMqk4vbAFyQinRpL'),
+            'pro' => env('SUBSCRIPTION_PLAN_PRO_ID'),
             'enterprise' => env('SUBSCRIPTION_PLAN_ENTERPRISE_ID'),
         ],
         // Note: Grace period is configured per plan in BTCPay Server, not here
+    ],
+
+    'matomo' => [
+        'url' => env('MATOMO_URL'),
+        'site_id' => env('MATOMO_SITE_ID'),
     ],
 
     'discord' => [

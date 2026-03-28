@@ -818,7 +818,7 @@ async function handleAddCredit() {
       window.location.href = response.data.invoiceUrl;
     } else if (response.data.invoiceId) {
       // If only invoice ID is returned, construct URL
-      const baseUrl = response.data.baseUrl || "https://satflux.org";
+      const baseUrl = response.data.baseUrl || "https://satflux.io";
       window.location.href = `${baseUrl}/i/${response.data.invoiceId}`;
     } else {
       // No invoice URL - this shouldn't happen, but handle gracefully
