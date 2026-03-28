@@ -1,220 +1,174 @@
-# satflux.io - BTCPay Server Control Panel
+**Website:** [satflux.io](https://satflux.io)
 
-A production-ready multi-tenant control panel for managing BTCPay Server stores via Greenfield API.
+# satflux.io — BTCPay Server control panel
 
-## Tech Stack
+Multi-tenant web app for merchants to manage **BTCPay Server** stores (invoices, wallets, Lightning, PoS apps, exports, and more) through a Vue SPA backed by Laravel and the **Greenfield API**.
 
-- **Backend**: Laravel 12 (PHP 8.3), Sanctum, PostgreSQL, Redis
-- **Frontend**: Vue 3 + TypeScript + Vite + TailwindCSS
-- **Infrastructure**: Docker Compose (nginx + php-fpm + postgres + redis)
+**Current app version:** see `package.json` (`version` field). The `/api/version` endpoint reads the same value.
+
+## Tech stack
+
+| Layer | Stack |
+|--------|--------|
+| Backend | Laravel 12, PHP 8.3+, Sanctum (SPA cookie auth), PostgreSQL, Redis |
+| HTTP client | Laravel HTTP / Greenfield-style integration with BTCPay |
+| Frontend | Vue 3, TypeScript, Vite, Tailwind CSS, Pinia, Vue Router, vue-i18n (e.g. EN / SK / ES) |
+| Hybrid UI | Inertia.js (`@inertiajs/vue3`) where used alongside the SPA |
+| Realtime | Laravel Reverb (optional; see env / deployment) |
+| Dev / prod | Docker Compose (`docker-compose.yml`) — nginx, php-fpm, postgres, redis |
 
 ## Prerequisites
 
 - Docker and Docker Compose
-- Node.js 18+ and npm (for local frontend development)
+- Node.js 18+ and npm (frontend dev / build)
 
-## Setup
+## Local setup
 
 1. **Clone the repository**
 
-2. **Copy environment file**:
+2. **Environment file**
 
    ```bash
    cp .env.example .env
    ```
 
-3. **Configure environment variables** in `.env`:
-   - Database credentials
-   - BTCPay Server API configuration (see BTCPay API Key Permissions below)
-   - Session and Sanctum settings:
+3. **Configure `.env`** — database, `BTCPAY_BASE_URL`, `BTCPAY_API_KEY`, webhooks, etc. For local SPA auth over HTTP:
 
-     ```
-     # Sanctum SPA authentication (for localhost development)
-     SANCTUM_STATEFUL_DOMAINS=localhost,localhost:8080,127.0.0.1,127.0.0.1:8080
+   ```env
+   SANCTUM_STATEFUL_DOMAINS=localhost,localhost:8080,127.0.0.1,127.0.0.1:8080
+   SESSION_DOMAIN=
+   SESSION_SECURE_COOKIE=false
+   SESSION_SAME_SITE=lax
+   ```
 
-     # Session configuration for localhost (HTTP, not HTTPS)
-     SESSION_DOMAIN=
-     SESSION_SECURE_COOKIE=false
-     SESSION_SAME_SITE=lax
-     ```
-
-4. **Start Docker containers**:
+4. **Start containers**
 
    ```bash
    docker-compose up -d
    ```
 
-5. **Install PHP dependencies**:
+5. **PHP dependencies**
 
    ```bash
    docker-compose exec php composer install
    ```
 
-6. **Generate application key**:
+6. **Application key**
 
    ```bash
    docker-compose exec php php artisan key:generate
    ```
 
-7. **Run migrations**:
+7. **Migrations**
 
    ```bash
    docker-compose exec php php artisan migrate
    ```
 
-8. **Install Node dependencies**:
+8. **Node dependencies**
 
    ```bash
    npm install
    ```
 
-9. **Build frontend assets** (development):
+9. **Frontend**
 
-   ```bash
-   npm run dev
-   ```
+   - Development (Vite HMR): `npm run dev`
+   - Production assets: `npm run build`
 
-   Or build for production:
+10. **After changing `.env` or config**
 
-   ```bash
-   npm run build
-   ```
+    ```bash
+    docker-compose exec php php artisan optimize:clear
+    ```
 
-10. **Clear configuration cache** (if you modify `.env` or config files):
+## Development URLs (typical Docker setup)
 
-```bash
-docker-compose exec php php artisan optimize:clear
-```
+- App / API base: `http://localhost:8080`
+- API prefix: `/api`
+- PostgreSQL: `localhost:5432` (per compose mapping)
+- Redis: `localhost:6379` (per compose mapping)
 
-This is especially important for local troubleshooting when changing session or Sanctum settings.
+## Common commands
 
-## Development
+| Task | Command |
+|------|---------|
+| Frontend dev server | `npm run dev` |
+| Frontend production build | `npm run build` |
+| ESLint (with fix) | `npm run lint` |
+| Semver bump | `npm run version:patch` / `version:minor` / `version:major` |
+| PHPUnit | `docker-compose exec php php artisan test` |
+| Single test | `docker-compose exec php php artisan test --filter=TestName` |
+| PHP style (Pint) | `docker-compose exec php vendor/bin/pint` |
 
-- **Backend API**: http://localhost:8080/api
-- **Frontend**: http://localhost:8080
-- **Database**: localhost:5432
-- **Redis**: localhost:6379
+## Production deployment
 
-## Production Deployment
+See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for the standalone (Caddy + Docker Compose) guide. Typical expectations:
 
-Pre detailný návod na nasadenie aplikácie na produkčný server pozri [DEPLOYMENT.md](DEPLOYMENT.md).
+- App behind a reverse proxy (e.g. Cloudflare) with `TrustProxies` and correct forwarded headers
+- `APP_URL`, `SESSION_DOMAIN`, `SESSION_SECURE_COOKIE=true`, `SANCTUM_STATEFUL_DOMAINS` aligned with your real host
+- Optional: `LNURL_AUTH_DOMAIN` when LNURL-auth is enabled
 
-Aplikácia je nakonfigurovaná na beh za Cloudflare proxy s:
+## Architecture (short)
 
-- TrustProxies middleware pre proxy headers
-- Secure session cookies
-- Sanctum SPA cookie authentication
-- Rate limiting na auth endpoints
+- **Browser** → Axios (`/api`, `withCredentials: true`, CSRF via Sanctum) → Laravel API (`routes/api.php`, `auth:sanctum`) → controllers → services.
+- **Multi-tenancy:** each row in `stores` ties a local UUID (used in URLs) to `btcpay_store_id`. **`btcpay_store_id` must not be exposed to the frontend.**
+- **API keys:** server-level key for provisioning vs per-merchant encrypted keys for scoped BTCPay calls (implemented in `app/Services/BtcPay` and related config).
+- **Caching:** BTCPay responses may be cached; keys scoped by user / key hash where applicable.
 
-Kľúčové environment variables pre produkciu:
+## Store creation (current flow)
 
-- `APP_URL=https://satflux.io`
-- `SESSION_DOMAIN=satflux.io`
-- `SESSION_SECURE_COOKIE=true`
-- `SESSION_SAME_SITE=lax`
-- `SANCTUM_STATEFUL_DOMAINS=satflux.io`
-- `LNURL_AUTH_DOMAIN=https://satflux.io`
+1. **Step 1 — Basic info:** store name, default currency, timezone (and related fields). `wallet_type` is not required yet.
+2. **Step 2 — Payment method:** choose **Blink**, **Aqua + Boltz** (descriptor and/or SamRock pairing flow), or **Cashu** (mint URL + Lightning address). Connection details are sent when applicable; Cashu is configured via the BTCPay Cashu plugin API.
+3. **Provisioning:** BTCPay store is created via Greenfield; for Blink/Aqua, automation may run asynchronously (polling / status on the wallet connection screen).
+4. After success, the user is sent to the **store dashboard** (e.g. setup wizard, PoS hints). Only the **local store UUID** appears in routes and JSON for the SPA.
 
-## BTCPay API Key Permissions
+## Wallet types & Cashu
 
-The server-level API key (`BTCPAY_API_KEY`) should have the following permissions:
+- **Blink / Aqua (Boltz):** secrets live in `wallet_connections`; BTCPay is updated by your automation/support flows as designed.
+- **Cashu:** no wallet-connection secret row; `wallet_type = cashu` and settings (mint, Lightning address) are stored in BTCPay via the Cashu plugin. The UI exposes **Cashu settlements** under the store (`?section=cashu`): rows from the plugin’s payments API (settlement state, retry where supported).
 
-- **Store Management**: Create stores, read/store update (safe fields only)
-- **Invoice Management**: List and read invoices
-- **Webhook Access**: Receive webhook events (if webhooks are configured)
+## Wallet verification checklist
 
-The API key is stored server-side only and all store access is enforced at the application layer via the `stores` table mapping `user_id` to `btcpay_store_id`.
+- Checklist **definitions** are per `wallet_type` (Blink, Aqua/Boltz, Cashu).
+- Rows are **created lazily** (e.g. on first `GET /api/stores/{store}/checklist` or when `wallet_type` is first set) so older stores still get items.
+- Items are **manual** checkboxes for the merchant (verify Lightning, test payment, Cashu mint/LN settings, etc.); they do not auto-sync from BTCPay.
+- Copy in the UI is oriented toward **post-setup verification**, not “connect your wallet from scratch” only.
 
-## Store Creation Flow
+## Exports
 
-1. User completes 3-step wizard:
-   - Step 1: Store name, default currency, timezone
-   - Step 2: Choose wallet backend (Blink or Aqua via Boltz plugin)
-   - Step 3: Confirmation
+- **CSV** — invoice exports with filters (status, dates); suitable for spreadsheets and accounting pipelines.
+- **XLSX** — available where the product/plan allows (see app UI and subscription rules).
+- Large exports may run asynchronously via jobs.
 
-2. System creates store in BTCPay Server via Greenfield API
+## LNURL-auth
 
-3. Local store record created with UUID (never expose `btcpay_store_id` to frontend)
+When `LNURL_AUTH_ENABLED` is configured, the app can offer Lightning-based login / linking flows (challenge, status polling, linking to an existing account). Email/password auth remains available. See routes under `/api/lnurl-auth/*` and `LnurlAuthController`.
 
-4. Wallet onboarding checklist initialized based on `wallet_type`
+## Security (summary)
 
-5. User redirected to "Next steps" page with checklist link
+- Store-scoped routes use middleware (e.g. **EnsureStoreOwnership**) so users cannot access another user’s store by UUID guessing.
+- Sanctum SPA session + CSRF for browser clients.
+- Audit logging on sensitive actions (e.g. store changes, exports) where implemented.
+- Webhook signature verification when `BTCPAY_WEBHOOK_SECRET` is set.
+- Rate limiting on authentication-related endpoints.
 
-## Wallet Onboarding Checklist
+## BTCPay API key (server)
 
-After store creation, merchants complete a dynamic checklist based on their chosen wallet type:
-
-### Blink Checklist:
-
-1. Connect Blink wallet in BTCPay Store → Wallet settings
-2. Confirm Lightning payments enabled
-3. Test invoice payment (link to test invoice)
-4. Optional: Set payout/withdrawal policy in Blink
-
-### Aqua (Boltz) Checklist:
-
-1. Open store in BTCPay
-2. Enable Boltz plugin for the store
-3. Connect Aqua wallet via Boltz
-4. Verify swap routing works
-5. Test Lightning invoice payment
-
-The checklist is informational only and does not validate wallet state automatically. Checklist items can be marked as complete manually.
-
-## Export Formats
-
-The system provides two CSV export formats:
-
-### Standard CSV Format
-
-- Columns: invoiceId, createdTime, status, amount, currency, paidAmount, paidSats, paymentRate, paymentMethod, buyerEmail, orderId, checkoutLink
-- Suitable for general invoice management
-
-### Accounting-Friendly CSV Format
-
-- Columns: invoice_id, issue_date, settlement_date, gross_amount, currency, payment_method, status, external_reference
-- Snake_case column names
-- Date formatting (YYYY-MM-DD)
-- No Lightning-specific internals
-
-Exports support filtering by date range and status. Large exports use pagination and streaming to handle datasets of any size safely.
-
-## LNURL-Auth Skeleton
-
-The application includes a skeleton implementation of LNURL-auth:
-
-- Challenge endpoint: `POST /api/lnurl-auth/challenge` (generates k1, returns lnurl-auth URL)
-- Verification endpoint: `POST /api/lnurl-auth/verify` (exists but verification logic is TODO)
-
-When `LNURL_AUTH_ENABLED=false`, the "Login with Lightning" button is hidden. When enabled, the button is shown but verification is not yet implemented.
-
-Classic email/password authentication always works regardless of LNURL-auth status.
-
-## Security Features
-
-- **Multi-tenant isolation**: Store access enforced via `stores` table mapping
-- **UUID-based routing**: Only local UUIDs exposed to frontend, never `btcpay_store_id`
-- **Audit logging**: Sensitive actions (store create/update, exports) are logged
-- **Rate limiting**: Auth endpoints rate limited
-- **Webhook verification**: Webhook signature verification when `BTCPAY_WEBHOOK_SECRET` is set
-- **CSRF protection**: Sanctum SPA cookie authentication with CSRF tokens
-- **Secure cookies**: HttpOnly, secure, SameSite=Lax
+The server-level **`BTCPAY_API_KEY`** should be limited to what provisioning and global jobs need (store lifecycle, admin assignments, webhooks, etc.). Per-merchant operations use **merchant API keys** stored encrypted and never sent to the browser.
 
 ## Testing
-
-Run tests:
 
 ```bash
 docker-compose exec php php artisan test
 ```
 
-Key test suites:
-
-- Authentication flows
-- Store creation (uses Http::fake() for BTCPay)
-- Authorization (users cannot access other users' stores)
-- Export jobs
+Feature tests often **`Http::fake()`** BTCPay Greenfield responses — see existing store / wallet / Cashu tests for patterns.
 
 ## License
 
 MIT
+
+## Contributors
+
+Contributions are welcome: issues, pull requests, and translations. See **[docs/TRANSLATION.md](docs/TRANSLATION.md)** and the locale files in `resources/js/locales/` and `lang/`.

@@ -665,8 +665,10 @@ import { usePlanFeatures } from "../../composables/usePlanFeatures";
 import api from "../../services/api";
 import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
 import NostrAuthModal from "../../components/auth/NostrAuthModal.vue";
+import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
 
 const { t, locale } = useI18n();
+const { btcPayUrl, load: loadBtcpayConfig } = useBtcPayUrl();
 const authStore = useAuthStore();
 const flashStore = useFlashStore();
 const { pricing, formatSats, load: loadPricing } = usePricing();
@@ -808,6 +810,7 @@ async function handleAddCredit() {
 
   addingCredit.value = true;
   try {
+    await loadBtcpayConfig();
     const response = await api.post("/subscriptions/credits", {
       amount: creditAmount.value,
       currency: "SATS",
@@ -817,9 +820,17 @@ async function handleAddCredit() {
     if (response.data.invoiceUrl) {
       window.location.href = response.data.invoiceUrl;
     } else if (response.data.invoiceId) {
-      // If only invoice ID is returned, construct URL
-      const baseUrl = response.data.baseUrl || "https://satflux.org";
-      window.location.href = `${baseUrl}/i/${response.data.invoiceId}`;
+      const baseUrl =
+        response.data.baseUrl ||
+        btcPayUrl.value ||
+        ((import.meta.env.VITE_BTCPAY_BASE_URL as string) || "");
+      if (!baseUrl) {
+        alert(t("account.credit_invoice_created"));
+        showAddCreditModal.value = false;
+        creditAmount.value = null;
+        return;
+      }
+      window.location.href = `${baseUrl.replace(/\/$/, "")}/i/${response.data.invoiceId}`;
     } else {
       // No invoice URL - this shouldn't happen, but handle gracefully
       alert(t("account.credit_invoice_created"));

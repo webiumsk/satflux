@@ -151,7 +151,7 @@ const { t } = useI18n();
 
 const props = defineProps<{
   storeId: string;
-  store: { id: string; name: string } | null;
+  store: { id: string; name: string; wallet_type?: string | null } | null;
 }>();
 
 const emit = defineEmits<{

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Store;
 use App\Models\StoreChecklist;
+use App\Services\StoreChecklistService;
 use Illuminate\Http\Request;
 
 class StoreChecklistController extends Controller
@@ -13,18 +14,20 @@ class StoreChecklistController extends Controller
      */
     public function index(Request $request, Store $store)
     {
-        
-        $definition = \App\Services\StoreChecklistService::getChecklistItems($store->wallet_type);
+        StoreChecklistService::ensureChecklistInitialized($store);
+
+        $definition = StoreChecklistService::getChecklistItems($store->wallet_type ?? '');
         $btcpayStoreId = $store->btcpay_store_id;
 
         $checklistItems = $store->checklistItems()->get()
             ->filter(fn ($item) => isset($definition[$item->item_key]))
-            ->map(function ($item) use ($store, $definition, $btcpayStoreId) {
+            ->map(function ($item) use ($definition, $btcpayStoreId) {
                 $itemDef = $definition[$item->item_key];
                 $link = $itemDef['link'] ?? null;
                 if ($link && $btcpayStoreId) {
                     $link = str_replace('{storeId}', $btcpayStoreId, $link);
                 }
+
                 return [
                     'key' => $item->item_key,
                     'description' => $itemDef['description'] ?? $item->item_key,
@@ -44,7 +47,7 @@ class StoreChecklistController extends Controller
      */
     public function update(Request $request, Store $store, string $itemKey)
     {
-        
+
         $request->validate([
             'completed' => ['required', 'boolean'],
         ]);
@@ -59,10 +62,10 @@ class StoreChecklistController extends Controller
             $item->markAsIncomplete();
         }
 
-        $definition = \App\Services\StoreChecklistService::getChecklistItems($store->wallet_type);
+        $definition = StoreChecklistService::getChecklistItems($store->wallet_type ?? '');
         $itemDef = $definition[$itemKey] ?? null;
         $btcpayStoreId = $store->btcpay_store_id;
-        
+
         $link = $itemDef['link'] ?? null;
         if ($link && $btcpayStoreId) {
             $link = str_replace('{storeId}', $btcpayStoreId, $link);
@@ -80,11 +83,3 @@ class StoreChecklistController extends Controller
         ]);
     }
 }
-
-
-
-
-
-
-
-

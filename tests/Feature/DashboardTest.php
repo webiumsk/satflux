@@ -32,6 +32,10 @@ class DashboardTest extends TestCase
     /** @test */
     public function authenticated_user_without_btcpay_api_key_gets_empty_dashboard(): void
     {
+        Http::fake([
+            'https://btcpay.test/api/v1/users/me' => Http::response(['code' => 'unauthenticated'], 401),
+        ]);
+
         $user = User::factory()->create(['btcpay_api_key' => null]);
 
         $response = $this->actingAs($user)->getJson('/api/dashboard');
@@ -40,7 +44,8 @@ class DashboardTest extends TestCase
             ->assertJsonPath('stores', [])
             ->assertJsonPath('store_count', 0)
             ->assertJsonPath('total_revenue', 0)
-            ->assertJsonPath('revenue_breakdown', []);
+            ->assertJsonPath('btcpay_ping.state', 'online')
+            ->assertJsonPath('btcpay_ping.http_status', 401);
     }
 
     /** @test */
@@ -58,6 +63,9 @@ class DashboardTest extends TestCase
         Http::fake(function ($request) use ($baseUrl) {
             $url = (string) $request->url();
             $method = $request->method();
+            if ($method === 'GET' && $url === $baseUrl . '/api/v1/users/me') {
+                return Http::response(['code' => 'unauthenticated'], 401);
+            }
             if ($method === 'GET' && $url === $baseUrl . '/api/v1/stores') {
                 return Http::response([
                     ['id' => 'btcpay-store-1', 'name' => 'My Store', 'defaultCurrency' => 'EUR', 'timeZone' => 'Europe/Vienna', 'created' => 1704067200],
@@ -79,14 +87,15 @@ class DashboardTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('store_count', 1)
             ->assertJsonPath('stores.0.name', 'My Store')
-            ->assertJsonPath('stores.0.wallet_type', 'blink');
-        // 0.00005 BTC = 5000 sats, 1000 SATS, EUR in breakdown
+            ->assertJsonPath('stores.0.wallet_type', 'blink')
+            ->assertJsonPath('btcpay_ping.state', 'online');
+        // Revenue: settled BTC + fiat from mocked invoices (see StoreInvoiceStatsService)
         $data = $response->json();
-        $this->assertSame(6000, (int) $data['total_revenue']);
-        $breakdown = $data['revenue_breakdown'] ?? [];
-        $eur = collect($breakdown)->firstWhere('currency', 'EUR');
-        $this->assertNotNull($eur);
-        $this->assertSame(50.5, (float) $eur['amount']);
+        $by = $data['total_revenue_by_currency'] ?? [];
+        $this->assertArrayHasKey('sats', $by);
+        $this->assertArrayHasKey('eur', $by);
+        $this->assertSame((int) $data['total_revenue'], (int) $by['sats']);
+        $this->assertSame(50.5, (float) $by['eur']);
     }
 
     /** @test */
@@ -102,6 +111,9 @@ class DashboardTest extends TestCase
         $baseUrl = 'https://btcpay.test';
         Http::fake(function ($request) use ($baseUrl) {
             $url = (string) $request->url();
+            if ($request->method() === 'GET' && $url === $baseUrl . '/api/v1/users/me') {
+                return Http::response(['code' => 'unauthenticated'], 401);
+            }
             if ($request->method() === 'GET' && $url === $baseUrl . '/api/v1/stores') {
                 // BTCPay returns only one store - orphan-store is not in list
                 return Http::response([
@@ -126,7 +138,11 @@ class DashboardTest extends TestCase
 
         $baseUrl = 'https://btcpay.test';
         Http::fake(function ($request) use ($baseUrl) {
-            if ($request->method() === 'GET' && (string) $request->url() === $baseUrl . '/api/v1/stores') {
+            $url = (string) $request->url();
+            if ($request->method() === 'GET' && $url === $baseUrl . '/api/v1/users/me') {
+                return Http::response(['code' => 'unauthenticated'], 401);
+            }
+            if ($request->method() === 'GET' && $url === $baseUrl . '/api/v1/stores') {
                 return Http::response(['error' => 'Unauthorized'], 401);
             }
             return Http::response([], 404);

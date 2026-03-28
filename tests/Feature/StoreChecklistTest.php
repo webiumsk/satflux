@@ -14,6 +14,22 @@ class StoreChecklistTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_get_checklist_lazy_creates_items_when_none_exist(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $user->id, 'wallet_type' => 'cashu']);
+        $this->assertSame(0, StoreChecklist::where('store_id', $store->id)->count());
+
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson("/api/stores/{$store->id}/checklist");
+
+        $response->assertStatus(200);
+        $this->assertSame(3, StoreChecklist::where('store_id', $store->id)->count());
+        $response->assertJsonCount(3, 'data');
+        $response->assertJsonFragment(['key' => 'verify_mint_ln']);
+    }
+
     public function test_user_can_get_checklist_for_own_store(): void
     {
         $user = User::factory()->create();

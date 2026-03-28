@@ -20,6 +20,7 @@ class WalletConnection extends Model
     protected $fillable = [
         'store_id',
         'type',
+        'configuration_source',
         'encrypted_secret',
         'status',
         'reconfig',
@@ -76,6 +77,10 @@ class WalletConnection extends Model
      */
     public function getMaskedSecretAttribute(): string
     {
+        if (($this->attributes['configuration_source'] ?? null) === 'samrock') {
+            return 'SamRock';
+        }
+
         $encrypted = $this->attributes['encrypted_secret'] ?? '';
         if (empty($encrypted)) {
             return '';

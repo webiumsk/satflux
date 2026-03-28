@@ -4,17 +4,75 @@ namespace App\Http\Controllers;
 
 use App\Models\Store;
 use App\Services\BtcPay\CashuService;
+use App\Services\StoreChecklistService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CashuController extends Controller
 {
-    public function __construct(protected CashuService $cashuService)
+    public function __construct(protected CashuService $cashuService) {}
+
+    /**
+     * Confirm account password (or LNURL / Nostr challenge) before editing Cashu settings in the UI.
+     * Same auth rules as wallet connection reveal, without requiring a wallet_connections row.
+     */
+    public function confirmEdit(Request $request, Store $store): \Illuminate\Http\JsonResponse
     {
+        if (($store->wallet_type ?? null) !== 'cashu') {
+            throw ValidationException::withMessages([
+                'store' => ['Cashu is not the wallet type for this store.'],
+            ]);
+        }
+
+        $request->validate([
+            'password' => ['nullable', 'string'],
+            'confirm_via_lnurl' => ['nullable', 'boolean'],
+            'confirm_via_nostr' => ['nullable', 'boolean'],
+        ]);
+
+        $user = $request->user();
+        $allowed = false;
+
+        if ($request->filled('password')) {
+            $allowed = Hash::check($request->password, $user->password);
+        } else {
+            $cacheKey = 'reveal_confirmed:'.$user->id;
+            if (Cache::get($cacheKey)) {
+                if ($request->boolean('confirm_via_lnurl') && $user->lightning_public_key) {
+                    $allowed = true;
+                    Cache::forget($cacheKey);
+                } elseif ($request->boolean('confirm_via_nostr') && $user->nostr_public_key) {
+                    $allowed = true;
+                    Cache::forget($cacheKey);
+                }
+            }
+        }
+
+        if (! $allowed) {
+            throw ValidationException::withMessages([
+                'password' => [__('auth.invalid_password_or_confirm_lnurl')],
+            ]);
+        }
+
+        return response()->json(['data' => ['ok' => true]]);
     }
 
     public function getSettings(Store $store): \Illuminate\Http\JsonResponse
     {
+        if (($store->wallet_type ?? null) === null) {
+            return response()->json([
+                'data' => [
+                    'mint_url' => null,
+                    'lightning_address' => null,
+                    'enabled' => true,
+                ],
+            ]);
+        }
+
         $this->ensureCashuStore($store);
 
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
@@ -32,7 +90,10 @@ class CashuController extends Controller
 
     public function updateSettings(Request $request, Store $store): \Illuminate\Http\JsonResponse
     {
-        $this->ensureCashuStore($store);
+        $wt = $store->wallet_type ?? null;
+        if ($wt !== null && $wt !== 'cashu') {
+            abort(422, 'Cashu is not the wallet type for this store.');
+        }
 
         $request->validate([
             'mint_url' => ['required', 'string', 'url', 'starts_with:https://'],
@@ -48,7 +109,17 @@ class CashuController extends Controller
             'enabled' => $request->boolean('enabled', true),
         ];
 
-        $updated = $this->cashuService->saveSettings($store->btcpay_store_id, $payload, $userApiKey);
+        $updated = DB::transaction(function () use ($store, $payload, $userApiKey) {
+            if (($store->wallet_type ?? null) === null) {
+                $store->update(['wallet_type' => 'cashu']);
+                $store->refresh();
+            }
+
+            return $this->cashuService->saveSettings($store->btcpay_store_id, $payload, $userApiKey);
+        });
+
+        $store->refresh();
+        StoreChecklistService::ensureChecklistInitialized($store);
 
         return response()->json([
             'data' => [
@@ -86,20 +157,7 @@ class CashuController extends Controller
 
         $raw = $this->cashuService->listPayments($store->btcpay_store_id, $userApiKey, $params);
 
-        $items = collect($raw['items'] ?? [])->map(function (array $item) {
-            return [
-                'quote_id' => $item['quoteId'] ?? null,
-                'invoice_id' => $item['invoiceId'] ?? null,
-                'amount_sats' => $item['amountSats'] ?? null,
-                'state' => $item['state'] ?? null,
-                'settlement_state' => $item['settlementState'] ?? null,
-                'settlement_error' => $item['settlementError'] ?? null,
-                'settlement_reference' => $item['settlementReference'] ?? null,
-                'created_at' => $item['createdAt'] ?? null,
-                'paid_at' => $item['paidAt'] ?? null,
-                'settled_at' => $item['settledAt'] ?? null,
-            ];
-        })->values();
+        $items = collect($raw['items'] ?? [])->map(fn (array $item) => $this->formatCashuPaymentItem($item))->values();
 
         return response()->json([
             'data' => [
@@ -137,5 +195,39 @@ class CashuController extends Controller
             abort(404, 'Cashu wallet is not configured for this store.');
         }
     }
-}
 
+    /**
+     * Map BTCPay Cashu plugin payment row to API shape.
+     *
+     * The plugin sometimes leaves settlementState as PENDING even after settlement
+     * finished; settledAt is the reliable completion timestamp from the plugin.
+     */
+    private function formatCashuPaymentItem(array $item): array
+    {
+        $reportedRaw = $item['settlementState'] ?? $item['settlement_state'] ?? null;
+        $reported = is_string($reportedRaw) ? strtoupper(trim($reportedRaw)) : null;
+        $settledAt = $item['settledAt'] ?? $item['settled_at'] ?? null;
+        $hasSettledAt = $settledAt !== null && $settledAt !== '';
+
+        $settlementState = $reported;
+        if ($hasSettledAt && $reported === 'PENDING') {
+            $settlementState = 'SETTLED';
+        }
+        if ($hasSettledAt && ($reported === null || $reported === '')) {
+            $settlementState = 'SETTLED';
+        }
+
+        return [
+            'quote_id' => $item['quoteId'] ?? $item['quote_id'] ?? null,
+            'invoice_id' => $item['invoiceId'] ?? $item['invoice_id'] ?? null,
+            'amount_sats' => $item['amountSats'] ?? $item['amount_sats'] ?? null,
+            'state' => $item['state'] ?? null,
+            'settlement_state' => $settlementState,
+            'settlement_error' => $item['settlementError'] ?? $item['settlement_error'] ?? null,
+            'settlement_reference' => $item['settlementReference'] ?? $item['settlement_reference'] ?? null,
+            'created_at' => $item['createdAt'] ?? $item['created_at'] ?? null,
+            'paid_at' => $item['paidAt'] ?? $item['paid_at'] ?? null,
+            'settled_at' => $settledAt,
+        ];
+    }
+}

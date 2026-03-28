@@ -46,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
@@ -57,8 +57,14 @@ import AppShowHeader from "../../components/stores/AppShowHeader.vue";
 import DeleteAppModal from "../../components/stores/DeleteAppModal.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 import CrowdfundForm from "./CrowdfundForm.vue";
+import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
 
 const { t } = useI18n();
+const { btcPayUrl, load: loadBtcpayConfig } = useBtcPayUrl();
+
+onMounted(() => {
+  void loadBtcpayConfig();
+});
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
@@ -90,7 +96,9 @@ const archiving = ref(false);
 const btcpayAppUrl = computed(() => {
   const app = layoutRef.value?.app;
   if (!app) return "";
-  const baseUrl = import.meta.env.VITE_BTCPAY_BASE_URL || "https://satflux.org";
+  const baseUrl =
+    btcPayUrl.value ||
+    ((import.meta.env.VITE_BTCPAY_BASE_URL as string) || "");
 
   let id =
     app.btcpay_app_id ||

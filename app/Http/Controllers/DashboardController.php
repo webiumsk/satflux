@@ -9,6 +9,7 @@ use App\Services\InvoiceSourceService;
 use App\Services\StoreInvoiceStatsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
@@ -80,6 +81,11 @@ class DashboardController extends Controller
 
         // Total revenue by currency: PoS orders (DB) + BTCPay settled invoices, cached 5 min
         $storeIds = $stores->pluck('id')->toArray();
+        if ($request->boolean('refresh')) {
+            Cache::forget('btcpay:http_ping');
+        }
+        $btcpayPing = Cache::remember('btcpay:http_ping', 30, fn () => $this->measureBtcpayPing());
+
         $cacheKey = 'dashboard:user:'.$user->id.':total_revenue_v2';
         if ($request->boolean('refresh')) {
             Cache::forget($cacheKey);
@@ -150,7 +156,54 @@ class DashboardController extends Controller
             'total_revenue' => (int) ($totalRevenueByCurrency['sats'] ?? 0),
             'total_revenue_by_currency' => $totalRevenueByCurrency,
             'available_revenue_currencies' => array_values($availableCurrencies),
+            'btcpay_ping' => $btcpayPing,
         ]);
+    }
+
+    /**
+     * Lightweight reachability check against BTCPay Greenfield (no API key).
+     * Unauthenticated GET /api/v1/users/me typically returns 401 when the server is up.
+     *
+     * @return array{http_status: int|null, state: string}
+     */
+    private function measureBtcpayPing(): array
+    {
+        $base = rtrim((string) config('services.btcpay.base_url'), '/');
+        if ($base === '') {
+            return ['http_status' => null, 'state' => 'unknown'];
+        }
+
+        $url = $base.'/api/v1/users/me';
+
+        try {
+            $response = Http::timeout(5)
+                ->connectTimeout(3)
+                ->acceptJson()
+                ->get($url);
+            $status = $response->status();
+        } catch (\Throwable $e) {
+            Log::debug('BTCPay ping: connection failed', ['url' => $url, 'error' => $e->getMessage()]);
+
+            return ['http_status' => null, 'state' => 'unreachable'];
+        }
+
+        if ($status >= 200 && $status < 400) {
+            return ['http_status' => $status, 'state' => 'online'];
+        }
+
+        if ($status === 401 || $status === 403) {
+            return ['http_status' => $status, 'state' => 'online'];
+        }
+
+        if ($status >= 400 && $status < 500) {
+            return ['http_status' => $status, 'state' => 'client_error'];
+        }
+
+        if ($status >= 500) {
+            return ['http_status' => $status, 'state' => 'server_error'];
+        }
+
+        return ['http_status' => $status, 'state' => 'unknown'];
     }
 
     /**

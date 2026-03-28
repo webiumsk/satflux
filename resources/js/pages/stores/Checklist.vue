@@ -26,7 +26,7 @@
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
             <div>
                 <h1 class="text-3xl font-extrabold text-white mb-2 tracking-tight">{{ t('stores.wallet_onboarding') }}</h1>
-                <p class="text-gray-400 flex items-center gap-2">
+                <p v-if="store.wallet_type" class="text-gray-400 flex flex-wrap items-center gap-2">
                   {{ t('stores.complete_steps_setup') }}
                   <WalletTypeIcon
                     :type="store.wallet_type"
@@ -37,7 +37,7 @@
                   {{ t('stores.wallet') }}
                 </p>
             </div>
-            <div class="flex-shrink-0">
+            <div v-if="store.wallet_type" class="flex-shrink-0">
                 <div class="bg-gray-900/50 border border-gray-700/50 rounded-2xl px-5 py-3 flex items-center gap-3">
                     <div class="h-10 w-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
                         <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -46,14 +46,26 @@
                     </div>
                     <div>
                         <div class="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{{ t('stores.progress') }}</div>
-                        <div class="text-sm font-bold text-white">{{ t('stores.setup_in_progress') }}</div>
+                        <div class="text-sm font-bold text-white">{{ progressLabel }}</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="space-y-2">
-            <WalletChecklist :store-id="storeId" />
+        <div v-if="!store.wallet_type" class="rounded-2xl border border-amber-500/25 bg-amber-500/5 p-6 mb-6 space-y-4">
+          <p class="text-sm text-gray-300 leading-relaxed">
+            {{ t('stores.checklist_needs_wallet_type') }}
+          </p>
+          <router-link
+            :to="`/stores/${storeId}/wallet-connection`"
+            class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors"
+          >
+            {{ t('setup_wizard.go_wallet_connection') }}
+          </router-link>
+        </div>
+
+        <div v-else class="space-y-2">
+            <WalletChecklist :store-id="storeId" @stats="onChecklistStats" />
         </div>
         
         <div class="mt-12 pt-8 border-t border-gray-700 flex justify-center">
@@ -67,7 +79,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
@@ -82,6 +94,22 @@ const storesStore = useStoresStore();
 const storeId = route.params.id as string;
 const loading = ref(false);
 const store = ref<any>(null);
+const checklistStats = ref<{ total: number; completed: number } | null>(null);
+
+const progressLabel = computed(() => {
+  const s = checklistStats.value;
+  if (!s || s.total === 0) {
+    return t('stores.setup_in_progress');
+  }
+  if (s.completed >= s.total) {
+    return t('stores.setup_complete');
+  }
+  return t('stores.setup_in_progress');
+});
+
+function onChecklistStats(payload: { total: number; completed: number }) {
+  checklistStats.value = payload;
+}
 
 onMounted(async () => {
   loading.value = true;

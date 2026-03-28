@@ -32,10 +32,18 @@ yarn-error.log
 /bootstrap/cache/services.php
 /bootstrap/cache/packages.php
 
+# Docs: only docs/DEPLOYMENT.md, docs/TRANSLATION.md, docs/btcpay-config-bot.md are public
+docs/AGENT_API.md
+docs/ARCHITECTURE.md
+docs/CASHU_INTEGRATION.md
+docs/CONNECTIONS_SETUP.md
+docs/DEPLOYMENT_SSH.md
+docs/LNURL_AUTH.md
+docs/QUEUE_REDIS.md
+docs/SUBSCRIPTION_IMPLEMENTATION.md
+docs/TESTING_PLAN.md
+docs/satflux.md
+docs/satoshi-tickets-includeInactive-patch.md
 
-
-
-
-
-
-
+# Cursor / AI workspace notes at repo root
+CLAUDE.md

@@ -21,6 +21,21 @@
         </div>
         <div class="flex flex-wrap justify-end gap-2 pt-2">
           <button
+            v-if="showCopy && url"
+            type="button"
+            :title="copied ? t('common.copied') : t('common.copy_url')"
+            @click="copyUrl"
+            class="inline-flex items-center gap-2 px-4 py-2 border border-gray-600 text-gray-200 text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            <svg v-if="copied" class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+            </svg>
+            {{ copied ? t('common.copied') : t('common.copy_url') }}
+          </button>
+          <button
             v-if="showDownload && url"
             type="button"
             @click="downloadQr"
@@ -54,10 +69,11 @@ const props = withDefaults(
     open: boolean;
     url: string;
     title?: string;
+    showCopy?: boolean;
     showDownload?: boolean;
     downloadFilename?: string;
   }>(),
-  { title: '', showDownload: false, downloadFilename: 'qrcode.png' }
+  { title: '', showCopy: true, showDownload: false, downloadFilename: 'qrcode.png' }
 );
 
 const emit = defineEmits<{
@@ -66,8 +82,25 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const qrCanvas = ref<HTMLCanvasElement | null>(null);
+const copied = ref(false);
+let copiedTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const DOWNLOAD_SIZE = 1024;
+
+async function copyUrl() {
+  if (!props.url) return;
+  try {
+    await navigator.clipboard.writeText(props.url);
+    copied.value = true;
+    if (copiedTimeout) clearTimeout(copiedTimeout);
+    copiedTimeout = setTimeout(() => {
+      copied.value = false;
+      copiedTimeout = null;
+    }, 2000);
+  } catch (e) {
+    console.error('Copy URL failed', e);
+  }
+}
 
 async function drawQr() {
   if (!props.open || !props.url || !qrCanvas.value) return;
@@ -102,6 +135,13 @@ watch(
   () => {
     if (props.open && props.url) {
       nextTick(() => drawQr());
+    }
+    if (!props.open) {
+      copied.value = false;
+      if (copiedTimeout) {
+        clearTimeout(copiedTimeout);
+        copiedTimeout = null;
+      }
     }
   },
   { immediate: true }
