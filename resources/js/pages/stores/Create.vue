@@ -317,10 +317,13 @@
                     : 'border-gray-600 bg-gray-800'
                 "
               >
-                <div class="flex items-center justify-between mb-2">
-                  <span class="font-bold text-white text-lg">{{
-                    t("create_store.wallet_type_cashu")
-                  }}</span>
+                <div class="flex items-center justify-between mb-2 gap-2">
+                  <span class="font-bold text-white text-lg inline-flex items-center gap-2 flex-wrap">
+                    {{ t("create_store.wallet_type_cashu") }}
+                    <span
+                      class="text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                    >{{ t("stores.cashu_beta_badge") }}</span>
+                  </span>
                   <div
                     v-if="form.wallet_type === 'cashu'"
                     class="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-white"
@@ -357,8 +360,11 @@
             </div>
             <div
               v-if="form.wallet_type === 'cashu'"
-              class="mt-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-2"
+              class="mt-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-4"
             >
+              <p class="text-sm text-amber-200/95 leading-relaxed">
+                {{ t("stores.cashu_beta_notice_short") }}
+              </p>
               <p class="text-sm font-medium text-amber-300">
                 {{ t("stores.cashu_warning_title") }}
               </p>
@@ -367,6 +373,14 @@
                 <li>{{ t("stores.cashu_warning_mint_reachable") }}</li>
                 <li>{{ t("stores.cashu_warning_ln_address") }}</li>
               </ul>
+              <label class="flex items-start gap-3 cursor-pointer select-none">
+                <input
+                  v-model="form.cashu_beta_accepted"
+                  type="checkbox"
+                  class="mt-1 h-4 w-4 rounded border-gray-500 bg-gray-800 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span class="text-sm text-amber-100 leading-relaxed">{{ t("stores.cashu_beta_consent_checkbox") }}</span>
+              </label>
             </div>
           </div>
 
@@ -851,6 +865,7 @@ const form = ref({
   // Cashu fields (default mint prefilled as a starting point)
   mint_url: DEFAULT_CASHU_MINT_URL,
   lightning_address: "",
+  cashu_beta_accepted: false,
 });
 
 const docBlinkPath = "/documentation/blink-wallet";
@@ -913,6 +928,7 @@ const canProceedFromStep2 = computed(() => {
     const lnAddress = (form.value.lightning_address ?? "").trim();
     if (!mintUrl || !mintUrl.startsWith("https://")) return false;
     if (!lnAddress.match(/^[^@]+@[^@]+$/)) return false;
+    if (!form.value.cashu_beta_accepted) return false;
     return true;
   }
 
@@ -922,6 +938,9 @@ const canProceedFromStep2 = computed(() => {
 watch(
   () => form.value.wallet_type,
   (wt) => {
+    if (wt !== "cashu") {
+      form.value.cashu_beta_accepted = false;
+    }
     if (wt === "cashu" && !(form.value.mint_url ?? "").trim()) {
       form.value.mint_url = DEFAULT_CASHU_MINT_URL;
     }

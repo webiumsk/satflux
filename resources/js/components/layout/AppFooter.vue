@@ -75,7 +75,7 @@
               />
             </svg>
           </span>
-          <span class="text-gray-600 leading-none" aria-hidden="true">—</span>
+          <span class="text-gray-600 leading-none" aria-hidden="true">|</span>
           <span class="text-gray-600 leading-none inline-flex items-center">
             {{ t('common.footer_open_source') }}&nbsp;
             <a
@@ -85,11 +85,7 @@
               class="underline hover:text-gray-400 focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-500 rounded leading-none"
             >{{ t('common.footer_license_link') }}</a>
           </span>
-        </p>
-        <div class="mt-3 flex w-full justify-center">
-          <div
-            class="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-gray-500"
-          >
+        <span class="text-gray-600 leading-none" aria-hidden="true">|</span>
             <span
               class="inline-flex h-5 items-center leading-none text-gray-500"
             >{{ t('common.footer_support_me') }}</span>
@@ -120,8 +116,7 @@
               class="inline-flex h-5 items-center text-emerald-500/90 leading-none"
               role="status"
             >{{ t('common.footer_ln_copied') }}</span>
-          </div>
-        </div>
+          </p>
       </div>
     </div>
   </footer>

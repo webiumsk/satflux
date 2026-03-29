@@ -119,8 +119,9 @@
 
         <!-- Cashu: editing (first-time setup, after password, or switching from Lightning) -->
         <template v-else>
-            <h3 class="text-sm font-bold text-indigo-400 mb-6 uppercase tracking-wider">
+            <h3 class="text-sm font-bold text-indigo-400 mb-6 uppercase tracking-wider inline-flex items-center gap-2 flex-wrap">
                 {{ t('stores.cashu_settings_title') }}
+                <span class="text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40">{{ t('stores.cashu_beta_badge') }}</span>
             </h3>
 
             <div
@@ -151,7 +152,10 @@
                 </button>
             </div>
 
-            <div class="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-2">
+            <div class="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-4">
+                <p class="text-sm text-amber-200/95 leading-relaxed">
+                    {{ t('stores.cashu_beta_notice_short') }}
+                </p>
                 <p class="text-sm font-medium text-amber-300">
                     {{ t('stores.cashu_warning_title') }}
                 </p>
@@ -160,6 +164,14 @@
                     <li>{{ t('stores.cashu_warning_mint_reachable') }}</li>
                     <li>{{ t('stores.cashu_warning_ln_address') }}</li>
                 </ul>
+                <label class="flex items-start gap-3 cursor-pointer select-none">
+                    <input
+                        v-model="cashuBetaAccepted"
+                        type="checkbox"
+                        class="mt-1 h-4 w-4 rounded border-gray-500 bg-gray-800 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span class="text-sm text-amber-100 leading-relaxed">{{ t('stores.cashu_beta_consent_checkbox') }}</span>
+                </label>
             </div>
 
             <div v-if="cashuLoading" class="flex items-center justify-center py-10">
@@ -252,7 +264,10 @@
                         class="flex flex-col items-start p-5 rounded-xl border border-gray-600 bg-gray-800/80 hover:border-indigo-500 hover:bg-indigo-500/10 text-left transition-all"
                         @click="unsetWalletChoice = 'cashu'"
                     >
-                        <span class="font-semibold text-white">{{ t('stores.wallet_connection_choose_cashu') }}</span>
+                        <span class="font-semibold text-white inline-flex items-center gap-2 flex-wrap">
+                            {{ t('stores.wallet_connection_choose_cashu') }}
+                            <span class="text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40">{{ t('stores.cashu_beta_badge') }}</span>
+                        </span>
                         <span class="text-sm text-gray-400 mt-2">{{ t('create_store.wallet_type_cashu') }} — {{ t('stores.cashu_description') }}</span>
                     </button>
                     <button
@@ -1248,12 +1263,29 @@ const cashuOriginal = reactive({
     enabled: true,
 });
 
+const cashuBetaAccepted = ref(false);
+
 const canSaveCashu = computed(() => {
     const mintUrl = (cashuForm.mint_url ?? '').trim();
     const lnAddress = (cashuForm.lightning_address ?? '').trim();
     if (!mintUrl || !mintUrl.startsWith('https://')) return false;
     if (!lnAddress.match(/^[^@]+@[^@]+$/)) return false;
+    if (!cashuBetaAccepted.value) return false;
     return true;
+});
+
+watch(switchToCashuIntent, (on) => {
+    if (on) cashuBetaAccepted.value = false;
+});
+
+watch(unsetWalletChoice, (c) => {
+    if (c === 'cashu') cashuBetaAccepted.value = false;
+});
+
+watch(cashuSectionMode, (m, prev) => {
+    if (m === 'editing' && (prev === 'password' || prev === 'readonly')) {
+        cashuBetaAccepted.value = false;
+    }
 });
 
 function resetCashuErrors() {
@@ -1370,6 +1402,7 @@ watch(
         cashuInitializedFromFetch.value = false;
         lightningFormAquaTab.value = 'samrock';
         lnurlRevealForCashuEdit.value = false;
+        cashuBetaAccepted.value = false;
     }
 );
 
