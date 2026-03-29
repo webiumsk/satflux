@@ -336,6 +336,15 @@ class StoreController extends Controller
                         ],
                         $userApiKey
                     );
+
+                    try {
+                        $this->lightningService->tryRemoveLightningCheckoutPaymentMethods($btcpayStoreId, $userApiKey);
+                    } catch (\Throwable $e) {
+                        Log::warning('Could not remove Lightning payment methods at BTCPay after Cashu store create', [
+                            'btcpay_store_id' => $btcpayStoreId,
+                            'message' => $e->getMessage(),
+                        ]);
+                    }
                 } catch (\Illuminate\Validation\ValidationException $e) {
                     throw $e;
                 } catch (\Exception $e) {

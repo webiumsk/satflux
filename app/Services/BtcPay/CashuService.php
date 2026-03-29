@@ -2,11 +2,11 @@
 
 namespace App\Services\BtcPay;
 
+use Illuminate\Support\Facades\Log;
+
 class CashuService
 {
-    public function __construct(protected BtcPayClient $client)
-    {
-    }
+    public function __construct(protected BtcPayClient $client) {}
 
     protected function withUserKey(?string $userApiKey, callable $fn)
     {
@@ -57,5 +57,49 @@ class CashuService
             );
         });
     }
-}
 
+    /**
+     * Best-effort: set CashuMelt plugin enabled=false at BTCPay so checkout does not offer Cashu
+     * when the store uses Blink/Aqua in Satflux. No-op if settings cannot be read or already disabled.
+     */
+    public function tryDisableAtBtcPay(string $btcpayStoreId, string $apiKey): void
+    {
+        try {
+            $current = $this->getSettings($btcpayStoreId, $apiKey);
+        } catch (\Throwable $e) {
+            Log::info('CashuMelt tryDisable skipped (could not load plugin settings)', [
+                'btcpay_store_id' => $btcpayStoreId,
+                'message' => $e->getMessage(),
+            ]);
+
+            return;
+        }
+
+        if (! ($current['enabled'] ?? true)) {
+            return;
+        }
+
+        $mint = trim((string) ($current['mintUrl'] ?? ''));
+        $ln = trim((string) ($current['lightningAddress'] ?? ''));
+        if ($mint === '' || $ln === '') {
+            Log::warning('CashuMelt tryDisable skipped (mint or Lightning address missing in BTCPay response)', [
+                'btcpay_store_id' => $btcpayStoreId,
+            ]);
+
+            return;
+        }
+
+        try {
+            $this->saveSettings($btcpayStoreId, [
+                'mintUrl' => $mint,
+                'lightningAddress' => $ln,
+                'enabled' => false,
+            ], $apiKey);
+        } catch (\Throwable $e) {
+            Log::error('CashuMelt tryDisable PUT failed', [
+                'btcpay_store_id' => $btcpayStoreId,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+}

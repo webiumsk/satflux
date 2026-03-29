@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Store;
 use App\Models\User;
+use App\Models\WalletConnection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
@@ -137,5 +138,73 @@ class CashuPaymentsTest extends TestCase
         $this->postJson("/api/stores/{$store->id}/cashu/confirm-edit", [
             'password' => 'secret',
         ])->assertUnprocessable();
+    }
+
+    public function test_cashu_get_settings_returns_defaults_for_blink_store(): void
+    {
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'blink',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson("/api/stores/{$store->id}/cashu/settings")
+            ->assertOk()
+            ->assertJsonPath('data.mint_url', null)
+            ->assertJsonPath('data.lightning_address', null)
+            ->assertJsonPath('data.enabled', true);
+    }
+
+    public function test_saving_cashu_from_blink_deletes_wallet_connection_and_removes_ln_payment_methods_at_btcpay(): void
+    {
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+
+        $deletedMethods = [];
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use (&$deletedMethods) {
+            $url = $request->url();
+
+            if (str_contains($url, 'cashumelt/settings') && $request->method() === 'PUT') {
+                return Http::response([
+                    'mintUrl' => 'https://mint.example/m',
+                    'lightningAddress' => 'z@example.com',
+                    'enabled' => true,
+                ], 200);
+            }
+
+            if ($request->method() === 'DELETE' && preg_match('#/stores/[^/]+/payment-methods/(BTC-LN|BTC-LNURL)$#', $url, $m)) {
+                $deletedMethods[] = $m[1];
+
+                return Http::response([], 200);
+            }
+
+            return Http::response(['error' => 'unexpected URL: '.$url], 500);
+        });
+
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'blink',
+            'btcpay_store_id' => 'store-btcpay-ln-to-cashu',
+        ]);
+        WalletConnection::factory()->create([
+            'store_id' => $store->id,
+            'submitted_by_user_id' => $user->id,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->putJson("/api/stores/{$store->id}/cashu/settings", [
+            'mint_url' => 'https://mint.example/m',
+            'lightning_address' => 'z@example.com',
+        ])->assertOk();
+
+        $store->refresh();
+        $this->assertSame('cashu', $store->wallet_type);
+        $this->assertNull($store->walletConnection);
+
+        sort($deletedMethods);
+        $this->assertSame(['BTC-LN', 'BTC-LNURL'], $deletedMethods);
     }
 }

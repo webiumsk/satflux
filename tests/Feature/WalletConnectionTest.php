@@ -8,6 +8,7 @@ use App\Models\WalletConnection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class WalletConnectionTest extends TestCase
@@ -15,6 +16,7 @@ class WalletConnectionTest extends TestCase
     use RefreshDatabase;
 
     protected const VALID_BLINK_SECRET = 'type=blink;server=https://api.blink.sv/graphql;api-key=blink_test123;wallet-id=wallet456';
+
     protected const VALID_AQUA_DESCRIPTOR = 'ct(slip77(xpub6D4BDPcP2GT577Vvch3Reb8P8CH),elsh(wpkh(xpub6E8...)))';
 
     /** @test */
@@ -321,7 +323,7 @@ class WalletConnectionTest extends TestCase
             'status' => 'needs_support',
             'submitted_by_user_id' => $user->id,
         ]);
-        Cache::put('reveal_confirmed:' . $user->id, true, now()->addSeconds(120));
+        Cache::put('reveal_confirmed:'.$user->id, true, now()->addSeconds(120));
 
         $response = $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection/reveal", [
             'confirm_via_lnurl' => true,
@@ -330,6 +332,51 @@ class WalletConnectionTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('data.secret', self::VALID_BLINK_SECRET)
             ->assertJsonPath('data.type', 'blink');
-        $this->assertNull(Cache::get('reveal_confirmed:' . $user->id));
+        $this->assertNull(Cache::get('reveal_confirmed:'.$user->id));
+    }
+
+    /** @test */
+    public function saving_blink_wallet_disables_cashumelt_at_btcpay_when_plugin_reports_enabled(): void
+    {
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+
+        $putPayload = null;
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use (&$putPayload) {
+            if (! str_contains($request->url(), 'cashumelt/settings')) {
+                return Http::response([], 200);
+            }
+            if ($request->method() === 'GET') {
+                return Http::response([
+                    'mintUrl' => 'https://mint.example/x',
+                    'lightningAddress' => 'merchant@example.com',
+                    'enabled' => true,
+                ], 200);
+            }
+            if ($request->method() === 'PUT') {
+                $putPayload = $request->data();
+
+                return Http::response(array_merge($putPayload ?? [], ['enabled' => false]), 200);
+            }
+
+            return Http::response('not found', 404);
+        });
+
+        $user = User::factory()->create();
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'cashu',
+            'btcpay_store_id' => 'store-btcpay-cashu-switch',
+        ]);
+
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", [
+            'type' => 'blink',
+            'secret' => self::VALID_BLINK_SECRET,
+        ])->assertStatus(201);
+
+        $this->assertNotNull($putPayload);
+        $this->assertFalse((bool) ($putPayload['enabled'] ?? true));
+        $this->assertSame('https://mint.example/x', $putPayload['mintUrl'] ?? null);
+        $store->refresh();
+        $this->assertSame('blink', $store->wallet_type);
     }
 }

@@ -4,17 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Models\Store;
 use App\Services\BtcPay\CashuService;
+use App\Services\BtcPay\LightningService;
 use App\Services\StoreChecklistService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class CashuController extends Controller
 {
-    public function __construct(protected CashuService $cashuService) {}
+    public function __construct(
+        protected CashuService $cashuService,
+        protected LightningService $lightningService,
+    ) {}
 
     /**
      * Confirm account password (or LNURL / Nostr challenge) before editing Cashu settings in the UI.
@@ -63,7 +68,9 @@ class CashuController extends Controller
 
     public function getSettings(Store $store): \Illuminate\Http\JsonResponse
     {
-        if (($store->wallet_type ?? null) === null) {
+        $wt = $store->wallet_type ?? null;
+
+        if ($wt === null || $wt === 'blink' || $wt === 'aqua_boltz') {
             return response()->json([
                 'data' => [
                     'mint_url' => null,
@@ -90,8 +97,14 @@ class CashuController extends Controller
 
     public function updateSettings(Request $request, Store $store): \Illuminate\Http\JsonResponse
     {
-        $wt = $store->wallet_type ?? null;
-        if ($wt !== null && $wt !== 'cashu') {
+        $previousWalletType = $store->wallet_type ?? null;
+        $switchingFromLightning = in_array($previousWalletType, ['blink', 'aqua_boltz'], true);
+
+        $allowed = $previousWalletType === null
+            || $previousWalletType === 'cashu'
+            || $switchingFromLightning;
+
+        if (! $allowed) {
             abort(422, 'Cashu is not the wallet type for this store.');
         }
 
@@ -109,8 +122,12 @@ class CashuController extends Controller
             'enabled' => $request->boolean('enabled', true),
         ];
 
-        $updated = DB::transaction(function () use ($store, $payload, $userApiKey) {
-            if (($store->wallet_type ?? null) === null) {
+        $updated = DB::transaction(function () use ($store, $payload, $userApiKey, $switchingFromLightning) {
+            if ($switchingFromLightning) {
+                $store->walletConnection()?->delete();
+            }
+
+            if (($store->wallet_type ?? null) === null || $switchingFromLightning) {
                 $store->update(['wallet_type' => 'cashu']);
                 $store->refresh();
             }
@@ -119,6 +136,22 @@ class CashuController extends Controller
         });
 
         $store->refresh();
+
+        if ($payload['enabled'] ?? true) {
+            try {
+                $this->lightningService->tryRemoveLightningCheckoutPaymentMethods(
+                    $store->btcpay_store_id,
+                    $userApiKey
+                );
+            } catch (\Throwable $e) {
+                Log::error('Could not remove Lightning payment methods at BTCPay after Cashu save', [
+                    'store_id' => $store->id,
+                    'btcpay_store_id' => $store->btcpay_store_id,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+
         StoreChecklistService::ensureChecklistInitialized($store);
 
         return response()->json([

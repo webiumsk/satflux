@@ -17,12 +17,10 @@ use Illuminate\Support\Facades\Notification;
 
 class WalletConnectionService
 {
-    protected WalletConnectionValidator $validator;
-
-    public function __construct(WalletConnectionValidator $validator)
-    {
-        $this->validator = $validator;
-    }
+    public function __construct(
+        protected WalletConnectionValidator $validator,
+        protected \App\Services\BtcPay\CashuService $cashuService,
+    ) {}
 
     /**
      * Create or update a wallet connection for a store.
@@ -148,6 +146,21 @@ class WalletConnectionService
                 'store_id' => $store->id,
                 'wallet_type' => $storeWalletType,
             ]);
+
+            if (in_array($storeWalletType, ['blink', 'aqua_boltz'], true)) {
+                try {
+                    $this->cashuService->tryDisableAtBtcPay(
+                        $store->btcpay_store_id,
+                        $store->user->getBtcPayApiKeyOrFail()
+                    );
+                } catch (\Throwable $e) {
+                    Log::error('Could not disable CashuMelt at BTCPay after Lightning wallet connection', [
+                        'store_id' => $store->id,
+                        'btcpay_store_id' => $store->btcpay_store_id,
+                        'message' => $e->getMessage(),
+                    ]);
+                }
+            }
         } catch (\Exception $e) {
             Log::error('Failed to create/update wallet connection in database', [
                 'store_id' => $store->id,
