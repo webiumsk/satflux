@@ -97,6 +97,10 @@
           </template>
         </form>
       </div>
+
+      <div v-show="activeSettingsTab === 'email'" class="px-6 py-8">
+        <StoreSettingsEmailRules :store="store" />
+      </div>
     </div>
 
     <!-- Danger Zone (shown under every tab) -->
@@ -191,8 +195,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../../store/auth';
 import { useStoresStore } from '../../store/stores';
@@ -203,6 +207,7 @@ import StoreSettingsPayment from './StoreSettingsPayment.vue';
 import StoreSettingsRates from './StoreSettingsRates.vue';
 import StoreSettingsCheckout from './StoreSettingsCheckout.vue';
 import StoreSettingsLightning from './StoreSettingsLightning.vue';
+import StoreSettingsEmailRules from './StoreSettingsEmailRules.vue';
 import UpgradeModal from './UpgradeModal.vue';
 
 const { t } = useI18n();
@@ -217,6 +222,7 @@ const props = defineProps({
 const emit = defineEmits(['update-store']);
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 const storesStore = useStoresStore();
 const flashStore = useFlashStore();
@@ -233,13 +239,14 @@ const canEditCheckoutOptions = computed(() => hasPaidAccess.value);
 const canEditArchivedOption = computed(() => hasPaidAccess.value);
 const showUpgradeModal = ref(false);
 
-const activeSettingsTab = ref<'settings' | 'payment' | 'rates' | 'checkout' | 'lightning'>('settings');
+const activeSettingsTab = ref<'settings' | 'payment' | 'rates' | 'checkout' | 'lightning' | 'email'>('settings');
 const settingsTabs = [
   { id: 'settings' as const, labelKey: 'stores.settings_tab_general' },
   { id: 'payment' as const, labelKey: 'stores.settings_tab_payment' },
   { id: 'rates' as const, labelKey: 'stores.settings_tab_rates' },
   { id: 'checkout' as const, labelKey: 'stores.settings_tab_checkout' },
   { id: 'lightning' as const, labelKey: 'stores.settings_tab_lightning' },
+  { id: 'email' as const, labelKey: 'stores.settings_tab_email' },
 ];
 
 const loading = ref(false);
@@ -434,8 +441,22 @@ const defaultLangOptions = [
   { label: '英文', value: 'zh-SP' },
 ];
 
+function applySettingsTabFromRoute() {
+  const tab = route.query.tab as string | undefined;
+  if (tab === 'email') {
+    activeSettingsTab.value = 'email';
+  }
+}
+
+watch(
+  () => route.query.tab,
+  () => applySettingsTabFromRoute(),
+  { immediate: true }
+);
+
 onMounted(async () => {
   await fetchSettings();
+  applySettingsTabFromRoute();
 });
 
 async function fetchSettings() {

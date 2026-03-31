@@ -2,8 +2,10 @@
 
 namespace App\Jobs;
 
+use App\Models\Store;
 use App\Models\User;
 use App\Models\WebhookEvent;
+use App\Services\StoreEmailRuleDispatcher;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -33,11 +35,26 @@ class ProcessBtcPayWebhook implements ShouldQueue
         $eventType = $this->webhookEvent->event_type;
         $storeId = $payload['storeId'] ?? null;
 
+        $store = $storeId
+            ? Store::where('btcpay_store_id', $storeId)->first()
+            : null;
+        if ($store) {
+            try {
+                app(StoreEmailRuleDispatcher::class)->dispatchForWebhook($this->webhookEvent, $store);
+            } catch (\Throwable $e) {
+                Log::error('Store email rules: webhook dispatch failed', [
+                    'webhook_event_id' => $this->webhookEvent->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         // Check if this is a subscription store
         $subscriptionStoreId = config('services.btcpay.subscription_store_id');
         if ($storeId !== $subscriptionStoreId) {
             // Not a subscription-related webhook, skip
             $this->webhookEvent->markAsProcessed();
+
             return;
         }
 
@@ -76,10 +93,11 @@ class ProcessBtcPayWebhook implements ShouldQueue
             $invoiceData = $payload['invoiceData'] ?? $payload['invoice'] ?? $payload;
             $invoiceId = $invoiceData['id'] ?? $invoiceData['invoiceId'] ?? null;
 
-            if (!$invoiceId) {
+            if (! $invoiceId) {
                 Log::warning('Subscription invoice payment webhook missing invoice ID', [
                     'payload_keys' => array_keys($payload),
                 ]);
+
                 return;
             }
 
@@ -90,21 +108,23 @@ class ProcessBtcPayWebhook implements ShouldQueue
                 ?? $invoiceData['customerEmail']
                 ?? null;
 
-            if (!$customerEmail) {
+            if (! $customerEmail) {
                 Log::warning('Subscription invoice payment webhook missing customer email', [
                     'invoice_id' => $invoiceId,
                 ]);
+
                 return;
             }
 
             // Find user by email
             $user = User::where('email', $customerEmail)->first();
 
-            if (!$user) {
+            if (! $user) {
                 Log::warning('Subscription invoice payment webhook - user not found', [
                     'invoice_id' => $invoiceId,
                     'customer_email' => $customerEmail,
                 ]);
+
                 return;
             }
 
@@ -154,12 +174,13 @@ class ProcessBtcPayWebhook implements ShouldQueue
                 return;
             }
 
-            if (!$planRole) {
+            if (! $planRole) {
                 Log::warning('Subscription invoice payment - could not determine plan role', [
                     'invoice_id' => $invoiceId,
                     'customer_email' => $customerEmail,
                     'plan_id' => $planId,
                 ]);
+
                 return;
             }
 
@@ -201,11 +222,12 @@ class ProcessBtcPayWebhook implements ShouldQueue
             $subscriptionData = $payload['subscriptionData'] ?? $payload['subscription'] ?? $payload;
             $subscriptionId = $subscriptionData['id'] ?? $subscriptionData['subscriptionId'] ?? null;
 
-            if (!$subscriptionId) {
+            if (! $subscriptionId) {
                 Log::warning('Subscription lifecycle event missing subscription ID', [
                     'event_type' => $eventType,
                     'payload_keys' => array_keys($payload),
                 ]);
+
                 return;
             }
 
@@ -217,23 +239,25 @@ class ProcessBtcPayWebhook implements ShouldQueue
                 ?? $subscriptionData['metadata']['buyerEmail']
                 ?? null;
 
-            if (!$customerEmail) {
+            if (! $customerEmail) {
                 Log::warning('Subscription lifecycle event missing customer email', [
                     'event_type' => $eventType,
                     'subscription_id' => $subscriptionId,
                 ]);
+
                 return;
             }
 
             // Find user by email
             $user = User::where('email', $customerEmail)->first();
 
-            if (!$user) {
+            if (! $user) {
                 Log::warning('Subscription lifecycle event - user not found', [
                     'event_type' => $eventType,
                     'subscription_id' => $subscriptionId,
                     'customer_email' => $customerEmail,
                 ]);
+
                 return;
             }
 
@@ -292,7 +316,7 @@ class ProcessBtcPayWebhook implements ShouldQueue
             // BTCPay status can be: active, expired, cancelled, suspended, etc.
             // If status is still "active" or in grace period, don't downgrade
             // If status is "expired" after grace period, downgrade
-            if (!in_array($status, ['active', 'activeRenewing'])) {
+            if (! in_array($status, ['active', 'activeRenewing'])) {
                 // Subscription is truly expired (after grace period) - downgrade
                 $this->downgradeUserRole($user, "Subscription expired (status: {$status})");
             } else {
@@ -482,7 +506,7 @@ class ProcessBtcPayWebhook implements ShouldQueue
      */
     protected function downgradeUserRole(User $user, string $reason): void
     {
-        if (!in_array($user->role, ['pro', 'enterprise'])) {
+        if (! in_array($user->role, ['pro', 'enterprise'])) {
             // User is already on free tier, nothing to downgrade
             return;
         }
@@ -504,10 +528,3 @@ class ProcessBtcPayWebhook implements ShouldQueue
         ]);
     }
 }
-
-
-
-
-
-
-

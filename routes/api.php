@@ -33,6 +33,7 @@ use App\Http\Controllers\StatsController;
 use App\Http\Controllers\StoreChecklistController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\StoreDashboardController;
+use App\Http\Controllers\StoreEmailRuleController;
 use App\Http\Controllers\StoreSettingsController;
 use App\Http\Controllers\StripeController;
 use App\Http\Controllers\SubscriptionController;
@@ -294,6 +295,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->middleware(EnsureStoreOwnership::class);
     Route::put('/stores/{store}/settings', [StoreSettingsController::class, 'update'])
         ->middleware([EnsureStoreOwnership::class, AuditLog::class.':store.updated']);
+
+    Route::get('/stores/{store}/email-rules/triggers', [StoreEmailRuleController::class, 'triggers'])
+        ->middleware(EnsureStoreOwnership::class);
+    Route::get('/stores/{store}/email-rules', [StoreEmailRuleController::class, 'index'])
+        ->middleware(EnsureStoreOwnership::class);
+    Route::post('/stores/{store}/email-rules', [StoreEmailRuleController::class, 'store'])
+        ->middleware(EnsureStoreOwnership::class);
+    Route::put('/stores/{store}/email-rules/{store_email_rule}', [StoreEmailRuleController::class, 'update'])
+        ->middleware(EnsureStoreOwnership::class);
+    Route::delete('/stores/{store}/email-rules/{store_email_rule}', [StoreEmailRuleController::class, 'destroy'])
+        ->middleware(EnsureStoreOwnership::class);
 
     // Cashu (wallet_type=cashu)
     Route::middleware([EnsureStoreOwnership::class])->prefix('stores/{store}/cashu')->group(function () {

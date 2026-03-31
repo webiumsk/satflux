@@ -112,6 +112,14 @@ class Store extends Model
     }
 
     /**
+     * @return HasMany<StoreEmailRule, $this>
+     */
+    public function emailRules(): HasMany
+    {
+        return $this->hasMany(StoreEmailRule::class)->orderBy('sort_order')->orderBy('created_at');
+    }
+
+    /**
      * Scope a query to only include stores for a specific user.
      */
     public function scopeForUser($query, int $userId)
@@ -119,10 +127,3 @@ class Store extends Model
         return $query->where('user_id', $userId);
     }
 }
-
-
-
-
-
-
-

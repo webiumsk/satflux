@@ -16,12 +16,12 @@ class InvoiceService
     /**
      * List invoices with pagination support.
      * If a user-level API key is provided, it will be used instead of server-level.
-     * 
-     * @param string $storeId BTCPay store ID
-     * @param array $filters Optional filters (status, orderId, itemCode, etc.)
-     * @param int|null $skip Number of records to skip
-     * @param int|null $take Number of records to take
-     * @param string|null $userApiKey User-level API key (optional)
+     *
+     * @param  string  $storeId  BTCPay store ID
+     * @param  array  $filters  Optional filters (status, orderId, itemCode, etc.)
+     * @param  int|null  $skip  Number of records to skip
+     * @param  int|null  $take  Number of records to take
+     * @param  string|null  $userApiKey  User-level API key (optional)
      * @return array Invoice list with pagination metadata
      */
     public function listInvoices(string $storeId, array $filters = [], ?int $skip = null, ?int $take = null, ?string $userApiKey = null): array
@@ -57,12 +57,21 @@ class InvoiceService
      * Get a single invoice by ID.
      * If a user-level API key is provided, it will be used instead of server-level.
      */
+    /**
+     * Drop cached invoice so webhook / rule processing sees current BTCPay state.
+     */
+    public function forgetInvoiceCache(string $storeId, string $invoiceId, ?string $userApiKey = null): void
+    {
+        $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
+        Cache::forget("btcpay:invoice:{$storeId}:{$invoiceId}:{$apiKeyHash}");
+    }
+
     public function getInvoice(string $storeId, string $invoiceId, ?string $userApiKey = null): array
     {
         // Include API key hash in cache key to prevent cross-merchant cache pollution
         $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
         $cacheKey = "btcpay:invoice:{$storeId}:{$invoiceId}:{$apiKeyHash}";
-        
+
         return Cache::remember($cacheKey, 3600, function () use ($storeId, $invoiceId, $userApiKey) {
             $originalApiKey = null;
             if ($userApiKey) {
@@ -90,11 +99,12 @@ class InvoiceService
     {
         // Include API key hash in cache key to prevent cross-merchant cache pollution
         $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
-        $cacheKey = "btcpay:invoice:count:{$storeId}:{$apiKeyHash}:" . md5(serialize($filters));
-        
+        $cacheKey = "btcpay:invoice:count:{$storeId}:{$apiKeyHash}:".md5(serialize($filters));
+
         return Cache::remember($cacheKey, 3600, function () use ($storeId, $filters, $userApiKey) {
             // BTCPay API doesn't have a direct count endpoint, so we fetch a small page
             $result = $this->listInvoices($storeId, $filters, 0, 1, $userApiKey);
+
             // Note: BTCPay API may return total count in response, adjust based on actual API response
             return count($result) ?? 0;
         });
@@ -121,6 +131,7 @@ class InvoiceService
 
             try {
                 $result = $this->client->get("/api/v1/stores/{$storeId}/invoices/{$invoiceId}/payment-methods");
+
                 return is_array($result) ? $result : [];
             } finally {
                 if ($userApiKey && $originalApiKey) {
@@ -153,6 +164,7 @@ class InvoiceService
                 }
             }
         }
+
         return null;
     }
 
@@ -187,7 +199,7 @@ class InvoiceService
      * Extract total received sats from invoice payment methods (BTC/Lightning only).
      * BTCPay Greenfield returns: paymentMethodId (e.g. BTC-CHAIN, BTC-LN), currency, paymentMethodPaid, totalPaid, payments[].
      *
-     * @param array $paymentMethods Result of getInvoicePaymentMethods()
+     * @param  array  $paymentMethods  Result of getInvoicePaymentMethods()
      * @return int Total sats received
      */
     public static function sumReceivedSatsFromPaymentMethods(array $paymentMethods): int
@@ -211,6 +223,7 @@ class InvoiceService
             }
             if ($amount !== null && $amount > 0) {
                 $sats += self::btcAmountToSats($amount);
+
                 continue;
             }
             $payments = $pm['payments'] ?? [];
@@ -225,6 +238,7 @@ class InvoiceService
                 }
             }
         }
+
         return $sats;
     }
 
@@ -242,6 +256,7 @@ class InvoiceService
         if ($amount < 1) {
             return (int) round($amount * 100_000_000);
         }
+
         return (int) round($amount);
     }
 
@@ -256,25 +271,18 @@ class InvoiceService
         // Fetch up to 1000 invoices to get accurate count for decision
         // We use a larger take value to get a better estimate
         $result = $this->listInvoices($storeId, $filters, 0, 1000, $userApiKey);
-        
+
         // BTCPay API returns invoices in the data array or directly
         $invoices = $result['data'] ?? $result;
-        
-        if (!is_array($invoices)) {
+
+        if (! is_array($invoices)) {
             return 0;
         }
-        
+
         $count = count($invoices);
-        
+
         // If we got exactly 1000, there might be more, so return 1001 to trigger async
         // Otherwise return the actual count
         return $count >= 1000 ? 1001 : $count;
     }
 }
-
-
-
-
-
-
-
