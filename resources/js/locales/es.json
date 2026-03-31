@@ -626,7 +626,7 @@
     "email_rules_send_buyer": "Enviar al comprador si la factura incluye email",
     "email_rules_subject": "Asunto",
     "email_rules_body": "Cuerpo (HTML)",
-    "email_rules_placeholders_hint": "Placeholders: {Invoice.Id}, {Invoice.OrderId}, {Invoice.Status}, {Invoice.CheckoutLink}, {Invoice.Metadata.clave}, {Store.Name}, …",
+    "email_rules_placeholders_hint": "Placeholders: '{'Invoice.Id'}', '{'Invoice.OrderId'}', '{'Invoice.Status'}', '{'Invoice.CheckoutLink'}', '{'Invoice.Metadata.clave'}', '{'Store.Name'}', …",
     "email_rules_delete_confirm": "¿Eliminar esta regla?",
     "settings_tab_archived": "Archivado",
     "settings_tab_archived_desc": "Archive esta tienda para ocultarla de la lista principal. Las tiendas archivadas aún pueden recibir pagos.",

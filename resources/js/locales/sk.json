@@ -614,7 +614,7 @@
     "email_rules_send_buyer": "Poslať aj kupujúcemu, ak má faktúra e-mail",
     "email_rules_subject": "Predmet",
     "email_rules_body": "Telo (HTML)",
-    "email_rules_placeholders_hint": "Zástupné symboly: {Invoice.Id}, {Invoice.OrderId}, {Invoice.Status}, {Invoice.CheckoutLink}, {Invoice.Metadata.kľúč}, {Store.Name}, …",
+    "email_rules_placeholders_hint": "Zástupné symboly: '{'Invoice.Id'}', '{'Invoice.OrderId'}', '{'Invoice.Status'}', '{'Invoice.CheckoutLink'}', '{'Invoice.Metadata.kľúč'}', '{'Store.Name'}', …",
     "email_rules_delete_confirm": "Zmazať toto pravidlo?",
     "settings_tab_archived": "Archivované",
     "settings_tab_archived_desc": "Archivujte tento obchod, aby sa skryl zo zoznamu obchodov. Archivované obchody môžu stále prijímať platby.",

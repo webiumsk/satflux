@@ -613,7 +613,7 @@
     "email_rules_send_buyer": "Send to buyer email when present on the invoice",
     "email_rules_subject": "Subject",
     "email_rules_body": "Body (HTML)",
-    "email_rules_placeholders_hint": "Placeholders: {Invoice.Id}, {Invoice.OrderId}, {Invoice.Status}, {Invoice.CheckoutLink}, {Invoice.Metadata.key}, {Store.Name}, …",
+    "email_rules_placeholders_hint": "Placeholders: '{'Invoice.Id'}', '{'Invoice.OrderId'}', '{'Invoice.Status'}', '{'Invoice.CheckoutLink'}', '{'Invoice.Metadata.key'}', '{'Store.Name'}', …",
     "email_rules_delete_confirm": "Delete this email rule?",
     "settings_tab_archived": "Archived",
     "settings_tab_archived_desc": "Archive this store to hide it from the main store list. Archived stores can still receive payments.",
