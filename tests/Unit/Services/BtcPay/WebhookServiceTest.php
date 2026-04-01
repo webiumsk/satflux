@@ -82,4 +82,44 @@ class WebhookServiceTest extends TestCase
         $service = new WebhookService($client);
         $service->deleteWebhook('STORE1', 'WH1', null);
     }
+
+    public function test_normalize_webhooks_list_wraps_webhooks_key(): void
+    {
+        $service = new WebhookService(app(BtcPayClient::class));
+        $out = $service->normalizeWebhooksListResponse([
+            'webhooks' => [['id' => 'a'], ['id' => 'b']],
+        ]);
+        $this->assertCount(2, $out);
+        $this->assertSame('a', $out[0]['id']);
+    }
+
+    public function test_webhook_urls_match_ignores_trailing_slash_and_case(): void
+    {
+        $service = new WebhookService(app(BtcPayClient::class));
+        $this->assertTrue($service->webhookUrlsMatch(
+            'https://Panel.test/API/webhooks/btcpay',
+            'https://panel.test/api/webhooks/btcpay/'
+        ));
+    }
+
+    public function test_replace_panel_webhook_deletes_matching_then_posts(): void
+    {
+        config(['app.url' => 'https://panel.test']);
+        $client = $this->createMock(BtcPayClient::class);
+        $client->method('get')->willReturn([
+            ['id' => 'old-wh', 'url' => 'https://panel.test/api/webhooks/btcpay'],
+            ['id' => 'other', 'url' => 'https://else.test/hook'],
+        ]);
+        $client->expects($this->once())->method('delete')
+            ->with('/api/v1/stores/MYSTORE/webhooks/old-wh', []);
+        $client->expects($this->once())->method('post')
+            ->with('/api/v1/stores/MYSTORE/webhooks', ['url' => 'https://panel.test/api/webhooks/btcpay'])
+            ->willReturn(['id' => 'new-wh', 'secret' => 'new-secret']);
+
+        $service = new WebhookService($client);
+        $result = $service->replacePanelWebhookForStore('MYSTORE', null);
+
+        $this->assertSame('new-wh', $result['id']);
+        $this->assertSame('new-secret', $result['secret']);
+    }
 }

@@ -54,7 +54,9 @@ class SetupStoreWebhooksTest extends TestCase
         config(['services.btcpay.base_url' => 'https://btcpay.test']);
         config(['app.url' => 'https://panel.test']);
         Http::fake([
-            '*' => Http::response(['id' => 'btcpay-wh-1', 'secret' => 'btcpay-secret-1']),
+            'https://btcpay.test/api/v1/stores/store-abc/webhooks' => Http::sequence()
+                ->push([], 200, ['Content-Type' => 'application/json'])
+                ->push(['id' => 'btcpay-wh-1', 'secret' => 'btcpay-secret-1'], 200),
         ]);
 
         $store = Store::factory()->create([
@@ -92,5 +94,31 @@ class SetupStoreWebhooksTest extends TestCase
         Http::assertNothingSent();
         $store->refresh();
         $this->assertSame('already-set', $store->btcpay_webhook_id);
+    }
+
+    public function test_repair_dry_run_counts_panel_webhooks_without_http(): void
+    {
+        config(['services.btcpay.api_key' => 'test-key']);
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+        config(['app.url' => 'https://panel.test']);
+        Http::fake([
+            'https://btcpay.test/api/v1/stores/store-repair/webhooks' => Http::response([
+                ['id' => 'w1', 'url' => 'https://panel.test/api/webhooks/btcpay'],
+                ['id' => 'w2', 'url' => 'https://other.example/hook'],
+            ]),
+        ]);
+
+        Store::factory()->create([
+            'btcpay_store_id' => 'store-repair',
+            'name' => 'Repair Me',
+            'btcpay_webhook_id' => 'existing',
+            'webhook_secret' => 'x',
+        ]);
+
+        $this->artisan('stores:setup-webhooks', ['--repair' => true, '--dry-run' => true])
+            ->assertSuccessful()
+            ->expectsOutputToContain('would remove 1 panel URL webhook(s)');
+
+        Http::assertSentCount(1);
     }
 }

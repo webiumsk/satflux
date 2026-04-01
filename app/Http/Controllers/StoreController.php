@@ -8,6 +8,7 @@ use App\Models\WalletConnection;
 use App\Services\BtcPay\LightningService;
 use App\Services\BtcPay\StoreService;
 use App\Services\BtcPay\UserService;
+use App\Services\BtcPay\WebhookService;
 use App\Services\StoreChecklistService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -466,6 +467,38 @@ class StoreController extends Controller
                 'wallet_connection_id' => $walletConnectionCheck->id ?? 'NULL',
                 'wallet_connection_status' => $walletConnectionCheck->status ?? 'NULL',
             ]);
+
+            $newStoreId = $store->id;
+            DB::afterCommit(function () use ($newStoreId) {
+                $fresh = Store::find($newStoreId);
+                if (! $fresh || $fresh->btcpay_webhook_id !== null) {
+                    return;
+                }
+                if (! config('services.btcpay.api_key')) {
+                    Log::warning('BTCPay webhook not provisioned after store create: BTCPAY_API_KEY missing', [
+                        'store_id' => $newStoreId,
+                    ]);
+
+                    return;
+                }
+                try {
+                    $webhookService = app(WebhookService::class);
+                    $data = $webhookService->replacePanelWebhookForStore($fresh->btcpay_store_id, null);
+                    $fresh->update([
+                        'btcpay_webhook_id' => $data['id'],
+                        'webhook_secret' => $data['secret'],
+                    ]);
+                    Log::info('BTCPay webhook provisioned after store create', [
+                        'store_id' => $fresh->id,
+                        'btcpay_store_id' => $fresh->btcpay_store_id,
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::error('BTCPay webhook provisioning failed after store create', [
+                        'store_id' => $newStoreId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            });
 
             return response()->json([
                 'data' => $this->formatStore($store),
