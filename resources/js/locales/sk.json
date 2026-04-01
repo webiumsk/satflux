@@ -1047,7 +1047,7 @@
     "email_subject_placeholder": "Vaša vstupenka",
     "email_subject_hint": "Bez placeholdrov — plugin ich v predmete nenahrádza.",
     "email_body": "Telo potvrdeného e-mailu",
-    "email_body_placeholder": "Ahoj {{Name}}, tu je tvoja vstupenka na {{Title}} v {{Location}} dňa {{EventDate}}.",
+    "email_body_placeholder": "Ahoj {name}, tu je tvoja vstupenka na {title} v {location} dňa {eventDate}.",
     "email_placeholders_hint_prefix": "V tele použite presne tieto tokeny (bez medzier):",
     "email_placeholders_hint_suffix": "Plugin ich pri odoslaní e-mailu nahradí.",
     "saving": "Ukladám...",

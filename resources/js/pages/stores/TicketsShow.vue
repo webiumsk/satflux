@@ -447,7 +447,14 @@
                       v-model="eventForm.emailBody"
                       rows="4"
                       class="input-field resize-none"
-                      :placeholder="t('tickets.email_body_placeholder')"
+                      :placeholder="
+                        t('tickets.email_body_placeholder', {
+                          name: '{{Name}}',
+                          title: '{{Title}}',
+                          location: '{{Location}}',
+                          eventDate: '{{EventDate}}',
+                        })
+                      "
                     ></textarea>
                     <p class="mt-1 text-xs text-gray-500">
                       {{ t("tickets.email_placeholders_hint_prefix") }}

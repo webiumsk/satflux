@@ -1046,7 +1046,7 @@
     "email_subject_placeholder": "Your ticket",
     "email_subject_hint": "Plain text only — the plugin does not replace placeholders in the subject.",
     "email_body": "Confirmation email body",
-    "email_body_placeholder": "Hello {{Name}}, here is your ticket for {{Title}} at {{Location}} on {{EventDate}}.",
+    "email_body_placeholder": "Hello {name}, here is your ticket for {title} at {location} on {eventDate}.",
     "email_placeholders_hint_prefix": "In the body, use these tokens exactly (no spaces inside braces):",
     "email_placeholders_hint_suffix": "The plugin replaces them when sending the email.",
     "saving": "Saving...",
