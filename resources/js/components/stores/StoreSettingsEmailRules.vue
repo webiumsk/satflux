@@ -69,9 +69,11 @@
           >
             <option v-for="opt in triggerOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
           </select>
-          <div v-if="triggerOptions.length" class="mt-2 space-y-1">
-            <p class="text-xs text-gray-500">{{ t('stores.email_rules_trigger_help') }}</p>
-            <ul class="space-y-1">
+          <details v-if="triggerOptions.length" class="mt-2 rounded-lg border border-gray-700 bg-gray-900/50 px-3 py-2">
+            <summary class="cursor-pointer text-xs font-medium text-gray-300">
+              {{ t('stores.email_rules_trigger_help') }}
+            </summary>
+            <ul class="space-y-1 mt-2">
               <li
                 v-for="opt in triggerOptions"
                 :key="`hint-${opt.value}`"
@@ -81,7 +83,7 @@
                 <span class="text-gray-500"> - {{ triggerDescription(opt.value) }}</span>
               </li>
             </ul>
-          </div>
+          </details>
         </div>
 
         <div>
@@ -144,6 +146,22 @@
             class="w-full rounded-lg border border-gray-600 bg-gray-900 text-white text-sm py-2 px-3 font-mono"
           />
           <p class="text-xs text-gray-500 mt-1">{{ t('stores.email_rules_placeholders_hint') }}</p>
+          <details class="mt-3 rounded-lg border border-gray-700 bg-gray-900/50 px-3 py-2">
+            <summary class="cursor-pointer text-xs font-medium text-gray-300">
+              {{ t('stores.email_rules_placeholder_examples_title') }}
+            </summary>
+            <ul class="space-y-1 mt-2 text-xs text-gray-400 font-mono">
+              <li>{Invoice.Id}</li>
+              <li>{Invoice.OrderId}</li>
+              <li>{Invoice.Status}</li>
+              <li>{Invoice.Amount} {Invoice.Currency}</li>
+              <li>{Invoice.CheckoutLink}</li>
+              <li>{Store.Name}</li>
+              <li>{Invoice.Metadata.posData.itemsTotal}</li>
+              <li>{Invoice.Metadata.itemsTotal}</li>
+            </ul>
+            <p class="text-xs text-gray-500 mt-2">{{ t('stores.email_rules_placeholder_examples_meta_note') }}</p>
+          </details>
         </div>
 
         <p v-if="editorError" class="text-sm text-red-400">{{ editorError }}</p>

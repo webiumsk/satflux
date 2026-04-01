@@ -626,6 +626,8 @@
     "email_rules_subject": "Predmet",
     "email_rules_body": "Telo (HTML)",
     "email_rules_placeholders_hint": "Zástupné symboly: '{'Invoice.Id'}', '{'Invoice.OrderId'}', '{'Invoice.Status'}', '{'Invoice.CheckoutLink'}', '{'Invoice.Metadata.key'}', '{'Store.Name'}', …",
+    "email_rules_placeholder_examples_title": "Príklady placeholderov",
+    "email_rules_placeholder_examples_meta_note": "Metadata závisia od konkrétnej faktúry (pluginu/aplikácie). Ak hľadané pole nie je v metadata, placeholder zostane nezmenený.",
     "email_rules_delete_confirm": "Zmazať toto pravidlo?",
     "settings_tab_archived": "Archivované",
     "settings_tab_archived_desc": "Archivujte tento obchod, aby sa skryl zo zoznamu obchodov. Archivované obchody môžu stále prijímať platby.",

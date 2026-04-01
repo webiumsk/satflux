@@ -625,6 +625,8 @@
     "email_rules_subject": "Subject",
     "email_rules_body": "Body (HTML)",
     "email_rules_placeholders_hint": "Placeholders: '{'Invoice.Id'}', '{'Invoice.OrderId'}', '{'Invoice.Status'}', '{'Invoice.CheckoutLink'}', '{'Invoice.Metadata.key'}', '{'Store.Name'}', …",
+    "email_rules_placeholder_examples_title": "Placeholder examples",
+    "email_rules_placeholder_examples_meta_note": "Metadata fields depend on the specific invoice (plugin/app). If a key is missing in metadata, the placeholder stays unchanged.",
     "email_rules_delete_confirm": "Delete this email rule?",
     "settings_tab_archived": "Archived",
     "settings_tab_archived_desc": "Archive this store to hide it from the main store list. Archived stores can still receive payments.",
