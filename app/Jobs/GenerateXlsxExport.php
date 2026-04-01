@@ -47,7 +47,7 @@ class GenerateXlsxExport implements ShouldQueue
             $btcpayFilters = $this->buildBtcpayFilters($filters);
 
             $disk = Storage::disk('exports');
-            $filePath = 'exports/' . $this->export->id . '_' . time() . '.xlsx';
+            $filePath = $this->export->id . '_' . time() . '.xlsx';
             $fullPath = $disk->path($filePath);
 
             $directory = dirname($fullPath);

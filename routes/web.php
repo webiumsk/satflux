@@ -6,10 +6,27 @@ use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StoreAppPageController;
 use App\Http\Controllers\WooCommerceSatoshiTicketsController;
 use App\Http\Middleware\EnsureStoreOwnership;
+use Illuminate\Filesystem\ServeFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-// /storage/* is served by Laravel 12 built-in (ServeFile). Deploy runs storage:link.
+/**
+ * Signed file downloads must be registered BEFORE the SPA catch-all `/{any}`.
+ * Otherwise `/export-files/...` and `/storage/...` match `{any}` and return the SPA HTML.
+ */
+Route::get('/export-files/{path}', function (Request $request, string $path) {
+    $disk = 'exports';
+    $config = config("filesystems.disks.{$disk}");
+
+    return (new ServeFile($disk, is_array($config) ? $config : [], app()->isProduction()))($request, $path);
+})->where('path', '.*');
+
+Route::get('/storage/{path}', function (Request $request, string $path) {
+    $disk = 'local';
+    $config = config("filesystems.disks.{$disk}");
+
+    return (new ServeFile($disk, is_array($config) ? $config : [], app()->isProduction()))($request, $path);
+})->where('path', '.*');
 
 // OG Image for social media sharing
 Route::get('/og-image.webp', [OgImageController::class, 'generate']);

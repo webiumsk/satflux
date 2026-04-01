@@ -67,7 +67,8 @@ class GenerateCsvExport implements ShouldQueue
             }
 
             $disk = Storage::disk('exports');
-            $filePath = 'exports/' . $this->export->id . '_' . time() . '.csv';
+            // Disk root is already storage/app/exports — avoid exports/exports/… nesting.
+            $filePath = $this->export->id . '_' . time() . '.csv';
             $fullPath = $disk->path($filePath);
 
             // Ensure directory exists and is writable for queue worker process.
