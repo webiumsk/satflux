@@ -149,6 +149,10 @@ class SubscriptionService
      */
     public function canUseAutomaticExports(User $user): bool
     {
+        if ($user->hasUnlimitedAccess()) {
+            return true;
+        }
+
         $plan = $user->currentSubscriptionPlan();
         return $plan?->hasFeature('automatic_csv_exports') ?? false;
     }
