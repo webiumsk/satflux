@@ -46,8 +46,9 @@ class GenerateXlsxExport implements ShouldQueue
 
             $btcpayFilters = $this->buildBtcpayFilters($filters);
 
+            $disk = Storage::disk('local');
             $filePath = 'exports/' . $this->export->id . '_' . time() . '.xlsx';
-            $fullPath = storage_path('app/' . $filePath);
+            $fullPath = $disk->path($filePath);
 
             $directory = dirname($fullPath);
             if (!is_dir($directory)) {
@@ -129,7 +130,7 @@ class GenerateXlsxExport implements ShouldQueue
             $writer->save($fullPath);
 
             $ttl = (int) env('EXPORT_SIGNED_URL_TTL', 3600);
-            $signedUrl = Storage::disk('local')->temporaryUrl(
+            $signedUrl = $disk->temporaryUrl(
                 $filePath,
                 now()->addSeconds($ttl)
             );

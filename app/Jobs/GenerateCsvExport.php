@@ -66,8 +66,9 @@ class GenerateCsvExport implements ShouldQueue
                 }
             }
 
+            $disk = Storage::disk('local');
             $filePath = 'exports/' . $this->export->id . '_' . time() . '.csv';
-            $fullPath = storage_path('app/' . $filePath);
+            $fullPath = $disk->path($filePath);
 
             // Ensure directory exists and is writable for queue worker process.
             $directory = dirname($fullPath);
@@ -96,7 +97,7 @@ class GenerateCsvExport implements ShouldQueue
 
             // Generate signed URL
             $ttl = (int) env('EXPORT_SIGNED_URL_TTL', 3600);
-            $signedUrl = Storage::disk('local')->temporaryUrl(
+            $signedUrl = $disk->temporaryUrl(
                 $filePath,
                 now()->addSeconds($ttl)
             );
