@@ -292,7 +292,31 @@ class TicketService
         if ($fileId !== null) {
             $data['eventLogoFileId'] = $fileId;
         }
-        return array_intersect_key($data, array_flip(self::EVENT_PAYLOAD_KEYS));
+        $payload = array_intersect_key($data, array_flip(self::EVENT_PAYLOAD_KEYS));
+        foreach (['emailBody', 'emailSubject'] as $key) {
+            if (array_key_exists($key, $payload) && is_string($payload[$key])) {
+                $payload[$key] = $this->normalizeTicketEmailPlaceholders($payload[$key]);
+            }
+        }
+
+        return $payload;
+    }
+
+    /**
+     * SatoshiTickets plugin replaces only exact tokens without inner spaces (e.g. {{Name}}, not {{ Name }}).
+     */
+    protected function normalizeTicketEmailPlaceholders(string $text): string
+    {
+        $keys = ['Name', 'Email', 'Title', 'Location', 'Description', 'EventDate', 'Currency'];
+        foreach ($keys as $key) {
+            $text = preg_replace(
+                '/\{\{\s*'.preg_quote($key, '/').'\s*\}\}/',
+                '{{'.$key.'}}',
+                $text
+            ) ?? $text;
+        }
+
+        return $text;
     }
 
     /**

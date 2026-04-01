@@ -432,12 +432,11 @@
                       v-model="eventForm.emailSubject"
                       type="text"
                       class="input-field"
-                      :placeholder="
-                        t('tickets.email_subject_placeholder', {
-                          title: '{{Title}}',
-                        })
-                      "
+                      :placeholder="t('tickets.email_subject_placeholder')"
                     />
+                    <p class="mt-1 text-xs text-gray-500">
+                      {{ t("tickets.email_subject_hint") }}
+                    </p>
                   </div>
                   <div>
                     <label
@@ -448,20 +447,13 @@
                       v-model="eventForm.emailBody"
                       rows="4"
                       class="input-field resize-none"
-                      :placeholder="
-                        t('tickets.email_body_placeholder', {
-                          name: '{{Name}}',
-                          title: '{{Title}}',
-                          location: '{{Location}}',
-                          eventDate: '{{EventDate}}',
-                        })
-                      "
+                      :placeholder="t('tickets.email_body_placeholder')"
                     ></textarea>
                     <p class="mt-1 text-xs text-gray-500">
                       {{ t("tickets.email_placeholders_hint_prefix") }}
                       <code class="text-gray-400" v-pre
-                        >{{ Name }}, {{ Email }}, {{ Title }}, {{ Location }},
-                        {{ Description }}, {{ EventDate }}, {{ Currency }}</code
+                        >{{Name}}, {{Email}}, {{Title}}, {{Location}},
+                        {{Description}}, {{EventDate}}, {{Currency}}</code
                       >
                       {{ t("tickets.email_placeholders_hint_suffix") }}
                     </p>
