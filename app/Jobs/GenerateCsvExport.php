@@ -69,13 +69,22 @@ class GenerateCsvExport implements ShouldQueue
             $filePath = 'exports/' . $this->export->id . '_' . time() . '.csv';
             $fullPath = storage_path('app/' . $filePath);
 
-            // Ensure directory exists
+            // Ensure directory exists and is writable for queue worker process.
             $directory = dirname($fullPath);
             if (!is_dir($directory)) {
-                mkdir($directory, 0755, true);
+                mkdir($directory, 0775, true);
+            }
+            if (!is_writable($directory)) {
+                @chmod($directory, 0775);
+            }
+            if (!is_writable($directory)) {
+                throw new \RuntimeException("Export directory is not writable: {$directory}");
             }
 
             $handle = fopen($fullPath, 'w');
+            if ($handle === false) {
+                throw new \RuntimeException("Unable to create export file: {$fullPath}");
+            }
 
             if ($this->export->format === 'standard') {
                 $this->writeStandardCsv($handle, $invoiceService, $store, $btcpayFilters);

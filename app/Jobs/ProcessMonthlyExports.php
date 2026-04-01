@@ -27,7 +27,10 @@ class ProcessMonthlyExports implements ShouldQueue
 
     public function __construct(
         public ?string $forMonth = null // Y-m format; default previous month
-    ) {}
+    ) {
+        // Queue worker is configured for webhooks,exports. Keep monthly scheduler on exports queue.
+        $this->onQueue('exports');
+    }
 
     public function handle(SubscriptionService $subscriptionService): void
     {
