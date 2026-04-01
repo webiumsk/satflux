@@ -26,7 +26,8 @@ class ProcessMonthlyExports implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function __construct(
-        public ?string $forMonth = null // Y-m format; default previous month
+        public ?string $forMonth = null, // Y-m format; default previous month
+        public ?string $storeId = null // optional local Store UUID filter
     ) {
         // Queue worker is configured for webhooks,exports. Keep monthly scheduler on exports queue.
         $this->onQueue('exports');
@@ -59,6 +60,7 @@ class ProcessMonthlyExports implements ShouldQueue
 
         $stores = Store::where('auto_report_enabled', true)
             ->whereIn('user_id', $userIds)
+            ->when($this->storeId, fn ($query) => $query->where('id', $this->storeId))
             ->with('user')
             ->get();
 

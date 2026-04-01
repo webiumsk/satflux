@@ -1,0 +1,1 @@
+invoiceId,store,pos,createdTime,status,amount,currency,paidAmount,paidSats,paymentRate,tax,tip,discount,paymentMethod,buyerEmail,orderId,checkoutLink
