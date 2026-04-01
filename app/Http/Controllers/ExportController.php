@@ -80,7 +80,7 @@ class ExportController extends Controller
 
         // Regenerate signed URL if expired
         $ttl = (int) env('EXPORT_SIGNED_URL_TTL', 3600);
-        $signedUrl = \Illuminate\Support\Facades\Storage::disk('local')->temporaryUrl(
+        $signedUrl = \Illuminate\Support\Facades\Storage::disk('exports')->temporaryUrl(
             $export->file_path,
             now()->addSeconds($ttl)
         );
@@ -152,8 +152,8 @@ class ExportController extends Controller
             abort(403);
         }
 
-        if ($export->file_path && \Illuminate\Support\Facades\Storage::disk('local')->exists($export->file_path)) {
-            \Illuminate\Support\Facades\Storage::disk('local')->delete($export->file_path);
+        if ($export->file_path && \Illuminate\Support\Facades\Storage::disk('exports')->exists($export->file_path)) {
+            \Illuminate\Support\Facades\Storage::disk('exports')->delete($export->file_path);
         }
 
         $export->delete();

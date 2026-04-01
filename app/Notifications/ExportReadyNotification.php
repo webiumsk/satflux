@@ -43,8 +43,8 @@ class ExportReadyNotification extends Notification
             ->action('Download export', $downloadUrl)
             ->line('Thank you for using our service!');
 
-        if ($this->export->file_path && Storage::disk('local')->exists($this->export->file_path)) {
-            $fullPath = Storage::disk('local')->path($this->export->file_path);
+        if ($this->export->file_path && Storage::disk('exports')->exists($this->export->file_path)) {
+            $fullPath = Storage::disk('exports')->path($this->export->file_path);
             $ext = pathinfo($this->export->file_path, PATHINFO_EXTENSION);
             $filename = "export-{$this->store->name}-{$this->label}.{$ext}";
             $filename = preg_replace('/[^a-zA-Z0-9._-]/', '_', $filename);

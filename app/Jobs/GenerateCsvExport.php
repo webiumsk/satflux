@@ -66,7 +66,7 @@ class GenerateCsvExport implements ShouldQueue
                 }
             }
 
-            $disk = Storage::disk('local');
+            $disk = Storage::disk('exports');
             $filePath = 'exports/' . $this->export->id . '_' . time() . '.csv';
             $fullPath = $disk->path($filePath);
 
