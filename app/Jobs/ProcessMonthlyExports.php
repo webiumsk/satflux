@@ -6,8 +6,6 @@ use App\Jobs\GenerateCsvExport;
 use App\Jobs\GenerateXlsxExport;
 use App\Models\Export;
 use App\Models\Store;
-use App\Models\SubscriptionPlan;
-use App\Models\User;
 use App\Services\SubscriptionService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -40,29 +38,19 @@ class ProcessMonthlyExports implements ShouldQueue
         $lastDay = (new \DateTime($dateFrom))->modify('last day of this month')->format('Y-m-d');
         $dateTo = $lastDay;
 
-        $planIds = SubscriptionPlan::where('is_active', true)
-            ->get()
-            ->filter(fn ($p) => in_array('automatic_csv_exports', $p->features ?? [], true))
-            ->pluck('id')
-            ->all();
-
-        if (empty($planIds)) {
-            return;
-        }
-
-        $userIds = \DB::table('subscriptions')
-            ->whereIn('plan_id', $planIds)
-            ->whereIn('status', ['active', 'grace'])
-            ->where('expires_at', '>', now())
-            ->pluck('user_id')
-            ->unique()
-            ->all();
-
         $stores = Store::where('auto_report_enabled', true)
-            ->whereIn('user_id', $userIds)
             ->when($this->storeId, fn ($query) => $query->where('id', $this->storeId))
             ->with('user')
             ->get();
+
+        if ($stores->isEmpty()) {
+            Log::info('No stores found for automatic monthly export run', [
+                'month' => $month,
+                'store_id_filter' => $this->storeId,
+            ]);
+
+            return;
+        }
 
         foreach ($stores as $store) {
             $user = $store->user;
