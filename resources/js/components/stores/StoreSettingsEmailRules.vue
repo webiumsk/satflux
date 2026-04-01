@@ -3,10 +3,6 @@
     <p class="text-sm text-gray-400 max-w-3xl">
       {{ t('stores.email_rules_intro') }}
     </p>
-    <p class="text-sm text-amber-200/90 bg-amber-500/10 border border-amber-500/25 rounded-lg px-4 py-3 max-w-3xl">
-      {{ t('stores.email_rules_smtp_note') }}
-    </p>
-
     <div class="flex justify-end">
       <button
         type="button"
@@ -73,6 +69,19 @@
           >
             <option v-for="opt in triggerOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
           </select>
+          <div v-if="triggerOptions.length" class="mt-2 space-y-1">
+            <p class="text-xs text-gray-500">{{ t('stores.email_rules_trigger_help') }}</p>
+            <ul class="space-y-1">
+              <li
+                v-for="opt in triggerOptions"
+                :key="`hint-${opt.value}`"
+                class="text-xs text-gray-400"
+              >
+                <span class="text-gray-300">{{ opt.label }}</span>
+                <span class="text-gray-500"> - {{ triggerDescription(opt.value) }}</span>
+              </li>
+            </ul>
+          </div>
         </div>
 
         <div>
@@ -179,9 +188,10 @@ const triggerOptions = ref<{ value: string; label: string }[]>([]);
 const editorOpen = ref(false);
 const editingId = ref<string | null>(null);
 const editorError = ref('');
+const preferredDefaultTrigger = 'InvoiceSettled';
 
 const form = ref({
-  trigger: 'InvoicePaymentSettled',
+  trigger: preferredDefaultTrigger,
   condition: '',
   to_addresses: '',
   cc_addresses: '',
@@ -195,8 +205,10 @@ const form = ref({
 async function loadTriggers() {
   const res = await api.get(`/stores/${props.store.id}/email-rules/triggers`);
   triggerOptions.value = res.data.data ?? [];
-  if (triggerOptions.value.length && !triggerOptions.value.some((o) => o.value === form.value.trigger)) {
-    form.value.trigger = triggerOptions.value[0].value;
+  if (triggerOptions.value.length && !triggerOptions.value.some((o: { value: string; label: string }) => o.value === form.value.trigger)) {
+    form.value.trigger =
+      triggerOptions.value.find((o: { value: string; label: string }) => o.value === preferredDefaultTrigger)?.value ??
+      triggerOptions.value[0].value;
   }
 }
 
@@ -220,16 +232,23 @@ onMounted(async () => {
 
 function resetForm() {
   form.value = {
-    trigger: triggerOptions.value[0]?.value ?? 'InvoicePaymentSettled',
+    trigger:
+      triggerOptions.value.find((o: { value: string; label: string }) => o.value === preferredDefaultTrigger)?.value ??
+      triggerOptions.value[0]?.value ??
+      preferredDefaultTrigger,
     condition: '',
     to_addresses: '',
     cc_addresses: '',
     bcc_addresses: '',
     send_to_buyer: false,
-    subject: '',
+    subject: 'Invoice {Invoice.Id} settled',
     body: `<p>Invoice {Invoice.Id} (Order: {Invoice.OrderId})</p>`,
     sort_order: 0,
   };
+}
+
+function triggerDescription(trigger: string) {
+  return t(`stores.email_rules_trigger_desc.${trigger}`);
 }
 
 function openCreate() {
