@@ -425,6 +425,8 @@
     "back_to_stores": "Späť na obchody",
     "point_of_sale": "PoS Terminál",
     "no_pos": "Žiadny PoS",
+    "crowdfund": "Crowdfund",
+    "no_crowdfund": "Žiadny Crowdfund",
     "pay_button": "Pay Button",
     "pay_button_warning_title": "Upozornenie: Tlačidlo platby by malo slúžiť len na prepitné a dary",
     "pay_button_warning_text": "Používanie tlačidla platby pre e-commerce nie je odporúčané, pretože údaje objednávky môže používateľ meniť. Pre e-commerce používajte naše Greenfield API. Ak tento obchod spracováva komerčné transakcie, odporúčame vytvoriť pred použitím tlačidla platby samostatný obchod.",

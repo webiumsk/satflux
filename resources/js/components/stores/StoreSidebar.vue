@@ -301,6 +301,51 @@
             <div v-else class="ml-4 text-xs text-gray-500">{{ t('stores.no_pos') }}</div>
           </div>
 
+          <!-- Crowdfund -->
+          <div class="mb-2">
+            <component
+              :is="isInertia ? Link : RouterLink"
+              :href="isInertia ? `/stores/${store.id}/apps/create?type=Crowdfund` : undefined"
+              :to="!isInertia ? { name: 'stores-apps-create', params: { id: store.id }, query: { type: 'Crowdfund' } } : undefined"
+              class="flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer"
+              :class="
+                isAppsCreateWithType('Crowdfund')
+                  ? 'bg-gray-900 text-white'
+                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+              "
+              @click="showMobileMenu = false"
+            >
+              <span class="flex items-center min-w-0">
+                <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                {{ t('stores.crowdfund') }}
+              </span>
+              <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+            </component>
+            <div v-if="getAppsByType('Crowdfund').length > 0" class="ml-4 space-y-1">
+              <component
+                v-for="app in getAppsByType('Crowdfund')"
+                :key="app.id"
+                :is="isInertia ? Link : RouterLink"
+                :href="isInertia ? `/stores/${store.id}/apps/${app.id}` : undefined"
+                :to="!isInertia ? `/stores/${store.id}/apps/${app.id}` : undefined"
+                class="block px-3 py-2 rounded-md text-sm transition-colors"
+                :class="
+                  paramAppId === app.id
+                    ? 'bg-gray-900 text-white'
+                    : 'text-gray-400 hover:bg-gray-700 hover:text-white'
+                "
+                @click="showMobileMenu = false"
+              >
+                {{ app.name }}
+              </component>
+            </div>
+            <div v-else class="ml-4 text-xs text-gray-500">{{ t('stores.no_crowdfund') }}</div>
+          </div>
+
           <!-- Pay Button -->
           <div class="mb-2">
             <component

@@ -516,6 +516,8 @@
     "api_key_create_failed": "Error al crear la clave API",
     "point_of_sale": "Punto de Venta",
     "no_pos": "Sin PoS",
+    "crowdfund": "Crowdfund",
+    "no_crowdfund": "Sin Crowdfund",
     "pay_button": "Botón de Pago",
     "pay_button_warning_title": "Aviso: El botón de pago debe usarse solo para propinas y donaciones",
     "pay_button_warning_text": "No se recomienda usar el botón de pago para integraciones de e-commerce, ya que el usuario puede modificar la información relevante del pedido. Para e-commerce, use nuestra API Greenfield. Si esta tienda procesa transacciones comerciales, le aconsejamos crear una tienda separada antes de usar el botón de pago.",
