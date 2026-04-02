@@ -30,6 +30,9 @@ yarn-error.log
 /storage/logs/*.log
 !/storage/logs/.gitkeep
 
+# Generated CSV exports (runtime artifacts)
+/storage/app/exports/*.csv
+
 # BTCPay config bot runtime (logs, etc.)
 /scripts/btcpay-config-bot/storage/
 /scripts/btcpay-config-bot/node_modules
