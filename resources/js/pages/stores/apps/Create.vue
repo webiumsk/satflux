@@ -17,7 +17,7 @@
         <div
           class="sticky top-0 z-20 bg-gray-900/80 backdrop-blur-md border-b border-gray-800"
         >
-          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
             <div class="flex items-center justify-between">
               <div class="flex items-center">
                 <Link
@@ -53,7 +53,9 @@
         </div>
 
         <!-- Content Container -->
-        <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
+        <div
+          class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar"
+        >
           <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div
               class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"

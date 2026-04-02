@@ -2,7 +2,7 @@
   <AppShowLayout ref="layoutRef" :store="store" :app="app">
     <template #toolbar="{ app, store }">
       <div class="border-b border-gray-800 bg-gray-900/80 backdrop-blur-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
           <div
             class="flex flex-col md:flex-row md:items-center justify-between gap-4"
           >
@@ -457,8 +457,8 @@
                     <p class="mt-1 text-xs text-gray-500">
                       {{ t("tickets.email_placeholders_hint_prefix") }}
                       <code class="text-gray-400" v-pre
-                        >{{Name}}, {{Email}}, {{Title}}, {{Location}},
-                        {{Description}}, {{EventDate}}, {{Currency}}</code
+                        >{{ Name }}, {{ Email }}, {{ Title }}, {{ Location }},
+                        {{ Description }}, {{ EventDate }}, {{ Currency }}</code
                       >
                       {{ t("tickets.email_placeholders_hint_suffix") }}
                     </p>
@@ -757,7 +757,9 @@
                         :title="
                           event.eventState === 'Active' &&
                           (event.ticketTypesCount ?? 0) > 0
-                            ? t('tickets.cannot_deactivate_event_with_ticket_types')
+                            ? t(
+                                'tickets.cannot_deactivate_event_with_ticket_types',
+                              )
                             : event.eventState === 'Active'
                               ? t('tickets.disable')
                               : t('tickets.activate')
@@ -2086,10 +2088,7 @@ function handleEditEvent(event: TicketEvent) {
 }
 
 async function handleToggleEvent(event: TicketEvent) {
-  if (
-    event.eventState === "Active" &&
-    (event.ticketTypesCount ?? 0) > 0
-  ) {
+  if (event.eventState === "Active" && (event.ticketTypesCount ?? 0) > 0) {
     showError(t("tickets.cannot_deactivate_event_with_ticket_types"));
     return;
   }

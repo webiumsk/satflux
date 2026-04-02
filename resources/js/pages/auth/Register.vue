@@ -17,7 +17,7 @@
         <router-link to="/" class="inline-block">
           <span
             class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500 tracking-tight"
-            >satflux.io</span
+            ><span class="uppercase">satflux</span>.io</span
           >
         </router-link>
         <h2 class="mt-6 text-center text-3xl font-extrabold text-white">

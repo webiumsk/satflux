@@ -1,11 +1,13 @@
 <template>
-  <!-- Quasar QLayout-style: fixed viewport shell; scroll only inside page/main (not document) -->
-  <div class="flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden bg-gray-900">
+  <!-- Quasar QLayout-style: fixed viewport shell; scroll only inside routed pages (not main), so store toolbars stay visible on all breakpoints. -->
+  <div
+    class="flex min-h-dvh flex-col overflow-hidden bg-gray-900 md:h-dvh md:max-h-dvh md:min-h-0"
+  >
     <AppHeader class="shrink-0" />
     <main class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <slot />
+      <AppFooter class="shrink-0" />
     </main>
-    <AppFooter class="shrink-0" />
     <OnboardingTour />
   </div>
 </template>

@@ -1169,7 +1169,7 @@
       <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="mx-auto mb-20 max-w-3xl text-center md:mb-28">
           <p
-            class="mb-6 font-mono text-[11px] uppercase tracking-[0.3em] text-orange-400/90"
+            class="mb-6 mb-6 text-xs font-mono uppercase tracking-[0.35em] text-orange-400/90"
           >
             {{ t("landing.how_it_works_kicker") }}
           </p>
