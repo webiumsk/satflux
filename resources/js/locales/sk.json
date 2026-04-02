@@ -1135,8 +1135,8 @@
   "landing": {
     "hero_kicker": "Ovládací panel pre obchodníkov na BTCPay Server.",
     "hero_badge": "Obchody · služby · e-commerce · podujatia",
-    "hero_headline": "Bitcoin pokladňu vnímajte ako svoju prevádzku.",
-    "hero_subheadline": "PoS, faktúry, vstupenky, Lightning adresy a exporty - jedna nástenka, nie labyrint obrazoviek BTCPay.",
+    "hero_headline": "Bitcoin pokladňa vo vašej prevádzke.",
+    "hero_subheadline": "PoS, faktúry, vstupenky, Lightning adresy a exporty - jedna nástenka a jednoduchosť.",
     "hero_description": "Pripojte Blink, Aqua alebo Cashu (beta). Riadiame BTCPay; šifrované connection stringy ostávajú u vás a saty idú priamo do vašej peňaženky.",
     "hero_chip_custody": "Self-custody: my nedržíme sats",
     "hero_chip_surface": "PoS, web checkout a vstupenky",

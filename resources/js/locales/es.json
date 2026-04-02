@@ -1283,8 +1283,8 @@
   "landing": {
     "hero_kicker": "El panel de control para comerciantes sobre BTCPay Server.",
     "hero_badge": "Tiendas · servicios · e-commerce · eventos",
-    "hero_headline": "Gestiona el checkout en Bitcoin como tu negocio.",
-    "hero_subheadline": "PoS, facturas, entradas, direcciones Lightning y exportes - un panel, no un laberinto de pantallas de BTCPay.",
+    "hero_headline": "Gestiona el checkout de Bitcoin en tu negocio.",
+    "hero_subheadline": "PoS, facturas, entradas, direcciones Lightning y exportes - un panel y simplicidad.",
     "hero_description": "Conecta Blink, Aqua o Cashu (beta). Orquestamos BTCPay; tus cadenas cifradas siguen siendo tuyas y los sats van directo a tu billetera.",
     "hero_chip_custody": "Autocustodia: nunca retenemos sats",
     "hero_chip_surface": "PoS, checkout web y taquilla",
