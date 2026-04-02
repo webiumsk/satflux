@@ -127,15 +127,24 @@
                         </div>
                       </div>
 
-                      <!-- Crowdfund Option (Disabled) -->
+                      <!-- Crowdfund -->
                       <div
+                        @click="form.app_type = 'Crowdfund'"
                         :class="[
-                          'relative rounded-xl border-2 p-4 cursor-not-allowed transition-all duration-200 flex flex-col items-center text-center gap-3',
-                          'border-gray-700 bg-gray-900/30 opacity-60',
+                          'relative rounded-xl border-2 p-4 cursor-pointer transition-all duration-200 flex flex-col items-center text-center gap-3',
+                          form.app_type === 'Crowdfund'
+                            ? 'border-indigo-500 bg-indigo-500/10'
+                            : 'border-gray-700 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-800',
                         ]"
-                        title="Crowdfund apps are temporarily unavailable"
                       >
-                        <div class="p-3 rounded-full bg-gray-700 text-gray-500">
+                        <div
+                          :class="[
+                            'p-3 rounded-full',
+                            form.app_type === 'Crowdfund'
+                              ? 'bg-indigo-500 text-white'
+                              : 'bg-gray-700 text-gray-400',
+                          ]"
+                        >
                           <svg
                             class="w-6 h-6"
                             fill="none"
@@ -151,10 +160,29 @@
                           </svg>
                         </div>
                         <div>
-                          <h3 class="font-medium text-white mb-1">Crowdfund</h3>
+                          <h3 class="font-medium text-white mb-1">
+                            {{ t("apps.crowdfund") }}
+                          </h3>
                           <p class="text-xs text-gray-400">
-                            Temporarily Unavailable
+                            {{ t("apps.crowdfund_description") }}
                           </p>
+                        </div>
+
+                        <div
+                          v-if="form.app_type === 'Crowdfund'"
+                          class="absolute top-3 right-3 text-indigo-500"
+                        >
+                          <svg
+                            class="w-5 h-5"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fill-rule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                              clip-rule="evenodd"
+                            />
+                          </svg>
                         </div>
                       </div>
                     </div>
@@ -317,6 +345,7 @@ onMounted(() => {
   if (typeFromQuery) {
     const typeMap: Record<string, string> = {
       PointOfSale: "PointOfSale",
+      Crowdfund: "Crowdfund",
       PaymentButton: "PaymentButton",
       LightningAddress: "LightningAddress",
     };

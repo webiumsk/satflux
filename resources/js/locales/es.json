@@ -233,6 +233,8 @@
     "app_name_placeholder": "ej., TPV principal o Recaudador de proyecto",
     "point_of_sale": "Punto de venta (TPV)",
     "point_of_sale_description": "Terminal virtual para pagos en persona",
+    "crowdfund": "Crowdfund",
+    "crowdfund_description": "Campañas con meta y página pública para aportaciones",
     "tickets": "Entradas",
     "tickets_description": "Vende y gestiona entradas para eventos con Bitcoin.",
     "pos_style": "Estilo del TPV",
@@ -242,8 +244,6 @@
     "pos_style_print": "Vista impresión (Print)",
     "creating": "Creando...",
     "failed_to_create": "Error al crear la aplicación",
-    "crowdfund_not_available": "Crowdfund no disponible",
-    "crowdfund_unavailable_description": "Las aplicaciones Crowdfund no están disponibles temporalmente. La actualización aún no es compatible con la API de BTCPay.",
     "app_type_not_supported": "Tipo de aplicación no soportado",
     "app_type_not_supported_description": "La configuración de este tipo de aplicación aún no está implementada."
   },

@@ -1,5 +1,5 @@
 <template>
-  <AppShowLayout ref="layoutRef">
+  <AppShowLayout ref="layoutRef" :store="store" :app="app">
     <template #toolbar="{ app, store }">
       <AppShowHeader
         :title="app.name || 'Crowdfund'"
@@ -58,6 +58,8 @@ import DeleteAppModal from "../../components/stores/DeleteAppModal.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 import CrowdfundForm from "./CrowdfundForm.vue";
 import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
+
+defineProps<{ store?: any; app?: any }>();
 
 const { t } = useI18n();
 const { btcPayUrl, load: loadBtcpayConfig } = useBtcPayUrl();

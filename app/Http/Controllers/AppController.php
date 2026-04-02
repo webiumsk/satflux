@@ -93,21 +93,10 @@ class AppController extends Controller
     public function store(Request $request, Store $store)
     {
         $request->validate([
-            'app_type' => ['required', 'string', 'in:PointOfSale,PaymentButton,LightningAddress,Tickets'],
+            'app_type' => ['required', 'string', 'in:PointOfSale,Crowdfund,PaymentButton,LightningAddress,Tickets'],
             'name' => ['required', 'string', 'max:255'],
             'config' => ['sometimes', 'array'],
         ]);
-
-        // Dočasne zakázať vytváranie Crowdfund appov (BTCPay API nepodporuje update)
-        if (strtolower($request->app_type) === 'crowdfund') {
-            \Log::warning('Attempt to create Crowdfund app blocked', [
-                'store_id' => $store->id,
-                'app_name' => $request->name,
-            ]);
-            return response()->json([
-                'message' => 'Crowdfund apps are temporarily unavailable. Update functionality is not yet supported by BTCPay API.',
-            ], 503); // Service Unavailable
-        }
 
         // Tickets are a store-level feature (like LN Address): use /stores/{store}/tickets, not apps.
         if ($request->app_type === 'Tickets') {
@@ -315,18 +304,6 @@ class AppController extends Controller
             return response()->json([
                 'message' => 'App not found for this store.',
             ], 404);
-        }
-
-        // Dočasne zakázať update Crowdfund appov (BTCPay API nepodporuje update)
-        if (strtolower($app->app_type) === 'crowdfund') {
-            \Log::warning('Attempt to update Crowdfund app blocked', [
-                'app_id' => $app->id,
-                'store_id' => $store->id,
-                'app_name' => $app->name,
-            ]);
-            return response()->json([
-                'message' => 'Crowdfund apps cannot be updated. Update functionality is not yet supported by BTCPay API.',
-            ], 503); // Service Unavailable
         }
 
         // Load merchant API key from store owner

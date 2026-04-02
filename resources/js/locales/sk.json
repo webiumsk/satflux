@@ -1001,6 +1001,8 @@
     "app_name_placeholder": "napr. Hlavný obchod PoS alebo Projektový fundraiser",
     "point_of_sale": "Terminál",
     "point_of_sale_description": "Virtuálny terminál pre platby na osobu",
+    "crowdfund": "Crowdfund",
+    "crowdfund_description": "Kampane s cieľom a verejnou stránkou pre prispievateľov",
     "tickets": "Vstupenky",
     "tickets_description": "Predávajte a spravujte vstupenky na akcie s Bitcoinom.",
     "pos_style": "Štýl terminálu",
@@ -1010,8 +1012,6 @@
     "pos_style_print": "Zobrazenie pre tlač (Print)",
     "creating": "Vytváram...",
     "failed_to_create": "Zlyhalo vytvorenie aplikácie",
-    "crowdfund_not_available": "Crowdfunding nie je dostupný",
-    "crowdfund_unavailable_description": "Crowdfunding aplikácie sú dočasne nedostupné. Funkcia aktualizácie ešte nie je podporovaná BTCPay API.",
     "app_type_not_supported": "Typ aplikácie nie je podporovaný",
     "app_type_not_supported_description": "Nastavenia pre tento typ aplikácie ešte nie sú implementované."
   },

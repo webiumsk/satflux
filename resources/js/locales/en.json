@@ -1000,6 +1000,8 @@
     "app_name_placeholder": "e.g., Main Store POS or Project Fundraiser",
     "point_of_sale": "Point of Sale",
     "point_of_sale_description": "Virtual terminal for in-person payments",
+    "crowdfund": "Crowdfund",
+    "crowdfund_description": "Goal-based campaigns with a public contribution page",
     "tickets": "Tickets",
     "tickets_description": "Sell and manage event tickets with Bitcoin.",
     "pos_style": "Point of Sale Style",
@@ -1009,8 +1011,6 @@
     "pos_style_print": "Print Display (Print)",
     "creating": "Creating...",
     "failed_to_create": "Failed to create app",
-    "crowdfund_not_available": "Crowdfund Not Available",
-    "crowdfund_unavailable_description": "Crowdfund apps are temporarily unavailable. Update functionality is not yet supported by BTCPay API.",
     "app_type_not_supported": "App Type Not Supported",
     "app_type_not_supported_description": "Settings for this app type are not yet implemented."
   },
