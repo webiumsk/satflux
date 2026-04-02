@@ -1,6 +1,9 @@
 <template>
+  <!-- Fill AppLayout main so routed pages get a bounded flex child (QLayout / QPageContainer pattern) -->
   <AppLayout v-if="needsLayout">
-    <router-view />
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <router-view />
+    </div>
   </AppLayout>
   <router-view v-else />
   <FlashMessage />

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex bg-gray-900 overflow-hidden">
+  <div class="flex min-h-0 flex-1 overflow-hidden bg-gray-900">
     <!-- Sidebar -->
     <StoreSidebar
       :store="store"
@@ -10,7 +10,7 @@
 
     <!-- Main Content -->
     <div
-      class="flex-1 flex flex-col overflow-hidden bg-gray-900 border-l border-gray-800"
+      class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-l border-gray-800 bg-gray-900"
     >
       <!-- Header -->
       <div
@@ -52,7 +52,7 @@
       </div>
 
       <!-- Content Container -->
-      <div class="flex-1 overflow-y-auto custom-scrollbar">
+      <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div
             class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"

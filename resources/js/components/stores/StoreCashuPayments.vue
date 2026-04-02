@@ -1,10 +1,18 @@
 <template>
   <div class="space-y-6">
-    <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
-      <div class="px-6 py-5 border-b border-gray-700 bg-gray-800/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div
+      class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
+    >
+      <div
+        class="px-6 py-5 border-b border-gray-700 bg-gray-800/50 flex flex-col md:flex-row md:items-center justify-between gap-4"
+      >
         <div>
-          <h1 class="text-2xl font-bold text-white">{{ t('stores.cashu_payments_title') }}</h1>
-          <p class="text-sm text-gray-400 mt-1">{{ t('stores.cashu_payments_subtitle') }}</p>
+          <h1 class="text-2xl font-bold text-white">
+            {{ t("stores.cashu_payments_title") }}
+          </h1>
+          <p class="text-sm text-gray-400 mt-1">
+            {{ t("stores.cashu_payments_subtitle") }}
+          </p>
         </div>
         <button
           type="button"
@@ -12,18 +20,20 @@
           :disabled="loading"
           @click="fetchPayments()"
         >
-          {{ t('stores.cashu_payments_refresh') }}
+          {{ t("stores.cashu_payments_refresh") }}
         </button>
       </div>
 
       <div class="px-6 py-5">
-        <div class="mb-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-4">
+        <div
+          class="mb-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-4"
+        >
           <div class="flex flex-col gap-1.5 sm:min-w-[12rem]">
             <label
               class="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider"
               for="cashu-settlement-filter"
             >
-              {{ t('stores.cashu_settlement_filter') }}
+              {{ t("stores.cashu_settlement_filter") }}
             </label>
             <Select
               id="cashu-settlement-filter"
@@ -36,26 +46,46 @@
           </div>
         </div>
 
-        <div v-if="loading && payments.items.length === 0" class="text-center py-16">
+        <div
+          v-if="loading && payments.items.length === 0"
+          class="text-center py-16"
+        >
           <svg
             class="animate-spin mx-auto h-10 w-10 text-indigo-500 mb-4"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
           >
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            />
             <path
               class="opacity-75"
               fill="currentColor"
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             />
           </svg>
-          <p class="text-gray-400 text-sm">{{ t('stores.cashu_payments_loading') }}</p>
+          <p class="text-gray-400 text-sm">
+            {{ t("stores.cashu_payments_loading") }}
+          </p>
         </div>
 
-        <div v-else-if="error" class="rounded-xl border border-red-500/25 bg-red-500/10 p-4 mb-4">
+        <div
+          v-else-if="error"
+          class="rounded-xl border border-red-500/25 bg-red-500/10 p-4 mb-4"
+        >
           <div class="flex items-start gap-3">
-            <svg class="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              class="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -72,20 +102,30 @@
             <table class="min-w-full divide-y divide-gray-700 text-sm">
               <thead class="bg-gray-700/50">
                 <tr>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    {{ t('stores.cashu_col_created') }}
+                  <th
+                    class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
+                  >
+                    {{ t("stores.cashu_col_created") }}
                   </th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    {{ t('stores.cashu_col_amount') }}
+                  <th
+                    class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
+                  >
+                    {{ t("stores.cashu_col_amount") }}
                   </th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    {{ t('stores.cashu_col_settlement') }}
+                  <th
+                    class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
+                  >
+                    {{ t("stores.cashu_col_settlement") }}
                   </th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    {{ t('stores.cashu_col_error') }}
+                  <th
+                    class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
+                  >
+                    {{ t("stores.cashu_col_error") }}
                   </th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    {{ t('stores.cashu_col_action') }}
+                  <th
+                    class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
+                  >
+                    {{ t("stores.cashu_col_action") }}
                   </th>
                 </tr>
               </thead>
@@ -95,22 +135,30 @@
                   :key="p.quote_id"
                   class="hover:bg-gray-800/60 transition-colors"
                 >
-                  <td class="px-4 py-3 text-gray-300 whitespace-nowrap tabular-nums">
+                  <td
+                    class="px-4 py-3 text-gray-300 whitespace-nowrap tabular-nums"
+                  >
                     {{ formatDate(p.created_at) }}
                   </td>
-                  <td class="px-4 py-3 text-white font-medium whitespace-nowrap tabular-nums">
+                  <td
+                    class="px-4 py-3 text-white font-medium whitespace-nowrap tabular-nums"
+                  >
                     {{ formatAmount(p.amount_sats) }} sat
                   </td>
                   <td class="px-4 py-3">
                     <span :class="settlementPillClass(p.settlement_state)">
-                      {{ p.settlement_state || '—' }}
+                      {{ p.settlement_state || "-" }}
                     </span>
                   </td>
                   <td
                     class="px-4 py-3 break-all max-w-xs"
-                    :class="p.settlement_error ? 'text-red-300/90 text-sm' : 'text-gray-500 text-sm'"
+                    :class="
+                      p.settlement_error
+                        ? 'text-red-300/90 text-sm'
+                        : 'text-gray-500 text-sm'
+                    "
                   >
-                    {{ p.settlement_error || '—' }}
+                    {{ p.settlement_error || "-" }}
                   </td>
                   <td class="px-4 py-3">
                     <button
@@ -122,16 +170,19 @@
                     >
                       {{
                         retryingQuoteIds.has(p.quote_id)
-                          ? t('stores.cashu_payments_retrying')
-                          : t('stores.cashu_payments_retry')
+                          ? t("stores.cashu_payments_retrying")
+                          : t("stores.cashu_payments_retry")
                       }}
                     </button>
-                    <span v-else class="text-gray-600 text-sm">—</span>
+                    <span v-else class="text-gray-600 text-sm">-</span>
                   </td>
                 </tr>
                 <tr v-if="payments.items.length === 0">
-                  <td colspan="5" class="px-4 py-14 text-center text-gray-500 text-sm">
-                    {{ t('stores.cashu_payments_empty') }}
+                  <td
+                    colspan="5"
+                    class="px-4 py-14 text-center text-gray-500 text-sm"
+                  >
+                    {{ t("stores.cashu_payments_empty") }}
                   </td>
                 </tr>
               </tbody>
@@ -147,11 +198,13 @@
               :disabled="offset <= 0 || loading"
               @click="changeOffset(-limit)"
             >
-              {{ t('common.previous') }}
+              {{ t("common.previous") }}
             </button>
-            <div class="text-sm text-gray-500 text-center order-first sm:order-none">
+            <div
+              class="text-sm text-gray-500 text-center order-first sm:order-none"
+            >
               {{
-                t('stores.cashu_payments_showing', {
+                t("stores.cashu_payments_showing", {
                   start: payments.total === 0 ? 0 : offset + 1,
                   end: Math.min(offset + limit, payments.total),
                   total: payments.total,
@@ -164,7 +217,7 @@
               :disabled="offset + limit >= payments.total || loading"
               @click="changeOffset(limit)"
             >
-              {{ t('common.next') }}
+              {{ t("common.next") }}
             </button>
           </div>
         </template>
@@ -174,10 +227,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { useI18n } from 'vue-i18n';
-import api from '../../services/api';
-import Select from '../ui/Select.vue';
+import { computed, onMounted, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
+import api from "../../services/api";
+import Select from "../ui/Select.vue";
 
 const { t } = useI18n();
 
@@ -185,7 +238,7 @@ const props = defineProps<{
   store: { id: string };
 }>();
 
-type SettlementState = 'SETTLED' | 'PENDING' | 'FAILED';
+type SettlementState = "SETTLED" | "PENDING" | "FAILED";
 
 interface CashuPayment {
   quote_id: string;
@@ -204,13 +257,13 @@ interface CashuPaymentsResponse {
 
 const limit = 50;
 const offset = ref(0);
-const settlementState = ref<string>('');
+const settlementState = ref<string>("");
 
 const settlementStateOptions = computed(() => [
-  { label: t('stores.cashu_filter_all'), value: '' },
-  { label: 'SETTLED', value: 'SETTLED' },
-  { label: 'PENDING', value: 'PENDING' },
-  { label: 'FAILED', value: 'FAILED' },
+  { label: t("stores.cashu_filter_all"), value: "" },
+  { label: "SETTLED", value: "SETTLED" },
+  { label: "PENDING", value: "PENDING" },
+  { label: "FAILED", value: "FAILED" },
 ]);
 
 const payments = ref<CashuPaymentsResponse>({
@@ -229,30 +282,33 @@ function storeId(): string {
 }
 
 function formatDate(dateString?: string | null): string {
-  if (!dateString) return '—';
+  if (!dateString) return "-";
   try {
-    return new Date(dateString).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    return new Date(dateString).toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
   } catch {
     return dateString;
   }
 }
 
 function formatAmount(amountSats?: number | null): string {
-  if (amountSats == null) return '—';
-  const n = typeof amountSats === 'string' ? Number(amountSats) : amountSats;
+  if (amountSats == null) return "-";
+  const n = typeof amountSats === "string" ? Number(amountSats) : amountSats;
   if (!Number.isFinite(n)) return String(amountSats);
   return Math.round(n).toLocaleString();
 }
 
 function settlementPillClass(state?: string | null): string {
   const base =
-    'inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wide border';
+    "inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wide border";
   switch (state) {
-    case 'SETTLED':
+    case "SETTLED":
       return `${base} bg-emerald-500/15 text-emerald-300 border-emerald-500/30`;
-    case 'PENDING':
+    case "PENDING":
       return `${base} bg-gray-700/90 text-gray-300 border-gray-600`;
-    case 'FAILED':
+    case "FAILED":
       return `${base} bg-red-500/15 text-red-300 border-red-500/35`;
     default:
       return `${base} bg-gray-700/90 text-gray-400 border-gray-600`;
@@ -261,9 +317,9 @@ function settlementPillClass(state?: string | null): string {
 
 function canRetry(p: CashuPayment): boolean {
   if (!p.quote_id) return false;
-  if (p.settlement_state !== 'FAILED') return false;
-  const err = (p.settlement_error ?? '').toString();
-  if (err.toLowerCase().includes('proofs are not available')) return false;
+  if (p.settlement_state !== "FAILED") return false;
+  const err = (p.settlement_error ?? "").toString();
+  if (err.toLowerCase().includes("proofs are not available")) return false;
   return true;
 }
 
@@ -279,7 +335,9 @@ async function fetchPayments() {
       params.settlementState = settlementState.value;
     }
 
-    const response = await api.get(`/stores/${storeId()}/cashu/payments`, { params });
+    const response = await api.get(`/stores/${storeId()}/cashu/payments`, {
+      params,
+    });
     const d = response.data?.data ?? {};
 
     payments.value = {
@@ -289,11 +347,14 @@ async function fetchPayments() {
       items: (d.items ?? []) as CashuPayment[],
     };
   } catch (err: unknown) {
-    const e = err as { response?: { data?: { message?: string } }; message?: string };
+    const e = err as {
+      response?: { data?: { message?: string } };
+      message?: string;
+    };
     error.value =
       e.response?.data?.message ||
       e.message ||
-      t('stores.cashu_payments_load_error');
+      t("stores.cashu_payments_load_error");
   } finally {
     loading.value = false;
   }
@@ -308,9 +369,14 @@ async function retryPayment(quoteId: string) {
     await api.post(`/stores/${storeId()}/cashu/payments/${quoteId}/retry`);
     await fetchPayments();
   } catch (err: unknown) {
-    const e = err as { response?: { data?: { message?: string } }; message?: string };
+    const e = err as {
+      response?: { data?: { message?: string } };
+      message?: string;
+    };
     error.value =
-      e.response?.data?.message || e.message || t('stores.cashu_payments_retry_error');
+      e.response?.data?.message ||
+      e.message ||
+      t("stores.cashu_payments_retry_error");
   } finally {
     retryingQuoteIds.value.delete(quoteId);
     retryingQuoteIds.value = new Set(retryingQuoteIds.value);
@@ -331,9 +397,9 @@ watch(
   () => props.store.id,
   () => {
     offset.value = 0;
-    settlementState.value = '';
+    settlementState.value = "";
     fetchPayments();
-  }
+  },
 );
 
 onMounted(async () => {

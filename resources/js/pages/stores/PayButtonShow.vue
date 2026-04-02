@@ -1,7 +1,6 @@
 <template>
   <AppShowLayout ref="layoutRef" :store="store" :app="app">
-    <template #default="{ app, store }">
-      <!-- Header -->
+    <template #toolbar="{ app, store }">
       <AppShowHeader
         :title="app.name || 'Pay Button'"
         :subtitle="`Pay Button - ${store.name}`"
@@ -12,7 +11,8 @@
         saving-text="Generating..."
         :saving="formRef?.generating"
       />
-
+    </template>
+    <template #default="{ app, store }">
       <PayButtonForm
         v-if="app"
         ref="formRef"

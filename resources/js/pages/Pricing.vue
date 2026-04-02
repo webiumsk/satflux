@@ -115,7 +115,7 @@
             :disabled="checkoutLoading"
             class="mt-8 w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors disabled:opacity-50"
           >
-            {{ checkoutLoading ? 'Redirecting…' : 'Upgrade to Pro' }}
+            {{ checkoutLoading ? "Redirecting…" : "Upgrade to Pro" }}
           </button>
           <router-link
             v-else-if="!authStore.isAuthenticated"
@@ -134,17 +134,17 @@
       </div>
 
       <p class="mt-10 text-center text-gray-500 text-sm">
-        Enterprise (unlimited stores, webhooks, multi-user) — contact sales.
+        Enterprise (unlimited stores, webhooks, multi-user) - contact sales.
       </p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuthStore } from '../store/auth';
-import api from '../services/api';
+import { ref, computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { useAuthStore } from "../store/auth";
+import api from "../services/api";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -152,13 +152,13 @@ const checkoutLoading = ref(false);
 
 const currentPlanCode = computed(() => {
   const u = authStore.user as any;
-  return u?.plan?.code ?? 'free';
+  return u?.plan?.code ?? "free";
 });
 
 async function goToCheckout() {
   checkoutLoading.value = true;
   try {
-    const { data } = await api.post('/subscriptions/checkout', { plan: 'pro' });
+    const { data } = await api.post("/subscriptions/checkout", { plan: "pro" });
     if (data.checkoutUrl) {
       window.location.href = data.checkoutUrl;
     }

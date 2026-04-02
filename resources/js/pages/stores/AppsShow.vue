@@ -1,6 +1,6 @@
 <template>
   <!-- Wait for app to be loaded for this route to avoid "reading 'id' of undefined" when navigating -->
-  <div v-if="loadingApp" class="flex items-center justify-center h-screen bg-gray-900">
+  <div v-if="loadingApp" class="flex min-h-0 flex-1 items-center justify-center bg-gray-900">
     <div class="flex flex-col items-center">
       <svg class="animate-spin h-10 w-10 text-indigo-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -10,18 +10,18 @@
     </div>
   </div>
   <!-- SPA: wrap in layout with sidebar so Tickets/PoS/PayButton all have the store sidebar -->
-  <div v-else-if="storeForRoute && app" class="flex bg-gray-900 overflow-hidden min-h-screen">
+  <div v-else-if="storeForRoute && app" class="flex min-h-0 flex-1 overflow-hidden bg-gray-900">
     <StoreSidebar
       :store="storeForRoute"
       :apps="appsStore.apps"
       @show-settings="handleShowSettings"
       @show-section="handleShowSection"
     />
-    <div class="flex-1 overflow-hidden flex flex-col bg-gray-900 border-l border-gray-800">
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-l border-gray-800 bg-gray-900">
       <PointOfSaleShow v-if="appType === 'PointOfSale'" :store="storeForRoute" :app="app" />
       <PayButtonShow v-else-if="appType === 'PaymentButton'" :store="storeForRoute" :app="app" />
       <TicketsShow v-else-if="appType === 'Tickets'" :store="storeForRoute" :app="app" />
-      <div v-else-if="appType === 'Crowdfund'" class="flex items-center justify-center h-full bg-gray-900">
+      <div v-else-if="appType === 'Crowdfund'" class="flex min-h-0 flex-1 items-center justify-center bg-gray-900">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div class="bg-gray-800 shadow rounded-lg p-6 border border-gray-700">
             <h1 class="text-3xl font-bold text-white mb-4">{{ t('apps.crowdfund_not_available') }}</h1>
@@ -30,7 +30,7 @@
           </div>
         </div>
       </div>
-      <div v-else class="flex items-center justify-center h-full bg-gray-100">
+      <div v-else class="flex min-h-0 flex-1 items-center justify-center bg-gray-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div class="bg-white shadow rounded-lg p-6">
             <h1 class="text-3xl font-bold text-gray-900 mb-4">{{ t('apps.app_type_not_supported') }}</h1>
@@ -41,7 +41,7 @@
       </div>
     </div>
   </div>
-  <div v-else class="flex items-center justify-center h-full bg-gray-100">
+  <div v-else class="flex min-h-0 flex-1 items-center justify-center bg-gray-100">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="bg-white shadow rounded-lg p-6">
         <h1 class="text-3xl font-bold text-gray-900 mb-4">{{ t('apps.app_type_not_supported') }}</h1>

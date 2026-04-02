@@ -1,8 +1,12 @@
 <template>
-  <footer class="bg-gray-900 border-t border-gray-800 mt-auto">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <footer class="shrink-0 border-t border-gray-800 bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-4 lg:px-4 py-4">
       <div class="text-center">
         <div class="flex justify-center gap-4 mb-4">
+          <p class="text-sm text-gray-400">
+          SATFLUX
+          <span v-if="version" class="text-gray-600">v{{ version }}</span>
+        </p>
           <a
             href="https://github.com/webiumsk/Satflux"
             target="_blank"
@@ -54,10 +58,7 @@
             </svg>
           </a>
         </div>
-        <p class="text-sm text-gray-400">
-          SATFLUX
-          <span v-if="version" class="text-gray-600">v{{ version }}</span>
-        </p>
+        
         <p
           class="text-xs text-gray-600 mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 leading-none"
         >

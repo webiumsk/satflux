@@ -1,5 +1,5 @@
 <template>
-  <div class="flex bg-gray-900 overflow-hidden">
+  <div class="flex min-h-0 flex-1 overflow-hidden bg-gray-900">
     <!-- Sidebar -->
     <StoreSidebar
       :store="store"
@@ -33,7 +33,7 @@
       </div>
 
       <!-- Content Container -->
-      <div class="flex-1 overflow-y-auto custom-scrollbar">
+      <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <ArchivedStoreBanner :store="store" />
 

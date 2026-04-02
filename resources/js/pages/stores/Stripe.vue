@@ -1,5 +1,5 @@
 <template>
-  <div v-if="!store && !error" class="flex items-center justify-center min-h-screen bg-gray-900">
+  <div v-if="!store && !error" class="flex min-h-0 flex-1 items-center justify-center bg-gray-900">
     <div class="flex flex-col items-center">
       <svg class="animate-spin h-10 w-10 text-indigo-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -8,13 +8,13 @@
       <p class="text-gray-400">{{ t('common.loading') }}</p>
     </div>
   </div>
-  <div v-else-if="error" class="flex items-center justify-center min-h-screen bg-gray-900">
+  <div v-else-if="error" class="flex min-h-0 flex-1 items-center justify-center bg-gray-900">
     <div class="text-center px-4">
       <p class="text-red-400 mb-4">{{ error }}</p>
       <button @click="loadStore" class="text-indigo-400 hover:text-indigo-300">{{ t('common.retry') }}</button>
     </div>
   </div>
-  <div v-else class="flex bg-gray-900 overflow-hidden">
+  <div v-else class="flex min-h-0 flex-1 overflow-hidden bg-gray-900">
     <StoreSidebar
       :store="store"
       :apps="allApps"
@@ -23,7 +23,7 @@
       @open-setup-wizard="handleOpenSetupWizard"
     />
 
-    <div class="flex-1 flex flex-col overflow-hidden bg-gray-900 border-l border-gray-800">
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-l border-gray-800 bg-gray-900">
       <div class="sticky top-0 z-20 bg-gray-900/80 backdrop-blur-md border-b border-gray-800">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -57,7 +57,7 @@
         </div>
       </div>
 
-      <div class="flex-1 overflow-y-auto custom-scrollbar">
+      <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
           <!-- Free tier: Upgrade prompt -->
           <div

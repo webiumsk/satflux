@@ -1,4 +1,5 @@
 <template>
+  <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
     <h1 class="text-3xl font-bold text-white mb-8 text-center">
       {{ t("create_store.title") }}
@@ -800,6 +801,7 @@
       :upgrade-button-text="t('stores.upgrade_to_pro')"
       @close="showUpgradeModal = false"
     />
+  </div>
   </div>
 </template>
 

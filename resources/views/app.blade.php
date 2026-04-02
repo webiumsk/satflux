@@ -65,9 +65,9 @@
         $lnurlAuthEnabled = config('services.lnurl_auth.enabled', false);
     @endphp
     @if(isset($page))
-        <div id="app" data-page="{{ is_array($page) ? json_encode($page) : $page }}" data-lnurl-auth-enabled="{{ $lnurlAuthEnabled ? 'true' : 'false' }}"></div>
+        <div id="app" class="min-h-dvh" data-page="{{ is_array($page) ? json_encode($page) : $page }}" data-lnurl-auth-enabled="{{ $lnurlAuthEnabled ? 'true' : 'false' }}"></div>
     @else
-        <div id="app" data-lnurl-auth-enabled="{{ $lnurlAuthEnabled ? 'true' : 'false' }}"></div>
+        <div id="app" class="min-h-dvh" data-lnurl-auth-enabled="{{ $lnurlAuthEnabled ? 'true' : 'false' }}"></div>
     @endif
 </body>
 

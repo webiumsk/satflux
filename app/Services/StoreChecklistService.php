@@ -28,7 +28,7 @@ class StoreChecklistService
             'blink' => [
                 'connect_wallet' => [
                     'key' => 'connect_wallet',
-                    'description' => 'Confirm Blink wallet connection is active (Wallet connection — status should show configured or pending → connected)',
+                    'description' => 'Confirm Blink wallet connection is active (Wallet connection - status should show configured or pending → connected)',
                     'link' => null, // No direct BTCPay UI links - configure via satflux.io
                     'order' => 1,
                 ],
@@ -134,7 +134,7 @@ class StoreChecklistService
         $existingKeys = $store->checklistItems()->pluck('item_key')->all();
 
         foreach ($definitions as $item) {
-            if (! in_array($item['key'], $existingKeys, true)) {
+            if (!in_array($item['key'], $existingKeys, true)) {
                 StoreChecklist::create([
                     'store_id' => $store->id,
                     'item_key' => $item['key'],

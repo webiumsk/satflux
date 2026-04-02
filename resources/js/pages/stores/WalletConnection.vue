@@ -9,7 +9,7 @@
     </div>
   </div>
 
-  <div v-else-if="store" class="flex bg-gray-900 overflow-hidden">
+  <div v-else-if="store" class="flex min-h-0 flex-1 overflow-hidden bg-gray-900">
     <!-- Sidebar -->
     <StoreSidebar
       :store="store"
@@ -20,8 +20,8 @@
     />
 
     <!-- Main Content -->
-    <div class="flex-1 flex flex-col overflow-hidden bg-gray-900 border-l border-gray-800">
-      <div class="flex-1 overflow-y-auto">
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-l border-gray-800 bg-gray-900">
+      <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div class="mb-8">
             <h1 class="text-3xl font-bold text-white">

@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="flex bg-gray-900 overflow-hidden min-h-screen">
+    <div class="flex min-h-0 flex-1 overflow-hidden bg-gray-900">
       <!-- Sidebar -->
       <StoreSidebar
         :store="store"
@@ -10,9 +10,8 @@
       />
 
       <!-- Main Content -->
-      <div class="flex-1 flex flex-col overflow-hidden bg-gray-900 border-l border-gray-800">
-        
-        <div v-if="app" class="flex-1 overflow-hidden flex flex-col">
+      <div class="flex min-h-0 flex-1 flex-col overflow-hidden border-l border-gray-800 bg-gray-900">
+        <div v-if="app" class="flex min-h-0 flex-1 flex-col overflow-hidden">
             <!-- Child Components handle their own header and content scrolling, 
                  or we can lift the scroll container here if child components are just content.
                  Existing components seem to handle form layout.

@@ -14,7 +14,7 @@ class SetupStoreWebhooks extends Command
                             {--dry-run : List stores that would get webhooks without making changes}
                             {--repair : For every store: remove all Satflux panel URL webhooks in BTCPay, create one, update DB (fixes duplicates and secret mismatch)}';
 
-    protected $description = 'Create BTCPay webhooks for stores missing one (stores:setup-webhooks). One webhook per Satflux store is normal — same APP_URL, different secrets per BTCPay store. Use --repair to dedupe and re-sync secrets.';
+    protected $description = 'Create BTCPay webhooks for stores missing one (stores:setup-webhooks). One webhook per Satflux store is normal - same APP_URL, different secrets per BTCPay store. Use --repair to dedupe and re-sync secrets.';
 
     public function handle(): int
     {
@@ -22,7 +22,7 @@ class SetupStoreWebhooks extends Command
         $repair = $this->option('repair');
 
         $serverApiKey = config('services.btcpay.api_key');
-        if (! $serverApiKey) {
+        if (!$serverApiKey) {
             $this->error('Server-level BTCPAY_API_KEY is not configured. Cannot create webhooks.');
 
             return Command::FAILURE;
@@ -97,8 +97,8 @@ class SetupStoreWebhooks extends Command
             return Command::SUCCESS;
         }
 
-        $this->warn('Repair: each store will have exactly one BTCPay webhook for: '.$panelUrl);
-        if (! $dryRun) {
+        $this->warn('Repair: each store will have exactly one BTCPay webhook for: ' . $panelUrl);
+        if (!$dryRun) {
             $this->warn('Existing panel webhooks for that URL are deleted first, then one new webhook is created.');
         }
 
@@ -111,7 +111,7 @@ class SetupStoreWebhooks extends Command
                 $list = $webhookService->listWebhooks($store->btcpay_store_id, null);
                 $matchCount = 0;
                 foreach ($list as $item) {
-                    if (! is_array($item)) {
+                    if (!is_array($item)) {
                         continue;
                     }
                     $url = (string) ($item['url'] ?? $item['Url'] ?? '');

@@ -1,7 +1,15 @@
 <template>
-  <!-- When store/app passed as props (Inertia): render only slot, no sidebar (parent already has layout) -->
-  <div v-if="propsStore && propsApp" class="flex-1 overflow-hidden flex flex-col bg-gray-900">
-    <div class="flex-1 overflow-y-auto custom-scrollbar">
+  <!-- When store/app passed as props (SPA/Inertia): optional #toolbar stays fixed; #default scrolls -->
+  <div v-if="propsStore && propsApp" class="flex min-h-0 flex-1 flex-col overflow-hidden bg-gray-900">
+    <template v-if="hasToolbarSlot">
+      <div class="shrink-0 bg-gray-900">
+        <slot name="toolbar" :app="propsApp" :store="propsStore" />
+      </div>
+      <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
+        <slot :app="propsApp" :store="propsStore" />
+      </div>
+    </template>
+    <div v-else class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
       <slot :app="propsApp" :store="propsStore" />
     </div>
   </div>
@@ -14,7 +22,7 @@
     <p class="text-gray-400 ml-4">Loading app...</p>
   </div>
 
-  <div v-else-if="store && app" class="flex bg-gray-900 overflow-hidden">
+  <div v-else-if="store && app" class="flex min-h-0 flex-1 overflow-hidden bg-gray-900">
     <!-- Sidebar -->
     <StoreSidebar
       :store="store"
@@ -25,8 +33,19 @@
     />
 
     <!-- Main Content -->
-    <div class="flex-1 overflow-hidden flex flex-col bg-gray-900 border-l border-gray-800">
-      <div class="flex-1 overflow-y-auto custom-scrollbar">
+    <div class="flex min-h-0 flex-1 flex-col overflow-hidden border-l border-gray-800 bg-gray-900">
+      <template v-if="hasToolbarSlot">
+        <div class="shrink-0 bg-gray-900">
+          <slot name="toolbar" :app="app" :store="store" />
+        </div>
+        <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
+          <div class="px-4 sm:px-6 lg:px-8 pt-8">
+            <ArchivedStoreBanner :store="store" />
+          </div>
+          <slot :app="app" :store="store" />
+        </div>
+      </template>
+      <div v-else class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
         <div class="px-4 sm:px-6 lg:px-8 pt-8">
           <ArchivedStoreBanner :store="store" />
         </div>
@@ -45,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, inject } from 'vue';
+import { ref, computed, onMounted, watch, inject, useSlots } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { router as inertiaRouter } from '@inertiajs/vue3';
 import { useAppsStore } from '../../store/apps';
@@ -54,6 +73,8 @@ import StoreSidebar from './StoreSidebar.vue';
 import ArchivedStoreBanner from './ArchivedStoreBanner.vue';
 
 const props = defineProps<{ store?: any; app?: any }>();
+const slots = useSlots();
+const hasToolbarSlot = computed(() => typeof slots.toolbar === 'function');
 const isInertia = inject<boolean>('inertia', false);
 const route = !isInertia ? useRoute() : null;
 const vueRouter = !isInertia ? useRouter() : null;

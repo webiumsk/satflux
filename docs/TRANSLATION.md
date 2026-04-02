@@ -11,16 +11,16 @@ How translations are organized and how to add or update locales.
 
 The product UI is wired for:
 
-| Code | Language   | Frontend JSON | Backend `lang/` |
-|------|------------|---------------|-----------------|
-| `en` | English    | `en.json`     | `lang/en/`      |
-| `sk` | Slovak     | `sk.json`     | `lang/sk/`      |
-| `es` | Spanish    | `es.json`     | `lang/es/`      |
+| Code | Language | Frontend JSON | Backend `lang/` |
+| ---- | -------- | ------------- | --------------- |
+| `en` | English  | `en.json`     | `lang/en/`      |
+| `sk` | Slovak   | `sk.json`     | `lang/sk/`      |
+| `es` | Spanish  | `es.json`     | `lang/es/`      |
 
 Allowed locale codes are defined in:
 
-- `app/Http/Middleware/SetLocale.php` — `$supportedLocales`
-- `app/Http/Controllers/LocaleController.php` — `SUPPORTED_LOCALES`
+- `app/Http/Middleware/SetLocale.php` - `$supportedLocales`
+- `app/Http/Controllers/LocaleController.php` - `SUPPORTED_LOCALES`
 
 ## Adding a new locale
 

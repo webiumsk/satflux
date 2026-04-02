@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-900 border-l border-gray-800 flex flex-col">
+  <div class="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain border-l border-gray-800 bg-gray-900">
     <div class="max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
       <!-- Back Link -->
       <div class="mb-8">

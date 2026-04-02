@@ -1,4 +1,4 @@
-# satflux.io — standalone production deployment
+# satflux.io - standalone production deployment
 
 Single Docker stack with **Caddy** as the reverse proxy and automatic HTTPS (Let’s Encrypt). For day-to-day development, use `docker-compose.yml` and [README.md](../README.md).
 
@@ -17,8 +17,7 @@ Single Docker stack with **Caddy** as the reverse proxy and automatic HTTPS (Let
    cd /opt/satflux
    ```
 
-2. **Environment** — copy from `.env.example` to `.env.standalone` and set at least:
-
+2. **Environment** - copy from `.env.example` to `.env.standalone` and set at least:
    - `APP_KEY` (`php artisan key:generate`)
    - `APP_URL` (e.g. `https://satflux.io`)
    - `POSTGRES_PASSWORD` and matching `DB_PASSWORD`
@@ -48,16 +47,16 @@ Single Docker stack with **Caddy** as the reverse proxy and automatic HTTPS (Let
 
 ## Containers (typical names)
 
-| Container                     | Role                          |
-|------------------------------|-------------------------------|
-| `satflux_caddy_standalone`   | Caddy (TLS, reverse proxy)    |
-| `satflux_nginx_standalone`   | Nginx (static + PHP upstream) |
-| `satflux_php_standalone`     | PHP-FPM (Laravel)             |
-| `satflux_reverb_standalone`  | Laravel Reverb (WebSockets)   |
-| `satflux_queue_standalone`   | Queue worker                  |
-| `satflux_scheduler_standalone` | Scheduler                   |
-| `satflux_postgres_standalone`| PostgreSQL                    |
-| `satflux_redis_standalone`   | Redis                         |
+| Container                      | Role                          |
+| ------------------------------ | ----------------------------- |
+| `satflux_caddy_standalone`     | Caddy (TLS, reverse proxy)    |
+| `satflux_nginx_standalone`     | Nginx (static + PHP upstream) |
+| `satflux_php_standalone`       | PHP-FPM (Laravel)             |
+| `satflux_reverb_standalone`    | Laravel Reverb (WebSockets)   |
+| `satflux_queue_standalone`     | Queue worker                  |
+| `satflux_scheduler_standalone` | Scheduler                     |
+| `satflux_postgres_standalone`  | PostgreSQL                    |
+| `satflux_redis_standalone`     | Redis                         |
 
 ## Backup and restore
 

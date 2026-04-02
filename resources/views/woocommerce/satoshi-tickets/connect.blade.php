@@ -32,7 +32,7 @@
             <input type="hidden" name="return_url" value="{{ e($returnUrl) }}">
             <input type="hidden" name="return_satflux_store_id" value="{{ !empty($returnSatfluxStoreId) ? '1' : '0' }}">
             <select name="store_id" required>
-                <option value="">— Select store —</option>
+                <option value="">- Select store -</option>
                 @foreach($stores as $store)
                     <option value="{{ $store->id }}">{{ e($store->name) }}</option>
                 @endforeach

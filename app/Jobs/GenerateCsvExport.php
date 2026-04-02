@@ -32,10 +32,10 @@ class GenerateCsvExport implements ShouldQueue
         try {
             $store = $this->export->store;
             $filters = $this->export->filters ?? [];
-            
+
             // Ensure store has user relationship loaded
             $store->load('user');
-            
+
             // Verify merchant has API key (will throw exception if missing)
             try {
                 $store->user->getBtcPayApiKeyOrFail();
@@ -43,13 +43,13 @@ class GenerateCsvExport implements ShouldQueue
                 $this->export->markAsFailed('BTCPay API key not configured. Please contact support.');
                 return;
             }
-            
+
             // Build filters for BTCPay API
             $btcpayFilters = [];
             if (isset($filters['status'])) {
                 $btcpayFilters['status'] = $filters['status'];
             }
-            
+
             // Date range filters (BTCPay expects Unix timestamps in seconds)
             if (isset($filters['date_from']) && $filters['date_from']) {
                 $dateFrom = strtotime($filters['date_from']);
@@ -57,7 +57,7 @@ class GenerateCsvExport implements ShouldQueue
                     $btcpayFilters['startDate'] = $dateFrom;
                 }
             }
-            
+
             if (isset($filters['date_to']) && $filters['date_to']) {
                 // Add 23:59:59 to include the entire day
                 $dateTo = strtotime($filters['date_to'] . ' 23:59:59');
@@ -67,7 +67,7 @@ class GenerateCsvExport implements ShouldQueue
             }
 
             $disk = Storage::disk('exports');
-            // Disk root is already storage/app/exports — avoid exports/exports/… nesting.
+            // Disk root is already storage/app/exports - avoid exports/exports/… nesting.
             $filePath = $this->export->id . '_' . time() . '.csv';
             $fullPath = $disk->path($filePath);
 
@@ -166,15 +166,15 @@ class GenerateCsvExport implements ShouldQueue
 
         do {
             $response = $invoiceService->listInvoices($store->btcpay_store_id, $filters, $skip, $take, $userApiKey);
-            
+
             // BTCPay API returns invoices in the data array or directly
             $invoices = $response['data'] ?? $response;
-            
+
             // Ensure it's an array
             if (!is_array($invoices)) {
                 $invoices = [];
             }
-            
+
             foreach ($invoices as $invoice) {
                 $posData = $this->parsePosData($invoice['metadata'] ?? []);
 
@@ -285,15 +285,15 @@ class GenerateCsvExport implements ShouldQueue
 
         do {
             $response = $invoiceService->listInvoices($store->btcpay_store_id, $filters, $skip, $take, $userApiKey);
-            
+
             // BTCPay API returns invoices in the data array or directly
             $invoices = $response['data'] ?? $response;
-            
+
             // Ensure it's an array
             if (!is_array($invoices)) {
                 $invoices = [];
             }
-            
+
             foreach ($invoices as $invoice) {
                 $createdTime = isset($invoice['createdTime']) ? date('Y-m-d', strtotime($invoice['createdTime'])) : '';
                 $paidTime = null;

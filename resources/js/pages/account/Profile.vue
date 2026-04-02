@@ -1,248 +1,128 @@
 <template>
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-    <div class="space-y-6">
-      <!-- Header -->
-      <div>
-        <h3 class="text-2xl font-bold text-white">{{ t("account.title") }}</h3>
-        <p class="mt-1 text-sm text-gray-400">
-          {{ t("account.manage_profile") }}
-        </p>
-      </div>
-
-      <!-- Profile Information -->
-      <div
-        class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
-      >
-        <div class="px-6 py-8 sm:p-10">
-          <h4 class="text-lg font-semibold text-white mb-6 flex items-center">
-            <svg
-              class="w-5 h-5 mr-2 text-indigo-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-              />
-            </svg>
-            {{ t("account.profile_information") }}
-          </h4>
-          <form @submit.prevent="handleUpdateProfile">
-            <div class="grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-2">
-              <div>
-                <label
-                  for="name"
-                  class="block text-sm font-medium text-gray-300"
-                  >{{ t("account.name") }}</label
-                >
-                <div class="mt-1">
-                  <input
-                    id="name"
-                    v-model="profileForm.name"
-                    type="text"
-                    class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
-                    :placeholder="t('account.name_optional')"
-                  />
-                </div>
-              </div>
-              <div>
-                <label
-                  for="email"
-                  class="block text-sm font-medium text-gray-300"
-                  >{{ t("account.email") }}</label
-                >
-                <div class="mt-1">
-                  <input
-                    id="email"
-                    :value="authStore.user?.email"
-                    type="email"
-                    disabled
-                    class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm text-gray-400 bg-gray-800 cursor-not-allowed sm:text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-            <div class="mt-8 flex justify-end">
-              <button
-                type="submit"
-                :disabled="profileLoading"
-                class="inline-flex justify-center py-2.5 px-6 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20"
-              >
-                {{
-                  profileLoading
-                    ? t("auth.saving")
-                    : t("account.update_profile")
-                }}
-              </button>
-            </div>
-          </form>
+  <div
+    class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar"
+  >
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div class="space-y-6">
+        <!-- Header -->
+        <div>
+          <h3 class="text-2xl font-bold text-white">
+            {{ t("account.title") }}
+          </h3>
+          <p class="mt-1 text-sm text-gray-400">
+            {{ t("account.manage_profile") }}
+          </p>
         </div>
-      </div>
 
-      <!-- Login methods (Lightning + Nostr) -->
-      <div
-        v-if="lnurlAuthEnabled || nostrAuthEnabled"
-        class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
-      >
-        <div class="px-6 py-8 sm:p-10">
-          <h4 class="text-lg font-semibold text-white mb-6 flex items-center">
-            <svg
-              class="w-5 h-5 mr-2 text-indigo-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              />
-            </svg>
-            {{ t("account.login_methods") }}
-          </h4>
-          <div class="space-y-4">
-            <p class="text-sm text-gray-400">{{ t("account.login_methods_desc") }}</p>
-            <div v-if="lnurlAuthEnabled" class="flex items-center justify-between gap-2">
-              <div v-if="authStore.user?.has_lightning_login" class="flex items-center gap-2 text-green-400">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-                <span>{{ t("account.lightning_login_enabled") }}</span>
-              </div>
-              <button
-                v-else
-                type="button"
-                :disabled="lnurlLinkLoading"
-                @click="handleAddLightningLogin"
-                class="inline-flex items-center px-4 py-2 border border-indigo-500 rounded-lg text-sm font-medium text-indigo-400 hover:bg-indigo-500/10 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+        <!-- Profile Information -->
+        <div
+          class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
+        >
+          <div class="px-6 py-8 sm:p-10">
+            <h4 class="text-lg font-semibold text-white mb-6 flex items-center">
+              <svg
+                class="w-5 h-5 mr-2 text-indigo-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <span v-if="lnurlLinkLoading">{{ t("common.loading") }}</span>
-                <span v-else>{{ t("account.add_lightning_login") }}</span>
-              </button>
-            </div>
-            <div v-if="nostrAuthEnabled" class="flex items-center justify-between gap-2">
-              <div v-if="authStore.user?.has_nostr_login" class="flex items-center gap-2 text-green-400">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-                <span>{{ t("account.nostr_login_enabled") }}</span>
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
+              </svg>
+              {{ t("account.profile_information") }}
+            </h4>
+            <form @submit.prevent="handleUpdateProfile">
+              <div class="grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-2">
+                <div>
+                  <label
+                    for="name"
+                    class="block text-sm font-medium text-gray-300"
+                    >{{ t("account.name") }}</label
+                  >
+                  <div class="mt-1">
+                    <input
+                      id="name"
+                      v-model="profileForm.name"
+                      type="text"
+                      class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+                      :placeholder="t('account.name_optional')"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label
+                    for="email"
+                    class="block text-sm font-medium text-gray-300"
+                    >{{ t("account.email") }}</label
+                  >
+                  <div class="mt-1">
+                    <input
+                      id="email"
+                      :value="authStore.user?.email"
+                      type="email"
+                      disabled
+                      class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm text-gray-400 bg-gray-800 cursor-not-allowed sm:text-sm"
+                    />
+                  </div>
+                </div>
               </div>
-              <button
-                v-else
-                type="button"
-                @click="showNostrLinkModal = true"
-                class="inline-flex items-center px-4 py-2 border border-amber-500/50 rounded-lg text-sm font-medium text-amber-400 hover:bg-amber-500/10 focus:outline-none focus:ring-2 focus:ring-amber-500"
-              >
-                <span class="mr-1">🟠</span>
-                {{ t("account.add_nostr_login") }}
-              </button>
-            </div>
+              <div class="mt-8 flex justify-end">
+                <button
+                  type="submit"
+                  :disabled="profileLoading"
+                  class="inline-flex justify-center py-2.5 px-6 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20"
+                >
+                  {{
+                    profileLoading
+                      ? t("auth.saving")
+                      : t("account.update_profile")
+                  }}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
 
-      <!-- Subscription Plan -->
-      <div
-        class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
-      >
-        <div class="px-6 py-8 sm:p-10">
-          <h4 class="text-lg font-semibold text-white mb-6 flex items-center">
-            <svg
-              class="w-5 h-5 mr-2 text-indigo-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-              />
-            </svg>
-            {{ t("account.subscription_plan") }}
-          </h4>
-
-          <div
-            class="bg-gradient-to-br from-gray-700/50 to-gray-800 rounded-xl p-8 border border-gray-600 relative overflow-hidden"
-          >
-            <!-- Decorative blob -->
-            <div
-              class="absolute top-0 right-0 -tr-10 w-32 h-32 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20"
-            ></div>
-
-            <div
-              class="flex flex-col md:flex-row md:items-center justify-between mb-8 relative z-10"
-            >
-              <div>
-                <h5
-                  class="text-2xl font-bold text-white flex items-center gap-2"
-                >
-                  {{ currentPlanName }}
-                  <span
-                    v-if="!isPaidPlan"
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-600 text-gray-100"
-                  >
-                    {{ t("account.plan_badge_standard") }}
-                  </span>
-                  <span
-                    v-else-if="subscriber?.isActive"
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-emerald-600 text-white"
-                  >
-                    {{ t("account.plan_badge_active") }}
-                  </span>
-                  <span
-                    v-else
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-600 text-white"
-                  >
-                    {{ t("account.plan_badge_inactive") }}
-                  </span>
-                </h5>
-                <p class="text-gray-400 mt-2">{{ currentPlanDescription }}</p>
-                <div
-                  v-if="subscriber && subscriber.periodEnd"
-                  class="text-sm text-gray-400 mt-2"
-                >
-                  {{
-                    t("account.next_billing", {
-                      date: formatDate(subscriber.periodEnd),
-                    })
-                  }}
-                </div>
-              </div>
-              <div class="mt-4 md:mt-0 md:text-right">
-                <div class="text-3xl font-bold text-white">
-                  {{ currentPlanPrice }}
-                </div>
-                <div class="text-sm text-gray-400">
-                  {{
-                    isProPlan
-                      ? t("account.per_month_paid_yearly")
-                      : t("account.per_month")
-                  }}
-                </div>
-              </div>
-            </div>
-
-            <!-- Plan Features -->
-            <div class="border-t border-gray-600 pt-6 mb-6">
-              <h6
-                class="text-sm font-medium text-gray-300 mb-4 uppercase tracking-wider"
+        <!-- Login methods (Lightning + Nostr) -->
+        <div
+          v-if="lnurlAuthEnabled || nostrAuthEnabled"
+          class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
+        >
+          <div class="px-6 py-8 sm:p-10">
+            <h4 class="text-lg font-semibold text-white mb-6 flex items-center">
+              <svg
+                class="w-5 h-5 mr-2 text-indigo-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                {{ t("account.current_plan_includes") }}
-              </h6>
-              <ul class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <li
-                  v-for="feature in currentPlanFeatures"
-                  :key="feature"
-                  class="flex items-center text-sm text-gray-300"
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
+              </svg>
+              {{ t("account.login_methods") }}
+            </h4>
+            <div class="space-y-4">
+              <p class="text-sm text-gray-400">
+                {{ t("account.login_methods_desc") }}
+              </p>
+              <div
+                v-if="lnurlAuthEnabled"
+                class="flex items-center justify-between gap-2"
+              >
+                <div
+                  v-if="authStore.user?.has_lightning_login"
+                  class="flex items-center gap-2 text-green-400"
                 >
                   <svg
-                    class="w-5 h-5 text-green-400 mr-3 flex-shrink-0"
+                    class="w-5 h-5"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -254,42 +134,223 @@
                       d="M5 13l4 4L19 7"
                     />
                   </svg>
-                  {{ feature }}
-                </li>
-              </ul>
-            </div>
-
-            <!-- Billing Information -->
-            <div
-              v-if="isPaidPlan || creditBalance > 0"
-              class="border-t border-gray-600 pt-6 mb-6"
-            >
-              <h6
-                class="text-sm font-medium text-gray-300 mb-4 uppercase tracking-wider"
-              >
-                {{ t("account.billing_information") }}
-              </h6>
-              <div class="space-y-4">
-                <div
-                  v-if="isPaidPlan"
-                  class="flex items-center justify-between"
+                  <span>{{ t("account.lightning_login_enabled") }}</span>
+                </div>
+                <button
+                  v-else
+                  type="button"
+                  :disabled="lnurlLinkLoading"
+                  @click="handleAddLightningLogin"
+                  class="inline-flex items-center px-4 py-2 border border-indigo-500 rounded-lg text-sm font-medium text-indigo-400 hover:bg-indigo-500/10 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
                 >
-                  <span class="text-sm text-gray-400">{{
-                    t("account.payment_method")
-                  }}</span>
-                  <div class="flex items-center gap-2">
+                  <span v-if="lnurlLinkLoading">{{ t("common.loading") }}</span>
+                  <span v-else>{{ t("account.add_lightning_login") }}</span>
+                </button>
+              </div>
+              <div
+                v-if="nostrAuthEnabled"
+                class="flex items-center justify-between gap-2"
+              >
+                <div
+                  v-if="authStore.user?.has_nostr_login"
+                  class="flex items-center gap-2 text-green-400"
+                >
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  <span>{{ t("account.nostr_login_enabled") }}</span>
+                </div>
+                <button
+                  v-else
+                  type="button"
+                  @click="showNostrLinkModal = true"
+                  class="inline-flex items-center px-4 py-2 border border-amber-500/50 rounded-lg text-sm font-medium text-amber-400 hover:bg-amber-500/10 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                >
+                  <span class="mr-1">🟠</span>
+                  {{ t("account.add_nostr_login") }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subscription Plan -->
+        <div
+          class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
+        >
+          <div class="px-6 py-8 sm:p-10">
+            <h4 class="text-lg font-semibold text-white mb-6 flex items-center">
+              <svg
+                class="w-5 h-5 mr-2 text-indigo-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                />
+              </svg>
+              {{ t("account.subscription_plan") }}
+            </h4>
+
+            <div
+              class="bg-gradient-to-br from-gray-700/50 to-gray-800 rounded-xl p-8 border border-gray-600 relative overflow-hidden"
+            >
+              <!-- Decorative blob -->
+              <div
+                class="absolute top-0 right-0 -tr-10 w-32 h-32 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20"
+              ></div>
+
+              <div
+                class="flex flex-col md:flex-row md:items-center justify-between mb-8 relative z-10"
+              >
+                <div>
+                  <h5
+                    class="text-2xl font-bold text-white flex items-center gap-2"
+                  >
+                    {{ currentPlanName }}
                     <span
-                      class="px-3 py-1 rounded-full bg-gray-700 text-sm text-gray-300"
-                      >{{
-                        t("account.credit_balance", {
-                          amount: formatSats(creditBalance),
-                        })
-                      }}</span
+                      v-if="!isPaidPlan"
+                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-600 text-gray-100"
                     >
-                    <button
-                      @click="showAddCreditModal = true"
-                      class="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                      {{ t("account.plan_badge_standard") }}
+                    </span>
+                    <span
+                      v-else-if="subscriber?.isActive"
+                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-emerald-600 text-white"
                     >
+                      {{ t("account.plan_badge_active") }}
+                    </span>
+                    <span
+                      v-else
+                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-600 text-white"
+                    >
+                      {{ t("account.plan_badge_inactive") }}
+                    </span>
+                  </h5>
+                  <p class="text-gray-400 mt-2">{{ currentPlanDescription }}</p>
+                  <div
+                    v-if="subscriber && subscriber.periodEnd"
+                    class="text-sm text-gray-400 mt-2"
+                  >
+                    {{
+                      t("account.next_billing", {
+                        date: formatDate(subscriber.periodEnd),
+                      })
+                    }}
+                  </div>
+                </div>
+                <div class="mt-4 md:mt-0 md:text-right">
+                  <div class="text-3xl font-bold text-white">
+                    {{ currentPlanPrice }}
+                  </div>
+                  <div class="text-sm text-gray-400">
+                    {{
+                      isProPlan
+                        ? t("account.per_month_paid_yearly")
+                        : t("account.per_month")
+                    }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Plan Features -->
+              <div class="border-t border-gray-600 pt-6 mb-6">
+                <h6
+                  class="text-sm font-medium text-gray-300 mb-4 uppercase tracking-wider"
+                >
+                  {{ t("account.current_plan_includes") }}
+                </h6>
+                <ul class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <li
+                    v-for="feature in currentPlanFeatures"
+                    :key="feature"
+                    class="flex items-center text-sm text-gray-300"
+                  >
+                    <svg
+                      class="w-5 h-5 text-green-400 mr-3 flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    {{ feature }}
+                  </li>
+                </ul>
+              </div>
+
+              <!-- Billing Information -->
+              <div
+                v-if="isPaidPlan || creditBalance > 0"
+                class="border-t border-gray-600 pt-6 mb-6"
+              >
+                <h6
+                  class="text-sm font-medium text-gray-300 mb-4 uppercase tracking-wider"
+                >
+                  {{ t("account.billing_information") }}
+                </h6>
+                <div class="space-y-4">
+                  <div
+                    v-if="isPaidPlan"
+                    class="flex items-center justify-between"
+                  >
+                    <span class="text-sm text-gray-400">{{
+                      t("account.payment_method")
+                    }}</span>
+                    <div class="flex items-center gap-2">
+                      <span
+                        class="px-3 py-1 rounded-full bg-gray-700 text-sm text-gray-300"
+                        >{{
+                          t("account.credit_balance", {
+                            amount: formatSats(creditBalance),
+                          })
+                        }}</span
+                      >
+                      <button
+                        @click="showAddCreditModal = true"
+                        class="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                      >
+                        <svg
+                          class="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                          />
+                        </svg>
+                        {{ t("account.add_credit") }}
+                      </button>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-400">{{
+                      t("account.notification_email")
+                    }}</span>
+                    <span class="text-sm text-gray-300 flex items-center gap-1">
                       <svg
                         class="w-4 h-4"
                         fill="none"
@@ -300,354 +361,346 @@
                           stroke-linecap="round"
                           stroke-linejoin="round"
                           stroke-width="2"
-                          d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                         />
                       </svg>
-                      {{ t("account.add_credit") }}
-                    </button>
+                      {{ authStore.user?.email }}
+                    </span>
                   </div>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-400">{{
-                    t("account.notification_email")
-                  }}</span>
-                  <span class="text-sm text-gray-300 flex items-center gap-1">
-                    <svg
-                      class="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                      />
-                    </svg>
-                    {{ authStore.user?.email }}
-                  </span>
-                </div>
-                <div
-                  v-if="isPaidPlan && subscriber && subscriber.periodEnd"
-                  class="flex items-center justify-between"
-                >
-                  <span class="text-sm text-gray-400">{{
-                    t("account.next_charge_on", {
-                      date: formatDate(subscriber.periodEnd),
-                    })
-                  }}</span>
-                  <span class="text-sm font-medium text-white">{{
-                    currentPlanPrice
-                  }}</span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-400">{{
-                    t("account.auto_renewal")
-                  }}</span>
-                  <div class="flex items-center gap-2">
-                    <span class="text-sm text-gray-300">{{
-                      subscriber?.autoRenew ? t("account.on") : t("account.off")
+                  <div
+                    v-if="isPaidPlan && subscriber && subscriber.periodEnd"
+                    class="flex items-center justify-between"
+                  >
+                    <span class="text-sm text-gray-400">{{
+                      t("account.next_charge_on", {
+                        date: formatDate(subscriber.periodEnd),
+                      })
                     }}</span>
-                    <div
-                      class="relative inline-block w-10 h-6 transition-colors duration-200 ease-in-out rounded-full"
-                      :class="
-                        subscriber?.autoRenew ? 'bg-indigo-600' : 'bg-gray-600'
-                      "
-                    >
-                      <span
-                        class="absolute left-1 top-1 inline-block w-4 h-4 transform transition-transform duration-200 ease-in-out rounded-full bg-white"
+                    <span class="text-sm font-medium text-white">{{
+                      currentPlanPrice
+                    }}</span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-400">{{
+                      t("account.auto_renewal")
+                    }}</span>
+                    <div class="flex items-center gap-2">
+                      <span class="text-sm text-gray-300">{{
+                        subscriber?.autoRenew
+                          ? t("account.on")
+                          : t("account.off")
+                      }}</span>
+                      <div
+                        class="relative inline-block w-10 h-6 transition-colors duration-200 ease-in-out rounded-full"
                         :class="
                           subscriber?.autoRenew
-                            ? 'translate-x-4'
-                            : 'translate-x-0'
+                            ? 'bg-indigo-600'
+                            : 'bg-gray-600'
                         "
-                      ></span>
+                      >
+                        <span
+                          class="absolute left-1 top-1 inline-block w-4 h-4 transform transition-transform duration-200 ease-in-out rounded-full bg-white"
+                          :class="
+                            subscriber?.autoRenew
+                              ? 'translate-x-4'
+                              : 'translate-x-0'
+                          "
+                        ></span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <!-- Upgrade Options -->
-            <div
-              v-if="showUpgradeOptions"
-              class="border-t border-gray-600 pt-8 mt-8"
-            >
-              <h6 class="text-lg font-medium text-white mb-6">
-                {{ t("account.upgrade_to_unlock") }}
-              </h6>
+              <!-- Upgrade Options -->
               <div
-                :class="
-                  showProUpgrade
-                    ? 'grid grid-cols-1 md:grid-cols-2 gap-6'
-                    : 'grid grid-cols-1 gap-6'
-                "
+                v-if="showUpgradeOptions"
+                class="border-t border-gray-600 pt-8 mt-8"
               >
-                <!-- Pro Plan Card -->
+                <h6 class="text-lg font-medium text-white mb-6">
+                  {{ t("account.upgrade_to_unlock") }}
+                </h6>
                 <div
-                  v-if="showProUpgrade"
-                  class="border border-gray-600 rounded-xl p-6 bg-gray-800/80 hover:border-indigo-500 transition-colors relative group"
+                  :class="
+                    showProUpgrade
+                      ? 'grid grid-cols-1 md:grid-cols-2 gap-6'
+                      : 'grid grid-cols-1 gap-6'
+                  "
                 >
+                  <!-- Pro Plan Card -->
                   <div
-                    class="absolute inset-0 bg-gradient-to-br from-indigo-600/5 to-purple-600/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
-                  ></div>
-                  <div class="relative z-10">
-                    <h6 class="text-lg font-bold text-white mb-2">
-                      {{ t("account.pro_plan") }}
-                    </h6>
-                    <div class="text-2xl font-bold text-indigo-400 mb-4">
-                      <span v-if="pricing.pro.sats_per_month_display !== BETA_PRO_SATS_PER_MONTH" class="text-base font-normal text-gray-500 line-through mr-2">{{ formatSats(pricing.pro.sats_per_month_display) }}</span>
-                      {{ formatSats(BETA_PRO_SATS_PER_MONTH)
-                      }}<span class="text-base font-normal text-gray-500">{{
-                        t("account.pro_price_period")
-                      }}</span>
+                    v-if="showProUpgrade"
+                    class="border border-gray-600 rounded-xl p-6 bg-gray-800/80 hover:border-indigo-500 transition-colors relative group"
+                  >
+                    <div
+                      class="absolute inset-0 bg-gradient-to-br from-indigo-600/5 to-purple-600/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
+                    ></div>
+                    <div class="relative z-10">
+                      <h6 class="text-lg font-bold text-white mb-2">
+                        {{ t("account.pro_plan") }}
+                      </h6>
+                      <div class="text-2xl font-bold text-indigo-400 mb-4">
+                        <span
+                          v-if="
+                            pricing.pro.sats_per_month_display !==
+                            BETA_PRO_SATS_PER_MONTH
+                          "
+                          class="text-base font-normal text-gray-500 line-through mr-2"
+                          >{{
+                            formatSats(pricing.pro.sats_per_month_display)
+                          }}</span
+                        >
+                        {{ formatSats(BETA_PRO_SATS_PER_MONTH)
+                        }}<span class="text-base font-normal text-gray-500">{{
+                          t("account.pro_price_period")
+                        }}</span>
+                      </div>
+                      <ul class="text-sm text-gray-400 space-y-2 mb-6">
+                        <li
+                          v-for="key in planFeatures.pro.feature_keys"
+                          :key="key"
+                          class="flex items-center"
+                        >
+                          <span
+                            class="w-1.5 h-1.5 rounded-full bg-indigo-500 mr-2"
+                          ></span
+                          >{{ t("plans.features." + key) }}
+                        </li>
+                      </ul>
+                      <button
+                        @click="upgradePlan('pro')"
+                        :disabled="upgrading"
+                        class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {{
+                          upgrading
+                            ? t("stores.processing")
+                            : t("account.upgrade_to_pro")
+                        }}
+                      </button>
                     </div>
-                    <ul class="text-sm text-gray-400 space-y-2 mb-6">
-                      <li
-                        v-for="key in planFeatures.pro.feature_keys"
-                        :key="key"
-                        class="flex items-center"
-                      >
-                        <span
-                          class="w-1.5 h-1.5 rounded-full bg-indigo-500 mr-2"
-                        ></span
-                        >{{ t("plans.features." + key) }}
-                      </li>
-                    </ul>
-                    <button
-                      @click="upgradePlan('pro')"
-                      :disabled="upgrading"
-                      class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {{
-                        upgrading
-                          ? t("stores.processing")
-                          : t("account.upgrade_to_pro")
-                      }}
-                    </button>
                   </div>
-                </div>
 
-                <!-- Enterprise / Need more? Card (same as Landing) -->
-                <div
-                  v-if="showEnterpriseUpgrade"
-                  class="border border-gray-600 rounded-xl p-6 bg-gray-800/80 hover:border-purple-500 transition-colors relative group"
-                  :class="!showProUpgrade ? 'md:max-w-md mx-auto' : ''"
-                >
+                  <!-- Enterprise / Need more? Card (same as Landing) -->
                   <div
-                    class="absolute inset-0 bg-gradient-to-br from-purple-600/5 to-pink-600/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
-                  ></div>
-                  <div class="relative z-10">
-                    <h6 class="text-lg font-bold text-white mb-2">
-                      {{ t("landing.pricing_need_more_headline") }}
-                    </h6>
-                    <p class="text-sm text-gray-400 mb-4">
-                      {{ t("landing.pricing_need_more_text") }}
-                    </p>
-                    <ul class="text-sm text-gray-400 space-y-2 mb-6">
-                      <li
-                        v-for="key in planFeatures.enterprise.feature_keys"
-                        :key="key"
-                        class="flex items-center"
+                    v-if="showEnterpriseUpgrade"
+                    class="border border-gray-600 rounded-xl p-6 bg-gray-800/80 hover:border-purple-500 transition-colors relative group"
+                    :class="!showProUpgrade ? 'md:max-w-md mx-auto' : ''"
+                  >
+                    <div
+                      class="absolute inset-0 bg-gradient-to-br from-purple-600/5 to-pink-600/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
+                    ></div>
+                    <div class="relative z-10">
+                      <h6 class="text-lg font-bold text-white mb-2">
+                        {{ t("landing.pricing_need_more_headline") }}
+                      </h6>
+                      <p class="text-sm text-gray-400 mb-4">
+                        {{ t("landing.pricing_need_more_text") }}
+                      </p>
+                      <ul class="text-sm text-gray-400 space-y-2 mb-6">
+                        <li
+                          v-for="key in planFeatures.enterprise.feature_keys"
+                          :key="key"
+                          class="flex items-center"
+                        >
+                          <span
+                            class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"
+                          ></span
+                          >{{ t("plans.features." + key) }}
+                        </li>
+                      </ul>
+                      <a
+                        href="mailto:hello@satflux.io"
+                        class="block w-full text-center px-4 py-2 border border-purple-500 text-purple-400 hover:bg-purple-500/10 text-sm font-bold rounded-lg transition-all"
                       >
-                        <span
-                          class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2"
-                        ></span
-                        >{{ t("plans.features." + key) }}
-                      </li>
-                    </ul>
-                    <a
-                      href="mailto:hello@satflux.io"
-                      class="block w-full text-center px-4 py-2 border border-purple-500 text-purple-400 hover:bg-purple-500/10 text-sm font-bold rounded-lg transition-all"
-                    >
-                      {{ t("landing.pricing_need_more_cta") }}
-                    </a>
+                        {{ t("landing.pricing_need_more_cta") }}
+                      </a>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
+
+        <!-- Change Password -->
+        <div
+          class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
+        >
+          <div class="px-6 py-8 sm:p-10">
+            <h4 class="text-lg font-semibold text-white mb-6 flex items-center">
+              <svg
+                class="w-5 h-5 mr-2 text-indigo-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
+              </svg>
+              {{ t("account.password_settings") }}
+            </h4>
+            <form @submit.prevent="handleUpdatePassword">
+              <div class="space-y-6">
+                <div>
+                  <label
+                    for="current_password"
+                    class="block text-sm font-medium text-gray-300"
+                    >{{ t("account.current_password") }}</label
+                  >
+                  <div class="mt-1">
+                    <input
+                      id="current_password"
+                      v-model="passwordForm.current_password"
+                      type="password"
+                      required
+                      class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label
+                    for="password"
+                    class="block text-sm font-medium text-gray-300"
+                    >{{ t("account.new_password") }}</label
+                  >
+                  <div class="mt-1">
+                    <input
+                      id="password"
+                      v-model="passwordForm.password"
+                      type="password"
+                      required
+                      class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label
+                    for="password_confirmation"
+                    class="block text-sm font-medium text-gray-300"
+                    >{{ t("account.confirm_new_password") }}</label
+                  >
+                  <div class="mt-1">
+                    <input
+                      id="password_confirmation"
+                      v-model="passwordForm.password_confirmation"
+                      type="password"
+                      required
+                      class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div class="mt-8 flex justify-end">
+                <button
+                  type="submit"
+                  :disabled="passwordLoading"
+                  class="inline-flex justify-center py-2.5 px-6 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20"
+                >
+                  {{
+                    passwordLoading
+                      ? t("auth.saving")
+                      : t("account.update_password")
+                  }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
 
-      <!-- Change Password -->
+      <!-- Add Lightning Login Modal -->
+      <LnurlQrModal
+        :open="showLnurlLinkModal"
+        :title="t('account.add_lightning_login')"
+        :lnurl="lnurlLinkUrl"
+        :error="lnurlLinkError"
+        :polling="lnurlLinkPolling"
+        :expires-in-seconds="300"
+        @close="closeLnurlLinkModal"
+        @regenerate="requestNewLinkChallenge"
+      />
+
+      <NostrAuthModal
+        :open="showNostrLinkModal"
+        mode="link"
+        @close="showNostrLinkModal = false"
+        @success="
+          showNostrLinkModal = false;
+          authStore.fetchUser();
+          flashStore.success(t('account.nostr_login_added'));
+        "
+      />
+
+      <!-- Add Credit Modal -->
       <div
-        class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
+        v-if="showAddCreditModal"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        @click.self="showAddCreditModal = false"
       >
-        <div class="px-6 py-8 sm:p-10">
-          <h4 class="text-lg font-semibold text-white mb-6 flex items-center">
-            <svg
-              class="w-5 h-5 mr-2 text-indigo-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+        <div
+          class="bg-gray-800 rounded-xl border border-gray-700 max-w-md w-full p-6"
+        >
+          <div class="flex items-center justify-between mb-4">
+            <h5 class="text-lg font-bold text-white">
+              {{ t("account.add_credit_modal_title") }}
+            </h5>
+            <button
+              @click="showAddCreditModal = false"
+              class="text-gray-400 hover:text-white"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+              <svg
+                class="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">{{
+                t("account.amount_sats")
+              }}</label>
+              <input
+                v-model.number="creditAmount"
+                type="number"
+                min="1"
+                step="1"
+                class="w-full px-4 py-2 border border-gray-600 rounded-lg text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                :placeholder="t('account.amount_placeholder')"
               />
-            </svg>
-            {{ t("account.password_settings") }}
-          </h4>
-          <form @submit.prevent="handleUpdatePassword">
-            <div class="space-y-6">
-              <div>
-                <label
-                  for="current_password"
-                  class="block text-sm font-medium text-gray-300"
-                  >{{ t("account.current_password") }}</label
-                >
-                <div class="mt-1">
-                  <input
-                    id="current_password"
-                    v-model="passwordForm.current_password"
-                    type="password"
-                    required
-                    class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
-                  />
-                </div>
-              </div>
-              <div>
-                <label
-                  for="password"
-                  class="block text-sm font-medium text-gray-300"
-                  >{{ t("account.new_password") }}</label
-                >
-                <div class="mt-1">
-                  <input
-                    id="password"
-                    v-model="passwordForm.password"
-                    type="password"
-                    required
-                    class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
-                  />
-                </div>
-              </div>
-              <div>
-                <label
-                  for="password_confirmation"
-                  class="block text-sm font-medium text-gray-300"
-                  >{{ t("account.confirm_new_password") }}</label
-                >
-                <div class="mt-1">
-                  <input
-                    id="password_confirmation"
-                    v-model="passwordForm.password_confirmation"
-                    type="password"
-                    required
-                    class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
-                  />
-                </div>
-              </div>
             </div>
-            <div class="mt-8 flex justify-end">
+            <div class="flex gap-3">
               <button
-                type="submit"
-                :disabled="passwordLoading"
-                class="inline-flex justify-center py-2.5 px-6 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20"
+                @click="showAddCreditModal = false"
+                class="flex-1 px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                {{ t("common.cancel") }}
+              </button>
+              <button
+                @click="handleAddCredit"
+                :disabled="!creditAmount || creditAmount < 1 || addingCredit"
+                class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {{
-                  passwordLoading
-                    ? t("auth.saving")
-                    : t("account.update_password")
+                  addingCredit
+                    ? t("stores.processing")
+                    : t("account.add_credit_btn")
                 }}
               </button>
             </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- Add Lightning Login Modal -->
-    <LnurlQrModal
-      :open="showLnurlLinkModal"
-      :title="t('account.add_lightning_login')"
-      :lnurl="lnurlLinkUrl"
-      :error="lnurlLinkError"
-      :polling="lnurlLinkPolling"
-      :expires-in-seconds="300"
-      @close="closeLnurlLinkModal"
-      @regenerate="requestNewLinkChallenge"
-    />
-
-    <NostrAuthModal
-      :open="showNostrLinkModal"
-      mode="link"
-      @close="showNostrLinkModal = false"
-      @success="
-        showNostrLinkModal = false;
-        authStore.fetchUser();
-        flashStore.success(t('account.nostr_login_added'));
-      "
-    />
-
-    <!-- Add Credit Modal -->
-    <div
-      v-if="showAddCreditModal"
-      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      @click.self="showAddCreditModal = false"
-    >
-      <div
-        class="bg-gray-800 rounded-xl border border-gray-700 max-w-md w-full p-6"
-      >
-        <div class="flex items-center justify-between mb-4">
-          <h5 class="text-lg font-bold text-white">
-            {{ t("account.add_credit_modal_title") }}
-          </h5>
-          <button
-            @click="showAddCreditModal = false"
-            class="text-gray-400 hover:text-white"
-          >
-            <svg
-              class="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">{{
-              t("account.amount_sats")
-            }}</label>
-            <input
-              v-model.number="creditAmount"
-              type="number"
-              min="1"
-              step="1"
-              class="w-full px-4 py-2 border border-gray-600 rounded-lg text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              :placeholder="t('account.amount_placeholder')"
-            />
-          </div>
-          <div class="flex gap-3">
-            <button
-              @click="showAddCreditModal = false"
-              class="flex-1 px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              {{ t("common.cancel") }}
-            </button>
-            <button
-              @click="handleAddCredit"
-              :disabled="!creditAmount || creditAmount < 1 || addingCredit"
-              class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {{
-                addingCredit
-                  ? t("stores.processing")
-                  : t("account.add_credit_btn")
-              }}
-            </button>
           </div>
         </div>
       </div>
@@ -660,7 +713,10 @@ import { ref, onMounted, computed, onUnmounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
 import { useFlashStore } from "../../store/flash";
-import { usePricing, BETA_PRO_SATS_PER_MONTH } from "../../composables/usePricing";
+import {
+  usePricing,
+  BETA_PRO_SATS_PER_MONTH,
+} from "../../composables/usePricing";
 import { usePlanFeatures } from "../../composables/usePlanFeatures";
 import api from "../../services/api";
 import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
@@ -716,9 +772,8 @@ const currentPlanName = computed(() => {
 const currentPlanPrice = computed(() => {
   const role = authStore.user?.role || "free";
   const p = pricing.value;
-  if (role === "enterprise") return "—";
-  if (role === "pro")
-    return formatSats(BETA_PRO_SATS_PER_MONTH);
+  if (role === "enterprise") return "-";
+  if (role === "pro") return formatSats(BETA_PRO_SATS_PER_MONTH);
   return formatSats(p?.free?.sats_per_year ?? 0);
 });
 
@@ -823,7 +878,8 @@ async function handleAddCredit() {
       const baseUrl =
         response.data.baseUrl ||
         btcPayUrl.value ||
-        ((import.meta.env.VITE_BTCPAY_BASE_URL as string) || "");
+        (import.meta.env.VITE_BTCPAY_BASE_URL as string) ||
+        "";
       if (!baseUrl) {
         alert(t("account.credit_invoice_created"));
         showAddCreditModal.value = false;
@@ -900,9 +956,13 @@ function closeLnurlLinkModal() {
 async function fetchLinkChallengeAndOpen() {
   const response = await api.post("/lnurl-auth/link-challenge");
   const raw = response.data ?? {};
-  const data = typeof raw === "object" && raw !== null && "data" in raw ? (raw as { data: { k1?: string; lnurl?: string } }).data : raw;
+  const data =
+    typeof raw === "object" && raw !== null && "data" in raw
+      ? (raw as { data: { k1?: string; lnurl?: string } }).data
+      : raw;
   const k1 = data?.k1 ?? (data as { K1?: string })?.K1;
-  const lnurl = data?.lnurl ?? (data as { lnurlAuthUrl?: string })?.lnurlAuthUrl;
+  const lnurl =
+    data?.lnurl ?? (data as { lnurlAuthUrl?: string })?.lnurlAuthUrl;
   if (!k1 || !lnurl) {
     lnurlLinkError.value = t("auth.error_occurred");
     return false;
@@ -920,7 +980,8 @@ async function handleAddLightningLogin() {
   try {
     await fetchLinkChallengeAndOpen();
   } catch (err: any) {
-    lnurlLinkError.value = err.response?.data?.error || t("auth.error_occurred");
+    lnurlLinkError.value =
+      err.response?.data?.error || t("auth.error_occurred");
   } finally {
     lnurlLinkLoading.value = false;
   }
@@ -933,7 +994,8 @@ async function requestNewLinkChallenge() {
     const ok = await fetchLinkChallengeAndOpen();
     if (!ok) lnurlLinkError.value = t("auth.error_occurred");
   } catch (err: any) {
-    lnurlLinkError.value = err.response?.data?.error || t("auth.error_occurred");
+    lnurlLinkError.value =
+      err.response?.data?.error || t("auth.error_occurred");
   }
 }
 
@@ -948,9 +1010,14 @@ function startLinkPolling(k1: string) {
       return;
     }
     try {
-      const res = await api.get(`/lnurl-auth/challenge-status/${k1}?_=${Date.now()}`);
+      const res = await api.get(
+        `/lnurl-auth/challenge-status/${k1}?_=${Date.now()}`,
+      );
       const raw = res.data ?? {};
-      const data = typeof raw === "object" && raw !== null && "data" in raw ? (raw as { data: { status?: string } }).data : raw;
+      const data =
+        typeof raw === "object" && raw !== null && "data" in raw
+          ? (raw as { data: { status?: string } }).data
+          : raw;
       const status = (data as { status?: string })?.status;
       if (status === "linked") {
         stopLinkPolling();
@@ -961,7 +1028,8 @@ function startLinkPolling(k1: string) {
         lnurlLinkError.value = t("account.challenge_expired");
         closeLnurlLinkModal();
       } else if (status === "error") {
-        lnurlLinkError.value = (data as { message?: string }).message || t("auth.error_occurred");
+        lnurlLinkError.value =
+          (data as { message?: string }).message || t("auth.error_occurred");
         closeLnurlLinkModal();
       }
     } catch (err: any) {

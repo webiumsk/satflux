@@ -1,7 +1,7 @@
 <template>
   <AppShowLayout ref="layoutRef" :store="store" :app="app">
-    <template #default="{ app, store }">
-      <!-- Header (Save / Open PoS – onboarding pos-4 target is inside AppShowHeader on the buttons wrapper) -->
+    <template #toolbar="{ app, store }">
+      <!-- Save / Open PoS – onboarding pos-4 target is inside AppShowHeader on the buttons wrapper -->
       <AppShowHeader
         :title="app.name || 'Point of Sale'"
         :subtitle="`PoS - ${store.name}`"
@@ -13,7 +13,8 @@
         saving-text="Saving..."
         :saving="saving"
       />
-
+    </template>
+    <template #default="{ app, store }">
       <!-- Content Container -->
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <form

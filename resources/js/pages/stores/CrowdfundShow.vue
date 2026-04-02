@@ -1,7 +1,6 @@
 <template>
   <AppShowLayout ref="layoutRef">
-    <template #default="{ app, store }">
-      <!-- Header -->
+    <template #toolbar="{ app, store }">
       <AppShowHeader
         :title="app.name || 'Crowdfund'"
         :subtitle="`Crowdfund - ${store.name}`"
@@ -12,7 +11,8 @@
         saving-text="Saving..."
         :saving="formRef?.saving"
       />
-
+    </template>
+    <template #default="{ app, store }">
       <CrowdfundForm
         v-if="app"
         ref="formRef"

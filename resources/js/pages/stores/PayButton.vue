@@ -1,5 +1,5 @@
 <template>
-  <div class="flex bg-gray-900 overflow-hidden">
+  <div class="flex min-h-0 flex-1 overflow-hidden bg-gray-900">
     <!-- Sidebar -->
     <StoreSidebar
       :store="store"
@@ -10,9 +10,9 @@
     />
 
     <!-- Main Content -->
-    <div class="flex-1 overflow-hidden flex flex-col bg-gray-900 border-l border-gray-800">
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-l border-gray-800 bg-gray-900">
       <!-- Scrollable Content Area -->
-      <div class="flex-1 overflow-y-auto custom-scrollbar">
+      <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
         <!-- Header -->
         <AppShowHeader
           :title="t('stores.pay_button')"

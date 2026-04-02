@@ -1,4 +1,4 @@
-# satflux.io — standalone deployment
+# satflux.io - standalone deployment
 # Standalone stack without Traefik: Caddy as reverse proxy and TLS (Let's Encrypt).
 #
 # Usage:

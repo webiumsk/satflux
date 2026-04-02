@@ -1,4 +1,5 @@
 <template>
+  <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
     <div class="space-y-6">
       <!-- Header -->
@@ -140,6 +141,7 @@
         </div>
       </div>
     </div>
+  </div>
   </div>
 </template>
 

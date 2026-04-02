@@ -1,10 +1,7 @@
 <template>
   <AppShowLayout ref="layoutRef" :store="store" :app="app">
-    <template #default="{ app, store }">
-      <!-- Header -->
-      <div
-        class="sticky top-0 z-20 bg-gray-900/80 backdrop-blur-md border-b border-gray-800"
-      >
+    <template #toolbar="{ app, store }">
+      <div class="border-b border-gray-800 bg-gray-900/80 backdrop-blur-md">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div
             class="flex flex-col md:flex-row md:items-center justify-between gap-4"
@@ -75,7 +72,8 @@
           </div>
         </div>
       </div>
-
+    </template>
+    <template #default="{ app, store }">
       <!-- Content -->
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         <!-- ────── Create / Edit Event Form ────── -->

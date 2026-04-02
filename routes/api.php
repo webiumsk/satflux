@@ -109,7 +109,7 @@ Route::get('/version', function () {
     }
 
     return response()->json([
-        'version' => $version.' (beta)',
+        'version' => $version . ' (beta)',
         'name' => 'satflux.io',
     ]);
 });
@@ -126,11 +126,11 @@ Route::get('/config', function () {
 
 // Debug route for local development - verify stores exist in DB
 Route::get('/debug/stores', function (\Illuminate\Http\Request $request) {
-    if (! app()->environment('local')) {
+    if (!app()->environment('local')) {
         abort(404);
     }
 
-    if (! auth()->check()) {
+    if (!auth()->check()) {
         return response()->json(['error' => 'Not authenticated'], 401);
     }
 
@@ -156,7 +156,7 @@ Route::get('/debug/stores', function (\Illuminate\Http\Request $request) {
         'user_id' => $user->id,
         'user_email' => $user->email,
         'btcpay_user_id' => $user->btcpay_user_id,
-        'has_api_key' => ! empty($user->btcpay_api_key),
+        'has_api_key' => !empty($user->btcpay_api_key),
         'local_stores_count' => $stores->count(),
         'btcpay_stores_count' => is_array($btcpayStores) ? count($btcpayStores) : 0,
         'btcpay_error' => $btcpayError,
@@ -176,7 +176,7 @@ Route::get('/debug/stores', function (\Illuminate\Http\Request $request) {
             ];
         }, $btcpayStores) : [],
         'matching_stores' => $stores->filter(function ($localStore) use ($btcpayStores) {
-            if (! is_array($btcpayStores)) {
+            if (!is_array($btcpayStores)) {
                 return false;
             }
             $localBtcpayId = $localStore->btcpay_store_id;
@@ -274,7 +274,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Stores
     Route::get('/stores', [StoreController::class, 'index']);
     Route::post('/stores', [StoreController::class, 'store'])
-        ->middleware([EnsureStoreLimit::class, AuditLog::class.':store.created']);
+        ->middleware([EnsureStoreLimit::class, AuditLog::class . ':store.created']);
     Route::patch('/stores/{store}/wallet-type', [StoreController::class, 'setWalletType'])
         ->middleware(EnsureStoreOwnership::class);
     Route::get('/stores/{store}', [StoreController::class, 'show'])
@@ -294,7 +294,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/stores/{store}/settings', [StoreSettingsController::class, 'show'])
         ->middleware(EnsureStoreOwnership::class);
     Route::put('/stores/{store}/settings', [StoreSettingsController::class, 'update'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':store.updated']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':store.updated']);
 
     Route::get('/stores/{store}/email-rules/triggers', [StoreEmailRuleController::class, 'triggers'])
         ->middleware(EnsureStoreOwnership::class);
@@ -328,13 +328,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Store Logo
     Route::post('/stores/{store}/logo', [StoreController::class, 'uploadLogo'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':store.logo.uploaded']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':store.logo.uploaded']);
     Route::delete('/stores/{store}/logo', [StoreController::class, 'deleteLogo'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':store.logo.deleted']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':store.logo.deleted']);
 
     // Delete Store
     Route::delete('/stores/{store}', [StoreController::class, 'destroy'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':store.deleted']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':store.deleted']);
 
     // Invoices
     Route::get('/stores/{store}/invoices', [InvoiceController::class, 'index'])
@@ -346,7 +346,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/stores/{store}/exports', [ExportController::class, 'index'])
         ->middleware(EnsureStoreOwnership::class);
     Route::post('/stores/{store}/exports', [ExportController::class, 'store'])
-        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsExportsAccess::class, AuditLog::class.':export.created']);
+        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsExportsAccess::class, AuditLog::class . ':export.created']);
     Route::get('/exports', [ExportController::class, 'all']);
     Route::get('/exports/{export}/download', [ExportController::class, 'download'])
         ->middleware(EnsurePlanAllowsExportsAccess::class);
@@ -369,13 +369,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/stores/{store}/apps', [AppController::class, 'index'])
         ->middleware(EnsureStoreOwnership::class);
     Route::post('/stores/{store}/apps', [AppController::class, 'store'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':app.created']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':app.created']);
     Route::get('/stores/{store}/apps/{app}', [AppController::class, 'show'])
         ->middleware(EnsureStoreOwnership::class);
     Route::put('/stores/{store}/apps/{app}', [AppController::class, 'update'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':app.updated']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':app.updated']);
     Route::delete('/stores/{store}/apps/{app}', [AppController::class, 'destroy'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':app.deleted']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':app.deleted']);
 
     // Lightning Addresses
     Route::get('/stores/{store}/lightning-addresses', [LightningAddressController::class, 'index'])
@@ -383,11 +383,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'show'])
         ->middleware(EnsureStoreOwnership::class);
     Route::post('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'store'])
-        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsLnAddressCreation::class, AuditLog::class.':lightning-address.created']);
+        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsLnAddressCreation::class, AuditLog::class . ':lightning-address.created']);
     Route::put('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'update'])
-        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsLnAddressCreation::class, AuditLog::class.':lightning-address.updated']);
+        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsLnAddressCreation::class, AuditLog::class . ':lightning-address.updated']);
     Route::delete('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'destroy'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':lightning-address.deleted']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':lightning-address.deleted']);
 
     // Stripe (Pro+ only)
     Route::middleware([EnsureStoreOwnership::class, EnsurePlanAllowsStripe::class])->group(function () {
@@ -403,19 +403,19 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/stores/{store}/api-keys', [\App\Http\Controllers\StoreApiKeyController::class, 'index'])
         ->middleware(EnsureStoreOwnership::class);
     Route::post('/stores/{store}/api-keys', [\App\Http\Controllers\StoreApiKeyController::class, 'store'])
-        ->middleware([EnsureStoreOwnership::class, EnsureApiKeyLimit::class, AuditLog::class.':api-key.created']);
+        ->middleware([EnsureStoreOwnership::class, EnsureApiKeyLimit::class, AuditLog::class . ':api-key.created']);
     Route::get('/stores/{store}/api-keys/{apiKey}', [\App\Http\Controllers\StoreApiKeyController::class, 'show'])
         ->middleware(EnsureStoreOwnership::class);
     Route::delete('/stores/{store}/api-keys/{apiKey}', [\App\Http\Controllers\StoreApiKeyController::class, 'destroy'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':api-key.deleted']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':api-key.deleted']);
     Route::post('/stores/{store}/api-keys/{apiKey}/regenerate', [\App\Http\Controllers\StoreApiKeyController::class, 'regenerate'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':api-key.regenerated']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':api-key.regenerated']);
     Route::post('/stores/{store}/api-keys/token', [\App\Http\Controllers\StoreApiKeyController::class, 'generateToken'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':api-key.token.generated']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':api-key.token.generated']);
 
     // Product Images
     Route::post('/stores/{store}/products/image', [\App\Http\Controllers\ProductImageController::class, 'upload'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':product.image.uploaded']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':product.image.uploaded']);
 
     // Plans (public pricing)
     Route::get('/plans', [PlanController::class, 'index']);
@@ -429,23 +429,23 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/stores/{store}/pos-terminals', [PosTerminalController::class, 'index'])
         ->middleware(EnsureStoreOwnership::class);
     Route::post('/stores/{store}/pos-terminals', [PosTerminalController::class, 'store'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':pos-terminal.created']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':pos-terminal.created']);
     Route::put('/stores/{store}/pos-terminals/{pos_terminal}', [PosTerminalController::class, 'update'])
-        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsOfflinePaymentMethods::class, AuditLog::class.':pos-terminal.updated']);
+        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsOfflinePaymentMethods::class, AuditLog::class . ':pos-terminal.updated']);
     Route::delete('/stores/{store}/pos-terminals/{pos_terminal}', [PosTerminalController::class, 'destroy'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':pos-terminal.deleted']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':pos-terminal.deleted']);
     Route::get('/stores/{store}/pos-orders', [PosOrderController::class, 'index'])
         ->middleware(EnsureStoreOwnership::class);
     Route::post('/stores/{store}/pos-orders', [PosOrderController::class, 'store'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':pos-order.created']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':pos-order.created']);
 
     // Wallet Connections (Merchant)
     Route::get('/stores/{store}/wallet-connection', [WalletConnectionController::class, 'show'])
         ->middleware([EnsureStoreOwnership::class]);
     Route::post('/stores/{store}/wallet-connection/reveal', [WalletConnectionController::class, 'revealForOwner'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':wallet_connection.revealed']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':wallet_connection.revealed']);
     Route::post('/stores/{store}/wallet-connection', [WalletConnectionController::class, 'store'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':wallet_connection.created']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':wallet_connection.created']);
     Route::post('/stores/{store}/wallet-connection/check-duplicate', [WalletConnectionController::class, 'checkDuplicate'])
         ->middleware([EnsureStoreOwnership::class]);
     // Endpoint for checking duplicates when creating new stores (no store ID yet)
@@ -454,9 +454,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/stores/{store}/wallet-connection/test', [WalletConnectionController::class, 'testConnection'])
         ->middleware([EnsureStoreOwnership::class]);
     Route::post('/stores/{store}/wallet-connection/configure', [WalletConnectionController::class, 'configureLightning'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':wallet_connection.configured']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':wallet_connection.configured']);
     Route::delete('/stores/{store}/wallet-connection', [WalletConnectionController::class, 'destroy'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':wallet_connection.deleted']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class . ':wallet_connection.deleted']);
 
     // SatoshiTickets (Events, Ticket Types, Tickets, Orders)
     Route::prefix('stores/{store}/tickets')->middleware(EnsureStoreOwnership::class)->group(function () {
@@ -485,10 +485,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/support/wallet-connections', [WalletConnectionController::class, 'indexSupport']);
         Route::get('/support/count', [WalletConnectionController::class, 'getSupportCount']);
         Route::post('/support/wallet-connections/{connection}/reveal', [WalletConnectionController::class, 'reveal'])
-            ->middleware(AuditLog::class.':wallet_connection.revealed');
+            ->middleware(AuditLog::class . ':wallet_connection.revealed');
         Route::get('/support/wallet-connections/{connection}/btcpay-store-url', [WalletConnectionController::class, 'getBtcPayStoreUrl']);
         Route::put('/support/wallet-connections/{connection}/mark-connected', [WalletConnectionController::class, 'markConnected'])
-            ->middleware(AuditLog::class.':wallet_connection.marked_connected');
+            ->middleware(AuditLog::class . ':wallet_connection.marked_connected');
         Route::post('/support/wallet-connections/{connection}/bot-failed', [WalletConnectionController::class, 'botFailed']);
     });
 
@@ -499,9 +499,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/admin/users', [AdminController::class, 'index']);
         Route::get('/admin/users/{user}', [AdminController::class, 'show']);
         Route::put('/admin/users/{user}', [AdminController::class, 'update'])
-            ->middleware(AuditLog::class.':admin.user.updated');
+            ->middleware(AuditLog::class . ':admin.user.updated');
         Route::delete('/admin/users/{user}', [AdminController::class, 'destroy'])
-            ->middleware(AuditLog::class.':admin.user.deleted');
+            ->middleware(AuditLog::class . ':admin.user.deleted');
     });
 });
 
@@ -521,7 +521,7 @@ Route::get('/faq', [FaqController::class, 'index']);
 Route::get('/faq/{slug}', [FaqController::class, 'show']);
 Route::post('/faq/{slug}/helpful', [FaqController::class, 'markHelpful']);
 
-// Public Ticket Check-In (no auth required — URL acts as the secret)
+// Public Ticket Check-In (no auth required - URL acts as the secret)
 Route::middleware(['throttle:30,1'])->prefix('public/ticket-checkin')->group(function () {
     Route::get('/{store}/events/{eventId}', [TicketController::class, 'publicEventInfo']);
     Route::post('/{store}/events/{eventId}/tickets/{ticketNumber}/check-in', [TicketController::class, 'publicCheckIn']);
@@ -532,23 +532,23 @@ Route::middleware(['auth:sanctum', EnsureSupportOrAdminRole::class])->prefix('ad
     // Articles
     Route::get('/articles', [DocumentationArticleController::class, 'index']);
     Route::post('/articles', [DocumentationArticleController::class, 'store'])
-        ->middleware(AuditLog::class.':documentation_article.created');
+        ->middleware(AuditLog::class . ':documentation_article.created');
     Route::get('/articles/{article}', [DocumentationArticleController::class, 'show']);
     Route::put('/articles/{article}', [DocumentationArticleController::class, 'update'])
-        ->middleware(AuditLog::class.':documentation_article.updated');
+        ->middleware(AuditLog::class . ':documentation_article.updated');
     Route::delete('/articles/{article}', [DocumentationArticleController::class, 'destroy'])
-        ->middleware(AuditLog::class.':documentation_article.deleted');
+        ->middleware(AuditLog::class . ':documentation_article.deleted');
     Route::post('/upload-image', [DocumentationImageController::class, 'upload']);
 
     // Categories
     Route::get('/categories', [DocumentationCategoryController::class, 'index']);
     Route::post('/categories', [DocumentationCategoryController::class, 'store'])
-        ->middleware(AuditLog::class.':documentation_category.created');
+        ->middleware(AuditLog::class . ':documentation_category.created');
     Route::get('/categories/{category}', [DocumentationCategoryController::class, 'show']);
     Route::put('/categories/{category}', [DocumentationCategoryController::class, 'update'])
-        ->middleware(AuditLog::class.':documentation_category.updated');
+        ->middleware(AuditLog::class . ':documentation_category.updated');
     Route::delete('/categories/{category}', [DocumentationCategoryController::class, 'destroy'])
-        ->middleware(AuditLog::class.':documentation_category.deleted');
+        ->middleware(AuditLog::class . ':documentation_category.deleted');
 });
 
 // Admin FAQ (requires support or admin role)
@@ -556,20 +556,20 @@ Route::middleware(['auth:sanctum', EnsureSupportOrAdminRole::class])->prefix('ad
     // Items
     Route::get('/items', [FaqItemController::class, 'index']);
     Route::post('/items', [FaqItemController::class, 'store'])
-        ->middleware(AuditLog::class.':faq_item.created');
+        ->middleware(AuditLog::class . ':faq_item.created');
     Route::get('/items/{item}', [FaqItemController::class, 'show']);
     Route::put('/items/{item}', [FaqItemController::class, 'update'])
-        ->middleware(AuditLog::class.':faq_item.updated');
+        ->middleware(AuditLog::class . ':faq_item.updated');
     Route::delete('/items/{item}', [FaqItemController::class, 'destroy'])
-        ->middleware(AuditLog::class.':faq_item.deleted');
+        ->middleware(AuditLog::class . ':faq_item.deleted');
 
     // Categories
     Route::get('/categories', [FaqCategoryController::class, 'index']);
     Route::post('/categories', [FaqCategoryController::class, 'store'])
-        ->middleware(AuditLog::class.':faq_category.created');
+        ->middleware(AuditLog::class . ':faq_category.created');
     Route::get('/categories/{category}', [FaqCategoryController::class, 'show']);
     Route::put('/categories/{category}', [FaqCategoryController::class, 'update'])
-        ->middleware(AuditLog::class.':faq_category.updated');
+        ->middleware(AuditLog::class . ':faq_category.updated');
     Route::delete('/categories/{category}', [FaqCategoryController::class, 'destroy'])
-        ->middleware(AuditLog::class.':faq_category.deleted');
+        ->middleware(AuditLog::class . ':faq_category.deleted');
 });

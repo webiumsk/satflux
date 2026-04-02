@@ -1,4 +1,4 @@
-# satflux.io — deployment configuration
+# satflux.io - deployment configuration
 # Caddy + docker-compose.standalone.yml
 #
 # Set in .env.standalone:

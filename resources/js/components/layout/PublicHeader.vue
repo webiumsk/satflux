@@ -21,6 +21,13 @@
           <!-- Navigation Menu (Desktop only) -->
           <nav class="hidden md:flex space-x-1">
             <router-link
+              to="/#clarity"
+              @click="handleAnchorClick('/#clarity')"
+              class="px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-all"
+            >
+              {{ t("header.what_satflux_is") }}
+            </router-link>
+            <router-link
               to="/#features"
               @click="handleAnchorClick('/#features')"
               class="px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-all"
@@ -195,6 +202,13 @@
       <!-- Scrollable content -->
       <div class="flex-1 overflow-y-auto overflow-x-hidden">
         <nav class="p-4 space-y-2">
+          <router-link
+            to="/#clarity"
+            @click="handleAnchorClick('/#clarity'); closeMobileMenu();"
+            class="flex items-center px-4 py-3 rounded-xl text-base font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+          >
+            {{ t("header.what_satflux_is") }}
+          </router-link>
           <router-link
             to="/#features"
             @click="handleAnchorClick('/#features'); closeMobileMenu();"
