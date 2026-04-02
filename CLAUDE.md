@@ -28,6 +28,8 @@ docker compose exec php php artisan tinker        # Interactive shell
 docker compose exec php composer install          # Install PHP deps
 ```
 
+If Git, ESLint, or exports fail with permission errors on `storage/app/private` or `storage/app/exports` (often `www-data` from Docker), fix ownership on the host, e.g. `sudo chown -R "$USER:$USER" storage/app/private storage/app/exports`. Export files are gitignored (`*.csv`, `*.xlsx`).
+
 ### Versioning
 
 ```bash

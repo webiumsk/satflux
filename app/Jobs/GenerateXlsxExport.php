@@ -52,7 +52,13 @@ class GenerateXlsxExport implements ShouldQueue
 
             $directory = dirname($fullPath);
             if (!is_dir($directory)) {
-                mkdir($directory, 0755, true);
+                mkdir($directory, 0775, true);
+            }
+            if (!is_writable($directory)) {
+                @chmod($directory, 0775);
+            }
+            if (!is_writable($directory)) {
+                throw new \RuntimeException("Export directory is not writable: {$directory}");
             }
 
             $spreadsheet = new Spreadsheet();

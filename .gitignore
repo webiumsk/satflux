@@ -30,8 +30,12 @@ yarn-error.log
 /storage/logs/*.log
 !/storage/logs/.gitkeep
 
-# Generated CSV exports (runtime artifacts)
+# Runtime-only app storage (Docker often uses www-data; ESLint skips via --ignore-path)
+/storage/app/private
+
+# Generated exports (CSV/XLSX from jobs; mkdir in GenerateCsvExport / GenerateXlsxExport)
 /storage/app/exports/*.csv
+/storage/app/exports/*.xlsx
 
 # BTCPay config bot runtime (logs, etc.)
 /scripts/btcpay-config-bot/storage/
