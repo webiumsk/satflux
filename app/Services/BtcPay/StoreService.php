@@ -198,14 +198,14 @@ class StoreService
      * Delete a store in BTCPay Server (DELETE /api/v1/stores/{storeId}).
      * Must use server-level API key – merchant keys typically lack this permission.
      *
-     * @param string|null $userApiKey Pass null to use server key (required for delete)
+     * @param string|null $userApiKey Optional merchant key: HTTP delete always uses server key; when set, its hash-scoped store cache is cleared too
      */
     public function deleteStore(string $storeId, ?string $userApiKey = null): void
     {
         // Store deletion requires server-level key (merchant keys lack this permission)
         $this->client->delete("/api/v1/stores/{$storeId}");
 
-        $this->forgetStoreCache($storeId, null);
+        $this->forgetStoreCache($storeId, $userApiKey);
     }
 
     /**
