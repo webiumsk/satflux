@@ -79,7 +79,8 @@ export const useAuthStore = defineStore('auth', () => {
                 password,
                 password_confirmation,
             });
-            user.value = response.data.user;
+            // Session is not created until email is verified; do not treat as logged in.
+            user.value = null;
             return response.data;
         } finally {
             loading.value = false;

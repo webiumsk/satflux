@@ -5,11 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Notifications\VerifyEmailNotification;
+use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\URL;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmailContract
 {
     use HasApiTokens, HasFactory, Notifiable;
 
@@ -296,6 +299,33 @@ class User extends Authenticatable
     public function hasVerifiedEmail(): bool
     {
         return !is_null($this->email_verified_at);
+    }
+
+    /**
+     * Send our signed verification link (same URL shape as registration flow).
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        if (! $this->email) {
+            return;
+        }
+
+        $baseUrl = rtrim((string) config('app.url', ''), '/');
+        URL::forceRootUrl($baseUrl);
+
+        $url = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes(60),
+            ['id' => $this->id, 'hash' => sha1($this->email)]
+        );
+        $url = str_replace('/api/auth/verify-email/', '/auth/verify-email/', $url);
+
+        $this->notify(new VerifyEmailNotification($url));
+    }
+
+    public function getEmailForVerification(): string
+    {
+        return (string) ($this->email ?? '');
     }
 
     /**

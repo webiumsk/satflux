@@ -57,6 +57,34 @@ class AuthTest extends TestCase
         $response->assertJsonStructure(['user']);
     }
 
+    public function test_unverified_user_cannot_login_with_password(): void
+    {
+        $user = User::factory()->unverified()->create([
+            'email' => 'unverified@example.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'unverified@example.com',
+            'password' => 'password',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['email']);
+        $this->assertGuest();
+    }
+
+    public function test_unverified_user_cannot_access_protected_api(): void
+    {
+        $user = User::factory()->unverified()->create();
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson('/api/user');
+
+        $response->assertStatus(403);
+        $response->assertJson(['message' => __('auth.email_not_verified')]);
+    }
+
     public function test_user_can_logout(): void
     {
         $user = User::factory()->create();

@@ -18,5 +18,6 @@ return [
     'lightning_key_already_registered' => 'Táto Lightning peňaženka je už zaregistrovaná.',
     'nostr_key_already_registered' => 'Tento Nostr kľúč je už prepojený s účtom.',
     'invalid_password_or_confirm_lnurl' => 'Nesprávne heslo alebo potvrďte Lightning peňaženkou alebo Nostr.',
+    'email_not_verified' => 'Pred prihlásením prosím potvrďte e-mail. V schránke nájdete odkaz na overenie.',
 ];
 

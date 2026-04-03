@@ -25,6 +25,14 @@ class LoginController extends Controller
             ]);
         }
 
+        if (! Auth::user()->hasVerifiedEmail()) {
+            Auth::logout();
+
+            throw ValidationException::withMessages([
+                'email' => __('auth.email_not_verified'),
+            ]);
+        }
+
         // Only regenerate session if session is available (for SPA/stateful auth)
         // For stateless API requests, session may not be set
         if ($request->hasSession()) {

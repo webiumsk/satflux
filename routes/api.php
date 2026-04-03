@@ -52,6 +52,7 @@ use App\Http\Middleware\EnsureStoreLimit;
 use App\Http\Middleware\EnsureStoreOwnership;
 use App\Http\Middleware\EnsureSupportOrAdminRole;
 use App\Http\Middleware\EnsureSupportRole;
+use App\Http\Middleware\RequireVerifiedEmail;
 use Illuminate\Support\Facades\Route;
 
 // Health check endpoint
@@ -243,8 +244,8 @@ Route::get('/nostr-auth/enabled', [NostrAuthController::class, 'enabled']);
 Route::get('/nostr-auth/challenge-status/{id}', [NostrAuthController::class, 'challengeStatus'])
     ->middleware(['throttle:60,1']);
 
-// Authenticated routes
-Route::middleware(['auth:sanctum'])->group(function () {
+// Authenticated routes (email must be verified — classic registration and API use)
+Route::middleware(['auth:sanctum', RequireVerifiedEmail::class])->group(function () {
     // User/Account routes
     Route::get('/user', [AccountController::class, 'user']);
     Route::post('/lnurl-auth/link-challenge', [LnurlAuthController::class, 'linkChallenge']);

@@ -5,10 +5,8 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Notifications\VerifyEmailNotification;
-use App\Services\BtcPay\UserService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -19,13 +17,6 @@ use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class RegisterController extends Controller
 {
-    protected UserService $userService;
-
-    public function __construct(UserService $userService)
-    {
-        $this->userService = $userService;
-    }
-
     /**
      * Handle an incoming registration request.
      */
@@ -37,22 +28,7 @@ class RegisterController extends Controller
         ]);
 
         return DB::transaction(function () use ($request) {
-            // Check if email already exists on BTCPay Server
-            try {
-                $btcpayUser = $this->userService->getUserByEmail($request->email);
-                if ($btcpayUser) {
-                    throw ValidationException::withMessages([
-                        'email' => ['This email is already registered on BTCPay Server. Please use login instead.'],
-                    ]);
-                }
-            } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
-                // Log but continue - if BTCPay API fails, we still allow registration
-                // User can be synced later
-                Log::warning('BTCPay email check failed during registration', [
-                    'email' => $request->email,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            // BTCPay user is created or linked only after email verification (see EmailVerificationController).
 
             // Check if user already exists (unverified)
             $existingUser = User::where('email', $request->email)->first();
