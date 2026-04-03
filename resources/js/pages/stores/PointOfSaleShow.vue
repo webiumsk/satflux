@@ -4,7 +4,7 @@
       <!-- Save / Open PoS – onboarding pos-4 target is inside AppShowHeader on the buttons wrapper -->
       <AppShowHeader
         :title="app.name || t('apps.point_of_sale')"
-        :subtitle="t('apps.pos_header_subtitle', { store: store.name })"
+        :subtitle="t('apps.pos_header_subtitle', { store: store?.name ?? '' })"
         :app-url="btcpayAppUrl"
         :qr-modal-title="t('stores.pos_url_qr')"
         :open-button-text="t('apps.open_pos')"
