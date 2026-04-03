@@ -246,8 +246,9 @@ class StoreTest extends TestCase
         $user = User::factory()->create();
         $store = Store::factory()->create(['user_id' => $user->id]);
 
+        $baseUrl = rtrim(config('services.btcpay.base_url'), '/');
         Http::fake([
-            config('services.btcpay.base_url').'/stores/'.$store->btcpay_store_id.'/logo' => Http::response([], 204),
+            $baseUrl.'/api/v1/stores/'.$store->btcpay_store_id.'/logo' => Http::response([], 200),
         ]);
 
         $response = $this->actingAs($user)->deleteJson("/api/stores/{$store->id}/logo");

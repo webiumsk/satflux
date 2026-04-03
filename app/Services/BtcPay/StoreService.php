@@ -103,11 +103,7 @@ class StoreService
 
         try {
             $result = $this->client->put("/api/v1/stores/{$storeId}", $data);
-
-            // Clear cache for both server and merchant keys (in case both were used)
-            $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
-            Cache::forget("btcpay:store:{$storeId}:{$apiKeyHash}");
-            Cache::forget("btcpay:store:{$storeId}:server"); // Also clear server cache in case it was used
+            $this->forgetStoreCache($storeId, $userApiKey);
 
             return $result;
         } finally {
@@ -202,13 +198,23 @@ class StoreService
      * Delete a store in BTCPay Server (DELETE /api/v1/stores/{storeId}).
      * Must use server-level API key – merchant keys typically lack this permission.
      *
-     * @param string|null $userApiKey Pass null to use server key (required for delete)
+     * @param string|null $userApiKey Optional merchant key: HTTP delete always uses server key; when set, its hash-scoped store cache is cleared too
      */
     public function deleteStore(string $storeId, ?string $userApiKey = null): void
     {
         // Store deletion requires server-level key (merchant keys lack this permission)
         $this->client->delete("/api/v1/stores/{$storeId}");
 
+        $this->forgetStoreCache($storeId, $userApiKey);
+    }
+
+    /**
+     * Invalidate cached BTCPay store payload (logo and other fields may change outside PUT /stores).
+     */
+    protected function forgetStoreCache(string $storeId, ?string $userApiKey): void
+    {
+        $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
+        Cache::forget("btcpay:store:{$storeId}:{$apiKeyHash}");
         Cache::forget("btcpay:store:{$storeId}:server");
     }
 
@@ -226,9 +232,10 @@ class StoreService
         }
 
         try {
-            // Use multipart form data for file upload
-            // Pass file directly to postMultipart
-            return $this->client->postMultipart("/api/v1/stores/{$storeId}/logo", $file);
+            $result = $this->client->postMultipart("/api/v1/stores/{$storeId}/logo", $file);
+            $this->forgetStoreCache($storeId, $userApiKey);
+
+            return $result;
         } finally {
             // Restore original API key if we changed it
             if ($userApiKey && $originalApiKey) {
@@ -252,6 +259,7 @@ class StoreService
 
         try {
             $this->client->delete("/api/v1/stores/{$storeId}/logo");
+            $this->forgetStoreCache($storeId, $userApiKey);
         } finally {
             // Restore original API key if we changed it
             if ($userApiKey && $originalApiKey) {

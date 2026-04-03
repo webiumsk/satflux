@@ -639,6 +639,9 @@ async function handleDeleteLogo() {
   try {
     await api.delete(`/stores/${props.store.id}/logo`);
     storeLogoUrl.value = null;
+    if (settings.value && typeof settings.value === 'object') {
+      settings.value.logo_url = null;
+    }
     flashStore.success(t('stores.logo_deleted') || 'Logo deleted successfully');
     emit('update-store');
   } catch (err: any) {
