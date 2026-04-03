@@ -145,9 +145,11 @@
             v-if="formReadonly"
             class="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 flex items-center justify-between gap-4"
           >
-            <p class="text-sm text-amber-400 font-medium">
-              {{ t("stores.available_in_pro") }} –
-              {{ t("upgrade_modal.stripe_available_in_pro") }}
+            <p class="text-sm text-amber-400 font-medium flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span class="inline-flex items-center rounded-md border border-amber-500/40 bg-amber-500/15 px-2 py-0.5">
+                <ProPlanBadge />
+              </span>
+              <span>– {{ t("upgrade_modal.stripe_available_in_pro") }}</span>
             </p>
             <a
               href="/pricing"
@@ -678,6 +680,7 @@ import { useAppsStore } from "../../store/apps";
 import { useFlashStore } from "../../store/flash";
 import StoreSidebar from "../../components/stores/StoreSidebar.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
+import ProPlanBadge from "../../components/stores/ProPlanBadge.vue";
 import Select from "../../components/ui/Select.vue";
 import api from "../../services/api";
 

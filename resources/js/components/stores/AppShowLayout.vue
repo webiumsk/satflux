@@ -19,7 +19,7 @@
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
      </svg>
-    <p class="text-gray-400 ml-4">Loading app...</p>
+    <p class="text-gray-400 ml-4">{{ t('apps.loading_app') }}</p>
   </div>
 
   <div v-else-if="store && app" class="flex min-h-0 flex-1 max-md:overflow-visible bg-gray-900 md:overflow-hidden">
@@ -58,14 +58,15 @@
     <div class="h-16 w-16 bg-gray-800 rounded-full flex items-center justify-center mb-4">
         <svg class="h-8 w-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
     </div>
-    <p class="text-gray-400 font-medium">App not found</p>
-    <button @click="goToAppsList" class="mt-4 text-indigo-400 hover:text-indigo-300 transition-colors text-sm">Return to Apps List</button>
+    <p class="text-gray-400 font-medium">{{ t('apps.app_not_found') }}</p>
+    <button @click="goToAppsList" class="mt-4 text-indigo-400 hover:text-indigo-300 transition-colors text-sm">{{ t('apps.back_to_apps') }}</button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, inject, useSlots } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { router as inertiaRouter } from '@inertiajs/vue3';
 import { useAppsStore } from '../../store/apps';
 import { useStoresStore } from '../../store/stores';
@@ -73,6 +74,7 @@ import StoreSidebar from './StoreSidebar.vue';
 import ArchivedStoreBanner from './ArchivedStoreBanner.vue';
 
 const props = defineProps<{ store?: any; app?: any }>();
+const { t } = useI18n();
 const slots = useSlots();
 const hasToolbarSlot = computed(() => typeof slots.toolbar === 'function');
 const isInertia = inject<boolean>('inertia', false);

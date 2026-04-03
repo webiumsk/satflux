@@ -3,14 +3,14 @@
     <template #toolbar="{ app, store }">
       <!-- Save / Open PoS – onboarding pos-4 target is inside AppShowHeader on the buttons wrapper -->
       <AppShowHeader
-        :title="app.name || 'Point of Sale'"
-        :subtitle="`PoS - ${store.name}`"
+        :title="app.name || t('apps.point_of_sale')"
+        :subtitle="t('apps.pos_header_subtitle', { store: store?.name ?? '' })"
         :app-url="btcpayAppUrl"
         :qr-modal-title="t('stores.pos_url_qr')"
-        open-button-text="Open PoS"
+        :open-button-text="t('apps.open_pos')"
         form-id="pos-settings-form"
-        save-button-text="Save Settings"
-        saving-text="Saving..."
+        :save-button-text="t('apps.save_pos_settings')"
+        :saving-text="t('auth.saving')"
         :saving="saving"
       />
     </template>
@@ -33,7 +33,7 @@
                     for="appName"
                     class="block text-sm font-medium text-gray-300 mb-1"
                   >
-                    App Name <span class="text-red-400">*</span>
+                    {{ t('apps.app_name') }} <span class="text-red-400">*</span>
                   </label>
                   <input
                     id="appName"
@@ -49,7 +49,7 @@
                     for="title"
                     class="block text-sm font-medium text-gray-300 mb-1"
                   >
-                    Title display to customer
+                    {{ t('apps.pos_title_display_label') }}
                   </label>
                   <input
                     id="title"
@@ -63,7 +63,7 @@
               <!-- Default View Selection -->
               <div data-onboarding="pos-2">
                 <label class="block text-sm font-medium text-gray-300 mb-3">
-                  {{ $t('apps.pos_style') }}
+                  {{ t('apps.pos_style') }}
                 </label>
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <!-- Light (Keypad) -->
@@ -98,7 +98,7 @@
                         />
                       </svg>
                     </div>
-                    <span class="text-sm font-medium text-white">{{ $t('apps.pos_style_light') }}</span>
+                    <span class="text-sm font-medium text-white">{{ t('apps.pos_style_light') }}</span>
                     <div
                       v-if="form.defaultView === 'Light'"
                       class="absolute top-2 right-2 text-indigo-500"
@@ -150,7 +150,7 @@
                       </svg>
                     </div>
                     <span class="text-sm font-medium text-white"
-                      >{{ $t('apps.pos_style_static') }}</span
+                      >{{ t('apps.pos_style_static') }}</span
                     >
                     <div
                       v-if="form.defaultView === 'Static'"
@@ -203,7 +203,7 @@
                       </svg>
                     </div>
                     <span class="text-sm font-medium text-white"
-                      >{{ $t('apps.pos_style_cart') }}</span
+                      >{{ t('apps.pos_style_cart') }}</span
                     >
                     <div
                       v-if="form.defaultView === 'Cart'"
@@ -256,7 +256,7 @@
                       </svg>
                     </div>
                     <span class="text-sm font-medium text-white"
-                      >{{ $t('apps.pos_style_print') }}</span
+                      >{{ t('apps.pos_style_print') }}</span
                     >
                     <div
                       v-if="form.defaultView === 'Print'"
@@ -288,7 +288,7 @@
                   for="description"
                   class="block text-sm font-medium text-gray-300 mb-1"
                 >
-                  Description
+                  {{ t('apps.pos_description_label') }}
                 </label>
                 <textarea
                   id="description"
@@ -313,7 +313,7 @@
                     for="showItems"
                     class="ml-3 block text-sm font-medium text-gray-200"
                   >
-                    Display item selection for keypad
+                    {{ t('apps.pos_keypad_show_items') }}
                   </label>
                 </div>
               </div>
@@ -337,9 +337,9 @@
                     @click="showAdvancedSettings = !showAdvancedSettings"
                     class="border border-gray-700/50 w-full px-6 py-4 flex items-center justify-between text-left bg-gray-700/50 hover:bg-gray-700 transition-colors rounded-t-xl"
                   >
-                    <span class="text-xl font-medium text-orange-500"
-                      >Extra Settings</span
-                    >
+                    <span class="text-xl font-medium text-orange-500">{{
+                      t('apps.pos_extra_settings')
+                    }}</span>
                     <svg
                       class="h-5 w-5 text-orange-500 transform transition-transform duration-200"
                       :class="{ 'rotate-180': showAdvancedSettings }"
@@ -357,13 +357,13 @@
                   </button>
                   <div
                     v-show="showAdvancedSettings"
-                    class="border border-gray-700/50 pt-6 rounded-b-xl overflow-hidden p-6py-6 space-y-6"
+                    class="border border-gray-700/50 pt-6 rounded-b-xl overflow-hidden p-6 py-6 space-y-6"
                   >
                     <div class="px-6">
                       <!-- Checkout Settings -->
                       <div>
                         <h3 class="text-lg font-medium text-white mb-4">
-                          Checkout Settings
+                          {{ t('apps.pos_checkout_settings') }}
                         </h3>
                         <div
                           class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 py-4"
@@ -374,13 +374,13 @@
                               for="requestCustomerData"
                               class="block text-sm font-medium text-gray-300 mb-1"
                             >
-                              Request customer data
+                              {{ t('apps.pos_request_customer_data') }}
                             </label>
                             <Select
                               id="requestCustomerData"
                               v-model="form.requestCustomerData"
                               :options="customerDataOptions"
-                              placeholder="Do not request"
+                              :placeholder="t('apps.pos_customer_data_none')"
                             />
                           </div>
 
@@ -390,14 +390,14 @@
                               for="currency"
                               class="block text-sm font-medium text-gray-300 mb-1"
                             >
-                              Currency
+                              {{ t('apps.pos_currency_label') }}
                             </label>
                             <input
                               id="currency"
                               v-model="form.currency"
                               type="text"
                               list="currency-selection-suggestion"
-                              placeholder="Select or type currency"
+                              :placeholder="t('apps.pos_currency_placeholder')"
                               class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                             />
                             <datalist id="currency-selection-suggestion">
@@ -410,9 +410,11 @@
                               </option>
                             </datalist>
                             <p class="mt-1 text-xs text-gray-500">
-                              Uses store default ({{
-                                store?.default_currency || "EUR"
-                              }}) if empty
+                              {{
+                                t('apps.pos_currency_hint', {
+                                  currency: store?.default_currency || 'EUR',
+                                })
+                              }}
                             </p>
                           </div>
 
@@ -422,7 +424,7 @@
                               for="defaultTaxRate"
                               class="block text-sm font-medium text-gray-300 mb-1"
                             >
-                              Default Tax Rate
+                              {{ t('apps.pos_default_tax_rate') }}
                             </label>
                             <div class="flex rounded-xl shadow-sm">
                               <input
@@ -459,7 +461,7 @@
                               for="enableTips"
                               class="ml-3 block text-sm font-medium text-white"
                             >
-                              Enable tips
+                              {{ t('apps.pos_enable_tips') }}
                             </label>
                           </div>
 
@@ -468,7 +470,8 @@
                               for="tipsMessage"
                               class="block text-xs font-medium text-gray-400 mb-1"
                             >
-                              Tip Message <span class="text-red-400">*</span>
+                              {{ t('apps.pos_tip_message') }}
+                              <span class="text-red-400">*</span>
                             </label>
                             <input
                               id="tipsMessage"
@@ -499,7 +502,7 @@
                               for="showCustomAmount"
                               class="ml-3 block text-sm font-medium text-white"
                             >
-                              Allow custom amount
+                              {{ t('apps.pos_allow_custom_amount') }}
                             </label>
                           </div>
 
@@ -508,7 +511,7 @@
                               for="customAmountPayButtonText"
                               class="block text-xs font-medium text-gray-400 mb-1"
                             >
-                              Pay Button Text
+                              {{ t('apps.pos_custom_pay_button_text') }}
                               <span class="text-red-400">*</span>
                             </label>
                             <input
@@ -540,11 +543,11 @@
                               for="showDiscount"
                               class="ml-3 block text-sm font-medium text-white"
                             >
-                              Allow discount entry (%)
+                              {{ t('apps.pos_allow_discount') }}
                             </label>
                           </div>
                           <p class="mt-2 text-xs text-gray-500 ml-8">
-                            Not recommended for self-checkout.
+                            {{ t('apps.pos_discount_self_checkout_hint') }}
                           </p>
                         </div>
                       </div>
@@ -555,7 +558,7 @@
                         class="border-t border-gray-700/50 pt-6"
                       >
                         <h3 class="text-lg font-medium text-white mb-4">
-                          Cart Settings
+                          {{ t('apps.pos_cart_settings') }}
                         </h3>
                         <div class="flex flex-col sm:flex-row gap-6">
                           <div
@@ -571,7 +574,7 @@
                               for="showSearch"
                               class="ml-3 block text-sm font-medium text-white"
                             >
-                              Display search bar
+                              {{ t('apps.pos_display_search') }}
                             </label>
                           </div>
 
@@ -588,7 +591,7 @@
                               for="showCategories"
                               class="ml-3 block text-sm font-medium text-white"
                             >
-                              Display categories
+                              {{ t('apps.pos_display_categories') }}
                             </label>
                           </div>
                         </div>
@@ -606,18 +609,19 @@
                           for="fixedAmountPayButtonText"
                           class="block text-sm font-medium text-gray-300 mb-1"
                         >
-                          Buy Button Text <span class="text-red-400">*</span>
+                          {{ t('apps.pos_buy_button_text') }}
+                          <span class="text-red-400">*</span>
                         </label>
                         <input
                           id="fixedAmountPayButtonText"
                           v-model="form.fixedAmountPayButtonText"
                           type="text"
                           required
-                          placeholder="Buy for {0}"
+                          :placeholder="t('apps.pos_buy_button_placeholder')"
                           class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                         />
                         <p class="mt-1 text-xs text-gray-500">
-                          Use {0} as placeholder for price.
+                          {{ t('apps.pos_price_placeholder_hint') }}
                         </p>
                       </div>
                     </div>
@@ -628,7 +632,7 @@
                       <div class="mb-4">
                         <div class="flex items-center gap-2">
                           <h3 class="text-xl font-bold text-white">
-                            Advanced Options
+                            {{ t('apps.pos_advanced_options') }}
                           </h3>
                           <button
                             v-if="!canEditAdvancedOptions"
@@ -636,7 +640,7 @@
                             @click="showProUpgradeNotice = !showProUpgradeNotice"
                             class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 transition-colors"
                           >
-                            {{ t("stores.available_in_pro") }}
+                            <ProPlanBadge />
                             <svg
                               class="w-3.5 h-3.5 transition-transform duration-200"
                               :class="{ 'rotate-180': showProUpgradeNotice }"
@@ -705,9 +709,9 @@
                           "
                           class="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-800 hover:bg-gray-700 transition-colors"
                         >
-                          <span class="font-medium text-white"
-                            >HTML Headers</span
-                          >
+                          <span class="font-medium text-white">{{
+                            t('apps.pos_html_headers')
+                          }}</span>
                           <svg
                             class="h-5 w-5 text-gray-400 transform transition-transform duration-200"
                             :class="{
@@ -733,7 +737,7 @@
                             <label
                               for="htmlLang"
                               class="block text-sm font-medium text-gray-300 mb-1"
-                              >HTML Lang</label
+                              >{{ t('apps.pos_html_lang') }}</label
                             >
                             <input
                               id="htmlLang"
@@ -748,7 +752,7 @@
                             <label
                               for="htmlMetaTags"
                               class="block text-sm font-medium text-gray-300 mb-1"
-                              >Meta Tags</label
+                              >{{ t('apps.pos_meta_tags') }}</label
                             >
                             <textarea
                               id="htmlMetaTags"
@@ -773,7 +777,9 @@
                           "
                           class="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-800 hover:bg-gray-700 transition-colors"
                         >
-                          <span class="font-medium text-white">Redirects</span>
+                          <span class="font-medium text-white">{{
+                            t('apps.pos_redirects')
+                          }}</span>
                           <svg
                             class="h-5 w-5 text-gray-400 transform transition-transform duration-200"
                             :class="{
@@ -799,13 +805,13 @@
                             <label
                               for="redirectUrl"
                               class="block text-sm font-medium text-gray-300 mb-1"
-                              >Redirect URL</label
+                              >{{ t('apps.pos_redirect_url') }}</label
                             >
                             <input
                               id="redirectUrl"
                               v-model="form.redirectUrl"
                               type="url"
-                              placeholder="https://example.com/thanks"
+                              :placeholder="t('apps.pos_redirect_thanks_placeholder')"
                               :disabled="!canEditAdvancedOptions"
                               class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
                             />
@@ -814,7 +820,7 @@
                             <label
                               for="redirectAutomatically"
                               class="block text-sm font-medium text-gray-300 mb-1"
-                              >Redirect Automatically</label
+                              >{{ t('apps.pos_redirect_automatically') }}</label
                             >
                             <div
                               :class="{
@@ -825,7 +831,7 @@
                                 id="redirectAutomatically"
                                 v-model="form.redirectAutomatically"
                                 :options="redirectOptions"
-                                placeholder="Use Store Settings"
+                                :placeholder="t('apps.pos_redirect_use_store_settings')"
                               />
                             </div>
                           </div>
@@ -844,9 +850,9 @@
                           "
                           class="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-800 hover:bg-gray-700 transition-colors"
                         >
-                          <span class="font-medium text-white"
-                            >Notification URL Callbacks</span
-                          >
+                          <span class="font-medium text-white">{{
+                            t('apps.pos_notification_callbacks')
+                          }}</span>
                           <svg
                             class="h-5 w-5 text-gray-400 transform transition-transform duration-200"
                             :class="{
@@ -872,13 +878,13 @@
                             <label
                               for="notificationUrl"
                               class="block text-sm font-medium text-gray-300 mb-1"
-                              >Callback Notification URL</label
+                              >{{ t('apps.pos_callback_url') }}</label
                             >
                             <input
                               id="notificationUrl"
                               v-model="form.notificationUrl"
                               type="url"
-                              placeholder="https://example.com/callback"
+                              :placeholder="t('apps.pos_callback_placeholder')"
                               :disabled="!canEditAdvancedOptions"
                               class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
                             />
@@ -887,11 +893,10 @@
                             class="bg-red-500/10 border border-red-500/20 p-4 rounded-xl"
                           >
                             <p class="text-sm text-red-400 font-bold mb-2">
-                              ⚠️ Security Warning
+                              ⚠️ {{ t('apps.pos_security_warning') }}
                             </p>
                             <p class="text-xs text-red-300">
-                              Never trust any field other than the invoice ID.
-                              Verify details with your backend.
+                              {{ t('apps.pos_callback_security_text') }}
                             </p>
                           </div>
                         </div>
@@ -908,9 +913,9 @@
                           "
                           class="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-800 hover:bg-gray-700 transition-colors"
                         >
-                          <span class="font-medium text-white"
-                            >Embed Codes</span
-                          >
+                          <span class="font-medium text-white">{{
+                            t('apps.pos_embed_codes')
+                          }}</span>
                           <svg
                             class="h-5 w-5 text-gray-400 transform transition-transform duration-200"
                             :class="{ 'rotate-180': accordionSections.embed }"
@@ -936,7 +941,7 @@
                         >
                           <div>
                             <p class="text-sm font-medium text-gray-300 mb-2">
-                              Button Embed Code
+                              {{ t('apps.pos_button_embed_code') }}
                             </p>
                             <div
                               class="bg-gray-950 p-4 rounded-xl border border-gray-700 overflow-x-auto"
@@ -948,7 +953,7 @@
                           </div>
                           <div>
                             <p class="text-sm font-medium text-gray-300 mb-2">
-                              Iframe Embed Code
+                              {{ t('apps.pos_iframe_embed_code') }}
                             </p>
                             <div
                               class="bg-gray-950 p-4 rounded-xl border border-gray-700 overflow-x-auto"
@@ -1076,6 +1081,7 @@ import Select from "../../components/ui/Select.vue";
 import AppShowHeader from "../../components/stores/AppShowHeader.vue";
 import DeleteAppModal from "../../components/stores/DeleteAppModal.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
+import ProPlanBadge from "../../components/stores/ProPlanBadge.vue";
 import { currencies } from "../../data/currencies";
 import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
 
@@ -1116,18 +1122,18 @@ const saving = ref(false);
 const error = ref("");
 const success = ref("");
 
-const customerDataOptions = [
-  { label: 'Do not request', value: '' },
-  { label: 'Email only', value: 'email' },
-  { label: 'Name only', value: 'name' },
-  { label: 'Email and Name', value: 'email_name' },
-];
+const customerDataOptions = computed(() => [
+  { label: t("apps.pos_customer_data_none"), value: "" },
+  { label: t("apps.pos_customer_data_email"), value: "email" },
+  { label: t("apps.pos_customer_data_name"), value: "name" },
+  { label: t("apps.pos_customer_data_both"), value: "email_name" },
+]);
 
-const redirectOptions = [
-  { label: 'Use Store Settings', value: '' },
-  { label: 'Yes', value: 'true' },
-  { label: 'No', value: 'false' },
-];
+const redirectOptions = computed(() => [
+  { label: t("apps.pos_redirect_use_store_settings"), value: "" },
+  { label: t("common.yes"), value: "true" },
+  { label: t("common.no"), value: "false" },
+]);
 
 const showDeleteModal = ref(false);
 const showArchiveUpgradeModal = ref(false);
@@ -1210,14 +1216,24 @@ const btcpayAppUrl = computed(() => {
   return `${baseUrl}/apps/${id}/pos`;
 });
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 const embedFormCode = computed(() => {
   if (!btcpayAppUrl.value) return "";
+  const buyLabel = escapeHtml(t("apps.pos_embed_buy_button_example"));
   return `<form method="POST" action="${btcpayAppUrl.value}">
   <input type="hidden" name="email" value="customer@example.com" />
   <input type="hidden" name="orderId" value="CustomOrderId" />
   <input type="hidden" name="notificationUrl" value="https://example.com/callbacks" />
   <input type="hidden" name="redirectUrl" value="https://example.com/thankyou" />
-  <button type="submit" name="choiceKey" value="produkt">Buy now</button>
+  <button type="submit" name="choiceKey" value="produkt">${buyLabel}</button>
 </form>`;
 });
 

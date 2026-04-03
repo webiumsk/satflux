@@ -75,7 +75,7 @@
                 @click="showUpgradeModal = true"
                 class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
               >
-                {{ t("stores.available_in_pro") }}                
+                <ProPlanBadge />
               </button>
             </div>
           </div>
@@ -122,7 +122,7 @@
                 @click="showUpgradeModal = true"
                 class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
               >
-                {{ t("stores.available_in_pro") }}                
+                <ProPlanBadge />
               </button>
             </div>
           </div>
@@ -267,6 +267,7 @@ import { useAuthStore } from "../../store/auth";
 import { useFlashStore } from "../../store/flash";
 import api from "../../services/api";
 import UpgradeModal from "./UpgradeModal.vue";
+import ProPlanBadge from "./ProPlanBadge.vue";
 
 const { t } = useI18n();
 const authStore = useAuthStore();

@@ -45,11 +45,11 @@
               v-else
               @click="showXlsxUpgradeModal = true"
               class="inline-flex items-center px-4 py-2 border border-gray-600 shadow-sm text-sm font-medium rounded-lg text-gray-500 bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 transition-all"
-              :title="t('stores.available_in_pro')"
+              :title="t('stores.pro_feature_tooltip')"
             >
               <svg class="w-4 h-4 mr-2 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
               {{ t('stores.export_to_xlsx') }}
-              <span class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">{{ t('stores.available_in_pro') }}</span>
+              <span class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 inline-flex items-center"><ProPlanBadge /></span>
             </button>
              
              <!-- Create Invoice Button (Future implementation) -->
@@ -233,6 +233,7 @@ import api from '../../services/api';
 import DatePicker from '../ui/DatePicker.vue';
 import Select from '../ui/Select.vue';
 import UpgradeModal from './UpgradeModal.vue';
+import ProPlanBadge from './ProPlanBadge.vue';
 
 const { t } = useI18n();
 const authStore = useAuthStore();

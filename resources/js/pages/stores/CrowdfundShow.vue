@@ -2,13 +2,13 @@
   <AppShowLayout ref="layoutRef" :store="store" :app="app">
     <template #toolbar="{ app, store }">
       <AppShowHeader
-        :title="app.name || 'Crowdfund'"
-        :subtitle="`Crowdfund - ${store.name}`"
+        :title="app.name || t('apps.crowdfund')"
+        :subtitle="t('apps.crowdfund_header_subtitle', { store: store.name })"
         :app-url="btcpayAppUrl"
-        open-button-text="Open Crowdfund"
+        :open-button-text="t('apps.open_crowdfund')"
         form-id="crowdfund-form"
-        save-button-text="Save Settings"
-        saving-text="Saving..."
+        :save-button-text="t('apps.save_pos_settings')"
+        :saving-text="t('auth.saving')"
         :saving="formRef?.saving"
       />
     </template>
