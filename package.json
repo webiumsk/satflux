@@ -43,7 +43,7 @@
     "pusher-js": "^8.4.0-rc2",
     "qrcode": "^1.5.4",
     "vue": "^3.4.0",
-    "vue-i18n": "^9.9.1",
+    "vue-i18n": "^11.3.0",
     "vue-router": "^4.3.0"
   },
   "devDependencies": {
