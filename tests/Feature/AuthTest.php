@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Notifications\VerifyEmailNotification;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -40,6 +41,21 @@ class AuthTest extends TestCase
         ]);
     }
 
+    public function test_register_sends_single_verification_notification(): void
+    {
+        Notification::fake();
+
+        $this->postJson('/api/auth/register', [
+            'email' => 'once@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ])->assertStatus(201);
+
+        $user = User::where('email', 'once@example.com')->first();
+        $this->assertNotNull($user);
+        Notification::assertSentToTimes($user, VerifyEmailNotification::class, 1);
+    }
+
     public function test_user_can_login(): void
     {
         $user = User::factory()->create([
@@ -71,6 +87,7 @@ class AuthTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors(['email']);
+        $response->assertJsonPath('errors.email.0', __('auth.email_not_verified'));
         $this->assertGuest();
     }
 

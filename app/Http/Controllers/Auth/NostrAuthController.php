@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\NostrAuthChallenge;
 use App\Models\User;
-use App\Notifications\VerifyEmailNotification;
 use App\Services\BtcPay\UserService;
 use App\Services\Nostr\NostrEventVerifier;
 use Illuminate\Http\Request;
@@ -13,7 +12,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
@@ -344,9 +342,8 @@ class NostrAuthController extends Controller
             }
         }
 
-        $verificationUrl = $this->verificationUrl($user);
         try {
-            $user->notify(new VerifyEmailNotification($verificationUrl));
+            $user->sendEmailVerificationNotification();
         } catch (TransportExceptionInterface $e) {
             Log::warning('Failed to send verification email (NostrAuth)', [
                 'email' => $user->email,
@@ -388,16 +385,4 @@ class NostrAuthController extends Controller
             ->header('Pragma', 'no-cache');
     }
 
-    protected function verificationUrl($user)
-    {
-        $baseUrl = rtrim(config('app.url', env('APP_URL', 'http://localhost:8080')), '/');
-        URL::forceRootUrl($baseUrl);
-        $url = URL::temporarySignedRoute(
-            'verification.verify',
-            now()->addMinutes(60),
-            ['id' => $user->id, 'hash' => sha1($user->email)]
-        );
-
-        return str_replace('/api/auth/verify-email/', '/auth/verify-email/', $url);
-    }
 }

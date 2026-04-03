@@ -38,6 +38,14 @@ export const useAuthStore = defineStore('auth', () => {
 
     const isAuthenticated = computed(() => user.value !== null);
 
+    /** Drop in-memory user + tenant store selection (same as logout’s local cleanup; no API call). */
+    function clearLocalAuthAndTenantState() {
+        user.value = null;
+        const storesStore = useStoresStore();
+        storesStore.stores = [];
+        storesStore.currentStore = null;
+    }
+
     async function fetchUser() {
         try {
             // Ensure session/CSRF cookie is set first (same-origin request).
@@ -80,7 +88,7 @@ export const useAuthStore = defineStore('auth', () => {
                 password_confirmation,
             });
             // Session is not created until email is verified; do not treat as logged in.
-            user.value = null;
+            clearLocalAuthAndTenantState();
             return response.data;
         } finally {
             loading.value = false;
@@ -91,11 +99,7 @@ export const useAuthStore = defineStore('auth', () => {
         try {
             await api.post('/auth/logout');
         } finally {
-            user.value = null;
-            // Clear stores to prevent data leakage between sessions
-            const storesStore = useStoresStore();
-            storesStore.stores = [];
-            storesStore.currentStore = null;
+            clearLocalAuthAndTenantState();
         }
     }
 

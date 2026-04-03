@@ -195,7 +195,7 @@ Route::get('/debug/stores', function (\Illuminate\Http\Request $request) {
             ];
         })->values(),
     ]);
-})->middleware('auth:sanctum');
+})->middleware(['auth:sanctum', RequireVerifiedEmail::class]);
 
 // Webhooks (no auth required - verified via signature)
 Route::post('/webhooks/btcpay', [WebhookController::class, 'handle']);
@@ -450,8 +450,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class])->group(function
     Route::post('/stores/{store}/wallet-connection/check-duplicate', [WalletConnectionController::class, 'checkDuplicate'])
         ->middleware([EnsureStoreOwnership::class]);
     // Endpoint for checking duplicates when creating new stores (no store ID yet)
-    Route::post('/wallet-connection/check-duplicate', [WalletConnectionController::class, 'checkDuplicateNew'])
-        ->middleware('auth:sanctum');
+    Route::post('/wallet-connection/check-duplicate', [WalletConnectionController::class, 'checkDuplicateNew']);
     Route::post('/stores/{store}/wallet-connection/test', [WalletConnectionController::class, 'testConnection'])
         ->middleware([EnsureStoreOwnership::class]);
     Route::post('/stores/{store}/wallet-connection/configure', [WalletConnectionController::class, 'configureLightning'])
@@ -509,9 +508,12 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class])->group(function
 // Subscription checkout (auth handled in controller based on feature flag)
 Route::post('/subscriptions/checkout', [SubscriptionController::class, 'checkout']);
 Route::get('/subscriptions/success', [SubscriptionController::class, 'success']);
-Route::get('/subscriptions/details', [SubscriptionController::class, 'details'])->middleware('auth:sanctum');
-Route::get('/subscriptions/credits', [SubscriptionController::class, 'getCredits'])->middleware('auth:sanctum');
-Route::post('/subscriptions/credits', [SubscriptionController::class, 'addCredits'])->middleware('auth:sanctum');
+Route::get('/subscriptions/details', [SubscriptionController::class, 'details'])
+    ->middleware(['auth:sanctum', RequireVerifiedEmail::class]);
+Route::get('/subscriptions/credits', [SubscriptionController::class, 'getCredits'])
+    ->middleware(['auth:sanctum', RequireVerifiedEmail::class]);
+Route::post('/subscriptions/credits', [SubscriptionController::class, 'addCredits'])
+    ->middleware(['auth:sanctum', RequireVerifiedEmail::class]);
 
 // Documentation (public - no auth required)
 Route::get('/documentation', [DocumentationController::class, 'index']);
@@ -529,7 +531,7 @@ Route::middleware(['throttle:30,1'])->prefix('public/ticket-checkin')->group(fun
 });
 
 // Admin Documentation (requires support or admin role)
-Route::middleware(['auth:sanctum', EnsureSupportOrAdminRole::class])->prefix('admin/documentation')->group(function () {
+Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, EnsureSupportOrAdminRole::class])->prefix('admin/documentation')->group(function () {
     // Articles
     Route::get('/articles', [DocumentationArticleController::class, 'index']);
     Route::post('/articles', [DocumentationArticleController::class, 'store'])
@@ -553,7 +555,7 @@ Route::middleware(['auth:sanctum', EnsureSupportOrAdminRole::class])->prefix('ad
 });
 
 // Admin FAQ (requires support or admin role)
-Route::middleware(['auth:sanctum', EnsureSupportOrAdminRole::class])->prefix('admin/faq')->group(function () {
+Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, EnsureSupportOrAdminRole::class])->prefix('admin/faq')->group(function () {
     // Items
     Route::get('/items', [FaqItemController::class, 'index']);
     Route::post('/items', [FaqItemController::class, 'store'])

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\LnurlAuthChallenge;
 use App\Models\User;
-use App\Notifications\VerifyEmailNotification;
 use App\Services\BtcPay\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,7 +12,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use kornrunner\Secp256k1;
@@ -395,9 +393,8 @@ class LnurlAuthController extends Controller
             }
         }
 
-        $verificationUrl = $this->verificationUrl($user);
         try {
-            $user->notify(new VerifyEmailNotification($verificationUrl));
+            $user->sendEmailVerificationNotification();
         } catch (TransportExceptionInterface $e) {
             Log::warning('Failed to send verification email (LnurlAuth)', [
                 'email' => $user->email,
@@ -542,35 +539,6 @@ class LnurlAuthController extends Controller
         }
 
         return $noCache(response()->json(['status' => 'pending']));
-    }
-
-    /**
-     * Get the verification URL for the given user.
-     */
-    protected function verificationUrl($user)
-    {
-        // Ensure we use the correct APP_URL from config
-        $baseUrl = rtrim(config('app.url', env('APP_URL', 'http://localhost:8080')), '/');
-        
-        // Force root URL to ensure correct base URL is used (for email generation)
-        URL::forceRootUrl($baseUrl);
-        
-        // Use Laravel's temporarySignedRoute but manually adjust for API route
-        // This ensures proper signature generation
-        $route = 'verification.verify';
-        
-        // Temporarily change route to point to API
-        $url = URL::temporarySignedRoute(
-            $route,
-            now()->addMinutes(60),
-            ['id' => $user->id, 'hash' => sha1($user->email)]
-        );
-        
-        // Use /auth/verify-email for Vue router (component will call API internally)
-        // Replace /api/auth/verify-email back to /auth/verify-email if needed
-        $url = str_replace('/api/auth/verify-email/', '/auth/verify-email/', $url);
-        
-        return $url;
     }
 
     /**

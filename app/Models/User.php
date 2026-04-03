@@ -6,10 +6,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Notifications\VerifyEmailNotification;
+use App\Services\Auth\EmailVerificationService;
 use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\URL;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable implements MustVerifyEmailContract
@@ -310,15 +310,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
             return;
         }
 
-        $baseUrl = rtrim((string) config('app.url', ''), '/');
-        URL::forceRootUrl($baseUrl);
-
-        $url = URL::temporarySignedRoute(
-            'verification.verify',
-            now()->addMinutes(60),
-            ['id' => $this->id, 'hash' => sha1($this->email)]
-        );
-        $url = str_replace('/api/auth/verify-email/', '/auth/verify-email/', $url);
+        $url = app(EmailVerificationService::class)->signedVerificationUrlForUser($this);
 
         $this->notify(new VerifyEmailNotification($url));
     }
