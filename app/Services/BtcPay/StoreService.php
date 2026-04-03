@@ -103,11 +103,7 @@ class StoreService
 
         try {
             $result = $this->client->put("/api/v1/stores/{$storeId}", $data);
-
-            // Clear cache for both server and merchant keys (in case both were used)
-            $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
-            Cache::forget("btcpay:store:{$storeId}:{$apiKeyHash}");
-            Cache::forget("btcpay:store:{$storeId}:server"); // Also clear server cache in case it was used
+            $this->forgetStoreCache($storeId, $userApiKey);
 
             return $result;
         } finally {
@@ -209,6 +205,16 @@ class StoreService
         // Store deletion requires server-level key (merchant keys lack this permission)
         $this->client->delete("/api/v1/stores/{$storeId}");
 
+        $this->forgetStoreCache($storeId, null);
+    }
+
+    /**
+     * Invalidate cached BTCPay store payload (logo and other fields may change outside PUT /stores).
+     */
+    protected function forgetStoreCache(string $storeId, ?string $userApiKey): void
+    {
+        $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
+        Cache::forget("btcpay:store:{$storeId}:{$apiKeyHash}");
         Cache::forget("btcpay:store:{$storeId}:server");
     }
 
@@ -226,9 +232,10 @@ class StoreService
         }
 
         try {
-            // Use multipart form data for file upload
-            // Pass file directly to postMultipart
-            return $this->client->postMultipart("/api/v1/stores/{$storeId}/logo", $file);
+            $result = $this->client->postMultipart("/api/v1/stores/{$storeId}/logo", $file);
+            $this->forgetStoreCache($storeId, $userApiKey);
+
+            return $result;
         } finally {
             // Restore original API key if we changed it
             if ($userApiKey && $originalApiKey) {
@@ -252,6 +259,7 @@ class StoreService
 
         try {
             $this->client->delete("/api/v1/stores/{$storeId}/logo");
+            $this->forgetStoreCache($storeId, $userApiKey);
         } finally {
             // Restore original API key if we changed it
             if ($userApiKey && $originalApiKey) {
