@@ -1004,6 +1004,8 @@
     "point_of_sale_description": "Virtual terminal for in-person payments",
     "crowdfund": "Crowdfund",
     "crowdfund_description": "Goal-based campaigns with a public contribution page",
+    "crowdfund_creation_paused": "Creation paused — needs BTCPay 2.3.7+ on your server.",
+    "crowdfund_creation_paused_tooltip": "New Crowdfund apps require BTCPay Server 2.3.7 or newer. Creation is disabled until your instance (and plugins) are upgraded.",
     "tickets": "Tickets",
     "tickets_description": "Sell and manage event tickets with Bitcoin.",
     "pos_style": "Point of Sale Style",

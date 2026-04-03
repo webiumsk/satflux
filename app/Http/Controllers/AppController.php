@@ -105,6 +105,18 @@ class AppController extends Controller
             ], 400);
         }
 
+        // Temporary: Crowdfund create needs BTCPay 2.3.7+; re-enable together with CROWDFUND_CREATE_DISABLED=false in resources/js/constants/features.ts.
+        if (strtolower($request->app_type) === 'crowdfund') {
+            \Log::warning('Attempt to create Crowdfund app blocked (temporary — BTCPay upgrade pending)', [
+                'store_id' => $store->id,
+                'app_name' => $request->name,
+            ]);
+
+            return response()->json([
+                'message' => 'Creating new Crowdfund apps is temporarily disabled until your BTCPay Server is upgraded to 2.3.7 or newer and dependent plugins are compatible.',
+            ], 503);
+        }
+
         return DB::transaction(function () use ($request, $store) {
             // Load merchant API key from store owner
             $userApiKey = $store->user->getBtcPayApiKeyOrFail();

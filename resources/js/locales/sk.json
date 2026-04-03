@@ -1005,6 +1005,8 @@
     "point_of_sale_description": "Virtuálny terminál pre platby na osobu",
     "crowdfund": "Crowdfund",
     "crowdfund_description": "Kampane s cieľom a verejnou stránkou pre prispievateľov",
+    "crowdfund_creation_paused": "Vytvorenie pozastavené — na serveri treba BTCPay 2.3.7+.",
+    "crowdfund_creation_paused_tooltip": "Nové Crowdfund aplikácie vyžadujú BTCPay Server 2.3.7 alebo novší. Vytvorenie je vypnuté do aktualizácie inštancie a pluginov.",
     "tickets": "Vstupenky",
     "tickets_description": "Predávajte a spravujte vstupenky na akcie s Bitcoinom.",
     "pos_style": "Štýl terminálu",
