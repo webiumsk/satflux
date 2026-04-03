@@ -21,15 +21,7 @@
       <PointOfSaleShow v-if="appType === 'PointOfSale'" :store="storeForRoute" :app="app" />
       <PayButtonShow v-else-if="appType === 'PaymentButton'" :store="storeForRoute" :app="app" />
       <TicketsShow v-else-if="appType === 'Tickets'" :store="storeForRoute" :app="app" />
-      <div v-else-if="appType === 'Crowdfund'" class="flex min-h-0 flex-1 items-center justify-center bg-gray-900">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div class="bg-gray-800 shadow rounded-lg p-6 border border-gray-700">
-            <h1 class="text-3xl font-bold text-white mb-4">{{ t('apps.crowdfund_not_available') }}</h1>
-            <p class="text-sm text-gray-400">Type: {{ appType }}</p>
-            <p class="mt-4 text-gray-300">{{ t('apps.crowdfund_unavailable_description') }}</p>
-          </div>
-        </div>
-      </div>
+      <CrowdfundShow v-else-if="appType === 'Crowdfund'" :store="storeForRoute" :app="app" />
       <div v-else class="flex min-h-0 flex-1 items-center justify-center bg-gray-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div class="bg-white shadow rounded-lg p-6">
@@ -62,6 +54,7 @@ import StoreSidebar from '../../components/stores/StoreSidebar.vue';
 import PointOfSaleShow from './PointOfSaleShow.vue';
 import PayButtonShow from './PayButtonShow.vue';
 import TicketsShow from './TicketsShow.vue';
+import CrowdfundShow from './CrowdfundShow.vue';
 
 const { t } = useI18n();
 

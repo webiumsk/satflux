@@ -1,5 +1,5 @@
 <template>
-  <AppShowLayout ref="layoutRef">
+  <AppShowLayout ref="layoutRef" :store="store" :app="app">
     <template #toolbar="{ app, store }">
       <AppShowHeader
         :title="app.name || 'Crowdfund'"
@@ -71,8 +71,27 @@ const authStore = useAuthStore();
 const appsStore = useAppsStore();
 const flashStore = useFlashStore();
 
-const storeId = computed(() => route.params.id as string);
-const appId = computed(() => route.params.appId as string);
+const props = defineProps<{ store?: any; app?: any }>();
+
+function routeParam(key: "id" | "appId"): string {
+  const raw = route.params[key];
+  if (raw == null) return "";
+  return Array.isArray(raw) ? (raw[0] ?? "") : String(raw);
+}
+
+const storeId = computed(() => {
+  const fromRoute = routeParam("id");
+  if (fromRoute !== "") return fromRoute;
+  const id = props.store?.id;
+  return id != null && id !== "" ? String(id) : "";
+});
+
+const appId = computed(() => {
+  const fromRoute = routeParam("appId");
+  if (fromRoute !== "") return fromRoute;
+  const id = props.app?.id;
+  return id != null && id !== "" ? String(id) : "";
+});
 
 const planCode = computed(() => (authStore.user?.plan?.code ?? "free") as string);
 const userRole = computed(() => (authStore.user?.role ?? "") as string);
