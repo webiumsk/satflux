@@ -63,7 +63,7 @@
               <!-- Default View Selection -->
               <div data-onboarding="pos-2">
                 <label class="block text-sm font-medium text-gray-300 mb-3">
-                  {{ $t('apps.pos_style') }}
+                  {{ t('apps.pos_style') }}
                 </label>
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <!-- Light (Keypad) -->
@@ -98,7 +98,7 @@
                         />
                       </svg>
                     </div>
-                    <span class="text-sm font-medium text-white">{{ $t('apps.pos_style_light') }}</span>
+                    <span class="text-sm font-medium text-white">{{ t('apps.pos_style_light') }}</span>
                     <div
                       v-if="form.defaultView === 'Light'"
                       class="absolute top-2 right-2 text-indigo-500"
@@ -150,7 +150,7 @@
                       </svg>
                     </div>
                     <span class="text-sm font-medium text-white"
-                      >{{ $t('apps.pos_style_static') }}</span
+                      >{{ t('apps.pos_style_static') }}</span
                     >
                     <div
                       v-if="form.defaultView === 'Static'"
@@ -203,7 +203,7 @@
                       </svg>
                     </div>
                     <span class="text-sm font-medium text-white"
-                      >{{ $t('apps.pos_style_cart') }}</span
+                      >{{ t('apps.pos_style_cart') }}</span
                     >
                     <div
                       v-if="form.defaultView === 'Cart'"
@@ -256,7 +256,7 @@
                       </svg>
                     </div>
                     <span class="text-sm font-medium text-white"
-                      >{{ $t('apps.pos_style_print') }}</span
+                      >{{ t('apps.pos_style_print') }}</span
                     >
                     <div
                       v-if="form.defaultView === 'Print'"
@@ -357,7 +357,7 @@
                   </button>
                   <div
                     v-show="showAdvancedSettings"
-                    class="border border-gray-700/50 pt-6 rounded-b-xl overflow-hidden p-6py-6 space-y-6"
+                    class="border border-gray-700/50 pt-6 rounded-b-xl overflow-hidden p-6 py-6 space-y-6"
                   >
                     <div class="px-6">
                       <!-- Checkout Settings -->
@@ -1216,9 +1216,18 @@ const btcpayAppUrl = computed(() => {
   return `${baseUrl}/apps/${id}/pos`;
 });
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 const embedFormCode = computed(() => {
   if (!btcpayAppUrl.value) return "";
-  const buyLabel = t("apps.pos_embed_buy_button_example");
+  const buyLabel = escapeHtml(t("apps.pos_embed_buy_button_example"));
   return `<form method="POST" action="${btcpayAppUrl.value}">
   <input type="hidden" name="email" value="customer@example.com" />
   <input type="hidden" name="orderId" value="CustomOrderId" />
