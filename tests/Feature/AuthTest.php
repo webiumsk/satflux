@@ -75,7 +75,7 @@ class AuthTest extends TestCase
 
     public function test_unverified_user_cannot_login_with_password(): void
     {
-        $user = User::factory()->unverified()->create([
+        User::factory()->unverified()->create([
             'email' => 'unverified@example.com',
             'password' => bcrypt('password'),
         ]);
@@ -239,7 +239,6 @@ class AuthTest extends TestCase
         $response->assertJsonValidationErrors(['expires', 'signature']);
     }
 }
-
 
 
 
