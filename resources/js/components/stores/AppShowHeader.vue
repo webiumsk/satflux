@@ -1,6 +1,6 @@
 <template>
   <div
-    class="sticky top-0 z-30 w-full border-b border-gray-800 bg-gray-900/90 backdrop-blur-md"
+    class="sticky top-0 z-20 w-full border-b border-gray-800 bg-gray-900/90 backdrop-blur-md"
   >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 lg:py-4">
       <div

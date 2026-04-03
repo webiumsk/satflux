@@ -128,7 +128,7 @@
             @click="showStatsUpgradeModal = true"
             class="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
           >
-            {{ t('stores.available_in_pro') }}
+            <ProPlanBadge />
           </button>
         </div>
         <div v-if="statsStores.length > 0" class="flex flex-wrap items-center gap-3">
@@ -236,6 +236,7 @@ import { useAuthStore } from '../store/auth';
 import api from '../services/api';
 import Select from '../components/ui/Select.vue';
 import UpgradeModal from '../components/stores/UpgradeModal.vue';
+import ProPlanBadge from '../components/stores/ProPlanBadge.vue';
 
 const { t } = useI18n();
 

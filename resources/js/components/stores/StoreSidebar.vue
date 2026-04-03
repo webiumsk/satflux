@@ -221,7 +221,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             {{ t('stores.reports') }}
-            <span v-if="!canAccessReports" class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">{{ t('stores.available_in_pro') }}</span>
+            <span v-if="!canAccessReports" class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 inline-flex items-center"><ProPlanBadge /></span>
           </button>
         </nav>
       </div>
@@ -453,7 +453,7 @@
                 </svg>
                 {{ t('stores.stripe') }}
               </span>
-              <span v-if="!canAccessStripe" class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">{{ t('stores.available_in_pro') }}</span>
+              <span v-if="!canAccessStripe" class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0 inline-flex items-center"><ProPlanBadge /></span>
             </component>
           </div>
 
@@ -512,6 +512,7 @@ import { useAccountLimits } from '../../composables/useAccountLimits';
 import { useAuthStore } from '../../store/auth';
 import { useOnboardingStore } from '../../store/onboarding';
 import { CROWDFUND_CREATE_DISABLED } from '../../constants/features';
+import ProPlanBadge from './ProPlanBadge.vue';
 
 const { t } = useI18n();
 

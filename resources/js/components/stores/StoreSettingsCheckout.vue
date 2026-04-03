@@ -16,7 +16,7 @@
         @click="$emit('show-upgrade')"
         class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
       >
-        {{ t("stores.available_in_pro") }}
+        <ProPlanBadge />
       </button>
     </div>
     <div
@@ -312,6 +312,7 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 import Select from "../ui/Select.vue";
+import ProPlanBadge from "./ProPlanBadge.vue";
 
 defineProps<{
   form: Record<string, any>;

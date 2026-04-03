@@ -2,13 +2,13 @@
   <AppShowLayout ref="layoutRef" :store="store" :app="app">
     <template #toolbar="{ app, store }">
       <AppShowHeader
-        :title="app.name || 'Pay Button'"
-        :subtitle="`Pay Button - ${store.name}`"
+        :title="app.name || t('stores.pay_button')"
+        :subtitle="t('apps.pay_button_header_subtitle', { store: store.name })"
         :app-url="btcpayAppUrl"
-        open-button-text="Open Pay Button"
+        :open-button-text="t('apps.open_pay_button')"
         form-id="paybutton-form"
-        save-button-text="Generate Code"
-        saving-text="Generating..."
+        :save-button-text="t('apps.generate_pay_button_code')"
+        :saving-text="t('auth.generating')"
         :saving="formRef?.generating"
       />
     </template>
