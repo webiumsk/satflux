@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Notifications\VerifyEmailNotification;
 use App\Services\BtcPay\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -48,11 +47,8 @@ class EmailVerificationController extends Controller
             ]);
         }
 
-        // Generate verification URL
-        $verificationUrl = $this->verificationUrl($user);
-
         try {
-            $user->notify(new VerifyEmailNotification($verificationUrl));
+            $user->sendEmailVerificationNotification();
         } catch (TransportExceptionInterface $e) {
             Log::warning('Failed to send verification email', [
                 'email' => $user->email,
@@ -164,8 +160,8 @@ class EmailVerificationController extends Controller
         $validationRequest->server->set('SERVER_NAME', $parsedUrl['host']);
         $validationRequest->server->set('QUERY_STRING', $queryStringForValidation);
 
-        // Use Laravel's built-in validation (without password parameter)
-        if (!URL::hasValidSignature($validationRequest)) {
+        // Signed URLs are generated with absolute=false (relative /api/... path); validate the same way.
+        if (! URL::hasValidSignature($validationRequest, false)) {
             Log::warning('Email verification signature validation failed', [
                 'user_id' => $user->id,
                 'email' => $user->email,
@@ -173,7 +169,7 @@ class EmailVerificationController extends Controller
                 'query_string_for_validation' => $queryStringForValidation,
                 'original_query_string' => $request->server->get('QUERY_STRING', ''),
                 'app_url' => config('app.url'),
-                'signature_correct' => URL::hasCorrectSignature($validationRequest),
+                'signature_correct' => URL::hasCorrectSignature($validationRequest, false),
                 'signature_not_expired' => URL::signatureHasNotExpired($validationRequest),
             ]);
 
@@ -354,34 +350,6 @@ class EmailVerificationController extends Controller
                 'user' => $user->makeVisible('role'),
             ]);
         });
-    }
-
-    /**
-     * Get the verification URL for the given user.
-     */
-    protected function verificationUrl($user)
-    {
-        // Ensure we use the correct APP_URL from config
-        $baseUrl = rtrim(config('app.url', env('APP_URL', 'http://localhost:8080')), '/');
-
-        // Force root URL to ensure correct base URL is used (for email generation)
-        URL::forceRootUrl($baseUrl);
-
-        // Generate signed URL using Laravel's temporarySignedRoute
-        // The route is defined as /api/auth/verify-email/ in routes/api.php
-        // We'll generate it for /api/auth/verify-email/ and keep it that way
-        // The frontend should call the API endpoint directly
-        $url = URL::temporarySignedRoute(
-            'verification.verify',
-            now()->addMinutes(60),
-            ['id' => $user->id, 'hash' => sha1($user->email)]
-        );
-
-        // For Vue router compatibility, replace /api/auth/verify-email/ with /auth/verify-email/
-        // but the signature is still valid because we validate it against the original /api/ URL
-        $url = str_replace('/api/auth/verify-email/', '/auth/verify-email/', $url);
-
-        return $url;
     }
 }
 

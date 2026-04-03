@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Notifications\VerifyEmailNotification;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -40,6 +41,21 @@ class AuthTest extends TestCase
         ]);
     }
 
+    public function test_register_sends_single_verification_notification(): void
+    {
+        Notification::fake();
+
+        $this->postJson('/api/auth/register', [
+            'email' => 'once@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ])->assertStatus(201);
+
+        $user = User::where('email', 'once@example.com')->first();
+        $this->assertNotNull($user);
+        Notification::assertSentToTimes($user, VerifyEmailNotification::class, 1);
+    }
+
     public function test_user_can_login(): void
     {
         $user = User::factory()->create([
@@ -55,6 +71,35 @@ class AuthTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJsonStructure(['user']);
+    }
+
+    public function test_unverified_user_cannot_login_with_password(): void
+    {
+        User::factory()->unverified()->create([
+            'email' => 'unverified@example.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'unverified@example.com',
+            'password' => 'password',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['email']);
+        $response->assertJsonPath('errors.email.0', __('auth.email_not_verified'));
+        $this->assertGuest();
+    }
+
+    public function test_unverified_user_cannot_access_protected_api(): void
+    {
+        $user = User::factory()->unverified()->create();
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson('/api/user');
+
+        $response->assertStatus(403);
+        $response->assertJson(['message' => __('auth.email_not_verified')]);
     }
 
     public function test_user_can_logout(): void
@@ -194,7 +239,6 @@ class AuthTest extends TestCase
         $response->assertJsonValidationErrors(['expires', 'signature']);
     }
 }
-
 
 
 

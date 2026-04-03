@@ -18,5 +18,6 @@ return [
     'lightning_key_already_registered' => 'Esta billetera Lightning ya está registrada.',
     'nostr_key_already_registered' => 'Esta clave Nostr ya está vinculada a una cuenta.',
     'invalid_password_or_confirm_lnurl' => 'Contraseña incorrecta o confirme con su billetera Lightning o Nostr.',
+    'email_not_verified' => 'Verifique su correo antes de iniciar sesión. Revise su bandeja de entrada para el enlace de confirmación.',
 ];
 

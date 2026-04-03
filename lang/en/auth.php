@@ -18,5 +18,6 @@ return [
     'lightning_key_already_registered' => 'This Lightning wallet is already registered.',
     'nostr_key_already_registered' => 'This Nostr key is already linked to an account.',
     'invalid_password_or_confirm_lnurl' => 'Invalid password or confirm with your Lightning wallet or Nostr.',
+    'email_not_verified' => 'Please verify your email address before signing in. Check your inbox for the confirmation link.',
 ];
 
