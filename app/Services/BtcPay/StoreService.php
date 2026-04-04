@@ -2,6 +2,7 @@
 
 namespace App\Services\BtcPay;
 
+use App\Services\BtcPay\Exceptions\BtcPayException;
 use Illuminate\Support\Facades\Cache;
 
 class StoreService
@@ -258,8 +259,18 @@ class StoreService
         }
 
         try {
-            $this->client->delete("/api/v1/stores/{$storeId}/logo");
-            $this->forgetStoreCache($storeId, $userApiKey);
+            try {
+                $this->client->delete("/api/v1/stores/{$storeId}/logo");
+            } catch (BtcPayException $e) {
+                // No uploaded logo blob (e.g. only external logoUrl) — still clear logoUrl on the store below
+                if ($e->getStatusCode() !== 404) {
+                    throw $e;
+                }
+            }
+
+            // BTCPay may keep logoUrl on the store after DELETE /logo (external URL, fileid reference, or 2.x branding).
+            // Partial PUT matches how StoreSettingsController updates BTCPay.
+            $this->updateStore($storeId, ['logoUrl' => null], $userApiKey);
         } finally {
             // Restore original API key if we changed it
             if ($userApiKey && $originalApiKey) {
