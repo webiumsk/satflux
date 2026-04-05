@@ -302,7 +302,8 @@ class TicketService
             }
         }
 
-        foreach (['eventLogoFileId', 'eventLogoUrl', 'logoUrl'] as $logoKey) {
+        // Keep empty eventLogoFileId so update/create can clear logo (frontend sends ""; do not strip).
+        foreach (['eventLogoUrl', 'logoUrl'] as $logoKey) {
             if (array_key_exists($logoKey, $payload) && trim((string) $payload[$logoKey]) === '') {
                 unset($payload[$logoKey]);
             }
