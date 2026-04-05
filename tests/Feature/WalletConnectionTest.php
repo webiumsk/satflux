@@ -85,7 +85,41 @@ class WalletConnectionTest extends TestCase
             'store_id' => $store->id,
             'type' => 'blink',
             'status' => 'pending',
+            'reconfig' => false,
         ]);
+        $connection = WalletConnection::where('store_id', $store->id)->first();
+        $this->assertSame(self::VALID_BLINK_SECRET, Crypt::decryptString($connection->encrypted_secret));
+    }
+
+    /** @test */
+    public function cashu_store_saving_blink_sets_pending_reconfig_for_config_bot(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'cashu',
+        ]);
+
+        $response = $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", [
+            'type' => 'blink',
+            'secret' => self::VALID_BLINK_SECRET,
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.type', 'blink')
+            ->assertJsonPath('data.status', 'pending');
+
+        $store->refresh();
+        $this->assertSame('blink', $store->wallet_type);
+
+        $this->assertDatabaseHas('wallet_connections', [
+            'store_id' => $store->id,
+            'type' => 'blink',
+            'status' => 'pending',
+            'reconfig' => true,
+        ]);
+        $connection = WalletConnection::where('store_id', $store->id)->first();
+        $this->assertSame(self::VALID_BLINK_SECRET, Crypt::decryptString($connection->encrypted_secret));
     }
 
     /** @test */

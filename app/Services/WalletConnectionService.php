@@ -96,11 +96,19 @@ class WalletConnectionService
         $isNew = $existingConnection === null;
         $wasConnected = $existingConnection && $existingConnection->status === 'connected';
 
+        // BTCPay Lightning UI after Cashu (eCash) is usually not the greenfield "first setup" tabbed
+        // page the bot expects (#LightningNodeType-Custom). Use the same path as Blink reconfig:
+        // Settings → Change connection (see scripts/btcpay-config-bot/run-config.js).
+        $cameFromCashu = ($store->wallet_type ?? null) === 'cashu';
+        $blinkBotUseReconfigPath = $type === 'blink' && ($wasConnected || $cameFromCashu);
+
         Log::info('Checking for existing wallet connection', [
             'store_id' => $store->id,
             'is_new' => $isNew,
             'existing_connection_id' => $existingConnection->id ?? 'NULL',
             'was_connected' => $wasConnected,
+            'came_from_cashu' => $cameFromCashu,
+            'blink_bot_reconfig_path' => $blinkBotUseReconfigPath,
         ]);
 
         // Create or update wallet connection
@@ -118,7 +126,7 @@ class WalletConnectionService
                     'configuration_source' => null,
                     'encrypted_secret' => Crypt::encryptString($secret),
                     'status' => $initialStatus,
-                    'reconfig' => $wasConnected,
+                    'reconfig' => $type === 'blink' ? $blinkBotUseReconfigPath : $wasConnected,
                     'bot_failure_message' => null,
                     'bot_failed_at' => null,
                     'secret_updated_at' => now(),
