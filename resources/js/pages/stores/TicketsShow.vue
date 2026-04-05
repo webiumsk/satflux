@@ -430,7 +430,6 @@
                       v-model="eventForm.emailSubject"
                       type="text"
                       class="input-field"
-                      :placeholder="t('tickets.email_subject_placeholder')"
                     />
                     <p class="mt-1 text-xs text-gray-500">
                       {{ t("tickets.email_subject_hint") }}
@@ -443,23 +442,15 @@
                     >
                     <textarea
                       v-model="eventForm.emailBody"
-                      rows="4"
+                      rows="6"
                       class="input-field resize-none"
-                      :placeholder="
-                        t('tickets.email_body_placeholder', {
-                          name: '{{Name}}',
-                          title: '{{Title}}',
-                          location: '{{Location}}',
-                          eventDate: '{{EventDate}}',
-                        })
-                      "
+                      :placeholder="t('tickets.email_body_placeholder')"
                     ></textarea>
                     <p class="mt-1 text-xs text-gray-500">
                       {{ t("tickets.email_placeholders_hint_prefix") }}
                       <code class="text-gray-400" v-pre
-                        >{{ Name }}, {{ Email }}, {{ Title }}, {{ Location }},
-                        {{ Description }}, {{ EventDate }}, {{ Currency }}</code
-                      >
+                        >{{Name}}, {{Email}}, {{Title}}, {{Location}}, {{Description}}, {{EventDate}}, {{Currency}}</code
+                      >.
                       {{ t("tickets.email_placeholders_hint_suffix") }}
                     </p>
                   </div>
@@ -1781,6 +1772,33 @@ function formatDate(dateStr: string): string {
   }
 }
 
+/** Pre-fills subject/body for new events: real-looking event lines + BTCPay tokens for buyer/description. */
+function applyNewEventEmailDefaults() {
+  const f = eventForm.value;
+  const titleTrim = f.title.trim();
+  const location = f.location.trim() || t("tickets.email_sample_location");
+  const when = f.startDate
+    ? formatDate(f.startDate)
+    : t("tickets.email_sample_datetime");
+  const currency = f.currency.trim() || t("tickets.email_sample_currency");
+  const eventTitle = titleTrim || t("tickets.email_sample_title");
+
+  eventForm.value.emailSubject = titleTrim
+    ? t("tickets.email_default_subject_with_title", { title: titleTrim })
+    : t("tickets.email_default_subject");
+
+  eventForm.value.emailBody = t("tickets.email_default_body", {
+    buyerName: "{{Name}}",
+    buyerEmail: "{{Email}}",
+    eventTitle,
+    eventLocation: location,
+    eventWhen: when,
+    eventCurrency: currency,
+    eventDesc: "{{Description}}",
+  });
+  showEmailSettings.value = true;
+}
+
 function shortTicketNumber(ticketNumber: string): string {
   const parts = ticketNumber.split("-");
   return parts.length > 1 ? parts[parts.length - 1] : ticketNumber;
@@ -1821,9 +1839,13 @@ function onCreateEventClick() {
     showUpgradeModal.value = true;
     return;
   }
-  if (!showCreateForm.value) resetForm();
+  const opening = !showCreateForm.value;
+  if (opening) resetForm();
   showCreateForm.value = !showCreateForm.value;
   expandedEventId.value = null;
+  if (opening) {
+    applyNewEventEmailDefaults();
+  }
 }
 
 // ── Image Upload ────────────────────────────────
