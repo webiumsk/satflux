@@ -2,6 +2,7 @@
 
 namespace App\Services\BtcPay;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -9,6 +10,9 @@ use Illuminate\Support\Facades\Log;
  */
 class BtcPayFileResolver
 {
+    /** File metadata (URLs, storage names) is stable; avoid hammering BTCPay on repeated creates/updates. */
+    private const FILE_METADATA_TTL_SECONDS = 300;
+
     public function __construct(
         protected BtcPayClient $client
     ) {}
@@ -27,8 +31,24 @@ class BtcPayFileResolver
         $baseUrl = rtrim(config('services.btcpay.base_url', ''), '/');
 
         try {
-            $file = $this->client->get('/api/v1/files/'.$fileId);
-            Log::debug('Ticket event logo GET file response', ['file_id' => $fileId, 'keys' => array_keys($file)]);
+            $cacheKey = $this->fileMetadataCacheKey($fileId);
+            $file = Cache::get($cacheKey);
+            if (is_array($file)) {
+                Log::debug('Ticket event logo GET file response', [
+                    'file_id' => $fileId,
+                    'cache' => 'hit',
+                    'keys' => array_keys($file),
+                ]);
+            } else {
+                $path = '/api/v1/files/'.rawurlencode($fileId);
+                $file = $this->client->get($path);
+                Cache::put($cacheKey, $file, self::FILE_METADATA_TTL_SECONDS);
+                Log::debug('Ticket event logo GET file response', [
+                    'file_id' => $fileId,
+                    'cache' => 'miss',
+                    'keys' => array_keys($file),
+                ]);
+            }
 
             $url = $file['url'] ?? null;
             if (! empty($url) && ! str_starts_with((string) $url, 'fileid:')) {
@@ -59,5 +79,15 @@ class BtcPayFileResolver
         }
 
         return null;
+    }
+
+    /**
+     * Scoped by current client API key hash so merchant/server keys never share cache entries.
+     */
+    protected function fileMetadataCacheKey(string $fileId): string
+    {
+        $apiKeyHash = md5($this->client->getApiKey());
+
+        return 'btcpay:files:'.$apiKeyHash.':'.rawurlencode($fileId);
     }
 }
