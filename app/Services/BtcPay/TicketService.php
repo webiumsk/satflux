@@ -293,7 +293,7 @@ class TicketService
 
     /**
      * Normalize event payload for plugin: only send fields the plugin expects (UpdateEventRequest).
-     * Sends eventLogoFileId plus eventLogoUrl/logoUrl when present (TicketController ensureEventLogoUrl).
+     * Sends eventLogoFileId plus eventLogoUrl/logoUrl when present (BtcPayFileResolver / TicketController).
      */
     protected function normalizeEventPayloadForBtcPay(array $data): array
     {

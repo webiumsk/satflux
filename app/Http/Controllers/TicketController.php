@@ -3,17 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Store;
-use App\Services\BtcPay\BtcPayClient;
+use App\Services\BtcPay\BtcPayFileResolver;
 use App\Services\BtcPay\TicketService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class TicketController extends Controller
 {
     public function __construct(
         protected TicketService $ticketService,
-        protected BtcPayClient $btcPayClient
+        protected BtcPayFileResolver $btcPayFileResolver
     ) {}
 
     // ──────────────────────────────────────────────────
@@ -212,41 +211,13 @@ class TicketController extends Controller
         if ($fileId === '') {
             return;
         }
-        $logoUrl = trim((string) ($data['eventLogoUrl'] ?? ''));
-        if ($logoUrl !== '') {
+        if (trim((string) ($data['eventLogoUrl'] ?? '')) !== '') {
             return;
         }
-        $baseUrl = rtrim(config('services.btcpay.base_url', ''), '/');
-        try {
-            $file = $this->btcPayClient->get('/api/v1/files/'.$fileId);
-            Log::debug('Ticket event logo GET file response', ['file_id' => $fileId, 'keys' => array_keys($file)]);
-            $url = $file['url'] ?? null;
-            $storageName = $file['storageName'] ?? $file['storage_name'] ?? null;
-            $uri = $file['uri'] ?? null;
-            if (! empty($url) && ! str_starts_with((string) $url, 'fileid:')) {
-                $data['eventLogoUrl'] = $url;
-                $data['logoUrl'] = $url;
-                Log::debug('Ticket event logo URL resolved from file.url', ['eventLogoUrl' => $url]);
-
-                return;
-            }
-            if (! empty($storageName)) {
-                $data['eventLogoUrl'] = $baseUrl.'/LocalStorage/'.$storageName;
-                $data['logoUrl'] = $data['eventLogoUrl'];
-                Log::debug('Ticket event logo URL built from storageName', ['eventLogoUrl' => $data['eventLogoUrl']]);
-
-                return;
-            }
-            if (! empty($uri)) {
-                $resolved = str_starts_with((string) $uri, 'http') ? $uri : $baseUrl.(str_starts_with((string) $uri, '/') ? '' : '/').$uri;
-                $data['eventLogoUrl'] = $resolved;
-                $data['logoUrl'] = $resolved;
-                Log::debug('Ticket event logo URL from file.uri', ['eventLogoUrl' => $resolved]);
-
-                return;
-            }
-        } catch (\Throwable $e) {
-            Log::warning('Could not resolve event logo URL from file id', ['file_id' => $fileId, 'error' => $e->getMessage()]);
+        $url = $this->btcPayFileResolver->resolveEventLogoUrl($fileId);
+        if ($url !== null) {
+            $data['eventLogoUrl'] = $url;
+            $data['logoUrl'] = $url;
         }
     }
 
