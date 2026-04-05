@@ -1107,7 +1107,6 @@
     "email_subject": "Predmet potvrdeného e-mailu",
     "email_subject_hint": "Bez placeholdrov — plugin ich v predmete nenahrádza. Predvolený text môžete upraviť.",
     "email_default_subject": "Vaša vstupenka",
-    "email_default_subject_with_title": "Vaša vstupenka — {title}",
     "email_sample_title": "Letný koncert",
     "email_sample_location": "Bratislava, Hlavné námestie 1",
     "email_sample_datetime": "sobota 15. júna 2026, 19:00",

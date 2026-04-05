@@ -335,7 +335,6 @@
     "email_subject": "Asunto del email de confirmación",
     "email_subject_hint": "Solo texto fijo — el plugin no sustituye marcadores en el asunto. Puede editar el valor por defecto.",
     "email_default_subject": "Tu entrada",
-    "email_default_subject_with_title": "Tu entrada — {title}",
     "email_sample_title": "Concierto de verano",
     "email_sample_location": "Bratislava, Plaza Mayor 1",
     "email_sample_datetime": "sábado, 15 de junio de 2026, 19:00",

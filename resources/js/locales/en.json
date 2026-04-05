@@ -1106,7 +1106,6 @@
     "email_subject": "Confirmation email subject",
     "email_subject_hint": "Plain text only — the plugin does not replace placeholders in the subject. You can edit the default.",
     "email_default_subject": "Your ticket",
-    "email_default_subject_with_title": "Your ticket — {title}",
     "email_sample_title": "Summer concert",
     "email_sample_location": "Bratislava, Main Square 1",
     "email_sample_datetime": "Saturday, June 15, 2026, 7:00 PM",

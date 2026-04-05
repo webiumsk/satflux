@@ -1783,9 +1783,7 @@ function applyNewEventEmailDefaults() {
   const currency = f.currency.trim() || t("tickets.email_sample_currency");
   const eventTitle = titleTrim || t("tickets.email_sample_title");
 
-  eventForm.value.emailSubject = titleTrim
-    ? t("tickets.email_default_subject_with_title", { title: titleTrim })
-    : t("tickets.email_default_subject");
+  eventForm.value.emailSubject = t("tickets.email_default_subject");
 
   eventForm.value.emailBody = t("tickets.email_default_body", {
     buyerName: "{{Name}}",
