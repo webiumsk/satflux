@@ -14,8 +14,7 @@ class TicketController extends Controller
     public function __construct(
         protected TicketService $ticketService,
         protected BtcPayClient $btcPayClient
-    ) {
-    }
+    ) {}
 
     // ──────────────────────────────────────────────────
     //  EVENTS
@@ -28,11 +27,14 @@ class TicketController extends Controller
     {
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
         $expired = $request->boolean('expired', false);
+        // Store admin must see disabled events; BTCPay plugin may filter them out unless includeInactive is sent.
+        $includeInactive = $request->boolean('includeInactive', true);
 
         $events = $this->ticketService->listEvents(
             $store->btcpay_store_id,
             $userApiKey,
-            $expired
+            $expired,
+            $includeInactive
         );
 
         $events = array_map([$this, 'normalizeEventLogo'], $events);
@@ -126,9 +128,9 @@ class TicketController extends Controller
             'eventLogoUrl',
             'eventLogoFileId',
             'enable',
-        ]), (fn($v, $k) => $v !== null && ($k !== 'eventLogoUrl' || (string) $v !== '')), ARRAY_FILTER_USE_BOTH);
+        ]), (fn ($v, $k) => $v !== null && ($k !== 'eventLogoUrl' || (string) $v !== '')), ARRAY_FILTER_USE_BOTH);
         // Default enable to true so new events are Active and visible in the list immediately
-        if (!array_key_exists('enable', $data)) {
+        if (! array_key_exists('enable', $data)) {
             $data['enable'] = true;
         }
         if ($request->has('eventLogoFileId')) {
@@ -184,7 +186,7 @@ class TicketController extends Controller
             'maximumEventCapacity',
             'eventLogoUrl',
             'eventLogoFileId',
-        ]), (fn($v, $k) => $v !== null && ($k !== 'eventLogoUrl' || (string) $v !== '')), ARRAY_FILTER_USE_BOTH);
+        ]), (fn ($v, $k) => $v !== null && ($k !== 'eventLogoUrl' || (string) $v !== '')), ARRAY_FILTER_USE_BOTH);
         if ($request->has('eventLogoFileId')) {
             $data['eventLogoFileId'] = $request->input('eventLogoFileId');
         }
@@ -216,28 +218,31 @@ class TicketController extends Controller
         }
         $baseUrl = rtrim(config('services.btcpay.base_url', ''), '/');
         try {
-            $file = $this->btcPayClient->get('/api/v1/files/' . $fileId);
+            $file = $this->btcPayClient->get('/api/v1/files/'.$fileId);
             Log::debug('Ticket event logo GET file response', ['file_id' => $fileId, 'keys' => array_keys($file)]);
             $url = $file['url'] ?? null;
             $storageName = $file['storageName'] ?? $file['storage_name'] ?? null;
             $uri = $file['uri'] ?? null;
-            if (!empty($url) && !str_starts_with((string) $url, 'fileid:')) {
+            if (! empty($url) && ! str_starts_with((string) $url, 'fileid:')) {
                 $data['eventLogoUrl'] = $url;
                 $data['logoUrl'] = $url;
                 Log::debug('Ticket event logo URL resolved from file.url', ['eventLogoUrl' => $url]);
+
                 return;
             }
-            if (!empty($storageName)) {
-                $data['eventLogoUrl'] = $baseUrl . '/LocalStorage/' . $storageName;
+            if (! empty($storageName)) {
+                $data['eventLogoUrl'] = $baseUrl.'/LocalStorage/'.$storageName;
                 $data['logoUrl'] = $data['eventLogoUrl'];
                 Log::debug('Ticket event logo URL built from storageName', ['eventLogoUrl' => $data['eventLogoUrl']]);
+
                 return;
             }
-            if (!empty($uri)) {
-                $resolved = str_starts_with((string) $uri, 'http') ? $uri : $baseUrl . (str_starts_with((string) $uri, '/') ? '' : '/') . $uri;
+            if (! empty($uri)) {
+                $resolved = str_starts_with((string) $uri, 'http') ? $uri : $baseUrl.(str_starts_with((string) $uri, '/') ? '' : '/').$uri;
                 $data['eventLogoUrl'] = $resolved;
                 $data['logoUrl'] = $resolved;
                 Log::debug('Ticket event logo URL from file.uri', ['eventLogoUrl' => $resolved]);
+
                 return;
             }
         } catch (\Throwable $e) {
@@ -251,15 +256,16 @@ class TicketController extends Controller
      */
     protected function normalizeEventLogo(array $event): array
     {
-        if (!isset($event['eventLogoUrl']) && !empty($event['logoUrl'])) {
+        if (! isset($event['eventLogoUrl']) && ! empty($event['logoUrl'])) {
             $event['eventLogoUrl'] = $event['logoUrl'];
         }
         $event['eventLogoFileId'] = $event['eventLogoFileId'] ?? '';
         $fileId = trim((string) ($event['eventLogoFileId'] ?? ''));
         if (($event['eventLogoUrl'] ?? '') === '' && $fileId !== '') {
             $baseUrl = rtrim(config('services.btcpay.base_url', ''), '/');
-            $event['eventLogoUrl'] = $baseUrl . '/LocalStorage/' . $fileId;
+            $event['eventLogoUrl'] = $baseUrl.'/LocalStorage/'.$fileId;
         }
+
         return $event;
     }
 
@@ -374,13 +380,13 @@ class TicketController extends Controller
             'price',
             'description',
             'quantity',
-        ]), fn($v) => $v !== null && $v !== '');
+        ]), fn ($v) => $v !== null && $v !== '');
         $data['isDefault'] = $request->boolean('isDefault');
         $q = array_key_exists('quantity', $data) ? (int) $data['quantity'] : null;
         if ($hasMaxCapacity && ($q === null || $q < 1)) {
             return response()->json(['message' => __('messages.tickets_quantity_required_when_capacity')], 422);
         }
-        if (!array_key_exists('quantity', $data) || $q < 1) {
+        if (! array_key_exists('quantity', $data) || $q < 1) {
             $data['quantity'] = TicketService::UNLIMITED_QUANTITY;
         }
 
@@ -604,7 +610,7 @@ class TicketController extends Controller
                 'hasMaximumCapacity' => $event['hasMaximumCapacity'] ?? false,
                 'maximumEventCapacity' => $event['maximumEventCapacity'] ?? null,
                 'ticketsSold' => $event['ticketsSold'] ?? 0,
-            ]
+            ],
         ]);
     }
 

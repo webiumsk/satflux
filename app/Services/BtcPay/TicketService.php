@@ -22,9 +22,8 @@ class TicketService
 
     /**
      * List all events for a store.
-     * By default includes only active events. Set includeInactive=true to also return inactive/disabled events
-     * (newly created events start as inactive on BTCPay until activated).
-     * Requires Satoshi Tickets plugin to support includeInactive query param (plugin PR may be needed).
+     * Default includeInactive=true so disabled events appear in Satflux (store admin must manage them).
+     * Patched/custom BTCPay Satoshi Tickets builds may omit inactive events unless this query param is set.
      */
     public function listEvents(string $storeId, ?string $userApiKey = null, bool $expired = false, bool $includeInactive = true): array
     {
@@ -35,7 +34,10 @@ class TicketService
             }
             if ($includeInactive) {
                 $query['includeInactive'] = 'true';
+                // Some plugin forks bind snake_case query keys only.
+                $query['include_inactive'] = 'true';
             }
+
             return $this->client->get("/api/v1/stores/{$storeId}/satoshi-tickets/events", $query);
         });
     }
@@ -62,6 +64,7 @@ class TicketService
             return $this->client->post("/api/v1/stores/{$storeId}/satoshi-tickets/events", $payload);
         });
         Log::debug('TicketService createEvent response', ['event_id' => $result['id'] ?? null, 'eventLogoUrl' => $result['eventLogoUrl'] ?? null, 'eventLogoFileId' => $result['eventLogoFileId'] ?? null]);
+
         return $result;
     }
 
@@ -77,6 +80,7 @@ class TicketService
             return $this->client->put("/api/v1/stores/{$storeId}/satoshi-tickets/events/{$eventId}", $payload);
         });
         Log::debug('TicketService updateEvent response', ['eventLogoUrl' => $result['eventLogoUrl'] ?? null, 'eventLogoFileId' => $result['eventLogoFileId'] ?? null]);
+
         return $result;
     }
 
@@ -214,6 +218,7 @@ class TicketService
     {
         return $this->withApiKey($userApiKey, function () use ($storeId, $eventId, $searchText) {
             $query = $searchText ? ['searchText' => $searchText] : [];
+
             return $this->client->get("/api/v1/stores/{$storeId}/satoshi-tickets/events/{$eventId}/tickets", $query);
         });
     }
@@ -239,6 +244,7 @@ class TicketService
     {
         return $this->withApiKey($userApiKey, function () use ($storeId, $eventId, $searchText) {
             $query = $searchText ? ['searchText' => $searchText] : [];
+
             return $this->client->get("/api/v1/stores/{$storeId}/satoshi-tickets/events/{$eventId}/orders", $query);
         });
     }
