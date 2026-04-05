@@ -97,18 +97,22 @@ class WalletConnectionService
         $existingConnection = WalletConnection::where('store_id', $store->id)->first();
         $isNew = $existingConnection === null;
         $wasConnected = $existingConnection && $existingConnection->status === 'connected';
+        $hadAquaDescriptor = $existingConnection && $existingConnection->type === 'aqua_descriptor';
 
         // BTCPay Lightning UI after Cashu (eCash) is usually not the greenfield "first setup" tabbed
         // page the bot expects (#LightningNodeType-Custom). Use the same path as Blink reconfig:
         // Settings → Change connection (see scripts/btcpay-config-bot/run-config.js).
+        // Switching Aqua/Boltz → Blink while still "pending" must also use reconfig: BTCPay may already
+        // have a Boltz connection string; the first-setup wizard does not replace it.
         $cameFromCashu = ($store->wallet_type ?? null) === 'cashu';
-        $blinkBotUseReconfigPath = $type === 'blink' && ($wasConnected || $cameFromCashu);
+        $blinkBotUseReconfigPath = $type === 'blink' && ($wasConnected || $cameFromCashu || $hadAquaDescriptor);
 
         Log::info('Checking for existing wallet connection', [
             'store_id' => $store->id,
             'is_new' => $isNew,
             'existing_connection_id' => $existingConnection->id ?? 'NULL',
             'was_connected' => $wasConnected,
+            'had_aqua_descriptor' => $hadAquaDescriptor,
             'came_from_cashu' => $cameFromCashu,
             'blink_bot_reconfig_path' => $blinkBotUseReconfigPath,
         ]);
@@ -186,8 +190,21 @@ class WalletConnectionService
                     ]);
                 }
 
-                // Replace stale Boltz/internal LN with Blink via API when possible (bot often lags or fails on reconfig UIs).
+                // Replace stale Boltz/Aqua (or host default) LN with Blink via API when possible.
+                // Best-effort DELETE first so PUT/POST connect is not ignored when BTCPay already has type=boltz;...
                 if ($type === 'blink' && $initialStatus === 'pending') {
+                    try {
+                        $this->lightningService->tryRemoveStoreLightningNodeConfiguration(
+                            $store->btcpay_store_id,
+                            'BTC',
+                            $userApiKey
+                        );
+                    } catch (\Throwable $e) {
+                        Log::info('Best-effort clear BTCPay Lightning before Blink connect', [
+                            'store_id' => $store->id,
+                            'message' => $e->getMessage(),
+                        ]);
+                    }
                     try {
                         $apiResult = $this->lightningService->connectLightningNode(
                             $store->btcpay_store_id,

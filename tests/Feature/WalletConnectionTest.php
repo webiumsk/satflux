@@ -382,6 +382,14 @@ class WalletConnectionTest extends TestCase
                 return Http::response([], 204);
             }
 
+            if (
+                $request->method() === 'DELETE'
+                && str_contains($url, '/lightning/BTC')
+                && ! str_contains($url, '/payment-methods/')
+            ) {
+                return Http::response([], 204);
+            }
+
             if (str_contains($url, '/lightning/')) {
                 return Http::response(['message' => 'test: no lightning API in fake'], 422);
             }
@@ -432,5 +440,55 @@ class WalletConnectionTest extends TestCase
             'store_id' => $store->id,
             'status' => 'pending',
         ]);
+    }
+
+    /** @test */
+    public function switching_from_aqua_descriptor_to_blink_sets_reconfig_for_bot(): void
+    {
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) {
+            $url = $request->url();
+            if (
+                $request->method() === 'DELETE'
+                && str_contains($url, '/stores/aqua-to-blink-store/lightning/BTC')
+                && ! str_contains($url, '/payment-methods/')
+            ) {
+                return Http::response([], 204);
+            }
+            if (str_contains($url, '/lightning/')) {
+                return Http::response(['message' => 'fake: use bot'], 422);
+            }
+
+            return Http::response(['message' => 'not found'], 404);
+        });
+
+        $user = User::factory()->create();
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'aqua_boltz',
+            'btcpay_store_id' => 'aqua-to-blink-store',
+        ]);
+        WalletConnection::create([
+            'store_id' => $store->id,
+            'type' => 'aqua_descriptor',
+            'encrypted_secret' => Crypt::encryptString(self::VALID_AQUA_DESCRIPTOR),
+            'status' => 'connected',
+            'submitted_by_user_id' => $user->id,
+        ]);
+
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", [
+            'type' => 'blink',
+            'secret' => self::VALID_BLINK_SECRET,
+        ])->assertStatus(201);
+
+        $this->assertDatabaseHas('wallet_connections', [
+            'store_id' => $store->id,
+            'type' => 'blink',
+            'reconfig' => true,
+            'status' => 'pending',
+        ]);
+        $store->refresh();
+        $this->assertSame('blink', $store->wallet_type);
     }
 }
