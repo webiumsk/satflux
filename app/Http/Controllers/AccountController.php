@@ -164,7 +164,7 @@ class AccountController extends Controller
             if ($store) {
                 try {
                     $apiKey = $user->getBtcPayApiKeyOrFail();
-                    $eventList = $this->ticketService->listEvents($store->btcpay_store_id, $apiKey, false);
+                    $eventList = $this->ticketService->listEvents($store->btcpay_store_id, $apiKey, false, true);
                     $limits['events']['current'] = is_array($eventList) ? count($eventList) : 0;
                 } catch (\Throwable $e) {
                     $limits['events']['current'] = 0;

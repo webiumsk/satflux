@@ -22,10 +22,10 @@ class TicketService
 
     /**
      * List all events for a store.
-     * Default includeInactive=true so disabled events appear in Satflux (store admin must manage them).
-     * Patched/custom BTCPay Satoshi Tickets builds may omit inactive events unless this query param is set.
+     * Pass includeInactive=true when the caller needs disabled/inactive events (admin UI, accurate per-store counts).
+     * Patched/custom BTCPay Satoshi Tickets builds may omit inactive events unless those query params are sent.
      */
-    public function listEvents(string $storeId, ?string $userApiKey = null, bool $expired = false, bool $includeInactive = true): array
+    public function listEvents(string $storeId, ?string $userApiKey = null, bool $expired = false, bool $includeInactive = false): array
     {
         return $this->withApiKey($userApiKey, function () use ($storeId, $expired, $includeInactive) {
             $query = [];

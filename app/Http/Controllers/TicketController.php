@@ -82,7 +82,7 @@ class TicketController extends Controller
         $maxEvents = $user->getMaxEventsPerStore();
         if ($maxEvents !== null) {
             $userApiKey = $user->getBtcPayApiKeyOrFail();
-            $existing = $this->ticketService->listEvents($store->btcpay_store_id, $userApiKey, false);
+            $existing = $this->ticketService->listEvents($store->btcpay_store_id, $userApiKey, false, true);
             $count = is_array($existing) ? count($existing) : 0;
             if ($count >= $maxEvents) {
                 return response()->json([
