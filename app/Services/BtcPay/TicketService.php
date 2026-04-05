@@ -262,7 +262,8 @@ class TicketService
 
     /**
      * Keys allowed in plugin CreateEventRequest / UpdateEventRequest (plugin ignores unknown fields).
-     * Plugin only uses eventLogoFileId on input; eventLogoUrl is resolved server-side for response.
+     * Include eventLogoUrl and logoUrl: plugin create path often needs a display URL; file id alone may be ignored
+     * until the event exists (upload-logo flow works on update only).
      * enable: when true, event is created as Active; when false, as Disabled (inactive).
      */
     protected const EVENT_PAYLOAD_KEYS = [
@@ -279,12 +280,14 @@ class TicketService
         'hasMaximumCapacity',
         'maximumEventCapacity',
         'eventLogoFileId',
+        'eventLogoUrl',
+        'logoUrl',
         'enable',
     ];
 
     /**
      * Normalize event payload for plugin: only send fields the plugin expects (UpdateEventRequest).
-     * Plugin expects eventLogoFileId (string, optional); it resolves eventLogoUrl via IFileService for response.
+     * Sends eventLogoFileId plus eventLogoUrl/logoUrl when present (TicketController ensureEventLogoUrl).
      */
     protected function normalizeEventPayloadForBtcPay(array $data): array
     {
@@ -296,6 +299,13 @@ class TicketService
         foreach (['emailBody', 'emailSubject'] as $key) {
             if (array_key_exists($key, $payload) && is_string($payload[$key])) {
                 $payload[$key] = $this->normalizeTicketEmailPlaceholders($payload[$key]);
+            }
+        }
+
+        // Keep empty eventLogoFileId so update/create can clear logo (frontend sends ""; do not strip).
+        foreach (['eventLogoUrl', 'logoUrl'] as $logoKey) {
+            if (array_key_exists($logoKey, $payload) && trim((string) $payload[$logoKey]) === '') {
+                unset($payload[$logoKey]);
             }
         }
 
