@@ -12,10 +12,13 @@ class SamRockTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_samrock_create_otp_returns_404_for_non_aqua_store(): void
+    public function test_samrock_create_otp_returns_404_for_cashu_store(): void
     {
         $user = User::factory()->create();
-        $store = Store::factory()->withBlink()->create(['user_id' => $user->id]);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'cashu',
+        ]);
 
         $response = $this->actingAs($user)->postJson("/api/stores/{$store->id}/samrock/otps", [
             'btc' => true,
@@ -23,6 +26,30 @@ class SamRockTest extends TestCase
         ]);
 
         $response->assertStatus(404);
+    }
+
+    public function test_samrock_create_otp_allowed_when_store_wallet_type_is_blink(): void
+    {
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+
+        $user = User::factory()->create();
+        $store = Store::factory()->withBlink()->create(['user_id' => $user->id]);
+
+        Http::fake([
+            'https://btcpay.test/api/v1/stores/'.$store->btcpay_store_id.'/samrock/otps' => Http::response([
+                'otp' => 'otp-from-blink-store',
+                'expiresAt' => '2026-12-01T12:00:00Z',
+                'setupUrl' => 'https://btcpay.test/samrock',
+            ], 201),
+        ]);
+
+        $response = $this->actingAs($user)->postJson("/api/stores/{$store->id}/samrock/otps", [
+            'btc' => true,
+            'btcln' => true,
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.otp', 'otp-from-blink-store');
     }
 
     public function test_samrock_create_otp_proxies_to_btcpay(): void
