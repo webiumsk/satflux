@@ -14,7 +14,7 @@
       <button @click="loadStore" class="text-indigo-400 hover:text-indigo-300">{{ t('common.retry') }}</button>
     </div>
   </div>
-  <div v-else class="flex bg-gray-900 overflow-hidden min-h-screen">
+  <div v-else class="flex min-h-0 flex-1 overflow-hidden bg-gray-900">
     <StoreSidebar
       :store="store"
       :apps="appsStore.apps"

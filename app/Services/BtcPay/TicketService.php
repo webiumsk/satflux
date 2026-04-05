@@ -22,11 +22,10 @@ class TicketService
 
     /**
      * List all events for a store.
-     * By default includes only active events. Set includeInactive=true to also return inactive/disabled events
-     * (newly created events start as inactive on BTCPay until activated).
-     * Requires Satoshi Tickets plugin to support includeInactive query param (plugin PR may be needed).
+     * Pass includeInactive=true when the caller needs disabled/inactive events (admin UI, accurate per-store counts).
+     * Patched/custom BTCPay Satoshi Tickets builds may omit inactive events unless those query params are sent.
      */
-    public function listEvents(string $storeId, ?string $userApiKey = null, bool $expired = false, bool $includeInactive = true): array
+    public function listEvents(string $storeId, ?string $userApiKey = null, bool $expired = false, bool $includeInactive = false): array
     {
         return $this->withApiKey($userApiKey, function () use ($storeId, $expired, $includeInactive) {
             $query = [];
@@ -35,7 +34,10 @@ class TicketService
             }
             if ($includeInactive) {
                 $query['includeInactive'] = 'true';
+                // Some plugin forks bind snake_case query keys only.
+                $query['include_inactive'] = 'true';
             }
+
             return $this->client->get("/api/v1/stores/{$storeId}/satoshi-tickets/events", $query);
         });
     }
@@ -62,6 +64,7 @@ class TicketService
             return $this->client->post("/api/v1/stores/{$storeId}/satoshi-tickets/events", $payload);
         });
         Log::debug('TicketService createEvent response', ['event_id' => $result['id'] ?? null, 'eventLogoUrl' => $result['eventLogoUrl'] ?? null, 'eventLogoFileId' => $result['eventLogoFileId'] ?? null]);
+
         return $result;
     }
 
@@ -77,6 +80,7 @@ class TicketService
             return $this->client->put("/api/v1/stores/{$storeId}/satoshi-tickets/events/{$eventId}", $payload);
         });
         Log::debug('TicketService updateEvent response', ['eventLogoUrl' => $result['eventLogoUrl'] ?? null, 'eventLogoFileId' => $result['eventLogoFileId'] ?? null]);
+
         return $result;
     }
 
@@ -214,6 +218,7 @@ class TicketService
     {
         return $this->withApiKey($userApiKey, function () use ($storeId, $eventId, $searchText) {
             $query = $searchText ? ['searchText' => $searchText] : [];
+
             return $this->client->get("/api/v1/stores/{$storeId}/satoshi-tickets/events/{$eventId}/tickets", $query);
         });
     }
@@ -239,6 +244,7 @@ class TicketService
     {
         return $this->withApiKey($userApiKey, function () use ($storeId, $eventId, $searchText) {
             $query = $searchText ? ['searchText' => $searchText] : [];
+
             return $this->client->get("/api/v1/stores/{$storeId}/satoshi-tickets/events/{$eventId}/orders", $query);
         });
     }
@@ -287,7 +293,7 @@ class TicketService
 
     /**
      * Normalize event payload for plugin: only send fields the plugin expects (UpdateEventRequest).
-     * Sends eventLogoFileId plus eventLogoUrl/logoUrl when present (TicketController ensureEventLogoUrl).
+     * Sends eventLogoFileId plus eventLogoUrl/logoUrl when present (BtcPayFileResolver / TicketController).
      */
     protected function normalizeEventPayloadForBtcPay(array $data): array
     {

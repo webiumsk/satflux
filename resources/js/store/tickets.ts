@@ -92,7 +92,10 @@ export const useTicketsStore = defineStore('tickets', () => {
         loading.value = true;
         try {
             const response = await api.get(`/stores/${storeId}/tickets/events`, {
-                params: { expired: expired ? 'true' : undefined },
+                params: {
+                    expired: expired ? 'true' : undefined,
+                    includeInactive: 'true',
+                },
             });
             events.value = response.data.data || [];
             return events.value;
