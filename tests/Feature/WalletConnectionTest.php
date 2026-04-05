@@ -376,8 +376,18 @@ class WalletConnectionTest extends TestCase
 
         $putPayload = null;
         Http::fake(function (\Illuminate\Http\Client\Request $request) use (&$putPayload) {
-            if (! str_contains($request->url(), 'cashumelt/settings')) {
-                return Http::response([], 200);
+            $url = $request->url();
+
+            if (str_contains($url, '/payment-methods/') && $request->method() === 'DELETE') {
+                return Http::response([], 204);
+            }
+
+            if (str_contains($url, '/lightning/')) {
+                return Http::response(['message' => 'test: no lightning API in fake'], 422);
+            }
+
+            if (! str_contains($url, 'cashumelt/settings')) {
+                return Http::response(['message' => 'not found'], 404);
             }
             if ($request->method() === 'GET') {
                 return Http::response([
@@ -412,5 +422,15 @@ class WalletConnectionTest extends TestCase
         $this->assertSame('https://mint.example/x', $putPayload['mintUrl'] ?? null);
         $store->refresh();
         $this->assertSame('blink', $store->wallet_type);
+
+        Http::assertSent(function (\Illuminate\Http\Client\Request $request) {
+            return $request->method() === 'DELETE'
+                && str_contains($request->url(), 'btcpay.test/api/v1/stores/store-btcpay-cashu-switch/payment-methods/CASHU');
+        });
+
+        $this->assertDatabaseHas('wallet_connections', [
+            'store_id' => $store->id,
+            'status' => 'pending',
+        ]);
     }
 }
