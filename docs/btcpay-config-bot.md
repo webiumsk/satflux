@@ -47,6 +47,8 @@ echo $u->createToken('btcpay-config-bot')->plainTextToken;
 
 Copy the full token into `.env` or `.env.standalone` as `PANEL_BOT_TOKEN=1|xxx...`.
 
+**403 on `/api/support/...`:** the Laravel user must have **`role` = `support` or `admin`** (BTCPay admin rights are unrelated). The token name must be exactly **`btcpay-config-bot`** (as in `createToken('btcpay-config-bot')`) so an unverified service account can still call support APIs; other tokens still require a verified email.
+
 ### Run poller (continuous)
 
 ```bash

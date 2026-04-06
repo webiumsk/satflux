@@ -47,7 +47,20 @@ async function fetchPendingConnections() {
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to fetch connections: ${res.status}`);
+    let detail = '';
+    try {
+      const errBody = await res.json();
+      if (errBody?.message) {
+        detail = ` — ${String(errBody.message).slice(0, 200)}`;
+      }
+    } catch {
+      try {
+        detail = ` — ${(await res.text()).slice(0, 200)}`;
+      } catch {
+        /* ignore */
+      }
+    }
+    throw new Error(`Failed to fetch connections: ${res.status}${detail}`);
   }
 
   const body = await res.json();

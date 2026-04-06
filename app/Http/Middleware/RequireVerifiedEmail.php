@@ -2,9 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\Request;
+use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 
 class RequireVerifiedEmail
@@ -20,8 +22,25 @@ class RequireVerifiedEmail
             return $next($request);
         }
 
+        // Headless BTCPay config bot uses a named Sanctum PAT; service accounts often skip inbox verification.
+        if ($this->allowsBtcPayConfigBot($user)) {
+            return $next($request);
+        }
+
         return $request->expectsJson()
             ? response()->json(['message' => __('auth.email_not_verified')], 403)
             : redirect()->guest('/login');
+    }
+
+    private function allowsBtcPayConfigBot(MustVerifyEmail $user): bool
+    {
+        if (! $user instanceof User || ! $user->isSupport()) {
+            return false;
+        }
+
+        $token = $user->currentAccessToken();
+
+        return $token instanceof PersonalAccessToken
+            && $token->name === 'btcpay-config-bot';
     }
 }
