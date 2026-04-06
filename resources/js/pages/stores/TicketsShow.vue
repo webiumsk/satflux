@@ -1721,6 +1721,7 @@ const eventForm = ref({
 const imagePreview = ref<string | null>(null);
 const uploadingImage = ref(false);
 const eventImageInput = ref<HTMLInputElement | null>(null);
+const pendingImageFile = ref<File | null>(null);
 
 // Expanded event + tabs
 const expandedEventId = ref<string | null>(null);
@@ -1810,6 +1811,7 @@ function resetForm() {
   editingEvent.value = null;
   showEmailSettings.value = false;
   imagePreview.value = null;
+  pendingImageFile.value = null;
 }
 
 function cancelForm() {
@@ -1848,11 +1850,11 @@ async function onEventImageChange(e: Event) {
   };
   reader.readAsDataURL(file);
 
-  uploadingImage.value = true;
-  try {
-    const eventId = editingEvent.value?.id;
-    if (eventId) {
-      // Plugin endpoint: POST .../events/{eventId}/logo (store-level permission, single request)
+  const eventId = editingEvent.value?.id;
+  if (eventId) {
+    // Edit flow: upload directly to plugin logo endpoint so logo is saved immediately
+    uploadingImage.value = true;
+    try {
       const formData = new FormData();
       formData.append("file", file);
       const response = await api.post(
@@ -1863,26 +1865,18 @@ async function onEventImageChange(e: Event) {
       eventForm.value.eventLogoFileId = d.eventLogoFileId ?? d.id ?? "";
       eventForm.value.eventLogoUrl = d.eventLogoUrl ?? d.logoUrl ?? d.url ?? "";
       showSuccess(t("tickets.image_uploaded"));
-    } else {
-      // Create flow: POST /events/image (returns file id; we send eventLogoFileId on create)
-      const formData = new FormData();
-      formData.append("image", file);
-      const response = await api.post(
-        `/stores/${props.store.id}/tickets/events/image`,
-        formData,
+    } catch (err: any) {
+      imagePreview.value = null;
+      showError(
+        err?.response?.data?.message || err?.message || "Failed to upload image",
       );
-      const d = response.data?.data ?? {};
-      eventForm.value.eventLogoFileId = d.id ?? d.eventLogoFileId ?? "";
-      eventForm.value.eventLogoUrl = d.url ?? d.image_url ?? "";
-      showSuccess(t("tickets.image_uploaded"));
+    } finally {
+      uploadingImage.value = false;
+      if (input) input.value = "";
     }
-  } catch (err: any) {
-    imagePreview.value = null;
-    showError(
-      err?.response?.data?.message || err?.message || "Failed to upload image",
-    );
-  } finally {
-    uploadingImage.value = false;
+  } else {
+    // Create flow: hold file in memory; upload via plugin logo endpoint after the event is created
+    pendingImageFile.value = file;
     if (input) input.value = "";
   }
 }
@@ -1904,6 +1898,8 @@ async function clearEventImage() {
       return;
     }
   }
+  // Clear pending file (create flow) and local state
+  pendingImageFile.value = null;
   eventForm.value.eventLogoUrl = "";
   eventForm.value.eventLogoFileId = "";
   imagePreview.value = null;
@@ -2049,7 +2045,24 @@ async function handleSubmitEvent() {
       );
       showSuccess(t("tickets.event_updated"));
     } else {
-      await ticketsStore.createEvent(props.store.id, data);
+      const createdEvent = await ticketsStore.createEvent(props.store.id, data);
+      // Upload pending image via plugin logo endpoint now that we have an event ID
+      if (pendingImageFile.value && createdEvent?.id) {
+        uploadingImage.value = true;
+        try {
+          const formData = new FormData();
+          formData.append("file", pendingImageFile.value);
+          await api.post(
+            `/stores/${props.store.id}/tickets/events/${createdEvent.id}/logo`,
+            formData,
+          );
+        } catch {
+          // Logo upload failed but event was created — not a fatal error
+        } finally {
+          uploadingImage.value = false;
+          pendingImageFile.value = null;
+        }
+      }
       showSuccess(t("tickets.event_created"));
     }
     cancelForm();
