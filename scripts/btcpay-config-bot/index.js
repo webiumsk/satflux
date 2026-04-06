@@ -7,7 +7,7 @@
  *   node index.js <connection_id>
  *
  * Run on HOST for simplicity (localhost works for panel).
- * Requires: .env with panel and BTCPay credentials.
+ * Requires: project root .env, .env.production, and/or .env.standalone with panel and BTCPay credentials.
  */
 
 import { config } from 'dotenv';
@@ -20,6 +20,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '../..');
 config({ path: resolve(root, '.env') });
 config({ path: resolve(root, '.env.production') });
+// Host deployments that keep secrets only in .env.standalone (gitignored; see docker-compose.standalone)
+config({ path: resolve(root, '.env.standalone') });
 config();
 
 const connectionId = process.argv[2] || process.env.BTCPAY_BOT_CONNECTION_ID;

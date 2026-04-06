@@ -2,7 +2,7 @@
 /**
  * BTCPay Config Bot - Poller
  *
- * Runs on the HOST (not in Docker). Polls panel for needs_support connections
+ * Runs on the HOST (not in Docker). Polls panel for pending wallet connections
  * and configures each via BTCPay UI. No Docker network or permission issues.
  *
  * Usage:
@@ -10,7 +10,7 @@
  *   node poll.js --once       # run once and exit
  *   node poll.js --interval 60  # poll every 60 seconds
  *
- * Requires: .env with panel and BTCPay credentials (see README.md)
+ * Requires: project root .env, .env.production, and/or .env.standalone with panel and BTCPay credentials (see README.md)
  * Panel URL: use APP_URL (e.g. http://localhost:8080) - from host, localhost works
  */
 
@@ -24,6 +24,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '../..');
 config({ path: resolve(root, '.env') });
 config({ path: resolve(root, '.env.production') });
+// Host deployments that keep secrets only in .env.standalone (gitignored; see docker-compose.standalone)
+config({ path: resolve(root, '.env.standalone') });
 config();
 
 const args = process.argv.slice(2);
@@ -55,7 +57,7 @@ async function fetchPendingConnections() {
 
 async function runPoll() {
   if (!panelUrl || !panelToken) {
-    logger.error('poll_config', 'Missing PANEL_URL (or APP_URL) or PANEL_BOT_TOKEN', {});
+    logger.error('poll_config', 'Missing panel URL (PANEL_URL, BTCPAY_BOT_PANEL_URL, or APP_URL in .env / .env.production / .env.standalone) or PANEL_BOT_TOKEN', {});
     process.exit(1);
   }
 

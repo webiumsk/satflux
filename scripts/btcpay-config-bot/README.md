@@ -4,7 +4,7 @@ Optional Node automation: opens BTCPay in a headless browser and applies wallet 
 
 ## Security
 
-- **No secrets in this repo.** Credentials come from environment variables (typically the Laravel `.env` when you run from the project root).
+- **No secrets in this repo.** Credentials come from environment variables. The bot loads `.env`, `.env.production`, then **`.env.standalone`** at the project root (same as standalone Docker deploys), then the process environment.
 - **Logs** (`BTCPAY_BOT_LOG_FILE`, default `/tmp/btcpay-config-bot.log`) may contain store names, BTCPay store ids, and errors. Treat log files like credentials; do not commit them. The bot does not log raw wallet secrets.
 - **Panel reveal API** responses are not written to logs in full; avoid running with extra debug that prints response bodies.
 
