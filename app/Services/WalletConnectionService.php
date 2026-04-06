@@ -162,67 +162,79 @@ class WalletConnectionService
             ]);
 
             if (in_array($storeWalletType, ['blink', 'aqua_boltz'], true)) {
-                $userApiKey = $store->user->getBtcPayApiKeyOrFail();
+                $merchant = $store->user;
+                $userApiKey = ($merchant && filled($merchant->btcpay_api_key ?? null))
+                    ? $merchant->btcpay_api_key
+                    : null;
 
-                try {
-                    $this->cashuService->tryDisableAtBtcPay(
-                        $store->btcpay_store_id,
-                        $userApiKey
-                    );
-                } catch (\Throwable $e) {
-                    Log::error('Could not disable CashuMelt at BTCPay after Lightning wallet connection', [
+                if (! $userApiKey) {
+                    Log::warning('Skipping BTCPay wallet sync after local save: merchant has no BTCPay API key', [
                         'store_id' => $store->id,
-                        'btcpay_store_id' => $store->btcpay_store_id,
-                        'message' => $e->getMessage(),
+                        'user_id' => $merchant?->id,
                     ]);
                 }
 
-                try {
-                    $this->cashuService->tryRemoveCashuCheckoutPaymentMethods(
-                        $store->btcpay_store_id,
-                        $userApiKey
-                    );
-                } catch (\Throwable $e) {
-                    Log::error('Could not remove Cashu checkout payment method at BTCPay', [
-                        'store_id' => $store->id,
-                        'btcpay_store_id' => $store->btcpay_store_id,
-                        'message' => $e->getMessage(),
-                    ]);
-                }
-
-                // Replace stale Boltz/Aqua (or host default) LN with Blink via API when possible.
-                // Best-effort DELETE first so PUT/POST connect is not ignored when BTCPay already has type=boltz;...
-                if ($type === 'blink' && $initialStatus === 'pending') {
+                if ($userApiKey) {
                     try {
-                        $this->lightningService->tryRemoveStoreLightningNodeConfiguration(
+                        $this->cashuService->tryDisableAtBtcPay(
                             $store->btcpay_store_id,
-                            'BTC',
                             $userApiKey
                         );
                     } catch (\Throwable $e) {
-                        Log::info('Best-effort clear BTCPay Lightning before Blink connect', [
+                        Log::error('Could not disable CashuMelt at BTCPay after Lightning wallet connection', [
                             'store_id' => $store->id,
+                            'btcpay_store_id' => $store->btcpay_store_id,
                             'message' => $e->getMessage(),
                         ]);
                     }
+
                     try {
-                        $apiResult = $this->lightningService->connectLightningNode(
+                        $this->cashuService->tryRemoveCashuCheckoutPaymentMethods(
                             $store->btcpay_store_id,
-                            'BTC',
-                            $secret,
                             $userApiKey
                         );
-                        if ($apiResult['success'] ?? false) {
-                            $connection->refresh();
-                            if ($connection->status === 'pending') {
-                                $this->markConnected($connection, $user);
-                            }
-                        }
                     } catch (\Throwable $e) {
-                        Log::info('Blink Greenfield connect not applied; config bot may configure', [
+                        Log::error('Could not remove Cashu checkout payment method at BTCPay', [
                             'store_id' => $store->id,
+                            'btcpay_store_id' => $store->btcpay_store_id,
                             'message' => $e->getMessage(),
                         ]);
+                    }
+
+                    // Replace stale Boltz/Aqua (or host default) LN with Blink via API when possible.
+                    // Best-effort DELETE first so PUT/POST connect is not ignored when BTCPay already has type=boltz;...
+                    if ($type === 'blink' && $initialStatus === 'pending') {
+                        try {
+                            $this->lightningService->tryRemoveStoreLightningNodeConfiguration(
+                                $store->btcpay_store_id,
+                                'BTC',
+                                $userApiKey
+                            );
+                        } catch (\Throwable $e) {
+                            Log::info('Best-effort clear BTCPay Lightning before Blink connect', [
+                                'store_id' => $store->id,
+                                'message' => $e->getMessage(),
+                            ]);
+                        }
+                        try {
+                            $apiResult = $this->lightningService->connectLightningNode(
+                                $store->btcpay_store_id,
+                                'BTC',
+                                $secret,
+                                $userApiKey
+                            );
+                            if ($apiResult['success'] ?? false) {
+                                $connection->refresh();
+                                if ($connection->status === 'pending') {
+                                    $this->markConnected($connection, $user);
+                                }
+                            }
+                        } catch (\Throwable $e) {
+                            Log::info('Blink Greenfield connect not applied; config bot may configure', [
+                                'store_id' => $store->id,
+                                'message' => $e->getMessage(),
+                            ]);
+                        }
                     }
                 }
             }

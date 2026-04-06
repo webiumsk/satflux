@@ -94,10 +94,49 @@ class WalletConnectionTest extends TestCase
     /** @test */
     public function cashu_store_saving_blink_sets_pending_reconfig_for_config_bot(): void
     {
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) {
+            $url = $request->url();
+
+            if (str_contains($url, '/payment-methods/') && $request->method() === 'DELETE') {
+                return Http::response([], 204);
+            }
+
+            if (
+                $request->method() === 'DELETE'
+                && str_contains($url, '/lightning/BTC')
+                && ! str_contains($url, '/payment-methods/')
+            ) {
+                return Http::response([], 204);
+            }
+
+            if (str_contains($url, '/lightning/')) {
+                return Http::response(['message' => 'test: no lightning API in fake'], 422);
+            }
+
+            if (! str_contains($url, 'cashumelt/settings')) {
+                return Http::response(['message' => 'not found'], 404);
+            }
+            if ($request->method() === 'GET') {
+                return Http::response([
+                    'mintUrl' => 'https://mint.example/x',
+                    'lightningAddress' => 'merchant@example.com',
+                    'enabled' => true,
+                ], 200);
+            }
+            if ($request->method() === 'PUT') {
+                return Http::response(array_merge($request->data() ?? [], ['enabled' => false]), 200);
+            }
+
+            return Http::response('not found', 404);
+        });
+
         $user = User::factory()->create();
         $store = Store::factory()->create([
             'user_id' => $user->id,
             'wallet_type' => 'cashu',
+            'btcpay_store_id' => 'store-cashu-reconfig-bot',
         ]);
 
         $response = $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", [

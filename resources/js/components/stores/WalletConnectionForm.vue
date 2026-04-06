@@ -444,7 +444,7 @@
       </div>
 
       <div
-        v-if="viewMode === 'editing' || viewMode === 'create'"
+        v-if="viewMode === 'editing'"
         class="flex flex-wrap gap-3 text-sm mb-2"
       >
         <button
