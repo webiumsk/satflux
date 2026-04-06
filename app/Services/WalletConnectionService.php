@@ -10,6 +10,7 @@ use App\Models\WalletConnection;
 use App\Notifications\SupportNeededNotification;
 use App\Notifications\WalletConnectionChangedNotification;
 use App\Notifications\WalletConnectionNeedsSupportMerchantNotification;
+use App\Services\BtcPay\LightningService;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +21,7 @@ class WalletConnectionService
     public function __construct(
         protected WalletConnectionValidator $validator,
         protected \App\Services\BtcPay\CashuService $cashuService,
+        protected LightningService $lightningService,
     ) {}
 
     /**
@@ -95,12 +97,24 @@ class WalletConnectionService
         $existingConnection = WalletConnection::where('store_id', $store->id)->first();
         $isNew = $existingConnection === null;
         $wasConnected = $existingConnection && $existingConnection->status === 'connected';
+        $hadAquaDescriptor = $existingConnection && $existingConnection->type === 'aqua_descriptor';
+
+        // BTCPay Lightning UI after Cashu (eCash) is usually not the greenfield "first setup" tabbed
+        // page the bot expects (#LightningNodeType-Custom). Use the same path as Blink reconfig:
+        // Settings → Change connection (see scripts/btcpay-config-bot/run-config.js).
+        // Switching Aqua/Boltz → Blink while still "pending" must also use reconfig: BTCPay may already
+        // have a Boltz connection string; the first-setup wizard does not replace it.
+        $cameFromCashu = ($store->wallet_type ?? null) === 'cashu';
+        $blinkBotUseReconfigPath = $type === 'blink' && ($wasConnected || $cameFromCashu || $hadAquaDescriptor);
 
         Log::info('Checking for existing wallet connection', [
             'store_id' => $store->id,
             'is_new' => $isNew,
             'existing_connection_id' => $existingConnection->id ?? 'NULL',
             'was_connected' => $wasConnected,
+            'had_aqua_descriptor' => $hadAquaDescriptor,
+            'came_from_cashu' => $cameFromCashu,
+            'blink_bot_reconfig_path' => $blinkBotUseReconfigPath,
         ]);
 
         // Create or update wallet connection
@@ -118,7 +132,7 @@ class WalletConnectionService
                     'configuration_source' => null,
                     'encrypted_secret' => Crypt::encryptString($secret),
                     'status' => $initialStatus,
-                    'reconfig' => $wasConnected,
+                    'reconfig' => $type === 'blink' ? $blinkBotUseReconfigPath : $wasConnected,
                     'bot_failure_message' => null,
                     'bot_failed_at' => null,
                     'secret_updated_at' => now(),
@@ -148,19 +162,84 @@ class WalletConnectionService
             ]);
 
             if (in_array($storeWalletType, ['blink', 'aqua_boltz'], true)) {
-                try {
-                    $this->cashuService->tryDisableAtBtcPay(
-                        $store->btcpay_store_id,
-                        $store->user->getBtcPayApiKeyOrFail()
-                    );
-                } catch (\Throwable $e) {
-                    Log::error('Could not disable CashuMelt at BTCPay after Lightning wallet connection', [
+                $merchant = $store->user;
+                $userApiKey = ($merchant && filled($merchant->btcpay_api_key ?? null))
+                    ? $merchant->btcpay_api_key
+                    : null;
+
+                if (! $userApiKey) {
+                    Log::warning('Skipping BTCPay wallet sync after local save: merchant has no BTCPay API key', [
                         'store_id' => $store->id,
-                        'btcpay_store_id' => $store->btcpay_store_id,
-                        'message' => $e->getMessage(),
+                        'user_id' => $merchant?->id,
                     ]);
                 }
+
+                if ($userApiKey) {
+                    try {
+                        $this->cashuService->tryDisableAtBtcPay(
+                            $store->btcpay_store_id,
+                            $userApiKey
+                        );
+                    } catch (\Throwable $e) {
+                        Log::error('Could not disable CashuMelt at BTCPay after Lightning wallet connection', [
+                            'store_id' => $store->id,
+                            'btcpay_store_id' => $store->btcpay_store_id,
+                            'message' => $e->getMessage(),
+                        ]);
+                    }
+
+                    try {
+                        $this->cashuService->tryRemoveCashuCheckoutPaymentMethods(
+                            $store->btcpay_store_id,
+                            $userApiKey
+                        );
+                    } catch (\Throwable $e) {
+                        Log::error('Could not remove Cashu checkout payment method at BTCPay', [
+                            'store_id' => $store->id,
+                            'btcpay_store_id' => $store->btcpay_store_id,
+                            'message' => $e->getMessage(),
+                        ]);
+                    }
+
+                    // Replace stale Boltz/Aqua (or host default) LN with Blink via API when possible.
+                    // Best-effort DELETE first so PUT/POST connect is not ignored when BTCPay already has type=boltz;...
+                    if ($type === 'blink' && $initialStatus === 'pending') {
+                        try {
+                            $this->lightningService->tryRemoveStoreLightningNodeConfiguration(
+                                $store->btcpay_store_id,
+                                'BTC',
+                                $userApiKey
+                            );
+                        } catch (\Throwable $e) {
+                            Log::info('Best-effort clear BTCPay Lightning before Blink connect', [
+                                'store_id' => $store->id,
+                                'message' => $e->getMessage(),
+                            ]);
+                        }
+                        try {
+                            $apiResult = $this->lightningService->connectLightningNode(
+                                $store->btcpay_store_id,
+                                'BTC',
+                                $secret,
+                                $userApiKey
+                            );
+                            if ($apiResult['success'] ?? false) {
+                                $connection->refresh();
+                                if ($connection->status === 'pending') {
+                                    $this->markConnected($connection, $user);
+                                }
+                            }
+                        } catch (\Throwable $e) {
+                            Log::info('Blink Greenfield connect not applied; config bot may configure', [
+                                'store_id' => $store->id,
+                                'message' => $e->getMessage(),
+                            ]);
+                        }
+                    }
+                }
             }
+
+            $connection->refresh();
         } catch (\Exception $e) {
             Log::error('Failed to create/update wallet connection in database', [
                 'store_id' => $store->id,

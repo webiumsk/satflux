@@ -325,6 +325,46 @@ class LightningService
     }
 
     /**
+     * Best-effort: clear the store's Lightning node binding at BTCPay (e.g. Boltz/Aqua) before applying Blink.
+     * Not all BTCPay versions expose DELETE; 404/405 are ignored.
+     */
+    public function tryRemoveStoreLightningNodeConfiguration(string $storeId, string $cryptoCode, ?string $userApiKey = null): void
+    {
+        $originalApiKey = null;
+        if ($userApiKey) {
+            $originalApiKey = $this->client->getApiKey();
+            $this->client->setApiKey($userApiKey);
+        }
+
+        $path = "/api/v1/stores/{$storeId}/lightning/{$cryptoCode}";
+
+        try {
+            try {
+                $this->client->delete($path);
+                Log::info('BTCPay store Lightning configuration removed (DELETE)', [
+                    'store_id' => $storeId,
+                    'crypto_code' => $cryptoCode,
+                ]);
+            } catch (BtcPayException $e) {
+                if (in_array($e->getStatusCode(), [404, 405], true)) {
+                    return;
+                }
+
+                Log::warning('BTCPay DELETE store Lightning configuration failed', [
+                    'store_id' => $storeId,
+                    'crypto_code' => $cryptoCode,
+                    'status' => $e->getStatusCode(),
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        } finally {
+            if ($userApiKey && $originalApiKey) {
+                $this->client->setApiKey($originalApiKey);
+            }
+        }
+    }
+
+    /**
      * Best-effort: remove Lightning checkout payment methods at BTCPay (Greenfield DELETE payment-methods)
      * so invoices stop offering LN after the store switches to Cashu-only in Satflux.
      *

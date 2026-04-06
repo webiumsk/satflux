@@ -443,7 +443,10 @@
         </button>
       </div>
 
-      <div v-if="viewMode === 'editing'" class="flex flex-wrap gap-3 text-sm">
+      <div
+        v-if="viewMode === 'editing'"
+        class="flex flex-wrap gap-3 text-sm mb-2"
+      >
         <button
           type="button"
           class="px-4 py-2 rounded-xl border border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white transition-all"

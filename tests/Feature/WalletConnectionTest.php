@@ -85,7 +85,80 @@ class WalletConnectionTest extends TestCase
             'store_id' => $store->id,
             'type' => 'blink',
             'status' => 'pending',
+            'reconfig' => false,
         ]);
+        $connection = WalletConnection::where('store_id', $store->id)->first();
+        $this->assertSame(self::VALID_BLINK_SECRET, Crypt::decryptString($connection->encrypted_secret));
+    }
+
+    /** @test */
+    public function cashu_store_saving_blink_sets_pending_reconfig_for_config_bot(): void
+    {
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) {
+            $url = $request->url();
+
+            if (str_contains($url, '/payment-methods/') && $request->method() === 'DELETE') {
+                return Http::response([], 204);
+            }
+
+            if (
+                $request->method() === 'DELETE'
+                && str_contains($url, '/lightning/BTC')
+                && ! str_contains($url, '/payment-methods/')
+            ) {
+                return Http::response([], 204);
+            }
+
+            if (str_contains($url, '/lightning/')) {
+                return Http::response(['message' => 'test: no lightning API in fake'], 422);
+            }
+
+            if (! str_contains($url, 'cashumelt/settings')) {
+                return Http::response(['message' => 'not found'], 404);
+            }
+            if ($request->method() === 'GET') {
+                return Http::response([
+                    'mintUrl' => 'https://mint.example/x',
+                    'lightningAddress' => 'merchant@example.com',
+                    'enabled' => true,
+                ], 200);
+            }
+            if ($request->method() === 'PUT') {
+                return Http::response(array_merge($request->data() ?? [], ['enabled' => false]), 200);
+            }
+
+            return Http::response('not found', 404);
+        });
+
+        $user = User::factory()->create();
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'cashu',
+            'btcpay_store_id' => 'store-cashu-reconfig-bot',
+        ]);
+
+        $response = $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", [
+            'type' => 'blink',
+            'secret' => self::VALID_BLINK_SECRET,
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.type', 'blink')
+            ->assertJsonPath('data.status', 'pending');
+
+        $store->refresh();
+        $this->assertSame('blink', $store->wallet_type);
+
+        $this->assertDatabaseHas('wallet_connections', [
+            'store_id' => $store->id,
+            'type' => 'blink',
+            'status' => 'pending',
+            'reconfig' => true,
+        ]);
+        $connection = WalletConnection::where('store_id', $store->id)->first();
+        $this->assertSame(self::VALID_BLINK_SECRET, Crypt::decryptString($connection->encrypted_secret));
     }
 
     /** @test */
@@ -342,8 +415,26 @@ class WalletConnectionTest extends TestCase
 
         $putPayload = null;
         Http::fake(function (\Illuminate\Http\Client\Request $request) use (&$putPayload) {
-            if (! str_contains($request->url(), 'cashumelt/settings')) {
-                return Http::response([], 200);
+            $url = $request->url();
+
+            if (str_contains($url, '/payment-methods/') && $request->method() === 'DELETE') {
+                return Http::response([], 204);
+            }
+
+            if (
+                $request->method() === 'DELETE'
+                && str_contains($url, '/lightning/BTC')
+                && ! str_contains($url, '/payment-methods/')
+            ) {
+                return Http::response([], 204);
+            }
+
+            if (str_contains($url, '/lightning/')) {
+                return Http::response(['message' => 'test: no lightning API in fake'], 422);
+            }
+
+            if (! str_contains($url, 'cashumelt/settings')) {
+                return Http::response(['message' => 'not found'], 404);
             }
             if ($request->method() === 'GET') {
                 return Http::response([
@@ -376,6 +467,66 @@ class WalletConnectionTest extends TestCase
         $this->assertNotNull($putPayload);
         $this->assertFalse((bool) ($putPayload['enabled'] ?? true));
         $this->assertSame('https://mint.example/x', $putPayload['mintUrl'] ?? null);
+        $store->refresh();
+        $this->assertSame('blink', $store->wallet_type);
+
+        Http::assertSent(function (\Illuminate\Http\Client\Request $request) {
+            return $request->method() === 'DELETE'
+                && str_contains($request->url(), 'btcpay.test/api/v1/stores/store-btcpay-cashu-switch/payment-methods/CASHU');
+        });
+
+        $this->assertDatabaseHas('wallet_connections', [
+            'store_id' => $store->id,
+            'status' => 'pending',
+        ]);
+    }
+
+    /** @test */
+    public function switching_from_aqua_descriptor_to_blink_sets_reconfig_for_bot(): void
+    {
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) {
+            $url = $request->url();
+            if (
+                $request->method() === 'DELETE'
+                && str_contains($url, '/stores/aqua-to-blink-store/lightning/BTC')
+                && ! str_contains($url, '/payment-methods/')
+            ) {
+                return Http::response([], 204);
+            }
+            if (str_contains($url, '/lightning/')) {
+                return Http::response(['message' => 'fake: use bot'], 422);
+            }
+
+            return Http::response(['message' => 'not found'], 404);
+        });
+
+        $user = User::factory()->create();
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'aqua_boltz',
+            'btcpay_store_id' => 'aqua-to-blink-store',
+        ]);
+        WalletConnection::create([
+            'store_id' => $store->id,
+            'type' => 'aqua_descriptor',
+            'encrypted_secret' => Crypt::encryptString(self::VALID_AQUA_DESCRIPTOR),
+            'status' => 'connected',
+            'submitted_by_user_id' => $user->id,
+        ]);
+
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", [
+            'type' => 'blink',
+            'secret' => self::VALID_BLINK_SECRET,
+        ])->assertStatus(201);
+
+        $this->assertDatabaseHas('wallet_connections', [
+            'store_id' => $store->id,
+            'type' => 'blink',
+            'reconfig' => true,
+            'status' => 'pending',
+        ]);
         $store->refresh();
         $this->assertSame('blink', $store->wallet_type);
     }

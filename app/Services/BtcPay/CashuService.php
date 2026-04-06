@@ -2,6 +2,7 @@
 
 namespace App\Services\BtcPay;
 
+use App\Services\BtcPay\Exceptions\BtcPayException;
 use Illuminate\Support\Facades\Log;
 
 class CashuService
@@ -55,6 +56,35 @@ class CashuService
                 "/api/v1/stores/{$storeId}/plugins/cashumelt/payments/{$quoteId}/retry",
                 []
             );
+        });
+    }
+
+    /**
+     * Best-effort: remove Cashu checkout payment method from the store (Greenfield DELETE).
+     * Disabling the CashuMelt plugin alone is not enough: invoices still try CASHU and fail with
+     * "CashuMelt is not configured" if the method stays enabled on the store.
+     *
+     * @param  string[]  $paymentMethodIds  BTCPay log lines use "CASHU:"; plugin may register variants.
+     */
+    public function tryRemoveCashuCheckoutPaymentMethods(string $storeId, string $userApiKey, array $paymentMethodIds = ['CASHU', 'CASHUMELT']): void
+    {
+        $this->withUserKey($userApiKey, function () use ($storeId, $paymentMethodIds) {
+            foreach ($paymentMethodIds as $paymentMethodId) {
+                try {
+                    $this->client->delete('/api/v1/stores/'.$storeId.'/payment-methods/'.$paymentMethodId);
+                } catch (BtcPayException $e) {
+                    if ($e->getStatusCode() === 404) {
+                        continue;
+                    }
+
+                    Log::warning('BTCPay DELETE Cashu checkout payment method failed', [
+                        'btcpay_store_id' => $storeId,
+                        'payment_method_id' => $paymentMethodId,
+                        'status' => $e->getStatusCode(),
+                        'message' => $e->getMessage(),
+                    ]);
+                }
+            }
         });
     }
 

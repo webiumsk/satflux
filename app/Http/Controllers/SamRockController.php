@@ -20,7 +20,7 @@ class SamRockController extends Controller
 
     public function createOtp(Request $request, Store $store): \Illuminate\Http\JsonResponse
     {
-        $this->ensureAquaBoltzStore($store);
+        $this->ensureSamRockEligibleStore($store);
 
         $validated = $request->validate([
             'btc' => ['sometimes', 'boolean'],
@@ -59,7 +59,7 @@ class SamRockController extends Controller
 
     public function getOtpStatus(Store $store, string $otp): \Illuminate\Http\JsonResponse
     {
-        $this->ensureAquaBoltzStore($store);
+        $this->ensureSamRockEligibleStore($store);
 
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
@@ -86,7 +86,7 @@ class SamRockController extends Controller
 
     public function getOtpQr(Request $request, Store $store, string $otp): Response|JsonResponse
     {
-        $this->ensureAquaBoltzStore($store);
+        $this->ensureSamRockEligibleStore($store);
 
         $format = $request->query('format', 'png');
         $accept = $format === 'svg' ? 'image/svg+xml' : 'image/png';
@@ -111,7 +111,7 @@ class SamRockController extends Controller
 
     public function deleteOtp(Store $store, string $otp): \Illuminate\Http\JsonResponse
     {
-        $this->ensureAquaBoltzStore($store);
+        $this->ensureSamRockEligibleStore($store);
 
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
@@ -130,7 +130,7 @@ class SamRockController extends Controller
 
     public function complete(Request $request, Store $store): \Illuminate\Http\JsonResponse
     {
-        $this->ensureAquaBoltzStore($store);
+        $this->ensureSamRockEligibleStore($store);
 
         $validated = $request->validate([
             'otp' => ['required', 'string'],
@@ -176,10 +176,14 @@ class SamRockController extends Controller
         ]);
     }
 
-    protected function ensureAquaBoltzStore(Store $store): void
+    /**
+     * SamRock configures Aqua/Boltz on BTCPay. Allow when the store is not on Cashu
+     * (e.g. Blink → Aqua switch keeps wallet_type=blink until pairing/descriptor save).
+     */
+    protected function ensureSamRockEligibleStore(Store $store): void
     {
-        if (($store->wallet_type ?? null) !== 'aqua_boltz') {
-            abort(404, 'SamRock pairing is only available for Aqua + Boltz stores.');
+        if (($store->wallet_type ?? null) === 'cashu') {
+            abort(404, 'SamRock pairing is not available for Cashu stores. Finish switching to Lightning first, then use SamRock or a descriptor.');
         }
     }
 }

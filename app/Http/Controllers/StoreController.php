@@ -508,7 +508,7 @@ class StoreController extends Controller
     }
 
     /**
-     * Set local wallet_type once (e.g. create-wizard step 2 before SamRock QR - backend requires aqua_boltz for SamRock).
+     * Set local wallet_type once (e.g. create-wizard step 2). SamRock works for Blink/unset stores too; Cashu is blocked in SamRockController.
      */
     public function setWalletType(Request $request, Store $store)
     {
