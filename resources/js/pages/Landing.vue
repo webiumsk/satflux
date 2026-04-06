@@ -484,6 +484,64 @@
                 </div>
               </transition>
             </div>
+
+            <!-- SK only: hero intro video — poster + play; iframe loads on click (no YT chrome until play) -->
+            <div
+              v-if="locale === 'sk'"
+              class="mt-8 w-full max-w-md lg:max-w-none"
+            >
+              <p
+                class="mb-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500 lg:text-left"
+              >
+                {{ t("landing.hero_sk_video_heading") }}
+              </p>
+              <div
+                class="relative aspect-video w-full overflow-hidden rounded-2xl border border-gray-700/80 bg-gray-950 shadow-xl shadow-black/40 ring-1 ring-white/5"
+              >
+                <iframe
+                  v-if="heroSkVideoPlaying"
+                  class="absolute inset-0 h-full w-full"
+                  :src="heroSkYoutubeEmbedUrl"
+                  :title="t('landing.hero_sk_video_iframe_title')"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerpolicy="strict-origin-when-cross-origin"
+                  allowfullscreen
+                />
+                <button
+                  v-else
+                  type="button"
+                  class="group absolute inset-0 z-[1] outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+                  :aria-label="t('landing.hero_sk_video_play')"
+                  @click="heroSkVideoPlaying = true"
+                >
+                  <img
+                    :src="heroSkYoutubeThumbUrl"
+                    alt=""
+                    class="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                    loading="lazy"
+                    decoding="async"
+                    @error="onHeroSkYoutubeThumbError"
+                  />
+                  <div
+                    class="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/35 to-gray-950/10"
+                    aria-hidden="true"
+                  />
+                  <div
+                    class="absolute bottom-[14px] left-[14px] z-[2] flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-gray-950/55 shadow-lg shadow-black/50 backdrop-blur-md transition duration-300 group-hover:scale-110 group-hover:border-indigo-400/50 group-hover:bg-indigo-600/25 sm:bottom-4 sm:left-4 sm:h-[4.25rem] sm:w-[4.25rem]"
+                    aria-hidden="true"
+                  >
+                    <svg
+                      class="ml-1 h-7 w-7 text-white drop-shadow-md sm:h-8 sm:w-8"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M8 5v14l11-7L8 5z" />
+                    </svg>
+                  </div>
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Dots, CTAs, trust — full width under copy + visual columns -->
@@ -2840,7 +2898,7 @@ import AppFooter from "../components/layout/AppFooter.vue";
 import api from "../services/api";
 import { useBtcPayUrl } from "../composables/useBtcPayUrl";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const {
   btcPayUrl,
   load: loadBtcpayConfig,
@@ -2858,6 +2916,27 @@ const showPosModal = ref(false);
 const HERO_SLIDE_COUNT = 3;
 const heroSlideIndex = ref(0);
 const heroTouchStartX = ref(0);
+
+/** SK hero YouTube: poster-first so the embed UI does not show until the user plays. */
+const HERO_SK_YOUTUBE_ID = "A1j4QkXk_Rk";
+const heroSkVideoPlaying = ref(false);
+const heroSkThumbTier = ref<"maxres" | "hq">("maxres");
+const heroSkYoutubeThumbUrl = computed(
+  () =>
+    `https://i.ytimg.com/vi/${HERO_SK_YOUTUBE_ID}/${
+      heroSkThumbTier.value === "maxres" ? "maxresdefault" : "hqdefault"
+    }.jpg`,
+);
+const heroSkYoutubeEmbedUrl = computed(
+  () =>
+    `https://www.youtube-nocookie.com/embed/${HERO_SK_YOUTUBE_ID}?autoplay=1&modestbranding=1&rel=0`,
+);
+
+function onHeroSkYoutubeThumbError() {
+  if (heroSkThumbTier.value === "maxres") {
+    heroSkThumbTier.value = "hq";
+  }
+}
 
 const heroChips = computed(() => [
   t("landing.hero_chip_custody"),
