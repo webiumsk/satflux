@@ -304,7 +304,6 @@
           <!-- Crowdfund -->
           <div class="mb-2">
             <component
-              v-if="!crowdfundCreateDisabled"
               :is="isInertia ? Link : RouterLink"
               :href="isInertia ? `/stores/${store.id}/apps/create?type=Crowdfund` : undefined"
               :to="!isInertia ? { name: 'stores-apps-create', params: { id: store.id }, query: { type: 'Crowdfund' } } : undefined"
@@ -326,21 +325,6 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
             </component>
-            <div
-              v-else
-              class="flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium cursor-not-allowed opacity-60 text-gray-400"
-              :title="t('apps.crowdfund_creation_paused_tooltip')"
-            >
-              <span class="flex items-center min-w-0">
-                <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                {{ t('stores.crowdfund') }}
-              </span>
-              <svg class="w-4 h-4 flex-shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
             <div v-if="getAppsByType('Crowdfund').length > 0" class="ml-4 space-y-1">
               <component
                 v-for="app in getAppsByType('Crowdfund')"
@@ -511,12 +495,10 @@ import { useStoresStore } from '../../store/stores';
 import { useAccountLimits } from '../../composables/useAccountLimits';
 import { useAuthStore } from '../../store/auth';
 import { useOnboardingStore } from '../../store/onboarding';
-import { CROWDFUND_CREATE_DISABLED } from '../../constants/features';
 import ProPlanBadge from './ProPlanBadge.vue';
 
 const { t } = useI18n();
 
-const crowdfundCreateDisabled = CROWDFUND_CREATE_DISABLED;
 const authStore = useAuthStore();
 const onboardingStore = useOnboardingStore();
 const { limits, load: loadLimits } = useAccountLimits();

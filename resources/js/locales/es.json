@@ -235,8 +235,6 @@
     "point_of_sale_description": "Terminal virtual para pagos en persona",
     "crowdfund": "Crowdfund",
     "crowdfund_description": "Campañas con meta y página pública para aportaciones",
-    "crowdfund_creation_paused": "Creación en pausa: se requiere BTCPay 2.3.7+ en el servidor.",
-    "crowdfund_creation_paused_tooltip": "Las nuevas apps Crowdfund requieren BTCPay Server 2.3.7 o superior. La creación está desactivada hasta actualizar la instancia y los plugins.",
     "tickets": "Entradas",
     "tickets_description": "Vende y gestiona entradas para eventos con Bitcoin.",
     "pos_style": "Estilo del TPV",
