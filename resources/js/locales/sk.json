@@ -1020,7 +1020,7 @@
     "pos_header_subtitle": "PoS — {store}",
     "open_pos": "Otvoriť PoS",
     "save_pos_settings": "Uložiť nastavenia",
-    "pay_button_header_subtitle": "Platobné tlačidlo — {store}",
+    "pay_button_header_subtitle": "{store} — Nastavte si tlačidlo a skopírujte HTML. Tu sa nič neukladá.",
     "open_pay_button": "Otvoriť platobné tlačidlo",
     "generate_pay_button_code": "Vygenerovať kód",
     "crowdfund_header_subtitle": "Crowdfund — {store}",

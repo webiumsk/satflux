@@ -32,20 +32,25 @@ When you **change** an existing Lightning setup (another Blink string, or switch
 
 So: fix **OS dependencies** above for any host that runs `poll.js`; do not assume the first success implied a working Playwright stack.
 
-Install dependencies (Debian/Ubuntu, as root):
+Install OS libraries for Chromium (Debian/Ubuntu, as root). **Use Playwright’s installer first**—it tracks Chromium’s requirements and distro-specific package names (e.g. Ubuntu 24.04 `libasound2t64`) better than a hand-maintained `apt` list:
 
 ```bash
 cd /path/to/satflux/scripts/btcpay-config-bot
 npx playwright install-deps chromium
 ```
 
-If that command is unavailable or you prefer `apt` only, this usually fixes `libnspr4` / NSS issues:
+See [Playwright: system dependencies](https://playwright.dev/docs/cli#install-system-dependencies) for OS notes.
+
+If you **cannot** run `install-deps` (air‑gapped host, policy, or the command fails) and must use `apt` only, install the set that matches **your** Ubuntu/Debian release. Package names differ between releases—for example **Ubuntu 24.04+** often provides ALSA as `libasound2t64` instead of `libasound2`. Cross-check the [Playwright `install_deps_linux` script](https://github.com/microsoft/playwright/blob/main/packages/playwright-core/bin/install_deps_linux.sh) (or run `install-deps` on a similar online host and read the suggested `apt-get` line) for the full set. A typical baseline (adjust `libasound2` vs `libasound2t64` per release) is:
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
-  libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2
+  libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 \
+  libasound2t64
 ```
+
+On **22.04 LTS**, use `libasound2` instead of `libasound2t64` if the `t64` package is not available.
 
 Then re-run a one-shot poll and confirm the log passes **`panel_reveal`** without a **`browserType.launch`** / **`shared libraries`** error.
 

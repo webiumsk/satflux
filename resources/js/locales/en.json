@@ -1019,7 +1019,7 @@
     "pos_header_subtitle": "PoS — {store}",
     "open_pos": "Open PoS",
     "save_pos_settings": "Save Settings",
-    "pay_button_header_subtitle": "Pay Button — {store}",
+    "pay_button_header_subtitle": "{store} — Configure and copy the embed HTML. Nothing is saved here.",
     "open_pay_button": "Open Pay Button",
     "generate_pay_button_code": "Generate Code",
     "crowdfund_header_subtitle": "Crowdfund — {store}",

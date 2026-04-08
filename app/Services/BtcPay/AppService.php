@@ -378,19 +378,32 @@ class AppService
         }
 
         try {
-            // Map app types to endpoint paths
+            // Typed Greenfield PUT routes exist only for PoS and Crowdfund (see GreenfieldAppsController). No Apps_PutPaymentButtonApp.
             $appTypeMap = [
                 'pointofsale' => 'pos',
                 'crowdfund' => 'crowdfund',
-                'paymentbutton' => 'paymentbutton',
             ];
+
+            $appTypeLower = $appType ? strtolower($appType) : '';
+
+            // GreenfieldAppsController has no PUT for Payment Button (only POS + Crowdfund typed routes).
+            if ($appTypeLower === 'paymentbutton') {
+                throw new \App\Services\BtcPay\Exceptions\BtcPayException(
+                    'Greenfield API has no PUT endpoint for Payment Button apps.',
+                    400
+                );
+            }
+
+            // Crowdfund PUT expects a full CrowdfundAppRequest; merge delta onto current app so omitted fields are not cleared.
+            if ($appTypeLower === 'crowdfund') {
+                $existing = $this->getApp($storeId, $appId, $appType, $userApiKey);
+                $config = array_replace_recursive($existing, $config);
+            }
 
             $endpoints = [];
 
-            // BTCPay 2.3.7+: Crowdfund uses PUT /api/v1/apps/crowdfund/{appId} (Greenfield Apps_PutCrowdfundApp), same pattern as PoS.
-            if ($appType) {
-                $appTypeLower = strtolower($appType);
-                $endpointPath = $appTypeMap[$appTypeLower] ?? $appTypeLower;
+            if ($appType && isset($appTypeMap[$appTypeLower])) {
+                $endpointPath = $appTypeMap[$appTypeLower];
                 $endpoints[] = "/api/v1/apps/{$endpointPath}/{$appId}";
             }
 

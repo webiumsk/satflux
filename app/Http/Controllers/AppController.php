@@ -514,6 +514,30 @@ class AppController extends Controller
             }
         }
 
+        // Greenfield has no PUT for Payment Button apps; only local archived flag is supported here.
+        if (strtolower($app->app_type) === 'paymentbutton') {
+            $configPayload = $request->input('config');
+            $hasConfigBody = is_array($configPayload) && count($configPayload) > 0;
+            if ($request->filled('name') || $hasConfigBody) {
+                return response()->json([
+                    'message' => 'BTCPay Greenfield API does not expose PUT for Payment Button apps. Change settings in BTCPay Server UI or recreate the app.',
+                ], 422);
+            }
+            if (!$request->has('archived')) {
+                return response()->json([
+                    'message' => 'No updatable fields provided for this app type.',
+                ], 422);
+            }
+            $archived = filter_var($request->input('archived'), FILTER_VALIDATE_BOOLEAN);
+            $mergedConfig = array_merge($app->config ?? [], ['archived' => $archived]);
+            $app->update(['config' => $mergedConfig]);
+
+            return response()->json([
+                'data' => $this->formatApp($app->fresh()),
+                'message' => 'App updated successfully',
+            ]);
+        }
+
         // Log to ensure we're using the correct btcpay_app_id
         \Log::info('App update - calling updateApp with btcpay_app_id', [
             'app_id' => $app->id,

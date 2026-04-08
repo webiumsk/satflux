@@ -248,7 +248,7 @@
     "pos_header_subtitle": "TPV — {store}",
     "open_pos": "Abrir TPV",
     "save_pos_settings": "Guardar ajustes",
-    "pay_button_header_subtitle": "Botón de pago — {store}",
+    "pay_button_header_subtitle": "{store} — Configura y copia el HTML incrustado. Aquí no se guarda nada.",
     "open_pay_button": "Abrir botón de pago",
     "generate_pay_button_code": "Generar código",
     "crowdfund_header_subtitle": "Crowdfund — {store}",

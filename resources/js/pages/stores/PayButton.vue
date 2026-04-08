@@ -16,13 +16,13 @@
         <!-- Header -->
         <AppShowHeader
           :title="t('stores.pay_button')"
-          :subtitle="store ? store.name : ''"
+          :subtitle="store ? t('apps.pay_button_header_subtitle', { store: store.name }) : ''"
           :app-url="undefined"
           open-button-text=""
-          form-id=""
           save-button-text=""
           saving-text=""
           :saving="toggleSaving"
+          :show-save-button="false"
         >
           <template #actions>
             <template v-if="store?.anyone_can_create_invoice">
