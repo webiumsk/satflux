@@ -110,6 +110,7 @@ import PayButtonForm from "./PayButtonForm.vue";
 import CopyFeedbackButton from "../../components/ui/CopyFeedbackButton.vue";
 import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
 import { useCopiedFeedback } from "../../composables/useCopiedFeedback";
+import { isPayButtonEmbedCodeCopyable } from "../../utils/payButtonEmbed";
 
 const { t } = useI18n();
 const { btcPayUrl, load: loadBtcpayConfig } = useBtcPayUrl();
@@ -142,7 +143,7 @@ const formRef = ref<InstanceType<typeof PayButtonForm> | null>(null);
 
 const { copied, flashAfter } = useCopiedFeedback();
 const canCopy = computed(() =>
-  Boolean(formRef.value?.generatedCode && formRef.value.generatedCode.length > 0),
+  isPayButtonEmbedCodeCopyable(formRef.value?.generatedCode),
 );
 
 async function handleCopyCode() {

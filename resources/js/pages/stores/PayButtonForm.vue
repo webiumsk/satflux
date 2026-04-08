@@ -1134,6 +1134,7 @@ async function copyAlternativeUrl(): Promise<void> {
     await navigator.clipboard.writeText(alternativeUrl.value);
   } catch (err) {
     console.error("Failed to copy:", err);
+    throw err;
   }
 }
 

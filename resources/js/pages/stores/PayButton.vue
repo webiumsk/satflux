@@ -100,6 +100,7 @@ import AppShowHeader from '../../components/stores/AppShowHeader.vue';
 import PayButtonForm from './PayButtonForm.vue';
 import CopyFeedbackButton from '../../components/ui/CopyFeedbackButton.vue';
 import { useCopiedFeedback } from '../../composables/useCopiedFeedback';
+import { isPayButtonEmbedCodeCopyable } from '../../utils/payButtonEmbed';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -115,9 +116,9 @@ const payButtonFormRef = ref<InstanceType<typeof PayButtonForm>>();
 const allApps = computed(() => appsStore.apps);
 
 const { copied, flashAfter } = useCopiedFeedback();
-const canCopy = computed(() => {
-  return payButtonFormRef.value?.generatedCode && payButtonFormRef.value.generatedCode.length > 0;
-});
+const canCopy = computed(() =>
+  isPayButtonEmbedCodeCopyable(payButtonFormRef.value?.generatedCode),
+);
 
 const toggleSaving = ref(false);
 
