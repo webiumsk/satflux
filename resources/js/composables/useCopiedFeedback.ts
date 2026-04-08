@@ -23,9 +23,10 @@ export function useCopiedFeedback(resetAfterMs = DEFAULT_MS) {
   }
 
   /**
-   * Run `action`, then show copied state for `resetAfterMs`. Clears any prior timer.
+   * Run async `action`, then show copied state for `resetAfterMs` after it resolves.
+   * Callback must return a Promise so clipboard (and similar) work completes first.
    */
-  async function flashAfter(action: () => void | Promise<void>): Promise<void> {
+  async function flashAfter(action: () => Promise<void>): Promise<void> {
     try {
       await action();
       copied.value = true;

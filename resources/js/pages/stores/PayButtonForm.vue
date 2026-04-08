@@ -699,7 +699,6 @@ const props = defineProps<{
 }>();
 
 const showWarning = ref(true);
-const copied = ref(false);
 const alternativeType = ref<"link" | "lnurl">("link");
 
 const currencyOptions = currencies.map(c => ({ label: `${c.code} - ${c.name}`, value: c.code }));
@@ -1113,20 +1112,15 @@ function generateHtmlCode(): string {
   return html;
 }
 
-function copyCode() {
-  if (!generatedCode.value) return;
-
-  navigator.clipboard
-    .writeText(generatedCode.value)
-    .then(() => {
-      copied.value = true;
-      setTimeout(() => {
-        copied.value = false;
-      }, 2000);
-    })
-    .catch((err) => {
-      console.error("Failed to copy:", err);
-    });
+async function copyCode(): Promise<void> {
+  const text = generatedCode.value;
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (err) {
+    console.error("Failed to copy:", err);
+    throw err;
+  }
 }
 
 function selectAll(event: Event) {
@@ -1134,15 +1128,13 @@ function selectAll(event: Event) {
   target.select();
 }
 
-function copyAlternativeUrl() {
+async function copyAlternativeUrl(): Promise<void> {
   if (!alternativeUrl.value) return;
-
-  navigator.clipboard.writeText(alternativeUrl.value).then(() => {
-    copied.value = true;
-    setTimeout(() => {
-      copied.value = false;
-    }, 2000);
-  });
+  try {
+    await navigator.clipboard.writeText(alternativeUrl.value);
+  } catch (err) {
+    console.error("Failed to copy:", err);
+  }
 }
 
 defineExpose({

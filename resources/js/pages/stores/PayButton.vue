@@ -149,11 +149,9 @@ async function setPayButtonEnabled(enabled: boolean) {
   }
 }
 
-function handleCopyCode() {
+async function handleCopyCode() {
   if (!payButtonFormRef.value) return;
-  void flashAfter(() => {
-    payButtonFormRef.value!.copyCode();
-  });
+  await flashAfter(() => payButtonFormRef.value!.copyCode());
 }
 
 function handleShowSettings() {

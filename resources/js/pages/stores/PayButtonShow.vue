@@ -145,11 +145,9 @@ const canCopy = computed(() =>
   Boolean(formRef.value?.generatedCode && formRef.value.generatedCode.length > 0),
 );
 
-function handleCopyCode() {
+async function handleCopyCode() {
   if (!formRef.value) return;
-  void flashAfter(() => {
-    formRef.value!.copyCode();
-  });
+  await flashAfter(() => formRef.value!.copyCode());
 }
 
 const showDeleteModal = ref(false);
