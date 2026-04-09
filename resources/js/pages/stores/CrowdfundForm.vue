@@ -80,15 +80,19 @@
               />
               <button
                 type="button"
-                :disabled="uploadingFeaturedImage || !store?.id"
+                :disabled="saving || !store?.id"
                 @click="handleBrowseFeaturedImage"
                 class="px-4 py-2 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 hover:text-white transition-all hover:scale-105 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {{ uploadingFeaturedImage ? t("stores.uploading_image") : t("stores.browse_image") }}
+                {{
+                  pendingFeaturedImageFile
+                    ? t("stores.featured_image_pending_save")
+                    : t("stores.browse_image")
+                }}
               </button>
             </div>
             <p class="mt-1 text-xs text-gray-500">
-              Image displayed on the crowdfund page header.
+              {{ t("stores.featured_image_help") }}
             </p>
           </div>
 
@@ -583,7 +587,8 @@ const perksViewMode = ref<"editor" | "code">("editor");
 const showPerkDrawer = ref(false);
 const editingPerkIndex = ref<number | null>(null);
 const featuredImageFileInput = ref<HTMLInputElement | null>(null);
-const uploadingFeaturedImage = ref(false);
+/** Selected file; uploaded only when the user saves the crowdfund form (avoids orphaned storage files). */
+const pendingFeaturedImageFile = ref<File | null>(null);
 const saving = ref(false);
 const error = ref("");
 const success = ref("");
@@ -636,42 +641,12 @@ function handleBrowseFeaturedImage() {
   featuredImageFileInput.value?.click();
 }
 
-async function handleFeaturedImageFileChange(event: Event) {
+function handleFeaturedImageFileChange(event: Event) {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
   target.value = "";
   if (!file || !props.store?.id) return;
-
-  uploadingFeaturedImage.value = true;
-  try {
-    const formData = new FormData();
-    formData.append("image", file);
-    const response = await api.post(
-      `/stores/${props.store.id}/products/image`,
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      },
-    );
-    const url =
-      response.data?.data?.url || response.data?.data?.image_url || "";
-    if (url) {
-      form.value.featuredImageUrl = url;
-      flashStore.success(t("stores.featured_image_uploaded"));
-    } else {
-      flashStore.error(t("stores.featured_image_upload_failed"));
-    }
-  } catch (err: any) {
-    const msg =
-      err.response?.data?.message ||
-      err.message ||
-      t("stores.featured_image_upload_failed");
-    flashStore.error(msg);
-  } finally {
-    uploadingFeaturedImage.value = false;
-  }
+  pendingFeaturedImageFile.value = file;
 }
 
 function addPerk() {
@@ -793,6 +768,34 @@ async function handleSubmit() {
       const date = new Date(form.value.endDate);
       if (!isNaN(date.getTime())) {
         endDateTimestamp = Math.floor(date.getTime() / 1000);
+      }
+    }
+
+    if (pendingFeaturedImageFile.value && props.store?.id) {
+      const formData = new FormData();
+      formData.append("image", pendingFeaturedImageFile.value);
+      try {
+        const response = await api.post(
+          `/stores/${props.store.id}/products/image`,
+          formData,
+        );
+        const url =
+          response.data?.data?.url || response.data?.data?.image_url || "";
+        if (!url) {
+          flashStore.error(t("stores.featured_image_upload_failed"));
+          saving.value = false;
+          return;
+        }
+        form.value.featuredImageUrl = url;
+        pendingFeaturedImageFile.value = null;
+      } catch (err: any) {
+        const msg =
+          err.response?.data?.message ||
+          err.message ||
+          t("stores.featured_image_upload_failed");
+        flashStore.error(msg);
+        saving.value = false;
+        return;
       }
     }
 

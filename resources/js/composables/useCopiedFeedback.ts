@@ -37,6 +37,7 @@ export function useCopiedFeedback(resetAfterMs = DEFAULT_MS) {
       }, resetAfterMs);
     } catch (e) {
       console.error(e);
+      throw e;
     }
   }
 

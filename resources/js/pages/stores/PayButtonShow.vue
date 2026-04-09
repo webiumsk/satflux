@@ -13,6 +13,7 @@
       >
         <template #actions>
           <CopyFeedbackButton
+            v-if="payButtonStore?.anyone_can_create_invoice"
             :disabled="!canCopy"
             :copied="copied"
             :copy-label="t('stores.pay_button_copy_code')"
@@ -96,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, unref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
@@ -141,14 +142,26 @@ const canArchiveApp = computed(
 const layoutRef = ref<InstanceType<typeof AppShowLayout> | null>(null);
 const formRef = ref<InstanceType<typeof PayButtonForm> | null>(null);
 
+/** Store record for Pay Button gate (props or layout-loaded). */
+const payButtonStore = computed(() => {
+  if (props.store) return props.store;
+  return unref(layoutRef.value?.store) ?? null;
+});
+
 const { copied, flashAfter } = useCopiedFeedback();
-const canCopy = computed(() =>
-  isPayButtonEmbedCodeCopyable(formRef.value?.generatedCode),
+const canCopy = computed(
+  () =>
+    Boolean(payButtonStore.value?.anyone_can_create_invoice) &&
+    isPayButtonEmbedCodeCopyable(formRef.value?.generatedCode),
 );
 
 async function handleCopyCode() {
   if (!formRef.value) return;
-  await flashAfter(() => formRef.value!.copyCode());
+  try {
+    await flashAfter(() => formRef.value!.copyCode());
+  } catch {
+    flashStore.error(t("common.copy_failed"));
+  }
 }
 
 const showDeleteModal = ref(false);

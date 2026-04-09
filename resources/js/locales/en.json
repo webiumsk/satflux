@@ -344,6 +344,8 @@
     "featured_image_need_store": "Store must be loaded before uploading an image.",
     "featured_image_uploaded": "Featured image uploaded. Save the form to apply.",
     "featured_image_upload_failed": "Could not upload image. Try again or paste an image URL.",
+    "featured_image_pending_save": "Selected — uploads when you save",
+    "featured_image_help": "Shown on the crowdfund header. Paste a URL or choose a file; files upload when you save.",
     "archived_store": "Archived Store",
     "archived_stores": "Archived Stores",
     "archived_store_banner": "The store has been archived and will no longer appear in the stores list by default.",

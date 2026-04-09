@@ -116,8 +116,10 @@ const payButtonFormRef = ref<InstanceType<typeof PayButtonForm>>();
 const allApps = computed(() => appsStore.apps);
 
 const { copied, flashAfter } = useCopiedFeedback();
-const canCopy = computed(() =>
-  isPayButtonEmbedCodeCopyable(payButtonFormRef.value?.generatedCode),
+const canCopy = computed(
+  () =>
+    Boolean(store.value?.anyone_can_create_invoice) &&
+    isPayButtonEmbedCodeCopyable(payButtonFormRef.value?.generatedCode),
 );
 
 const toggleSaving = ref(false);
@@ -152,7 +154,11 @@ async function setPayButtonEnabled(enabled: boolean) {
 
 async function handleCopyCode() {
   if (!payButtonFormRef.value) return;
-  await flashAfter(() => payButtonFormRef.value!.copyCode());
+  try {
+    await flashAfter(() => payButtonFormRef.value!.copyCode());
+  } catch {
+    flashStore.error(t("common.copy_failed"));
+  }
 }
 
 function handleShowSettings() {
