@@ -63,8 +63,16 @@
             <label class="block text-sm font-medium text-gray-300 mb-2">
               Featured Image URL
             </label>
+            <input
+              ref="featuredImageFileInput"
+              type="file"
+              accept="image/*"
+              class="hidden"
+              @change="handleFeaturedImageFileChange"
+            />
             <div class="flex gap-3">
               <input
+                id="crowdfund-featured-image-url"
                 v-model="form.featuredImageUrl"
                 type="text"
                 placeholder="https://example.com/image.jpg"
@@ -72,10 +80,11 @@
               />
               <button
                 type="button"
-                @click="handleBrowseImage"
-                class="px-4 py-2 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 hover:text-white transition-all hover:scale-105 shadow-sm"
+                :disabled="uploadingFeaturedImage || !store?.id"
+                @click="handleBrowseFeaturedImage"
+                class="px-4 py-2 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 hover:text-white transition-all hover:scale-105 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Browse...
+                {{ uploadingFeaturedImage ? t("stores.uploading_image") : t("stores.browse_image") }}
               </button>
             </div>
             <p class="mt-1 text-xs text-gray-500">
@@ -518,6 +527,7 @@ import PerkEditDrawer from "../../components/stores/PerkEditDrawer.vue";
 import AdditionalOptions from "../../components/stores/AdditionalOptions.vue";
 import DatePicker from "../../components/ui/DatePicker.vue";
 import Select from "../../components/ui/Select.vue";
+import api from "../../services/api";
 
 const props = defineProps<{
   app: any;
@@ -572,6 +582,8 @@ const perksJson = ref("[]");
 const perksViewMode = ref<"editor" | "code">("editor");
 const showPerkDrawer = ref(false);
 const editingPerkIndex = ref<number | null>(null);
+const featuredImageFileInput = ref<HTMLInputElement | null>(null);
+const uploadingFeaturedImage = ref(false);
 const saving = ref(false);
 const error = ref("");
 const success = ref("");
@@ -616,14 +628,50 @@ const currentPerk = computed(() => {
   return null;
 });
 
-function handleBrowseImage() {
-  // TODO: Implement image upload if needed globally or just use URL
-  // Ideally this would trigger a media picker or specialized upload modal
-  // For now we just focus the input
-  const input = document.querySelector(
-    'input[placeholder="https://example.com/image.jpg"]',
-  ) as HTMLInputElement;
-  if (input) input.focus();
+function handleBrowseFeaturedImage() {
+  if (!props.store?.id) {
+    flashStore.error(t("stores.featured_image_need_store"));
+    return;
+  }
+  featuredImageFileInput.value?.click();
+}
+
+async function handleFeaturedImageFileChange(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  target.value = "";
+  if (!file || !props.store?.id) return;
+
+  uploadingFeaturedImage.value = true;
+  try {
+    const formData = new FormData();
+    formData.append("image", file);
+    const response = await api.post(
+      `/stores/${props.store.id}/products/image`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
+    const url =
+      response.data?.data?.url || response.data?.data?.image_url || "";
+    if (url) {
+      form.value.featuredImageUrl = url;
+      flashStore.success(t("stores.featured_image_uploaded"));
+    } else {
+      flashStore.error(t("stores.featured_image_upload_failed"));
+    }
+  } catch (err: any) {
+    const msg =
+      err.response?.data?.message ||
+      err.message ||
+      t("stores.featured_image_upload_failed");
+    flashStore.error(msg);
+  } finally {
+    uploadingFeaturedImage.value = false;
+  }
 }
 
 function addPerk() {
