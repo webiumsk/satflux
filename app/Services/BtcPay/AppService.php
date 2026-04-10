@@ -737,11 +737,20 @@ class AppService
                     }
                 }
 
-                // Crowdfund Greenfield schema uses formId for customer data (no PoS-style "request" field).
-                if (isset($config['checkout']) && is_array($config['checkout'])
-                    && array_key_exists('requestContributorData', $config['checkout'])
-                    && !(bool) $config['checkout']['requestContributorData']) {
-                    $filteredConfig['formId'] = '';
+                // Crowdfund: Greenfield uses formId (BTCPay UI: same keys as FormDataService — "", Email, Address, or a store form UUID).
+                // Never persist formId as ""; that value hits a BTCPay code path with a null Form and NREs in the crowdfund UI.
+                if (isset($config['checkout']) && is_array($config['checkout'])) {
+                    if (array_key_exists('formId', $config['checkout'])) {
+                        $v = $config['checkout']['formId'];
+                        if ($v === null || $v === '' || (is_string($v) && trim($v) === '')) {
+                            $filteredConfig['formId'] = null;
+                        } else {
+                            $filteredConfig['formId'] = is_string($v) ? trim($v) : (string) $v;
+                        }
+                    } elseif (array_key_exists('requestContributorData', $config['checkout'])
+                        && !(bool) $config['checkout']['requestContributorData']) {
+                        $filteredConfig['formId'] = null;
+                    }
                 }
 
                 // Ensure all boolean fields are actually boolean (not strings) at the end
@@ -804,6 +813,13 @@ class AppService
                     }
                     if (isset($advanced['callbackNotificationUrl'])) {
                         $filteredConfig['notificationUrl'] = $advanced['callbackNotificationUrl'];
+                    }
+                }
+
+                if (array_key_exists('formId', $filteredConfig)) {
+                    $fid = $filteredConfig['formId'];
+                    if ($fid === null || $fid === '' || (is_string($fid) && trim($fid) === '')) {
+                        $filteredConfig['formId'] = null;
                     }
                 }
             } else {

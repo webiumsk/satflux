@@ -101,26 +101,40 @@
       </div>
     </div>
 
-    <!-- Checkout Section -->
+    <!-- Checkout Section (matches BTCPay Crowdfund FormId dropdown) -->
     <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700">
       <div class="p-6 md:p-8 space-y-4">
         <h2 class="text-xl font-bold text-white">Checkout</h2>
-        
-        <div class="flex items-start">
-          <div class="flex items-center h-5">
-            <input
-              id="requestContributorData"
-              v-model="localCheckout.requestContributorData"
-              type="checkbox"
-              class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-700 rounded transition-colors"
-            />
-          </div>
-          <div class="ml-3 text-sm">
-            <label for="requestContributorData" class="font-medium text-gray-200 cursor-pointer">
-              Request contributor data
-            </label>
-             <p class="text-gray-400 text-xs mt-0.5">Ask for name/email during checkout</p>
-          </div>
+
+        <div class="space-y-2">
+          <label
+            for="crowdfundFormId"
+            class="block text-sm font-medium text-gray-300"
+          >
+            Request contributor data on checkout
+          </label>
+          <select
+            id="crowdfundFormId"
+            v-model="localCheckout.formId"
+            class="block w-full max-w-md px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          >
+            <option value="">Do not request any information</option>
+            <option value="Email">Request email address only</option>
+            <option value="Address">Request shipping address</option>
+            <option
+              v-if="
+                localCheckout.formId &&
+                !isBuiltinCrowdfundFormId(localCheckout.formId)
+              "
+              :value="localCheckout.formId"
+            >
+              Custom form (from BTCPay)
+            </option>
+          </select>
+          <p class="text-gray-400 text-xs">
+            Same options as in BTCPay Server. Custom store forms keep their ID
+            until you pick another option.
+          </p>
         </div>
       </div>
     </div>
@@ -360,9 +374,19 @@ const openSections = ref({
   notification: false,
 });
 
+function normalizeCheckout(c: Record<string, unknown>) {
+  const raw = c?.formId;
+  let formId =
+    raw === null || raw === undefined ? "" : String(raw);
+  if (!formId && c?.requestContributorData === true) {
+    formId = "Email";
+  }
+  return { formId };
+}
+
 const localContributions = ref({ ...props.contributions });
 const localCrowdfundBehavior = ref({ ...props.crowdfundBehavior });
-const localCheckout = ref({ ...props.checkout });
+const localCheckout = ref(normalizeCheckout(props.checkout));
 const localAdvanced = ref({ ...props.advanced });
 
 // Watch and emit updates
@@ -405,7 +429,7 @@ watch(
   () => props.checkout,
   (val) => {
     if (val === localCheckout.value) return;
-    localCheckout.value = { ...val };
+    localCheckout.value = normalizeCheckout(val as Record<string, unknown>);
   },
 );
 
@@ -419,5 +443,10 @@ watch(
 
 function toggleSection(section: string) {
   openSections.value[section as keyof typeof openSections] = !openSections.value[section as keyof typeof openSections];
+}
+
+/** BTCPay hardcoded FormId keys; anything else is a store-specific form UUID. */
+function isBuiltinCrowdfundFormId(v: string) {
+  return v === "" || v === "Email" || v === "Address";
 }
 </script>

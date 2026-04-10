@@ -586,7 +586,8 @@ const form = ref({
     countAllInvoices: false,
   },
   checkout: {
-    requestContributorData: false,
+    /** BTCPay FormId: "" | "Email" | "Address" | custom form UUID */
+    formId: "",
   },
   advanced: {
     htmlLanguage: "",
@@ -989,14 +990,14 @@ function applyCrowdfundConfigFromProps() {
         countAllInvoices: config.crowdfundBehavior.countAllInvoices || false,
       };
     }
-    if (config.checkout) {
-      form.value.checkout = {
-        requestContributorData: config.checkout.requestContributorData || false,
-      };
-    } else if (config.formId) {
-      form.value.checkout = {
-        requestContributorData: true,
-      };
+    {
+      const fromApi = config.formId ?? config.checkout?.formId;
+      let fid =
+        fromApi === null || fromApi === undefined ? "" : String(fromApi);
+      if (!fid && config.checkout?.requestContributorData === true) {
+        fid = "Email";
+      }
+      form.value.checkout = { formId: fid };
     }
     if (config.advanced) {
       form.value.advanced = {

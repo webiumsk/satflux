@@ -259,7 +259,7 @@ class AppTest extends TestCase
                     'noAdditionalAfterTarget' => true,
                 ],
                 'checkout' => [
-                    'requestContributorData' => false,
+                    'formId' => null,
                 ],
                 'crowdfundBehavior' => [
                     'countAllInvoices' => false,
@@ -280,7 +280,8 @@ class AppTest extends TestCase
 
             return ($data['mainImageUrl'] ?? null) === ''
                 && ($data['enforceTargetAmount'] ?? null) === true
-                && ($data['formId'] ?? null) === '';
+                && array_key_exists('formId', $data)
+                && $data['formId'] === null;
         });
     }
 }
