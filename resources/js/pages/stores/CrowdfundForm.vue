@@ -330,8 +330,8 @@
                     class="w-16 h-16 bg-gray-800 rounded-lg flex items-center justify-center flex-shrink-0 border border-gray-700 group-hover:border-indigo-500/30 transition-colors"
                   >
                     <img
-                      v-if="perk.imageUrl"
-                      :src="perk.imageUrl"
+                      v-if="perkImageDisplayUrl(perk)"
+                      :src="perkImageDisplayUrl(perk)"
                       :alt="perk.title"
                       class="w-full h-full object-cover rounded-lg"
                     />
@@ -715,6 +715,16 @@ function parsePerksJson() {
   }
 }
 
+/** BTCPay perks use `image` (URL). The grid previously read `imageUrl`, so images never showed. */
+function perkImageDisplayUrl(perk: any): string {
+  if (!perk) return "";
+  const fromImage =
+    typeof perk.image === "string" ? perk.image.trim() : "";
+  const fromAlt =
+    typeof perk.imageUrl === "string" ? perk.imageUrl.trim() : "";
+  return fromImage || fromAlt;
+}
+
 async function handleSubmit() {
   saving.value = true;
   error.value = "";
@@ -762,7 +772,7 @@ async function handleSubmit() {
                 .map((c: string) => c.trim())
                 .filter((c: string) => c)
             : null,
-          image: p.image || null,
+          image: p.image || p.imageUrl || null,
           priceType: p.priceType || "Minimum",
           price:
             p.priceType !== "Free" && p.priceType !== "Topup"
@@ -1067,7 +1077,10 @@ function applyCrowdfundConfigFromProps() {
             p.taxRate !== null && p.taxRate !== undefined && p.taxRate !== ""
               ? parseFloat(String(p.taxRate))
               : null,
-          image: p.image || "",
+          image:
+            (typeof p.image === "string" && p.image) ||
+            (typeof p.imageUrl === "string" && p.imageUrl) ||
+            "",
           description: p.description || "",
           categories: p.categories
             ? Array.isArray(p.categories)
