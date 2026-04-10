@@ -976,8 +976,13 @@ function applyCrowdfundConfigFromProps() {
         displayRanking: config.contributions.displayRanking || false,
         displayValue: config.contributions.displayValue || false,
         noAdditionalAfterTarget:
-          config.contributions.noAdditionalAfterTarget || false,
+          config.contributions.noAdditionalAfterTarget ??
+          config.enforceTargetAmount ??
+          false,
       };
+    } else if (config.enforceTargetAmount !== undefined) {
+      form.value.contributions.noAdditionalAfterTarget =
+        !!config.enforceTargetAmount;
     }
     if (config.crowdfundBehavior) {
       form.value.crowdfundBehavior = {
@@ -987,6 +992,10 @@ function applyCrowdfundConfigFromProps() {
     if (config.checkout) {
       form.value.checkout = {
         requestContributorData: config.checkout.requestContributorData || false,
+      };
+    } else if (config.formId) {
+      form.value.checkout = {
+        requestContributorData: true,
       };
     }
     if (config.advanced) {

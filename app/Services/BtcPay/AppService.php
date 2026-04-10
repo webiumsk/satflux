@@ -412,7 +412,7 @@ class AppService
             // Filter and map config to only include fields that BTCPay API accepts
             // According to BTCPay API docs and response structure:
             // - tipText (not tipsMessage)
-            // - request (not requestCustomerData) - format: "email", "name", or "email,name"
+            // - PoS: request (not requestCustomerData). Crowdfund: formId (Greenfield CrowdfundBaseData).
             // - template must be valid JSON string or array (not double-encoded)
 
             $filteredConfig = [];
@@ -467,7 +467,7 @@ class AppService
                 // Direct mapping for fields that match BTCPay API exactly
                 $directFields = [
                     'appName',
-                    'displayTitle',
+                    'title',
                     'tagline',
                     'description',
                     'targetAmount',
@@ -568,6 +568,11 @@ class AppService
                     }
                 }
 
+                // SPA uses displayTitle; Greenfield Crowdfund expects title (CrowdfundBaseData).
+                if (array_key_exists('displayTitle', $config)) {
+                    $filteredConfig['title'] = $config['displayTitle'];
+                }
+
                 // Handle boolean fields separately to ensure proper type
                 foreach ($booleanFields as $field) {
                     if (array_key_exists($field, $config)) {
@@ -580,7 +585,6 @@ class AppService
 
                 // Map our internal field names to BTCPay API field names
                 $fieldMapping = [
-                    'featuredImageUrl' => 'mainImageUrl',
                     'makePublic' => 'enabled',
                     'currency' => 'targetCurrency',
                     'enableSounds' => 'soundsEnabled',
@@ -601,6 +605,12 @@ class AppService
                             }
                         }
                     }
+                }
+
+                // featuredImageUrl is client-only; merged config may still carry mainImageUrl from BTCPay.
+                if (array_key_exists('featuredImageUrl', $config)) {
+                    $v = $config['featuredImageUrl'];
+                    $filteredConfig['mainImageUrl'] = ($v === null || $v === '') ? '' : (string) $v;
                 }
 
                 // Handle perks/items field - BTCPay expects 'perksTemplate' as JSON string (not array)
@@ -653,6 +663,9 @@ class AppService
                     if (isset($contributions['displayValue'])) {
                         $filteredConfig['displayPerksValue'] = (bool) $contributions['displayValue'];
                     }
+                    if (isset($contributions['noAdditionalAfterTarget'])) {
+                        $filteredConfig['enforceTargetAmount'] = (bool) $contributions['noAdditionalAfterTarget'];
+                    }
                 }
 
                 // Handle resetEveryAmount and resetEvery from root config or crowdfundBehavior
@@ -676,14 +689,6 @@ class AppService
                     $resetEveryValue = $config['resetEvery'];
                     if (is_string($resetEveryValue) && in_array($resetEveryValue, ['Day', 'Hour', 'Week', 'Month', 'Year', 'Never'])) {
                         $resetEvery = $resetEveryValue;
-                    }
-                }
-
-                // Handle crowdfund behavior - only set resetEvery if not already set and if countAllInvoices is set
-                if ($resetEvery === null && isset($config['crowdfundBehavior']) && is_array($config['crowdfundBehavior'])) {
-                    if (isset($config['crowdfundBehavior']['countAllInvoices'])) {
-                        // If countAllInvoices is true, resetEvery should be 'Never', otherwise 'Day'
-                        $resetEvery = (bool) $config['crowdfundBehavior']['countAllInvoices'] ? 'Never' : 'Day';
                     }
                 }
 
@@ -732,13 +737,11 @@ class AppService
                     }
                 }
 
-                // Handle checkout settings - BTCPay uses 'request' field (required, must be empty string, not null)
-                // Set request field - use empty string if not specified, or 'email' if requested
-                $filteredConfig['request'] = '';
-                if (isset($config['checkout']) && is_array($config['checkout'])) {
-                    if (isset($config['checkout']['requestContributorData']) && (bool) $config['checkout']['requestContributorData']) {
-                        $filteredConfig['request'] = 'email';
-                    }
+                // Crowdfund Greenfield schema uses formId for customer data (no PoS-style "request" field).
+                if (isset($config['checkout']) && is_array($config['checkout'])
+                    && array_key_exists('requestContributorData', $config['checkout'])
+                    && !(bool) $config['checkout']['requestContributorData']) {
+                    $filteredConfig['formId'] = '';
                 }
 
                 // Ensure all boolean fields are actually boolean (not strings) at the end
@@ -780,9 +783,6 @@ class AppService
                         $filteredConfig['resetEveryAmount'] = (bool) $originalValue ? 1 : 0;
                     }
                 }
-
-                // Remove 'request' field if it exists (BTCPay uses 'formId' instead, or doesn't need it)
-                unset($filteredConfig['request']);
 
                 // Handle advanced settings
                 if (isset($config['advanced']) && is_array($config['advanced'])) {
