@@ -382,22 +382,40 @@ watch(localAdvanced, (val) => {
   emit('update:advanced', val);
 }, { deep: true });
 
-// Watch props for external updates
-watch(() => props.contributions, (val) => {
-  localContributions.value = { ...val };
-}, { deep: true });
+// Sync from parent only when the prop object is replaced (e.g. load app config).
+// Deep watch here caused an infinite loop with the local→emit watchers: checkbox
+// mutates local → emit → parent updates prop → deep prop watch overwrote local → repeat.
+watch(
+  () => props.contributions,
+  (val) => {
+    if (val === localContributions.value) return;
+    localContributions.value = { ...val };
+  },
+);
 
-watch(() => props.crowdfundBehavior, (val) => {
-  localCrowdfundBehavior.value = { ...val };
-}, { deep: true });
+watch(
+  () => props.crowdfundBehavior,
+  (val) => {
+    if (val === localCrowdfundBehavior.value) return;
+    localCrowdfundBehavior.value = { ...val };
+  },
+);
 
-watch(() => props.checkout, (val) => {
-  localCheckout.value = { ...val };
-}, { deep: true });
+watch(
+  () => props.checkout,
+  (val) => {
+    if (val === localCheckout.value) return;
+    localCheckout.value = { ...val };
+  },
+);
 
-watch(() => props.advanced, (val) => {
-  localAdvanced.value = { ...val };
-}, { deep: true });
+watch(
+  () => props.advanced,
+  (val) => {
+    if (val === localAdvanced.value) return;
+    localAdvanced.value = { ...val };
+  },
+);
 
 function toggleSection(section: string) {
   openSections.value[section as keyof typeof openSections] = !openSections.value[section as keyof typeof openSections];
