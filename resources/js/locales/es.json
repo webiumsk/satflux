@@ -507,6 +507,7 @@
     "featured_image_upload_failed": "No se pudo subir la imagen. Inténtelo de nuevo o pegue una URL.",
     "featured_image_pending_save": "Seleccionada — se sube al guardar",
     "featured_image_help": "Cabecera del crowdfund. Pegue una URL o elija un archivo; los archivos se suben al guardar.",
+    "featured_image_remove": "Quitar imagen",
     "archived_store": "Tienda archivada",
     "archived_stores": "Tiendas archivadas",
     "archived_store_banner": "La tienda ha sido archivada y ya no aparecerá en la lista de tiendas por defecto.",

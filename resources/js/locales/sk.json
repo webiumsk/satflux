@@ -347,6 +347,7 @@
     "featured_image_upload_failed": "Obrázok sa nepodarilo nahrať. Skúste znova alebo vložte URL.",
     "featured_image_pending_save": "Vybrané — nahraje sa pri uložení",
     "featured_image_help": "Hlavička crowdfundu. Vložte URL alebo vyberte súbor; súbor sa nahrá pri uložení formulára.",
+    "featured_image_remove": "Odstrániť obrázok",
     "archived_store": "Archivovaný obchod",
     "archived_stores": "Archivované obchody",
     "archived_store_banner": "Obchod bol archivovaný a nebude sa štandardne zobrazovať v zozname obchodov.",

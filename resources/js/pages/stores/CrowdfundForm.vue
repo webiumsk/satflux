@@ -94,6 +94,23 @@
             <p class="mt-1 text-xs text-gray-500">
               {{ t("stores.featured_image_help") }}
             </p>
+            <div
+              v-if="form.featuredImageUrl"
+              class="mt-3 flex flex-wrap items-start gap-3"
+            >
+              <img
+                :src="form.featuredImageUrl"
+                alt=""
+                class="max-h-36 max-w-full rounded-lg border border-gray-600 object-contain bg-gray-900"
+              />
+              <button
+                type="button"
+                class="text-sm font-medium text-red-400 hover:text-red-300"
+                @click="clearFeaturedImage"
+              >
+                {{ t("stores.featured_image_remove") }}
+              </button>
+            </div>
           </div>
 
           <div
@@ -520,7 +537,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
@@ -647,6 +664,11 @@ function handleFeaturedImageFileChange(event: Event) {
   target.value = "";
   if (!file || !props.store?.id) return;
   pendingFeaturedImageFile.value = file;
+}
+
+function clearFeaturedImage() {
+  form.value.featuredImageUrl = "";
+  pendingFeaturedImageFile.value = null;
 }
 
 function addPerk() {
@@ -879,20 +901,28 @@ function generatePerkId(title: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-onMounted(() => {
-  // Load existing data
+function applyCrowdfundConfigFromProps() {
+  // Load existing data (BTCPay uses mainImageUrl; we send featuredImageUrl → mainImageUrl on save)
   if (props.app?.config) {
     const config = props.app.config;
     form.value.appName = config.appName || props.app.name || "";
     form.value.displayTitle = config.displayTitle || config.title || "";
     form.value.tagline = config.tagline || "";
     form.value.featuredImageUrl =
-      config.featuredImageUrl || config.featuredImage || "";
+      config.featuredImageUrl ||
+      config.featuredImage ||
+      config.mainImageUrl ||
+      "";
     form.value.makePublic =
-      config.makePublic !== undefined ? config.makePublic : true;
+      config.makePublic !== undefined
+        ? config.makePublic
+        : config.enabled !== undefined
+          ? config.enabled
+          : true;
     form.value.description = config.description || "";
     form.value.targetAmount = config.targetAmount || config.goal || "";
-    form.value.currency = config.currency || "";
+    form.value.currency =
+      config.currency || config.targetCurrency || "";
 
     // Handle dates - convert from UNIX timestamp or ISO string to datetime-local format
     if (config.startDate) {
@@ -984,7 +1014,11 @@ onMounted(() => {
 
     // Load perks - could be in 'perks', 'items', or 'template' field
     let perksArray: any[] = [];
-    const perksSource = config.perks || config.items || config.template;
+    const perksSource =
+      config.perks ||
+      config.items ||
+      config.template ||
+      config.perksTemplate;
 
     if (perksSource) {
       if (Array.isArray(perksSource)) {
@@ -1044,7 +1078,18 @@ onMounted(() => {
     perks.value = [];
     updatePerksJson();
   }
+}
+
+onMounted(() => {
+  applyCrowdfundConfigFromProps();
 });
+
+watch(
+  () => props.app?.id,
+  () => {
+    applyCrowdfundConfigFromProps();
+  },
+);
 
 // Expose saving, error, and success state to parent component
 defineExpose({
