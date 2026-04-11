@@ -345,7 +345,7 @@
     "featured_image_need_store": "Pred nahratím obrázka musí byť načítaný obchod.",
     "featured_image_uploaded": "Obrázok bol nahraný. Uložte formulár.",
     "featured_image_upload_failed": "Obrázok sa nepodarilo nahrať. Skúste znova alebo vložte URL.",
-    "featured_image_pending_save": "Vybrané — nahraje sa pri uložení",
+    "featured_image_pending_save": "Vybrané — nahrá sa pri uložení formulára",
     "featured_image_help": "Hlavička crowdfundu. Vložte URL alebo vyberte súbor; súbor sa nahrá pri uložení formulára.",
     "featured_image_remove": "Odstrániť obrázok",
     "crowdfund_general_section": "Všeobecné informácie",

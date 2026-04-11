@@ -5,7 +5,7 @@
     <form id="crowdfund-form" @submit.prevent="handleSubmit" class="space-y-6">
       <!-- General Information -->
       <div
-        class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
+        class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700"
       >
         <div class="p-6 md:p-8 space-y-6">
           <h2 class="text-xl font-bold text-white mb-4">
@@ -784,6 +784,18 @@ async function handleSubmit() {
           }
         }
 
+        // BTCPay AppItemPriceType is only Fixed, Topup, Minimum — "Free" must be Fixed + 0.
+        const rawPriceType = p.priceType || "Minimum";
+        let outPriceType = rawPriceType;
+        let outPrice: string | null =
+          rawPriceType !== "Free" && rawPriceType !== "Topup"
+            ? String(p.price ?? 1)
+            : null;
+        if (rawPriceType === "Free") {
+          outPriceType = "Fixed";
+          outPrice = "0";
+        }
+
         return {
           id: p.id || generatePerkId(p.title),
           title: p.title,
@@ -796,11 +808,8 @@ async function handleSubmit() {
                 .filter((c: string) => c)
             : null,
           image: p.image || p.imageUrl || null,
-          priceType: p.priceType || "Minimum",
-          price:
-            p.priceType !== "Free" && p.priceType !== "Topup"
-              ? String(p.price || 1)
-              : null,
+          priceType: outPriceType,
+          price: outPrice,
           buyButtonText:
             p.buyButtonText || t("stores.crowdfund_perk_buy_placeholder"),
           inventory: inventory,
@@ -1092,11 +1101,27 @@ function applyCrowdfundConfigFromProps() {
           }
         }
 
+        const apiPt = p.priceType || "Minimum";
+        const parsedPrice =
+          p.price !== null && p.price !== undefined && p.price !== ""
+            ? parseFloat(String(p.price))
+            : NaN;
+        let displayPriceType = apiPt;
+        let displayPrice: number;
+        if (apiPt === "Fixed" && !Number.isNaN(parsedPrice) && parsedPrice === 0) {
+          displayPriceType = "Free";
+          displayPrice = 0;
+        } else if (apiPt === "Topup") {
+          displayPrice = 0;
+        } else {
+          displayPrice = !Number.isNaN(parsedPrice) ? parsedPrice : 1;
+        }
+
         return {
           id: p.id || "",
           title: p.title || "",
-          priceType: p.priceType || "Minimum",
-          price: p.price ? parseFloat(String(p.price)) : 1,
+          priceType: displayPriceType,
+          price: displayPrice,
           taxRate:
             p.taxRate !== null && p.taxRate !== undefined && p.taxRate !== ""
               ? parseFloat(String(p.taxRate))

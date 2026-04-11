@@ -97,6 +97,8 @@ class AppService
             // Build request body - start with minimal required fields
             $requestBody = [];
 
+            $appTypeLower = strtolower($appType ?? '');
+
             // According to BTCPay API docs, request body uses 'appName' field
             // Map 'name' from config to 'appName' for API
             if (isset($config['name'])) {
@@ -107,6 +109,16 @@ class AppService
             // Filter out 'name' since we use 'appName', and 'appType' since it's in URL
             foreach ($config as $key => $value) {
                 if ($key !== 'appType' && $key !== 'name') {
+                    if (($key === 'perks' || $key === 'items' || $key === 'template') && ($appTypeLower === 'crowdfund' || $appTypeLower === 'pointofsale')) {
+                        if (is_array($value)) {
+                            $value = self::normalizeBtcPayAppItemPriceTypes($value);
+                        } elseif (is_string($value) && $value !== '') {
+                            $decoded = json_decode($value, true);
+                            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                $value = json_encode(self::normalizeBtcPayAppItemPriceTypes($decoded));
+                            }
+                        }
+                    }
                     $requestBody[$key] = $value;
                 }
             }
@@ -120,7 +132,6 @@ class AppService
             // According to BTCPay API docs:
             // - PointOfSale -> POST /api/v1/stores/{storeId}/apps/pos
             // - Other types may follow similar pattern: /api/v1/stores/{storeId}/apps/{type}
-            $appTypeLower = strtolower($appType);
             $appTypeMap = [
                 'pointofsale' => 'pos',
                 'crowdfund' => 'crowdfund',
@@ -614,16 +625,17 @@ class AppService
                 }
 
                 // Handle perks/items field - BTCPay expects 'perksTemplate' as JSON string (not array)
+                // AppItemPriceType is only Fixed, Topup, Minimum — normalize UI "Free" to Fixed + 0.
                 $perksSource = $config['perks'] ?? $config['items'] ?? $config['template'] ?? null;
                 if ($perksSource !== null && $perksSource !== '') {
                     if (is_array($perksSource)) {
-                        // It's an array, encode it to JSON string
-                        $filteredConfig['perksTemplate'] = json_encode($perksSource);
+                        $filteredConfig['perksTemplate'] = json_encode(self::normalizeBtcPayAppItemPriceTypes($perksSource));
                     } elseif (is_string($perksSource)) {
                         // If it's a string, check if it's valid JSON
                         $decoded = json_decode($perksSource, true);
-                        if (json_last_error() === JSON_ERROR_NONE) {
-                            // It's valid JSON string, use it as is
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                            $filteredConfig['perksTemplate'] = json_encode(self::normalizeBtcPayAppItemPriceTypes($decoded));
+                        } elseif (json_last_error() === JSON_ERROR_NONE) {
                             $filteredConfig['perksTemplate'] = $perksSource;
                         } else {
                             // Invalid JSON string, try to encode it as array
@@ -885,8 +897,9 @@ class AppService
                         if (is_string($template)) {
                             // Try to decode to check if it's valid JSON
                             $decoded = json_decode($template, true);
-                            if (json_last_error() === JSON_ERROR_NONE) {
-                                // It's valid JSON string, use it as is
+                            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                $filteredConfig['template'] = json_encode(self::normalizeBtcPayAppItemPriceTypes($decoded));
+                            } elseif (json_last_error() === JSON_ERROR_NONE) {
                                 $filteredConfig['template'] = $template;
                             } else {
                                 // Invalid JSON string, try to encode it as array
@@ -896,8 +909,7 @@ class AppService
                                 $filteredConfig['template'] = json_encode([$template]); // Wrap in array
                             }
                         } elseif (is_array($template)) {
-                            // It's an array, encode it to JSON string
-                            $filteredConfig['template'] = json_encode($template);
+                            $filteredConfig['template'] = json_encode(self::normalizeBtcPayAppItemPriceTypes($template));
                         }
                     }
                 }
@@ -1149,6 +1161,34 @@ class AppService
                 $this->client->setApiKey($originalApiKey);
             }
         }
+    }
+
+    /**
+     * BTCPay Greenfield AppItem uses AppItemPriceType: Fixed, Topup, Minimum only (no "Free").
+     * Satflux UI offers "Free" — map to Fixed with price 0 before sending JSON to BTCPay.
+     *
+     * @param  mixed  $node  Decoded template or perks array (may be nested)
+     * @return mixed
+     */
+    private static function normalizeBtcPayAppItemPriceTypes($node)
+    {
+        if (! is_array($node)) {
+            return $node;
+        }
+        if (isset($node['priceType'])) {
+            $pt = $node['priceType'];
+            if ($pt === 'Free' || $pt === 'free') {
+                $node['priceType'] = 'Fixed';
+                if (! array_key_exists('price', $node) || $node['price'] === null || $node['price'] === '') {
+                    $node['price'] = '0';
+                }
+            }
+        }
+        foreach ($node as $key => $value) {
+            $node[$key] = self::normalizeBtcPayAppItemPriceTypes($value);
+        }
+
+        return $node;
     }
 }
 
