@@ -8,7 +8,9 @@
         class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
       >
         <div class="p-6 md:p-8 space-y-6">
-          <h2 class="text-xl font-bold text-white mb-4">General Information</h2>
+          <h2 class="text-xl font-bold text-white mb-4">
+            {{ t("stores.crowdfund_general_section") }}
+          </h2>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -16,7 +18,8 @@
                 for="appName"
                 class="block text-sm font-medium text-gray-300 mb-1"
               >
-                App Name <span class="text-red-400">*</span>
+                {{ t("stores.crowdfund_app_name") }}
+                <span class="text-red-400">*</span>
               </label>
               <input
                 id="appName"
@@ -32,7 +35,8 @@
                 for="displayTitle"
                 class="block text-sm font-medium text-gray-300 mb-1"
               >
-                Display Title <span class="text-red-400">*</span>
+                {{ t("stores.crowdfund_display_title") }}
+                <span class="text-red-400">*</span>
               </label>
               <input
                 id="displayTitle"
@@ -49,7 +53,7 @@
               for="tagline"
               class="block text-sm font-medium text-gray-300 mb-1"
             >
-              Tagline
+              {{ t("stores.crowdfund_tagline") }}
             </label>
             <input
               id="tagline"
@@ -61,7 +65,7 @@
 
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-2">
-              Featured Image URL
+              {{ t("stores.crowdfund_featured_image_label") }}
             </label>
             <input
               ref="featuredImageFileInput"
@@ -75,7 +79,7 @@
                 id="crowdfund-featured-image-url"
                 v-model="form.featuredImageUrl"
                 type="text"
-                placeholder="https://example.com/image.jpg"
+                :placeholder="t('stores.crowdfund_placeholder_image_url')"
                 class="flex-1 block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />
               <button
@@ -127,10 +131,10 @@
                 for="makePublic"
                 class="block text-sm font-medium text-white cursor-pointer select-none"
               >
-                Make Crowdfund Public
+                {{ t("stores.crowdfund_make_public") }}
               </label>
               <p class="text-gray-400 text-xs mt-0.5">
-                The crowdfund will be visible to anyone.
+                {{ t("stores.crowdfund_make_public_hint") }}
               </p>
             </div>
           </div>
@@ -140,7 +144,8 @@
               for="description"
               class="block text-sm font-medium text-gray-300 mb-1"
             >
-              Description <span class="text-red-400">*</span>
+              {{ t("stores.crowdfund_description") }}
+              <span class="text-red-400">*</span>
             </label>
             <textarea
               id="description"
@@ -155,7 +160,9 @@
         <!-- Goal Section -->
 
         <div class="p-6 md:p-8 space-y-6">
-          <h2 class="text-xl font-bold text-white mb-4">Goal</h2>
+          <h2 class="text-xl font-bold text-white mb-4">
+            {{ t("stores.crowdfund_goal_section") }}
+          </h2>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -163,7 +170,7 @@
                 for="targetAmount"
                 class="block text-sm font-medium text-gray-300 mb-1"
               >
-                Target Amount
+                {{ t("stores.crowdfund_target_amount") }}
               </label>
               <input
                 id="targetAmount"
@@ -180,13 +187,17 @@
                 for="currency"
                 class="block text-sm font-medium text-gray-300 mb-1"
               >
-                Currency
+                {{ t("stores.crowdfund_currency") }}
               </label>
               <Select
                 id="currency"
                 v-model="form.currency"
                 :options="currencyOptions"
-                :placeholder="`Use store default (${store?.default_currency || 'EUR'})`"
+                :placeholder="
+                  t('stores.crowdfund_use_store_default', {
+                    currency: store?.default_currency || 'EUR',
+                  })
+                "
               />
             </div>
           </div>
@@ -197,13 +208,13 @@
                 for="startDate"
                 class="block text-sm font-medium text-gray-300 mb-1"
               >
-                Start date
+                {{ t("stores.crowdfund_start_date") }}
               </label>
               <DatePicker
                 id="startDate"
                 v-model="form.startDate"
                 type="datetime"
-                placeholder="Select start date..."
+                :placeholder="t('stores.crowdfund_placeholder_start')"
               />
             </div>
 
@@ -212,13 +223,13 @@
                 for="endDate"
                 class="block text-sm font-medium text-gray-300 mb-1"
               >
-                End date
+                {{ t("stores.crowdfund_end_date") }}
               </label>
               <DatePicker
                 id="endDate"
                 v-model="form.endDate"
                 type="datetime"
-                placeholder="No end date set"
+                :placeholder="t('stores.crowdfund_placeholder_end')"
                 position="right"
               />
             </div>
@@ -238,11 +249,10 @@
                     for="recurringGoal"
                     class="block text-sm font-medium text-white select-none cursor-pointer"
                   >
-                    Recurring Goal
+                    {{ t("stores.crowdfund_recurring_goal") }}
                   </label>
                   <p class="text-gray-400 text-xs mt-0.5">
-                    Reset goal after a specific period of time, based on your
-                    crowdfund's start date.
+                    {{ t("stores.crowdfund_recurring_hint") }}
                   </p>
                 </div>
               </div>
@@ -256,7 +266,7 @@
                     for="resetEveryAmount"
                     class="block text-sm font-medium text-gray-300 whitespace-nowrap"
                   >
-                    Reset goal every
+                    {{ t("stores.crowdfund_reset_every") }}
                   </label>
                   <input
                     id="resetEveryAmount"
@@ -285,7 +295,9 @@
           <div
             class="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
           >
-            <h2 class="text-xl font-bold text-white">Perks</h2>
+            <h2 class="text-xl font-bold text-white">
+              {{ t("stores.crowdfund_perks_section") }}
+            </h2>
             <div
               class="flex bg-gray-700/50 rounded-lg p-1 self-start sm:self-auto"
             >
@@ -299,7 +311,7 @@
                     : 'text-gray-400 hover:text-white hover:bg-gray-600/50',
                 ]"
               >
-                Editor
+                {{ t("stores.crowdfund_view_editor") }}
               </button>
               <button
                 type="button"
@@ -311,7 +323,7 @@
                     : 'text-gray-400 hover:text-white hover:bg-gray-600/50',
                 ]"
               >
-                Code
+                {{ t("stores.crowdfund_view_code") }}
               </button>
             </div>
           </div>
@@ -352,11 +364,12 @@
                   </div>
                   <div class="flex-1 min-w-0">
                     <h3 class="font-bold text-white truncate pr-6">
-                      {{ perk.title || "Custom" }}
+                      {{ perk.title || t("stores.crowdfund_perk_custom") }}
                     </h3>
                     <p class="text-sm text-indigo-400 font-medium mt-1">
                       <span v-if="perk.priceType === 'Minimum'"
-                        >Min. {{ perk.price || 0 }}
+                        >{{ t("stores.crowdfund_min") }}
+                        {{ perk.price || 0 }}
                         {{
                           form.currency || store?.default_currency || "EUR"
                         }}</span
@@ -379,7 +392,7 @@
                   <button
                     @click.stop="removePerk(index)"
                     class="absolute top-2 right-2 p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                    title="Remove Perk"
+                    :title="t('stores.crowdfund_remove_perk_title')"
                   >
                     <svg
                       class="w-4 h-4"
@@ -421,7 +434,9 @@
                     />
                   </svg>
                 </div>
-                <span class="text-sm font-medium text-gray-300">Add Perk</span>
+                <span class="text-sm font-medium text-gray-300">{{
+                  t("stores.crowdfund_add_perk")
+                }}</span>
               </button>
             </div>
           </div>
@@ -432,7 +447,7 @@
               for="perksJson"
               class="block text-sm font-medium text-gray-300 mb-2"
             >
-              JSON Editor
+              {{ t("stores.crowdfund_json_editor") }}
             </label>
             <textarea
               id="perksJson"
@@ -442,7 +457,7 @@
               @blur="parsePerksJson"
             ></textarea>
             <p class="mt-2 text-xs text-gray-500">
-              Edit raw JSON configuration for perks.
+              {{ t("stores.crowdfund_perks_json_hint") }}
             </p>
           </div>
         </div>
@@ -610,7 +625,7 @@ const pendingFeaturedImageFile = ref<File | null>(null);
 const saving = ref(false);
 const error = ref("");
 const success = ref("");
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const authStore = useAuthStore();
 const flashStore = useFlashStore();
 const appsStore = useAppsStore();
@@ -628,21 +643,29 @@ const canArchiveApp = computed(
     userRole.value === "support",
 );
 
-const currencyOptions = computed(() => [
-  {
-    label: `Use store default (${props.store?.default_currency || "EUR"})`,
-    value: "",
-  },
-  ...currencies.map((c) => ({ label: `${c.code} - ${c.name}`, value: c.code })),
-]);
+const currencyOptions = computed(() => {
+  locale.value;
+  return [
+    {
+      label: t("stores.crowdfund_use_store_default", {
+        currency: props.store?.default_currency || "EUR",
+      }),
+      value: "",
+    },
+    ...currencies.map((c) => ({ label: `${c.code} - ${c.name}`, value: c.code })),
+  ];
+});
 
-const unitOptions = [
-  { label: "Hour", value: "Hour" },
-  { label: "Day", value: "Day" },
-  { label: "Week", value: "Week" },
-  { label: "Month", value: "Month" },
-  { label: "Year", value: "Year" },
-];
+const unitOptions = computed(() => {
+  locale.value;
+  return [
+    { label: t("stores.crowdfund_time_hour"), value: "Hour" },
+    { label: t("stores.crowdfund_time_day"), value: "Day" },
+    { label: t("stores.crowdfund_time_week"), value: "Week" },
+    { label: t("stores.crowdfund_time_month"), value: "Month" },
+    { label: t("stores.crowdfund_time_year"), value: "Year" },
+  ];
+});
 
 const currentPerk = computed(() => {
   if (editingPerkIndex.value !== null && perks.value[editingPerkIndex.value]) {
@@ -694,7 +717,7 @@ function handlePerkSave(perk: any) {
 }
 
 function removePerk(index: number) {
-  if (confirm("Are you sure you want to remove this perk?")) {
+  if (confirm(t("stores.crowdfund_remove_perk_confirm"))) {
     perks.value.splice(index, 1);
     updatePerksJson();
   }
@@ -737,7 +760,7 @@ async function handleSubmit() {
         const parsed = JSON.parse(perksJson.value);
         perks.value = Array.isArray(parsed) ? parsed : [];
       } catch (e) {
-        flashStore.error("Invalid JSON in perks code view");
+        flashStore.error(t("stores.crowdfund_invalid_perks_json"));
         error.value = "";
         saving.value = false;
         return;
@@ -778,7 +801,8 @@ async function handleSubmit() {
             p.priceType !== "Free" && p.priceType !== "Topup"
               ? String(p.price || 1)
               : null,
-          buyButtonText: p.buyButtonText || "Podporiť",
+          buyButtonText:
+            p.buyButtonText || t("stores.crowdfund_perk_buy_placeholder"),
           inventory: inventory,
           taxRate:
             p.taxRate !== null && p.taxRate !== undefined && p.taxRate !== ""
@@ -1088,7 +1112,8 @@ function applyCrowdfundConfigFromProps() {
               : String(p.categories)
             : null,
           inventory: inventory,
-          buyButtonText: p.buyButtonText || "Podporiť",
+          buyButtonText:
+            p.buyButtonText || t("stores.crowdfund_perk_buy_placeholder"),
           disabled: p.disabled !== undefined ? p.disabled : false,
         };
       });
