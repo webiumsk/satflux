@@ -511,6 +511,9 @@ class AppService
                         } else {
                             $filteredConfig['sounds'] = [reset($filteredSounds)];
                         }
+                    } elseif (is_array($sounds) && $sounds === []) {
+                        // Explicit empty list (e.g. sounds disabled in UI) — do not inject default
+                        $filteredConfig['sounds'] = [];
                     } else {
                         // If sounds is empty or not array, set default
                         $filteredConfig['sounds'] = ['https://github.com/ClaudiuHKS/AdvancedQuakeSounds/tree/master/sound/AQS/doublekill.wav'];

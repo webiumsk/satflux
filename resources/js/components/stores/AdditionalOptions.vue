@@ -255,7 +255,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          <div v-show="openSections.sound" class="bg-gray-900 border-t border-gray-700 px-6 py-6">
+          <div v-show="openSections.sound" class="bg-gray-900 border-t border-gray-700 px-6 py-6 space-y-4">
             <div class="flex items-center">
               <input
                 id="enableSounds"
@@ -266,6 +266,24 @@
               <label for="enableSounds" class="ml-3 block text-sm font-medium text-white cursor-pointer">
                 {{ t("stores.crowdfund_adv_sounds_enable") }}
               </label>
+            </div>
+            <div v-if="localAdvanced.enableSounds" class="space-y-2">
+              <label
+                for="crowdfundSoundsText"
+                class="block text-sm font-medium text-gray-300"
+              >
+                {{ t("stores.crowdfund_adv_sounds_lines_label") }}
+              </label>
+              <textarea
+                id="crowdfundSoundsText"
+                v-model="localAdvanced.soundsText"
+                rows="5"
+                class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white font-mono text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                :placeholder="t('stores.crowdfund_adv_sounds_lines_placeholder')"
+              />
+              <p class="text-xs text-gray-500">
+                {{ t("stores.crowdfund_adv_sounds_lines_help") }}
+              </p>
             </div>
           </div>
         </div>
@@ -290,7 +308,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-           <div v-show="openSections.animation" class="bg-gray-900 border-t border-gray-700 px-6 py-6">
+           <div v-show="openSections.animation" class="bg-gray-900 border-t border-gray-700 px-6 py-6 space-y-4">
             <div class="flex items-center">
               <input
                 id="enableAnimations"
@@ -301,6 +319,24 @@
               <label for="enableAnimations" class="ml-3 block text-sm font-medium text-white cursor-pointer">
                 {{ t("stores.crowdfund_adv_animations_enable") }}
               </label>
+            </div>
+            <div v-if="localAdvanced.enableAnimations" class="space-y-2">
+              <label
+                for="crowdfundAnimationColorsText"
+                class="block text-sm font-medium text-gray-300"
+              >
+                {{ t("stores.crowdfund_adv_animation_colors_label") }}
+              </label>
+              <textarea
+                id="crowdfundAnimationColorsText"
+                v-model="localAdvanced.animationColorsText"
+                rows="5"
+                class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white font-mono text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                :placeholder="t('stores.crowdfund_adv_animation_colors_placeholder')"
+              />
+              <p class="text-xs text-gray-500">
+                {{ t("stores.crowdfund_adv_animation_colors_help") }}
+              </p>
             </div>
           </div>
         </div>
@@ -325,7 +361,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-           <div v-show="openSections.discussion" class="bg-gray-900 border-t border-gray-700 px-6 py-6">
+           <div v-show="openSections.discussion" class="bg-gray-900 border-t border-gray-700 px-6 py-6 space-y-4">
             <div class="flex items-center">
               <input
                 id="enableDiscussion"
@@ -341,6 +377,22 @@
                   {{ t("stores.crowdfund_adv_disqus_hint") }}
                 </p>
                 </div>
+            </div>
+            <div v-if="localAdvanced.enableDiscussion" class="space-y-2">
+              <label
+                for="crowdfundDisqusShortname"
+                class="block text-sm font-medium text-gray-300"
+              >
+                {{ t("stores.crowdfund_adv_disqus_shortname_label") }}
+              </label>
+              <input
+                id="crowdfundDisqusShortname"
+                v-model="localAdvanced.disqusShortname"
+                type="text"
+                autocomplete="off"
+                class="block w-full max-w-md px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                :placeholder="t('stores.crowdfund_adv_disqus_shortname_placeholder')"
+              />
             </div>
           </div>
         </div>

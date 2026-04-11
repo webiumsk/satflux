@@ -610,6 +610,9 @@ const form = ref({
     enableSounds: false,
     enableAnimations: false,
     enableDiscussion: false,
+    soundsText: "",
+    animationColorsText: "",
+    disqusShortname: "",
     callbackNotificationUrl: "",
   },
 });
@@ -863,6 +866,13 @@ async function handleSubmit() {
       }
     }
 
+    const adv = form.value.advanced;
+    const multilineToLines = (s: string) =>
+      s
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+
     // Build config object
     const config: any = {
       appName: form.value.appName,
@@ -882,6 +892,13 @@ async function handleSubmit() {
       crowdfundBehavior: form.value.crowdfundBehavior,
       checkout: form.value.checkout,
       advanced: form.value.advanced,
+      sounds: adv.enableSounds ? multilineToLines(adv.soundsText || "") : [],
+      animationColors: adv.enableAnimations
+        ? multilineToLines(adv.animationColorsText || "")
+        : [],
+      disqusShortname: adv.enableDiscussion
+        ? String(adv.disqusShortname || "").trim()
+        : "",
     };
 
     // Handle recurring goal settings
@@ -1040,25 +1057,56 @@ function applyCrowdfundConfigFromProps() {
       }
       form.value.checkout = { formId: fid };
     }
-    if (config.advanced) {
+    {
+      const adv = (config.advanced || {}) as Record<string, unknown>;
+      const soundsArr = config.sounds;
+      const colorsArr = config.animationColors;
+      const soundsText =
+        Array.isArray(soundsArr)
+          ? soundsArr.map((s: unknown) => String(s)).join("\n")
+          : typeof adv.soundsText === "string"
+            ? adv.soundsText
+            : "";
+      const animationColorsText =
+        Array.isArray(colorsArr)
+          ? colorsArr.map((c: unknown) => String(c)).join("\n")
+          : typeof adv.animationColorsText === "string"
+            ? adv.animationColorsText
+            : "";
       form.value.advanced = {
-        htmlLanguage: config.advanced.htmlLanguage || config.htmlLang || "",
-        htmlMetaTags: config.advanced.htmlMetaTags || config.htmlMetaTags || "",
+        htmlLanguage:
+          (adv.htmlLanguage as string) || (config.htmlLang as string) || "",
+        htmlMetaTags:
+          (adv.htmlMetaTags as string) ||
+          (config.htmlMetaTags as string) ||
+          "",
         enableSounds:
-          config.advanced.enableSounds !== undefined
-            ? config.advanced.enableSounds
-            : false,
+          config.soundsEnabled !== undefined
+            ? Boolean(config.soundsEnabled)
+            : adv.enableSounds !== undefined
+              ? Boolean(adv.enableSounds)
+              : false,
         enableAnimations:
-          config.advanced.enableAnimations !== undefined
-            ? config.advanced.enableAnimations
-            : false,
+          config.animationsEnabled !== undefined
+            ? Boolean(config.animationsEnabled)
+            : adv.enableAnimations !== undefined
+              ? Boolean(adv.enableAnimations)
+              : false,
         enableDiscussion:
-          config.advanced.enableDiscussion !== undefined
-            ? config.advanced.enableDiscussion
-            : false,
+          config.disqusEnabled !== undefined
+            ? Boolean(config.disqusEnabled)
+            : adv.enableDiscussion !== undefined
+              ? Boolean(adv.enableDiscussion)
+              : false,
+        soundsText,
+        animationColorsText,
+        disqusShortname:
+          (config.disqusShortname as string) ||
+          (adv.disqusShortname as string) ||
+          "",
         callbackNotificationUrl:
-          config.advanced.callbackNotificationUrl ||
-          config.notificationUrl ||
+          (adv.callbackNotificationUrl as string) ||
+          (config.notificationUrl as string) ||
           "",
       };
     }
