@@ -784,13 +784,11 @@ async function handleSubmit() {
           }
         }
 
-        // BTCPay AppItemPriceType is only Fixed, Topup, Minimum — "Free" must be Fixed + 0.
         const rawPriceType = p.priceType || "Minimum";
         let outPriceType = rawPriceType;
         let outPrice: string | null =
-          rawPriceType !== "Free" && rawPriceType !== "Topup"
-            ? String(p.price ?? 1)
-            : null;
+          rawPriceType !== "Topup" ? String(p.price ?? 1) : null;
+        // Legacy UI / BTCPay: "Free" is not a valid enum — treat as Fixed @ 0.
         if (rawPriceType === "Free") {
           outPriceType = "Fixed";
           outPrice = "0";
@@ -1106,12 +1104,9 @@ function applyCrowdfundConfigFromProps() {
           p.price !== null && p.price !== undefined && p.price !== ""
             ? parseFloat(String(p.price))
             : NaN;
-        let displayPriceType = apiPt;
+        let displayPriceType = apiPt === "Free" ? "Fixed" : apiPt;
         let displayPrice: number;
-        if (apiPt === "Fixed" && !Number.isNaN(parsedPrice) && parsedPrice === 0) {
-          displayPriceType = "Free";
-          displayPrice = 0;
-        } else if (apiPt === "Topup") {
+        if (apiPt === "Topup") {
           displayPrice = 0;
         } else {
           displayPrice = !Number.isNaN(parsedPrice) ? parsedPrice : 1;

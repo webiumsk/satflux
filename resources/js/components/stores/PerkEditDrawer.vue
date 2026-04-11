@@ -100,7 +100,7 @@
               />
             </div>
 
-            <div v-if="localProduct.priceType !== 'Free' && localProduct.priceType !== 'Topup'">
+            <div v-if="localProduct.priceType !== 'Topup'">
               <label for="product-price" class="block text-sm font-medium text-gray-300 mb-1">
                 {{ t("stores.crowdfund_perk_amount") }}
               </label>
@@ -350,11 +350,11 @@ const uploading = ref(false);
 
 const priceTypeOptions = computed(() => {
   locale.value;
+  // BTCPay AppItemPriceType: Fixed, Topup, Minimum only (no separate "Free" in API).
   return [
     { label: t("stores.crowdfund_price_minimum"), value: "Minimum" },
     { label: t("stores.crowdfund_price_fixed"), value: "Fixed" },
     { label: t("stores.crowdfund_price_any_amount"), value: "Topup" },
-    { label: t("stores.crowdfund_price_free"), value: "Free" },
   ];
 });
 

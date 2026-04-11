@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\App;
 use App\Models\Store;
 use App\Services\BtcPay\AppService;
+use App\Support\SatfluxStorageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -696,6 +697,8 @@ class AppController extends Controller
             }
         }
 
+        $config = $this->rewriteSatfluxStorageUrlsInAppConfig($config);
+
         $archived = $config['archived'] ?? false;
         if (is_string($archived)) {
             $archived = strtolower($archived) === 'true' || $archived === '1';
@@ -733,6 +736,48 @@ class AppController extends Controller
             // If we have btcpay_app_id but no $btcpayApp data, include it
             $data['btcpay_app_url'] = $this->generateAppUrl($app->app_type, $app->btcpay_app_id);
             $data['btcpay_app_id'] = $app->btcpay_app_id;
+        }
+
+        return $data;
+    }
+
+    /**
+     * Point /storage/… URLs in app config at the current APP_URL (fixes stale host after domain or env changes).
+     * Crowdfund perks embed image URLs inside a JSON string (perksTemplate); rewrite those too.
+     *
+     * @param  array<string, mixed>  $config
+     * @return array<string, mixed>
+     */
+    protected function rewriteSatfluxStorageUrlsInAppConfig(array $config): array
+    {
+        $config = $this->rewriteStorageUrlsRecursive($config);
+
+        foreach (['perksTemplate'] as $jsonKey) {
+            if (! isset($config[$jsonKey]) || ! is_string($config[$jsonKey])) {
+                continue;
+            }
+            $decoded = json_decode($config[$jsonKey], true);
+            if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
+                continue;
+            }
+            $config[$jsonKey] = json_encode($this->rewriteStorageUrlsRecursive($decoded));
+        }
+
+        return $config;
+    }
+
+    /**
+     * @param  array<int|string, mixed>  $data
+     * @return array<int|string, mixed>
+     */
+    protected function rewriteStorageUrlsRecursive(array $data): array
+    {
+        foreach ($data as $k => $v) {
+            if (is_string($v)) {
+                $data[$k] = SatfluxStorageUrl::rewriteToCurrentApp($v);
+            } elseif (is_array($v)) {
+                $data[$k] = $this->rewriteStorageUrlsRecursive($v);
+            }
         }
 
         return $data;
