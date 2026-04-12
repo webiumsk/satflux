@@ -16,30 +16,23 @@
         <!-- Header -->
         <AppShowHeader
           :title="t('stores.pay_button')"
-          :subtitle="store ? store.name : ''"
+          :subtitle="store ? t('apps.pay_button_header_subtitle', { store: store.name }) : ''"
           :app-url="undefined"
           open-button-text=""
-          form-id=""
           save-button-text=""
           saving-text=""
           :saving="toggleSaving"
+          :show-save-button="false"
         >
           <template #actions>
-            <template v-if="store?.anyone_can_create_invoice">
-              <button
-                @click="handleCopyCode"
-                :disabled="!canCopy"
-                class="inline-flex items-center px-4 py-2 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg v-if="copied" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-                <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                {{ copied ? t('stores.pay_button_copied') : t('stores.pay_button_copy_code') }}
-              </button>
-            </template>
+            <CopyFeedbackButton
+              v-if="store?.anyone_can_create_invoice"
+              :disabled="!canCopy"
+              :copied="copied"
+              :copy-label="t('stores.pay_button_copy_code')"
+              :copied-label="t('stores.pay_button_copied')"
+              @click="handleCopyCode"
+            />
           </template>
         </AppShowHeader>
 
@@ -105,6 +98,9 @@ import api from '../../services/api';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
 import AppShowHeader from '../../components/stores/AppShowHeader.vue';
 import PayButtonForm from './PayButtonForm.vue';
+import CopyFeedbackButton from '../../components/ui/CopyFeedbackButton.vue';
+import { useCopiedFeedback } from '../../composables/useCopiedFeedback';
+import { isPayButtonEmbedCodeCopyable } from '../../utils/payButtonEmbed';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -119,10 +115,12 @@ const payButtonFormRef = ref<InstanceType<typeof PayButtonForm>>();
 
 const allApps = computed(() => appsStore.apps);
 
-const copied = ref(false);
-const canCopy = computed(() => {
-  return payButtonFormRef.value?.generatedCode && payButtonFormRef.value.generatedCode.length > 0;
-});
+const { copied, flashAfter } = useCopiedFeedback();
+const canCopy = computed(
+  () =>
+    Boolean(store.value?.anyone_can_create_invoice) &&
+    isPayButtonEmbedCodeCopyable(payButtonFormRef.value?.generatedCode),
+);
 
 const toggleSaving = ref(false);
 
@@ -154,14 +152,13 @@ async function setPayButtonEnabled(enabled: boolean) {
   }
 }
 
-function handleCopyCode() {
+async function handleCopyCode() {
   if (!payButtonFormRef.value) return;
-  
-  payButtonFormRef.value.copyCode();
-  copied.value = true;
-  setTimeout(() => {
-    copied.value = false;
-  }, 2000);
+  try {
+    await flashAfter(() => payButtonFormRef.value!.copyCode());
+  } catch {
+    flashStore.error(t("common.copy_failed"));
+  }
 }
 
 function handleShowSettings() {

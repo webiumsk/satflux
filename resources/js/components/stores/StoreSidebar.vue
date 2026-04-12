@@ -221,7 +221,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             {{ t('stores.reports') }}
-            <span v-if="!canAccessReports" class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 inline-flex items-center"><ProPlanBadge /></span>
+            <span v-if="showReportsProBadge" class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 inline-flex items-center"><ProPlanBadge /></span>
           </button>
         </nav>
       </div>
@@ -304,7 +304,6 @@
           <!-- Crowdfund -->
           <div class="mb-2">
             <component
-              v-if="!crowdfundCreateDisabled"
               :is="isInertia ? Link : RouterLink"
               :href="isInertia ? `/stores/${store.id}/apps/create?type=Crowdfund` : undefined"
               :to="!isInertia ? { name: 'stores-apps-create', params: { id: store.id }, query: { type: 'Crowdfund' } } : undefined"
@@ -326,21 +325,6 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
             </component>
-            <div
-              v-else
-              class="flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium cursor-not-allowed opacity-60 text-gray-400"
-              :title="t('apps.crowdfund_creation_paused_tooltip')"
-            >
-              <span class="flex items-center min-w-0">
-                <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                {{ t('stores.crowdfund') }}
-              </span>
-              <svg class="w-4 h-4 flex-shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
             <div v-if="getAppsByType('Crowdfund').length > 0" class="ml-4 space-y-1">
               <component
                 v-for="app in getAppsByType('Crowdfund')"
@@ -453,7 +437,7 @@
                 </svg>
                 {{ t('stores.stripe') }}
               </span>
-              <span v-if="!canAccessStripe" class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0 inline-flex items-center"><ProPlanBadge /></span>
+              <span v-if="showStripeProBadge" class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0 inline-flex items-center"><ProPlanBadge /></span>
             </component>
           </div>
 
@@ -511,12 +495,10 @@ import { useStoresStore } from '../../store/stores';
 import { useAccountLimits } from '../../composables/useAccountLimits';
 import { useAuthStore } from '../../store/auth';
 import { useOnboardingStore } from '../../store/onboarding';
-import { CROWDFUND_CREATE_DISABLED } from '../../constants/features';
 import ProPlanBadge from './ProPlanBadge.vue';
 
 const { t } = useI18n();
 
-const crowdfundCreateDisabled = CROWDFUND_CREATE_DISABLED;
 const authStore = useAuthStore();
 const onboardingStore = useOnboardingStore();
 const { limits, load: loadLimits } = useAccountLimits();
@@ -554,14 +536,22 @@ const authUser = computed(() => {
   if (isInertia && page?.props?.auth?.user) return page.props.auth.user;
   return null;
 });
-const planCode = computed(() => (authUser.value?.plan?.code ?? 'free') as string);
-const userRole = computed(() => authUser.value?.role ?? '');
-const canAccessReports = computed(() =>
-  planCode.value === 'pro' || planCode.value === 'enterprise' || userRole.value === 'admin' || userRole.value === 'support'
-);
-const canAccessStripe = computed(() =>
-  planCode.value === 'pro' || planCode.value === 'enterprise' || userRole.value === 'admin' || userRole.value === 'support'
-);
+/** True when user has Pro-level access; null while auth user is not loaded (avoid flashing PRO badges). */
+const isProOrAdminUser = computed((): boolean | null => {
+  const u = authUser.value;
+  if (!u) return null;
+  const code = (u.plan?.code ?? 'free') as string;
+  const role = u.role ?? '';
+  return (
+    code === 'pro' ||
+    code === 'enterprise' ||
+    role === 'admin' ||
+    role === 'support'
+  );
+});
+/** Show sidebar PRO badge only when we know the user is on a plan without these features. */
+const showReportsProBadge = computed(() => isProOrAdminUser.value === false);
+const showStripeProBadge = computed(() => isProOrAdminUser.value === false);
 
 const appsStore = useAppsStore();
 const storesStore = useStoresStore();

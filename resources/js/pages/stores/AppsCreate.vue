@@ -126,28 +126,17 @@
 
                     <!-- Crowdfund -->
                     <div
-                      @click="
-                        !crowdfundCreateDisabled &&
-                          (form.appType = 'Crowdfund')
-                      "
+                      @click="form.appType = 'Crowdfund'"
                       :class="[
-                        'relative rounded-xl border-2 p-4 transition-all duration-200 flex flex-col items-center text-center gap-3',
-                        crowdfundCreateDisabled
-                          ? 'border-gray-700 bg-gray-900/30 opacity-60 cursor-not-allowed'
-                          : form.appType === 'Crowdfund'
-                            ? 'border-indigo-500 bg-indigo-500/10 cursor-pointer'
-                            : 'border-gray-700 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-800 cursor-pointer',
+                        'relative rounded-xl border-2 p-4 cursor-pointer transition-all duration-200 flex flex-col items-center text-center gap-3',
+                        form.appType === 'Crowdfund'
+                          ? 'border-indigo-500 bg-indigo-500/10'
+                          : 'border-gray-700 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-800',
                       ]"
-                      :title="
-                        crowdfundCreateDisabled
-                          ? t('apps.crowdfund_creation_paused_tooltip')
-                          : undefined
-                      "
                     >
                       <div
                         :class="[
                           'p-3 rounded-full',
-                          !crowdfundCreateDisabled &&
                           form.appType === 'Crowdfund'
                             ? 'bg-indigo-500 text-white'
                             : 'bg-gray-700 text-gray-400',
@@ -172,18 +161,11 @@
                           {{ t("apps.crowdfund") }}
                         </h3>
                         <p class="text-xs text-gray-400">
-                          {{
-                            crowdfundCreateDisabled
-                              ? t("apps.crowdfund_creation_paused")
-                              : t("apps.crowdfund_description")
-                          }}
+                          {{ t("apps.crowdfund_description") }}
                         </p>
                       </div>
                       <div
-                        v-if="
-                          !crowdfundCreateDisabled &&
-                          form.appType === 'Crowdfund'
-                        "
+                        v-if="form.appType === 'Crowdfund'"
                         class="absolute top-3 right-3 text-indigo-500"
                       >
                         <svg
@@ -275,11 +257,8 @@ import { useStoresStore } from "../../store/stores";
 import { useFlashStore } from "../../store/flash";
 import StoreSidebar from "../../components/stores/StoreSidebar.vue";
 import api from "../../services/api";
-import { CROWDFUND_CREATE_DISABLED } from "../../constants/features";
 
 const { t } = useI18n();
-
-const crowdfundCreateDisabled = CROWDFUND_CREATE_DISABLED;
 
 const route = useRoute();
 const router = useRouter();
@@ -359,9 +338,6 @@ onMounted(async () => {
     if (typeMap[typeFromQuery]) {
       form.value.appType = typeMap[typeFromQuery];
     }
-  }
-  if (crowdfundCreateDisabled && form.value.appType === "Crowdfund") {
-    form.value.appType = "PointOfSale";
   }
 
   await loadStore();

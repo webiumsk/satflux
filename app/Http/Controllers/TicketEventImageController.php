@@ -4,17 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Store;
 use App\Services\BtcPay\BtcPayClient;
-use App\Services\BtcPay\Exceptions\BtcPayException;
+use App\Services\BtcPay\BtcPayFileUploadService;
 use App\Services\BtcPay\TicketService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class TicketEventImageController extends Controller
 {
     public function __construct(
         protected BtcPayClient $btcPayClient,
-        protected TicketService $ticketService
+        protected TicketService $ticketService,
+        protected BtcPayFileUploadService $btcPayFileUploadService
     ) {}
 
     /**
@@ -36,46 +36,22 @@ class TicketEventImageController extends Controller
         }
 
         try {
-            $result = $this->uploadToBtcPayFiles($request->file('image'), $store);
-
-            $id = $result['id'] ?? null;
-            $url = $result['url'] ?? null;
-            $storageName = $result['storageName'] ?? $result['storage_name'] ?? null;
-
-            if (empty($id)) {
-                return response()->json(['message' => 'Upload succeeded but no file id returned'], 500);
-            }
-
-            // Plugin uses /LocalStorage/{uuid}-{name}.{ext} – build storageName if API didn't return it
-            if (empty($storageName)) {
-                $originalName = $request->file('image')->getClientOriginalName();
-                $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION) ?: 'jpg');
-                $baseName = Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) ?: 'image';
-                $storageName = $id . '-' . $baseName . '.' . $ext;
-            }
-
-            $baseUrl = rtrim(config('services.btcpay.base_url', ''), '/');
-            // Plugin expects eventLogoFileId = file id (UUID) from Greenfield API
-            $displayUrl = $url;
-            if (empty($displayUrl) || (is_string($displayUrl) && str_starts_with($displayUrl, 'fileid:'))) {
-                $displayUrl = $baseUrl . '/LocalStorage/' . $storageName;
-            }
+            $data = $this->btcPayFileUploadService->uploadForStore($request->file('image'), $store);
 
             Log::info('Ticket event image uploaded (BTCPay Files API)', [
                 'store_id' => $store->id,
                 'user_id' => $user->id,
-                'file_id' => $id,
-                'storage_name' => $storageName,
-                'btcpay_response_keys' => array_keys($result),
+                'file_id' => $data['id'],
+                'storage_name' => $data['storage_name'],
             ]);
 
             return response()->json([
                 'message' => 'Image uploaded successfully',
                 'data' => [
-                    'id' => $id,
-                    'eventLogoFileId' => $id,
-                    'url' => $displayUrl,
-                    'image_url' => $displayUrl,
+                    'id' => $data['id'],
+                    'eventLogoFileId' => $data['id'],
+                    'url' => $data['url'],
+                    'image_url' => $data['image_url'],
                 ],
             ]);
         } catch (\Exception $e) {
@@ -167,27 +143,4 @@ class TicketEventImageController extends Controller
         return $event;
     }
 
-    /**
-     * Call POST /api/v1/files. Try user API key first; on 403 (insufficient permissions) use server key.
-     */
-    protected function uploadToBtcPayFiles($file, Store $store): array
-    {
-        $userApiKey = $store->user->getBtcPayApiKeyOrFail();
-        $clientWithUserKey = new BtcPayClient($userApiKey);
-
-        try {
-            return $clientWithUserKey->postMultipart('/api/v1/files', $file);
-        } catch (BtcPayException $e) {
-            $isPermissionDenied = $e->getStatusCode() === 403
-                || stripos($e->getMessage(), 'Insufficient API Permissions') !== false
-                || stripos($e->getMessage(), 'canmodifyserversettings') !== false;
-            if (!$isPermissionDenied) {
-                throw $e;
-            }
-            Log::info('Ticket event image: user API key lacks Files permission, using server key', [
-                'store_id' => $store->id,
-            ]);
-            return $this->btcPayClient->postMultipart('/api/v1/files', $file);
-        }
-    }
 }

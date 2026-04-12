@@ -6,11 +6,22 @@
         :subtitle="t('apps.pay_button_header_subtitle', { store: store.name })"
         :app-url="btcpayAppUrl"
         :open-button-text="t('apps.open_pay_button')"
-        form-id="paybutton-form"
-        :save-button-text="t('apps.generate_pay_button_code')"
-        :saving-text="t('auth.generating')"
-        :saving="formRef?.generating"
-      />
+        save-button-text=""
+        saving-text=""
+        :saving="false"
+        :show-save-button="false"
+      >
+        <template #actions>
+          <CopyFeedbackButton
+            v-if="payButtonStore?.anyone_can_create_invoice"
+            :disabled="!canCopy"
+            :copied="copied"
+            :copy-label="t('stores.pay_button_copy_code')"
+            :copied-label="t('stores.pay_button_copied')"
+            @click="handleCopyCode"
+          />
+        </template>
+      </AppShowHeader>
     </template>
     <template #default="{ app, store }">
       <PayButtonForm
@@ -86,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, unref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
@@ -97,7 +108,10 @@ import AppShowHeader from "../../components/stores/AppShowHeader.vue";
 import DeleteAppModal from "../../components/stores/DeleteAppModal.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 import PayButtonForm from "./PayButtonForm.vue";
+import CopyFeedbackButton from "../../components/ui/CopyFeedbackButton.vue";
 import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
+import { useCopiedFeedback } from "../../composables/useCopiedFeedback";
+import { isPayButtonEmbedCodeCopyable } from "../../utils/payButtonEmbed";
 
 const { t } = useI18n();
 const { btcPayUrl, load: loadBtcpayConfig } = useBtcPayUrl();
@@ -127,6 +141,28 @@ const canArchiveApp = computed(
 
 const layoutRef = ref<InstanceType<typeof AppShowLayout> | null>(null);
 const formRef = ref<InstanceType<typeof PayButtonForm> | null>(null);
+
+/** Store record for Pay Button gate (props or layout-loaded). */
+const payButtonStore = computed(() => {
+  if (props.store) return props.store;
+  return unref(layoutRef.value?.store) ?? null;
+});
+
+const { copied, flashAfter } = useCopiedFeedback();
+const canCopy = computed(
+  () =>
+    Boolean(payButtonStore.value?.anyone_can_create_invoice) &&
+    isPayButtonEmbedCodeCopyable(formRef.value?.generatedCode),
+);
+
+async function handleCopyCode() {
+  if (!formRef.value) return;
+  try {
+    await flashAfter(() => formRef.value!.copyCode());
+  } catch {
+    flashStore.error(t("common.copy_failed"));
+  }
+}
 
 const showDeleteModal = ref(false);
 const showArchiveUpgradeModal = ref(false);

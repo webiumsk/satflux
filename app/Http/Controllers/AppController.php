@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\App;
 use App\Models\Store;
 use App\Services\BtcPay\AppService;
+use App\Support\SatfluxStorageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -103,18 +104,6 @@ class AppController extends Controller
             return response()->json([
                 'message' => 'Tickets are managed per store. Use the Tickets section in the store sidebar.',
             ], 400);
-        }
-
-        // Temporary: Crowdfund create needs BTCPay 2.3.7+; re-enable together with CROWDFUND_CREATE_DISABLED=false in resources/js/constants/features.ts.
-        if (strtolower($request->app_type) === 'crowdfund') {
-            \Log::warning('Attempt to create Crowdfund app blocked (temporary — BTCPay upgrade pending)', [
-                'store_id' => $store->id,
-                'app_name' => $request->name,
-            ]);
-
-            return response()->json([
-                'message' => 'Creating new Crowdfund apps is temporarily disabled until your BTCPay Server is upgraded to 2.3.7 or newer and dependent plugins are compatible.',
-            ], 503);
         }
 
         return DB::transaction(function () use ($request, $store) {
@@ -526,6 +515,30 @@ class AppController extends Controller
             }
         }
 
+        // Greenfield has no PUT for Payment Button apps; only local archived flag is supported here.
+        if (strtolower($app->app_type) === 'paymentbutton') {
+            $configPayload = $request->input('config');
+            $hasConfigBody = is_array($configPayload) && count($configPayload) > 0;
+            if ($request->filled('name') || $hasConfigBody) {
+                return response()->json([
+                    'message' => 'BTCPay Greenfield API does not expose PUT for Payment Button apps. Change settings in BTCPay Server UI or recreate the app.',
+                ], 422);
+            }
+            if (!$request->has('archived')) {
+                return response()->json([
+                    'message' => 'No updatable fields provided for this app type.',
+                ], 422);
+            }
+            $archived = filter_var($request->input('archived'), FILTER_VALIDATE_BOOLEAN);
+            $mergedConfig = array_merge($app->config ?? [], ['archived' => $archived]);
+            $app->update(['config' => $mergedConfig]);
+
+            return response()->json([
+                'data' => $this->formatApp($app->fresh()),
+                'message' => 'App updated successfully',
+            ]);
+        }
+
         // Log to ensure we're using the correct btcpay_app_id
         \Log::info('App update - calling updateApp with btcpay_app_id', [
             'app_id' => $app->id,
@@ -684,6 +697,8 @@ class AppController extends Controller
             }
         }
 
+        $config = $this->rewriteSatfluxStorageUrlsInAppConfig($config);
+
         $archived = $config['archived'] ?? false;
         if (is_string($archived)) {
             $archived = strtolower($archived) === 'true' || $archived === '1';
@@ -721,6 +736,48 @@ class AppController extends Controller
             // If we have btcpay_app_id but no $btcpayApp data, include it
             $data['btcpay_app_url'] = $this->generateAppUrl($app->app_type, $app->btcpay_app_id);
             $data['btcpay_app_id'] = $app->btcpay_app_id;
+        }
+
+        return $data;
+    }
+
+    /**
+     * Point /storage/… URLs in app config at the current APP_URL (fixes stale host after domain or env changes).
+     * Crowdfund perks embed image URLs inside a JSON string (perksTemplate); rewrite those too.
+     *
+     * @param  array<string, mixed>  $config
+     * @return array<string, mixed>
+     */
+    protected function rewriteSatfluxStorageUrlsInAppConfig(array $config): array
+    {
+        $config = $this->rewriteStorageUrlsRecursive($config);
+
+        foreach (['perksTemplate'] as $jsonKey) {
+            if (! isset($config[$jsonKey]) || ! is_string($config[$jsonKey])) {
+                continue;
+            }
+            $decoded = json_decode($config[$jsonKey], true);
+            if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
+                continue;
+            }
+            $config[$jsonKey] = json_encode($this->rewriteStorageUrlsRecursive($decoded));
+        }
+
+        return $config;
+    }
+
+    /**
+     * @param  array<int|string, mixed>  $data
+     * @return array<int|string, mixed>
+     */
+    protected function rewriteStorageUrlsRecursive(array $data): array
+    {
+        foreach ($data as $k => $v) {
+            if (is_string($v)) {
+                $data[$k] = SatfluxStorageUrl::rewriteToCurrentApp($v);
+            } elseif (is_array($v)) {
+                $data[$k] = $this->rewriteStorageUrlsRecursive($v);
+            }
         }
 
         return $data;

@@ -195,5 +195,94 @@ class AppTest extends TestCase
         $response->assertStatus(200);
         $response->assertJsonCount(3, 'data');
     }
+
+    public function test_crowdfund_update_put_clears_main_image_sets_enforce_target_and_form_id(): void
+    {
+        $crowdfundId = 'cf-test-id';
+        $storeBtcpayId = 'test-crowdfund-store';
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($crowdfundId, $storeBtcpayId) {
+            $url = $request->url();
+            if (str_contains($url, "/api/v1/apps/crowdfund/{$crowdfundId}")) {
+                if ($request->method() === 'GET') {
+                    return Http::response([
+                        'id' => $crowdfundId,
+                        'appName' => 'Crowdfund',
+                        'appType' => 'Crowdfund',
+                        'storeId' => $storeBtcpayId,
+                        'title' => 'Title',
+                        'mainImageUrl' => 'https://example.com/old.png',
+                        'formId' => 'form-xyz',
+                        'perksTemplate' => '[]',
+                        'targetCurrency' => 'EUR',
+                        'targetAmount' => 100,
+                        'resetEveryAmount' => 0,
+                        'resetEvery' => 'Never',
+                        'displayPerksValue' => true,
+                        'displayPerksRanking' => true,
+                        'sortPerksByPopularity' => true,
+                    ], 200);
+                }
+                if ($request->method() === 'PUT') {
+                    $body = json_decode($request->body(), true) ?? [];
+
+                    return Http::response(array_merge($body, ['id' => $crowdfundId]), 200);
+                }
+            }
+
+            return Http::response([], 404);
+        });
+
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'btcpay_store_id' => $storeBtcpayId,
+        ]);
+        $app = App::factory()->crowdfund()->create([
+            'store_id' => $store->id,
+            'btcpay_app_id' => $crowdfundId,
+            'config' => [
+                'title' => 'Title',
+                'mainImageUrl' => 'https://example.com/old.png',
+            ],
+        ]);
+
+        $response = $this->actingAs($user)->putJson("/api/stores/{$store->id}/apps/{$app->id}", [
+            'name' => 'Crowdfund',
+            'config' => [
+                'featuredImageUrl' => null,
+                'displayTitle' => 'Title',
+                'contributions' => [
+                    'sortByPopularity' => true,
+                    'displayRanking' => true,
+                    'displayValue' => true,
+                    'noAdditionalAfterTarget' => true,
+                ],
+                'checkout' => [
+                    'formId' => null,
+                ],
+                'crowdfundBehavior' => [
+                    'countAllInvoices' => false,
+                ],
+            ],
+        ]);
+
+        $response->assertStatus(200);
+
+        Http::assertSent(function (\Illuminate\Http\Client\Request $request) use ($crowdfundId) {
+            if ($request->method() !== 'PUT') {
+                return false;
+            }
+            if (! str_contains($request->url(), "/api/v1/apps/crowdfund/{$crowdfundId}")) {
+                return false;
+            }
+            $data = $request->data();
+
+            return ($data['mainImageUrl'] ?? null) === ''
+                && ($data['enforceTargetAmount'] ?? null) === true
+                && array_key_exists('formId', $data)
+                && $data['formId'] === null;
+        });
+    }
 }
 

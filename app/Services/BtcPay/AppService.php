@@ -97,6 +97,8 @@ class AppService
             // Build request body - start with minimal required fields
             $requestBody = [];
 
+            $appTypeLower = strtolower($appType ?? '');
+
             // According to BTCPay API docs, request body uses 'appName' field
             // Map 'name' from config to 'appName' for API
             if (isset($config['name'])) {
@@ -107,6 +109,16 @@ class AppService
             // Filter out 'name' since we use 'appName', and 'appType' since it's in URL
             foreach ($config as $key => $value) {
                 if ($key !== 'appType' && $key !== 'name') {
+                    if (($key === 'perks' || $key === 'items' || $key === 'template') && ($appTypeLower === 'crowdfund' || $appTypeLower === 'pointofsale')) {
+                        if (is_array($value)) {
+                            $value = self::normalizeBtcPayAppItemPriceTypes($value);
+                        } elseif (is_string($value) && $value !== '') {
+                            $decoded = json_decode($value, true);
+                            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                $value = json_encode(self::normalizeBtcPayAppItemPriceTypes($decoded));
+                            }
+                        }
+                    }
                     $requestBody[$key] = $value;
                 }
             }
@@ -120,7 +132,6 @@ class AppService
             // According to BTCPay API docs:
             // - PointOfSale -> POST /api/v1/stores/{storeId}/apps/pos
             // - Other types may follow similar pattern: /api/v1/stores/{storeId}/apps/{type}
-            $appTypeLower = strtolower($appType);
             $appTypeMap = [
                 'pointofsale' => 'pos',
                 'crowdfund' => 'crowdfund',
@@ -378,46 +389,47 @@ class AppService
         }
 
         try {
-            // Map app types to endpoint paths
+            // Typed Greenfield PUT routes exist only for PoS and Crowdfund (see GreenfieldAppsController). No Apps_PutPaymentButtonApp.
             $appTypeMap = [
                 'pointofsale' => 'pos',
                 'crowdfund' => 'crowdfund',
-                'paymentbutton' => 'paymentbutton',
             ];
+
+            $appTypeLower = $appType ? strtolower($appType) : '';
+
+            // GreenfieldAppsController has no PUT for Payment Button (only POS + Crowdfund typed routes).
+            if ($appTypeLower === 'paymentbutton') {
+                throw new \App\Services\BtcPay\Exceptions\BtcPayException(
+                    'Greenfield API has no PUT endpoint for Payment Button apps.',
+                    400
+                );
+            }
+
+            // Crowdfund PUT expects a full CrowdfundAppRequest; merge delta onto current app so omitted fields are not cleared.
+            if ($appTypeLower === 'crowdfund') {
+                $existing = $this->getApp($storeId, $appId, $appType, $userApiKey);
+                $config = array_replace_recursive($existing, $config);
+            }
 
             $endpoints = [];
 
-            // For Crowdfund apps, BTCPay API may not support update at all
-            // Try PATCH first (if supported), then POST as fallback
-            // PUT endpoints return 404/405, so we can't use them
-            if ($appType && strtolower($appType) === 'crowdfund') {
-                // Try PATCH endpoint first (if supported by BTCPay version)
-                $endpoints[] = "/api/v1/stores/{$storeId}/apps/{$appId}";
-                // Fallback to POST endpoint with id in body
-                $endpoints[] = "/api/v1/stores/{$storeId}/apps/crowdfund";
-            } else {
-                // For other app types (PoS, etc.), try app-specific endpoint first
-                if ($appType) {
-                    $appTypeLower = strtolower($appType);
-                    $endpointPath = $appTypeMap[$appTypeLower] ?? $appTypeLower;
-                    $endpoints[] = "/api/v1/apps/{$endpointPath}/{$appId}";
-                }
-
-                // Fallback to store-based endpoint
-                $endpoints[] = "/api/v1/stores/{$storeId}/apps/{$appId}";
+            if ($appType && isset($appTypeMap[$appTypeLower])) {
+                $endpointPath = $appTypeMap[$appTypeLower];
+                $endpoints[] = "/api/v1/apps/{$endpointPath}/{$appId}";
             }
+
+            $endpoints[] = "/api/v1/stores/{$storeId}/apps/{$appId}";
 
             // Filter and map config to only include fields that BTCPay API accepts
             // According to BTCPay API docs and response structure:
             // - tipText (not tipsMessage)
-            // - request (not requestCustomerData) - format: "email", "name", or "email,name"
+            // - PoS: request (not requestCustomerData). Crowdfund: formId (Greenfield CrowdfundBaseData).
             // - template must be valid JSON string or array (not double-encoded)
 
             $filteredConfig = [];
 
-            // For Crowdfund, add id and appType to config (BTCPay uses create endpoint for updates too)
-            // Note: appType should match the app type being created/updated
-            // IMPORTANT: For updates, id must be present and correct, otherwise BTCPay will create a new app
+            // For Crowdfund PUT body (CrowdfundAppRequest / AppBaseData), include id, storeId, appType.
+            // IMPORTANT: id must match the app being updated.
             if ($appType && strtolower($appType) === 'crowdfund') {
                 // CRITICAL: Remove id from config MULTIPLE TIMES to ensure it's gone
                 // Config may contain old/wrong id from previous BTCPay responses or DB merge
@@ -438,7 +450,7 @@ class AppService
                     $filteredConfig['id'] = $appId;
                     // CRITICAL: Also add storeId to body (required by BTCPay API for POST requests)
                     $filteredConfig['storeId'] = $storeId;
-                    Log::info('Setting Crowdfund id and storeId from parameters (required for POST update)', [
+                    Log::info('Setting Crowdfund id and storeId from parameters (PUT body)', [
                         'id' => $appId,
                         'storeId' => $storeId,
                         'appId_parameter_type' => gettype($appId),
@@ -466,7 +478,7 @@ class AppService
                 // Direct mapping for fields that match BTCPay API exactly
                 $directFields = [
                     'appName',
-                    'displayTitle',
+                    'title',
                     'tagline',
                     'description',
                     'targetAmount',
@@ -499,6 +511,9 @@ class AppService
                         } else {
                             $filteredConfig['sounds'] = [reset($filteredSounds)];
                         }
+                    } elseif (is_array($sounds) && $sounds === []) {
+                        // Explicit empty list (e.g. sounds disabled in UI) — do not inject default
+                        $filteredConfig['sounds'] = [];
                     } else {
                         // If sounds is empty or not array, set default
                         $filteredConfig['sounds'] = ['https://github.com/ClaudiuHKS/AdvancedQuakeSounds/tree/master/sound/AQS/doublekill.wav'];
@@ -567,6 +582,11 @@ class AppService
                     }
                 }
 
+                // SPA uses displayTitle; Greenfield Crowdfund expects title (CrowdfundBaseData).
+                if (array_key_exists('displayTitle', $config)) {
+                    $filteredConfig['title'] = $config['displayTitle'];
+                }
+
                 // Handle boolean fields separately to ensure proper type
                 foreach ($booleanFields as $field) {
                     if (array_key_exists($field, $config)) {
@@ -579,7 +599,6 @@ class AppService
 
                 // Map our internal field names to BTCPay API field names
                 $fieldMapping = [
-                    'featuredImageUrl' => 'mainImageUrl',
                     'makePublic' => 'enabled',
                     'currency' => 'targetCurrency',
                     'enableSounds' => 'soundsEnabled',
@@ -602,17 +621,24 @@ class AppService
                     }
                 }
 
+                // featuredImageUrl is client-only; merged config may still carry mainImageUrl from BTCPay.
+                if (array_key_exists('featuredImageUrl', $config)) {
+                    $v = $config['featuredImageUrl'];
+                    $filteredConfig['mainImageUrl'] = ($v === null || $v === '') ? '' : (string) $v;
+                }
+
                 // Handle perks/items field - BTCPay expects 'perksTemplate' as JSON string (not array)
+                // AppItemPriceType is only Fixed, Topup, Minimum — normalize UI "Free" to Fixed + 0.
                 $perksSource = $config['perks'] ?? $config['items'] ?? $config['template'] ?? null;
                 if ($perksSource !== null && $perksSource !== '') {
                     if (is_array($perksSource)) {
-                        // It's an array, encode it to JSON string
-                        $filteredConfig['perksTemplate'] = json_encode($perksSource);
+                        $filteredConfig['perksTemplate'] = json_encode(self::normalizeBtcPayAppItemPriceTypes($perksSource));
                     } elseif (is_string($perksSource)) {
                         // If it's a string, check if it's valid JSON
                         $decoded = json_decode($perksSource, true);
-                        if (json_last_error() === JSON_ERROR_NONE) {
-                            // It's valid JSON string, use it as is
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                            $filteredConfig['perksTemplate'] = json_encode(self::normalizeBtcPayAppItemPriceTypes($decoded));
+                        } elseif (json_last_error() === JSON_ERROR_NONE) {
                             $filteredConfig['perksTemplate'] = $perksSource;
                         } else {
                             // Invalid JSON string, try to encode it as array
@@ -652,6 +678,9 @@ class AppService
                     if (isset($contributions['displayValue'])) {
                         $filteredConfig['displayPerksValue'] = (bool) $contributions['displayValue'];
                     }
+                    if (isset($contributions['noAdditionalAfterTarget'])) {
+                        $filteredConfig['enforceTargetAmount'] = (bool) $contributions['noAdditionalAfterTarget'];
+                    }
                 }
 
                 // Handle resetEveryAmount and resetEvery from root config or crowdfundBehavior
@@ -675,14 +704,6 @@ class AppService
                     $resetEveryValue = $config['resetEvery'];
                     if (is_string($resetEveryValue) && in_array($resetEveryValue, ['Day', 'Hour', 'Week', 'Month', 'Year', 'Never'])) {
                         $resetEvery = $resetEveryValue;
-                    }
-                }
-
-                // Handle crowdfund behavior - only set resetEvery if not already set and if countAllInvoices is set
-                if ($resetEvery === null && isset($config['crowdfundBehavior']) && is_array($config['crowdfundBehavior'])) {
-                    if (isset($config['crowdfundBehavior']['countAllInvoices'])) {
-                        // If countAllInvoices is true, resetEvery should be 'Never', otherwise 'Day'
-                        $resetEvery = (bool) $config['crowdfundBehavior']['countAllInvoices'] ? 'Never' : 'Day';
                     }
                 }
 
@@ -731,12 +752,19 @@ class AppService
                     }
                 }
 
-                // Handle checkout settings - BTCPay uses 'request' field (required, must be empty string, not null)
-                // Set request field - use empty string if not specified, or 'email' if requested
-                $filteredConfig['request'] = '';
+                // Crowdfund: Greenfield uses formId (BTCPay UI: same keys as FormDataService — "", Email, Address, or a store form UUID).
+                // Never persist formId as ""; that value hits a BTCPay code path with a null Form and NREs in the crowdfund UI.
                 if (isset($config['checkout']) && is_array($config['checkout'])) {
-                    if (isset($config['checkout']['requestContributorData']) && (bool) $config['checkout']['requestContributorData']) {
-                        $filteredConfig['request'] = 'email';
+                    if (array_key_exists('formId', $config['checkout'])) {
+                        $v = $config['checkout']['formId'];
+                        if ($v === null || $v === '' || (is_string($v) && trim($v) === '')) {
+                            $filteredConfig['formId'] = null;
+                        } else {
+                            $filteredConfig['formId'] = is_string($v) ? trim($v) : (string) $v;
+                        }
+                    } elseif (array_key_exists('requestContributorData', $config['checkout'])
+                        && !(bool) $config['checkout']['requestContributorData']) {
+                        $filteredConfig['formId'] = null;
                     }
                 }
 
@@ -780,9 +808,6 @@ class AppService
                     }
                 }
 
-                // Remove 'request' field if it exists (BTCPay uses 'formId' instead, or doesn't need it)
-                unset($filteredConfig['request']);
-
                 // Handle advanced settings
                 if (isset($config['advanced']) && is_array($config['advanced'])) {
                     $advanced = $config['advanced'];
@@ -803,6 +828,13 @@ class AppService
                     }
                     if (isset($advanced['callbackNotificationUrl'])) {
                         $filteredConfig['notificationUrl'] = $advanced['callbackNotificationUrl'];
+                    }
+                }
+
+                if (array_key_exists('formId', $filteredConfig)) {
+                    $fid = $filteredConfig['formId'];
+                    if ($fid === null || $fid === '' || (is_string($fid) && trim($fid) === '')) {
+                        $filteredConfig['formId'] = null;
                     }
                 }
             } else {
@@ -868,8 +900,9 @@ class AppService
                         if (is_string($template)) {
                             // Try to decode to check if it's valid JSON
                             $decoded = json_decode($template, true);
-                            if (json_last_error() === JSON_ERROR_NONE) {
-                                // It's valid JSON string, use it as is
+                            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                $filteredConfig['template'] = json_encode(self::normalizeBtcPayAppItemPriceTypes($decoded));
+                            } elseif (json_last_error() === JSON_ERROR_NONE) {
                                 $filteredConfig['template'] = $template;
                             } else {
                                 // Invalid JSON string, try to encode it as array
@@ -879,8 +912,7 @@ class AppService
                                 $filteredConfig['template'] = json_encode([$template]); // Wrap in array
                             }
                         } elseif (is_array($template)) {
-                            // It's an array, encode it to JSON string
-                            $filteredConfig['template'] = json_encode($template);
+                            $filteredConfig['template'] = json_encode(self::normalizeBtcPayAppItemPriceTypes($template));
                         }
                     }
                 }
@@ -894,7 +926,7 @@ class AppService
                 'store_id' => $storeId,
                 'app_id' => $appId,
                 'app_type' => $appType,
-                'method' => 'PUT', // Always use PUT for updates (POST creates new apps)
+                'method' => 'PUT',
                 'endpoints' => $endpoints,
                 'full_urls' => array_map(function ($ep) use ($baseUrl, $storeId, $appId) {
                     return rtrim($baseUrl, '/') . str_replace(['{$storeId}', '{$appId}'], [$storeId, $appId], $ep);
@@ -903,18 +935,11 @@ class AppService
                 'filtered_config' => $filteredConfig,
             ]);
 
-            // Try endpoints in order
-            // For Crowdfund: use POST with id and storeId in body (PUT doesn't work - 404/405)
-            // For other app types: use PUT method
+            // Try endpoints in order (PUT on app-specific URL first, then store-scoped fallback).
             $lastException = null;
 
             foreach ($endpoints as $endpointIndex => $endpoint) {
                 try {
-                    // For Crowdfund, use POST (PUT doesn't work - returns 404/405)
-                    // For other app types, use PUT
-                    $isCrowdfund = ($appType && strtolower($appType) === 'crowdfund');
-                    $method = $isCrowdfund ? 'POST' : 'PUT';
-
                     // Replace placeholders in endpoint
                     $endpointWithId = str_replace('{$appId}', $appId, $endpoint);
                     $endpointWithId = str_replace('{$storeId}', $storeId, $endpointWithId);
@@ -922,7 +947,7 @@ class AppService
                     Log::info('Attempting app update', [
                         'endpoint' => $endpoint,
                         'endpoint_with_id' => $endpointWithId,
-                        'method' => $method,
+                        'method' => 'PUT',
                         'app_id' => $appId,
                         'app_type' => $appType,
                         'config_has_id' => isset($filteredConfig['id']),
@@ -930,30 +955,8 @@ class AppService
                         'config_appType' => $filteredConfig['appType'] ?? null,
                     ]);
 
-                    if ($isCrowdfund) {
-                        // Crowdfund: Try PATCH first (if supported), then POST as fallback
-                        // Note: BTCPay API may not support update for Crowdfund apps
-                        try {
-                            $response = $this->client->patch($endpointWithId, $filteredConfig);
-                            $method = 'PATCH';
-                        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
-                            // If PATCH fails, try POST (though it may create new app)
-                            if ($e->getStatusCode() === 405 || $e->getStatusCode() === 404) {
-                                Log::warning('PATCH failed for Crowdfund, trying POST', [
-                                    'endpoint' => $endpointWithId,
-                                    'status_code' => $e->getStatusCode(),
-                                ]);
-                                $response = $this->client->post($endpointWithId, $filteredConfig);
-                                $method = 'POST';
-                            } else {
-                                throw $e;
-                            }
-                        }
-                    } else {
-                        // Other app types: PUT
-                        $response = $this->client->put($endpointWithId, $filteredConfig);
-                        $method = 'PUT';
-                    }
+                    $response = $this->client->put($endpointWithId, $filteredConfig);
+                    $method = 'PUT';
 
                     // Verify response contains the same ID (to detect if new app was created)
                     $responseId = $response['id'] ?? $response['appId'] ?? $response['app_id'] ?? null;
@@ -978,10 +981,6 @@ class AppService
                 } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
                     $lastException = $e;
 
-                    // Method used for logging
-                    $isCrowdfund = ($appType && strtolower($appType) === 'crowdfund');
-                    $methodUsed = $isCrowdfund ? 'POST' : 'PUT';
-
                     // Get status code - use getStatusCode() method, not getCode()
                     $statusCode = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : $e->getCode();
 
@@ -992,7 +991,7 @@ class AppService
                             'app_id' => $appId,
                             'app_type' => $appType,
                             'endpoint' => $endpoint,
-                            'method' => $methodUsed,
+                            'method' => 'PUT',
                             'status_code' => $statusCode,
                             'config_sent' => $filteredConfig,
                             'error_message' => $e->getMessage(),
@@ -1005,7 +1004,7 @@ class AppService
                     // Log all errors for debugging
                     Log::info('BTCPay app update endpoint failed', [
                         'endpoint' => $endpoint,
-                        'method' => $methodUsed,
+                        'method' => 'PUT',
                         'status_code' => $statusCode,
                         'status_code_from_getCode' => $e->getCode(),
                         'status_code_from_getStatusCode' => method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 'N/A',
@@ -1016,12 +1015,11 @@ class AppService
                     ]);
 
                     // If 404 (Not Found) or 405 (Method Not Allowed), try next endpoint
-                    // This allows us to fall back from PUT to POST if PUT is not supported
                     if (($statusCode === 404 || $statusCode === 405)) {
                         if ($endpointIndex + 1 < count($endpoints)) {
                             Log::info('BTCPay endpoint failed with 404/405, trying next endpoint', [
                                 'failed_endpoint' => $endpoint,
-                                'failed_method' => $methodUsed,
+                                'failed_method' => 'PUT',
                                 'status_code' => $statusCode,
                                 'remaining_endpoints' => count($endpoints) - ($endpointIndex + 1),
                                 'next_endpoint' => $endpoints[$endpointIndex + 1] ?? null,
@@ -1030,7 +1028,7 @@ class AppService
                         } else {
                             Log::warning('BTCPay endpoint failed with 404/405, but no more endpoints to try', [
                                 'failed_endpoint' => $endpoint,
-                                'failed_method' => $methodUsed,
+                                'failed_method' => 'PUT',
                                 'status_code' => $statusCode,
                             ]);
                         }
@@ -1166,6 +1164,34 @@ class AppService
                 $this->client->setApiKey($originalApiKey);
             }
         }
+    }
+
+    /**
+     * BTCPay Greenfield AppItem uses AppItemPriceType: Fixed, Topup, Minimum only (no "Free").
+     * Satflux UI offers "Free" — map to Fixed with price 0 before sending JSON to BTCPay.
+     *
+     * @param  mixed  $node  Decoded template or perks array (may be nested)
+     * @return mixed
+     */
+    private static function normalizeBtcPayAppItemPriceTypes($node)
+    {
+        if (! is_array($node)) {
+            return $node;
+        }
+        if (isset($node['priceType'])) {
+            $pt = $node['priceType'];
+            if ($pt === 'Free' || $pt === 'free') {
+                $node['priceType'] = 'Fixed';
+                if (! array_key_exists('price', $node) || $node['price'] === null || $node['price'] === '') {
+                    $node['price'] = '0';
+                }
+            }
+        }
+        foreach ($node as $key => $value) {
+            $node[$key] = self::normalizeBtcPayAppItemPriceTypes($value);
+        }
+
+        return $node;
     }
 }
 

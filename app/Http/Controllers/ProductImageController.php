@@ -2,14 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\BtcPay\BtcPayFileUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 class ProductImageController extends Controller
 {
+    public function __construct(
+        protected BtcPayFileUploadService $btcPayFileUploadService
+    ) {}
+
     /**
-     * Upload a product image.
+     * Upload a product / PoS / crowdfund perk image.
+     * Uses BTCPay Server Files API (same as ticket images) so files persist on BTCPay, not Satflux local disk.
      */
     public function upload(Request $request, \App\Models\Store $store)
     {
@@ -25,35 +30,23 @@ class ProductImageController extends Controller
         ]);
 
         try {
-            // Store file in public storage
-            $file = $request->file('image');
-            $path = $file->store('products', 'public');
+            $data = $this->btcPayFileUploadService->uploadForStore($request->file('image'), $store);
 
-            // Generate public URL - use absolute URL for BTCPay compatibility
-            $relativeUrl = Storage::disk('public')->url($path);
-            
-            // Convert to absolute URL if relative
-            if (str_starts_with($relativeUrl, '/')) {
-                $baseUrl = rtrim(config('app.url', env('APP_URL', 'http://localhost')), '/');
-                $url = $baseUrl . $relativeUrl;
-            } else {
-                $url = $relativeUrl;
-            }
-
-            Log::info('Product image uploaded', [
+            Log::info('Product image uploaded (BTCPay Files API)', [
                 'store_id' => $store->id,
                 'user_id' => $user->id,
-                'path' => $path,
-                'url' => $url,
-                'relative_url' => $relativeUrl,
+                'file_id' => $data['id'],
+                'storage_name' => $data['storage_name'],
+                'url' => $data['url'],
             ]);
 
             return response()->json([
                 'message' => 'Image uploaded successfully',
                 'data' => [
-                    'url' => $url,
-                    'image_url' => $url, // Alias for compatibility
-                    'path' => $path,
+                    'url' => $data['url'],
+                    'image_url' => $data['image_url'],
+                    'file_id' => $data['id'],
+                    'storage_name' => $data['storage_name'],
                 ],
             ]);
         } catch (\Exception $e) {
@@ -63,7 +56,7 @@ class ProductImageController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
-            return response()->json(['message' => 'Failed to upload image: ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'Failed to upload image: '.$e->getMessage()], 500);
         }
     }
 }

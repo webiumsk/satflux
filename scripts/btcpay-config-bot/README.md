@@ -33,6 +33,8 @@ npm run poll:once                  # one poll cycle
 
 Install Chromium for Playwright: `npx playwright install chromium` (also runs on `npm install` via `postinstall`).
 
+**Host OS libs:** On minimal Linux servers, Chromium may exit with `libnspr4.so: cannot open shared object file` (or similar). Run from this directory: `npx playwright install-deps chromium` (see [docs/btcpay-config-bot.md](../../docs/btcpay-config-bot.md)).
+
 ## Other scripts in `/scripts`
 
 | Script | Notes |

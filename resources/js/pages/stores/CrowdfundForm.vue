@@ -5,10 +5,12 @@
     <form id="crowdfund-form" @submit.prevent="handleSubmit" class="space-y-6">
       <!-- General Information -->
       <div
-        class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
+        class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700"
       >
         <div class="p-6 md:p-8 space-y-6">
-          <h2 class="text-xl font-bold text-white mb-4">General Information</h2>
+          <h2 class="text-xl font-bold text-white mb-4">
+            {{ t("stores.crowdfund_general_section") }}
+          </h2>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -16,7 +18,8 @@
                 for="appName"
                 class="block text-sm font-medium text-gray-300 mb-1"
               >
-                App Name <span class="text-red-400">*</span>
+                {{ t("stores.crowdfund_app_name") }}
+                <span class="text-red-400">*</span>
               </label>
               <input
                 id="appName"
@@ -32,7 +35,8 @@
                 for="displayTitle"
                 class="block text-sm font-medium text-gray-300 mb-1"
               >
-                Display Title <span class="text-red-400">*</span>
+                {{ t("stores.crowdfund_display_title") }}
+                <span class="text-red-400">*</span>
               </label>
               <input
                 id="displayTitle"
@@ -49,7 +53,7 @@
               for="tagline"
               class="block text-sm font-medium text-gray-300 mb-1"
             >
-              Tagline
+              {{ t("stores.crowdfund_tagline") }}
             </label>
             <input
               id="tagline"
@@ -61,26 +65,56 @@
 
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-2">
-              Featured Image URL
+              {{ t("stores.crowdfund_featured_image_label") }}
             </label>
+            <input
+              ref="featuredImageFileInput"
+              type="file"
+              accept="image/*"
+              class="hidden"
+              @change="handleFeaturedImageFileChange"
+            />
             <div class="flex gap-3">
               <input
+                id="crowdfund-featured-image-url"
                 v-model="form.featuredImageUrl"
                 type="text"
-                placeholder="https://example.com/image.jpg"
+                :placeholder="t('stores.crowdfund_placeholder_image_url')"
                 class="flex-1 block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />
               <button
                 type="button"
-                @click="handleBrowseImage"
-                class="px-4 py-2 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 hover:text-white transition-all hover:scale-105 shadow-sm"
+                :disabled="saving || !store?.id"
+                @click="handleBrowseFeaturedImage"
+                class="px-4 py-2 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 hover:text-white transition-all hover:scale-105 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Browse...
+                {{
+                  pendingFeaturedImageFile
+                    ? t("stores.featured_image_pending_save")
+                    : t("stores.browse_image")
+                }}
               </button>
             </div>
             <p class="mt-1 text-xs text-gray-500">
-              Image displayed on the crowdfund page header.
+              {{ t("stores.featured_image_help") }}
             </p>
+            <div
+              v-if="form.featuredImageUrl"
+              class="mt-3 flex flex-wrap items-start gap-3"
+            >
+              <img
+                :src="form.featuredImageUrl"
+                alt=""
+                class="max-h-36 max-w-full rounded-lg border border-gray-600 object-contain bg-gray-900"
+              />
+              <button
+                type="button"
+                class="text-sm font-medium text-red-400 hover:text-red-300"
+                @click="clearFeaturedImage"
+              >
+                {{ t("stores.featured_image_remove") }}
+              </button>
+            </div>
           </div>
 
           <div
@@ -97,10 +131,10 @@
                 for="makePublic"
                 class="block text-sm font-medium text-white cursor-pointer select-none"
               >
-                Make Crowdfund Public
+                {{ t("stores.crowdfund_make_public") }}
               </label>
               <p class="text-gray-400 text-xs mt-0.5">
-                The crowdfund will be visible to anyone.
+                {{ t("stores.crowdfund_make_public_hint") }}
               </p>
             </div>
           </div>
@@ -110,7 +144,8 @@
               for="description"
               class="block text-sm font-medium text-gray-300 mb-1"
             >
-              Description <span class="text-red-400">*</span>
+              {{ t("stores.crowdfund_description") }}
+              <span class="text-red-400">*</span>
             </label>
             <textarea
               id="description"
@@ -125,7 +160,9 @@
         <!-- Goal Section -->
 
         <div class="p-6 md:p-8 space-y-6">
-          <h2 class="text-xl font-bold text-white mb-4">Goal</h2>
+          <h2 class="text-xl font-bold text-white mb-4">
+            {{ t("stores.crowdfund_goal_section") }}
+          </h2>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -133,7 +170,7 @@
                 for="targetAmount"
                 class="block text-sm font-medium text-gray-300 mb-1"
               >
-                Target Amount
+                {{ t("stores.crowdfund_target_amount") }}
               </label>
               <input
                 id="targetAmount"
@@ -150,13 +187,17 @@
                 for="currency"
                 class="block text-sm font-medium text-gray-300 mb-1"
               >
-                Currency
+                {{ t("stores.crowdfund_currency") }}
               </label>
               <Select
                 id="currency"
                 v-model="form.currency"
                 :options="currencyOptions"
-                :placeholder="`Use store default (${store?.default_currency || 'EUR'})`"
+                :placeholder="
+                  t('stores.crowdfund_use_store_default', {
+                    currency: store?.default_currency || 'EUR',
+                  })
+                "
               />
             </div>
           </div>
@@ -167,13 +208,13 @@
                 for="startDate"
                 class="block text-sm font-medium text-gray-300 mb-1"
               >
-                Start date
+                {{ t("stores.crowdfund_start_date") }}
               </label>
               <DatePicker
                 id="startDate"
                 v-model="form.startDate"
                 type="datetime"
-                placeholder="Select start date..."
+                :placeholder="t('stores.crowdfund_placeholder_start')"
               />
             </div>
 
@@ -182,13 +223,13 @@
                 for="endDate"
                 class="block text-sm font-medium text-gray-300 mb-1"
               >
-                End date
+                {{ t("stores.crowdfund_end_date") }}
               </label>
               <DatePicker
                 id="endDate"
                 v-model="form.endDate"
                 type="datetime"
-                placeholder="No end date set"
+                :placeholder="t('stores.crowdfund_placeholder_end')"
                 position="right"
               />
             </div>
@@ -208,11 +249,10 @@
                     for="recurringGoal"
                     class="block text-sm font-medium text-white select-none cursor-pointer"
                   >
-                    Recurring Goal
+                    {{ t("stores.crowdfund_recurring_goal") }}
                   </label>
                   <p class="text-gray-400 text-xs mt-0.5">
-                    Reset goal after a specific period of time, based on your
-                    crowdfund's start date.
+                    {{ t("stores.crowdfund_recurring_hint") }}
                   </p>
                 </div>
               </div>
@@ -226,7 +266,7 @@
                     for="resetEveryAmount"
                     class="block text-sm font-medium text-gray-300 whitespace-nowrap"
                   >
-                    Reset goal every
+                    {{ t("stores.crowdfund_reset_every") }}
                   </label>
                   <input
                     id="resetEveryAmount"
@@ -255,7 +295,9 @@
           <div
             class="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
           >
-            <h2 class="text-xl font-bold text-white">Perks</h2>
+            <h2 class="text-xl font-bold text-white">
+              {{ t("stores.crowdfund_perks_section") }}
+            </h2>
             <div
               class="flex bg-gray-700/50 rounded-lg p-1 self-start sm:self-auto"
             >
@@ -269,7 +311,7 @@
                     : 'text-gray-400 hover:text-white hover:bg-gray-600/50',
                 ]"
               >
-                Editor
+                {{ t("stores.crowdfund_view_editor") }}
               </button>
               <button
                 type="button"
@@ -281,7 +323,7 @@
                     : 'text-gray-400 hover:text-white hover:bg-gray-600/50',
                 ]"
               >
-                Code
+                {{ t("stores.crowdfund_view_code") }}
               </button>
             </div>
           </div>
@@ -300,8 +342,8 @@
                     class="w-16 h-16 bg-gray-800 rounded-lg flex items-center justify-center flex-shrink-0 border border-gray-700 group-hover:border-indigo-500/30 transition-colors"
                   >
                     <img
-                      v-if="perk.imageUrl"
-                      :src="perk.imageUrl"
+                      v-if="perkImageDisplayUrl(perk)"
+                      :src="perkImageDisplayUrl(perk)"
                       :alt="perk.title"
                       class="w-full h-full object-cover rounded-lg"
                     />
@@ -322,11 +364,12 @@
                   </div>
                   <div class="flex-1 min-w-0">
                     <h3 class="font-bold text-white truncate pr-6">
-                      {{ perk.title || "Custom" }}
+                      {{ perk.title || t("stores.crowdfund_perk_custom") }}
                     </h3>
                     <p class="text-sm text-indigo-400 font-medium mt-1">
                       <span v-if="perk.priceType === 'Minimum'"
-                        >Min. {{ perk.price || 0 }}
+                        >{{ t("stores.crowdfund_min") }}
+                        {{ perk.price || 0 }}
                         {{
                           form.currency || store?.default_currency || "EUR"
                         }}</span
@@ -349,7 +392,7 @@
                   <button
                     @click.stop="removePerk(index)"
                     class="absolute top-2 right-2 p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                    title="Remove Perk"
+                    :title="t('stores.crowdfund_remove_perk_title')"
                   >
                     <svg
                       class="w-4 h-4"
@@ -391,7 +434,9 @@
                     />
                   </svg>
                 </div>
-                <span class="text-sm font-medium text-gray-300">Add Perk</span>
+                <span class="text-sm font-medium text-gray-300">{{
+                  t("stores.crowdfund_add_perk")
+                }}</span>
               </button>
             </div>
           </div>
@@ -402,7 +447,7 @@
               for="perksJson"
               class="block text-sm font-medium text-gray-300 mb-2"
             >
-              JSON Editor
+              {{ t("stores.crowdfund_json_editor") }}
             </label>
             <textarea
               id="perksJson"
@@ -412,7 +457,7 @@
               @blur="parsePerksJson"
             ></textarea>
             <p class="mt-2 text-xs text-gray-500">
-              Edit raw JSON configuration for perks.
+              {{ t("stores.crowdfund_perks_json_hint") }}
             </p>
           </div>
         </div>
@@ -507,7 +552,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
@@ -518,6 +563,7 @@ import PerkEditDrawer from "../../components/stores/PerkEditDrawer.vue";
 import AdditionalOptions from "../../components/stores/AdditionalOptions.vue";
 import DatePicker from "../../components/ui/DatePicker.vue";
 import Select from "../../components/ui/Select.vue";
+import api from "../../services/api";
 
 const props = defineProps<{
   app: any;
@@ -555,7 +601,8 @@ const form = ref({
     countAllInvoices: false,
   },
   checkout: {
-    requestContributorData: false,
+    /** BTCPay FormId: "" | "Email" | "Address" | custom form UUID */
+    formId: "",
   },
   advanced: {
     htmlLanguage: "",
@@ -563,6 +610,9 @@ const form = ref({
     enableSounds: false,
     enableAnimations: false,
     enableDiscussion: false,
+    soundsText: "",
+    animationColorsText: "",
+    disqusShortname: "",
     callbackNotificationUrl: "",
   },
 });
@@ -572,10 +622,13 @@ const perksJson = ref("[]");
 const perksViewMode = ref<"editor" | "code">("editor");
 const showPerkDrawer = ref(false);
 const editingPerkIndex = ref<number | null>(null);
+const featuredImageFileInput = ref<HTMLInputElement | null>(null);
+/** Selected file; uploaded only when the user saves the crowdfund form (avoids orphaned storage files). */
+const pendingFeaturedImageFile = ref<File | null>(null);
 const saving = ref(false);
 const error = ref("");
 const success = ref("");
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const authStore = useAuthStore();
 const flashStore = useFlashStore();
 const appsStore = useAppsStore();
@@ -593,21 +646,29 @@ const canArchiveApp = computed(
     userRole.value === "support",
 );
 
-const currencyOptions = computed(() => [
-  {
-    label: `Use store default (${props.store?.default_currency || "EUR"})`,
-    value: "",
-  },
-  ...currencies.map((c) => ({ label: `${c.code} - ${c.name}`, value: c.code })),
-]);
+const currencyOptions = computed(() => {
+  locale.value;
+  return [
+    {
+      label: t("stores.crowdfund_use_store_default", {
+        currency: props.store?.default_currency || "EUR",
+      }),
+      value: "",
+    },
+    ...currencies.map((c) => ({ label: `${c.code} - ${c.name}`, value: c.code })),
+  ];
+});
 
-const unitOptions = [
-  { label: "Hour", value: "Hour" },
-  { label: "Day", value: "Day" },
-  { label: "Week", value: "Week" },
-  { label: "Month", value: "Month" },
-  { label: "Year", value: "Year" },
-];
+const unitOptions = computed(() => {
+  locale.value;
+  return [
+    { label: t("stores.crowdfund_time_hour"), value: "Hour" },
+    { label: t("stores.crowdfund_time_day"), value: "Day" },
+    { label: t("stores.crowdfund_time_week"), value: "Week" },
+    { label: t("stores.crowdfund_time_month"), value: "Month" },
+    { label: t("stores.crowdfund_time_year"), value: "Year" },
+  ];
+});
 
 const currentPerk = computed(() => {
   if (editingPerkIndex.value !== null && perks.value[editingPerkIndex.value]) {
@@ -616,14 +677,25 @@ const currentPerk = computed(() => {
   return null;
 });
 
-function handleBrowseImage() {
-  // TODO: Implement image upload if needed globally or just use URL
-  // Ideally this would trigger a media picker or specialized upload modal
-  // For now we just focus the input
-  const input = document.querySelector(
-    'input[placeholder="https://example.com/image.jpg"]',
-  ) as HTMLInputElement;
-  if (input) input.focus();
+function handleBrowseFeaturedImage() {
+  if (!props.store?.id) {
+    flashStore.error(t("stores.featured_image_need_store"));
+    return;
+  }
+  featuredImageFileInput.value?.click();
+}
+
+function handleFeaturedImageFileChange(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  target.value = "";
+  if (!file || !props.store?.id) return;
+  pendingFeaturedImageFile.value = file;
+}
+
+function clearFeaturedImage() {
+  form.value.featuredImageUrl = "";
+  pendingFeaturedImageFile.value = null;
 }
 
 function addPerk() {
@@ -648,7 +720,7 @@ function handlePerkSave(perk: any) {
 }
 
 function removePerk(index: number) {
-  if (confirm("Are you sure you want to remove this perk?")) {
+  if (confirm(t("stores.crowdfund_remove_perk_confirm"))) {
     perks.value.splice(index, 1);
     updatePerksJson();
   }
@@ -669,6 +741,16 @@ function parsePerksJson() {
   }
 }
 
+/** BTCPay perks use `image` (URL). The grid previously read `imageUrl`, so images never showed. */
+function perkImageDisplayUrl(perk: any): string {
+  if (!perk) return "";
+  const fromImage =
+    typeof perk.image === "string" ? perk.image.trim() : "";
+  const fromAlt =
+    typeof perk.imageUrl === "string" ? perk.imageUrl.trim() : "";
+  return fromImage || fromAlt;
+}
+
 async function handleSubmit() {
   saving.value = true;
   error.value = "";
@@ -681,7 +763,7 @@ async function handleSubmit() {
         const parsed = JSON.parse(perksJson.value);
         perks.value = Array.isArray(parsed) ? parsed : [];
       } catch (e) {
-        flashStore.error("Invalid JSON in perks code view");
+        flashStore.error(t("stores.crowdfund_invalid_perks_json"));
         error.value = "";
         saving.value = false;
         return;
@@ -705,6 +787,16 @@ async function handleSubmit() {
           }
         }
 
+        const rawPriceType = p.priceType || "Minimum";
+        let outPriceType = rawPriceType;
+        let outPrice: string | null =
+          rawPriceType !== "Topup" ? String(p.price ?? 1) : null;
+        // Legacy UI / BTCPay: "Free" is not a valid enum — treat as Fixed @ 0.
+        if (rawPriceType === "Free") {
+          outPriceType = "Fixed";
+          outPrice = "0";
+        }
+
         return {
           id: p.id || generatePerkId(p.title),
           title: p.title,
@@ -716,13 +808,11 @@ async function handleSubmit() {
                 .map((c: string) => c.trim())
                 .filter((c: string) => c)
             : null,
-          image: p.image || null,
-          priceType: p.priceType || "Minimum",
-          price:
-            p.priceType !== "Free" && p.priceType !== "Topup"
-              ? String(p.price || 1)
-              : null,
-          buyButtonText: p.buyButtonText || "Podporiť",
+          image: p.image || p.imageUrl || null,
+          priceType: outPriceType,
+          price: outPrice,
+          buyButtonText:
+            p.buyButtonText || t("stores.crowdfund_perk_buy_placeholder"),
           inventory: inventory,
           taxRate:
             p.taxRate !== null && p.taxRate !== undefined && p.taxRate !== ""
@@ -748,6 +838,41 @@ async function handleSubmit() {
       }
     }
 
+    if (pendingFeaturedImageFile.value && props.store?.id) {
+      const formData = new FormData();
+      formData.append("image", pendingFeaturedImageFile.value);
+      try {
+        const response = await api.post(
+          `/stores/${props.store.id}/products/image`,
+          formData,
+        );
+        const url =
+          response.data?.data?.url || response.data?.data?.image_url || "";
+        if (!url) {
+          flashStore.error(t("stores.featured_image_upload_failed"));
+          saving.value = false;
+          return;
+        }
+        form.value.featuredImageUrl = url;
+        pendingFeaturedImageFile.value = null;
+      } catch (err: any) {
+        const msg =
+          err.response?.data?.message ||
+          err.message ||
+          t("stores.featured_image_upload_failed");
+        flashStore.error(msg);
+        saving.value = false;
+        return;
+      }
+    }
+
+    const adv = form.value.advanced;
+    const multilineToLines = (s: string) =>
+      s
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+
     // Build config object
     const config: any = {
       appName: form.value.appName,
@@ -767,6 +892,13 @@ async function handleSubmit() {
       crowdfundBehavior: form.value.crowdfundBehavior,
       checkout: form.value.checkout,
       advanced: form.value.advanced,
+      sounds: adv.enableSounds ? multilineToLines(adv.soundsText || "") : [],
+      animationColors: adv.enableAnimations
+        ? multilineToLines(adv.animationColorsText || "")
+        : [],
+      disqusShortname: adv.enableDiscussion
+        ? String(adv.disqusShortname || "").trim()
+        : "",
     };
 
     // Handle recurring goal settings
@@ -828,20 +960,28 @@ function generatePerkId(title: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-onMounted(() => {
-  // Load existing data
+function applyCrowdfundConfigFromProps() {
+  // Load existing data (BTCPay uses mainImageUrl; we send featuredImageUrl → mainImageUrl on save)
   if (props.app?.config) {
     const config = props.app.config;
     form.value.appName = config.appName || props.app.name || "";
     form.value.displayTitle = config.displayTitle || config.title || "";
     form.value.tagline = config.tagline || "";
     form.value.featuredImageUrl =
-      config.featuredImageUrl || config.featuredImage || "";
+      config.featuredImageUrl ||
+      config.featuredImage ||
+      config.mainImageUrl ||
+      "";
     form.value.makePublic =
-      config.makePublic !== undefined ? config.makePublic : true;
+      config.makePublic !== undefined
+        ? config.makePublic
+        : config.enabled !== undefined
+          ? config.enabled
+          : true;
     form.value.description = config.description || "";
     form.value.targetAmount = config.targetAmount || config.goal || "";
-    form.value.currency = config.currency || "";
+    form.value.currency =
+      config.currency || config.targetCurrency || "";
 
     // Handle dates - convert from UNIX timestamp or ISO string to datetime-local format
     if (config.startDate) {
@@ -895,45 +1035,89 @@ onMounted(() => {
         displayRanking: config.contributions.displayRanking || false,
         displayValue: config.contributions.displayValue || false,
         noAdditionalAfterTarget:
-          config.contributions.noAdditionalAfterTarget || false,
+          config.contributions.noAdditionalAfterTarget ??
+          config.enforceTargetAmount ??
+          false,
       };
+    } else if (config.enforceTargetAmount !== undefined) {
+      form.value.contributions.noAdditionalAfterTarget =
+        !!config.enforceTargetAmount;
     }
     if (config.crowdfundBehavior) {
       form.value.crowdfundBehavior = {
         countAllInvoices: config.crowdfundBehavior.countAllInvoices || false,
       };
     }
-    if (config.checkout) {
-      form.value.checkout = {
-        requestContributorData: config.checkout.requestContributorData || false,
-      };
+    {
+      const fromApi = config.formId ?? config.checkout?.formId;
+      let fid =
+        fromApi === null || fromApi === undefined ? "" : String(fromApi);
+      if (!fid && config.checkout?.requestContributorData === true) {
+        fid = "Email";
+      }
+      form.value.checkout = { formId: fid };
     }
-    if (config.advanced) {
+    {
+      const adv = (config.advanced || {}) as Record<string, unknown>;
+      const soundsArr = config.sounds;
+      const colorsArr = config.animationColors;
+      const soundsText =
+        Array.isArray(soundsArr)
+          ? soundsArr.map((s: unknown) => String(s)).join("\n")
+          : typeof adv.soundsText === "string"
+            ? adv.soundsText
+            : "";
+      const animationColorsText =
+        Array.isArray(colorsArr)
+          ? colorsArr.map((c: unknown) => String(c)).join("\n")
+          : typeof adv.animationColorsText === "string"
+            ? adv.animationColorsText
+            : "";
       form.value.advanced = {
-        htmlLanguage: config.advanced.htmlLanguage || config.htmlLang || "",
-        htmlMetaTags: config.advanced.htmlMetaTags || config.htmlMetaTags || "",
+        htmlLanguage:
+          (adv.htmlLanguage as string) || (config.htmlLang as string) || "",
+        htmlMetaTags:
+          (adv.htmlMetaTags as string) ||
+          (config.htmlMetaTags as string) ||
+          "",
         enableSounds:
-          config.advanced.enableSounds !== undefined
-            ? config.advanced.enableSounds
-            : false,
+          config.soundsEnabled !== undefined
+            ? Boolean(config.soundsEnabled)
+            : adv.enableSounds !== undefined
+              ? Boolean(adv.enableSounds)
+              : false,
         enableAnimations:
-          config.advanced.enableAnimations !== undefined
-            ? config.advanced.enableAnimations
-            : false,
+          config.animationsEnabled !== undefined
+            ? Boolean(config.animationsEnabled)
+            : adv.enableAnimations !== undefined
+              ? Boolean(adv.enableAnimations)
+              : false,
         enableDiscussion:
-          config.advanced.enableDiscussion !== undefined
-            ? config.advanced.enableDiscussion
-            : false,
+          config.disqusEnabled !== undefined
+            ? Boolean(config.disqusEnabled)
+            : adv.enableDiscussion !== undefined
+              ? Boolean(adv.enableDiscussion)
+              : false,
+        soundsText,
+        animationColorsText,
+        disqusShortname:
+          (config.disqusShortname as string) ||
+          (adv.disqusShortname as string) ||
+          "",
         callbackNotificationUrl:
-          config.advanced.callbackNotificationUrl ||
-          config.notificationUrl ||
+          (adv.callbackNotificationUrl as string) ||
+          (config.notificationUrl as string) ||
           "",
       };
     }
 
     // Load perks - could be in 'perks', 'items', or 'template' field
     let perksArray: any[] = [];
-    const perksSource = config.perks || config.items || config.template;
+    const perksSource =
+      config.perks ||
+      config.items ||
+      config.template ||
+      config.perksTemplate;
 
     if (perksSource) {
       if (Array.isArray(perksSource)) {
@@ -963,16 +1147,32 @@ onMounted(() => {
           }
         }
 
+        const apiPt = p.priceType || "Minimum";
+        const parsedPrice =
+          p.price !== null && p.price !== undefined && p.price !== ""
+            ? parseFloat(String(p.price))
+            : NaN;
+        let displayPriceType = apiPt === "Free" ? "Fixed" : apiPt;
+        let displayPrice: number;
+        if (apiPt === "Topup") {
+          displayPrice = 0;
+        } else {
+          displayPrice = !Number.isNaN(parsedPrice) ? parsedPrice : 1;
+        }
+
         return {
           id: p.id || "",
           title: p.title || "",
-          priceType: p.priceType || "Minimum",
-          price: p.price ? parseFloat(String(p.price)) : 1,
+          priceType: displayPriceType,
+          price: displayPrice,
           taxRate:
             p.taxRate !== null && p.taxRate !== undefined && p.taxRate !== ""
               ? parseFloat(String(p.taxRate))
               : null,
-          image: p.image || "",
+          image:
+            (typeof p.image === "string" && p.image) ||
+            (typeof p.imageUrl === "string" && p.imageUrl) ||
+            "",
           description: p.description || "",
           categories: p.categories
             ? Array.isArray(p.categories)
@@ -980,7 +1180,8 @@ onMounted(() => {
               : String(p.categories)
             : null,
           inventory: inventory,
-          buyButtonText: p.buyButtonText || "Podporiť",
+          buyButtonText:
+            p.buyButtonText || t("stores.crowdfund_perk_buy_placeholder"),
           disabled: p.disabled !== undefined ? p.disabled : false,
         };
       });
@@ -993,7 +1194,18 @@ onMounted(() => {
     perks.value = [];
     updatePerksJson();
   }
+}
+
+onMounted(() => {
+  applyCrowdfundConfigFromProps();
 });
+
+watch(
+  () => props.app?.id,
+  () => {
+    applyCrowdfundConfigFromProps();
+  },
+);
 
 // Expose saving, error, and success state to parent component
 defineExpose({

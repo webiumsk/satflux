@@ -79,6 +79,7 @@
             </svg>
           </button>
           <button
+            v-if="showSaveButton"
             type="submit"
             :form="formId"
             :disabled="saving"
@@ -121,22 +122,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, inject } from "vue";
+import { ref, inject, withDefaults } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import UrlQrModal from "../ui/UrlQrModal.vue";
 
-const props = defineProps<{
-  title: string;
-  subtitle?: string;
-  appUrl?: string;
-  openButtonText: string;
-  formId: string;
-  saveButtonText: string;
-  savingText?: string;
-  saving: boolean;
-  qrModalTitle?: string;
-}>();
+withDefaults(
+  defineProps<{
+    title: string;
+    subtitle?: string;
+    appUrl?: string;
+    openButtonText: string;
+    formId?: string;
+    saveButtonText: string;
+    savingText?: string;
+    saving: boolean;
+    qrModalTitle?: string;
+    /** When false, hide the primary Save/Submit control (e.g. Pay Button: copy-only, no form submit). */
+    showSaveButton?: boolean;
+  }>(),
+  {
+    formId: "",
+    showSaveButton: true,
+  },
+);
 
 const { t } = useI18n();
 const isInertia = inject<boolean>("inertia", false);

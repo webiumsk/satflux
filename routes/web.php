@@ -21,8 +21,9 @@ Route::get('/export-files/{path}', function (Request $request, string $path) {
     return (new ServeFile($disk, is_array($config) ? $config : [], app()->isProduction()))($request, $path);
 })->where('path', '.*');
 
+// Must use the "public" disk (storage/app/public). "local" points at app/private — wrong for /storage/products/… uploads.
 Route::get('/storage/{path}', function (Request $request, string $path) {
-    $disk = 'local';
+    $disk = 'public';
     $config = config("filesystems.disks.{$disk}");
 
     return (new ServeFile($disk, is_array($config) ? $config : [], app()->isProduction()))($request, $path);

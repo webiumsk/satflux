@@ -31,7 +31,11 @@
       <!-- Drawer header -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700 bg-gray-800/50">
         <h2 class="text-xl font-bold text-white">
-          {{ editingPerk ? 'Edit Item' : 'Add Item' }}
+          {{
+            editingPerk
+              ? t("stores.crowdfund_perk_header_edit")
+              : t("stores.crowdfund_perk_header_add")
+          }}
         </h2>
         <button
           type="button"
@@ -50,7 +54,8 @@
           <!-- Title -->
           <div>
             <label for="product-title" class="block text-sm font-medium text-gray-300 mb-1">
-              Title <span class="text-red-400">*</span>
+              {{ t("stores.crowdfund_perk_title") }}
+              <span class="text-red-400">*</span>
             </label>
             <input
               id="product-title"
@@ -65,7 +70,8 @@
           <!-- ID -->
           <div>
             <label for="product-id" class="block text-sm font-medium text-gray-300 mb-1">
-              ID <span class="text-red-400">*</span>
+              {{ t("stores.crowdfund_perk_id") }}
+              <span class="text-red-400">*</span>
             </label>
             <input
               id="product-id"
@@ -73,28 +79,30 @@
               type="text"
               required
               class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-              placeholder="Auto-generated from title"
+              :placeholder="t('stores.crowdfund_perk_id_placeholder')"
             />
-            <p class="mt-1 text-xs text-gray-500">Leave blank to generate ID from title.</p>
+            <p class="mt-1 text-xs text-gray-500">
+              {{ t("stores.crowdfund_perk_id_hint") }}
+            </p>
           </div>
 
           <!-- Price Type and Price -->
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label for="product-price-type" class="block text-sm font-medium text-gray-300 mb-1">
-                Price Type
+                {{ t("stores.crowdfund_perk_price_type") }}
               </label>
               <Select
                 id="product-price-type"
                 v-model="localProduct.priceType"
                 :options="priceTypeOptions"
-                placeholder="Select Price Type"
+                :placeholder="t('stores.crowdfund_perk_price_type_placeholder')"
               />
             </div>
 
-            <div v-if="localProduct.priceType !== 'Free' && localProduct.priceType !== 'Topup'">
+            <div v-if="localProduct.priceType !== 'Topup'">
               <label for="product-price" class="block text-sm font-medium text-gray-300 mb-1">
-                Amount
+                {{ t("stores.crowdfund_perk_amount") }}
               </label>
               <div class="flex rounded-xl shadow-sm">
                 <input
@@ -115,7 +123,7 @@
           <!-- Tax rate -->
           <div>
             <label for="product-tax-rate" class="block text-sm font-medium text-gray-300 mb-1">
-              Tax rate
+              {{ t("stores.crowdfund_perk_tax_rate") }}
             </label>
             <div class="flex rounded-xl shadow-sm">
               <input
@@ -137,7 +145,7 @@
           <!-- Image Upload/URL -->
           <div>
             <label for="product-image-url" class="block text-sm font-medium text-gray-300 mb-1">
-              Image Url
+              {{ t("stores.crowdfund_perk_image_url") }}
             </label>
             <div class="space-y-3">
               <!-- Image preview -->
@@ -155,7 +163,7 @@
                   @click="clearImage"
                   class="text-sm text-red-400 hover:text-red-300 font-medium transition-colors"
                 >
-                  Remove image
+                  {{ t("stores.crowdfund_perk_remove_image") }}
                 </button>
               </div>
               
@@ -173,12 +181,14 @@
                   @click="fileInput?.click()"
                   class="px-4 py-2 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 hover:text-white transition-all hover:scale-105 shadow-sm"
                 >
-                  Browse...
+                  {{ t("stores.crowdfund_perk_browse") }}
                 </button>
                 <div class="text-sm text-gray-400 truncate flex-1">
-                    <span v-if="!selectedFile && !localProduct.image">No file selected</span>
+                    <span v-if="!selectedFile && !localProduct.image">{{
+                      t("stores.crowdfund_perk_no_file")
+                    }}</span>
                     <span v-else-if="selectedFile">{{ selectedFile.name }}</span>
-                    <span v-else>Using URL</span>
+                    <span v-else>{{ t("stores.crowdfund_perk_using_url") }}</span>
                 </div>
                 
                  <!-- Upload button (if file selected) -->
@@ -193,7 +203,11 @@
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    {{ uploading ? 'Uploading...' : 'Upload' }}
+                    {{
+                      uploading
+                        ? t("stores.crowdfund_perk_uploading")
+                        : t("stores.crowdfund_perk_upload")
+                    }}
                 </button>
               </div>
 
@@ -203,7 +217,7 @@
                 v-model="localProduct.image"
                 type="text"
                 class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm"
-                placeholder="https://example.com/image.jpg"
+                :placeholder="t('stores.crowdfund_placeholder_image_url')"
               />
             </div>
           </div>
@@ -211,7 +225,7 @@
           <!-- Description -->
           <div>
             <label for="product-description" class="block text-sm font-medium text-gray-300 mb-1">
-              Description
+              {{ t("stores.crowdfund_perk_description") }}
             </label>
             <textarea
               id="product-description"
@@ -224,22 +238,24 @@
           <!-- Categories -->
           <div>
             <label for="product-categories" class="block text-sm font-medium text-gray-300 mb-1">
-              Categories
+              {{ t("stores.crowdfund_perk_categories") }}
             </label>
             <input
               id="product-categories"
               v-model="localProduct.categories"
               type="text"
               class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-              placeholder="Comma-separated categories"
+              :placeholder="t('stores.crowdfund_perk_categories_placeholder')"
             />
-            <p class="mt-1 text-xs text-gray-500">Easily filter the different items using categories, used only in the product list with cart.</p>
+            <p class="mt-1 text-xs text-gray-500">
+              {{ t("stores.crowdfund_perk_categories_hint") }}
+            </p>
           </div>
 
           <!-- Inventory -->
           <div>
             <label for="product-inventory" class="block text-sm font-medium text-gray-300 mb-1">
-              Inventory
+              {{ t("stores.crowdfund_perk_inventory") }}
             </label>
             <input
               id="product-inventory"
@@ -247,23 +263,25 @@
               type="number"
               min="0"
               class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-              placeholder="Leave blank for unlimited, 0 = out of stock"
+              :placeholder="t('stores.crowdfund_perk_inventory_placeholder')"
               @input="handleInventoryInput"
             />
-            <p class="mt-1 text-xs text-gray-500">Leave blank to not use this feature.</p>
+            <p class="mt-1 text-xs text-gray-500">
+              {{ t("stores.crowdfund_perk_inventory_hint") }}
+            </p>
           </div>
 
           <!-- Buy Button Text -->
           <div>
             <label for="product-buy-button-text" class="block text-sm font-medium text-gray-300 mb-1">
-              Buy Button Text
+              {{ t("stores.crowdfund_perk_buy_button") }}
             </label>
             <input
               id="product-buy-button-text"
               v-model="localProduct.buyButtonText"
               type="text"
               class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-              placeholder="Buy now"
+              :placeholder="t('stores.crowdfund_perk_buy_placeholder')"
             />
           </div>
 
@@ -278,7 +296,7 @@
               class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-700 rounded transition-colors"
             />
             <label for="product-enabled" class="ml-3 block text-sm font-medium text-white select-none cursor-pointer">
-              Enable Perk
+              {{ t("stores.crowdfund_perk_enable_checkbox") }}
             </label>
           </div>
         </div>
@@ -291,14 +309,14 @@
           @click="handleClose"
           class="px-4 py-2 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700 transition-colors"
         >
-          Cancel
+          {{ t("common.cancel") }}
         </button>
         <button
           type="button"
           @click="handleSave"
           class="px-6 py-2 border border-transparent rounded-xl shadow-lg shadow-indigo-600/20 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all hover:scale-105"
         >
-          Save
+          {{ t("common.save") }}
         </button>
       </div>
     </div>
@@ -306,9 +324,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
-import api from '../../services/api';
-import Select from '../ui/Select.vue';
+import { ref, watch, computed } from "vue";
+import { useI18n } from "vue-i18n";
+import api from "../../services/api";
+import Select from "../ui/Select.vue";
+
+const { t, locale } = useI18n();
 
 const props = defineProps<{
   isOpen: boolean;
@@ -327,12 +348,15 @@ const selectedFile = ref<File | null>(null);
 const imagePreview = ref<string | null>(null);
 const uploading = ref(false);
 
-const priceTypeOptions = [
-  { label: 'Minimum', value: 'Minimum' },
-  { label: 'Fixed', value: 'Fixed' },
-  { label: 'Any amount', value: 'Topup' },
-  { label: 'Free', value: 'Free' },
-];
+const priceTypeOptions = computed(() => {
+  locale.value;
+  // BTCPay AppItemPriceType: Fixed, Topup, Minimum only (no separate "Free" in API).
+  return [
+    { label: t("stores.crowdfund_price_minimum"), value: "Minimum" },
+    { label: t("stores.crowdfund_price_fixed"), value: "Fixed" },
+    { label: t("stores.crowdfund_price_any_amount"), value: "Topup" },
+  ];
+});
 
 const editingPerk = computed(() => props.perk !== null);
 
@@ -346,7 +370,7 @@ const localProduct = ref<any>({
   description: '',
   categories: null,
   inventory: null,
-  buyButtonText: 'Podporiť', // Default for perks
+  buyButtonText: t("stores.crowdfund_perk_buy_placeholder"),
   disabled: false,
 });
 
@@ -368,7 +392,7 @@ watch(() => props.perk, (newPerk) => {
       description: '',
       categories: null,
       inventory: null,
-      buyButtonText: 'Podporiť', // Default for perks
+      buyButtonText: t("stores.crowdfund_perk_buy_placeholder"),
       disabled: false,
     };
     imagePreview.value = null;
@@ -427,7 +451,10 @@ async function uploadImage() {
     }
   } catch (error: any) {
     console.error('Failed to upload image:', error);
-    alert(error.response?.data?.message || 'Failed to upload image');
+    alert(
+      error.response?.data?.message ||
+        t("stores.crowdfund_perk_upload_failed"),
+    );
   } finally {
     uploading.value = false;
   }
@@ -468,7 +495,7 @@ function handleClose() {
 
 function handleSave() {
   if (!localProduct.value.title) {
-    alert('Title is required');
+    alert(t("stores.crowdfund_perk_title_required"));
     return;
   }
   
