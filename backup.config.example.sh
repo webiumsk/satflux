@@ -18,3 +18,9 @@ BACKUP_ENV=true
 REMOTE_STORAGE_TYPE=""
 # REMOTE_STORAGE_TYPE="s3"
 # REMOTE_STORAGE_PATH="s3://your-bucket-name/backups"
+
+# Optional AWS CLI settings (helpful for cron jobs with minimal environment)
+# AWS_CLI_BIN="/usr/bin/aws"
+# AWS_PROFILE="default"
+# AWS_ENV_FILE="/opt/satflux/.aws-backup.env"
+# REMOTE_RETENTION_DAYS=30

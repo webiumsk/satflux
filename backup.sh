@@ -21,6 +21,15 @@ if [ -f "backup.config.sh" ]; then
     source backup.config.sh
 fi
 
+# Cron often has a minimal PATH; include common locations for aws/docker binaries.
+export PATH="${PATH:-/usr/bin:/bin}:/usr/local/bin:/usr/sbin:/sbin"
+
+# Optional: load AWS env vars from file for cron context (AWS_ACCESS_KEY_ID, etc.)
+if [ -n "$AWS_ENV_FILE" ] && [ -f "$AWS_ENV_FILE" ]; then
+    # shellcheck disable=SC1090
+    source "$AWS_ENV_FILE"
+fi
+
 # Configuration - auto-detect which compose file is being used (standalone is default)
 if [ -z "$COMPOSE_FILE" ]; then
     if docker ps --format "{{.Names}}" 2>/dev/null | grep -q "^satflux_postgres_standalone$"; then
@@ -59,6 +68,7 @@ fi
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 RETENTION_DAYS="${RETENTION_DAYS:-7}"
 RETENTION_WEEKS="${RETENTION_WEEKS:-4}"
+REMOTE_RETENTION_DAYS="${REMOTE_RETENTION_DAYS:-30}"
 
 # Backup options (can be overridden by environment or config)
 BACKUP_REDIS="${BACKUP_REDIS:-false}"
@@ -112,6 +122,11 @@ log_info() {
     echo -e "${BLUE}INFO: $1${NC}"
 }
 
+# Function to log warning
+log_warning() {
+    echo -e "${YELLOW}WARNING: $1${NC}"
+}
+
 # Function to calculate checksum
 calculate_checksum() {
     local file="$1"
@@ -146,6 +161,67 @@ verify_backup() {
     fi
     
     return 0
+}
+
+# Prune remote S3 date folders older than configured retention.
+# Expected layout: s3://bucket/prefix/YYYY-MM-DD/...
+prune_s3_old_backups() {
+    local aws_cmd="$1"
+    local s3_bucket="$2"
+    local s3_prefix="$3"
+    local retention_days="$4"
+    local cutoff_epoch
+    local list_target
+    local profile_args=()
+
+    if [ -n "$AWS_PROFILE" ]; then
+        profile_args+=(--profile "$AWS_PROFILE")
+    fi
+
+    cutoff_epoch=$(date -d "-${retention_days} days" +%s 2>/dev/null || true)
+    if [ -z "$cutoff_epoch" ]; then
+        log_warning "Unable to compute remote retention cutoff; skipping remote pruning."
+        return 0
+    fi
+
+    if [ -n "$s3_prefix" ]; then
+        list_target="s3://${s3_bucket}/${s3_prefix}/"
+    else
+        list_target="s3://${s3_bucket}/"
+    fi
+
+    while IFS= read -r line; do
+        [ -z "$line" ] && continue
+        case "$line" in
+            PRE\ */)
+                folder_name=$(echo "$line" | awk '{print $2}' | sed 's#/$##')
+
+                # Only process date folders in YYYY-MM-DD format
+                if ! echo "$folder_name" | grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
+                    continue
+                fi
+
+                folder_epoch=$(date -d "$folder_name" +%s 2>/dev/null || true)
+                if [ -z "$folder_epoch" ]; then
+                    log_warning "Skipping remote folder with invalid date: $folder_name"
+                    continue
+                fi
+
+                if [ "$folder_epoch" -lt "$cutoff_epoch" ]; then
+                    if [ -n "$s3_prefix" ]; then
+                        delete_target="s3://${s3_bucket}/${s3_prefix}/${folder_name}/"
+                    else
+                        delete_target="s3://${s3_bucket}/${folder_name}/"
+                    fi
+
+                    log_info "Removing remote backup folder older than ${retention_days} days: ${delete_target}"
+                    "$aws_cmd" "${profile_args[@]}" s3 rm "$delete_target" --recursive >/dev/null 2>&1 || {
+                        log_warning "Failed to remove remote folder: $delete_target"
+                    }
+                fi
+                ;;
+        esac
+    done < <("$aws_cmd" "${profile_args[@]}" s3 ls "$list_target" 2>/dev/null || true)
 }
 
 echo -e "${GREEN}=== Starting satflux.io Backup ===${NC}"
@@ -384,16 +460,34 @@ chmod 600 "$METADATA_FILE" 2>/dev/null || true
 echo -e "${GREEN}✓ Metadata created: $METADATA_FILE${NC}"
 
 # Optional: Remote storage upload
+REMOTE_UPLOAD_SUCCESS=false
 if [ -n "$REMOTE_STORAGE_TYPE" ]; then
     echo -e "${YELLOW}Uploading to remote storage ($REMOTE_STORAGE_TYPE)...${NC}"
     
     case "$REMOTE_STORAGE_TYPE" in
         s3)
-            if command -v aws >/dev/null 2>&1; then
+            AWS_CMD="${AWS_CLI_BIN:-}"
+            if [ -z "$AWS_CMD" ]; then
+                if command -v aws >/dev/null 2>&1; then
+                    AWS_CMD="$(command -v aws)"
+                elif [ -x "/usr/local/bin/aws" ]; then
+                    AWS_CMD="/usr/local/bin/aws"
+                elif [ -x "/usr/bin/aws" ]; then
+                    AWS_CMD="/usr/bin/aws"
+                fi
+            fi
+
+            if [ -n "$AWS_CMD" ] && [ -x "$AWS_CMD" ]; then
+                AWS_PROFILE_ARGS=()
+                if [ -n "$AWS_PROFILE" ]; then
+                    AWS_PROFILE_ARGS+=(--profile "$AWS_PROFILE")
+                fi
+
                 # Verify AWS credentials are available
-                if ! aws sts get-caller-identity >/dev/null 2>&1; then
+                if ! "$AWS_CMD" "${AWS_PROFILE_ARGS[@]}" sts get-caller-identity >/dev/null 2>&1; then
                     log_error "AWS credentials not configured or invalid"
                     log_error "Run 'aws configure' or set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY"
+                    [ -n "$AWS_PROFILE" ] && log_error "Configured AWS_PROFILE=$AWS_PROFILE"
                     log_warning "Skipping S3 upload. Local backup completed successfully."
                 else
                     # Remove s3:// prefix if present and extract bucket and path
@@ -421,38 +515,40 @@ if [ -n "$REMOTE_STORAGE_TYPE" ]; then
                 # Track upload success
                 UPLOAD_SUCCESS=true
                 
-                aws s3 cp "$DB_BACKUP_FILE" "$S3_DB_PATH" || {
+                "$AWS_CMD" "${AWS_PROFILE_ARGS[@]}" s3 cp "$DB_BACKUP_FILE" "$S3_DB_PATH" || {
                     log_error "S3 upload failed for database"
                     UPLOAD_SUCCESS=false
                 }
                 
                 if [ -f "$FILES_BACKUP_FILE" ] && [ -n "$S3_FILES_PATH" ]; then
-                    aws s3 cp "$FILES_BACKUP_FILE" "$S3_FILES_PATH" || {
+                    "$AWS_CMD" "${AWS_PROFILE_ARGS[@]}" s3 cp "$FILES_BACKUP_FILE" "$S3_FILES_PATH" || {
                         log_error "S3 upload failed for files"
                         UPLOAD_SUCCESS=false
                     }
                 fi
                 
                 if [ -f "$REDIS_BACKUP_FILE" ] && [ -n "$S3_REDIS_PATH" ]; then
-                    aws s3 cp "$REDIS_BACKUP_FILE" "$S3_REDIS_PATH" || {
+                    "$AWS_CMD" "${AWS_PROFILE_ARGS[@]}" s3 cp "$REDIS_BACKUP_FILE" "$S3_REDIS_PATH" || {
                         log_error "S3 upload failed for redis"
                         UPLOAD_SUCCESS=false
                     }
                 fi
                 
-                aws s3 cp "$METADATA_FILE" "$S3_META_PATH" || {
+                "$AWS_CMD" "${AWS_PROFILE_ARGS[@]}" s3 cp "$METADATA_FILE" "$S3_META_PATH" || {
                     log_error "S3 upload failed for metadata"
                     UPLOAD_SUCCESS=false
                 }
                 
                     if [ "$UPLOAD_SUCCESS" = true ]; then
+                        REMOTE_UPLOAD_SUCCESS=true
                         echo -e "${GREEN}✓ Remote upload completed${NC}"
+                        prune_s3_old_backups "$AWS_CMD" "$S3_BUCKET" "$S3_PREFIX" "$REMOTE_RETENTION_DAYS"
                     else
                         log_warning "Some S3 uploads failed. Check AWS credentials and permissions."
                     fi
                 fi
             else
-                log_error "AWS CLI not found. Install it to use S3 storage."
+                log_error "AWS CLI not found. Install it or set AWS_CLI_BIN=/full/path/to/aws in backup.config.sh"
             fi
             ;;
         ftp|sftp)
@@ -462,6 +558,14 @@ if [ -n "$REMOTE_STORAGE_TYPE" ]; then
             log_error "Unknown remote storage type: $REMOTE_STORAGE_TYPE"
             ;;
     esac
+fi
+
+# If remote upload succeeded, remove local backup files from server.
+# Keep files locally when upload failed, so they can be retried manually.
+if [ "$REMOTE_UPLOAD_SUCCESS" = true ]; then
+    echo -e "${YELLOW}Remote upload successful, removing local backup files...${NC}"
+    rm -f "$DB_BACKUP_FILE" "$FILES_BACKUP_FILE" "$REDIS_BACKUP_FILE" "$METADATA_FILE" 2>/dev/null || true
+    echo -e "${GREEN}✓ Local backup files removed${NC}"
 fi
 
 # Cleanup old backups
