@@ -308,8 +308,10 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
 import Select from '../ui/Select.vue';
+import { useFlashStore } from '../../store/flash';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -322,6 +324,9 @@ const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'save', product: any): void;
 }>();
+
+const { t } = useI18n();
+const flash = useFlashStore();
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const selectedFile = ref<File | null>(null);
@@ -441,7 +446,9 @@ async function uploadImage() {
     }
   } catch (error: any) {
     console.error('Failed to upload image:', error);
-    alert(error.response?.data?.message || 'Failed to upload image');
+    flash.error(
+      error.response?.data?.message || t('stores.product_image_upload_failed')
+    );
   } finally {
     uploading.value = false;
   }
@@ -482,7 +489,7 @@ function handleClose() {
 
 function handleSave() {
   if (!localProduct.value.title) {
-    alert('Title is required');
+    flash.error(t('stores.product_title_required'));
     return;
   }
   

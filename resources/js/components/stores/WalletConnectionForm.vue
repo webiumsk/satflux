@@ -1605,7 +1605,7 @@
   <NostrAuthModal
     :open="showNostrRevealModal"
     mode="reveal"
-    :store-id="Number(storeId)"
+    :store-id="storeId"
     :confirm-purpose="nostrRevealConfirmPurpose"
     @close="showNostrRevealModal = false"
     @success="onNostrRevealSuccess"

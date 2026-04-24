@@ -100,6 +100,7 @@ class ExportController extends Controller
 
     /**
      * List all exports for the user.
+     * Store relation is an allowlist only: never return webhook/BTCPay internal ids.
      */
     public function all(Request $request)
     {
@@ -108,7 +109,23 @@ class ExportController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return response()->json(['data' => $exports]);
+        $data = $exports->map(function (Export $export) {
+            $payload = $export->toArray();
+            if ($export->store) {
+                $payload['store'] = $export->store->only([
+                    'id',
+                    'name',
+                    'default_currency',
+                    'timezone',
+                ]);
+            } else {
+                $payload['store'] = null;
+            }
+
+            return $payload;
+        })->values()->all();
+
+        return response()->json(['data' => $data]);
     }
 
     /**

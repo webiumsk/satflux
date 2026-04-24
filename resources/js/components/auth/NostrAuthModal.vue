@@ -166,7 +166,8 @@ const props = withDefaults(
     mode: 'login' | 'register' | 'link' | 'reveal';
     /** For reveal: after confirm, call this with connectionId to POST reveal with confirm_via_nostr */
     connectionId?: number;
-    storeId?: number;
+    /** Local store UUID (route /stores/{id}/...) */
+    storeId?: string;
     /** When reveal + storeId: wallet secret vs Cashu edit gate (no wallet_connections row). */
     confirmPurpose?: 'wallet_reveal' | 'cashu_edit';
   }>(),

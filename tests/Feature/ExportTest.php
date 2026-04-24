@@ -46,6 +46,36 @@ class ExportTest extends TestCase
         ]);
     }
 
+    public function test_get_all_exports_does_not_expose_sensitive_store_fields(): void
+    {
+        $store = Store::factory()->create([
+            'user_id' => $this->proUser->id,
+            'webhook_secret' => 'shh-secret',
+            'btcpay_webhook_id' => 'wh_123',
+        ]);
+        $export = Export::create([
+            'store_id' => $store->id,
+            'user_id' => $this->proUser->id,
+            'source' => Export::SOURCE_MANUAL,
+            'format' => 'standard',
+            'status' => 'finished',
+            'filters' => [],
+        ]);
+
+        Sanctum::actingAs($this->proUser);
+
+        $response = $this->getJson('/api/exports');
+
+        $response->assertStatus(200);
+        $storeJson = $response->json('data.0.store');
+        $this->assertIsArray($storeJson);
+        $this->assertArrayNotHasKey('webhook_secret', $storeJson);
+        $this->assertArrayNotHasKey('btcpay_store_id', $storeJson);
+        $this->assertArrayNotHasKey('btcpay_webhook_id', $storeJson);
+        $this->assertSame($store->id, $storeJson['id']);
+        $this->assertArrayHasKey('name', $storeJson);
+    }
+
     public function test_user_can_list_exports_for_store(): void
     {
         $user = User::factory()->create();
