@@ -19,16 +19,22 @@ class StoreAndApiKeyLimitTest extends TestCase
     {
         parent::setUp();
 
-        // Free plan: 1 store, 1 API key
-        SubscriptionPlan::create([
-            'name' => 'free',
-            'display_name' => 'Free',
-            'price_eur' => 0,
-            'max_stores' => 1,
-            'max_api_keys' => 1,
-            'features' => [],
-            'is_active' => true,
-        ]);
+        // Free plan: 1 store, 1 API key (code must be `free` for User::currentSubscriptionPlan())
+        SubscriptionPlan::query()->updateOrCreate(
+            ['code' => 'free'],
+            [
+                'name' => 'free',
+                'display_name' => 'Free',
+                'price_eur' => 0,
+                'billing_period' => 'year',
+                'max_stores' => 1,
+                'max_api_keys' => 1,
+                'max_ln_addresses' => 2,
+                'max_events' => 1,
+                'features' => [],
+                'is_active' => true,
+            ]
+        );
     }
 
     public function test_user_at_store_limit_receives_403_when_creating_store(): void
