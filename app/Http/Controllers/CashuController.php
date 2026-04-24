@@ -72,11 +72,7 @@ class CashuController extends Controller
 
         if ($wt === null || $wt === 'blink' || $wt === 'aqua_boltz') {
             return response()->json([
-                'data' => [
-                    'mint_url' => null,
-                    'lightning_address' => null,
-                    'enabled' => true,
-                ],
+                'data' => $this->emptyCashuSettingsPayload(),
             ]);
         }
 
@@ -87,11 +83,7 @@ class CashuController extends Controller
         $settings = $this->cashuService->getSettings($store->btcpay_store_id, $userApiKey);
 
         return response()->json([
-            'data' => [
-                'mint_url' => $settings['mintUrl'] ?? null,
-                'lightning_address' => $settings['lightningAddress'] ?? null,
-                'enabled' => $settings['enabled'] ?? true,
-            ],
+            'data' => $this->formatCashuSettingsForApi($settings),
         ]);
     }
 
@@ -112,15 +104,15 @@ class CashuController extends Controller
             'mint_url' => ['required', 'string', 'url', 'starts_with:https://'],
             'lightning_address' => ['required', 'string', 'regex:/^[^@]+@[^@]+$/'],
             'enabled' => ['sometimes', 'boolean'],
+            'unit' => ['sometimes', 'nullable', Rule::in(['sat', 'usd'])],
+            'trusted_mint_urls' => ['sometimes', 'nullable', 'string'],
+            'max_melt_fee_reserve_sats' => ['sometimes', 'nullable', 'integer', 'min:0'],
+            'max_melt_fee_reserve_percent_of_minted' => ['sometimes', 'nullable', 'numeric', 'between:0,100'],
         ]);
 
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
-        $payload = [
-            'mintUrl' => $request->mint_url,
-            'lightningAddress' => $request->lightning_address,
-            'enabled' => $request->boolean('enabled', true),
-        ];
+        $payload = $this->buildCashuMeltSettingsPayloadFromRequest($request);
 
         $updated = DB::transaction(function () use ($store, $payload, $userApiKey, $switchingFromLightning) {
             if ($switchingFromLightning) {
@@ -137,7 +129,8 @@ class CashuController extends Controller
 
         $store->refresh();
 
-        if ($payload['enabled'] ?? true) {
+        $enabledAfterSave = (bool) ($updated['enabled'] ?? true);
+        if ($enabledAfterSave) {
             try {
                 $this->lightningService->tryRemoveLightningCheckoutPaymentMethods(
                     $store->btcpay_store_id,
@@ -154,13 +147,15 @@ class CashuController extends Controller
 
         StoreChecklistService::ensureChecklistInitialized($store);
 
-        return response()->json([
-            'data' => [
-                'mint_url' => $updated['mintUrl'] ?? $request->mint_url,
-                'lightning_address' => $updated['lightningAddress'] ?? $request->lightning_address,
-                'enabled' => $updated['enabled'] ?? ($payload['enabled'] ?? true),
-            ],
-        ]);
+        $data = $this->formatCashuSettingsForApi($updated);
+        if (($data['mint_url'] ?? null) === null) {
+            $data['mint_url'] = $request->mint_url;
+        }
+        if (($data['lightning_address'] ?? null) === null) {
+            $data['lightning_address'] = $request->lightning_address;
+        }
+
+        return response()->json(['data' => $data]);
     }
 
     public function listPayments(Request $request, Store $store): \Illuminate\Http\JsonResponse
@@ -170,7 +165,7 @@ class CashuController extends Controller
         $request->validate([
             'limit' => ['sometimes', 'integer', 'min:1', 'max:100'],
             'offset' => ['sometimes', 'integer', 'min:0'],
-            'settlementState' => ['sometimes', 'string', Rule::in(['SETTLED', 'PENDING', 'FAILED'])],
+            'settlementState' => ['sometimes', 'string', Rule::in(['SETTLED', 'PENDING', 'FAILED', 'MELT_COMPLETE'])],
         ]);
 
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
@@ -250,6 +245,8 @@ class CashuController extends Controller
             $settlementState = 'SETTLED';
         }
 
+        $pollUrl = $item['mintQuotePollUrl'] ?? $item['mint_quote_poll_url'] ?? null;
+
         return [
             'quote_id' => $item['quoteId'] ?? $item['quote_id'] ?? null,
             'invoice_id' => $item['invoiceId'] ?? $item['invoice_id'] ?? null,
@@ -261,6 +258,85 @@ class CashuController extends Controller
             'created_at' => $item['createdAt'] ?? $item['created_at'] ?? null,
             'paid_at' => $item['paidAt'] ?? $item['paid_at'] ?? null,
             'settled_at' => $settledAt,
+            'mint_quote_poll_url' => is_string($pollUrl) && $pollUrl !== '' ? $pollUrl : null,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function emptyCashuSettingsPayload(): array
+    {
+        return [
+            'mint_url' => null,
+            'lightning_address' => null,
+            'enabled' => true,
+            'unit' => null,
+            'trusted_mint_urls' => null,
+            'max_melt_fee_reserve_sats' => null,
+            'max_melt_fee_reserve_percent_of_minted' => null,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings  BTCPay plugin response (camelCase)
+     * @return array<string, mixed>
+     */
+    private function formatCashuSettingsForApi(array $settings): array
+    {
+        return [
+            'mint_url' => $settings['mintUrl'] ?? null,
+            'lightning_address' => $settings['lightningAddress'] ?? null,
+            'enabled' => $settings['enabled'] ?? true,
+            'unit' => $settings['unit'] ?? null,
+            'trusted_mint_urls' => $settings['trustedMintUrls'] ?? null,
+            'max_melt_fee_reserve_sats' => $settings['maxMeltFeeReserveSats'] ?? null,
+            'max_melt_fee_reserve_percent_of_minted' => $settings['maxMeltFeeReservePercentOfMinted'] ?? null,
+        ];
+    }
+
+    /**
+     * Build BTCPay PUT body: only include optional keys when present on the request (merge semantics).
+     */
+    private function buildCashuMeltSettingsPayloadFromRequest(Request $request): array
+    {
+        $payload = [
+            'mintUrl' => $request->string('mint_url')->toString(),
+            'lightningAddress' => $request->string('lightning_address')->toString(),
+        ];
+
+        if ($request->exists('enabled')) {
+            $payload['enabled'] = $request->boolean('enabled');
+        }
+
+        if ($request->exists('unit')) {
+            $payload['unit'] = $request->input('unit');
+        }
+
+        if ($request->exists('trusted_mint_urls')) {
+            $raw = $request->input('trusted_mint_urls');
+            if ($raw === null) {
+                $payload['trustedMintUrls'] = null;
+            } else {
+                $s = is_string($raw) ? trim($raw) : '';
+                $payload['trustedMintUrls'] = $s === '' ? null : $s;
+            }
+        }
+
+        if ($request->exists('max_melt_fee_reserve_sats')) {
+            $v = $request->input('max_melt_fee_reserve_sats');
+            $payload['maxMeltFeeReserveSats'] = ($v === null || $v === '')
+                ? null
+                : (int) $v;
+        }
+
+        if ($request->exists('max_melt_fee_reserve_percent_of_minted')) {
+            $v = $request->input('max_melt_fee_reserve_percent_of_minted');
+            $payload['maxMeltFeeReservePercentOfMinted'] = ($v === null || $v === '')
+                ? null
+                : (float) $v;
+        }
+
+        return $payload;
     }
 }

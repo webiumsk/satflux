@@ -120,6 +120,11 @@
                   <th
                     class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
                   >
+                    {{ t("stores.cashu_col_mint_poll") }}
+                  </th>
+                  <th
+                    class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
+                  >
                     {{ t("stores.cashu_col_error") }}
                   </th>
                   <th
@@ -147,8 +152,36 @@
                   </td>
                   <td class="px-4 py-3">
                     <span :class="settlementPillClass(p.settlement_state)">
-                      {{ p.settlement_state || "-" }}
+                      {{ settlementStateLabel(p.settlement_state) }}
                     </span>
+                  </td>
+                  <td class="px-4 py-3 align-top">
+                    <div
+                      v-if="p.mint_quote_poll_url"
+                      class="flex flex-wrap items-center gap-2"
+                    >
+                      <a
+                        :href="p.mint_quote_poll_url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-indigo-400 hover:text-indigo-300 text-xs font-semibold underline"
+                      >
+                        {{ t("stores.cashu_mint_poll_link") }}
+                      </a>
+                      <button
+                        type="button"
+                        class="px-2 py-1 rounded-md text-xs font-medium border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+                        :title="t('common.copy_url')"
+                        @click="copyMintPollUrl(p)"
+                      >
+                        {{
+                          copiedPollQuoteId === p.quote_id
+                            ? t("common.copied")
+                            : t("common.copy_url")
+                        }}
+                      </button>
+                    </div>
+                    <span v-else class="text-gray-600 text-sm">-</span>
                   </td>
                   <td
                     class="px-4 py-3 break-all max-w-xs"
@@ -179,7 +212,7 @@
                 </tr>
                 <tr v-if="payments.items.length === 0">
                   <td
-                    colspan="5"
+                    colspan="6"
                     class="px-4 py-14 text-center text-gray-500 text-sm"
                   >
                     {{ t("stores.cashu_payments_empty") }}
@@ -238,7 +271,7 @@ const props = defineProps<{
   store: { id: string };
 }>();
 
-type SettlementState = "SETTLED" | "PENDING" | "FAILED";
+type SettlementState = "SETTLED" | "PENDING" | "FAILED" | "MELT_COMPLETE";
 
 interface CashuPayment {
   quote_id: string;
@@ -246,6 +279,7 @@ interface CashuPayment {
   amount_sats?: number | null;
   settlement_state?: SettlementState | string | null;
   settlement_error?: string | null;
+  mint_quote_poll_url?: string | null;
 }
 
 interface CashuPaymentsResponse {
@@ -261,9 +295,10 @@ const settlementState = ref<string>("");
 
 const settlementStateOptions = computed(() => [
   { label: t("stores.cashu_filter_all"), value: "" },
-  { label: "SETTLED", value: "SETTLED" },
-  { label: "PENDING", value: "PENDING" },
-  { label: "FAILED", value: "FAILED" },
+  { label: t("stores.cashu_settlement_option_settled"), value: "SETTLED" },
+  { label: t("stores.cashu_settlement_option_pending"), value: "PENDING" },
+  { label: t("stores.cashu_settlement_option_melt_complete"), value: "MELT_COMPLETE" },
+  { label: t("stores.cashu_settlement_option_failed"), value: "FAILED" },
 ]);
 
 const payments = ref<CashuPaymentsResponse>({
@@ -276,6 +311,8 @@ const payments = ref<CashuPaymentsResponse>({
 const loading = ref(false);
 const error = ref<string | null>(null);
 const retryingQuoteIds = ref<Set<string>>(new Set());
+const copiedPollQuoteId = ref<string | null>(null);
+let copyPollResetTimer: ReturnType<typeof setTimeout> | null = null;
 
 function storeId(): string {
   return props.store.id;
@@ -300,18 +337,53 @@ function formatAmount(amountSats?: number | null): string {
   return Math.round(n).toLocaleString();
 }
 
+function settlementStateLabel(state?: string | null): string {
+  const s = (state ?? "").toString().toUpperCase();
+  switch (s) {
+    case "SETTLED":
+      return t("stores.cashu_settlement_label_settled");
+    case "PENDING":
+      return t("stores.cashu_settlement_label_pending");
+    case "FAILED":
+      return t("stores.cashu_settlement_label_failed");
+    case "MELT_COMPLETE":
+      return t("stores.cashu_settlement_label_melt_complete");
+    default:
+      return state && String(state).trim() !== "" ? String(state) : "-";
+  }
+}
+
 function settlementPillClass(state?: string | null): string {
   const base =
-    "inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wide border";
+    "inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold border";
   switch (state) {
     case "SETTLED":
-      return `${base} bg-emerald-500/15 text-emerald-300 border-emerald-500/30`;
+      return `${base} uppercase tracking-wide bg-emerald-500/15 text-emerald-300 border-emerald-500/30`;
     case "PENDING":
-      return `${base} bg-gray-700/90 text-gray-300 border-gray-600`;
+      return `${base} uppercase tracking-wide bg-gray-700/90 text-gray-300 border-gray-600`;
+    case "MELT_COMPLETE":
+      return `${base} tracking-wide bg-amber-500/15 text-amber-200 border-amber-500/35`;
     case "FAILED":
-      return `${base} bg-red-500/15 text-red-300 border-red-500/35`;
+      return `${base} uppercase tracking-wide bg-red-500/15 text-red-300 border-red-500/35`;
     default:
-      return `${base} bg-gray-700/90 text-gray-400 border-gray-600`;
+      return `${base} uppercase tracking-wide bg-gray-700/90 text-gray-400 border-gray-600`;
+  }
+}
+
+async function copyMintPollUrl(p: CashuPayment) {
+  const quoteId = p.quote_id;
+  const url = p.mint_quote_poll_url;
+  if (!quoteId || !url) return;
+  try {
+    await navigator.clipboard.writeText(url);
+    copiedPollQuoteId.value = quoteId;
+    if (copyPollResetTimer) clearTimeout(copyPollResetTimer);
+    copyPollResetTimer = setTimeout(() => {
+      copiedPollQuoteId.value = null;
+      copyPollResetTimer = null;
+    }, 2000);
+  } catch {
+    error.value = t("common.copy_failed");
   }
 }
 

@@ -55,6 +55,45 @@
             {{ maskCashuLightningAddress(cashuForm.lightning_address) }}
           </p>
         </div>
+        <div>
+          <span
+            class="block text-gray-500 text-xs uppercase tracking-wider mb-1"
+            >{{ t("stores.cashu_trusted_mint_urls_label") }}</span
+          >
+          <p class="text-gray-200">
+            {{
+              (cashuForm.trusted_mint_urls || "").trim()
+                ? t("stores.cashu_summary_configured")
+                : "—"
+            }}
+          </p>
+        </div>
+        <div>
+          <span
+            class="block text-gray-500 text-xs uppercase tracking-wider mb-1"
+            >{{ t("stores.cashu_max_melt_fee_sats_label") }}</span
+          >
+          <p class="text-gray-200">
+            {{
+              cashuMaxMeltSatsDisplay === ""
+                ? "—"
+                : cashuMaxMeltSatsDisplay
+            }}
+          </p>
+        </div>
+        <div>
+          <span
+            class="block text-gray-500 text-xs uppercase tracking-wider mb-1"
+            >{{ t("stores.cashu_max_melt_fee_percent_label") }}</span
+          >
+          <p class="text-gray-200">
+            {{
+              cashuMaxMeltPercentDisplay === ""
+                ? "—"
+                : cashuMaxMeltPercentDisplay
+            }}
+          </p>
+        </div>
       </div>
       <div class="flex flex-wrap gap-3">
         <button
@@ -334,6 +373,86 @@
           >
             {{ cashuErrors.lightning_address }}
           </p>
+        </div>
+
+        <div>
+          <label
+            for="cashu-trusted-mints"
+            class="block text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider"
+          >
+            {{ t("stores.cashu_trusted_mint_urls_label") }}
+          </label>
+          <textarea
+            id="cashu-trusted-mints"
+            v-model="cashuForm.trusted_mint_urls"
+            rows="4"
+            class="block w-full rounded-xl border border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 font-mono"
+            :placeholder="t('stores.cashu_trusted_mint_urls_placeholder')"
+          />
+          <p class="mt-2 text-sm text-gray-500 leading-relaxed whitespace-pre-line">
+            {{ t("stores.cashu_trusted_mint_urls_hint") }}
+          </p>
+          <p
+            v-if="cashuErrors.trusted_mint_urls"
+            class="mt-2 text-sm text-red-400"
+          >
+            {{ cashuErrors.trusted_mint_urls }}
+          </p>
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-6">
+          <div>
+            <label
+              for="cashu-max-fee-sats"
+              class="block text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider"
+            >
+              {{ t("stores.cashu_max_melt_fee_sats_label") }}
+            </label>
+            <input
+              id="cashu-max-fee-sats"
+              v-model="cashuForm.max_melt_fee_reserve_sats"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              class="block w-full rounded-xl border border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 tabular-nums"
+              :placeholder="t('stores.cashu_optional_limit_placeholder')"
+            />
+            <p class="mt-2 text-sm text-gray-500">
+              {{ t("stores.cashu_max_melt_fee_sats_hint") }}
+            </p>
+            <p
+              v-if="cashuErrors.max_melt_fee_reserve_sats"
+              class="mt-2 text-sm text-red-400"
+            >
+              {{ cashuErrors.max_melt_fee_reserve_sats }}
+            </p>
+          </div>
+          <div>
+            <label
+              for="cashu-max-fee-pct"
+              class="block text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider"
+            >
+              {{ t("stores.cashu_max_melt_fee_percent_label") }}
+            </label>
+            <input
+              id="cashu-max-fee-pct"
+              v-model="cashuForm.max_melt_fee_reserve_percent_of_minted"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              class="block w-full rounded-xl border border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 tabular-nums"
+              :placeholder="t('stores.cashu_optional_limit_placeholder')"
+            />
+            <p class="mt-2 text-sm text-gray-500">
+              {{ t("stores.cashu_max_melt_fee_percent_hint") }}
+            </p>
+            <p
+              v-if="cashuErrors.max_melt_fee_reserve_percent_of_minted"
+              class="mt-2 text-sm text-red-400"
+            >
+              {{ cashuErrors.max_melt_fee_reserve_percent_of_minted }}
+            </p>
+          </div>
         </div>
 
         <div
@@ -1819,15 +1938,36 @@ const cashuErrors = reactive<Record<string, string>>({});
 const cashuForm = reactive({
   mint_url: DEFAULT_CASHU_MINT_URL,
   lightning_address: "",
-  enabled: true,
+  trusted_mint_urls: "",
+  max_melt_fee_reserve_sats: "",
+  max_melt_fee_reserve_percent_of_minted: "",
 });
 const cashuOriginal = reactive({
   mint_url: DEFAULT_CASHU_MINT_URL,
   lightning_address: "",
-  enabled: true,
+  trusted_mint_urls: "",
+  max_melt_fee_reserve_sats: "",
+  max_melt_fee_reserve_percent_of_minted: "",
 });
 
 const cashuBetaAccepted = ref(false);
+
+const cashuMaxMeltSatsDisplay = computed(() =>
+  String(cashuForm.max_melt_fee_reserve_sats ?? "").trim(),
+);
+const cashuMaxMeltPercentDisplay = computed(() =>
+  String(cashuForm.max_melt_fee_reserve_percent_of_minted ?? "").trim(),
+);
+
+function cashuOptionalNumberPayload(
+  val: string | number | null | undefined,
+): number | null {
+  if (val === null || val === undefined) return null;
+  const s = String(val).trim();
+  if (s === "") return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
 
 const canSaveCashu = computed(() => {
   const mintUrl = (cashuForm.mint_url ?? "").trim();
@@ -1868,11 +2008,24 @@ async function fetchCashuSettings() {
     const mintFromApi = (d.mint_url ?? "").trim();
     cashuForm.mint_url = mintFromApi || DEFAULT_CASHU_MINT_URL;
     cashuForm.lightning_address = d.lightning_address ?? "";
-    cashuForm.enabled = d.enabled ?? true;
+    cashuForm.trusted_mint_urls =
+      typeof d.trusted_mint_urls === "string" ? d.trusted_mint_urls : "";
+    cashuForm.max_melt_fee_reserve_sats =
+      d.max_melt_fee_reserve_sats != null && d.max_melt_fee_reserve_sats !== ""
+        ? String(d.max_melt_fee_reserve_sats)
+        : "";
+    cashuForm.max_melt_fee_reserve_percent_of_minted =
+      d.max_melt_fee_reserve_percent_of_minted != null &&
+      d.max_melt_fee_reserve_percent_of_minted !== ""
+        ? String(d.max_melt_fee_reserve_percent_of_minted)
+        : "";
 
     cashuOriginal.mint_url = cashuForm.mint_url;
     cashuOriginal.lightning_address = cashuForm.lightning_address;
-    cashuOriginal.enabled = cashuForm.enabled;
+    cashuOriginal.trusted_mint_urls = cashuForm.trusted_mint_urls;
+    cashuOriginal.max_melt_fee_reserve_sats = cashuForm.max_melt_fee_reserve_sats;
+    cashuOriginal.max_melt_fee_reserve_percent_of_minted =
+      cashuForm.max_melt_fee_reserve_percent_of_minted;
 
     if (
       props.walletType === "cashu" &&
@@ -1905,6 +2058,17 @@ async function handleSaveCashu() {
       mint_url: cashuForm.mint_url,
       lightning_address: cashuForm.lightning_address,
       enabled: true,
+      unit: "sat",
+      trusted_mint_urls:
+        (cashuForm.trusted_mint_urls ?? "").trim() === ""
+          ? null
+          : String(cashuForm.trusted_mint_urls).trim(),
+      max_melt_fee_reserve_sats: cashuOptionalNumberPayload(
+        cashuForm.max_melt_fee_reserve_sats,
+      ),
+      max_melt_fee_reserve_percent_of_minted: cashuOptionalNumberPayload(
+        cashuForm.max_melt_fee_reserve_percent_of_minted,
+      ),
     };
 
     const response = await api.put(
@@ -1916,11 +2080,24 @@ async function handleSaveCashu() {
     cashuForm.mint_url = d.mint_url ?? cashuForm.mint_url;
     cashuForm.lightning_address =
       d.lightning_address ?? cashuForm.lightning_address;
-    cashuForm.enabled = d.enabled ?? cashuForm.enabled;
+    cashuForm.trusted_mint_urls =
+      typeof d.trusted_mint_urls === "string" ? d.trusted_mint_urls : "";
+    cashuForm.max_melt_fee_reserve_sats =
+      d.max_melt_fee_reserve_sats != null && d.max_melt_fee_reserve_sats !== ""
+        ? String(d.max_melt_fee_reserve_sats)
+        : "";
+    cashuForm.max_melt_fee_reserve_percent_of_minted =
+      d.max_melt_fee_reserve_percent_of_minted != null &&
+      d.max_melt_fee_reserve_percent_of_minted !== ""
+        ? String(d.max_melt_fee_reserve_percent_of_minted)
+        : "";
 
     cashuOriginal.mint_url = cashuForm.mint_url;
     cashuOriginal.lightning_address = cashuForm.lightning_address;
-    cashuOriginal.enabled = cashuForm.enabled;
+    cashuOriginal.trusted_mint_urls = cashuForm.trusted_mint_urls;
+    cashuOriginal.max_melt_fee_reserve_sats = cashuForm.max_melt_fee_reserve_sats;
+    cashuOriginal.max_melt_fee_reserve_percent_of_minted =
+      cashuForm.max_melt_fee_reserve_percent_of_minted;
 
     switchToCashuIntent.value = false;
     cashuInitializedFromFetch.value = true;

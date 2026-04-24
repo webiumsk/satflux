@@ -154,7 +154,142 @@ class CashuPaymentsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.mint_url', null)
             ->assertJsonPath('data.lightning_address', null)
-            ->assertJsonPath('data.enabled', true);
+            ->assertJsonPath('data.enabled', true)
+            ->assertJsonPath('data.unit', null)
+            ->assertJsonPath('data.trusted_mint_urls', null)
+            ->assertJsonPath('data.max_melt_fee_reserve_sats', null)
+            ->assertJsonPath('data.max_melt_fee_reserve_percent_of_minted', null);
+    }
+
+    public function test_list_payments_includes_mint_quote_poll_url_from_plugin(): void
+    {
+        $baseUrl = rtrim(config('services.btcpay.base_url'), '/');
+        $btcpaySid = 'store-cashu-poll-url';
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, $btcpaySid) {
+            if (! str_contains($request->url(), "{$baseUrl}/api/v1/stores/{$btcpaySid}/plugins/cashumelt/payments")) {
+                return Http::response(['error' => 'unexpected URL'], 500);
+            }
+
+            return Http::response([
+                'total' => 1,
+                'offset' => 0,
+                'limit' => 50,
+                'items' => [[
+                    'quoteId' => 'q-poll',
+                    'invoiceId' => 'inv-poll',
+                    'amountSats' => 500,
+                    'state' => 'PAID',
+                    'settlementState' => 'MELT_COMPLETE',
+                    'settlementError' => null,
+                    'mintQuotePollUrl' => 'https://mint.example/v1/quote/abc',
+                    'createdAt' => '2026-04-01T12:00:00Z',
+                    'paidAt' => null,
+                    'settledAt' => null,
+                ]],
+            ], 200);
+        });
+
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'cashu',
+            'btcpay_store_id' => $btcpaySid,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson("/api/stores/{$store->id}/cashu/payments")
+            ->assertOk()
+            ->assertJsonPath('data.items.0.mint_quote_poll_url', 'https://mint.example/v1/quote/abc')
+            ->assertJsonPath('data.items.0.settlement_state', 'MELT_COMPLETE');
+    }
+
+    public function test_cashu_settings_put_omits_unsent_optional_fields_for_btcpay_merge(): void
+    {
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+        $btcpaySid = 'store-cashu-merge-put';
+        $captured = null;
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use (&$captured, $btcpaySid) {
+            $url = $request->url();
+            if (! str_contains($url, "/api/v1/stores/{$btcpaySid}/plugins/cashumelt/settings") || $request->method() !== 'PUT') {
+                return Http::response(['error' => 'unexpected URL'], 500);
+            }
+            $captured = json_decode($request->body(), true, 512, JSON_THROW_ON_ERROR);
+
+            return Http::response([
+                'mintUrl' => $captured['mintUrl'],
+                'lightningAddress' => $captured['lightningAddress'],
+                'enabled' => true,
+                'unit' => 'sat',
+                'trustedMintUrls' => null,
+                'maxMeltFeeReserveSats' => null,
+                'maxMeltFeeReservePercentOfMinted' => null,
+            ], 200);
+        });
+
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'cashu',
+            'btcpay_store_id' => $btcpaySid,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->putJson("/api/stores/{$store->id}/cashu/settings", [
+            'mint_url' => 'https://mint.example/m',
+            'lightning_address' => 'z@example.com',
+        ])->assertOk();
+
+        $this->assertIsArray($captured);
+        $this->assertSame(['mintUrl', 'lightningAddress'], array_keys($captured));
+    }
+
+    public function test_cashu_settings_put_sends_null_when_optional_fields_cleared(): void
+    {
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+        $btcpaySid = 'store-cashu-null-put';
+        $captured = null;
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use (&$captured, $btcpaySid) {
+            $url = $request->url();
+            if (! str_contains($url, "/api/v1/stores/{$btcpaySid}/plugins/cashumelt/settings") || $request->method() !== 'PUT') {
+                return Http::response(['error' => 'unexpected URL'], 500);
+            }
+            $captured = json_decode($request->body(), true, 512, JSON_THROW_ON_ERROR);
+
+            return Http::response([
+                'mintUrl' => $captured['mintUrl'],
+                'lightningAddress' => $captured['lightningAddress'],
+                'enabled' => true,
+                'trustedMintUrls' => null,
+                'maxMeltFeeReserveSats' => null,
+            ], 200);
+        });
+
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'cashu',
+            'btcpay_store_id' => $btcpaySid,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->putJson("/api/stores/{$store->id}/cashu/settings", [
+            'mint_url' => 'https://mint.example/m',
+            'lightning_address' => 'z@example.com',
+            'trusted_mint_urls' => null,
+            'max_melt_fee_reserve_sats' => null,
+        ])->assertOk();
+
+        $this->assertIsArray($captured);
+        $this->assertArrayHasKey('trustedMintUrls', $captured);
+        $this->assertNull($captured['trustedMintUrls']);
+        $this->assertArrayHasKey('maxMeltFeeReserveSats', $captured);
+        $this->assertNull($captured['maxMeltFeeReserveSats']);
     }
 
     public function test_saving_cashu_from_blink_deletes_wallet_connection_and_removes_ln_payment_methods_at_btcpay(): void
