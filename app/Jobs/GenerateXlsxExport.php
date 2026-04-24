@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -17,6 +18,8 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 class GenerateXlsxExport implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    private const GENERIC_FAILURE_MESSAGE = 'Export generation failed. Please try again or contact support.';
 
     /** Maximum number of seconds the job may run (worker --timeout must be >= this). */
     public int $timeout = 600;
@@ -39,7 +42,7 @@ class GenerateXlsxExport implements ShouldQueue
 
             try {
                 $store->user->getBtcPayApiKeyOrFail();
-            } catch (\Illuminate\Http\Exceptions\HttpResponseException $e) {
+            } catch (\Illuminate\Http\Exceptions\HttpResponseException|\Symfony\Component\HttpKernel\Exception\HttpException $e) {
                 $this->export->markAsFailed('BTCPay API key not configured. Please contact support.');
                 return;
             }
@@ -165,7 +168,14 @@ class GenerateXlsxExport implements ShouldQueue
                     ->notify(new \App\Notifications\ExportReadyNotification($this->export, $store, $label));
             }
         } catch (\Exception $e) {
-            $this->export->markAsFailed($e->getMessage());
+            Log::error('XLSX export generation failed', [
+                'export_id' => $this->export->id,
+                'store_id' => $this->export->store_id,
+                'user_id' => $this->export->user_id,
+                'exception' => $e,
+            ]);
+
+            $this->export->markAsFailed(self::GENERIC_FAILURE_MESSAGE);
             throw $e;
         }
     }

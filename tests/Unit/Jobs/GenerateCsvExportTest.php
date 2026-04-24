@@ -3,12 +3,13 @@
 namespace Tests\Unit\Jobs;
 
 use App\Jobs\GenerateCsvExport;
+use App\Jobs\GenerateXlsxExport;
 use App\Models\Export;
 use App\Models\Store;
 use App\Models\User;
+use App\Services\BtcPay\InvoiceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class GenerateCsvExportTest extends TestCase
@@ -83,5 +84,68 @@ class GenerateCsvExportTest extends TestCase
         $export->refresh();
         $this->assertSame('failed', $export->status);
         $this->assertStringContainsString('API key', $export->error_message ?? '');
+    }
+
+    /** @test */
+    public function csv_export_failure_uses_safe_error_message(): void
+    {
+        $export = $this->makeExport('standard');
+        $invoiceService = $this->failingInvoiceService();
+
+        try {
+            (new GenerateCsvExport($export))->handle($invoiceService);
+        } catch (\Throwable) {
+            // The job rethrows after marking the export as failed.
+        }
+
+        $export->refresh();
+        $this->assertSame('failed', $export->status);
+        $this->assertSame('Export generation failed. Please try again or contact support.', $export->error_message);
+        $this->assertStringNotContainsString('/var/private/exports', $export->error_message ?? '');
+    }
+
+    /** @test */
+    public function xlsx_export_failure_uses_safe_error_message(): void
+    {
+        $export = $this->makeExport('standard');
+        $invoiceService = $this->failingInvoiceService();
+
+        try {
+            (new GenerateXlsxExport($export))->handle($invoiceService);
+        } catch (\Throwable) {
+            // The job rethrows after marking the export as failed.
+        }
+
+        $export->refresh();
+        $this->assertSame('failed', $export->status);
+        $this->assertSame('Export generation failed. Please try again or contact support.', $export->error_message);
+        $this->assertStringNotContainsString('/var/private/exports', $export->error_message ?? '');
+    }
+
+    private function makeExport(string $format): Export
+    {
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'btcpay_store_id' => 'store-123',
+        ]);
+
+        return Export::create([
+            'store_id' => $store->id,
+            'user_id' => $user->id,
+            'format' => $format,
+            'status' => 'pending',
+            'filters' => [],
+        ]);
+    }
+
+    private function failingInvoiceService(): InvoiceService
+    {
+        return new class(app(\App\Services\BtcPay\BtcPayClient::class)) extends InvoiceService {
+            public function listInvoices(string $storeId, array $filters = [], ?int $skip = null, ?int $take = null, ?string $userApiKey = null): array
+            {
+                throw new \RuntimeException('Unable to create export file: /var/private/exports/secret.csv');
+            }
+        };
     }
 }
