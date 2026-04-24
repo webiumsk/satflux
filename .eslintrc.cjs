@@ -1,5 +1,4 @@
 /* eslint-env node */
-/* global module */
 /** @type {import('eslint').Linter.Config} */
 module.exports = {
   root: true,

@@ -53,7 +53,7 @@ class ExportTest extends TestCase
             'webhook_secret' => 'shh-secret',
             'btcpay_webhook_id' => 'wh_123',
         ]);
-        $export = Export::create([
+        Export::create([
             'store_id' => $store->id,
             'user_id' => $this->proUser->id,
             'source' => Export::SOURCE_MANUAL,
@@ -74,6 +74,8 @@ class ExportTest extends TestCase
         $this->assertArrayNotHasKey('btcpay_webhook_id', $storeJson);
         $this->assertSame($store->id, $storeJson['id']);
         $this->assertArrayHasKey('name', $storeJson);
+        $this->assertArrayHasKey('default_currency', $storeJson);
+        $this->assertArrayHasKey('timezone', $storeJson);
     }
 
     public function test_user_can_list_exports_for_store(): void

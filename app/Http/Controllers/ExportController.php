@@ -110,17 +110,29 @@ class ExportController extends Controller
             ->get();
 
         $data = $exports->map(function (Export $export) {
-            $payload = $export->toArray();
-            if ($export->store) {
-                $payload['store'] = $export->store->only([
+            $payload = $export->only([
+                'id',
+                'store_id',
+                'user_id',
+                'source',
+                'format',
+                'status',
+                'file_path',
+                'filters',
+                'signed_url',
+                'expires_at',
+                'error_message',
+                'created_at',
+                'updated_at',
+            ]);
+            $payload['store'] = $export->store
+                ? $export->store->only([
                     'id',
                     'name',
                     'default_currency',
                     'timezone',
-                ]);
-            } else {
-                $payload['store'] = null;
-            }
+                ])
+                : null;
 
             return $payload;
         })->values()->all();
