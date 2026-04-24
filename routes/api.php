@@ -165,14 +165,13 @@ Route::get('/debug/stores', function (\Illuminate\Http\Request $request) {
             return [
                 'id' => $store->id,
                 'name' => $store->name,
-                'btcpay_store_id' => $store->btcpay_store_id,
+                'has_btcpay_store_id' => !empty($store->btcpay_store_id),
                 'wallet_type' => $store->wallet_type,
                 'created_at' => $store->created_at,
             ];
         }),
         'btcpay_stores' => is_array($btcpayStores) ? array_map(function ($s) {
             return [
-                'id' => $s['id'] ?? $s['storeId'] ?? null,
                 'name' => $s['name'] ?? null,
             ];
         }, $btcpayStores) : [],
@@ -191,7 +190,7 @@ Route::get('/debug/stores', function (\Illuminate\Http\Request $request) {
             return [
                 'id' => $store->id,
                 'name' => $store->name,
-                'btcpay_store_id' => $store->btcpay_store_id,
+                'matched' => true,
             ];
         })->values(),
     ]);
