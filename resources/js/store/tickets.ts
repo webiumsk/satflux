@@ -158,11 +158,15 @@ export const useTicketsStore = defineStore('tickets', () => {
     async function toggleEvent(storeId: string, eventId: string) {
         loading.value = true;
         try {
-            const response = await api.put(`/stores/${storeId}/tickets/events/${eventId}/toggle`, {});
-            const event = response.data.data;
-            const index = events.value.findIndex(e => e.id === eventId);
-            if (index !== -1) events.value[index] = event;
-            if (currentEvent.value?.id === eventId) currentEvent.value = event;
+            // Plugin may return 204 No Content (empty body → backend returns []).
+            // Only update store state when we get a valid event object back.
+            const raw = response.data.data;
+            const event = raw && !Array.isArray(raw) && typeof raw === 'object' ? raw : null;
+            if (event) {
+                const index = events.value.findIndex(e => e.id === eventId);
+                if (index !== -1) events.value[index] = event;
+                if (currentEvent.value?.id === eventId) currentEvent.value = event;
+            }
             return event;
         } finally {
             loading.value = false;
