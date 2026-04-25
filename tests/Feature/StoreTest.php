@@ -300,6 +300,22 @@ class StoreTest extends TestCase
         $response->assertStatus(403);
     }
 
+    public function test_support_user_can_delete_other_users_store(): void
+    {
+        $owner = User::factory()->create();
+        $support = User::factory()->support()->create();
+        $store = Store::factory()->create(['user_id' => $owner->id]);
+
+        Http::fake([
+            config('services.btcpay.base_url').'/stores/'.$store->btcpay_store_id => Http::response([], 200),
+        ]);
+
+        $response = $this->actingAs($support)->deleteJson("/api/stores/{$store->id}");
+
+        $response->assertStatus(200);
+        $this->assertDatabaseMissing('stores', ['id' => $store->id]);
+    }
+
     public function test_store_list_includes_wallet_connection_status(): void
     {
         $user = User::factory()->create();
