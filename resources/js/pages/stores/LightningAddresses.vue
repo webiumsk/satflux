@@ -736,7 +736,6 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { useStoresStore } from "../../store/stores";
 import { useAppsStore } from "../../store/apps";
 import { useFlashStore } from "../../store/flash";
 import StoreSidebar from "../../components/stores/StoreSidebar.vue";
@@ -756,7 +755,6 @@ function formatLnAddress(username: string) {
 }
 const route = useRoute();
 const router = useRouter();
-const storesStore = useStoresStore();
 const appsStore = useAppsStore();
 const flashStore = useFlashStore();
 

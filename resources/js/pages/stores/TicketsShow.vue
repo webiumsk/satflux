@@ -1656,7 +1656,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, inject } from "vue";
+import { ref, computed, nextTick, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   useTicketsStore,
@@ -1674,8 +1674,6 @@ import UrlQrModal from "../../components/ui/UrlQrModal.vue";
 const { t } = useI18n();
 const ticketsStore = useTicketsStore();
 const flashStore = useFlashStore();
-const isInertia = inject<boolean>("inertia", false);
-
 const props = withDefaults(
   defineProps<{
     app: any;

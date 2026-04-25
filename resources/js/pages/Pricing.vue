@@ -142,11 +142,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { useRouter } from "vue-router";
 import { useAuthStore } from "../store/auth";
 import api from "../services/api";
 
-const router = useRouter();
 const authStore = useAuthStore();
 const checkoutLoading = ref(false);
 

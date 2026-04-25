@@ -227,7 +227,7 @@ import Select from "../ui/Select.vue";
 import ProPlanBadge from "./ProPlanBadge.vue";
 import { currencies } from "../../data/currencies";
 
-const props = defineProps<{
+defineProps<{
   form: Record<string, any>;
   canEditPaymentOptions: boolean;
   timezoneOptions: { label: string; value: string }[];

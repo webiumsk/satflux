@@ -310,7 +310,6 @@ import { ref, onMounted, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAppsStore } from "../../store/apps";
-import { useStoresStore } from "../../store/stores";
 import StoreSidebar from "../../components/stores/StoreSidebar.vue";
 import ArchivedStoreBanner from "../../components/stores/ArchivedStoreBanner.vue";
 import api from "../../services/api";
@@ -320,7 +319,6 @@ const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const appsStore = useAppsStore();
-const storesStore = useStoresStore();
 
 const storeId = route.params.id as string;
 const loading = ref(false);

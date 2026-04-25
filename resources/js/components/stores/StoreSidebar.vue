@@ -490,7 +490,6 @@ import { ref, computed, onMounted, onUnmounted, watch, inject } from 'vue';
 import { useRouter, useRoute, RouterLink } from 'vue-router';
 import { Link, router as inertiaRouter, usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
-import { useAppsStore } from '../../store/apps';
 import { useStoresStore } from '../../store/stores';
 import { useAccountLimits } from '../../composables/useAccountLimits';
 import { useAuthStore } from '../../store/auth';
@@ -553,7 +552,6 @@ const isProOrAdminUser = computed((): boolean | null => {
 const showReportsProBadge = computed(() => isProOrAdminUser.value === false);
 const showStripeProBadge = computed(() => isProOrAdminUser.value === false);
 
-const appsStore = useAppsStore();
 const storesStore = useStoresStore();
 const showStoreDropdown = ref(false);
 const showMobileMenu = ref(false);

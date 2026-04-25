@@ -2127,10 +2127,9 @@ watch(
       switchToCashuIntent.value,
       preferLightningWalletForm.value,
     ] as const,
-  ([wt, unset, cashuIntent, _preferLightning]: [
+  ([wt, unset, cashuIntent]: [
     Props["walletType"],
     UnsetWalletChoice,
-    boolean,
     boolean,
   ]) => {
     const cashuActive =

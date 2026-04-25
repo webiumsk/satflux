@@ -305,11 +305,6 @@ const totalRevenueDisplayValue = computed(() => {
   return typeof v === 'number' ? v : 0;
 });
 
-const totalRevenueSats = computed(() => {
-  const v = totalRevenueByCurrency.value.sats;
-  return typeof v === 'number' ? Math.round(v) : 0;
-});
-
 const totalRevenueIsZero = computed(() => {
   const by = totalRevenueByCurrency.value;
   return Object.keys(by).every((k) => (by[k] ?? 0) <= 0);

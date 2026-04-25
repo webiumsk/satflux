@@ -55,7 +55,7 @@
 import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { setLocale as setI18nLocale, supportedLocales, type SupportedLocale } from '../i18n';
-import api, { setLocale as setApiLocale } from '../services/api';
+import { setLocale as setApiLocale } from '../services/api';
 
 const { t, locale } = useI18n();
 const showDropdown = ref(false);

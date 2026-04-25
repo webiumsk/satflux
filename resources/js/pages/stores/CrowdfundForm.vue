@@ -553,10 +553,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
-import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { useAuthStore } from "../../store/auth";
-import { useAppsStore } from "../../store/apps";
 import { useFlashStore } from "../../store/flash";
 import { currencies } from "../../data/currencies";
 import PerkEditDrawer from "../../components/stores/PerkEditDrawer.vue";
@@ -571,7 +568,7 @@ const props = defineProps<{
   archiving?: boolean;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   delete: [];
   archive: [];
   unarchive: [];
@@ -629,22 +626,7 @@ const saving = ref(false);
 const error = ref("");
 const success = ref("");
 const { t, locale } = useI18n();
-const authStore = useAuthStore();
 const flashStore = useFlashStore();
-const appsStore = useAppsStore();
-const router = useRouter();
-
-const planCode = computed(
-  () => (authStore.user?.plan?.code ?? "free") as string,
-);
-const userRole = computed(() => (authStore.user?.role ?? "") as string);
-const canArchiveApp = computed(
-  () =>
-    planCode.value === "pro" ||
-    planCode.value === "enterprise" ||
-    userRole.value === "admin" ||
-    userRole.value === "support",
-);
 
 const currencyOptions = computed(() => {
   locale.value;

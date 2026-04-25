@@ -95,7 +95,7 @@ interface Props {
   invoices: Invoice[];
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 
 const emit = defineEmits<{
   'view-all': [];

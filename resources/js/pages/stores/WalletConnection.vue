@@ -135,11 +135,6 @@ function handleCancel() {
     router.push({ name: 'stores-show', params: { id: storeId.value } });
 }
 
-function formatDate(dateString: string): string {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-}
-
 function handleCreateApp() {
     router.push({ name: 'stores-apps-create', params: { id: storeId.value } });
 }
