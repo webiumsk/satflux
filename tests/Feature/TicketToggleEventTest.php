@@ -111,4 +111,42 @@ class TicketToggleEventTest extends TestCase
         $response->assertJsonPath('message', __('messages.tickets_cannot_deactivate_event_with_sold_tickets'));
         $this->assertFalse($toggleCalled, 'Toggle endpoint must not be called when sold tickets exist.');
     }
+
+    public function test_toggle_fails_closed_when_event_precheck_fails(): void
+    {
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'btcpay_store_id' => 'btcpay-store-3',
+        ]);
+
+        $baseUrl = rtrim(config('services.btcpay.base_url', 'http://localhost'), '/');
+        $toggleCalled = false;
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, &$toggleCalled) {
+            $url = (string) $request->url();
+
+            if (! str_contains($url, $baseUrl)) {
+                return Http::response([], 404);
+            }
+
+            if ($request->method() === 'GET' && str_contains($url, '/satoshi-tickets/events/evt-3')) {
+                return Http::response(['message' => 'BTCPay unavailable'], 500);
+            }
+
+            if ($request->method() === 'PUT' && str_contains($url, '/satoshi-tickets/events/evt-3/toggle')) {
+                $toggleCalled = true;
+            }
+
+            return Http::response([], 404);
+        });
+
+        Sanctum::actingAs($user);
+
+        $response = $this->putJson("/api/stores/{$store->id}/tickets/events/evt-3/toggle");
+
+        $response->assertStatus(502);
+        $response->assertJsonPath('message', __('messages.tickets_event_toggle_precheck_failed'));
+        $this->assertFalse($toggleCalled, 'Toggle endpoint must not be called when precheck fails.');
+    }
 }

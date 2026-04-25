@@ -25,7 +25,6 @@ export interface TicketEvent {
     eventLogoUrl?: string | null;
     purchaseLink?: string;
     ticketsSold?: number;
-    ticketTypesCount?: number;
     createdAt?: string;
 }
 
