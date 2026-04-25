@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class WalletConnectionTest extends TestCase
 {
@@ -19,7 +20,7 @@ class WalletConnectionTest extends TestCase
 
     protected const VALID_AQUA_DESCRIPTOR = 'ct(slip77(xpub6D4BDPcP2GT577Vvch3Reb8P8CH),elsh(wpkh(xpub6E8...)))';
 
-    /** @test */
+    #[Test]
     public function user_can_get_wallet_connection_for_own_store(): void
     {
         $user = User::factory()->create();
@@ -41,7 +42,7 @@ class WalletConnectionTest extends TestCase
         $response->assertJsonMissingPath('data.secret');
     }
 
-    /** @test */
+    #[Test]
     public function user_gets_null_when_store_has_no_wallet_connection(): void
     {
         $user = User::factory()->create();
@@ -53,7 +54,7 @@ class WalletConnectionTest extends TestCase
             ->assertJsonPath('data', null);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_get_wallet_connection_for_other_users_store(): void
     {
         $owner = User::factory()->create();
@@ -65,7 +66,7 @@ class WalletConnectionTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function user_can_create_wallet_connection_with_valid_blink_secret(): void
     {
         $user = User::factory()->create();
@@ -91,7 +92,7 @@ class WalletConnectionTest extends TestCase
         $this->assertSame(self::VALID_BLINK_SECRET, Crypt::decryptString($connection->encrypted_secret));
     }
 
-    /** @test */
+    #[Test]
     public function cashu_store_saving_blink_sets_pending_reconfig_for_config_bot(): void
     {
         config(['services.btcpay.base_url' => 'https://btcpay.test']);
@@ -161,7 +162,7 @@ class WalletConnectionTest extends TestCase
         $this->assertSame(self::VALID_BLINK_SECRET, Crypt::decryptString($connection->encrypted_secret));
     }
 
-    /** @test */
+    #[Test]
     public function user_can_create_wallet_connection_with_valid_aqua_descriptor(): void
     {
         $user = User::factory()->create();
@@ -180,7 +181,7 @@ class WalletConnectionTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function wallet_connection_store_validates_type_and_secret(): void
     {
         $user = User::factory()->create();
@@ -194,7 +195,7 @@ class WalletConnectionTest extends TestCase
         $response->assertStatus(422)->assertJsonValidationErrors(['secret']);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_create_wallet_connection_for_other_users_store(): void
     {
         $owner = User::factory()->create();
@@ -209,7 +210,7 @@ class WalletConnectionTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function check_duplicate_returns_false_when_descriptor_not_used(): void
     {
         $user = User::factory()->create();
@@ -225,7 +226,7 @@ class WalletConnectionTest extends TestCase
             ->assertJsonPath('message', null);
     }
 
-    /** @test */
+    #[Test]
     public function check_duplicate_returns_true_when_descriptor_used_by_another_store(): void
     {
         $user1 = User::factory()->create();
@@ -251,7 +252,7 @@ class WalletConnectionTest extends TestCase
             ->assertJsonPath('existing_store_name', $store1->name);
     }
 
-    /** @test */
+    #[Test]
     public function check_duplicate_validates_descriptor_and_type(): void
     {
         $user = User::factory()->create();
@@ -266,7 +267,7 @@ class WalletConnectionTest extends TestCase
             ->assertJsonValidationErrors(['descriptor', 'type']);
     }
 
-    /** @test */
+    #[Test]
     public function check_duplicate_new_returns_duplicate_when_descriptor_used(): void
     {
         $user = User::factory()->create();
@@ -288,7 +289,7 @@ class WalletConnectionTest extends TestCase
             ->assertJsonPath('duplicate', true);
     }
 
-    /** @test */
+    #[Test]
     public function user_can_delete_wallet_connection_when_status_is_pending(): void
     {
         $user = User::factory()->create();
@@ -308,7 +309,7 @@ class WalletConnectionTest extends TestCase
         $this->assertDatabaseMissing('wallet_connections', ['id' => $connection->id]);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_delete_wallet_connection_when_status_is_not_pending(): void
     {
         $user = User::factory()->create();
@@ -329,7 +330,7 @@ class WalletConnectionTest extends TestCase
             ]);
     }
 
-    /** @test */
+    #[Test]
     public function delete_returns_404_when_no_wallet_connection(): void
     {
         $user = User::factory()->create();
@@ -341,7 +342,7 @@ class WalletConnectionTest extends TestCase
             ->assertJson(['message' => 'Wallet connection not found']);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_delete_other_stores_wallet_connection(): void
     {
         $owner = User::factory()->create();
@@ -360,7 +361,7 @@ class WalletConnectionTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function store_returns_422_when_aqua_descriptor_duplicate(): void
     {
         $user1 = User::factory()->create();
@@ -384,7 +385,7 @@ class WalletConnectionTest extends TestCase
             ->assertJsonValidationErrors(['secret']);
     }
 
-    /** @test */
+    #[Test]
     public function owner_can_reveal_wallet_connection_with_confirm_via_lnurl_when_lightning_confirmed(): void
     {
         $user = User::factory()->create(['lightning_public_key' => '02abc123']);
@@ -408,7 +409,7 @@ class WalletConnectionTest extends TestCase
         $this->assertNull(Cache::get('reveal_confirmed:'.$user->id));
     }
 
-    /** @test */
+    #[Test]
     public function saving_blink_wallet_disables_cashumelt_at_btcpay_when_plugin_reports_enabled(): void
     {
         config(['services.btcpay.base_url' => 'https://btcpay.test']);
@@ -481,7 +482,7 @@ class WalletConnectionTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function switching_from_aqua_descriptor_to_blink_sets_reconfig_for_bot(): void
     {
         config(['services.btcpay.base_url' => 'https://btcpay.test']);

@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class DashboardTest extends TestCase
 {
@@ -21,7 +22,7 @@ class DashboardTest extends TestCase
         Cache::flush();
     }
 
-    /** @test */
+    #[Test]
     public function unauthenticated_user_cannot_access_dashboard(): void
     {
         $response = $this->getJson('/api/dashboard');
@@ -29,7 +30,7 @@ class DashboardTest extends TestCase
         $response->assertStatus(401);
     }
 
-    /** @test */
+    #[Test]
     public function authenticated_user_without_btcpay_api_key_gets_empty_dashboard(): void
     {
         Http::fake([
@@ -48,7 +49,7 @@ class DashboardTest extends TestCase
             ->assertJsonPath('btcpay_ping.http_status', 401);
     }
 
-    /** @test */
+    #[Test]
     public function authenticated_user_with_btcpay_api_key_gets_stores_and_revenue(): void
     {
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
@@ -98,7 +99,7 @@ class DashboardTest extends TestCase
         $this->assertSame(50.5, (float) $by['eur']);
     }
 
-    /** @test */
+    #[Test]
     public function dashboard_only_includes_stores_present_in_btcpay_api(): void
     {
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
@@ -130,7 +131,7 @@ class DashboardTest extends TestCase
             ->assertJsonPath('stores', []);
     }
 
-    /** @test */
+    #[Test]
     public function dashboard_returns_200_when_btcpay_api_fails_uses_empty_stores(): void
     {
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);

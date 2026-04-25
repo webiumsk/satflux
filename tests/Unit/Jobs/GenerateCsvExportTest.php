@@ -11,6 +11,7 @@ use App\Services\BtcPay\InvoiceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class GenerateCsvExportTest extends TestCase
 {
@@ -23,7 +24,7 @@ class GenerateCsvExportTest extends TestCase
         $this->app->forgetInstance(\App\Services\BtcPay\BtcPayClient::class);
     }
 
-    /** @test */
+    #[Test]
     public function handle_marks_export_as_running_then_finishes_or_fails(): void
     {
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
@@ -61,7 +62,7 @@ class GenerateCsvExportTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function handle_marks_export_as_failed_when_store_user_has_no_api_key(): void
     {
         $user = User::factory()->create(['btcpay_api_key' => null]);
@@ -86,7 +87,7 @@ class GenerateCsvExportTest extends TestCase
         $this->assertStringContainsString('API key', $export->error_message ?? '');
     }
 
-    /** @test */
+    #[Test]
     public function csv_export_failure_uses_safe_error_message(): void
     {
         $export = $this->makeExport('standard');
@@ -104,7 +105,7 @@ class GenerateCsvExportTest extends TestCase
         $this->assertStringNotContainsString('/var/private/exports', $export->error_message ?? '');
     }
 
-    /** @test */
+    #[Test]
     public function xlsx_export_failure_uses_safe_error_message(): void
     {
         $export = $this->makeExport('standard');

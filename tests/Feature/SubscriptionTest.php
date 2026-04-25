@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class SubscriptionTest extends TestCase
 {
@@ -41,7 +42,7 @@ class SubscriptionTest extends TestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function authenticated_user_can_create_checkout_with_plan_name()
     {
         $user = User::factory()->create();
@@ -72,7 +73,7 @@ class SubscriptionTest extends TestCase
         $this->assertStringNotContainsString('test_subscription_btcpay_store', json_encode($responseData));
     }
 
-    /** @test */
+    #[Test]
     public function checkout_validates_plan_and_offering_belong_to_store()
     {
         $user = User::factory()->create();
@@ -95,7 +96,7 @@ class SubscriptionTest extends TestCase
         $response->assertStatus(422);
     }
 
-    /** @test */
+    #[Test]
     public function unauthenticated_user_cannot_create_checkout_by_default()
     {
         config(['services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store']);
@@ -109,7 +110,7 @@ class SubscriptionTest extends TestCase
         $response->assertStatus(401);
     }
 
-    /** @test */
+    #[Test]
     public function checkout_requires_valid_plan_name()
     {
         $user = User::factory()->create();
@@ -122,7 +123,7 @@ class SubscriptionTest extends TestCase
             ->assertJsonValidationErrors(['plan']);
     }
 
-    /** @test */
+    #[Test]
     public function checkout_includes_user_email_when_available()
     {
         $user = User::factory()->create([
@@ -142,7 +143,7 @@ class SubscriptionTest extends TestCase
         $response->assertStatus(200);
     }
 
-    /** @test */
+    #[Test]
     public function checkout_handles_btcpay_api_errors_gracefully()
     {
         $user = User::factory()->create();

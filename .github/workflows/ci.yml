@@ -45,6 +45,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-composer-
 
+      - name: Validate composer configuration
+        run: composer validate --strict
+
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
 

@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class LightningAddressTest extends TestCase
 {
@@ -63,7 +64,7 @@ class LightningAddressTest extends TestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function user_can_list_lightning_addresses_for_own_store(): void
     {
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
@@ -81,7 +82,7 @@ class LightningAddressTest extends TestCase
             ->assertJsonPath('limit.unlimited', false);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_list_lightning_addresses_for_other_users_store(): void
     {
         $owner = User::factory()->create(['btcpay_api_key' => 'key']);
@@ -94,7 +95,7 @@ class LightningAddressTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function listing_lightning_addresses_returns_500_when_user_has_no_btcpay_api_key(): void
     {
         $user = User::factory()->create(['btcpay_api_key' => null]);
@@ -106,7 +107,7 @@ class LightningAddressTest extends TestCase
             ->assertJsonPath('message', 'BTCPay API key not configured. Please contact support.');
     }
 
-    /** @test */
+    #[Test]
     public function user_can_show_lightning_address_for_own_store(): void
     {
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
@@ -120,7 +121,7 @@ class LightningAddressTest extends TestCase
             ->assertJsonPath('data.currencyCode', 'SATS');
     }
 
-    /** @test */
+    #[Test]
     public function show_lightning_address_returns_404_when_not_found(): void
     {
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
@@ -133,7 +134,7 @@ class LightningAddressTest extends TestCase
             ->assertJsonPath('message', 'Lightning address not found');
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_show_lightning_address_for_other_users_store(): void
     {
         $owner = User::factory()->create(['btcpay_api_key' => 'key']);
@@ -146,7 +147,7 @@ class LightningAddressTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function user_can_create_lightning_address(): void
     {
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
@@ -163,7 +164,7 @@ class LightningAddressTest extends TestCase
             ->assertJsonPath('data.username', 'bob');
     }
 
-    /** @test */
+    #[Test]
     public function create_lightning_address_validates_username_matches_url(): void
     {
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
@@ -179,7 +180,7 @@ class LightningAddressTest extends TestCase
             ->assertJsonPath('message', 'Username in request body must match URL parameter');
     }
 
-    /** @test */
+    #[Test]
     public function user_at_lightning_address_limit_receives_403_when_creating_new(): void
     {
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
@@ -197,7 +198,7 @@ class LightningAddressTest extends TestCase
         $this->assertStringContainsString('Please upgrade', $message);
     }
 
-    /** @test */
+    #[Test]
     public function user_can_update_lightning_address(): void
     {
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
@@ -213,7 +214,7 @@ class LightningAddressTest extends TestCase
             ->assertJsonPath('message', 'Lightning address saved successfully');
     }
 
-    /** @test */
+    #[Test]
     public function user_can_delete_lightning_address(): void
     {
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
@@ -226,7 +227,7 @@ class LightningAddressTest extends TestCase
             ->assertJsonPath('message', 'Lightning address deleted successfully');
     }
 
-    /** @test */
+    #[Test]
     public function delete_lightning_address_returns_404_when_not_found(): void
     {
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
@@ -239,7 +240,7 @@ class LightningAddressTest extends TestCase
             ->assertJsonPath('message', 'Lightning address not found');
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_delete_lightning_address_for_other_users_store(): void
     {
         $owner = User::factory()->create(['btcpay_api_key' => 'key']);

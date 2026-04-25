@@ -8,6 +8,7 @@ use App\Models\Store;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class AdvancedStatsAndAutoExportTest extends TestCase
 {
@@ -59,7 +60,7 @@ class AdvancedStatsAndAutoExportTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function advanced_stats_endpoint_returns_403_for_free_user(): void
     {
         $response = $this->actingAs($this->freeUser)->getJson('/api/stats/advanced');
@@ -68,7 +69,7 @@ class AdvancedStatsAndAutoExportTest extends TestCase
             ->assertJsonPath('message', fn ($m) => str_contains($m, 'Pro') || str_contains($m, 'Advanced'));
     }
 
-    /** @test */
+    #[Test]
     public function advanced_stats_endpoint_returns_200_for_pro_user(): void
     {
         $response = $this->actingAs($this->proUser)->getJson('/api/stats/advanced');
@@ -77,7 +78,7 @@ class AdvancedStatsAndAutoExportTest extends TestCase
             ->assertJsonStructure(['data' => ['stores', 'overall']]);
     }
 
-    /** @test */
+    #[Test]
     public function support_user_can_view_basic_stats_for_another_users_store(): void
     {
         $owner = User::factory()->create(['btcpay_api_key' => null]);
@@ -98,7 +99,7 @@ class AdvancedStatsAndAutoExportTest extends TestCase
             ]);
     }
 
-    /** @test */
+    #[Test]
     public function non_support_user_cannot_view_basic_stats_for_another_users_store(): void
     {
         $owner = User::factory()->create(['btcpay_api_key' => null]);

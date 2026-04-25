@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserApiKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class UserApiKeyLimitTest extends TestCase
 {
@@ -39,7 +40,7 @@ class UserApiKeyLimitTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function user_can_create_first_api_key_on_free_plan(): void
     {
         $response = $this->actingAs($this->user)->postJson('/api/user/api-keys', [
@@ -51,7 +52,7 @@ class UserApiKeyLimitTest extends TestCase
             ->assertJsonStructure(['data' => ['plain_token', 'id']]);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_create_second_api_key_on_free_plan(): void
     {
         UserApiKey::create([

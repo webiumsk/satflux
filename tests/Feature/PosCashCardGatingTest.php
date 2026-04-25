@@ -9,6 +9,7 @@ use App\Models\SubscriptionPlan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class PosCashCardGatingTest extends TestCase
 {
@@ -72,7 +73,7 @@ class PosCashCardGatingTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function free_user_cannot_create_pos_order_with_paid_method_cash(): void
     {
         $store = Store::factory()->create(['user_id' => $this->freeUser->id]);
@@ -93,7 +94,7 @@ class PosCashCardGatingTest extends TestCase
             ->assertJsonPath('message', fn ($m) => str_contains($m, 'Pro'));
     }
 
-    /** @test */
+    #[Test]
     public function pro_user_can_create_pos_order_with_paid_method_cash(): void
     {
         $response = $this->actingAs($this->proUser)->postJson("/api/stores/{$this->store->id}/pos-orders", [

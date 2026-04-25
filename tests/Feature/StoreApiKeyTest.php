@@ -10,6 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class StoreApiKeyTest extends TestCase
 {
@@ -49,7 +50,7 @@ class StoreApiKeyTest extends TestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function user_can_list_api_keys_for_own_store(): void
     {
         $user = User::factory()->create();
@@ -69,7 +70,7 @@ class StoreApiKeyTest extends TestCase
         $this->assertArrayNotHasKey('btcpay_api_key', $response->json('data.0'));
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_list_api_keys_for_other_users_store(): void
     {
         $owner = User::factory()->create();
@@ -81,7 +82,7 @@ class StoreApiKeyTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function user_can_create_api_key_when_btcpay_user_linked(): void
     {
         $user = User::factory()->create(['btcpay_user_id' => 'btcpay-user-123']);
@@ -113,7 +114,7 @@ class StoreApiKeyTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function api_key_creation_validates_label_required(): void
     {
         $user = User::factory()->create(['btcpay_user_id' => 'btcpay-user-123']);
@@ -125,7 +126,7 @@ class StoreApiKeyTest extends TestCase
             ->assertJsonValidationErrors(['label']);
     }
 
-    /** @test */
+    #[Test]
     public function api_key_creation_validates_callback_url_format(): void
     {
         $user = User::factory()->create(['btcpay_user_id' => 'btcpay-user-123']);
@@ -140,7 +141,7 @@ class StoreApiKeyTest extends TestCase
             ->assertJsonValidationErrors(['callback_url']);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_create_api_key_for_other_users_store(): void
     {
         $owner = User::factory()->create(['btcpay_user_id' => 'btcpay-user-123']);
@@ -156,7 +157,7 @@ class StoreApiKeyTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function user_can_show_api_key_metadata_without_exposing_key(): void
     {
         $user = User::factory()->create();
@@ -176,7 +177,7 @@ class StoreApiKeyTest extends TestCase
         $response->assertJsonMissingPath('data.btcpay_api_key');
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_show_other_stores_api_key(): void
     {
         $owner = User::factory()->create();
@@ -193,7 +194,7 @@ class StoreApiKeyTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function show_returns_404_for_invalid_api_key_id(): void
     {
         $user = User::factory()->create();
@@ -204,7 +205,7 @@ class StoreApiKeyTest extends TestCase
         $response->assertStatus(404);
     }
 
-    /** @test */
+    #[Test]
     public function user_can_revoke_api_key(): void
     {
         $user = User::factory()->create();
@@ -224,7 +225,7 @@ class StoreApiKeyTest extends TestCase
         $this->assertFalse($apiKey->is_active);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_revoke_other_stores_api_key(): void
     {
         $owner = User::factory()->create();
@@ -241,7 +242,7 @@ class StoreApiKeyTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function user_can_regenerate_api_key(): void
     {
         $user = User::factory()->create(['btcpay_user_id' => 'btcpay-user-123']);
@@ -268,7 +269,7 @@ class StoreApiKeyTest extends TestCase
         $this->assertCount(1, StoreApiKey::where('store_id', $store->id)->where('is_active', true)->get());
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_regenerate_other_stores_api_key(): void
     {
         $owner = User::factory()->create(['btcpay_user_id' => 'btcpay-user-123']);
@@ -287,7 +288,7 @@ class StoreApiKeyTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function user_can_generate_eshop_token(): void
     {
         $user = User::factory()->create();
@@ -314,7 +315,7 @@ class StoreApiKeyTest extends TestCase
         $this->assertTrue(Cache::has("eshop_token:{$token}"));
     }
 
-    /** @test */
+    #[Test]
     public function generate_token_validates_expiration_minutes(): void
     {
         $user = User::factory()->create();
@@ -328,7 +329,7 @@ class StoreApiKeyTest extends TestCase
             ->assertJsonValidationErrors(['expiration_minutes']);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_generate_token_for_other_users_store(): void
     {
         $owner = User::factory()->create();
