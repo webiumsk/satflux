@@ -158,6 +158,7 @@ export const useTicketsStore = defineStore('tickets', () => {
     async function toggleEvent(storeId: string, eventId: string) {
         loading.value = true;
         try {
+            const response = await api.put(`/stores/${storeId}/tickets/events/${eventId}/toggle`, {});
             // Plugin may return 204 No Content (empty body → backend returns []).
             // Only update store state when we get a valid event object back.
             const raw = response.data.data;

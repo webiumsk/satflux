@@ -92,6 +92,7 @@ class GenerateCsvExportTest extends TestCase
     {
         $export = $this->makeExport('standard');
         $invoiceService = $this->failingInvoiceService();
+        Http::fake();
 
         try {
             (new GenerateCsvExport($export))->handle($invoiceService);
@@ -102,6 +103,7 @@ class GenerateCsvExportTest extends TestCase
         $export->refresh();
         $this->assertSame('failed', $export->status);
         $this->assertSame('Export generation failed. Please try again or contact support.', $export->error_message);
+        $this->assertStringNotContainsString('Unable to create export file', $export->error_message ?? '');
         $this->assertStringNotContainsString('/var/private/exports', $export->error_message ?? '');
     }
 
@@ -110,6 +112,7 @@ class GenerateCsvExportTest extends TestCase
     {
         $export = $this->makeExport('standard');
         $invoiceService = $this->failingInvoiceService();
+        Http::fake();
 
         try {
             (new GenerateXlsxExport($export))->handle($invoiceService);
@@ -120,6 +123,7 @@ class GenerateCsvExportTest extends TestCase
         $export->refresh();
         $this->assertSame('failed', $export->status);
         $this->assertSame('Export generation failed. Please try again or contact support.', $export->error_message);
+        $this->assertStringNotContainsString('Unable to create export file', $export->error_message ?? '');
         $this->assertStringNotContainsString('/var/private/exports', $export->error_message ?? '');
     }
 

@@ -95,7 +95,7 @@
               ]"
             >
               <svg class="w-5 h-5" :class="getTypeIconColor(msg.type)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getTypeIconPath(msg.type)" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getTypeIconPath()" />
               </svg>
             </div>
             <div class="flex-1 min-w-0">

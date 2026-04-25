@@ -554,6 +554,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { useAppsStore } from "../../store/apps";
 import { useFlashStore } from "../../store/flash";
 import { currencies } from "../../data/currencies";
 import PerkEditDrawer from "../../components/stores/PerkEditDrawer.vue";
@@ -623,9 +624,8 @@ const featuredImageFileInput = ref<HTMLInputElement | null>(null);
 /** Selected file; uploaded only when the user saves the crowdfund form (avoids orphaned storage files). */
 const pendingFeaturedImageFile = ref<File | null>(null);
 const saving = ref(false);
-const error = ref("");
-const success = ref("");
 const { t, locale } = useI18n();
+const appsStore = useAppsStore();
 const flashStore = useFlashStore();
 
 const currencyOptions = computed(() => {
@@ -735,8 +735,6 @@ function perkImageDisplayUrl(perk: any): string {
 
 async function handleSubmit() {
   saving.value = true;
-  error.value = "";
-  success.value = "";
 
   try {
     // If switching from code view, parse JSON first
@@ -746,7 +744,6 @@ async function handleSubmit() {
         perks.value = Array.isArray(parsed) ? parsed : [];
       } catch (e) {
         flashStore.error(t("stores.crowdfund_invalid_perks_json"));
-        error.value = "";
         saving.value = false;
         return;
       }
@@ -916,19 +913,15 @@ async function handleSubmit() {
     }
 
     // Save via API
-    const appsStore = useAppsStore();
     await appsStore.updateApp(props.store.id, props.app.id, {
       name: form.value.appName,
       config: config,
     });
 
     flashStore.success(t("settings.settings_updated"));
-    success.value = "";
-    error.value = "";
   } catch (err: any) {
     const msg = err.response?.data?.message || t("settings.failed_to_update");
     flashStore.error(msg);
-    error.value = "";
   } finally {
     saving.value = false;
   }
@@ -1189,10 +1182,8 @@ watch(
   },
 );
 
-// Expose saving, error, and success state to parent component
+// Expose saving state to parent component
 defineExpose({
   saving,
-  error,
-  success,
 });
 </script>
