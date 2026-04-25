@@ -1321,6 +1321,7 @@
     "event_deleted": "Event deleted",
     "cannot_delete_event_with_sold_tickets": "Cannot delete an event that has sold tickets.",
     "cannot_deactivate_event_with_ticket_types": "Cannot deactivate an event that has ticket types configured.",
+    "cannot_deactivate_event_with_sold_tickets": "Cannot deactivate an event that has sold tickets.",
     "ticket_type_updated": "Ticket type updated",
     "ticket_type_created": "Ticket type created",
     "ticket_type_disabled": "Ticket type disabled",

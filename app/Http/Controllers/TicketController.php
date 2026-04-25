@@ -270,7 +270,7 @@ class TicketController extends Controller
 
     /**
      * Toggle event status (Active/Disabled).
-     * Events with ticket types configured cannot be deactivated.
+     * Events with sold tickets cannot be deactivated.
      */
     public function toggleEvent(Store $store, string $eventId)
     {
@@ -286,17 +286,14 @@ class TicketController extends Controller
             $current = null;
         }
 
-        // Only active events are returned by getEvent; if we have it and it's Active, we're about to deactivate
+        // If the event is currently active, we're attempting to deactivate it.
+        // Allow deactivation with existing ticket types as long as nothing was sold yet
+        // (aligns with BTCPay Satoshi Tickets plugin behavior).
         if ($current !== null && ($current['eventState'] ?? '') === 'Active') {
-            $types = $this->ticketService->listTicketTypes(
-                $store->btcpay_store_id,
-                $eventId,
-                $userApiKey
-            );
-            $ticketTypesCount = is_array($types) ? count($types) : 0;
-            if ($ticketTypesCount > 0) {
+            $ticketsSold = (int) ($current['ticketsSold'] ?? 0);
+            if ($ticketsSold > 0) {
                 return response()->json([
-                    'message' => __('messages.tickets_cannot_deactivate_event_with_ticket_types'),
+                    'message' => __('messages.tickets_cannot_deactivate_event_with_sold_tickets'),
                 ], 422);
             }
         }

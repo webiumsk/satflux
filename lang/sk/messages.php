@@ -63,6 +63,7 @@ return [
     'tickets_quantity_required_when_capacity' => 'Počet vstupeniek je povinný, ak má event nastavenú kapacitu.',
     'tickets_cannot_delete_event_with_sold_tickets' => 'Podujatie s predanými vstupenkami nie je možné zmazať.',
     'tickets_cannot_deactivate_event_with_ticket_types' => 'Podujatie s nastavenými typmi vstupeniek nie je možné deaktivovať.',
+    'tickets_cannot_deactivate_event_with_sold_tickets' => 'Podujatie s predanými vstupenkami nie je možné deaktivovať.',
 
     // Apps
     'app_created' => 'App created successfully',
