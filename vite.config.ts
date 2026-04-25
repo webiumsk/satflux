@@ -6,7 +6,8 @@ export default defineConfig({
     build: {
         outDir: 'public/build',
         emptyOutDir: true,
-        minify: false, // Temporarily disable minification to debug the issue
+        // Keep production minification enabled by default; allow debug opt-out via env.
+        minify: process.env.VITE_DISABLE_MINIFY === 'true' ? false : 'esbuild',
         sourcemap: false,
         target: 'es2020',
         cssCodeSplit: true,

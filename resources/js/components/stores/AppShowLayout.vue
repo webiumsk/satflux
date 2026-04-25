@@ -14,7 +14,7 @@
     </div>
   </div>
 
-  <div v-else-if="loading && !app" class="flex items-center justify-center h-screen bg-gray-900">
+  <div v-else-if="loading && !loadedApp" class="flex items-center justify-center h-screen bg-gray-900">
      <svg class="animate-spin h-10 w-10 text-indigo-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -22,10 +22,10 @@
     <p class="text-gray-400 ml-4">{{ t('apps.loading_app') }}</p>
   </div>
 
-  <div v-else-if="store && app" class="flex min-h-0 flex-1 max-md:overflow-visible bg-gray-900 md:overflow-hidden">
+  <div v-else-if="loadedStore && loadedApp" class="flex min-h-0 flex-1 max-md:overflow-visible bg-gray-900 md:overflow-hidden">
     <!-- Sidebar -->
     <StoreSidebar
-      :store="store"
+      :store="loadedStore"
       :apps="allApps"
       @create-app="handleCreateApp"
       @show-settings="handleShowSettings"
@@ -36,20 +36,20 @@
     <div class="flex min-h-0 flex-1 flex-col overflow-hidden border-l border-gray-800 bg-gray-900">
       <template v-if="hasToolbarSlot">
         <div class="shrink-0 bg-gray-900">
-          <slot name="toolbar" :app="app" :store="store" />
+          <slot name="toolbar" :app="loadedApp" :store="loadedStore" />
         </div>
         <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
           <div class="px-4 sm:px-6 lg:px-8 pt-8">
-            <ArchivedStoreBanner :store="store" />
+            <ArchivedStoreBanner :store="loadedStore" />
           </div>
-          <slot :app="app" :store="store" />
+          <slot :app="loadedApp" :store="loadedStore" />
         </div>
       </template>
       <div v-else class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
         <div class="px-4 sm:px-6 lg:px-8 pt-8">
-          <ArchivedStoreBanner :store="store" />
+          <ArchivedStoreBanner :store="loadedStore" />
         </div>
-        <slot :app="app" :store="store" />
+        <slot :app="loadedApp" :store="loadedStore" />
       </div>
     </div>
   </div>
@@ -89,8 +89,8 @@ const propsApp = computed(() => props.app ?? null);
 const storeId = computed(() => (propsStore.value?.id ?? route?.params?.id ?? '') as string);
 const appId = computed(() => (propsApp.value?.id ?? route?.params?.appId ?? '') as string);
 const loading = ref(false);
-const store = ref<any>(null);
-const app = ref<any>(null);
+const loadedStore = ref<any>(null);
+const loadedApp = ref<any>(null);
 
 const allApps = computed(() => appsStore.apps);
 
@@ -112,11 +112,11 @@ async function loadApp() {
       loading.value = false;
       return;
     }
-    if (!store.value || store.value.id !== currentStoreId) {
-      store.value = await storesStore.fetchStore(currentStoreId);
+    if (!loadedStore.value || loadedStore.value.id !== currentStoreId) {
+      loadedStore.value = await storesStore.fetchStore(currentStoreId);
     }
     await appsStore.fetchApps(currentStoreId);
-    app.value = await appsStore.fetchApp(currentStoreId, currentAppId);
+    loadedApp.value = await appsStore.fetchApp(currentStoreId, currentAppId);
   } catch (err: any) {
     console.error('Failed to load app:', err);
   } finally {
@@ -150,8 +150,8 @@ function handleShowSection(section: string) {
 
 onMounted(() => {
   if (propsStore.value && propsApp.value) {
-    store.value = propsStore.value;
-    app.value = propsApp.value;
+    loadedStore.value = propsStore.value;
+    loadedApp.value = propsApp.value;
     loading.value = false;
     return;
   }
@@ -162,15 +162,15 @@ onMounted(() => {
 if (route) {
   watch([() => route.params.id, () => route.params.appId], ([newStoreId, newAppId], [oldStoreId, oldAppId]) => {
     if (newAppId && (newAppId !== oldAppId || newStoreId !== oldStoreId)) {
-      app.value = null;
+      loadedApp.value = null;
       loadApp();
     }
   }, { immediate: false });
 }
 
 defineExpose({
-  app,
-  store,
+  app: loadedApp,
+  store: loadedStore,
   loading,
   loadApp,
 });
