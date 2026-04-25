@@ -14,7 +14,7 @@
     "version:major": "node scripts/bump-version.js major"
   },
   "dependencies": {
-    "@inertiajs/vue3": "^2.0",
+    "@inertiajs/vue3": "^3.0",
     "@tiptap/extension-code-block-lowlight": "^2.10.0",
     "@tiptap/extension-color": "^2.10.0",
     "@tiptap/extension-heading": "^2.10.0",
