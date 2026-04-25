@@ -675,9 +675,7 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
-import { useStoresStore } from "../../store/stores";
 import { useAppsStore } from "../../store/apps";
-import { useFlashStore } from "../../store/flash";
 import StoreSidebar from "../../components/stores/StoreSidebar.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 import ProPlanBadge from "../../components/stores/ProPlanBadge.vue";
@@ -689,7 +687,6 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const appsStore = useAppsStore();
-const flashStore = useFlashStore();
 const authUser = computed(() => authStore.user);
 const planCode = computed(
   () => (authUser.value?.plan?.code ?? "free") as string,

@@ -23,8 +23,9 @@ class TicketEventsListTest extends TestCase
 
         $includeInactiveSeen = false;
         $includeInactiveSnakeSeen = false;
+        $ticketTypesRequests = 0;
 
-        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, $btcpayStoreId, &$includeInactiveSeen, &$includeInactiveSnakeSeen) {
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, $btcpayStoreId, &$includeInactiveSeen, &$includeInactiveSnakeSeen, &$ticketTypesRequests) {
             $url = (string) $request->url();
             if (! str_contains($url, $baseUrl)) {
                 return Http::response([], 404);
@@ -61,6 +62,8 @@ class TicketEventsListTest extends TestCase
             }
 
             if ($request->method() === 'GET' && str_contains($url, '/ticket-types')) {
+                $ticketTypesRequests++;
+
                 return Http::response([], 200);
             }
 
@@ -79,5 +82,6 @@ class TicketEventsListTest extends TestCase
 
         $this->assertTrue($includeInactiveSeen, 'BTCPay list events request should include includeInactive=true');
         $this->assertTrue($includeInactiveSnakeSeen, 'BTCPay list events request should include include_inactive=true');
+        $this->assertSame(1, $ticketTypesRequests, 'Only active events need a ticket-types lookup for deactivate guard');
     }
 }

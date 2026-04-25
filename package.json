@@ -1,20 +1,20 @@
 {
   "name": "satflux.io",
-  "version": "1.1.18",
+  "version": "1.1.19",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/fix-manifest.js",
     "preview": "vite preview",
-    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
+    "lint": "eslint resources/js --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts",
+    "lint:fix": "eslint resources/js --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix",
     "version:patch": "node scripts/bump-version.js patch",
     "version:minor": "node scripts/bump-version.js minor",
     "version:major": "node scripts/bump-version.js major"
   },
   "dependencies": {
     "@inertiajs/vue3": "^2.0",
-    "@pinia/nuxt": "^0.5.1",
     "@tiptap/extension-code-block-lowlight": "^2.10.0",
     "@tiptap/extension-color": "^2.10.0",
     "@tiptap/extension-heading": "^2.10.0",
@@ -53,6 +53,7 @@
     "@vue/eslint-config-typescript": "^13.0.0",
     "autoprefixer": "^10.4.17",
     "eslint": "^8.57.0",
+    "eslint-plugin-vue": "^9.28.0",
     "laravel-vite-plugin": "^1.0",
     "postcss": "^8.4.33",
     "tailwindcss": "^3.4.1",

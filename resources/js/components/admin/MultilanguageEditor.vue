@@ -55,7 +55,6 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { supportedLocales as locales } from '../../i18n';
 
 const supportedLocales = [
   { code: 'en', name: 'English' },

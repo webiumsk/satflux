@@ -38,8 +38,14 @@ class TicketController extends Controller
 
         $events = array_map([$this, 'normalizeEventLogo'], $events);
 
-        // Add ticketTypesCount so UI can disable "deactivate" when event has ticket types
+        // Add ticketTypesCount so UI can disable "deactivate" when event has ticket types.
+        // Only active events need the count; inactive events are being activated, not deactivated.
         foreach ($events as &$event) {
+            if (($event['eventState'] ?? '') !== 'Active') {
+                $event['ticketTypesCount'] = 0;
+                continue;
+            }
+
             try {
                 $types = $this->ticketService->listTicketTypes(
                     $store->btcpay_store_id,

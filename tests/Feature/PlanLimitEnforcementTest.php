@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class PlanLimitEnforcementTest extends TestCase
 {
@@ -54,7 +55,7 @@ class PlanLimitEnforcementTest extends TestCase
         $this->freePlanId = $free->id;
     }
 
-    /** @test */
+    #[Test]
     public function store_creation_blocked_when_free_user_has_one_store(): void
     {
         Http::fake([

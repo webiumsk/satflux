@@ -366,7 +366,7 @@ import api from "../../services/api";
 import LnurlQrModal from "./LnurlQrModal.vue";
 import NostrAuthModal from "./NostrAuthModal.vue";
 
-const props = defineProps({
+defineProps({
   showLoginLink: {
     type: Boolean,
     default: true,

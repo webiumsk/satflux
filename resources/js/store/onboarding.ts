@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { useRoute } from 'vue-router';
 
 const STORAGE_KEY = 'onboarding_pos_tour';
 
@@ -64,7 +63,9 @@ function loadStored(): PosOnboardingStepId {
     const v = localStorage.getItem(STORAGE_KEY);
     if (v === 'dismissed' || v === 'done') return v;
     if (v === 'pos_1' || v === 'pos_2' || v === 'pos_3' || v === 'pos_4' || v === 'pos_5') return v;
-  } catch (_) {}
+  } catch (_) {
+    // Ignore localStorage access failures (private mode / SSR-like contexts).
+  }
   return 'pos_1';
 }
 
@@ -96,21 +97,27 @@ export const useOnboardingStore = defineStore('onboarding', () => {
     }
     try {
       localStorage.setItem(STORAGE_KEY, currentStepId.value);
-    } catch (_) {}
+    } catch (_) {
+      // Ignore localStorage write failures.
+    }
   }
 
   function dismiss() {
     currentStepId.value = 'dismissed';
     try {
       localStorage.setItem(STORAGE_KEY, 'dismissed');
-    } catch (_) {}
+    } catch (_) {
+      // Ignore localStorage write failures.
+    }
   }
 
   function reset() {
     currentStepId.value = 'pos_1';
     try {
       localStorage.setItem(STORAGE_KEY, 'pos_1');
-    } catch (_) {}
+    } catch (_) {
+      // Ignore localStorage write failures.
+    }
   }
 
   function isActive() {

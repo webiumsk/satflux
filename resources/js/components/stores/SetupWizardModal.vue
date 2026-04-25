@@ -149,7 +149,7 @@ import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
 
-const props = defineProps<{
+defineProps<{
   storeId: string;
   store: { id: string; name: string; wallet_type?: string | null } | null;
 }>();

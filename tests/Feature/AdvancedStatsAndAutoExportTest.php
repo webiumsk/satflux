@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Models\Store;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class AdvancedStatsAndAutoExportTest extends TestCase
 {
@@ -58,7 +60,7 @@ class AdvancedStatsAndAutoExportTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function advanced_stats_endpoint_returns_403_for_free_user(): void
     {
         $response = $this->actingAs($this->freeUser)->getJson('/api/stats/advanced');
@@ -67,12 +69,45 @@ class AdvancedStatsAndAutoExportTest extends TestCase
             ->assertJsonPath('message', fn ($m) => str_contains($m, 'Pro') || str_contains($m, 'Advanced'));
     }
 
-    /** @test */
+    #[Test]
     public function advanced_stats_endpoint_returns_200_for_pro_user(): void
     {
         $response = $this->actingAs($this->proUser)->getJson('/api/stats/advanced');
 
         $response->assertStatus(200)
             ->assertJsonStructure(['data' => ['stores', 'overall']]);
+    }
+
+    #[Test]
+    public function support_user_can_view_basic_stats_for_another_users_store(): void
+    {
+        $owner = User::factory()->create(['btcpay_api_key' => null]);
+        $support = User::factory()->support()->create();
+        $store = Store::factory()->create(['user_id' => $owner->id]);
+
+        $response = $this->actingAs($support)->getJson("/api/stores/{$store->id}/stats");
+
+        $response->assertStatus(200)
+            ->assertJsonStructure([
+                'data' => [
+                    'invoice_count_30d',
+                    'invoice_count_all_time',
+                    'paid_amount_30d',
+                    'paid_amount_all_time',
+                    'currency',
+                ],
+            ]);
+    }
+
+    #[Test]
+    public function non_support_user_cannot_view_basic_stats_for_another_users_store(): void
+    {
+        $owner = User::factory()->create(['btcpay_api_key' => null]);
+        $otherUser = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $owner->id]);
+
+        $response = $this->actingAs($otherUser)->getJson("/api/stores/{$store->id}/stats");
+
+        $response->assertStatus(403);
     }
 }

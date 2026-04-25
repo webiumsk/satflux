@@ -21,7 +21,8 @@ class StatsController extends Controller
      */
     public function store(Request $request, \App\Models\Store $store)
     {
-        if ($store->user_id !== $request->user()->id) {
+        $user = $request->user();
+        if ($store->user_id !== $user->id && !$user->isSupport()) {
             abort(403);
         }
 

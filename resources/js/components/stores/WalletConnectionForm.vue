@@ -1605,7 +1605,7 @@
   <NostrAuthModal
     :open="showNostrRevealModal"
     mode="reveal"
-    :store-id="Number(storeId)"
+    :store-id="storeId"
     :confirm-purpose="nostrRevealConfirmPurpose"
     @close="showNostrRevealModal = false"
     @success="onNostrRevealSuccess"
@@ -2127,10 +2127,9 @@ watch(
       switchToCashuIntent.value,
       preferLightningWalletForm.value,
     ] as const,
-  ([wt, unset, cashuIntent, _preferLightning]: [
+  ([wt, unset, cashuIntent]: [
     Props["walletType"],
     UnsetWalletChoice,
-    boolean,
     boolean,
   ]) => {
     const cashuActive =

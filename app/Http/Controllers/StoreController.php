@@ -684,8 +684,8 @@ class StoreController extends Controller
     {
         $user = $request->user();
 
-        // Ensure user owns the store
-        if ($store->user_id !== $user->id) {
+        // Owner or support/admin can delete the store.
+        if ($store->user_id !== $user->id && !$user->isSupport()) {
             return response()->json(['message' => __('messages.unauthorized')], 403);
         }
 

@@ -332,12 +332,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { useI18n } from "vue-i18n";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/auth";
 import Select from "../../components/ui/Select.vue";
 
-const { t } = useI18n();
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 

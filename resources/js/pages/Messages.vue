@@ -95,7 +95,7 @@
               ]"
             >
               <svg class="w-5 h-5" :class="getTypeIconColor(msg.type)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getTypeIconPath(msg.type)" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getTypeIconPath()" />
               </svg>
             </div>
             <div class="flex-1 min-w-0">
@@ -146,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import api from "../services/api";
 
@@ -264,7 +264,7 @@ const getTypeIconColor = (type: string) => {
   return map[type] ?? "text-indigo-400";
 };
 
-const getTypeIconPath = (type: string) => {
+const getTypeIconPath = () => {
   // Bell icon path
   return "M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9";
 };

@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class InvoiceTest extends TestCase
 {
@@ -33,7 +34,7 @@ class InvoiceTest extends TestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function user_can_list_invoices_for_own_store(): void
     {
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-api-key']);
@@ -60,7 +61,7 @@ class InvoiceTest extends TestCase
             ->assertJsonPath('meta.total', 1);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_list_invoices_for_other_users_store(): void
     {
         $owner = User::factory()->create(['btcpay_api_key' => 'key']);
@@ -73,7 +74,7 @@ class InvoiceTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function user_can_export_invoices_csv_when_count_small(): void
     {
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-api-key']);
@@ -94,7 +95,7 @@ class InvoiceTest extends TestCase
         $this->assertStringContainsString('text/csv', $response->headers->get('Content-Type') ?? '');
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_export_invoices_for_other_users_store(): void
     {
         $owner = User::factory()->create(['btcpay_api_key' => 'key']);

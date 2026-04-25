@@ -120,6 +120,20 @@ class WebhookTest extends TestCase
         Queue::assertPushed(ProcessBtcPayWebhook::class);
     }
 
+    public function test_webhook_rejects_without_secret_in_production(): void
+    {
+        $this->app->detectEnvironment(fn () => 'production');
+        config(['services.btcpay.webhook_secret' => null]);
+        $payload = ['type' => 'StoreUpdated', 'storeId' => 'any'];
+
+        $response = $this->postJson('/api/webhooks/btcpay', $payload);
+
+        $response->assertStatus(401);
+        $response->assertJson(['error' => 'Webhook secret not configured']);
+        $this->assertDatabaseCount('webhook_events', 0);
+        Queue::assertNotPushed(ProcessBtcPayWebhook::class);
+    }
+
     public function test_webhook_uses_store_webhook_secret_when_store_has_one(): void
     {
         $store = Store::factory()->create([

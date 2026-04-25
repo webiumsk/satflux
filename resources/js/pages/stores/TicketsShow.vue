@@ -1656,7 +1656,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, inject } from "vue";
+import { ref, computed, nextTick, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   useTicketsStore,
@@ -1674,8 +1674,6 @@ import UrlQrModal from "../../components/ui/UrlQrModal.vue";
 const { t } = useI18n();
 const ticketsStore = useTicketsStore();
 const flashStore = useFlashStore();
-const isInertia = inject<boolean>("inertia", false);
-
 const props = withDefaults(
   defineProps<{
     app: any;
@@ -2115,8 +2113,21 @@ async function handleToggleEvent(event: TicketEvent) {
   }
   clearMessages();
   try {
-    await ticketsStore.toggleEvent(props.store.id, event.id);
-    await loadEvents();
+    const toggled = await ticketsStore.toggleEvent(props.store.id, event.id);
+    // Determine new state from response; fall back to optimistic flip when plugin returns empty (204)
+    const newState: "Active" | "Disabled" =
+      toggled?.eventState ?? (event.eventState === "Active" ? "Disabled" : "Active");
+    // Update in-place — do NOT call loadEvents() because most plugin builds omit
+    // disabled events from the list endpoint even when includeInactive=true is sent,
+    // which would cause the event to disappear right after being disabled.
+    const idx = events.value.findIndex((e) => e.id === event.id);
+    if (idx !== -1) {
+      events.value[idx] = {
+        ...events.value[idx],
+        ...(toggled && !Array.isArray(toggled) ? toggled : {}),
+        eventState: newState,
+      };
+    }
     showSuccess(
       event.eventState === "Active"
         ? t("tickets.event_disabled")

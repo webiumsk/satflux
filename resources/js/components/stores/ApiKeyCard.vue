@@ -167,12 +167,69 @@
         </div>
       </div>
     </div>
+
+    <!-- Shown after successful regenerate: same as create flow (no browser alert) -->
+    <div
+      v-if="showRegeneratedKeyModal"
+      class="fixed inset-0 z-50 overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="regenerated-modal-title"
+    >
+      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div
+          class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm transition-opacity"
+          aria-hidden="true"
+          @click="closeRegeneratedKeyModal"
+        />
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div
+          class="inline-block align-bottom bg-gray-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-700"
+        >
+          <div class="bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <h3
+              id="regenerated-modal-title"
+              class="text-lg font-bold text-white mb-1"
+            >
+              {{ t('stores.api_key_regenerated_title') }}
+            </h3>
+            <p class="text-sm text-amber-400/90 mb-4">{{ t('stores.api_key_regenerated_body') }}</p>
+            <div class="flex gap-2">
+              <input
+                type="text"
+                readonly
+                :value="regeneratedApiKey"
+                class="flex-1 min-w-0 font-mono text-sm px-3 py-2 bg-gray-900/80 border border-gray-600 rounded-lg text-indigo-300"
+              />
+              <button
+                type="button"
+                class="shrink-0 px-3 py-2 text-sm font-medium rounded-lg border border-indigo-500/40 text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20"
+                @click="copyRegeneratedKey"
+              >
+                {{ t('stores.api_key_copy') }}
+              </button>
+            </div>
+          </div>
+          <div class="bg-gray-800/50 px-4 py-3 sm:px-6 border-t border-gray-700/50 sm:flex sm:flex-row-reverse">
+            <button
+              type="button"
+              class="w-full inline-flex justify-center rounded-xl border border-transparent px-4 py-2 bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-700 sm:ml-3 sm:w-auto"
+              @click="closeRegeneratedKeyModal"
+            >
+              {{ t('common.close') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
+import { useFlashStore } from '../../store/flash';
 
 interface Props {
   apiKey: {
@@ -195,10 +252,14 @@ const emit = defineEmits<{
   refresh: [];
 }>();
 
+const { t } = useI18n();
+const flash = useFlashStore();
 const deleting = ref(false);
 const regenerating = ref(false);
 const showDeleteModal = ref(false);
 const showRegenerateModal = ref(false);
+const showRegeneratedKeyModal = ref(false);
+const regeneratedApiKey = ref('');
 
 function formatDate(dateString: string): string {
   if (!dateString) return '-';
@@ -236,6 +297,21 @@ function confirmDelete() {
   showDeleteModal.value = true;
 }
 
+function closeRegeneratedKeyModal() {
+  showRegeneratedKeyModal.value = false;
+  regeneratedApiKey.value = '';
+}
+
+async function copyRegeneratedKey() {
+  if (!regeneratedApiKey.value) return;
+  try {
+    await navigator.clipboard.writeText(regeneratedApiKey.value);
+    flash.success(t('common.copied'));
+  } catch {
+    flash.error(t('common.copy_failed'));
+  }
+}
+
 async function handleDelete() {
   deleting.value = true;
   try {
@@ -244,7 +320,10 @@ async function handleDelete() {
     showDeleteModal.value = false;
   } catch (err: any) {
     console.error('Failed to delete API key:', err);
-    alert(err.response?.data?.message || 'Failed to delete API key');
+    flash.error(
+      (err as { response?: { data?: { message?: string } } }).response?.data?.message ||
+        t('stores.api_key_delete_failed')
+    );
   } finally {
     deleting.value = false;
   }
@@ -258,15 +337,16 @@ async function confirmRegenerate() {
   regenerating.value = true;
   try {
     const response = await api.post(`/stores/${props.storeId}/api-keys/${props.apiKey.id}/regenerate`);
-    
-    // Show the new API key in a modal (similar to create flow)
-    alert(`New API Key: ${response.data.data.api_key}\n\n⚠️ Save this API key now. You won't be able to see it again!`);
-    
-    emit('regenerate');
+    regeneratedApiKey.value = response.data.data.api_key;
     showRegenerateModal.value = false;
+    showRegeneratedKeyModal.value = true;
+    emit('regenerate');
   } catch (err: any) {
     console.error('Failed to regenerate API key:', err);
-    alert(err.response?.data?.message || 'Failed to regenerate API key');
+    flash.error(
+      (err as { response?: { data?: { message?: string } } }).response?.data?.message ||
+        t('stores.api_key_regenerate_failed')
+    );
   } finally {
     regenerating.value = false;
   }
