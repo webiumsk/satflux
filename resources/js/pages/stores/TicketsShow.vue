@@ -743,13 +743,13 @@
                         @click="handleToggleEvent(event)"
                         :disabled="
                           event.eventState === 'Active' &&
-                          (event.ticketTypesCount ?? 0) > 0
+                          (event.ticketsSold ?? 0) > 0
                         "
                         :title="
                           event.eventState === 'Active' &&
-                          (event.ticketTypesCount ?? 0) > 0
+                          (event.ticketsSold ?? 0) > 0
                             ? t(
-                                'tickets.cannot_deactivate_event_with_ticket_types',
+                                'tickets.cannot_deactivate_event_with_sold_tickets',
                               )
                             : event.eventState === 'Active'
                               ? t('tickets.disable')
@@ -758,7 +758,7 @@
                         :class="[
                           'p-2 rounded-lg transition-colors text-sm',
                           event.eventState === 'Active' &&
-                          (event.ticketTypesCount ?? 0) > 0
+                          (event.ticketsSold ?? 0) > 0
                             ? 'cursor-not-allowed opacity-50'
                             : event.eventState === 'Active'
                               ? 'text-yellow-400 hover:bg-yellow-500/10'
@@ -2107,8 +2107,8 @@ function handleEditEvent(event: TicketEvent) {
 }
 
 async function handleToggleEvent(event: TicketEvent) {
-  if (event.eventState === "Active" && (event.ticketTypesCount ?? 0) > 0) {
-    showError(t("tickets.cannot_deactivate_event_with_ticket_types"));
+  if (event.eventState === "Active" && (event.ticketsSold ?? 0) > 0) {
+    showError(t("tickets.cannot_deactivate_event_with_sold_tickets"));
     return;
   }
   clearMessages();
