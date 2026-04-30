@@ -18,6 +18,16 @@ class SendVerificationEmailJob implements ShouldQueue
 
     public int $timeout = 60;
 
+    /**
+     * Stagger retries to avoid hammering mail transport.
+     *
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [60, 120, 300, 600];
+    }
+
     public function __construct(
         public int $userId
     ) {}
