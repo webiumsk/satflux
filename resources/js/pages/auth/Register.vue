@@ -155,7 +155,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import RegistrationForm from "../../components/auth/RegistrationForm.vue";
@@ -177,7 +177,7 @@ const authMethodTab = ref<"email" | "other">("email");
 const lnurlAuthEnabled = ref(false);
 const nostrAuthEnabled = ref(false);
 
-void (async () => {
+onMounted(async () => {
   try {
     const [lnurlRes, nostrRes] = await Promise.all([
       api.get<{ enabled: boolean }>(`/lnurl-auth/enabled?_=${Date.now()}`),
@@ -189,7 +189,7 @@ void (async () => {
     lnurlAuthEnabled.value = false;
     nostrAuthEnabled.value = false;
   }
-})();
+});
 
 function redirectAfterGuestRestore(payload: { store_id?: string | null }) {
   const storeId = payload?.store_id;

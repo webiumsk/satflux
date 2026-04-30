@@ -79,7 +79,7 @@ class GuestAuthController extends Controller
     /**
      * Start a guest recovery challenge (sign the returned message with the same key as enrollment).
      */
-    public function recoveryChallenge(Request $request): \Illuminate\Http\JsonResponse
+    public function recoveryChallenge(): \Illuminate\Http\JsonResponse
     {
         $challenge = $this->guestRecoveryService->createChallenge();
 

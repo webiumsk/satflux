@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Jobs\SendVerificationEmailJob;
+use App\Jobs\SyncBtcpayEmailJob;
 use App\Models\User;
 use App\Services\BtcPay\UserService;
 use Illuminate\Support\Facades\Hash;
@@ -55,7 +57,7 @@ class GuestUpgradeService
                         'btcpay_user_id' => $user->btcpay_user_id,
                         'error' => $e->getMessage(),
                     ]);
-                    throw new \RuntimeException('BTCPay email update failed.', 0, $e);
+                    SyncBtcpayEmailJob::dispatch($user->id, $newEmail);
                 }
             }
 
@@ -66,7 +68,7 @@ class GuestUpgradeService
                     'user_id' => $user->id,
                     'error' => $e->getMessage(),
                 ]);
-                throw new \RuntimeException('Unable to send verification email.', 0, $e);
+                SendVerificationEmailJob::dispatch($user->id);
             }
         } else {
             $user->forceFill([
