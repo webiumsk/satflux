@@ -25,7 +25,7 @@ class LoginController extends Controller
             ]);
         }
 
-        if (! Auth::user()->hasVerifiedEmail()) {
+        if (! Auth::user()->hasVerifiedEmail() && ! (bool) (Auth::user()->is_guest ?? false)) {
             Auth::logout();
 
             throw ValidationException::withMessages([
@@ -62,11 +62,3 @@ class LoginController extends Controller
         return response()->json(['message' => __('messages.logout_successful')]);
     }
 }
-
-
-
-
-
-
-
-

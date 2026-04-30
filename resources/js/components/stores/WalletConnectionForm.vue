@@ -499,6 +499,24 @@
           <button
             type="button"
             class="flex flex-col items-start p-5 rounded-xl border border-gray-600 bg-gray-800/80 hover:border-indigo-500 hover:bg-indigo-500/10 text-left transition-all"
+            @click="unsetWalletChoice = 'lightning'"
+          >
+            <span
+              class="font-semibold text-white inline-flex items-center gap-2 flex-wrap"
+            >
+              {{ t("stores.wallet_connection_choose_lightning") }}
+              <span
+                class="text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                >{{ t("stores.wallet_recommended_badge") }}</span
+              >
+            </span>
+            <span class="text-sm text-gray-400 mt-2">{{
+              t("stores.wallet_connection_choose_lightning_hint")
+            }}</span>
+          </button>
+          <button
+            type="button"
+            class="flex flex-col items-start p-5 rounded-xl border border-gray-600 bg-gray-800/80 hover:border-indigo-500 hover:bg-indigo-500/10 text-left transition-all"
             @click="unsetWalletChoice = 'cashu'"
           >
             <span
@@ -514,18 +532,6 @@
               >{{ t("create_store.wallet_type_cashu") }} -
               {{ t("stores.cashu_description") }}</span
             >
-          </button>
-          <button
-            type="button"
-            class="flex flex-col items-start p-5 rounded-xl border border-gray-600 bg-gray-800/80 hover:border-indigo-500 hover:bg-indigo-500/10 text-left transition-all"
-            @click="unsetWalletChoice = 'lightning'"
-          >
-            <span class="font-semibold text-white">{{
-              t("stores.wallet_connection_choose_lightning")
-            }}</span>
-            <span class="text-sm text-gray-400 mt-2">{{
-              t("stores.wallet_connection_choose_lightning_hint")
-            }}</span>
           </button>
         </div>
       </div>

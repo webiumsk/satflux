@@ -5,17 +5,21 @@ namespace App\Http\Controllers;
 use App\Models\Store;
 use App\Services\BtcPay\LightningAddressService;
 use App\Services\BtcPay\TicketService;
+use App\Services\GuestUpgradeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rules\Password;
 
 class AccountController extends Controller
 {
     public function __construct(
         protected LightningAddressService $lightningAddressService,
-        protected TicketService $ticketService
+        protected TicketService $ticketService,
+        protected GuestUpgradeService $guestUpgradeService
     ) {}
+
     /**
      * Get the authenticated user with plan and subscription info.
      */
@@ -48,6 +52,8 @@ class AccountController extends Controller
         ];
         $payload['has_lightning_login'] = ! empty($user->lightning_public_key);
         $payload['has_nostr_login'] = ! empty($user->nostr_public_key);
+        $payload['guest_recovery_enrolled'] = (bool) ($user->is_guest ?? false)
+            && ! empty($user->guest_recovery_public_key ?? null);
 
         return response()->json($payload);
     }
@@ -60,7 +66,7 @@ class AccountController extends Controller
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -71,6 +77,7 @@ class AccountController extends Controller
             foreach ($user->stores as $store) {
                 $apiKeyCount += $store->apiKeys()->count();
             }
+
             return response()->json([
                 'stores' => [
                     'current' => $storeCount,
@@ -94,7 +101,7 @@ class AccountController extends Controller
             ]);
         }
 
-        $cacheKey = 'user_limits_' . $user->id;
+        $cacheKey = 'user_limits_'.$user->id;
         $limits = Cache::remember($cacheKey, 60, function () use ($user) {
             $plan = $user->currentSubscriptionPlan();
             $maxStores = $plan?->max_stores;
@@ -208,12 +215,40 @@ class AccountController extends Controller
 
         return response()->json(['message' => __('messages.password_updated')]);
     }
+
+    /**
+     * Upgrade a guest account to a regular account identity.
+     * Supports:
+     * - email+password (recommended)
+     * - lightning / nostr linked login (guest flag removed, email unchanged)
+     */
+    public function upgradeGuest(Request $request)
+    {
+        $user = $request->user();
+        if (! $user || ! (bool) ($user->is_guest ?? false)) {
+            return response()->json(['message' => 'Only guest accounts can be upgraded.'], 422);
+        }
+
+        $validated = $request->validate([
+            'method' => ['required', 'in:email,lightning,nostr'],
+            'email' => ['required_if:method,email', 'nullable', 'email:rfc,dns', 'max:255', 'unique:users,email'],
+            'password' => ['required_if:method,email', 'nullable', Password::defaults()],
+            'password_confirmation' => ['required_if:method,email', 'nullable', 'same:password'],
+        ]);
+
+        try {
+            $upgradedUser = $this->guestUpgradeService->upgrade($user, $validated);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 502);
+        }
+
+        return response()->json([
+            'message' => 'Guest account upgraded successfully.',
+            'user' => $upgradedUser->makeVisible('role'),
+        ]);
+    }
 }
-
-
-
-
-
-
-
-
