@@ -898,6 +898,7 @@ import api from "../../services/api";
 import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
 import NostrAuthModal from "../../components/auth/NostrAuthModal.vue";
 import {
+  clearStoredGuestMnemonic,
   getStoredGuestMnemonic,
 } from "../../services/guestRecovery";
 import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
@@ -1263,6 +1264,8 @@ async function handleGuestUpgradeEmail() {
       await authStore.fetchUser();
     }
     flashStore.success(t("account.guest_upgrade_email_success"));
+    clearStoredGuestMnemonic();
+    storedGuestMnemonic.value = null;
     guestUpgradeForm.value.password = "";
     guestUpgradeForm.value.password_confirmation = "";
   } catch (e: any) {
@@ -1280,6 +1283,8 @@ async function handleGuestUpgradeLinked(method: "lightning" | "nostr") {
     await api.put("/user/guest/upgrade", { method });
     await authStore.fetchUser();
     flashStore.success(t("account.guest_upgrade_linked_success"));
+    clearStoredGuestMnemonic();
+    storedGuestMnemonic.value = null;
   } catch (e: any) {
     flashStore.error(
       e?.response?.data?.message || t("account.guest_upgrade_failed"),

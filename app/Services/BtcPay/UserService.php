@@ -223,6 +223,24 @@ class UserService
     }
 
     /**
+     * Delete a BTCPay user.
+     *
+     * @throws \App\Services\BtcPay\Exceptions\BtcPayException
+     */
+    public function deleteUser(string $userId): void
+    {
+        try {
+            $this->client->delete("/api/v1/users/{$userId}");
+        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+            Log::error('BTCPay user deletion failed', [
+                'error' => $e->getMessage(),
+                'userId' => $userId,
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
      * Update a user in BTCPay Server.
      * 
      * @param string $userId BTCPay user ID

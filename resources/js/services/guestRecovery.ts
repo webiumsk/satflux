@@ -56,20 +56,22 @@ export function storeGuestMnemonic(mnemonic: string): void {
     if (!validateMnemonic(normalized, wordlist)) {
         throw new Error("invalid_mnemonic");
     }
-    localStorage.setItem(GUEST_MNEMONIC_STORAGE_KEY, normalized);
+    // Keep mnemonic only for current browser session by default (avoid persistent plaintext storage).
+    sessionStorage.setItem(GUEST_MNEMONIC_STORAGE_KEY, normalized);
 }
 
 export function getStoredGuestMnemonic(): string | null {
-    const raw = localStorage.getItem(GUEST_MNEMONIC_STORAGE_KEY);
+    const raw = sessionStorage.getItem(GUEST_MNEMONIC_STORAGE_KEY);
     if (!raw) return null;
     const normalized = normalizeMnemonic(raw);
     if (!validateMnemonic(normalized, wordlist)) {
-        localStorage.removeItem(GUEST_MNEMONIC_STORAGE_KEY);
+        sessionStorage.removeItem(GUEST_MNEMONIC_STORAGE_KEY);
         return null;
     }
     return normalized;
 }
 
 export function clearStoredGuestMnemonic(): void {
+    sessionStorage.removeItem(GUEST_MNEMONIC_STORAGE_KEY);
     localStorage.removeItem(GUEST_MNEMONIC_STORAGE_KEY);
 }

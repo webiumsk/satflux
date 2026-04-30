@@ -371,6 +371,7 @@ import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
 import NostrAuthModal from "../../components/auth/NostrAuthModal.vue";
 import GuestBackupWizardModal from "../../components/auth/GuestBackupWizardModal.vue";
 import GuestRestoreModal from "../../components/auth/GuestRestoreModal.vue";
+import { storeGuestMnemonic } from "../../services/guestRecovery";
 
 const { t } = useI18n();
 
@@ -467,6 +468,7 @@ function redirectAfterGuestRestore(payload: { store_id?: string | null }) {
 
 async function handleGuestEnrolled(payload: {
   recoveryPublicKeyHex: string;
+  mnemonic: string;
 }) {
   showGuestBackupWizard.value = false;
   guestLoading.value = true;
@@ -474,6 +476,7 @@ async function handleGuestEnrolled(payload: {
     const response = await authStore.continueAsGuest(
       payload.recoveryPublicKeyHex,
     );
+    storeGuestMnemonic(payload.mnemonic);
     // Be resilient to slight response shape differences.
     let storeId =
       response?.store_id ??
@@ -484,7 +487,10 @@ async function handleGuestEnrolled(payload: {
       try {
         const storesRes = await api.get("/stores");
         const firstStoreId = storesRes?.data?.data?.[0]?.id;
-        storeId = typeof firstStoreId === "string" ? firstStoreId : null;
+        storeId =
+          typeof firstStoreId === "string" || typeof firstStoreId === "number"
+            ? String(firstStoreId)
+            : null;
       } catch {
         storeId = null;
       }

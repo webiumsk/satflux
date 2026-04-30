@@ -108,6 +108,7 @@ class AccountTest extends TestCase
             'password' => bcrypt('old-password'),
             'is_guest' => true,
             'email_verified_at' => now(),
+            'btcpay_user_id' => null,
         ]);
         Sanctum::actingAs($guest);
 
@@ -125,7 +126,7 @@ class AccountTest extends TestCase
         $guest->refresh();
         $this->assertSame('upgraded@satflux.io', $guest->email);
         $this->assertFalse((bool) $guest->is_guest);
-        $this->assertNotNull($guest->email_verified_at);
+        $this->assertNull($guest->email_verified_at);
         $this->assertTrue(Hash::check('new-secure-password', $guest->password));
 
         $this->assertTrue(

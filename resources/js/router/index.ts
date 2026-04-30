@@ -382,7 +382,11 @@ router.beforeEach(async (to, from, next) => {
         if (!authOnlyExempt) {
             const primaryStoreId = await resolveGuestPrimaryStoreId();
             if (!primaryStoreId) {
-                next({ name: 'stores-create' });
+                if (to.name !== 'stores-create') {
+                    next({ name: 'stores-create' });
+                    return;
+                }
+                next();
                 return;
             }
 

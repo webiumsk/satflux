@@ -957,7 +957,7 @@
     "guest_upgrade_email_submit": "Upgradovať cez e-mail",
     "guest_upgrade_use_lightning": "Dokončiť cez Lightning login",
     "guest_upgrade_use_nostr": "Dokončiť cez Nostr login",
-    "guest_upgrade_email_success": "Guest účet bol upgradovaný. Teraz sa môžete prihlásiť e-mailom a heslom.",
+    "guest_upgrade_email_success": "Guest účet bol upgradovaný. Overte nový e-mail v schránke.",
     "guest_upgrade_linked_success": "Guest účet bol upgradovaný cez prepojený login.",
     "guest_upgrade_failed": "Nepodarilo sa upgradovať guest účet.",
     "profile_information": "Informácie o profile",

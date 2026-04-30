@@ -1164,7 +1164,7 @@
     "guest_upgrade_email_submit": "Actualizar con correo",
     "guest_upgrade_use_lightning": "Finalizar con Lightning login",
     "guest_upgrade_use_nostr": "Finalizar con Nostr login",
-    "guest_upgrade_email_success": "Cuenta de invitado actualizada. Ahora puedes iniciar sesión con correo y contraseña.",
+    "guest_upgrade_email_success": "Cuenta de invitado actualizada. Revisa tu bandeja para verificar el nuevo correo.",
     "guest_upgrade_linked_success": "Invitado actualizado usando método de acceso vinculado.",
     "guest_upgrade_failed": "No se pudo actualizar la cuenta de invitado.",
     "profile_information": "Información del perfil",

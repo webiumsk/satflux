@@ -95,14 +95,13 @@ import { useI18n } from "vue-i18n";
 import {
   generateGuestMnemonic24,
   guestRecoveryPublicKeyHexFromMnemonic,
-  storeGuestMnemonic,
 } from "../../services/guestRecovery";
 
 const props = defineProps<{ open: boolean }>();
 
 const emit = defineEmits<{
   close: [];
-  done: [payload: { recoveryPublicKeyHex: string }];
+  done: [payload: { recoveryPublicKeyHex: string; mnemonic: string }];
 }>();
 
 const { t } = useI18n();
@@ -151,8 +150,7 @@ async function copyWords() {
 function finish() {
   try {
     const recoveryPublicKeyHex = guestRecoveryPublicKeyHexFromMnemonic(mnemonic.value);
-    storeGuestMnemonic(mnemonic.value);
-    emit("done", { recoveryPublicKeyHex });
+    emit("done", { recoveryPublicKeyHex, mnemonic: mnemonic.value });
     emit("close");
   } catch {
     emit("close");

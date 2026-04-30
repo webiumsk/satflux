@@ -66,9 +66,13 @@ export const useAuthStore = defineStore('auth', () => {
             if (!user.value?.is_guest) {
                 clearStoredGuestMnemonic();
             }
-        } catch (error) {
-            user.value = null;
-            await tryAutoRestoreGuestFromStoredSeed();
+        } catch (error: any) {
+            const status = error?.response?.status ?? error?.status;
+            if (status === 401 || status === 403) {
+                user.value = null;
+                await tryAutoRestoreGuestFromStoredSeed();
+                return;
+            }
         }
     }
 

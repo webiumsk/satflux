@@ -956,7 +956,7 @@
     "guest_upgrade_email_submit": "Upgrade with email",
     "guest_upgrade_use_lightning": "Finalize with Lightning login",
     "guest_upgrade_use_nostr": "Finalize with Nostr login",
-    "guest_upgrade_email_success": "Guest upgraded. You can now sign in with your email and password.",
+    "guest_upgrade_email_success": "Guest upgraded. Check your inbox to verify your new email.",
     "guest_upgrade_linked_success": "Guest upgraded using linked login method.",
     "guest_upgrade_failed": "Failed to upgrade guest account.",
     "profile_information": "Profile Information",
