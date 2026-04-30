@@ -258,6 +258,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class])->group(function
     Route::get('/user/limits', [AccountController::class, 'limits']);
     Route::put('/user', [AccountController::class, 'updateProfile']);
     Route::put('/user/password', [AccountController::class, 'updatePassword']);
+    Route::put('/user/guest/upgrade', [AccountController::class, 'upgradeGuest']);
 
     // Panel API keys (for our API, not BTCPay)
     Route::get('/user/api-keys', [\App\Http\Controllers\UserApiKeyController::class, 'index']);

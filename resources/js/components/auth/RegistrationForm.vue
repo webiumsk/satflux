@@ -128,7 +128,7 @@
         {{ loading ? t("auth.creating_account") : t("auth.create_account") }}
       </button>
 
-      <div v-if="lnurlAuthEnabled || nostrAuthEnabled">
+      <div v-if="showAlternativeAuth && (lnurlAuthEnabled || nostrAuthEnabled)">
         <div class="relative mb-4">
           <div class="absolute inset-0 flex items-center">
             <div class="w-full border-t border-gray-600"></div>
@@ -356,7 +356,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { usePage } from "@inertiajs/vue3";
@@ -366,12 +366,16 @@ import api from "../../services/api";
 import LnurlQrModal from "./LnurlQrModal.vue";
 import NostrAuthModal from "./NostrAuthModal.vue";
 
-defineProps({
-  showLoginLink: {
-    type: Boolean,
-    default: true,
+withDefaults(
+  defineProps<{
+    showLoginLink?: boolean;
+    showAlternativeAuth?: boolean;
+  }>(),
+  {
+    showLoginLink: true,
+    showAlternativeAuth: true,
   },
-});
+);
 
 const { t } = useI18n();
 

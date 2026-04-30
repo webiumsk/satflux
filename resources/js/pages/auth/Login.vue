@@ -28,6 +28,34 @@
         </p>
       </div>
 
+      <div class="rounded-xl border border-indigo-400/60 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 p-3 space-y-2 shadow-lg shadow-indigo-900/30">
+              <button
+                type="button"
+                :disabled="guestLoading"
+                class="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg disabled:opacity-50"
+                @click="showGuestBackupWizard = true"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                {{
+                  guestLoading
+                    ? t("auth.starting_guest_session")
+                    : t("auth.continue_without_registration")
+                }}
+              </button>
+              <p class="text-xs text-indigo-100/90 text-center">
+                {{ t("auth.guest_cta_hint") }}
+              </p>
+              <button
+                type="button"
+                class="w-full font-medium text-indigo-200 hover:text-white text-sm"
+                @click="showGuestRestoreModal = true"
+              >
+                {{ t("auth.restore_guest_session") }}
+              </button>
+            </div>
+
       <div
         class="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-8 shadow-xl"
       >
@@ -163,27 +191,7 @@
               {{ loading ? t("auth.signing_in") : t("auth.sign_in") }}
             </button>
 
-            <div class="flex flex-col gap-2 text-center text-sm">
-              <button
-                type="button"
-                :disabled="guestLoading"
-                class="font-medium text-indigo-400 hover:text-indigo-300 disabled:opacity-50"
-                @click="showGuestBackupWizard = true"
-              >
-                {{
-                  guestLoading
-                    ? t("auth.starting_guest_session")
-                    : t("auth.try_without_account")
-                }}
-              </button>
-              <button
-                type="button"
-                class="font-medium text-gray-400 hover:text-indigo-300"
-                @click="showGuestRestoreModal = true"
-              >
-                {{ t("auth.restore_guest_session") }}
-              </button>
-            </div>
+            
           </div>
 
           <div class="text-center text-sm">
@@ -352,7 +360,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { usePage } from "@inertiajs/vue3";
@@ -451,10 +459,10 @@ async function handleLogin() {
 function redirectAfterGuestRestore(payload: { store_id?: string | null }) {
   const storeId = payload?.store_id;
   if (storeId) {
-    router.push(`/stores/${storeId}/wallet-connection`);
+    router.replace(`/stores/${storeId}/wallet-connection`);
     return;
   }
-  router.push("/stores/create");
+  router.replace("/stores/create");
 }
 
 async function handleGuestEnrolled(payload: {
@@ -466,14 +474,28 @@ async function handleGuestEnrolled(payload: {
     const response = await authStore.continueAsGuest(
       payload.recoveryPublicKeyHex,
     );
-    const storeId = response?.store_id;
+    // Be resilient to slight response shape differences.
+    let storeId =
+      response?.store_id ??
+      response?.data?.store_id ??
+      null;
+
+    if (!storeId) {
+      try {
+        const storesRes = await api.get("/stores");
+        const firstStoreId = storesRes?.data?.data?.[0]?.id;
+        storeId = typeof firstStoreId === "string" ? firstStoreId : null;
+      } catch {
+        storeId = null;
+      }
+    }
 
     if (storeId) {
-      router.push(`/stores/${storeId}/wallet-connection`);
+      router.replace(`/stores/${storeId}/wallet-connection`);
       return;
     }
 
-    router.push("/stores/create");
+    router.replace("/stores/create");
   } catch (err: any) {
     flashStore.error(
       err.response?.data?.message || "Unable to start guest session.",

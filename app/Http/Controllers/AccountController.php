@@ -5,16 +5,19 @@ namespace App\Http\Controllers;
 use App\Models\Store;
 use App\Services\BtcPay\LightningAddressService;
 use App\Services\BtcPay\TicketService;
+use App\Services\BtcPay\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Password;
 
 class AccountController extends Controller
 {
     public function __construct(
         protected LightningAddressService $lightningAddressService,
-        protected TicketService $ticketService
+        protected TicketService $ticketService,
+        protected UserService $userService
     ) {}
 
     /**
@@ -211,5 +214,71 @@ class AccountController extends Controller
         ]);
 
         return response()->json(['message' => __('messages.password_updated')]);
+    }
+
+    /**
+     * Upgrade a guest account to a regular account identity.
+     * Supports:
+     * - email+password (recommended)
+     * - lightning / nostr linked login (guest flag removed, email unchanged)
+     */
+    public function upgradeGuest(Request $request)
+    {
+        $user = $request->user();
+        if (! $user || ! (bool) ($user->is_guest ?? false)) {
+            return response()->json(['message' => 'Only guest accounts can be upgraded.'], 422);
+        }
+
+        $validated = $request->validate([
+            'method' => ['required', 'in:email,lightning,nostr'],
+            'email' => ['required_if:method,email', 'nullable', 'email:rfc,dns', 'max:255', 'unique:users,email'],
+            'password' => ['required_if:method,email', 'nullable', Password::defaults()],
+            'password_confirmation' => ['required_if:method,email', 'nullable', 'same:password'],
+        ]);
+
+        $method = (string) $validated['method'];
+
+        if ($method === 'lightning' && empty($user->lightning_public_key)) {
+            return response()->json(['message' => 'Link Lightning login first.'], 422);
+        }
+        if ($method === 'nostr' && empty($user->nostr_public_key)) {
+            return response()->json(['message' => 'Link Nostr login first.'], 422);
+        }
+
+        if ($method === 'email') {
+            $newEmail = (string) $validated['email'];
+            $newPassword = (string) $validated['password'];
+            $user->forceFill([
+                'email' => $newEmail,
+                'password' => Hash::make($newPassword),
+                // Guest is already an authenticated session; keep account usable after upgrade.
+                // Otherwise RequireVerifiedEmail + login policy would lock the user out.
+                'email_verified_at' => now(),
+                'is_guest' => false,
+            ])->save();
+
+            if (! empty($user->btcpay_user_id)) {
+                try {
+                    $this->userService->updateUser((string) $user->btcpay_user_id, [
+                        'email' => $newEmail,
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::warning('BTCPay email update failed during guest upgrade', [
+                        'user_id' => $user->id,
+                        'btcpay_user_id' => $user->btcpay_user_id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        } else {
+            $user->forceFill([
+                'is_guest' => false,
+            ])->save();
+        }
+
+        return response()->json([
+            'message' => 'Guest account upgraded successfully.',
+            'user' => $user->fresh()->makeVisible('role'),
+        ]);
     }
 }

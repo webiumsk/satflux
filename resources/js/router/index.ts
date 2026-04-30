@@ -101,6 +101,10 @@ const router = createRouter({
             meta: { requiresAuth: true },
         },
         {
+            path: '/account/profile',
+            redirect: { name: 'account' },
+        },
+        {
             path: '/messages',
             name: 'messages',
             component: () => import('../pages/Messages.vue'),

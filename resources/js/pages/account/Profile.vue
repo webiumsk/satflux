@@ -30,14 +30,118 @@
           >
             {{ t("account.guest_recovery_enrolled") }}
           </p>
-          <button
-            v-else
-            type="button"
-            class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
-            @click="showGuestBackupWizard = true"
-          >
-            {{ t("account.guest_setup_recovery") }}
-          </button>
+          <div v-if="storedGuestMnemonic" class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
+              @click="showGuestSeedModal = true"
+            >
+              {{ t("account.guest_reveal_seed") }}
+            </button>
+          </div>
+          <p v-else class="text-sm text-amber-300">
+            {{ t("account.guest_seed_unavailable_here") }}
+          </p>
+
+          <div class="mt-2 pt-3 border-t border-indigo-400/20 space-y-3">
+            <h5 class="text-sm font-semibold text-white">
+              {{ t("account.guest_upgrade_title") }}
+            </h5>
+            <p class="text-xs text-gray-300">
+              {{ t("account.guest_upgrade_desc") }}
+            </p>
+
+            <div class="rounded-xl border border-indigo-500/20 bg-gray-900/30 p-2">
+              <div class="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  class="py-2 px-3 rounded-lg text-xs font-semibold transition-colors"
+                  :class="
+                    guestUpgradeMode === 'email'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-800 text-gray-300 hover:text-white'
+                  "
+                  @click="guestUpgradeMode = 'email'"
+                >
+                  {{ t("account.guest_upgrade_tab_email") }}
+                </button>
+                <button
+                  type="button"
+                  class="py-2 px-3 rounded-lg text-xs font-semibold transition-colors"
+                  :class="
+                    guestUpgradeMode === 'linked'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-800 text-gray-300 hover:text-white'
+                  "
+                  @click="guestUpgradeMode = 'linked'"
+                >
+                  {{ t("account.guest_upgrade_tab_linked") }}
+                </button>
+              </div>
+
+              <form
+                v-if="guestUpgradeMode === 'email'"
+                class="space-y-3 mt-3"
+                @submit.prevent="handleGuestUpgradeEmail"
+              >
+                <input
+                  v-model="guestUpgradeForm.email"
+                  type="email"
+                  required
+                  class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  :placeholder="t('auth.email_placeholder')"
+                />
+                <input
+                  v-model="guestUpgradeForm.password"
+                  type="password"
+                  required
+                  class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  :placeholder="t('account.new_password')"
+                />
+                <input
+                  v-model="guestUpgradeForm.password_confirmation"
+                  type="password"
+                  required
+                  class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  :placeholder="t('account.confirm_new_password')"
+                />
+                <button
+                  type="submit"
+                  :disabled="guestUpgradeLoading"
+                  class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-50"
+                >
+                  {{ guestUpgradeLoading ? t("auth.saving") : t("account.guest_upgrade_email_submit") }}
+                </button>
+              </form>
+
+              <div v-else class="flex flex-wrap gap-2 mt-3">
+                <button
+                  v-if="authStore.user?.has_lightning_login"
+                  type="button"
+                  :disabled="guestUpgradeLoading"
+                  class="px-3 py-2 border border-yellow-500/60 rounded-lg text-xs font-semibold text-yellow-300 hover:bg-yellow-500/10 disabled:opacity-50"
+                  @click="handleGuestUpgradeLinked('lightning')"
+                >
+                  {{ t("account.guest_upgrade_use_lightning") }}
+                </button>
+                <button
+                  v-if="authStore.user?.has_nostr_login"
+                  type="button"
+                  :disabled="guestUpgradeLoading"
+                  class="px-3 py-2 border border-purple-500/60 rounded-lg text-xs font-semibold text-purple-300 hover:bg-purple-500/10 disabled:opacity-50"
+                  @click="handleGuestUpgradeLinked('nostr')"
+                >
+                  {{ t("account.guest_upgrade_use_nostr") }}
+                </button>
+                <p
+                  v-if="!authStore.user?.has_lightning_login && !authStore.user?.has_nostr_login"
+                  class="text-xs text-gray-400"
+                >
+                  {{ t("account.guest_upgrade_linked_empty") }}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Profile Information -->
@@ -662,11 +766,51 @@
         "
       />
 
-      <GuestBackupWizardModal
-        :open="showGuestBackupWizard"
-        @close="showGuestBackupWizard = false"
-        @done="onGuestBackupEnrolled"
-      />
+      <div
+        v-if="showGuestSeedModal"
+        class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+        @click.self="showGuestSeedModal = false"
+      >
+        <div class="bg-gray-800 rounded-2xl border border-gray-700 max-w-2xl w-full p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h5 class="text-lg font-bold text-white">
+              {{ t("account.guest_seed_modal_title") }}
+            </h5>
+            <button
+              type="button"
+              class="text-gray-400 hover:text-white"
+              @click="showGuestSeedModal = false"
+            >
+              {{ t("common.close") }}
+            </button>
+          </div>
+          <p class="text-sm text-amber-300 mb-4">
+            {{ t("account.guest_seed_modal_warning") }}
+          </p>
+          <textarea
+            readonly
+            rows="4"
+            class="w-full rounded-xl border border-gray-600 bg-gray-900/80 px-4 py-3 text-sm text-gray-200"
+            :value="storedGuestMnemonic || ''"
+          />
+          <div class="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              class="px-4 py-2 border border-gray-600 rounded-lg text-sm text-gray-300 hover:bg-gray-700"
+              @click="copyStoredSeed"
+            >
+              {{ copiedSeed ? t("auth.guest_backup_copied") : t("auth.guest_backup_copy") }}
+            </button>
+            <button
+              type="button"
+              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm text-white"
+              @click="showGuestSeedModal = false"
+            >
+              {{ t("common.close") }}
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- Add Credit Modal -->
       <div
@@ -753,7 +897,9 @@ import { usePlanFeatures } from "../../composables/usePlanFeatures";
 import api from "../../services/api";
 import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
 import NostrAuthModal from "../../components/auth/NostrAuthModal.vue";
-import GuestBackupWizardModal from "../../components/auth/GuestBackupWizardModal.vue";
+import {
+  getStoredGuestMnemonic,
+} from "../../services/guestRecovery";
 import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
 
 const { t, locale } = useI18n();
@@ -787,7 +933,16 @@ const lnurlAuthEnabled = ref(false);
 const nostrAuthEnabled = ref(false);
 const showLnurlLinkModal = ref(false);
 const showNostrLinkModal = ref(false);
-const showGuestBackupWizard = ref(false);
+const showGuestSeedModal = ref(false);
+const storedGuestMnemonic = ref<string | null>(null);
+const copiedSeed = ref(false);
+const guestUpgradeLoading = ref(false);
+const guestUpgradeMode = ref<"email" | "linked">("email");
+const guestUpgradeForm = ref({
+  email: "",
+  password: "",
+  password_confirmation: "",
+});
 const lnurlLinkUrl = ref("");
 const lnurlK1 = ref("");
 const lnurlLinkLoading = ref(false);
@@ -856,8 +1011,10 @@ const showEnterpriseUpgrade = computed(() => {
 
 onMounted(async () => {
   await Promise.all([loadPricing(), loadPlanFeatures()]);
+  storedGuestMnemonic.value = getStoredGuestMnemonic();
   if (authStore.user) {
     profileForm.value.name = authStore.user.name || "";
+    guestUpgradeForm.value.email = authStore.user.email || "";
   }
 
   try {
@@ -1078,16 +1235,57 @@ onUnmounted(() => {
   stopLinkPolling();
 });
 
-async function onGuestBackupEnrolled(payload: { recoveryPublicKeyHex: string }) {
-  showGuestBackupWizard.value = false;
+async function copyStoredSeed() {
+  if (!storedGuestMnemonic.value) return;
   try {
-    await authStore.enrollGuestRecoveryPublicKey(payload.recoveryPublicKeyHex);
-    await authStore.fetchUser();
-    flashStore.success(t("account.guest_recovery_saved"));
+    await navigator.clipboard.writeText(storedGuestMnemonic.value);
+    copiedSeed.value = true;
+    window.setTimeout(() => {
+      copiedSeed.value = false;
+    }, 2000);
+  } catch {
+    copiedSeed.value = false;
+  }
+}
+
+async function handleGuestUpgradeEmail() {
+  guestUpgradeLoading.value = true;
+  try {
+    const response = await api.put("/user/guest/upgrade", {
+      method: "email",
+      email: guestUpgradeForm.value.email,
+      password: guestUpgradeForm.value.password,
+      password_confirmation: guestUpgradeForm.value.password_confirmation,
+    });
+    if (response?.data?.user) {
+      authStore.user = response.data.user;
+    } else {
+      await authStore.fetchUser();
+    }
+    flashStore.success(t("account.guest_upgrade_email_success"));
+    guestUpgradeForm.value.password = "";
+    guestUpgradeForm.value.password_confirmation = "";
   } catch (e: any) {
     flashStore.error(
-      e?.response?.data?.message || t("common.error"),
+      e?.response?.data?.message || t("account.guest_upgrade_failed"),
     );
+  } finally {
+    guestUpgradeLoading.value = false;
+  }
+}
+
+async function handleGuestUpgradeLinked(method: "lightning" | "nostr") {
+  guestUpgradeLoading.value = true;
+  try {
+    await api.put("/user/guest/upgrade", { method });
+    await authStore.fetchUser();
+    flashStore.success(t("account.guest_upgrade_linked_success"));
+  } catch (e: any) {
+    flashStore.error(
+      e?.response?.data?.message || t("account.guest_upgrade_failed"),
+    );
+  } finally {
+    guestUpgradeLoading.value = false;
   }
 }
 

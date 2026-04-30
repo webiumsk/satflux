@@ -7,6 +7,7 @@ import * as ed25519 from "@noble/ed25519";
 ed25519.hashes.sha512 = sha512;
 
 const HKDF_INFO = new TextEncoder().encode("satflux-guest-ed25519-v1");
+const GUEST_MNEMONIC_STORAGE_KEY = "satflux.guest.mnemonic.v1";
 
 function bytesToHex(u8: Uint8Array): string {
     return Array.from(u8, (b) => b.toString(16).padStart(2, "0")).join("");
@@ -48,4 +49,27 @@ export function signGuestRecoveryMessage(mnemonic: string, messageUtf8: string):
 
 export function guestRecoveryMessage(challengeId: string, nonceHex: string): string {
     return `satflux:guest-recovery:v1|${challengeId}|${nonceHex}`;
+}
+
+export function storeGuestMnemonic(mnemonic: string): void {
+    const normalized = normalizeMnemonic(mnemonic);
+    if (!validateMnemonic(normalized, wordlist)) {
+        throw new Error("invalid_mnemonic");
+    }
+    localStorage.setItem(GUEST_MNEMONIC_STORAGE_KEY, normalized);
+}
+
+export function getStoredGuestMnemonic(): string | null {
+    const raw = localStorage.getItem(GUEST_MNEMONIC_STORAGE_KEY);
+    if (!raw) return null;
+    const normalized = normalizeMnemonic(raw);
+    if (!validateMnemonic(normalized, wordlist)) {
+        localStorage.removeItem(GUEST_MNEMONIC_STORAGE_KEY);
+        return null;
+    }
+    return normalized;
+}
+
+export function clearStoredGuestMnemonic(): void {
+    localStorage.removeItem(GUEST_MNEMONIC_STORAGE_KEY);
 }

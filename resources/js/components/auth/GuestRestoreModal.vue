@@ -55,6 +55,7 @@
 import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
+import { storeGuestMnemonic } from "../../services/guestRecovery";
 
 const props = defineProps<{ open: boolean }>();
 
@@ -85,6 +86,7 @@ async function submit() {
   loading.value = true;
   try {
     const data = await authStore.restoreGuestFromMnemonic(mnemonicInput.value);
+    storeGuestMnemonic(mnemonicInput.value);
     emit("success", { store_id: data?.store_id ?? null });
     emit("close");
   } catch (e: any) {

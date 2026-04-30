@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -98,5 +99,40 @@ class AccountTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors(['current_password']);
+    }
+
+    public function test_guest_can_upgrade_with_email_and_then_login_with_new_credentials(): void
+    {
+        $guest = User::factory()->create([
+            'email' => 'guest-upgrade@satflux.io',
+            'password' => bcrypt('old-password'),
+            'is_guest' => true,
+            'email_verified_at' => now(),
+        ]);
+        Sanctum::actingAs($guest);
+
+        $upgradeResponse = $this->putJson('/api/user/guest/upgrade', [
+            'method' => 'email',
+            'email' => 'upgraded@satflux.io',
+            'password' => 'new-secure-password',
+            'password_confirmation' => 'new-secure-password',
+        ]);
+
+        $upgradeResponse->assertStatus(200);
+        $upgradeResponse->assertJsonPath('user.email', 'upgraded@satflux.io');
+        $upgradeResponse->assertJsonPath('user.is_guest', false);
+
+        $guest->refresh();
+        $this->assertSame('upgraded@satflux.io', $guest->email);
+        $this->assertFalse((bool) $guest->is_guest);
+        $this->assertNotNull($guest->email_verified_at);
+        $this->assertTrue(Hash::check('new-secure-password', $guest->password));
+
+        $this->assertTrue(
+            auth()->guard('web')->validate([
+                'email' => 'upgraded@satflux.io',
+                'password' => 'new-secure-password',
+            ])
+        );
     }
 }

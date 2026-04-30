@@ -4,6 +4,8 @@ import axios from 'axios';
 import api from '../services/api';
 import { useStoresStore } from './stores';
 import {
+    clearStoredGuestMnemonic,
+    getStoredGuestMnemonic,
     guestRecoveryMessage,
     guestRecoveryPublicKeyHexFromMnemonic,
     signGuestRecoveryMessage,
@@ -42,6 +44,7 @@ export interface User {
 export const useAuthStore = defineStore('auth', () => {
     const user = ref<User | null>(null);
     const loading = ref(false);
+    let autoRestoreInFlight = false;
 
     const isAuthenticated = computed(() => user.value !== null);
 
@@ -60,8 +63,38 @@ export const useAuthStore = defineStore('auth', () => {
             await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
             const response = await api.get('/user');
             user.value = response.data;
+            if (!user.value?.is_guest) {
+                clearStoredGuestMnemonic();
+            }
         } catch (error) {
             user.value = null;
+            await tryAutoRestoreGuestFromStoredSeed();
+        }
+    }
+
+    async function tryAutoRestoreGuestFromStoredSeed() {
+        if (autoRestoreInFlight) return;
+        const mnemonic = getStoredGuestMnemonic();
+        if (!mnemonic) return;
+
+        autoRestoreInFlight = true;
+        try {
+            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            const chRes = await api.post('/auth/guest/recovery/challenge');
+            const { challenge_id, nonce } = chRes.data.data;
+            const message = guestRecoveryMessage(challenge_id, nonce);
+            const pk = guestRecoveryPublicKeyHexFromMnemonic(mnemonic);
+            const signature = signGuestRecoveryMessage(mnemonic, message);
+            const response = await api.post('/auth/guest/recovery', {
+                challenge_id,
+                recovery_public_key: pk,
+                signature,
+            });
+            user.value = response.data.user;
+        } catch {
+            // Keep user unauthenticated when auto-restore fails; manual restore remains available.
+        } finally {
+            autoRestoreInFlight = false;
         }
     }
 
