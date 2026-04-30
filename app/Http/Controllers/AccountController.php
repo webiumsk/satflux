@@ -16,6 +16,7 @@ class AccountController extends Controller
         protected LightningAddressService $lightningAddressService,
         protected TicketService $ticketService
     ) {}
+
     /**
      * Get the authenticated user with plan and subscription info.
      */
@@ -48,6 +49,8 @@ class AccountController extends Controller
         ];
         $payload['has_lightning_login'] = ! empty($user->lightning_public_key);
         $payload['has_nostr_login'] = ! empty($user->nostr_public_key);
+        $payload['guest_recovery_enrolled'] = (bool) ($user->is_guest ?? false)
+            && ! empty($user->guest_recovery_public_key ?? null);
 
         return response()->json($payload);
     }
@@ -60,7 +63,7 @@ class AccountController extends Controller
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -71,6 +74,7 @@ class AccountController extends Controller
             foreach ($user->stores as $store) {
                 $apiKeyCount += $store->apiKeys()->count();
             }
+
             return response()->json([
                 'stores' => [
                     'current' => $storeCount,
@@ -94,7 +98,7 @@ class AccountController extends Controller
             ]);
         }
 
-        $cacheKey = 'user_limits_' . $user->id;
+        $cacheKey = 'user_limits_'.$user->id;
         $limits = Cache::remember($cacheKey, 60, function () use ($user) {
             $plan = $user->currentSubscriptionPlan();
             $maxStores = $plan?->max_stores;
@@ -209,11 +213,3 @@ class AccountController extends Controller
         return response()->json(['message' => __('messages.password_updated')]);
     }
 }
-
-
-
-
-
-
-
-

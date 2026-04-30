@@ -14,6 +14,32 @@
           </p>
         </div>
 
+        <div
+          v-if="authStore.user?.is_guest"
+          class="rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-5 space-y-3"
+        >
+          <h4 class="text-sm font-semibold text-white">
+            {{ t("account.guest_account_title") }}
+          </h4>
+          <p class="text-sm text-gray-300">
+            {{ t("account.guest_account_backup_desc") }}
+          </p>
+          <p
+            v-if="authStore.user?.guest_recovery_enrolled"
+            class="text-sm text-emerald-400"
+          >
+            {{ t("account.guest_recovery_enrolled") }}
+          </p>
+          <button
+            v-else
+            type="button"
+            class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
+            @click="showGuestBackupWizard = true"
+          >
+            {{ t("account.guest_setup_recovery") }}
+          </button>
+        </div>
+
         <!-- Profile Information -->
         <div
           class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
@@ -636,6 +662,12 @@
         "
       />
 
+      <GuestBackupWizardModal
+        :open="showGuestBackupWizard"
+        @close="showGuestBackupWizard = false"
+        @done="onGuestBackupEnrolled"
+      />
+
       <!-- Add Credit Modal -->
       <div
         v-if="showAddCreditModal"
@@ -721,6 +753,7 @@ import { usePlanFeatures } from "../../composables/usePlanFeatures";
 import api from "../../services/api";
 import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
 import NostrAuthModal from "../../components/auth/NostrAuthModal.vue";
+import GuestBackupWizardModal from "../../components/auth/GuestBackupWizardModal.vue";
 import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
 
 const { t, locale } = useI18n();
@@ -754,6 +787,7 @@ const lnurlAuthEnabled = ref(false);
 const nostrAuthEnabled = ref(false);
 const showLnurlLinkModal = ref(false);
 const showNostrLinkModal = ref(false);
+const showGuestBackupWizard = ref(false);
 const lnurlLinkUrl = ref("");
 const lnurlK1 = ref("");
 const lnurlLinkLoading = ref(false);
@@ -1043,6 +1077,19 @@ function startLinkPolling(k1: string) {
 onUnmounted(() => {
   stopLinkPolling();
 });
+
+async function onGuestBackupEnrolled(payload: { recoveryPublicKeyHex: string }) {
+  showGuestBackupWizard.value = false;
+  try {
+    await authStore.enrollGuestRecoveryPublicKey(payload.recoveryPublicKeyHex);
+    await authStore.fetchUser();
+    flashStore.success(t("account.guest_recovery_saved"));
+  } catch (e: any) {
+    flashStore.error(
+      e?.response?.data?.message || t("common.error"),
+    );
+  }
+}
 
 async function handleUpdateProfile() {
   profileLoading.value = true;

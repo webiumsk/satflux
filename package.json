@@ -15,6 +15,9 @@
   },
   "dependencies": {
     "@inertiajs/vue3": "^2.0",
+    "@noble/ed25519": "^3.1.0",
+    "@noble/hashes": "^2.2.0",
+    "@scure/bip39": "^2.2.0",
     "@tiptap/extension-code-block-lowlight": "^2.10.0",
     "@tiptap/extension-color": "^2.10.0",
     "@tiptap/extension-heading": "^2.10.0",

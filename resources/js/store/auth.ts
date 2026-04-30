@@ -3,10 +3,17 @@ import { ref, computed } from 'vue';
 import axios from 'axios';
 import api from '../services/api';
 import { useStoresStore } from './stores';
+import {
+    guestRecoveryMessage,
+    guestRecoveryPublicKeyHexFromMnemonic,
+    signGuestRecoveryMessage,
+} from '../services/guestRecovery';
 
 export interface User {
     id: number;
     email: string;
+    is_guest?: boolean;
+    guest_recovery_enrolled?: boolean;
     email_verified_at?: string;
     role?: string;
     name?: string;
@@ -95,6 +102,60 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    async function continueAsGuest(recoveryPublicKeyHex?: string) {
+        loading.value = true;
+        try {
+            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            const response = await api.post('/auth/guest', {
+                ...(recoveryPublicKeyHex
+                    ? { recovery_public_key: recoveryPublicKeyHex }
+                    : {}),
+            });
+            user.value = response.data.user;
+            return response.data;
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    /** Link recovery public key while already logged in as guest (e.g. from Profile). */
+    async function enrollGuestRecoveryPublicKey(recoveryPublicKeyHex: string) {
+        loading.value = true;
+        try {
+            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            const response = await api.post('/auth/guest', {
+                recovery_public_key: recoveryPublicKeyHex,
+            });
+            if (response.data?.user) {
+                user.value = response.data.user;
+            }
+            return response.data;
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    async function restoreGuestFromMnemonic(mnemonic: string) {
+        loading.value = true;
+        try {
+            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            const chRes = await api.post('/auth/guest/recovery/challenge');
+            const { challenge_id, nonce } = chRes.data.data;
+            const message = guestRecoveryMessage(challenge_id, nonce);
+            const pk = guestRecoveryPublicKeyHexFromMnemonic(mnemonic);
+            const signature = signGuestRecoveryMessage(mnemonic, message);
+            const response = await api.post('/auth/guest/recovery', {
+                challenge_id,
+                recovery_public_key: pk,
+                signature,
+            });
+            user.value = response.data.user;
+            return response.data;
+        } finally {
+            loading.value = false;
+        }
+    }
+
     async function logout() {
         try {
             await api.post('/auth/logout');
@@ -110,6 +171,9 @@ export const useAuthStore = defineStore('auth', () => {
         fetchUser,
         login,
         register,
+        continueAsGuest,
+        enrollGuestRecoveryPublicKey,
+        restoreGuestFromMnemonic,
         logout,
     };
 });

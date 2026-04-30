@@ -32,15 +32,44 @@
         class="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-8 shadow-xl"
       >
         <RegistrationForm />
+        <div class="mt-6 text-center border-t border-gray-700/60 pt-6">
+          <button
+            type="button"
+            class="text-sm font-medium text-gray-400 hover:text-indigo-300 transition-colors"
+            @click="showGuestRestoreModal = true"
+          >
+            {{ t("auth.restore_guest_session") }}
+          </button>
+        </div>
       </div>
     </div>
+
+    <GuestRestoreModal
+      :open="showGuestRestoreModal"
+      @close="showGuestRestoreModal = false"
+      @success="redirectAfterGuestRestore"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from "vue";
+import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import RegistrationForm from "../../components/auth/RegistrationForm.vue";
+import GuestRestoreModal from "../../components/auth/GuestRestoreModal.vue";
 
 const { t } = useI18n();
+const router = useRouter();
+const showGuestRestoreModal = ref(false);
+
+function redirectAfterGuestRestore(payload: { store_id?: string | null }) {
+  const storeId = payload?.store_id;
+  if (storeId) {
+    router.push(`/stores/${storeId}/wallet-connection`);
+    return;
+  }
+  router.push("/stores/create");
+}
 </script>
 
