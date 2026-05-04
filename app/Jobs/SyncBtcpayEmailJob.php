@@ -20,8 +20,7 @@ class SyncBtcpayEmailJob implements ShouldQueue
     public int $timeout = 60;
 
     public function __construct(
-        public int $userId,
-        public string $newEmail
+        public int $userId
     ) {}
 
     public function handle(UserService $userService): void
@@ -39,26 +38,20 @@ class SyncBtcpayEmailJob implements ShouldQueue
 
     public function failed(\Throwable $exception): void
     {
-        $maskedEmail = $this->maskEmailAddress($this->newEmail);
-        Log::error('SyncBtcpayEmailJob failed', [
+        $context = [
             'user_id' => $this->userId,
-            'new_email_masked' => $maskedEmail,
             'error' => $exception->getMessage(),
-        ]);
-    }
+        ];
 
-    private function maskEmailAddress(string $email): string
-    {
-        $parts = explode('@', $email, 2);
-        if (count($parts) !== 2) {
-            return '***';
+        $user = User::find($this->userId);
+        if ($user && filled($user->email)) {
+            $email = (string) $user->email;
+            $parts = explode('@', $email, 2);
+            $context['sync_email_masked'] = count($parts) === 2
+                ? (($parts[0] !== '' ? $parts[0][0] : '*').'***@'.$parts[1])
+                : '***';
         }
 
-        $local = $parts[0];
-        $domain = $parts[1];
-        $first = $local !== '' ? $local[0] : '*';
-
-        return $first.'***@'.$domain;
+        Log::error('SyncBtcpayEmailJob failed', $context);
     }
 }
-

@@ -57,7 +57,7 @@ class GuestUpgradeService
                         'btcpay_user_id' => $user->btcpay_user_id,
                         'error' => $e->getMessage(),
                     ]);
-                    SyncBtcpayEmailJob::dispatch($user->id, $newEmail);
+                    SyncBtcpayEmailJob::dispatch($user->id);
                 }
             }
 
