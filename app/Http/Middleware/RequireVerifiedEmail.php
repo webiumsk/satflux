@@ -18,6 +18,10 @@ class RequireVerifiedEmail
     {
         $user = $request->user();
 
+        if ($user instanceof User && (bool) ($user->is_guest ?? false)) {
+            return $next($request);
+        }
+
         if (! $user instanceof MustVerifyEmail || $user->hasVerifiedEmail()) {
             return $next($request);
         }

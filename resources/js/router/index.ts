@@ -1,6 +1,50 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../store/auth';
+import { useStoresStore } from '../store/stores';
+import api from '../services/api';
 import { updatePageMeta } from '../composables/usePageMeta';
+
+/** Guest sessions are PoS-oriented: block the SPA until wallet (Lightning or Cashu) is actually configured. */
+async function isGuestWalletReady(storeId: string): Promise<boolean> {
+    try {
+        const storeRes = await api.get(`/stores/${storeId}`);
+        const store = storeRes.data?.data;
+        const walletType = store?.wallet_type as string | null | undefined;
+
+        if (walletType == null || walletType === '') {
+            return false;
+        }
+
+        if (walletType === 'cashu') {
+            const cashuRes = await api.get(`/stores/${storeId}/cashu/settings`);
+            const s = cashuRes.data?.data;
+            const mint = typeof s?.mint_url === 'string' ? s.mint_url.trim() : '';
+            const lnAddr = typeof s?.lightning_address === 'string' ? s.lightning_address.trim() : '';
+            return mint !== '' && lnAddr !== '';
+        }
+
+        const connRes = await api.get(`/stores/${storeId}/wallet-connection`);
+        const conn = connRes.data?.data;
+        return conn?.status === 'connected';
+    } catch {
+        return false;
+    }
+}
+
+async function resolveGuestPrimaryStoreId(): Promise<string | null> {
+    const storesStore = useStoresStore();
+    if (storesStore.stores?.length) {
+        return storesStore.stores[0].id;
+    }
+    try {
+        const res = await api.get('/stores');
+        const list = res.data?.data || [];
+        storesStore.stores = list;
+        return list[0]?.id ?? null;
+    } catch {
+        return null;
+    }
+}
 
 const router = createRouter({
     history: createWebHistory(),
@@ -55,6 +99,10 @@ const router = createRouter({
             name: 'account',
             component: () => import('../pages/account/Profile.vue'),
             meta: { requiresAuth: true },
+        },
+        {
+            path: '/account/profile',
+            redirect: { name: 'account' },
         },
         {
             path: '/messages',
@@ -320,6 +368,45 @@ router.beforeEach(async (to, from, next) => {
     if (to.meta.public) {
         next();
         return;
+    }
+
+    // Hard gate: guests cannot use the app until wallet setup is complete (Lightning connected or Cashu mint+LN address).
+    if (authStore.user?.is_guest) {
+        const authOnlyExempt =
+            to.name === 'login' ||
+            to.name === 'register' ||
+            to.name === 'password-reset' ||
+            to.name === 'verify-email' ||
+            to.name === 'account';
+
+        if (!authOnlyExempt) {
+            const primaryStoreId = await resolveGuestPrimaryStoreId();
+            if (!primaryStoreId) {
+                if (to.name !== 'stores-create') {
+                    next({ name: 'stores-create' });
+                    return;
+                }
+                next();
+                return;
+            }
+
+            const routeStoreId =
+                typeof to.params.id === 'string'
+                    ? to.params.id
+                    : Array.isArray(to.params.id)
+                      ? to.params.id[0]
+                      : null;
+            if (routeStoreId && routeStoreId !== primaryStoreId) {
+                next({ name: 'stores-wallet-connection', params: { id: primaryStoreId } });
+                return;
+            }
+
+            const ready = await isGuestWalletReady(primaryStoreId);
+            if (!ready && (to.name !== 'stores-wallet-connection' || to.params.id !== primaryStoreId)) {
+                next({ name: 'stores-wallet-connection', params: { id: primaryStoreId } });
+                return;
+            }
+        }
     }
 
     if (to.meta.requiresAuth && !authStore.isAuthenticated) {

@@ -2,12 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Notifications\VerifyEmailNotification;
 use App\Services\Auth\EmailVerificationService;
 use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -34,6 +33,9 @@ class User extends Authenticatable implements MustVerifyEmailContract
         'btcpay_subscription_id',
         'subscription_expires_at',
         'subscription_grace_period_ends_at',
+        'is_guest',
+        'guest_recovery_public_key',
+        'guest_recovery_enrolled_at',
     ];
 
     /**
@@ -45,6 +47,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
         'password',
         'remember_token',
         'btcpay_api_key',
+        'guest_recovery_public_key',
     ];
 
     /**
@@ -61,6 +64,8 @@ class User extends Authenticatable implements MustVerifyEmailContract
             'btcpay_api_key' => 'encrypted', // Encrypt API key in database
             'subscription_expires_at' => 'datetime',
             'subscription_grace_period_ends_at' => 'datetime',
+            'is_guest' => 'boolean',
+            'guest_recovery_enrolled_at' => 'datetime',
         ];
     }
 
@@ -163,7 +168,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
         }
 
         $plan = $this->currentSubscriptionPlan();
-        if (!$plan) {
+        if (! $plan) {
             return 1; // fallback for free / no plan
         }
 
@@ -209,8 +214,6 @@ class User extends Authenticatable implements MustVerifyEmailContract
     /**
      * Get the current active subscription for the user.
      * Returns the most recent active subscription, or null if none exists.
-     * 
-     * @return \App\Models\Subscription|null
      */
     public function currentSubscription(): ?\App\Models\Subscription
     {
@@ -224,8 +227,6 @@ class User extends Authenticatable implements MustVerifyEmailContract
      * Get the current subscription plan for the user.
      * Returns the plan for the current subscription, or falls back to the plan
      * matching the user's role (pro, enterprise, free).
-     *
-     * @return \App\Models\SubscriptionPlan|null
      */
     public function currentSubscriptionPlan(): ?\App\Models\SubscriptionPlan
     {
@@ -253,6 +254,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function planFeature(string $feature): bool
     {
         $plan = $this->currentSubscriptionPlan();
+
         return $plan ? $plan->hasFeature($feature) : false;
     }
 
@@ -262,6 +264,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function hasActiveSubscription(): bool
     {
         $subscription = $this->currentSubscription();
+
         return $subscription && $subscription->isActive();
     }
 
@@ -271,6 +274,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function isSubscriptionInGracePeriod(): bool
     {
         $subscription = $this->currentSubscription();
+
         return $subscription && $subscription->isInGracePeriod();
     }
 
@@ -280,7 +284,8 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function isSubscriptionExpired(): bool
     {
         $subscription = $this->currentSubscription();
-        return !$subscription || $subscription->isExpired();
+
+        return ! $subscription || $subscription->isExpired();
     }
 
     /**
@@ -298,7 +303,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
      */
     public function hasVerifiedEmail(): bool
     {
-        return !is_null($this->email_verified_at);
+        return ! is_null($this->email_verified_at);
     }
 
     /**
@@ -322,17 +327,17 @@ class User extends Authenticatable implements MustVerifyEmailContract
 
     /**
      * Get BTCPay API key or throw exception.
-     * 
+     *
      * @return string The decrypted BTCPay API key
+     *
      * @throws \Illuminate\Http\Exceptions\HttpResponseException
      */
     public function getBtcPayApiKeyOrFail(): string
     {
-        if (!$this->btcpay_api_key) {
+        if (! $this->btcpay_api_key) {
             abort(500, 'BTCPay API key not configured. Please contact support.');
         }
 
         return $this->btcpay_api_key;
     }
 }
-
