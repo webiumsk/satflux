@@ -17,7 +17,7 @@ class GuestPurgeService
     ) {}
 
     /**
-     * @return array{considered: int, purged: int, skipped_active: int, skipped_error: int, dry_run_would_purge: int}
+     * @return array{considered: int, purged: int, skipped_active: int, skipped_error: int, skipped_btcpay_error: int, dry_run_would_purge: int}
      */
     public function run(bool $dryRun, ?int $daysOverride = null): array
     {
@@ -32,6 +32,7 @@ class GuestPurgeService
             'purged' => 0,
             'skipped_active' => 0,
             'skipped_error' => 0,
+            'skipped_btcpay_error' => 0,
             'dry_run_would_purge' => 0,
         ];
 
@@ -83,7 +84,12 @@ class GuestPurgeService
                         continue;
                     }
 
-                    $this->purgeOneGuest($user);
+                    if (! $this->purgeOneGuest($user)) {
+                        $stats['skipped_btcpay_error']++;
+
+                        continue;
+                    }
+
                     $stats['purged']++;
                 }
             });
@@ -113,12 +119,22 @@ class GuestPurgeService
         ];
 
         $apiKey = $user->btcpay_api_key;
+        $maxStores = max(1, (int) config('guest.max_stores_check', 10));
+        $stores = $user->stores;
 
-        foreach ($user->stores as $store) {
-            if (! $store instanceof Store || ! $store->btcpay_store_id) {
-                continue;
-            }
+        $eligible = $stores->filter(function ($store) {
+            return $store instanceof Store && $store->btcpay_store_id;
+        })->values();
 
+        if ($eligible->count() > $maxStores) {
+            Log::warning('Guest purge: guest has more stores than invoice check limit', [
+                'user_id' => $user->id,
+                'store_count' => $eligible->count(),
+                'max_stores_check' => $maxStores,
+            ]);
+        }
+
+        foreach ($eligible->take($maxStores) as $store) {
             $response = $this->invoiceService->listInvoices(
                 $store->btcpay_store_id,
                 $filters,
@@ -136,7 +152,10 @@ class GuestPurgeService
         return false;
     }
 
-    protected function purgeOneGuest(User $user): void
+    /**
+     * @return bool True if local user was deleted after successful BTCPay decommission.
+     */
+    protected function purgeOneGuest(User $user): bool
     {
         $userId = $user->id;
         $emailMasked = $this->maskGuestEmail((string) $user->email);
@@ -148,7 +167,14 @@ class GuestPurgeService
             'store_ids' => $storeIds,
         ]);
 
-        $this->guestBtcPayDecommissioner->decommissionAllForLocalGuestUser($user);
+        if (! $this->guestBtcPayDecommissioner->decommissionAllForLocalGuestUser($user)) {
+            Log::warning('Guest purge: BTCPay decommission incomplete, keeping local user', [
+                'user_id' => $userId,
+                'email_masked' => $emailMasked,
+            ]);
+
+            return false;
+        }
 
         DB::transaction(function () use ($userId) {
             $user = User::query()->where('id', $userId)->where('is_guest', true)->first();
@@ -156,6 +182,8 @@ class GuestPurgeService
                 $user->delete();
             }
         });
+
+        return true;
     }
 
     protected function maskGuestEmail(string $email): string

@@ -19,4 +19,10 @@ return [
 
     'batch_size' => (int) env('GUEST_PURGE_BATCH_SIZE', 50),
 
+    /*
+    | Maximum number of stores per guest for which we call BTCPay listInvoices
+    | during idle checks (avoids many sequential API calls for unusual users).
+    */
+    'max_stores_check' => (int) env('GUEST_PURGE_MAX_STORES_CHECK', 10),
+
 ];

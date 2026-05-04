@@ -22,7 +22,7 @@ class PurgeInactiveGuestsCommand extends Command
         if (! $enabled && ! $force) {
             $this->warn('Guest purge is disabled (GUEST_PURGE_ENABLED=false). Use --force for a manual run.');
 
-            return self::SUCCESS;
+            return self::FAILURE;
         }
 
         $daysOption = $this->option('days');
@@ -44,6 +44,7 @@ class PurgeInactiveGuestsCommand extends Command
                 ['Guests considered', $stats['considered']],
                 ['Skipped (still active)', $stats['skipped_active']],
                 ['Skipped (API / check error)', $stats['skipped_error']],
+                ['Skipped (BTCPay decommission failed)', $stats['skipped_btcpay_error']],
                 [$dryRun ? 'Would purge' : 'Purged', $dryRun ? $stats['dry_run_would_purge'] : $stats['purged']],
             ],
         );

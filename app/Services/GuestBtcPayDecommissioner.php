@@ -59,10 +59,12 @@ class GuestBtcPayDecommissioner
 
     /**
      * Delete all BTCPay stores for the user, revoke merchant key, delete BTCPay user.
-     * Call before deleting the local User row.
+     * Call before deleting the local User row. Returns false if any remote step failed.
      */
-    public function decommissionAllForLocalGuestUser(User $user): void
+    public function decommissionAllForLocalGuestUser(User $user): bool
     {
+        $success = true;
+
         $stores = $user->relationLoaded('stores')
             ? $user->stores
             : $user->stores()->get();
@@ -74,6 +76,7 @@ class GuestBtcPayDecommissioner
             try {
                 $this->storeService->deleteStore($store->btcpay_store_id);
             } catch (\Throwable $e) {
+                $success = false;
                 Log::warning('Guest purge: failed to delete BTCPay store', [
                     'local_user_id' => $user->id,
                     'btcpay_store_id' => $store->btcpay_store_id,
@@ -89,6 +92,7 @@ class GuestBtcPayDecommissioner
             try {
                 $this->userService->deleteUserApiKey($btcpayUserId, $apiKey);
             } catch (\Throwable $e) {
+                $success = false;
                 Log::warning('Guest purge: failed to delete BTCPay user API key', [
                     'local_user_id' => $user->id,
                     'btcpay_user_id' => $btcpayUserId,
@@ -101,6 +105,7 @@ class GuestBtcPayDecommissioner
             try {
                 $this->userService->deleteUser($btcpayUserId);
             } catch (\Throwable $e) {
+                $success = false;
                 Log::warning('Guest purge: failed to delete BTCPay user', [
                     'local_user_id' => $user->id,
                     'btcpay_user_id' => $btcpayUserId,
@@ -108,5 +113,7 @@ class GuestBtcPayDecommissioner
                 ]);
             }
         }
+
+        return $success;
     }
 }
