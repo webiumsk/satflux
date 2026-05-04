@@ -30,7 +30,7 @@ class UserFactory extends Factory
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
             'btcpay_user_id' => fake()->uuid(),
-            'btcpay_api_key' => 'test_api_key_' . Str::random(40),
+            'btcpay_api_key' => 'test_api_key_'.Str::random(40),
         ];
     }
 
@@ -63,5 +63,16 @@ class UserFactory extends Factory
             'role' => 'admin',
         ]);
     }
-}
 
+    /**
+     * Guest (trial) user for tests and seeding.
+     */
+    public function guest(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_guest' => true,
+            'role' => 'free',
+            'name' => 'Guest',
+        ]);
+    }
+}

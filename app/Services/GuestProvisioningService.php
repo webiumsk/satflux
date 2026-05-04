@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Services\BtcPay\StoreService;
 use App\Services\BtcPay\UserService;
 use App\Services\BtcPay\WebhookService;
-use App\Services\StoreChecklistService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -21,7 +20,8 @@ class GuestProvisioningService
     public function __construct(
         protected UserService $userService,
         protected StoreService $storeService,
-        protected WebhookService $webhookService
+        protected WebhookService $webhookService,
+        protected GuestBtcPayDecommissioner $guestBtcPayDecommissioner,
     ) {}
 
     public function attachRecoveryKeyToGuest(User $user, string $recoveryPkHex): User
@@ -204,38 +204,10 @@ class GuestProvisioningService
 
     private function cleanupBtcPayResources(?string $btcpayStoreId, ?string $btcpayUserId, ?string $createdPerUserApiKey): void
     {
-        if ($btcpayStoreId) {
-            try {
-                $this->storeService->deleteStore($btcpayStoreId);
-            } catch (\Throwable $cleanupError) {
-                Log::warning('Guest provisioning cleanup: failed to delete BTCPay store', [
-                    'btcpay_store_id' => $btcpayStoreId,
-                    'error' => $cleanupError->getMessage(),
-                ]);
-            }
-        }
-
-        if ($btcpayUserId && $createdPerUserApiKey) {
-            try {
-                $this->userService->deleteUserApiKey($btcpayUserId, $createdPerUserApiKey);
-            } catch (\Throwable $cleanupError) {
-                Log::warning('Guest provisioning cleanup: failed to delete BTCPay user API key', [
-                    'btcpay_user_id' => $btcpayUserId,
-                    'error' => $cleanupError->getMessage(),
-                ]);
-            }
-        }
-
-        if ($btcpayUserId) {
-            try {
-                $this->userService->deleteUser($btcpayUserId);
-            } catch (\Throwable $cleanupError) {
-                Log::warning('Guest provisioning cleanup: failed to delete BTCPay user', [
-                    'btcpay_user_id' => $btcpayUserId,
-                    'error' => $cleanupError->getMessage(),
-                ]);
-            }
-        }
+        $this->guestBtcPayDecommissioner->decommissionPartial(
+            $btcpayStoreId,
+            $btcpayUserId,
+            $createdPerUserApiKey,
+        );
     }
 }
-

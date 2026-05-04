@@ -1,0 +1,145 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Store;
+use App\Models\User;
+use App\Services\BtcPay\InvoiceService;
+use App\Services\GuestBtcPayDecommissioner;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Config;
+use Tests\TestCase;
+
+class GuestInactivePurgeTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Config::set('guest.purge_enabled', true);
+        Config::set('guest.idle_days', 90);
+        Config::set('guest.batch_size', 50);
+    }
+
+    public function test_command_skips_when_purge_disabled_and_no_force(): void
+    {
+        Config::set('guest.purge_enabled', false);
+
+        $user = User::factory()->guest()->create([
+            'last_login_at' => now()->subDays(120),
+        ]);
+        Store::factory()->create([
+            'user_id' => $user->id,
+        ]);
+
+        $this->mock(GuestBtcPayDecommissioner::class, function ($mock) {
+            $mock->shouldNotReceive('decommissionAllForLocalGuestUser');
+        });
+
+        Artisan::call('guests:purge-inactive');
+
+        $this->assertDatabaseHas('users', ['id' => $user->id]);
+    }
+
+    public function test_purge_deletes_guest_when_login_stale_and_no_invoices(): void
+    {
+        $user = User::factory()->guest()->create([
+            'last_login_at' => now()->subDays(120),
+        ]);
+        Store::factory()->create([
+            'user_id' => $user->id,
+            'btcpay_store_id' => 'btcpay_store_test_1',
+        ]);
+
+        $this->mock(InvoiceService::class, function ($mock) {
+            $mock->shouldReceive('listInvoices')
+                ->once()
+                ->andReturn(['data' => []]);
+        });
+
+        $this->mock(GuestBtcPayDecommissioner::class, function ($mock) {
+            $mock->shouldReceive('decommissionAllForLocalGuestUser')
+                ->once();
+        });
+
+        Artisan::call('guests:purge-inactive', ['--force' => true]);
+
+        $this->assertDatabaseMissing('users', ['id' => $user->id]);
+    }
+
+    public function test_purge_keeps_guest_when_recent_invoice_exists(): void
+    {
+        $user = User::factory()->guest()->create([
+            'last_login_at' => now()->subDays(120),
+        ]);
+        Store::factory()->create([
+            'user_id' => $user->id,
+            'btcpay_store_id' => 'btcpay_store_test_2',
+        ]);
+
+        $this->mock(InvoiceService::class, function ($mock) {
+            $mock->shouldReceive('listInvoices')
+                ->once()
+                ->andReturn(['data' => [['id' => 'inv_1', 'status' => 'New']]]);
+        });
+
+        $this->mock(GuestBtcPayDecommissioner::class, function ($mock) {
+            $mock->shouldNotReceive('decommissionAllForLocalGuestUser');
+        });
+
+        Artisan::call('guests:purge-inactive', ['--force' => true]);
+
+        $this->assertDatabaseHas('users', ['id' => $user->id]);
+    }
+
+    public function test_purge_keeps_guest_when_last_login_recent(): void
+    {
+        $user = User::factory()->guest()->create([
+            'last_login_at' => now()->subDays(1),
+        ]);
+        Store::factory()->create([
+            'user_id' => $user->id,
+        ]);
+
+        $this->mock(InvoiceService::class, function ($mock) {
+            $mock->shouldNotReceive('listInvoices');
+        });
+
+        $this->mock(GuestBtcPayDecommissioner::class, function ($mock) {
+            $mock->shouldNotReceive('decommissionAllForLocalGuestUser');
+        });
+
+        Artisan::call('guests:purge-inactive', ['--force' => true]);
+
+        $this->assertDatabaseHas('users', ['id' => $user->id]);
+    }
+
+    public function test_dry_run_does_not_delete_or_decommission(): void
+    {
+        $user = User::factory()->guest()->create([
+            'last_login_at' => now()->subDays(120),
+        ]);
+        Store::factory()->create([
+            'user_id' => $user->id,
+        ]);
+
+        $this->mock(InvoiceService::class, function ($mock) {
+            $mock->shouldReceive('listInvoices')
+                ->once()
+                ->andReturn(['data' => []]);
+        });
+
+        $this->mock(GuestBtcPayDecommissioner::class, function ($mock) {
+            $mock->shouldNotReceive('decommissionAllForLocalGuestUser');
+        });
+
+        Artisan::call('guests:purge-inactive', [
+            '--force' => true,
+            '--dry-run' => true,
+        ]);
+
+        $this->assertDatabaseHas('users', ['id' => $user->id]);
+    }
+}
