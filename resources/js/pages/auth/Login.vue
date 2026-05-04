@@ -28,34 +28,6 @@
         </p>
       </div>
 
-      <div class="rounded-xl border border-indigo-400/60 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 p-3 space-y-2 shadow-lg shadow-indigo-900/30">
-              <button
-                type="button"
-                :disabled="guestLoading"
-                class="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg disabled:opacity-50"
-                @click="showGuestBackupWizard = true"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                {{
-                  guestLoading
-                    ? t("auth.starting_guest_session")
-                    : t("auth.continue_without_registration")
-                }}
-              </button>
-              <p class="text-xs text-indigo-100/90 text-center">
-                {{ t("auth.guest_cta_hint") }}
-              </p>
-              <button
-                type="button"
-                class="w-full font-medium text-indigo-200 hover:text-white text-sm"
-                @click="showGuestRestoreModal = true"
-              >
-                {{ t("auth.restore_guest_session") }}
-              </button>
-            </div>
-
       <div
         class="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-8 shadow-xl"
       >
@@ -84,12 +56,24 @@
         </div>
 
         <div
-          v-if="lnurlAuthEnabled || nostrAuthEnabled"
-          class="flex rounded-xl border border-gray-600 p-1 mb-6 gap-1"
+          class="grid gap-1 mb-6 rounded-xl border border-gray-600 p-1"
+          :class="showPasswordlessTabs ? 'grid-cols-3' : 'grid-cols-2'"
         >
           <button
             type="button"
-            class="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-colors"
+            class="py-2.5 px-1 text-xs sm:text-sm font-semibold rounded-lg transition-colors text-center leading-tight"
+            :class="
+              authMethodTab === 'guest'
+                ? 'bg-indigo-600 text-white shadow'
+                : 'text-gray-400 hover:text-white hover:bg-gray-700/60'
+            "
+            @click="authMethodTab = 'guest'"
+          >
+            {{ t("auth.tab_guest") }}
+          </button>
+          <button
+            type="button"
+            class="py-2.5 px-1 text-xs sm:text-sm font-semibold rounded-lg transition-colors text-center leading-tight"
             :class="
               authMethodTab === 'email'
                 ? 'bg-indigo-600 text-white shadow'
@@ -100,8 +84,9 @@
             {{ t("auth.tab_email") }}
           </button>
           <button
+            v-if="showPasswordlessTabs"
             type="button"
-            class="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-colors"
+            class="py-2.5 px-1 text-xs sm:text-sm font-semibold rounded-lg transition-colors text-center leading-tight"
             :class="
               authMethodTab === 'other'
                 ? 'bg-indigo-600 text-white shadow'
@@ -113,8 +98,54 @@
           </button>
         </div>
 
+        <div v-show="authMethodTab === 'guest'" class="space-y-4 mb-2">
+          <p class="text-sm text-gray-300 leading-relaxed">
+            {{ t("auth.guest_mode_short_intro") }}
+          </p>
+          <div
+            class="rounded-lg border border-amber-500/25 bg-amber-950/30 px-3 py-2.5"
+            role="note"
+          >
+            <p class="text-xs font-semibold text-amber-200/95 mb-1">
+              {{ t("auth.guest_mode_limits_heading") }}
+            </p>
+            <p class="text-xs text-amber-100/85 leading-relaxed">
+              {{ t("auth.guest_mode_limitations") }}
+            </p>
+          </div>
+          <div
+            class="rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/15 to-purple-500/15 p-4 space-y-3 shadow-inner"
+          >
+            <button
+              type="button"
+              :disabled="guestLoading"
+              class="w-full inline-flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-gray-800"
+              @click="showGuestBackupWizard = true"
+            >
+              <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              {{
+                guestLoading
+                  ? t("auth.starting_guest_session")
+                  : t("auth.continue_without_registration")
+              }}
+            </button>
+            <p class="text-xs text-indigo-100/90 text-center">
+              {{ t("auth.guest_cta_hint") }}
+            </p>
+            <button
+              type="button"
+              class="w-full font-medium text-indigo-200 hover:text-white text-sm focus:outline-none focus:underline rounded"
+              @click="showGuestRestoreModal = true"
+            >
+              {{ t("auth.restore_guest_session") }}
+            </button>
+          </div>
+        </div>
+
         <form
-          v-show="authMethodTab === 'email' || (!lnurlAuthEnabled && !nostrAuthEnabled)"
+          v-show="authMethodTab === 'email'"
           class="space-y-6"
           @submit.prevent="handleLogin"
         >
@@ -206,7 +237,7 @@
         </form>
 
         <div
-          v-show="authMethodTab === 'other' && (lnurlAuthEnabled || nostrAuthEnabled)"
+          v-show="authMethodTab === 'other' && showPasswordlessTabs"
           class="space-y-4"
         >
           <button
@@ -360,7 +391,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { usePage } from "@inertiajs/vue3";
@@ -389,6 +420,7 @@ onMounted(async () => {
   } catch {
     // Leave null so fallback is used
   }
+  applyAuthTabFromQuery();
 });
 
 const router = useRouter();
@@ -404,7 +436,7 @@ const form = ref({
 
 const loading = ref(false);
 const guestLoading = ref(false);
-const authMethodTab = ref<"email" | "other">("email");
+const authMethodTab = ref<"guest" | "email" | "other">("guest");
 const showGuestBackupWizard = ref(false);
 const showGuestRestoreModal = ref(false);
 
@@ -435,6 +467,38 @@ const lnurlAuthEnabled = computed(() => {
   return import.meta.env.VITE_LNURL_AUTH_ENABLED === "true";
 });
 const nostrAuthEnabled = computed(() => nostrEnabledFromServer.value === true);
+
+const showPasswordlessTabs = computed(
+  () => lnurlAuthEnabled.value || nostrAuthEnabled.value,
+);
+
+function applyAuthTabFromQuery() {
+  const raw = route.query.tab;
+  const q = Array.isArray(raw) ? raw[0] : raw;
+  if (!q || typeof q !== "string") return;
+  if (q === "email") {
+    authMethodTab.value = "email";
+    return;
+  }
+  if (q === "guest") {
+    authMethodTab.value = "guest";
+    return;
+  }
+  if (q === "other" && showPasswordlessTabs.value) {
+    authMethodTab.value = "other";
+  }
+}
+
+watch(showPasswordlessTabs, (on: boolean) => {
+  if (!on && authMethodTab.value === "other") {
+    authMethodTab.value = "guest";
+  }
+});
+
+watch(
+  () => [route.query.tab, lnurlAuthEnabled.value, nostrAuthEnabled.value],
+  () => applyAuthTabFromQuery(),
+);
 
 async function handleLogin() {
   loading.value = true;
