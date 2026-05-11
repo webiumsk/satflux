@@ -341,7 +341,12 @@ const router = useRouter();
 const appsStore = useAppsStore();
 const authStore = useAuthStore();
 
-const storeId = route.params.id as string;
+const storeId = computed(() => {
+  const id = route.params.id;
+  if (typeof id === "string") return id;
+  if (Array.isArray(id) && id[0]) return id[0];
+  return "";
+});
 const loading = ref(false);
 const store = ref<any>(null);
 
@@ -355,28 +360,39 @@ const apps = computed(() =>
 
 const isGuestUser = computed(() => !!authStore.user?.is_guest);
 
+function normalizeAppTypeKey(t: string | undefined | null): string {
+  return String(t ?? "").toLowerCase().replace(/[_-]/g, "");
+}
+
+function isPointOfSaleAppType(t: string | undefined | null): boolean {
+  const k = normalizeAppTypeKey(t);
+  return k === "pointofsale" || k.includes("pointofsale");
+}
+
 function guestActivePosCount(): number {
-  const norm = (x: string) => x.toLowerCase().replace(/[_-]/g, "");
   return allApps.value.filter((a: any) => {
     if (a.archived) return false;
-    const appType = norm(String(a.app_type ?? ""));
-    return appType === "pointofsale" || appType.includes("pointofsale");
+    return isPointOfSaleAppType(a.app_type);
   }).length;
 }
 
 const guestPosCreateLocked = computed(() => isGuestUser.value && guestActivePosCount() >= 1);
 
 function onAppRowClick(app: { id: string; app_type?: string }) {
-  if (isGuestUser.value && app.app_type !== "PointOfSale") {
+  const id = storeId.value;
+  if (!id) return;
+  if (isGuestUser.value && !isPointOfSaleAppType(app.app_type)) {
     router.push({ name: "account" });
     return;
   }
-  router.push(`/stores/${storeId}/apps/${app.id}`);
+  router.push(`/stores/${id}/apps/${app.id}`);
 }
 
 async function loadStore() {
+  const id = storeId.value;
+  if (!id) return;
   try {
-    const response = await api.get(`/stores/${storeId}`);
+    const response = await api.get(`/stores/${id}`);
     store.value = response.data.data;
   } catch (err: any) {
     console.error("Failed to load store:", err);
@@ -384,9 +400,11 @@ async function loadStore() {
 }
 
 async function loadApps() {
+  const id = storeId.value;
+  if (!id) return;
   loading.value = true;
   try {
-    await appsStore.fetchApps(storeId);
+    await appsStore.fetchApps(id);
   } catch (err) {
     console.error("Failed to load apps:", err);
   } finally {
@@ -395,17 +413,21 @@ async function loadApps() {
 }
 
 function handleShowSettings() {
+  const id = storeId.value;
+  if (!id) return;
   router.push({
     name: "stores-show",
-    params: { id: storeId },
+    params: { id },
     query: { section: "settings" },
   });
 }
 
 function handleShowSection(section: string) {
+  const id = storeId.value;
+  if (!id) return;
   router.push({
     name: "stores-show",
-    params: { id: storeId },
+    params: { id },
     query: { section },
   });
 }

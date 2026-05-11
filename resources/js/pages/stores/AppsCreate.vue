@@ -283,6 +283,15 @@ const form = ref({
   appType: "PointOfSale", // Default selection
 });
 
+function normalizeAppTypeKey(t: string | undefined | null): string {
+  return String(t ?? "").toLowerCase().replace(/[_-]/g, "");
+}
+
+function isPointOfSaleAppType(t: string | undefined | null): boolean {
+  const k = normalizeAppTypeKey(t);
+  return k === "pointofsale" || k.includes("pointofsale");
+}
+
 async function loadStore() {
   try {
     store.value = await storesStore.fetchStore(storeId.value);
@@ -292,18 +301,16 @@ async function loadStore() {
 }
 
 function guestActivePosCount(): number {
-  const norm = (t: string) => t.toLowerCase().replace(/[_-]/g, "");
   return appsStore.apps.filter((a: any) => {
     if (a.archived) return false;
-    const appType = norm(String(a.app_type ?? ""));
-    return appType === "pointofsale" || appType.includes("pointofsale");
+    return isPointOfSaleAppType(a.app_type);
   }).length;
 }
 
 async function redirectGuestIfLocked(): Promise<boolean> {
   if (!isGuestUser.value) return false;
   const qType = route.query.type as string | undefined;
-  if (qType && qType !== "PointOfSale") {
+  if (qType && !isPointOfSaleAppType(qType)) {
     await router.replace({ name: "account" });
     return true;
   }
@@ -317,7 +324,7 @@ async function redirectGuestIfLocked(): Promise<boolean> {
 
 async function handleSubmit() {
   if (!form.value.name || !form.value.appType) return;
-  if (isGuestUser.value && form.value.appType !== "PointOfSale") {
+  if (isGuestUser.value && !isPointOfSaleAppType(form.value.appType)) {
     await router.replace({ name: "account" });
     return;
   }
