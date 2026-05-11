@@ -62,8 +62,8 @@ return [
 
     /*
     | Synthetic BTCPay user emails for guest sessions: guest+<token>@<domain>.
-    | Production: set GUEST_EMAIL_DOMAIN or rely on APP_URL host (e.g. satflux.io).
-    | Many BTCPay installs reject .local / localhost as the email domain.
+    | Set GUEST_EMAIL_DOMAIN when APP_URL host is localhost, *.local, or otherwise unsuitable for BTCPay.
+    | Otherwise the host from APP_URL is used (e.g. satflux.io). Dev/unknown host fallback avoids .local.
     */
     'auth' => [
         'guest_email_domain' => (static function (): string {
@@ -73,11 +73,11 @@ return [
             }
             $host = parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST);
             if (! is_string($host) || $host === '') {
-                return 'guest.satflux.local';
+                return 'guest.example.com';
             }
             $host = strtolower($host);
             if ($host === 'localhost' || $host === '127.0.0.1' || $host === '[::1]' || str_ends_with($host, '.local')) {
-                return 'guest.satflux.local';
+                return 'guest.example.com';
             }
 
             return $host;
