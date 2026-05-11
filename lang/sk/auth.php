@@ -19,5 +19,8 @@ return [
     'nostr_key_already_registered' => 'Tento Nostr kľúč je už prepojený s účtom.',
     'invalid_password_or_confirm_lnurl' => 'Nesprávne heslo alebo potvrďte Lightning peňaženkou alebo Nostr.',
     'email_not_verified' => 'Pred prihlásením prosím potvrďte e-mail. V schránke nájdete odkaz na overenie.',
+    'guest_feature_requires_account' => 'Táto akcia vyžaduje plný účet. Upgradujte v nastaveniach účtu.',
+    'guest_one_store_only' => 'Hosťovská relácia je obmedzená na jeden obchod. Pre viac obchodov vytvorte plný účet.',
+    'guest_pos_limit_one' => 'V hosťovskom režime môže byť na obchod len jedna PoS aplikácia.',
 ];
 

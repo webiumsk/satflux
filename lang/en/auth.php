@@ -19,5 +19,8 @@ return [
     'nostr_key_already_registered' => 'This Nostr key is already linked to an account.',
     'invalid_password_or_confirm_lnurl' => 'Invalid password or confirm with your Lightning wallet or Nostr.',
     'email_not_verified' => 'Please verify your email address before signing in. Check your inbox for the confirmation link.',
+    'guest_feature_requires_account' => 'This action requires a full account. Upgrade from Account settings.',
+    'guest_one_store_only' => 'Guest sessions are limited to one store. Create a full account to add more stores.',
+    'guest_pos_limit_one' => 'Guest mode allows only one Point of Sale app per store.',
 ];
 

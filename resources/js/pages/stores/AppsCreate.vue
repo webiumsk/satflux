@@ -126,6 +126,7 @@
 
                     <!-- Crowdfund -->
                     <div
+                      v-if="!isGuestUser"
                       @click="form.appType = 'Crowdfund'"
                       :class="[
                         'relative rounded-xl border-2 p-4 cursor-pointer transition-all duration-200 flex flex-col items-center text-center gap-3',
@@ -254,6 +255,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAppsStore } from "../../store/apps";
 import { useStoresStore } from "../../store/stores";
+import { useAuthStore } from "../../store/auth";
 import { useFlashStore } from "../../store/flash";
 import StoreSidebar from "../../components/stores/StoreSidebar.vue";
 import api from "../../services/api";
@@ -264,8 +266,10 @@ const route = useRoute();
 const router = useRouter();
 const appsStore = useAppsStore();
 const storesStore = useStoresStore();
+const authStore = useAuthStore();
 
 const storeId = computed(() => route.params.id as string);
+const isGuestUser = computed(() => !!authStore.user?.is_guest);
 const store = ref<any>(null);
 const saving = ref(false);
 const flashStore = useFlashStore();
@@ -287,8 +291,40 @@ async function loadStore() {
   }
 }
 
+function guestActivePosCount(): number {
+  const norm = (t: string) => t.toLowerCase().replace(/[_-]/g, "");
+  return appsStore.apps.filter((a: any) => {
+    if (a.archived) return false;
+    const appType = norm(String(a.app_type ?? ""));
+    return appType === "pointofsale" || appType.includes("pointofsale");
+  }).length;
+}
+
+async function redirectGuestIfLocked(): Promise<boolean> {
+  if (!isGuestUser.value) return false;
+  const qType = route.query.type as string | undefined;
+  if (qType && qType !== "PointOfSale") {
+    await router.replace({ name: "account" });
+    return true;
+  }
+  if (guestActivePosCount() >= 1) {
+    await router.replace({ name: "account" });
+    return true;
+  }
+  form.value.appType = "PointOfSale";
+  return false;
+}
+
 async function handleSubmit() {
   if (!form.value.name || !form.value.appType) return;
+  if (isGuestUser.value && form.value.appType !== "PointOfSale") {
+    await router.replace({ name: "account" });
+    return;
+  }
+  if (isGuestUser.value && guestActivePosCount() >= 1) {
+    await router.replace({ name: "account" });
+    return;
+  }
   saving.value = true;
   flashStore.clear();
   try {
@@ -323,6 +359,12 @@ function handleShowSection(section: string) {
 }
 
 onMounted(async () => {
+  await loadStore();
+  await appsStore.fetchApps(storeId.value);
+  if (await redirectGuestIfLocked()) {
+    return;
+  }
+
   // Check if type is provided in query params (e.g. from sidebar "Tickets" or "Point of Sale")
   const typeFromQuery = route.query.type as string;
   if (typeFromQuery) {
@@ -339,9 +381,6 @@ onMounted(async () => {
       form.value.appType = typeMap[typeFromQuery];
     }
   }
-
-  await loadStore();
-  await appsStore.fetchApps(storeId.value);
 });
 
 watch(
@@ -350,6 +389,7 @@ watch(
     if (newId) {
       await loadStore();
       await appsStore.fetchApps(newId as string);
+      await redirectGuestIfLocked();
     }
   },
 );

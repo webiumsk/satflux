@@ -406,6 +406,11 @@ router.beforeEach(async (to, from, next) => {
                 next({ name: 'stores-wallet-connection', params: { id: primaryStoreId } });
                 return;
             }
+
+            if (to.name === 'stores-create') {
+                next({ name: 'stores-show', params: { id: primaryStoreId } });
+                return;
+            }
         }
     }
 

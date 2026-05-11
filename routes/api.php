@@ -261,10 +261,12 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class])->group(function
     Route::put('/user/guest/upgrade', [AccountController::class, 'upgradeGuest']);
 
     // Panel API keys (for our API, not BTCPay)
-    Route::get('/user/api-keys', [\App\Http\Controllers\UserApiKeyController::class, 'index']);
-    Route::post('/user/api-keys', [\App\Http\Controllers\UserApiKeyController::class, 'store'])
-        ->middleware(EnsurePlanAllowsUserApiKeyCreation::class);
-    Route::delete('/user/api-keys/{user_api_key}', [\App\Http\Controllers\UserApiKeyController::class, 'destroy']);
+    Route::middleware('guest.restrict')->group(function () {
+        Route::get('/user/api-keys', [\App\Http\Controllers\UserApiKeyController::class, 'index']);
+        Route::post('/user/api-keys', [\App\Http\Controllers\UserApiKeyController::class, 'store'])
+            ->middleware(EnsurePlanAllowsUserApiKeyCreation::class);
+        Route::delete('/user/api-keys/{user_api_key}', [\App\Http\Controllers\UserApiKeyController::class, 'destroy']);
+    });
 
     // Messages (notifications)
     Route::get('/messages', [MessageController::class, 'index']);
@@ -348,27 +350,29 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class])->group(function
         ->middleware(EnsureStoreOwnership::class);
 
     // Reports (list visible to all; download/retry require Pro+ or admin/support)
-    Route::get('/stores/{store}/exports', [ExportController::class, 'index'])
-        ->middleware(EnsureStoreOwnership::class);
-    Route::post('/stores/{store}/exports', [ExportController::class, 'store'])
-        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsExportsAccess::class, AuditLog::class.':export.created']);
-    Route::get('/exports', [ExportController::class, 'all']);
-    Route::get('/exports/{export}/download', [ExportController::class, 'download'])
-        ->middleware(EnsurePlanAllowsExportsAccess::class);
-    Route::post('/exports/{export}/retry', [ExportController::class, 'retry'])
-        ->middleware(EnsurePlanAllowsExportsAccess::class);
-    Route::delete('/exports/{export}', [ExportController::class, 'destroy'])
-        ->middleware(EnsurePlanAllowsExportsAccess::class);
+    Route::middleware('guest.restrict')->group(function () {
+        Route::get('/stores/{store}/exports', [ExportController::class, 'index'])
+            ->middleware(EnsureStoreOwnership::class);
+        Route::post('/stores/{store}/exports', [ExportController::class, 'store'])
+            ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsExportsAccess::class, AuditLog::class.':export.created']);
+        Route::get('/exports', [ExportController::class, 'all']);
+        Route::get('/exports/{export}/download', [ExportController::class, 'download'])
+            ->middleware(EnsurePlanAllowsExportsAccess::class);
+        Route::post('/exports/{export}/retry', [ExportController::class, 'retry'])
+            ->middleware(EnsurePlanAllowsExportsAccess::class);
+        Route::delete('/exports/{export}', [ExportController::class, 'destroy'])
+            ->middleware(EnsurePlanAllowsExportsAccess::class);
 
-    // PDF report (Pro+ or admin/support only)
-    Route::get('/stores/{store}/report/pdf', [ReportController::class, 'pdf'])
-        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsExportsAccess::class]);
+        // PDF report (Pro+ or admin/support only)
+        Route::get('/stores/{store}/report/pdf', [ReportController::class, 'pdf'])
+            ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsExportsAccess::class]);
 
-    // Report settings (GET for all, PUT requires Pro+)
-    Route::get('/stores/{store}/report-settings', [ReportSettingsController::class, 'show'])
-        ->middleware(EnsureStoreOwnership::class);
-    Route::put('/stores/{store}/report-settings', [ReportSettingsController::class, 'update'])
-        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsExportsAccess::class]);
+        // Report settings (GET for all, PUT requires Pro+)
+        Route::get('/stores/{store}/report-settings', [ReportSettingsController::class, 'show'])
+            ->middleware(EnsureStoreOwnership::class);
+        Route::put('/stores/{store}/report-settings', [ReportSettingsController::class, 'update'])
+            ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsExportsAccess::class]);
+    });
 
     // Apps
     Route::get('/stores/{store}/apps', [AppController::class, 'index'])
@@ -383,19 +387,21 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class])->group(function
         ->middleware([EnsureStoreOwnership::class, AuditLog::class.':app.deleted']);
 
     // Lightning Addresses
-    Route::get('/stores/{store}/lightning-addresses', [LightningAddressController::class, 'index'])
-        ->middleware(EnsureStoreOwnership::class);
-    Route::get('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'show'])
-        ->middleware(EnsureStoreOwnership::class);
-    Route::post('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'store'])
-        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsLnAddressCreation::class, AuditLog::class.':lightning-address.created']);
-    Route::put('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'update'])
-        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsLnAddressCreation::class, AuditLog::class.':lightning-address.updated']);
-    Route::delete('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'destroy'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':lightning-address.deleted']);
+    Route::middleware('guest.restrict')->group(function () {
+        Route::get('/stores/{store}/lightning-addresses', [LightningAddressController::class, 'index'])
+            ->middleware(EnsureStoreOwnership::class);
+        Route::get('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'show'])
+            ->middleware(EnsureStoreOwnership::class);
+        Route::post('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'store'])
+            ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsLnAddressCreation::class, AuditLog::class.':lightning-address.created']);
+        Route::put('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'update'])
+            ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsLnAddressCreation::class, AuditLog::class.':lightning-address.updated']);
+        Route::delete('/stores/{store}/lightning-addresses/{username}', [LightningAddressController::class, 'destroy'])
+            ->middleware([EnsureStoreOwnership::class, AuditLog::class.':lightning-address.deleted']);
+    });
 
     // Stripe (Pro+ only)
-    Route::middleware([EnsureStoreOwnership::class, EnsurePlanAllowsStripe::class])->group(function () {
+    Route::middleware(['guest.restrict', EnsureStoreOwnership::class, EnsurePlanAllowsStripe::class])->group(function () {
         Route::get('/stores/{store}/stripe/settings', [StripeController::class, 'getSettings']);
         Route::put('/stores/{store}/stripe/settings', [StripeController::class, 'updateSettings']);
         Route::delete('/stores/{store}/stripe/settings', [StripeController::class, 'deleteSettings']);
@@ -405,22 +411,24 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class])->group(function
     });
 
     // Store API Keys
-    Route::get('/stores/{store}/api-keys', [\App\Http\Controllers\StoreApiKeyController::class, 'index'])
-        ->middleware(EnsureStoreOwnership::class);
-    Route::post('/stores/{store}/api-keys', [\App\Http\Controllers\StoreApiKeyController::class, 'store'])
-        ->middleware([EnsureStoreOwnership::class, EnsureApiKeyLimit::class, AuditLog::class.':api-key.created']);
-    Route::get('/stores/{store}/api-keys/{apiKey}', [\App\Http\Controllers\StoreApiKeyController::class, 'show'])
-        ->middleware(EnsureStoreOwnership::class);
-    Route::delete('/stores/{store}/api-keys/{apiKey}', [\App\Http\Controllers\StoreApiKeyController::class, 'destroy'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':api-key.deleted']);
-    Route::post('/stores/{store}/api-keys/{apiKey}/regenerate', [\App\Http\Controllers\StoreApiKeyController::class, 'regenerate'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':api-key.regenerated']);
-    Route::post('/stores/{store}/api-keys/token', [\App\Http\Controllers\StoreApiKeyController::class, 'generateToken'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':api-key.token.generated']);
+    Route::middleware('guest.restrict')->group(function () {
+        Route::get('/stores/{store}/api-keys', [\App\Http\Controllers\StoreApiKeyController::class, 'index'])
+            ->middleware(EnsureStoreOwnership::class);
+        Route::post('/stores/{store}/api-keys', [\App\Http\Controllers\StoreApiKeyController::class, 'store'])
+            ->middleware([EnsureStoreOwnership::class, EnsureApiKeyLimit::class, AuditLog::class.':api-key.created']);
+        Route::get('/stores/{store}/api-keys/{apiKey}', [\App\Http\Controllers\StoreApiKeyController::class, 'show'])
+            ->middleware(EnsureStoreOwnership::class);
+        Route::delete('/stores/{store}/api-keys/{apiKey}', [\App\Http\Controllers\StoreApiKeyController::class, 'destroy'])
+            ->middleware([EnsureStoreOwnership::class, AuditLog::class.':api-key.deleted']);
+        Route::post('/stores/{store}/api-keys/{apiKey}/regenerate', [\App\Http\Controllers\StoreApiKeyController::class, 'regenerate'])
+            ->middleware([EnsureStoreOwnership::class, AuditLog::class.':api-key.regenerated']);
+        Route::post('/stores/{store}/api-keys/token', [\App\Http\Controllers\StoreApiKeyController::class, 'generateToken'])
+            ->middleware([EnsureStoreOwnership::class, AuditLog::class.':api-key.token.generated']);
+    });
 
     // Product Images
     Route::post('/stores/{store}/products/image', [\App\Http\Controllers\ProductImageController::class, 'upload'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':product.image.uploaded']);
+        ->middleware(['guest.restrict', EnsureStoreOwnership::class, AuditLog::class.':product.image.uploaded']);
 
     // Plans (public pricing)
     Route::get('/plans', [PlanController::class, 'index']);
@@ -428,7 +436,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class])->group(function
     // Stats
     Route::get('/stores/{store}/stats', [StatsController::class, 'store'])
         ->middleware(EnsureStoreOwnership::class);
-    Route::get('/stats/advanced', [StatsController::class, 'advanced']);
+    Route::get('/stats/advanced', [StatsController::class, 'advanced'])
+        ->middleware('guest.restrict');
 
     // PoS terminals and orders
     Route::get('/stores/{store}/pos-terminals', [PosTerminalController::class, 'index'])
@@ -463,7 +472,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class])->group(function
         ->middleware([EnsureStoreOwnership::class, AuditLog::class.':wallet_connection.deleted']);
 
     // SatoshiTickets (Events, Ticket Types, Tickets, Orders)
-    Route::prefix('stores/{store}/tickets')->middleware(EnsureStoreOwnership::class)->group(function () {
+    Route::prefix('stores/{store}/tickets')->middleware([EnsureStoreOwnership::class, 'guest.restrict'])->group(function () {
         Route::post('/events/image', [\App\Http\Controllers\TicketEventImageController::class, 'upload']);
         Route::post('/events/{eventId}/logo', [\App\Http\Controllers\TicketEventImageController::class, 'uploadLogo']);
         Route::delete('/events/{eventId}/logo', [\App\Http\Controllers\TicketEventImageController::class, 'deleteLogo']);

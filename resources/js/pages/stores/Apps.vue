@@ -38,8 +38,17 @@
               </p>
             </div>
             <div class="flex items-center gap-3">
+              <button
+                v-if="!showArchived && guestPosCreateLocked"
+                type="button"
+                class="inline-flex items-center px-4 py-2 border border-amber-500/30 text-sm font-medium rounded-xl text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 transition-colors"
+                :title="t('stores.guest_pos_limit_hint')"
+                @click="router.push({ name: 'account' })"
+              >
+                {{ t("stores.guest_nav_locked_short") }}
+              </button>
               <router-link
-                v-if="!showArchived"
+                v-else-if="!showArchived"
                 :to="`/stores/${storeId}/apps/create`"
                 class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg shadow-indigo-600/20 transition-all hover:scale-105"
               >
@@ -141,7 +150,17 @@
               <p class="text-gray-400 mb-6 max-w-sm mx-auto">
                 {{ t("apps.no_apps_description") }}
               </p>
+              <button
+                v-if="guestPosCreateLocked"
+                type="button"
+                class="inline-flex items-center px-4 py-2 border border-amber-500/30 text-sm font-medium rounded-xl text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 transition-colors"
+                :title="t('stores.guest_pos_limit_hint')"
+                @click="router.push({ name: 'account' })"
+              >
+                {{ t("stores.guest_nav_locked_short") }}
+              </button>
               <router-link
+                v-else
                 :to="`/stores/${storeId}/apps/create`"
                 class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg shadow-indigo-600/20 transition-all hover:scale-105"
               >
@@ -175,7 +194,7 @@
                   v-for="app in apps"
                   :key="app.id"
                   class="hover:bg-gray-700/50 cursor-pointer transition-colors"
-                  @click="$router.push(`/stores/${storeId}/apps/${app.id}`)"
+                  @click="onAppRowClick(app)"
                 >
                   <td class="px-6 py-4">
                     <div class="flex items-center gap-2">
@@ -203,7 +222,7 @@
               v-for="app in apps"
               :key="app.id"
               class="group bg-gray-800 overflow-hidden shadow-lg rounded-2xl cursor-pointer hover:shadow-indigo-500/10 hover:border-indigo-500/50 border border-gray-700 transition-all duration-300 relative"
-              @click="$router.push(`/stores/${storeId}/apps/${app.id}`)"
+              @click="onAppRowClick(app)"
             >
               <div
                 class="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -310,6 +329,7 @@ import { ref, onMounted, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAppsStore } from "../../store/apps";
+import { useAuthStore } from "../../store/auth";
 import StoreSidebar from "../../components/stores/StoreSidebar.vue";
 import ArchivedStoreBanner from "../../components/stores/ArchivedStoreBanner.vue";
 import api from "../../services/api";
@@ -319,6 +339,7 @@ const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const appsStore = useAppsStore();
+const authStore = useAuthStore();
 
 const storeId = route.params.id as string;
 const loading = ref(false);
@@ -331,6 +352,27 @@ const apps = computed(() =>
     ? allApps.value.filter((a: any) => a.archived)
     : allApps.value.filter((a: any) => !a.archived),
 );
+
+const isGuestUser = computed(() => !!authStore.user?.is_guest);
+
+function guestActivePosCount(): number {
+  const norm = (x: string) => x.toLowerCase().replace(/[_-]/g, "");
+  return allApps.value.filter((a: any) => {
+    if (a.archived) return false;
+    const appType = norm(String(a.app_type ?? ""));
+    return appType === "pointofsale" || appType.includes("pointofsale");
+  }).length;
+}
+
+const guestPosCreateLocked = computed(() => isGuestUser.value && guestActivePosCount() >= 1);
+
+function onAppRowClick(app: { id: string; app_type?: string }) {
+  if (isGuestUser.value && app.app_type !== "PointOfSale") {
+    router.push({ name: "account" });
+    return;
+  }
+  router.push(`/stores/${storeId}/apps/${app.id}`);
+}
 
 async function loadStore() {
   try {
@@ -368,9 +410,16 @@ function handleShowSection(section: string) {
   });
 }
 
+async function ensureGuestNotOnArchivedApps() {
+  if (isGuestUser.value && showArchived.value) {
+    await router.replace({ name: "account" });
+  }
+}
+
 onMounted(async () => {
   await loadStore();
   await loadApps();
+  await ensureGuestNotOnArchivedApps();
 });
 
 watch(
@@ -379,7 +428,15 @@ watch(
     if (newId) {
       await loadStore();
       await loadApps();
+      await ensureGuestNotOnArchivedApps();
     }
+  },
+);
+
+watch(
+  () => route.query.archived,
+  () => {
+    void ensureGuestNotOnArchivedApps();
   },
 );
 </script>

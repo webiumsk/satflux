@@ -79,12 +79,23 @@
             <!-- Create Store Button -->
             <button
               @click="createStore"
-              class="w-full text-left px-4 py-2 text-sm text-indigo-600 hover:bg-gray-100 font-medium transition-colors flex items-center"
+              type="button"
+              class="w-full text-left px-4 py-2 text-sm font-medium transition-colors flex items-center"
+              :class="
+                isGuestUser && activeStores.length >= 1
+                  ? 'text-gray-400 hover:bg-gray-50 cursor-pointer border-l-2 border-amber-500/50'
+                  : 'text-indigo-600 hover:bg-gray-100'
+              "
+              :title="isGuestUser && activeStores.length >= 1 ? t('stores.guest_one_store_hint') : undefined"
             >
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              <svg class="w-4 h-4 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
-              {{ t('stores.create_store') }}
+              <span class="flex-1 text-left">{{ t('stores.create_store') }}</span>
+              <span
+                v-if="isGuestUser && activeStores.length >= 1"
+                class="text-[10px] uppercase tracking-wide text-amber-600/90 shrink-0 ml-1"
+              >{{ t('stores.guest_nav_locked_short') }}</span>
             </button>
 
             <!-- Archived Stores -->
@@ -209,19 +220,24 @@
             {{ t('stores.cashu_nav_payments') }}
           </button>
           <button
+            type="button"
             @click="handleReportsClick"
-            class="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors text-left"
+            class="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors text-left border border-transparent"
             :class="
-              querySection === 'reports'
-                ? 'bg-gray-900 text-white'
-                : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+              isGuestUser
+                ? 'text-gray-400 opacity-80 hover:opacity-100 cursor-pointer border-amber-500/25'
+                : querySection === 'reports'
+                  ? 'bg-gray-900 text-white'
+                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
             "
+            :title="isGuestUser ? t('stores.guest_nav_locked_hint') : undefined"
           >
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            {{ t('stores.reports') }}
-            <span v-if="showReportsProBadge" class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 inline-flex items-center"><ProPlanBadge /></span>
+            <span class="flex-1 min-w-0">{{ t('stores.reports') }}</span>
+            <span v-if="isGuestUser" class="text-[10px] uppercase tracking-wide text-amber-400/90 shrink-0 ml-1">{{ t('stores.guest_nav_locked_short') }}</span>
+            <span v-else-if="showReportsProBadge" class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 inline-flex items-center shrink-0"><ProPlanBadge /></span>
           </button>
         </nav>
       </div>
@@ -232,7 +248,23 @@
         <nav class="space-y-1">
           <!-- LN Address -->
           <div class="mb-2">
+            <button
+              v-if="isGuestUser"
+              type="button"
+              class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-left text-gray-400 opacity-85 hover:opacity-100 border border-amber-500/20 cursor-pointer"
+              :title="t('stores.guest_nav_locked_hint')"
+              @click="goAccountUpgrade(); showMobileMenu = false"
+            >
+              <span class="flex items-center min-w-0">
+                <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                </svg>
+                {{ t('stores.ln_address') }}
+              </span>
+              <span class="text-[10px] uppercase tracking-wide text-amber-400/90 shrink-0 ml-1">{{ t('stores.guest_nav_locked_short') }}</span>
+            </button>
             <component
+              v-else
               :is="isInertia ? Link : RouterLink"
               :href="isInertia ? `/stores/${store.id}/lightning-addresses` : undefined"
               :to="!isInertia ? `/stores/${store.id}/lightning-addresses` : undefined"
@@ -257,7 +289,24 @@
 
           <!-- Point of Sale -->
           <div class="mb-2">
+            <button
+              v-if="guestPosCreateLocked"
+              type="button"
+              data-onboarding="pos-1"
+              class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-left text-gray-400 opacity-85 hover:opacity-100 border border-amber-500/20 cursor-pointer"
+              :title="t('stores.guest_pos_limit_hint')"
+              @click="goAccountUpgrade(); showMobileMenu = false"
+            >
+              <span class="flex items-center min-w-0">
+                <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z M9 7h6m-6 3h.01m0 3h.01m0 3h.01m6-9h.01m0 3h.01m0 3h.01m0 3h.01" />
+                </svg>
+                {{ t('stores.point_of_sale') }}
+              </span>
+              <span class="text-[10px] uppercase tracking-wide text-amber-400/90 shrink-0">{{ t('stores.guest_nav_locked_short') }}</span>
+            </button>
             <component
+              v-else
               :is="isInertia ? Link : RouterLink"
               data-onboarding="pos-1"
               :href="isInertia ? `/stores/${store.id}/apps/create?type=PointOfSale` : undefined"
@@ -303,7 +352,23 @@
 
           <!-- Crowdfund -->
           <div class="mb-2">
+            <button
+              v-if="isGuestUser"
+              type="button"
+              class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-left text-gray-400 opacity-85 hover:opacity-100 border border-amber-500/20 cursor-pointer"
+              :title="t('stores.guest_nav_locked_hint')"
+              @click="goAccountUpgrade(); showMobileMenu = false"
+            >
+              <span class="flex items-center min-w-0">
+                <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                {{ t('stores.crowdfund') }}
+              </span>
+              <span class="text-[10px] uppercase tracking-wide text-amber-400/90 shrink-0">{{ t('stores.guest_nav_locked_short') }}</span>
+            </button>
             <component
+              v-else
               :is="isInertia ? Link : RouterLink"
               :href="isInertia ? `/stores/${store.id}/apps/create?type=Crowdfund` : undefined"
               :to="!isInertia ? { name: 'stores-apps-create', params: { id: store.id }, query: { type: 'Crowdfund' } } : undefined"
@@ -325,7 +390,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
             </component>
-            <div v-if="getAppsByType('Crowdfund').length > 0" class="ml-4 space-y-1">
+            <div v-if="!isGuestUser && getAppsByType('Crowdfund').length > 0" class="ml-4 space-y-1">
               <component
                 v-for="app in getAppsByType('Crowdfund')"
                 :key="app.id"
@@ -343,12 +408,28 @@
                 {{ app.name }}
               </component>
             </div>
-            <div v-else class="ml-4 text-xs text-gray-500">{{ t('stores.no_crowdfund') }}</div>
+            <div v-else-if="!isGuestUser" class="ml-4 text-xs text-gray-500">{{ t('stores.no_crowdfund') }}</div>
           </div>
 
           <!-- Pay Button -->
           <div class="mb-2">
+            <button
+              v-if="isGuestUser"
+              type="button"
+              class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-left text-gray-400 opacity-85 hover:opacity-100 border border-amber-500/20 cursor-pointer"
+              :title="t('stores.guest_nav_locked_hint')"
+              @click="goAccountUpgrade(); showMobileMenu = false"
+            >
+              <span class="flex items-center min-w-0">
+                <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 3.219M3.239 7.188l3.22.777M6.5 15.205l-3.75-.75M15.205 6.5l-.75-3.75" />
+                </svg>
+                {{ t('stores.pay_button') }}
+              </span>
+              <span class="text-[10px] uppercase tracking-wide text-amber-400/90 shrink-0">{{ t('stores.guest_nav_locked_short') }}</span>
+            </button>
             <component
+              v-else
               :is="isInertia ? Link : RouterLink"
               :href="isInertia ? `/stores/${store.id}/pay-button` : undefined"
               :to="!isInertia ? `/stores/${store.id}/pay-button` : undefined"
@@ -369,7 +450,23 @@
 
           <!-- Tickets (store-level events, like LN Address) -->
           <div class="mb-2">
+            <button
+              v-if="isGuestUser"
+              type="button"
+              class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-left text-gray-400 opacity-85 hover:opacity-100 border border-amber-500/20 cursor-pointer"
+              :title="t('stores.guest_nav_locked_hint')"
+              @click="goAccountUpgrade(); showMobileMenu = false"
+            >
+              <span class="flex items-center min-w-0">
+                <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                </svg>
+                {{ t('apps.tickets') }}
+              </span>
+              <span class="text-[10px] uppercase tracking-wide text-amber-400/90 shrink-0">{{ t('stores.guest_nav_locked_short') }}</span>
+            </button>
             <component
+              v-else
               :is="isInertia ? Link : RouterLink"
               :href="isInertia ? `/stores/${store.id}/tickets` : undefined"
               :to="!isInertia ? { name: 'stores-tickets', params: { id: store.id } } : undefined"
@@ -394,7 +491,23 @@
 
           <!-- E-shop Integration -->
           <div class="mb-2">
+            <button
+              v-if="isGuestUser"
+              type="button"
+              class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-left text-gray-400 opacity-85 hover:opacity-100 border border-amber-500/20 cursor-pointer"
+              :title="t('stores.guest_nav_locked_hint')"
+              @click="goAccountUpgrade(); showMobileMenu = false"
+            >
+              <span class="flex items-center min-w-0">
+                <svg class="w-5 h-5 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                </svg>
+                {{ t('stores.eshop_integration') }}
+              </span>
+              <span class="text-[10px] uppercase tracking-wide text-amber-400/90 shrink-0">{{ t('stores.guest_nav_locked_short') }}</span>
+            </button>
             <component
+              v-else
               :is="isInertia ? Link : RouterLink"
               :href="isInertia ? `/stores/${store.id}/api-keys` : undefined"
               :to="!isInertia ? `/stores/${store.id}/api-keys` : undefined"
@@ -419,7 +532,23 @@
 
           <!-- Stripe (visible for all, Pro badge for Free) -->
           <div class="mb-2">
+            <button
+              v-if="isGuestUser"
+              type="button"
+              class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-left text-gray-400 opacity-85 hover:opacity-100 border border-amber-500/20 cursor-pointer"
+              :title="t('stores.guest_nav_locked_hint')"
+              @click="goAccountUpgrade(); showMobileMenu = false"
+            >
+              <span class="flex items-center min-w-0">
+                <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                {{ t('stores.stripe') }}
+              </span>
+              <span class="text-[10px] uppercase tracking-wide text-amber-400/90 shrink-0">{{ t('stores.guest_nav_locked_short') }}</span>
+            </button>
             <component
+              v-else
               :is="isInertia ? Link : RouterLink"
               :href="isInertia ? `/stores/${store.id}/stripe` : undefined"
               :to="!isInertia ? { name: 'stores-stripe', params: { id: store.id } } : undefined"
@@ -443,7 +572,18 @@
 
           <!-- Archived Apps link -->
           <div v-if="archivedAppsCount > 0" class="mb-2">
+            <button
+              v-if="isGuestUser"
+              type="button"
+              class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-left text-gray-400 opacity-85 hover:opacity-100 border border-amber-500/20 cursor-pointer"
+              :title="t('stores.guest_nav_locked_hint')"
+              @click="goAccountUpgrade(); showMobileMenu = false"
+            >
+              <span class="text-red-400/80">{{ archivedAppsCount }} {{ t('stores.archived') }}</span>
+              <span class="text-[10px] uppercase tracking-wide text-amber-400/90 shrink-0">{{ t('stores.guest_nav_locked_short') }}</span>
+            </button>
             <component
+              v-else
               :is="isInertia ? Link : RouterLink"
               :href="isInertia ? `/stores/${store.id}/apps?archived=1` : undefined"
               :to="!isInertia ? { name: 'stores-apps', params: { id: store.id }, query: { archived: '1' } } : undefined"
@@ -535,6 +675,9 @@ const authUser = computed(() => {
   if (isInertia && page?.props?.auth?.user) return page.props.auth.user;
   return null;
 });
+
+const isGuestUser = computed(() => !!(authUser.value as { is_guest?: boolean } | null)?.is_guest);
+
 /** True when user has Pro-level access; null while auth user is not loaded (avoid flashing PRO badges). */
 const isProOrAdminUser = computed((): boolean | null => {
   const u = authUser.value;
@@ -686,9 +829,23 @@ function selectStore(storeId: string) {
   }
 }
 
+function goAccountUpgrade() {
+  showStoreDropdown.value = false;
+  showMobileMenu.value = false;
+  if (isInertia) {
+    inertiaRouter.visit('/account');
+  } else if (vueRouter) {
+    vueRouter.push({ name: 'account' });
+  }
+}
+
 function createStore() {
   showStoreDropdown.value = false;
-  showMobileMenu.value = false; // Close mobile menu
+  showMobileMenu.value = false;
+  if (isGuestUser.value && activeStores.value.length >= 1) {
+    goAccountUpgrade();
+    return;
+  }
   if (isInertia) {
     inertiaRouter.visit('/stores/create');
   } else {
@@ -710,13 +867,25 @@ function getAppsByType(type: string) {
 
 const archivedAppsCount = computed(() => props.apps.filter((app: any) => app.archived).length);
 
+const guestActivePosCount = computed(() => getAppsByType('PointOfSale').length);
+
+const guestPosCreateLocked = computed(() => isGuestUser.value && guestActivePosCount.value >= 1);
+
 function handleSectionClick(section: string) {
-  showMobileMenu.value = false; // Close mobile menu on navigation
+  showMobileMenu.value = false;
+  if (isGuestUser.value && section === 'reports') {
+    goAccountUpgrade();
+    return;
+  }
   emit('show-section', section);
 }
 
 function handleReportsClick() {
   showMobileMenu.value = false;
+  if (isGuestUser.value) {
+    goAccountUpgrade();
+    return;
+  }
   emit('show-section', 'reports');
 }
 
