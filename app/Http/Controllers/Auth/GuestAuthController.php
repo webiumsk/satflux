@@ -58,9 +58,18 @@ class GuestAuthController extends Controller
                 'exception' => get_class($e),
             ]);
 
-            return response()->json([
+            $payload = [
                 'message' => 'Unable to start guest session right now. Please try again.',
-            ], 503);
+                'code' => 'guest_provisioning_failed',
+            ];
+            if (config('app.debug')) {
+                $payload['debug'] = [
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                ];
+            }
+
+            return response()->json($payload, 503);
         }
 
         Auth::login($user);

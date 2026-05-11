@@ -57,7 +57,7 @@ class GuestProvisioningService
     public function provisionGuest(?string $recoveryPkHex = null): array
     {
         $guestToken = strtolower((string) Str::ulid());
-        $guestEmailDomain = (string) config('services.auth.guest_email_domain', 'guest.satflux.local');
+        $guestEmailDomain = (string) config('services.auth.guest_email_domain');
         $guestEmail = "guest+{$guestToken}@{$guestEmailDomain}";
         $guestPassword = Str::random(48);
         $defaultStoreName = 'My Store';
@@ -79,6 +79,10 @@ class GuestProvisioningService
             if (! $btcpayUserId) {
                 throw new \RuntimeException('BTCPay user ID missing after guest user creation.');
             }
+
+            // Some BTCPay policies require a confirmed email before user API keys may call /stores.
+            // The create-user response includes invitationUrl; accept it with the server API key.
+            $this->ensureBtcPayGuestUserCanAuthenticate($btcpayUserId, $btcpayUser);
 
             try {
                 $apiKeyData = $this->userService->createApiKey(
@@ -209,5 +213,47 @@ class GuestProvisioningService
             $btcpayUserId,
             $createdPerUserApiKey,
         );
+    }
+
+    /**
+     * When BTCPay enforces email confirmation, merchant API keys cannot authenticate until the
+     * invitation is accepted or email is confirmed (server key can still manage users).
+     */
+    private function ensureBtcPayGuestUserCanAuthenticate(string $btcpayUserId, array $btcpayUser): void
+    {
+        if (! empty($btcpayUser['emailConfirmed'])) {
+            return;
+        }
+
+        $invitationUrl = $btcpayUser['invitationUrl'] ?? null;
+        if (is_string($invitationUrl) && $invitationUrl !== '') {
+            if ($this->userService->acceptInvitation($invitationUrl)) {
+                Log::info('Guest BTCPay user: invitation accepted so API key auth can proceed', [
+                    'btcpay_user_id' => $btcpayUserId,
+                ]);
+
+                return;
+            }
+            Log::warning('Guest BTCPay user: invitation URL present but acceptInvitation failed; trying confirmUserEmail', [
+                'btcpay_user_id' => $btcpayUserId,
+            ]);
+        }
+
+        try {
+            $this->userService->confirmUserEmail($btcpayUserId);
+            Log::info('Guest BTCPay user: email confirmed via admin API', [
+                'btcpay_user_id' => $btcpayUserId,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Guest BTCPay user: could not confirm email or accept invitation', [
+                'btcpay_user_id' => $btcpayUserId,
+                'error' => $e->getMessage(),
+            ]);
+            throw new \RuntimeException(
+                'BTCPay requires email confirmation for new users; Satflux could not complete this automatically. Check server API key permissions and BTCPay policies.',
+                0,
+                $e
+            );
+        }
     }
 }

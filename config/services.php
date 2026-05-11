@@ -60,12 +60,28 @@ return [
         'challenge_ttl_seconds' => (int) env('NOSTR_AUTH_CHALLENGE_TTL', 300),
     ],
 
+    /*
+    | Synthetic BTCPay user emails for guest sessions: guest+<token>@<domain>.
+    | Production: set GUEST_EMAIL_DOMAIN or rely on APP_URL host (e.g. satflux.io).
+    | Many BTCPay installs reject .local / localhost as the email domain.
+    */
+    'auth' => [
+        'guest_email_domain' => (static function (): string {
+            $explicit = env('GUEST_EMAIL_DOMAIN');
+            if (is_string($explicit) && $explicit !== '') {
+                return strtolower($explicit);
+            }
+            $host = parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST);
+            if (! is_string($host) || $host === '') {
+                return 'guest.satflux.local';
+            }
+            $host = strtolower($host);
+            if ($host === 'localhost' || $host === '127.0.0.1' || $host === '[::1]' || str_ends_with($host, '.local')) {
+                return 'guest.satflux.local';
+            }
+
+            return $host;
+        })(),
+    ],
+
 ];
-
-
-
-
-
-
-
-
