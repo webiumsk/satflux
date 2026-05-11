@@ -236,8 +236,8 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             <span class="flex-1 min-w-0">{{ t('stores.reports') }}</span>
-            <span v-if="isGuestUser" class="text-[10px] uppercase tracking-wide text-amber-400/90 shrink-0 ml-1">{{ t('stores.guest_nav_locked_short') }}</span>
-            <span v-else-if="showReportsProBadge" class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 inline-flex items-center shrink-0"><ProPlanBadge /></span>
+            <span v-if="showReportsProBadge" class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 inline-flex items-center shrink-0"><ProPlanBadge /></span>
+            <span v-else-if="isGuestUser" class="text-[10px] uppercase tracking-wide text-amber-400/90 shrink-0 ml-1">{{ t('stores.guest_nav_locked_short') }}</span>
           </button>
         </nav>
       </div>
@@ -545,7 +545,8 @@
                 </svg>
                 {{ t('stores.stripe') }}
               </span>
-              <span class="text-[10px] uppercase tracking-wide text-amber-400/90 shrink-0">{{ t('stores.guest_nav_locked_short') }}</span>
+              <span v-if="showStripeProBadge" class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0 inline-flex items-center"><ProPlanBadge /></span>
+              <span v-else class="text-[10px] uppercase tracking-wide text-amber-400/90 shrink-0">{{ t('stores.guest_nav_locked_short') }}</span>
             </button>
             <component
               v-else

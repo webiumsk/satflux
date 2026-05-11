@@ -136,4 +136,27 @@ class AccountTest extends TestCase
             ])
         );
     }
+
+    public function test_guest_upgrade_email_trims_and_lowercases_before_save(): void
+    {
+        $guest = User::factory()->create([
+            'email' => 'guest-trim@satflux.io',
+            'password' => bcrypt('old-password'),
+            'is_guest' => true,
+            'email_verified_at' => now(),
+            'btcpay_user_id' => null,
+        ]);
+        Sanctum::actingAs($guest);
+
+        $upgradeResponse = $this->putJson('/api/user/guest/upgrade', [
+            'method' => 'email',
+            'email' => '  Trimmed-Case@Satflux.IO  ',
+            'password' => 'new-secure-password',
+            'password_confirmation' => 'new-secure-password',
+        ]);
+
+        $upgradeResponse->assertStatus(200);
+        $guest->refresh();
+        $this->assertSame('trimmed-case@satflux.io', $guest->email);
+    }
 }

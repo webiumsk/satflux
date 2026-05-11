@@ -9,8 +9,9 @@ use App\Services\GuestUpgradeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 class AccountController extends Controller
 {
@@ -229,9 +230,21 @@ class AccountController extends Controller
             return response()->json(['message' => 'Only guest accounts can be upgraded.'], 422);
         }
 
+        // Normalize like registration flows: avoids false "taken" from whitespace/casing vs DB.
+        if ($request->input('method') === 'email' && is_string($request->input('email'))) {
+            $request->merge(['email' => strtolower(trim($request->input('email')))]);
+        }
+
         $validated = $request->validate([
             'method' => ['required', 'in:email,lightning,nostr'],
-            'email' => ['required_if:method,email', 'nullable', 'email:rfc,dns', 'max:255', 'unique:users,email'],
+            'email' => [
+                'required_if:method,email',
+                'nullable',
+                'string',
+                'email:rfc,dns',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($user->id),
+            ],
             'password' => ['required_if:method,email', 'nullable', Password::defaults()],
             'password_confirmation' => ['required_if:method,email', 'nullable', 'same:password'],
         ]);

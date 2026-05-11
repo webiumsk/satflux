@@ -105,6 +105,12 @@
                   class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   :placeholder="t('account.confirm_new_password')"
                 />
+                <p
+                  class="text-xs text-amber-200/90 leading-relaxed rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2"
+                  role="note"
+                >
+                  {{ t("account.guest_upgrade_email_verify_notice") }}
+                </p>
                 <button
                   type="submit"
                   :disabled="guestUpgradeLoading"
