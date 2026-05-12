@@ -1,5 +1,7 @@
 <template>
-  <div class="rich-text-editor rounded-lg border border-gray-600 bg-gray-800 overflow-hidden">
+  <div
+    class="rich-text-editor rounded-lg border border-gray-600 bg-gray-800 overflow-hidden"
+  >
     <!-- Toolbar -->
     <div
       v-if="editor"
@@ -8,26 +10,56 @@
       <!-- Undo / Redo -->
       <button
         type="button"
-        :class="[editor.can().undo() ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-500 cursor-not-allowed']"
+        :class="[
+          editor.can().undo()
+            ? 'text-gray-300 hover:bg-gray-600'
+            : 'text-gray-500 cursor-not-allowed',
+        ]"
         class="rounded p-1.5 transition-colors"
         :title="t('admin.documentation.rich_editor.undo')"
         :disabled="!editor.can().undo()"
         @click="editor.chain().focus().undo().run()"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+          />
         </svg>
       </button>
       <button
         type="button"
-        :class="[editor.can().redo() ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-500 cursor-not-allowed']"
+        :class="[
+          editor.can().redo()
+            ? 'text-gray-300 hover:bg-gray-600'
+            : 'text-gray-500 cursor-not-allowed',
+        ]"
         class="rounded p-1.5 transition-colors"
         :title="t('admin.documentation.rich_editor.redo')"
         :disabled="!editor.can().redo()"
         @click="editor.chain().focus().redo().run()"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"
+          />
         </svg>
       </button>
 
@@ -42,8 +74,19 @@
           @click="headingDropdownOpen = !headingDropdownOpen"
         >
           <span>{{ headingDropdownLabel }}</span>
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4 flex-shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 9l-7 7-7-7"
+            />
           </svg>
         </button>
         <div
@@ -52,21 +95,35 @@
         >
           <button
             type="button"
-            :class="[headingLevel === '0' ? 'bg-indigo-600 text-white' : 'text-gray-200 hover:bg-gray-600']"
+            :class="[
+              headingLevel === '0'
+                ? 'bg-indigo-600 text-white'
+                : 'text-gray-200 hover:bg-gray-600',
+            ]"
             class="w-full text-left px-3 py-2 text-sm flex items-center"
-            @click="setHeading('0'); headingDropdownOpen = false"
+            @click="
+              setHeading('0');
+              headingDropdownOpen = false;
+            "
           >
-            {{ t('admin.documentation.rich_editor.paragraph') }}
+            {{ t("admin.documentation.rich_editor.paragraph") }}
           </button>
           <button
             v-for="n in 6"
             :key="n"
             type="button"
-            :class="[headingLevel === String(n) ? 'bg-indigo-600 text-white' : 'text-gray-200 hover:bg-gray-600']"
+            :class="[
+              headingLevel === String(n)
+                ? 'bg-indigo-600 text-white'
+                : 'text-gray-200 hover:bg-gray-600',
+            ]"
             class="w-full text-left px-3 py-2 text-sm font-semibold"
-            @click="setHeading(String(n)); headingDropdownOpen = false"
+            @click="
+              setHeading(String(n));
+              headingDropdownOpen = false;
+            "
           >
-            {{ t('admin.documentation.rich_editor.heading') }} {{ n }}
+            {{ t("admin.documentation.rich_editor.heading") }} {{ n }}
           </button>
         </div>
       </div>
@@ -75,7 +132,11 @@
 
       <button
         type="button"
-        :class="[editor.isActive('bold') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600']"
+        :class="[
+          editor.isActive('bold')
+            ? 'bg-indigo-600 text-white'
+            : 'text-gray-300 hover:bg-gray-600',
+        ]"
         class="rounded p-1.5 transition-colors"
         :title="t('admin.documentation.rich_editor.bold')"
         @click="editor.chain().focus().toggleBold().run()"
@@ -84,7 +145,11 @@
       </button>
       <button
         type="button"
-        :class="[editor.isActive('italic') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600']"
+        :class="[
+          editor.isActive('italic')
+            ? 'bg-indigo-600 text-white'
+            : 'text-gray-300 hover:bg-gray-600',
+        ]"
         class="rounded p-1.5 transition-colors italic text-sm"
         :title="t('admin.documentation.rich_editor.italic')"
         @click="editor.chain().focus().toggleItalic().run()"
@@ -93,7 +158,11 @@
       </button>
       <button
         type="button"
-        :class="[editor.isActive('underline') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600']"
+        :class="[
+          editor.isActive('underline')
+            ? 'bg-indigo-600 text-white'
+            : 'text-gray-300 hover:bg-gray-600',
+        ]"
         class="rounded p-1.5 transition-colors text-sm underline"
         :title="t('admin.documentation.rich_editor.underline')"
         @click="editor.chain().focus().toggleUnderline().run()"
@@ -104,13 +173,28 @@
       <!-- Link -->
       <button
         type="button"
-        :class="[editor.isActive('link') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600']"
+        :class="[
+          editor.isActive('link')
+            ? 'bg-indigo-600 text-white'
+            : 'text-gray-300 hover:bg-gray-600',
+        ]"
         class="rounded p-1.5 transition-colors"
         :title="t('admin.documentation.rich_editor.link')"
         @click="openLinkDialog"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+          />
         </svg>
       </button>
 
@@ -119,24 +203,54 @@
       <!-- Lists (unordered / ordered) -->
       <button
         type="button"
-        :class="[editor.isActive('bulletList') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600']"
+        :class="[
+          editor.isActive('bulletList')
+            ? 'bg-indigo-600 text-white'
+            : 'text-gray-300 hover:bg-gray-600',
+        ]"
         class="rounded p-1.5 transition-colors"
         :title="t('admin.documentation.rich_editor.bullet_list')"
         @click="editor.chain().focus().toggleBulletList().run()"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 6h16M4 10h16M4 14h16M4 18h16"
+          />
         </svg>
       </button>
       <button
         type="button"
-        :class="[editor.isActive('orderedList') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600']"
+        :class="[
+          editor.isActive('orderedList')
+            ? 'bg-indigo-600 text-white'
+            : 'text-gray-300 hover:bg-gray-600',
+        ]"
         class="rounded p-1.5 transition-colors"
         :title="t('admin.documentation.rich_editor.ordered_list')"
         @click="editor.chain().focus().toggleOrderedList().run()"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m-4 4h10M7 4h10M4 4h.01M4 8h.01M4 12h.01" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M7 8h10M7 12h4m-4 4h10M7 4h10M4 4h.01M4 8h.01M4 12h.01"
+          />
         </svg>
       </button>
 
@@ -145,46 +259,106 @@
       <!-- Text align -->
       <button
         type="button"
-        :class="[editor.isActive({ textAlign: 'left' }) ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600']"
+        :class="[
+          editor.isActive({ textAlign: 'left' })
+            ? 'bg-indigo-600 text-white'
+            : 'text-gray-300 hover:bg-gray-600',
+        ]"
         class="rounded p-1.5 transition-colors"
         :title="t('admin.documentation.rich_editor.align_left')"
         @click="editor.chain().focus().setTextAlign('left').run()"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 6h16M4 12h16M4 18h7"
+          />
         </svg>
       </button>
       <button
         type="button"
-        :class="[editor.isActive({ textAlign: 'center' }) ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600']"
+        :class="[
+          editor.isActive({ textAlign: 'center' })
+            ? 'bg-indigo-600 text-white'
+            : 'text-gray-300 hover:bg-gray-600',
+        ]"
         class="rounded p-1.5 transition-colors"
         :title="t('admin.documentation.rich_editor.align_center')"
         @click="editor.chain().focus().setTextAlign('center').run()"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M7 12h10M4 18h16" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 6h16M7 12h10M4 18h16"
+          />
         </svg>
       </button>
       <button
         type="button"
-        :class="[editor.isActive({ textAlign: 'right' }) ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600']"
+        :class="[
+          editor.isActive({ textAlign: 'right' })
+            ? 'bg-indigo-600 text-white'
+            : 'text-gray-300 hover:bg-gray-600',
+        ]"
         class="rounded p-1.5 transition-colors"
         :title="t('admin.documentation.rich_editor.align_right')"
         @click="editor.chain().focus().setTextAlign('right').run()"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h17" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 6h16M4 12h16M4 18h17"
+          />
         </svg>
       </button>
       <button
         type="button"
-        :class="[editor.isActive({ textAlign: 'justify' }) ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600']"
+        :class="[
+          editor.isActive({ textAlign: 'justify' })
+            ? 'bg-indigo-600 text-white'
+            : 'text-gray-300 hover:bg-gray-600',
+        ]"
         class="rounded p-1.5 transition-colors"
         :title="t('admin.documentation.rich_editor.align_justify')"
         @click="editor.chain().focus().setTextAlign('justify').run()"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 6h16M4 12h16M4 18h16"
+          />
         </svg>
       </button>
 
@@ -195,10 +369,27 @@
         type="button"
         class="rounded p-1.5 text-gray-300 hover:bg-gray-600 transition-colors"
         :title="t('admin.documentation.rich_editor.insert_table')"
-        @click="editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()"
+        @click="
+          editor
+            .chain()
+            .focus()
+            .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+            .run()
+        "
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16M4 6v12h16V6H4z" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 6h16M4 10h16M4 14h16M4 18h16M4 6v12h16V6H4z"
+          />
         </svg>
       </button>
       <button
@@ -234,7 +425,11 @@
       <!-- Inline code -->
       <button
         type="button"
-        :class="[editor.isActive('code') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600']"
+        :class="[
+          editor.isActive('code')
+            ? 'bg-indigo-600 text-white'
+            : 'text-gray-300 hover:bg-gray-600',
+        ]"
         class="rounded p-1.5 transition-colors font-mono text-xs"
         :title="t('admin.documentation.rich_editor.inline_code')"
         @click="editor.chain().focus().toggleCode().run()"
@@ -244,7 +439,11 @@
       <!-- Code block -->
       <button
         type="button"
-        :class="[editor.isActive('codeBlock') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600']"
+        :class="[
+          editor.isActive('codeBlock')
+            ? 'bg-indigo-600 text-white'
+            : 'text-gray-300 hover:bg-gray-600',
+        ]"
         class="rounded p-1.5 transition-colors font-mono text-xs"
         :title="t('admin.documentation.rich_editor.code_block')"
         @click="editor.chain().focus().toggleCodeBlock().run()"
@@ -261,8 +460,19 @@
         :title="t('admin.documentation.rich_editor.image')"
         @click="openImageDialog"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
         </svg>
       </button>
       <button
@@ -271,8 +481,19 @@
         :title="t('admin.documentation.rich_editor.upload_image')"
         @click="triggerImageUpload"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+          />
         </svg>
       </button>
       <input
@@ -290,8 +511,15 @@
         :title="t('admin.documentation.rich_editor.youtube')"
         @click="openYoutubeDialog"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-4 w-4"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+        >
+          <path
+            d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"
+          />
         </svg>
       </button>
 
@@ -300,7 +528,11 @@
       <!-- Toggle HTML / Visual -->
       <button
         type="button"
-        :class="[htmlMode ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600']"
+        :class="[
+          htmlMode
+            ? 'bg-indigo-600 text-white'
+            : 'text-gray-300 hover:bg-gray-600',
+        ]"
         class="rounded px-2 py-1.5 text-sm font-mono transition-colors ml-auto"
         :title="t('admin.documentation.rich_editor.html_code')"
         @click="toggleHtmlMode"
@@ -331,23 +563,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue';
-import { useEditor, EditorContent } from '@tiptap/vue-3';
-import StarterKit from '@tiptap/starter-kit';
-import Heading from '@tiptap/extension-heading';
-import Underline from '@tiptap/extension-underline';
-import Image from '@tiptap/extension-image';
-import Table from '@tiptap/extension-table';
-import TableRow from '@tiptap/extension-table-row';
-import TableCell from '@tiptap/extension-table-cell';
-import TableHeader from '@tiptap/extension-table-header';
-import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
-import Youtube from '@tiptap/extension-youtube';
-import Link from '@tiptap/extension-link';
-import TextAlign from '@tiptap/extension-text-align';
-import { createLowlight, common } from 'lowlight';
-import { useI18n } from 'vue-i18n';
-import api from '../../services/api';
+import { ref, watch, onMounted, onBeforeUnmount, computed } from "vue";
+import { useEditor, EditorContent } from "@tiptap/vue-3";
+import StarterKit from "@tiptap/starter-kit";
+import Heading from "@tiptap/extension-heading";
+import Underline from "@tiptap/extension-underline";
+import Image from "@tiptap/extension-image";
+import Table from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
+import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import Youtube from "@tiptap/extension-youtube";
+import Link from "@tiptap/extension-link";
+import TextAlign from "@tiptap/extension-text-align";
+import { createLowlight, common } from "lowlight";
+import { useI18n } from "vue-i18n";
+import api from "../../services/api";
 
 const { t } = useI18n();
 
@@ -357,23 +589,23 @@ const props = withDefaults(
     placeholder?: string;
     disabled?: boolean;
   }>(),
-  { placeholder: '', disabled: false }
+  { placeholder: "", disabled: false },
 );
 
 const emit = defineEmits<{
-  'update:modelValue': [value: string];
+  "update:modelValue": [value: string];
 }>();
 
 const imageFileInput = ref<HTMLInputElement | null>(null);
 const headingDropdownRef = ref<HTMLElement | null>(null);
 const headingDropdownOpen = ref(false);
 const htmlMode = ref(false);
-const htmlSource = ref('');
+const htmlSource = ref("");
 
 const lowlight = createLowlight(common);
 
 const editor = useEditor({
-  content: props.modelValue || '',
+  content: props.modelValue || "",
   editable: !props.disabled,
   extensions: [
     StarterKit.configure({
@@ -398,19 +630,19 @@ const editor = useEditor({
     }),
     Link.configure({
       openOnClick: false,
-      HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' },
+      HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" },
     }),
-    TextAlign.configure({ types: ['heading', 'paragraph'] }),
+    TextAlign.configure({ types: ["heading", "paragraph"] }),
   ],
   editorProps: {
     attributes: {
       class:
-        'prose-editor-inner min-h-[200px] px-4 py-3 text-gray-200 focus:outline-none max-w-none',
-      'data-placeholder': props.placeholder,
+        "prose-editor-inner min-h-[200px] px-4 py-3 text-gray-200 focus:outline-none max-w-none",
+      "data-placeholder": props.placeholder,
     },
     handleDrop(view, event) {
       const files = event.dataTransfer?.files;
-      if (files?.length && files[0].type.startsWith('image/')) {
+      if (files?.length && files[0].type.startsWith("image/")) {
         event.preventDefault();
         uploadImageFile(files[0]);
         return true;
@@ -421,7 +653,7 @@ const editor = useEditor({
       const items = event.clipboardData?.items;
       if (items) {
         for (const item of items) {
-          if (item.kind === 'file' && item.type.startsWith('image/')) {
+          if (item.kind === "file" && item.type.startsWith("image/")) {
             const file = item.getAsFile();
             if (file) {
               event.preventDefault();
@@ -435,21 +667,22 @@ const editor = useEditor({
     },
   },
   onUpdate: ({ editor: e }) => {
-    emit('update:modelValue', e.getHTML());
+    emit("update:modelValue", e.getHTML());
   },
 });
 
 const headingLevel = computed(() => {
-  if (!editor.value) return '0';
+  if (!editor.value) return "0";
   for (let i = 1; i <= 6; i++) {
-    if (editor.value.isActive('heading', { level: i })) return String(i);
+    if (editor.value.isActive("heading", { level: i })) return String(i);
   }
-  return '0';
+  return "0";
 });
 
 const headingDropdownLabel = computed(() => {
-  if (headingLevel.value === '0') return t('admin.documentation.rich_editor.paragraph');
-  return `${t('admin.documentation.rich_editor.heading')} ${headingLevel.value}`;
+  if (headingLevel.value === "0")
+    return t("admin.documentation.rich_editor.paragraph");
+  return `${t("admin.documentation.rich_editor.heading")} ${headingLevel.value}`;
 });
 
 function setHeading(value: string) {
@@ -458,26 +691,37 @@ function setHeading(value: string) {
   if (level === 0) {
     editor.value.chain().focus().setParagraph().run();
   } else {
-    editor.value.chain().focus().setHeading({ level: level as 1 | 2 | 3 | 4 | 5 | 6 }).run();
+    editor.value
+      .chain()
+      .focus()
+      .setHeading({ level: level as 1 | 2 | 3 | 4 | 5 | 6 })
+      .run();
   }
 }
 
 function openLinkDialog() {
-  const prevHref = editor.value?.getAttributes('link').href || '';
+  const prevHref = editor.value?.getAttributes("link").href || "";
   const url = window.prompt(
-    t('admin.documentation.rich_editor.link_url_prompt') || 'Enter URL:',
-    prevHref
+    t("admin.documentation.rich_editor.link_url_prompt") || "Enter URL:",
+    prevHref,
   );
   if (url === null) return;
-  if (url === '') {
-    editor.value?.chain().focus().extendMarkRange('link').unsetLink().run();
+  if (url === "") {
+    editor.value?.chain().focus().extendMarkRange("link").unsetLink().run();
     return;
   }
-  editor.value?.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+  editor.value
+    ?.chain()
+    .focus()
+    .extendMarkRange("link")
+    .setLink({ href: url })
+    .run();
 }
 
 function openImageDialog() {
-  const url = window.prompt(t('admin.documentation.rich_editor.image_url_prompt') || 'Enter image URL:');
+  const url = window.prompt(
+    t("admin.documentation.rich_editor.image_url_prompt") || "Enter image URL:",
+  );
   if (url) {
     editor.value?.chain().focus().setImage({ src: url }).run();
   }
@@ -492,33 +736,34 @@ async function onImageFileSelect(event: Event) {
   const file = input.files?.[0];
   if (!file || !editor.value) return;
   await uploadImageFile(file);
-  input.value = '';
+  input.value = "";
 }
 
 async function uploadImageFile(file: File) {
   try {
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append("image", file);
     const { data } = await api.post<{ data: { url: string } }>(
-      '/admin/documentation/upload-image',
+      "/admin/documentation/upload-image",
       formData,
       {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      }
+        headers: { "Content-Type": "multipart/form-data" },
+      },
     );
     const url = data?.data?.url ?? data?.url;
     if (url) {
       editor.value?.chain().focus().setImage({ src: url }).run();
     }
   } catch (err) {
-    console.error('Image upload failed:', err);
-    alert(t('admin.documentation.rich_editor.upload_error') || 'Upload failed');
+    console.error("Image upload failed:", err);
+    alert(t("admin.documentation.rich_editor.upload_error") || "Upload failed");
   }
 }
 
 function openYoutubeDialog() {
   const url = window.prompt(
-    t('admin.documentation.rich_editor.youtube_url_prompt') || 'Enter YouTube video URL:'
+    t("admin.documentation.rich_editor.youtube_url_prompt") ||
+      "Enter YouTube video URL:",
   );
   if (url) {
     editor.value?.chain().focus().setYoutubeVideo({ src: url }).run();
@@ -527,34 +772,38 @@ function openYoutubeDialog() {
 
 /** Void elements that have no closing tag */
 const VOID_TAGS = new Set(
-  'area base br col embed hr img input link meta param source track wbr'.split(' ')
+  "area base br col embed hr img input link meta param source track wbr".split(
+    " ",
+  ),
 );
 
 function formatHtml(html: string): string {
   if (!html || !html.trim()) return html;
   try {
     const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const indent = (n: number) => '  '.repeat(n);
+    const doc = parser.parseFromString(html, "text/html");
+    const indent = (n: number) => "  ".repeat(n);
 
     function serialize(node: Node, depth: number): string {
       if (node.nodeType === Node.TEXT_NODE) {
-        const text = node.textContent?.replace(/\s+/g, ' ').trim() ?? '';
-        return text ? indent(depth) + text : '';
+        const text = node.textContent?.replace(/\s+/g, " ").trim() ?? "";
+        return text ? indent(depth) + text : "";
       }
-      if (node.nodeType !== Node.ELEMENT_NODE) return '';
+      if (node.nodeType !== Node.ELEMENT_NODE) return "";
       const el = node as Element;
       const tag = el.tagName.toLowerCase();
       const attrs = Array.from(el.attributes)
         .map((a) =>
-          a.value != null && a.value !== ''
-            ? `${a.name}="${a.value.replace(/"/g, '&quot;')}"`
-            : a.name
+          a.value != null && a.value !== ""
+            ? `${a.name}="${a.value.replace(/"/g, "&quot;")}"`
+            : a.name,
         )
-        .join(' ');
-      const attrStr = attrs ? ' ' + attrs : '';
+        .join(" ");
+      const attrStr = attrs ? " " + attrs : "";
       const children = Array.from(el.childNodes).filter(
-        (n) => n.nodeType !== Node.TEXT_NODE || (n.textContent?.trim() ?? '').length > 0
+        (n) =>
+          n.nodeType !== Node.TEXT_NODE ||
+          (n.textContent?.trim() ?? "").length > 0,
       );
       if (VOID_TAGS.has(tag)) {
         return indent(depth) + `<${tag}${attrStr}>`;
@@ -565,15 +814,20 @@ function formatHtml(html: string): string {
       const inner = children
         .map((child) => serialize(child, depth + 1))
         .filter(Boolean)
-        .join('\n');
-      return indent(depth) + `<${tag}${attrStr}>\n${inner}\n` + indent(depth) + `</${tag}>`;
+        .join("\n");
+      return (
+        indent(depth) +
+        `<${tag}${attrStr}>\n${inner}\n` +
+        indent(depth) +
+        `</${tag}>`
+      );
     }
 
     const body = doc.body;
     const parts = Array.from(body.childNodes)
       .map((node) => serialize(node, 0))
       .filter(Boolean);
-    return parts.join('\n').trim();
+    return parts.join("\n").trim();
   } catch {
     return html;
   }
@@ -582,19 +836,19 @@ function formatHtml(html: string): string {
 function toggleHtmlMode() {
   if (htmlMode.value) {
     // Switching from HTML to visual: apply htmlSource to editor and emit
-    const html = htmlSource.value || '';
+    const html = htmlSource.value || "";
     editor.value?.commands.setContent(html, false);
-    emit('update:modelValue', html);
+    emit("update:modelValue", html);
   } else {
     // Switching from visual to HTML: sync and format for readability
-    const raw = editor.value?.getHTML() ?? props.modelValue ?? '';
+    const raw = editor.value?.getHTML() ?? props.modelValue ?? "";
     htmlSource.value = formatHtml(raw);
   }
   htmlMode.value = !htmlMode.value;
 }
 
 function onHtmlSourceInput() {
-  emit('update:modelValue', htmlSource.value);
+  emit("update:modelValue", htmlSource.value);
 }
 
 watch(
@@ -603,17 +857,17 @@ watch(
     if (!editor.value) return;
     const current = editor.value.getHTML();
     if (val !== current) {
-      editor.value.commands.setContent(val || '', false);
+      editor.value.commands.setContent(val || "", false);
     }
   },
-  { immediate: false }
+  { immediate: false },
 );
 
 watch(
   () => props.disabled,
   (disabled) => {
     editor.value?.setEditable(!disabled);
-  }
+  },
 );
 
 function onDocumentClick(e: MouseEvent) {
@@ -626,15 +880,15 @@ function onDocumentClick(e: MouseEvent) {
 onMounted(() => {
   if (props.modelValue && editor.value) {
     const current = editor.value.getHTML();
-    if (current === '<p></p>' && props.modelValue) {
+    if (current === "<p></p>" && props.modelValue) {
       editor.value.commands.setContent(props.modelValue, false);
     }
   }
-  document.addEventListener('click', onDocumentClick);
+  document.addEventListener("click", onDocumentClick);
 });
 
 onBeforeUnmount(() => {
-  document.removeEventListener('click', onDocumentClick);
+  document.removeEventListener("click", onDocumentClick);
   editor.value?.destroy();
 });
 </script>
@@ -655,7 +909,7 @@ onBeforeUnmount(() => {
   height: 0;
 }
 
-/* Headings – visible sizes in editor */
+/* Headings - visible sizes in editor */
 .rich-text-editor :deep(.ProseMirror h1) {
   font-size: 2.25rem;
   font-weight: 700;

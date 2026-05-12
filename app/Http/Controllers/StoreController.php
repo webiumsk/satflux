@@ -425,7 +425,7 @@ class StoreController extends Controller
                         'pending'
                     );
 
-                    Log::info('Wallet connection created (pending – config bot will run)', [
+                    Log::info('Wallet connection created (pending - config bot will run)', [
                         'store_id' => $store->id,
                         'wallet_connection_id' => $walletConnection->id ?? 'NULL',
                         'wallet_type' => $request->wallet_type,
@@ -694,7 +694,7 @@ class StoreController extends Controller
 
         try {
             // Delete store in BTCPay Server (DELETE /api/v1/stores/{storeId})
-            // Uses server-level API key – user keys typically lack permission to delete stores
+            // Uses server-level API key - user keys typically lack permission to delete stores
             try {
                 Log::info('Attempting to delete store in BTCPay', [
                     'store_id' => $localStoreId,

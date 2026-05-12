@@ -111,6 +111,23 @@ class SubscriptionTest extends TestCase
     }
 
     #[Test]
+    public function guest_user_cannot_create_subscription_checkout(): void
+    {
+        $guest = User::factory()->guest()->create();
+
+        config(['services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store']);
+        config(['services.btcpay.subscription_offering_id' => 'offering_test']);
+        config(['services.btcpay.subscription_plans.pro' => 'plan_pro_test']);
+
+        $response = $this->actingAs($guest)->postJson('/api/subscriptions/checkout', [
+            'plan' => 'pro',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('code', 'guest_subscription_blocked');
+    }
+
+    #[Test]
     public function checkout_requires_valid_plan_name()
     {
         $user = User::factory()->create();

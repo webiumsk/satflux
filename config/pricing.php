@@ -20,7 +20,7 @@ return [
     ],
 
     'enterprise' => [
-        // No fixed price – contact sales
+        // No fixed price - contact sales
     ],
 
 ];

@@ -64,7 +64,6 @@ class GuestProvisioningService
 
         $btcpayUserId = null;
         $btcpayStoreId = null;
-        $btcpayApiKey = null;
         $createdPerUserApiKey = null;
         $webhookData = null;
 
@@ -84,23 +83,20 @@ class GuestProvisioningService
             // The create-user response includes invitationUrl; accept it with the server API key.
             $this->ensureBtcPayGuestUserCanAuthenticate($btcpayUserId, $btcpayUser);
 
-            try {
-                $apiKeyData = $this->userService->createApiKey(
-                    $btcpayUserId,
-                    [],
-                    [],
-                    'satflux.io Guest API Key - '.$guestEmail
+            $apiKeyData = $this->userService->createApiKey(
+                $btcpayUserId,
+                [],
+                [],
+                'satflux.io Guest API Key - '.$guestEmail
+            );
+            $createdPerUserApiKey = $apiKeyData['apiKey'] ?? null;
+            if (! is_string($createdPerUserApiKey) || $createdPerUserApiKey === '') {
+                throw new \RuntimeException(
+                    'BTCPay did not return a merchant API key for the new guest user; guest provisioning cannot continue without it.'
                 );
-                $createdPerUserApiKey = $apiKeyData['apiKey'] ?? null;
-            } catch (\Throwable $apiKeyError) {
-                Log::warning('Guest BTCPay user API key creation failed, using server key for provisioning only', [
-                    'btcpay_user_id' => $btcpayUserId,
-                    'guest_email' => $guestEmail,
-                    'error' => $apiKeyError->getMessage(),
-                ]);
             }
 
-            $btcpayApiKey = $createdPerUserApiKey ?: null;
+            $btcpayApiKey = $createdPerUserApiKey;
             $btcpayStore = $this->storeService->createStore([
                 'name' => $defaultStoreName,
                 'defaultCurrency' => 'EUR',
@@ -162,9 +158,7 @@ class GuestProvisioningService
                     $userData['is_guest'] = true;
                 }
 
-                if ($createdPerUserApiKey) {
-                    $userData['btcpay_api_key'] = $createdPerUserApiKey;
-                }
+                $userData['btcpay_api_key'] = $createdPerUserApiKey;
 
                 if ($recoveryPkHex && Schema::hasColumn('users', 'guest_recovery_public_key')) {
                     if (User::where('guest_recovery_public_key', $recoveryPkHex)->exists()) {

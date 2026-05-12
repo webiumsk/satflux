@@ -793,7 +793,7 @@ function showQrForAddress(address: any) {
 const allApps = computed(() => appsStore.apps);
 
 const canAddAddress = computed(() => {
-  if (!limit.value) return false; // Unknown until loaded – openAddForm will load first
+  if (!limit.value) return false; // Unknown until loaded - openAddForm will load first
   if (limit.value.unlimited) return true;
   return limit.value.current < (limit.value.max ?? 0);
 });

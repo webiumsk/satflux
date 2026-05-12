@@ -3,61 +3,86 @@
  * Used by index.js (single run) and poll.js (batch).
  */
 
-import { chromium } from 'playwright';
-import { logger } from './logger.js';
+import { chromium } from "playwright";
+import { logger } from "./logger.js";
 
 export async function runConfigForConnection(connectionId) {
-  const panelUrl = (process.env.PANEL_URL || process.env.BTCPAY_BOT_PANEL_URL || process.env.APP_URL || '')?.replace(/\/$/, '');
-  const panelToken = (process.env.PANEL_BOT_TOKEN || '').trim();
-  const panelPassword = (process.env.PANEL_BOT_PASSWORD || '').trim();
-  const btcpayUrl = process.env.BTCPAY_BASE_URL?.replace(/\/$/, '');
+  const panelUrl = (
+    process.env.PANEL_URL ||
+    process.env.BTCPAY_BOT_PANEL_URL ||
+    process.env.APP_URL ||
+    ""
+  )?.replace(/\/$/, "");
+  const panelToken = (process.env.PANEL_BOT_TOKEN || "").trim();
+  const panelPassword = (process.env.PANEL_BOT_PASSWORD || "").trim();
+  const btcpayUrl = process.env.BTCPAY_BASE_URL?.replace(/\/$/, "");
   const btcpayEmail = process.env.BTCPAY_BOT_EMAIL;
   const btcpayPassword = process.env.BTCPAY_BOT_PASSWORD;
 
-  if (!panelUrl || !panelToken || !panelPassword || !btcpayUrl || !btcpayEmail || !btcpayPassword) {
-    throw new Error('Missing required env vars');
+  if (
+    !panelUrl ||
+    !panelToken ||
+    !panelPassword ||
+    !btcpayUrl ||
+    !btcpayEmail ||
+    !btcpayPassword
+  ) {
+    throw new Error("Missing required env vars");
   }
 
   const apiBase = `${panelUrl}/api`;
 
   // Step 1: Reveal secret from panel
-  logger.info('panel_reveal', 'Calling panel reveal API', { connectionId });
-  const revealRes = await fetch(`${apiBase}/support/wallet-connections/${connectionId}/reveal`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Authorization': `Bearer ${panelToken}`,
+  logger.info("panel_reveal", "Calling panel reveal API", { connectionId });
+  const revealRes = await fetch(
+    `${apiBase}/support/wallet-connections/${connectionId}/reveal`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${panelToken}`,
+      },
+      body: JSON.stringify({ password: panelPassword }),
     },
-    body: JSON.stringify({ password: panelPassword }),
-  });
+  );
 
   const revealBody = await revealRes.json().catch(() => ({}));
 
   if (!revealRes.ok) {
-    throw new Error(`Panel reveal failed: ${revealRes.status} ${JSON.stringify(revealBody)}`);
+    throw new Error(
+      `Panel reveal failed: ${revealRes.status} ${JSON.stringify(revealBody)}`,
+    );
   }
 
-  const { secret, type: connectionType, reconfig, btcpay_store_id, store_name } = revealBody?.data ?? {};
+  const {
+    secret,
+    type: connectionType,
+    reconfig,
+    btcpay_store_id,
+    store_name,
+  } = revealBody?.data ?? {};
   if (!secret || !btcpay_store_id) {
     throw new Error(`Invalid reveal response: ${JSON.stringify(revealBody)}`);
   }
-  const isAqua = connectionType === 'aqua_descriptor';
+  const isAqua = connectionType === "aqua_descriptor";
   const isBlinkReconfig = !isAqua && reconfig;
 
   /** Unique Boltz wallet name for this connection (identifiable in BTCPay when debugging duplicates). */
   const boltzWalletName = (() => {
-    const slug = (store_name || 'store')
+    const slug = (store_name || "store")
       .toString()
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
       .slice(0, 35);
-    const storeIdPart = String(btcpay_store_id).replace(/[^a-zA-Z0-9]/g, '').slice(0, 12);
-    return `boltz-${slug || 'store'}-${storeIdPart || 'store'}`;
+    const storeIdPart = String(btcpay_store_id)
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .slice(0, 12);
+    return `boltz-${slug || "store"}-${storeIdPart || "store"}`;
   })();
 
-  logger.info('panel_reveal', 'Secret revealed', {
+  logger.info("panel_reveal", "Secret revealed", {
     storeName: store_name,
     btcpayStoreId: btcpay_store_id,
     type: connectionType,
@@ -67,37 +92,45 @@ export async function runConfigForConnection(connectionId) {
 
   // Step 2: BTCPay UI
   const browser = await chromium.launch({
-    headless: process.env.BTCPAY_BOT_HEADLESS !== 'false',
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    headless: process.env.BTCPAY_BOT_HEADLESS !== "false",
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
 
   const context = await browser.newContext({
-    ignoreHTTPSErrors: process.env.BTCPAY_BOT_IGNORE_HTTPS_ERRORS === 'true',
+    ignoreHTTPSErrors: process.env.BTCPAY_BOT_IGNORE_HTTPS_ERRORS === "true",
   });
 
   const page = await context.newPage();
 
-  page.on('pageerror', (err) => {
-    logger.warn('btcpay_page_error', 'BTCPay page error', { error: err.message });
+  page.on("pageerror", (err) => {
+    logger.warn("btcpay_page_error", "BTCPay page error", {
+      error: err.message,
+    });
   });
 
   try {
     const loginUrl = `${btcpayUrl}/login`;
-    logger.info('btcpay_login', 'Logging into BTCPay', { url: loginUrl });
-    await page.goto(loginUrl, { waitUntil: 'networkidle', timeout: 30000 });
+    logger.info("btcpay_login", "Logging into BTCPay", { url: loginUrl });
+    await page.goto(loginUrl, { waitUntil: "networkidle", timeout: 30000 });
 
     const emailSel = 'input[name="email"], input[type="email"], #Email';
     const passSel = 'input[name="password"], input[type="password"], #Password';
     await page.waitForSelector(`${emailSel}, ${passSel}`, { timeout: 10000 });
     await page.fill(emailSel, btcpayEmail);
     await page.fill(passSel, btcpayPassword);
-    await page.click('button[type="submit"], input[type="submit"], button:has-text("Log in"), button:has-text("Login")');
-    await page.waitForLoadState('networkidle');
+    await page.click(
+      'button[type="submit"], input[type="submit"], button:has-text("Log in"), button:has-text("Login")',
+    );
+    await page.waitForLoadState("networkidle");
 
-    // "Logout" appears when logged in – don't treat as error
-    const loginError = await page.locator('.alert-danger, .text-danger').first().textContent().catch(() => null);
+    // "Logout" appears when logged in - don't treat as error
+    const loginError = await page
+      .locator(".alert-danger, .text-danger")
+      .first()
+      .textContent()
+      .catch(() => null);
     const err = loginError?.trim();
-    if (err && !err.toLowerCase().includes('logout')) {
+    if (err && !err.toLowerCase().includes("logout")) {
       throw new Error(`BTCPay login failed: ${err}`);
     }
 
@@ -106,155 +139,256 @@ export async function runConfigForConnection(connectionId) {
     const settingsUrl = `${lightningBase}/settings`;
 
     if (isBlinkReconfig) {
-      logger.info('btcpay_lightning', 'Blink reconfig: navigating via Settings → Change connection', { settingsUrl });
-      await page.goto(settingsUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await new Promise((r) => setTimeout(r, 3000));
-      const changeConnectionLink = page.locator('a[href*="/lightning/BTC/setup"], a:has-text("Change connection")').first();
-      await changeConnectionLink.waitFor({ state: 'visible', timeout: 15000 }).catch(async () => {
-        const bodyText = await page.locator('body').innerText().catch(() => '');
-        throw new Error(`Change connection link not found on Settings. Page: ${page.url()}. Snippet: ${bodyText.slice(0, 400)}`);
+      logger.info(
+        "btcpay_lightning",
+        "Blink reconfig: navigating via Settings → Change connection",
+        { settingsUrl },
+      );
+      await page.goto(settingsUrl, {
+        waitUntil: "domcontentloaded",
+        timeout: 30000,
       });
-      const changeHref = await changeConnectionLink.getAttribute('href');
-      const changeUrl = changeHref && changeHref.startsWith('http') ? changeHref : new URL(changeHref || '/setup', btcpayUrl).href;
-      await page.goto(changeUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await new Promise((r) => setTimeout(r, 3000));
+      const changeConnectionLink = page
+        .locator(
+          'a[href*="/lightning/BTC/setup"], a:has-text("Change connection")',
+        )
+        .first();
+      await changeConnectionLink
+        .waitFor({ state: "visible", timeout: 15000 })
+        .catch(async () => {
+          const bodyText = await page
+            .locator("body")
+            .innerText()
+            .catch(() => "");
+          throw new Error(
+            `Change connection link not found on Settings. Page: ${page.url()}. Snippet: ${bodyText.slice(0, 400)}`,
+          );
+        });
+      const changeHref = await changeConnectionLink.getAttribute("href");
+      const changeUrl =
+        changeHref && changeHref.startsWith("http")
+          ? changeHref
+          : new URL(changeHref || "/setup", btcpayUrl).href;
+      await page.goto(changeUrl, {
+        waitUntil: "domcontentloaded",
+        timeout: 30000,
+      });
       await new Promise((r) => setTimeout(r, 3000));
     } else {
-      logger.info('btcpay_lightning', 'Navigating to Lightning setup', { url: setupUrl, isAqua });
-      await page.goto(setupUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      logger.info("btcpay_lightning", "Navigating to Lightning setup", {
+        url: setupUrl,
+        isAqua,
+      });
+      await page.goto(setupUrl, {
+        waitUntil: "domcontentloaded",
+        timeout: 30000,
+      });
       await new Promise((r) => setTimeout(r, 4000));
     }
 
     if (isAqua) {
-      // --- Aqua (Boltz): wizard flow – Configure Boltz → Continue → Import wallet → Enter core descriptor → submit ---
-      const configureBoltzLink = page.locator('a[href*="/Boltz/setup/Standalone"]').first();
-      await configureBoltzLink.waitFor({ state: 'visible', timeout: 20000 }).catch(async () => {
-        const bodyText = await page.locator('body').innerText().catch(() => '');
-        throw new Error(`Configure Boltz link not found. Page: ${page.url()}. Snippet: ${bodyText.slice(0, 400)}`);
+      // --- Aqua (Boltz): wizard flow - Configure Boltz → Continue → Import wallet → Enter core descriptor → submit ---
+      const configureBoltzLink = page
+        .locator('a[href*="/Boltz/setup/Standalone"]')
+        .first();
+      await configureBoltzLink
+        .waitFor({ state: "visible", timeout: 20000 })
+        .catch(async () => {
+          const bodyText = await page
+            .locator("body")
+            .innerText()
+            .catch(() => "");
+          throw new Error(
+            `Configure Boltz link not found. Page: ${page.url()}. Snippet: ${bodyText.slice(0, 400)}`,
+          );
+        });
+      const boltzHref = await configureBoltzLink.getAttribute("href");
+      const boltzUrl = boltzHref.startsWith("http")
+        ? boltzHref
+        : new URL(boltzHref, btcpayUrl).href;
+      logger.info("btcpay_boltz", "Clicking Configure Boltz", { boltzUrl });
+      await page.goto(boltzUrl, {
+        waitUntil: "domcontentloaded",
+        timeout: 30000,
       });
-      const boltzHref = await configureBoltzLink.getAttribute('href');
-      const boltzUrl = boltzHref.startsWith('http') ? boltzHref : new URL(boltzHref, btcpayUrl).href;
-      logger.info('btcpay_boltz', 'Clicking Configure Boltz', { boltzUrl });
-      await page.goto(boltzUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
       await new Promise((r) => setTimeout(r, 2000));
 
-      const continueLink = page.locator('a.btn.btn-success[href*="setup/wallet/Standalone"]').first();
-      await continueLink.waitFor({ state: 'visible', timeout: 15000 });
-      logger.info('btcpay_boltz', 'Clicking Continue (How does it work?)');
+      const continueLink = page
+        .locator('a.btn.btn-success[href*="setup/wallet/Standalone"]')
+        .first();
+      await continueLink.waitFor({ state: "visible", timeout: 15000 });
+      logger.info("btcpay_boltz", "Clicking Continue (How does it work?)");
       await continueLink.click();
-      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState("domcontentloaded");
       await new Promise((r) => setTimeout(r, 1500));
 
-      const importWalletLink = page.locator('a.list-group-item-action[href*="/Lbtc/import"]').first();
-      await importWalletLink.waitFor({ state: 'visible', timeout: 15000 });
-      logger.info('btcpay_boltz', 'Clicking Import a wallet');
+      const importWalletLink = page
+        .locator('a.list-group-item-action[href*="/Lbtc/import"]')
+        .first();
+      await importWalletLink.waitFor({ state: "visible", timeout: 15000 });
+      logger.info("btcpay_boltz", "Clicking Import a wallet");
       await importWalletLink.click();
-      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState("domcontentloaded");
       await new Promise((r) => setTimeout(r, 1500));
 
-      const coreDescriptorLink = page.locator('a[href*="importMethod=Descriptor"]').first();
-      await coreDescriptorLink.waitFor({ state: 'visible', timeout: 15000 });
-      logger.info('btcpay_boltz', 'Clicking Enter core descriptor');
+      const coreDescriptorLink = page
+        .locator('a[href*="importMethod=Descriptor"]')
+        .first();
+      await coreDescriptorLink.waitFor({ state: "visible", timeout: 15000 });
+      logger.info("btcpay_boltz", "Clicking Enter core descriptor");
       await coreDescriptorLink.click();
-      await page.waitForLoadState('domcontentloaded');
+      await page.waitForLoadState("domcontentloaded");
       await new Promise((r) => setTimeout(r, 1500));
 
-      await page.waitForSelector('#WalletName', { state: 'visible', timeout: 15000 });
-      await page.waitForSelector('#WalletCredentials_CoreDescriptor', { state: 'visible', timeout: 5000 });
-      await page.fill('#WalletName', boltzWalletName);
-      await page.fill('#WalletCredentials_CoreDescriptor', secret);
+      await page.waitForSelector("#WalletName", {
+        state: "visible",
+        timeout: 15000,
+      });
+      await page.waitForSelector("#WalletCredentials_CoreDescriptor", {
+        state: "visible",
+        timeout: 5000,
+      });
+      await page.fill("#WalletName", boltzWalletName);
+      await page.fill("#WalletCredentials_CoreDescriptor", secret);
       await new Promise((r) => setTimeout(r, 300));
-      logger.info('btcpay_boltz', 'Submitting Import (core descriptor)', { walletName: boltzWalletName });
+      logger.info("btcpay_boltz", "Submitting Import (core descriptor)", {
+        walletName: boltzWalletName,
+      });
       await page.click('form button[type="submit"], form input[type="submit"]');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState("networkidle");
 
-      const boltzError = await page.locator('.alert-danger, .text-danger, [role="alert"]').first().textContent().catch(() => null);
+      const boltzError = await page
+        .locator('.alert-danger, .text-danger, [role="alert"]')
+        .first()
+        .textContent()
+        .catch(() => null);
       const boltzErr = boltzError?.trim();
-      if (boltzErr && !boltzErr.toLowerCase().includes('logout')) {
+      if (boltzErr && !boltzErr.toLowerCase().includes("logout")) {
         throw new Error(`BTCPay Boltz import error: ${boltzErr}`);
       }
-      logger.info('btcpay_boltz', 'Boltz L-BTC wallet import completed');
+      logger.info("btcpay_boltz", "Boltz L-BTC wallet import completed");
     } else {
       // --- Blink (Custom node): paste connection string and Save ---
       // Reconfig: we came from Settings → Change connection, form with #ConnectionString is already visible.
       // First time: must switch to "Use custom node" tab, then fill #ConnectionString.
       if (!isBlinkReconfig) {
         try {
-          await page.waitForSelector('#LightningNodeType-Custom', { state: 'attached', timeout: 45000 });
+          await page.waitForSelector("#LightningNodeType-Custom", {
+            state: "attached",
+            timeout: 45000,
+          });
         } catch (e) {
           const currentUrl = page.url();
-          const bodyText = await page.locator('body').innerText().catch(() => '');
-          logger.error('btcpay_lightning_no_form', 'Lightning setup form not found', {
-            currentUrl,
-            bodySnippet: bodyText.slice(0, 300),
-          });
-          throw new Error(`Lightning setup form not found. Page: ${currentUrl}. Check access (403?) or BTCPay version.`);
+          const bodyText = await page
+            .locator("body")
+            .innerText()
+            .catch(() => "");
+          logger.error(
+            "btcpay_lightning_no_form",
+            "Lightning setup form not found",
+            {
+              currentUrl,
+              bodySnippet: bodyText.slice(0, 300),
+            },
+          );
+          throw new Error(
+            `Lightning setup form not found. Page: ${currentUrl}. Check access (403?) or BTCPay version.`,
+          );
         }
 
-        const customLabel = page.locator('label[for="LightningNodeType-Custom"]');
+        const customLabel = page.locator(
+          'label[for="LightningNodeType-Custom"]',
+        );
         const labelVisible = await customLabel.isVisible().catch(() => false);
         if (labelVisible) {
-          logger.info('btcpay_lightning', 'Clicking Use custom node (label)');
+          logger.info("btcpay_lightning", "Clicking Use custom node (label)");
           await customLabel.click();
         } else {
-          logger.info('btcpay_lightning', 'Switching to Use custom node (Bootstrap Tab)');
+          logger.info(
+            "btcpay_lightning",
+            "Switching to Use custom node (Bootstrap Tab)",
+          );
           await page.evaluate(() => {
-            const tabTrigger = document.querySelector('#LightningNodeType-Custom');
+            const tabTrigger = document.querySelector(
+              "#LightningNodeType-Custom",
+            );
             if (!tabTrigger) return;
-            if (typeof bootstrap !== 'undefined' && bootstrap.Tab) {
+            if (typeof bootstrap !== "undefined" && bootstrap.Tab) {
               const tab = bootstrap.Tab.getOrCreateInstance(tabTrigger);
               tab.show();
             } else {
               tabTrigger.checked = true;
-              tabTrigger.dispatchEvent(new Event('change', { bubbles: true }));
+              tabTrigger.dispatchEvent(new Event("change", { bubbles: true }));
             }
           });
-          await page.waitForSelector('#CustomSetup.tab-pane.show', { state: 'visible', timeout: 5000 }).catch(() => {});
+          await page
+            .waitForSelector("#CustomSetup.tab-pane.show", {
+              state: "visible",
+              timeout: 5000,
+            })
+            .catch(() => {});
           await new Promise((r) => setTimeout(r, 400));
         }
-        await page.locator('#LightningNodeType-Custom').check();
+        await page.locator("#LightningNodeType-Custom").check();
       }
 
-      await page.waitForSelector('#ConnectionString', { state: 'visible', timeout: 15000 });
-      await page.fill('#ConnectionString', secret);
+      await page.waitForSelector("#ConnectionString", {
+        state: "visible",
+        timeout: 15000,
+      });
+      await page.fill("#ConnectionString", secret);
       await new Promise((r) => setTimeout(r, 300));
 
-      logger.info('btcpay_lightning', 'Clicking Save');
-      await page.click('#page-primary');
-      await page.waitForLoadState('networkidle');
+      logger.info("btcpay_lightning", "Clicking Save");
+      await page.click("#page-primary");
+      await page.waitForLoadState("networkidle");
 
-      const btcpayError = await page.locator('.alert-danger, .text-danger, [role="alert"]').first().textContent().catch(() => null);
+      const btcpayError = await page
+        .locator('.alert-danger, .text-danger, [role="alert"]')
+        .first()
+        .textContent()
+        .catch(() => null);
       const saveErr = btcpayError?.trim();
-      if (saveErr && !saveErr.toLowerCase().includes('logout')) {
+      if (saveErr && !saveErr.toLowerCase().includes("logout")) {
         throw new Error(`BTCPay save error: ${saveErr}`);
       }
 
-      logger.info('btcpay_lightning', 'Lightning setup completed');
+      logger.info("btcpay_lightning", "Lightning setup completed");
     }
   } finally {
     await browser.close();
   }
 
   // Step 3: Mark connected in panel (notify_merchant: false = no "wallet ready" email; bot did the work)
-  logger.info('panel_mark_connected', 'Marking connected');
-  const markRes = await fetch(`${apiBase}/support/wallet-connections/${connectionId}/mark-connected`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Authorization': `Bearer ${panelToken}`,
+  logger.info("panel_mark_connected", "Marking connected");
+  const markRes = await fetch(
+    `${apiBase}/support/wallet-connections/${connectionId}/mark-connected`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${panelToken}`,
+      },
+      body: JSON.stringify({ notify_merchant: false }),
     },
-    body: JSON.stringify({ notify_merchant: false }),
-  });
+  );
 
   const markBody = await markRes.json().catch(() => ({}));
   if (!markRes.ok) {
-    logger.error('panel_mark_connected_failed', 'Mark connected failed', {
+    logger.error("panel_mark_connected_failed", "Mark connected failed", {
       status: markRes.status,
       body: markBody,
     });
-    throw new Error(`Mark connected failed: ${markRes.status} ${JSON.stringify(markBody)}`);
+    throw new Error(
+      `Mark connected failed: ${markRes.status} ${JSON.stringify(markBody)}`,
+    );
   }
 
-  logger.info('bot_done', 'Completed successfully', { connectionId, storeName: store_name });
+  logger.info("bot_done", "Completed successfully", {
+    connectionId,
+    storeName: store_name,
+  });
   return { connectionId, storeName: store_name };
 }

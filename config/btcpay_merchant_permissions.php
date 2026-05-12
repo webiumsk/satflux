@@ -23,6 +23,8 @@ return [
         'btcpay.store.canviewinvoices',
         'btcpay.user.canviewnotificationsforuser',
         'btcpay.user.canmanagenotificationsforuser',
+        // Required for PUT /api/v1/users/me (e.g. guest → free email sync to BTCPay)
+        'btcpay.user.canmodifyprofile',
         // Future: 'btcpay.user.canmanageusersforuser', 'btcpay.store.canviewusers', ...
     ],
 

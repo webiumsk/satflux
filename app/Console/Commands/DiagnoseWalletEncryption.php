@@ -36,12 +36,12 @@ class DiagnoseWalletEncryption extends Command
             $test = Crypt::encryptString('test-secret-123');
             $decrypted = Crypt::decryptString($test);
             if ($decrypted === 'test-secret-123') {
-                $this->info('   OK – Encrypt/decrypt works.');
+                $this->info('   OK - Encrypt/decrypt works.');
             } else {
-                $this->error('   FAIL – Decrypted value does not match.');
+                $this->error('   FAIL - Decrypted value does not match.');
             }
         } catch (\Throwable $e) {
-            $this->error('   FAIL – ' . $e->getMessage());
+            $this->error('   FAIL - ' . $e->getMessage());
             return 1;
         }
 
@@ -66,7 +66,7 @@ class DiagnoseWalletEncryption extends Command
             $this->line("   Connection {$conn->id} (store: {$conn->store_id}):");
             $this->line("     encrypted_secret length: " . strlen($raw));
             if ($hasSecretEncrypted && $secretEncryptedRaw !== '') {
-                $this->line("     secret_encrypted length: " . strlen($secretEncryptedRaw) . " (has data – run migration to copy)");
+                $this->line("     secret_encrypted length: " . strlen($secretEncryptedRaw) . " (has data - run migration to copy)");
             }
             $this->line("     Looks like Laravel payload: " . (strlen($raw) > 0 && str_starts_with($raw, 'eyJ') ? 'yes' : 'no'));
 
@@ -78,7 +78,7 @@ class DiagnoseWalletEncryption extends Command
                     $this->error("     Decrypt: SKIP (empty). Run: php artisan migrate");
                 }
             } catch (\Throwable $e) {
-                $this->error("     Decrypt: FAIL – " . $e->getMessage());
+                $this->error("     Decrypt: FAIL - " . $e->getMessage());
             }
             $this->newLine();
         }

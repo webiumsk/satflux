@@ -49,6 +49,10 @@ class SubscriptionController extends Controller
             'customerEmail' => ['nullable', 'email', 'max:255'],
         ]);
 
+        if ($blocked = $this->subscriptionBlockedForGuestResponse($request)) {
+            return $blocked;
+        }
+
         // If plan name is provided, use subscription store config
         if ($request->has('plan')) {
             $storeId = config('services.btcpay.subscription_store_id');
@@ -332,6 +336,13 @@ class SubscriptionController extends Controller
             ], 401);
         }
 
+        if ((bool) ($user->is_guest ?? false)) {
+            return response()->json([
+                'subscriber' => null,
+                'creditBalance' => 0,
+            ]);
+        }
+
         $storeId = config('services.btcpay.subscription_store_id');
         $offeringId = config('services.btcpay.subscription_offering_id');
 
@@ -393,9 +404,18 @@ class SubscriptionController extends Controller
             ], 401);
         }
 
+        $currency = $request->query('currency', 'SATS');
+
+        if ((bool) ($user->is_guest ?? false)) {
+            return response()->json([
+                'balance' => 0,
+                'currency' => $currency,
+                'details' => [],
+            ]);
+        }
+
         $storeId = config('services.btcpay.subscription_store_id');
         $offeringId = config('services.btcpay.subscription_offering_id');
-        $currency = $request->query('currency', 'SATS');
 
         try {
             $credits = $this->btcpaySubscriptionService->getSubscriberCredits($storeId, $offeringId, $user->email, $currency);
@@ -440,6 +460,10 @@ class SubscriptionController extends Controller
             'currency' => ['nullable', 'string', 'in:SATS,BTC'],
         ]);
 
+        if ($blocked = $this->subscriptionBlockedForGuestResponse($request)) {
+            return $blocked;
+        }
+
         $storeId = config('services.btcpay.subscription_store_id');
         $offeringId = config('services.btcpay.subscription_offering_id');
         $currency = $request->input('currency', 'SATS');
@@ -480,6 +504,22 @@ class SubscriptionController extends Controller
                 'message' => $e->getMessage() ?: 'Failed to add credit',
             ], $e->getStatusCode() ?: 500);
         }
+    }
+
+    /**
+     * @return \Illuminate\Http\JsonResponse|null
+     */
+    private function subscriptionBlockedForGuestResponse(Request $request): ?\Illuminate\Http\JsonResponse
+    {
+        $user = $request->user();
+        if ($user instanceof User && (bool) ($user->is_guest ?? false)) {
+            return response()->json([
+                'message' => __('messages.subscription_guest_must_upgrade_account'),
+                'code' => 'guest_subscription_blocked',
+            ], 422);
+        }
+
+        return null;
     }
 }
 

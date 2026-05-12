@@ -122,8 +122,19 @@
               class="w-full inline-flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-gray-800"
               @click="showGuestBackupWizard = true"
             >
-              <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              <svg
+                class="w-4 h-4 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
               </svg>
               {{
                 guestLoading
@@ -221,8 +232,6 @@
             >
               {{ loading ? t("auth.signing_in") : t("auth.sign_in") }}
             </button>
-
-            
           </div>
 
           <div class="text-center text-sm">
@@ -271,9 +280,16 @@
             class="group relative w-full flex justify-center items-center py-3 px-4 border border-gray-600 text-sm font-bold rounded-xl text-white bg-gray-700/50 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 transition-all"
           >
             <span class="mr-2 text-lg">
-              <svg class="w-5 h-5 text-purple-400" viewBox="0 0 750 750" fill="currentColor" aria-hidden="true">
+              <svg
+                class="w-5 h-5 text-purple-400"
+                viewBox="0 0 750 750"
+                fill="currentColor"
+                aria-hidden="true"
+              >
                 <g transform="matrix(0.1, 0, 0, -0.1, 0, 0)">
-                  <path d="m5404,-1199c-53,-24 -107,-88 -129,-154c-10,-30 -20,-94 -23,-154c-3,-85 -1,-114 17,-172c40,-132 139,-253 321,-391c176,-134 230,-214 238,-352c11,-187 -57,-312 -211,-388c-82,-40 -140,-47 -266,-30c-85,11 -104,11 -153,-4c-31,-9 -67,-16 -80,-16c-14,0 -95,43 -182,95c-274,164 -364,189 -681,190c-253,0 -318,-10 -526,-81c-135,-46 -177,-64 -499,-222c-113,-55 -237,-110 -275,-121c-110,-35 -246,-51 -422,-51c-182,0 -202,-6 -182,-58c6,-15 16,-34 23,-42c29,-34 28,-39 -11,-28c-21,5 -45,16 -53,23c-43,38 -206,45 -326,15c-204,-53 -392,-228 -465,-436c-24,-67 -25,-122 -3,-131c10,-3 47,9 88,29c39,19 86,39 103,42c41,9 42,3 8,-100c-31,-96 -33,-162 -4,-198c11,-14 27,-26 35,-26c8,0 58,41 111,90c66,62 104,90 120,90c16,0 23,-4 19,-12c-39,-94 -47,-231 -15,-251c18,-11 26,-8 154,67c107,63 263,108 423,123c50,5 57,2 115,-37c34,-23 98,-59 143,-81c98,-47 342,-129 479,-159c55,-13 104,-26 108,-30c12,-11 -72,-117 -164,-207c-125,-122 -270,-235 -338,-261c-106,-41 -159,-103 -186,-217c-9,-38 -39,-90 -120,-206c-60,-85 -156,-221 -213,-304c-262,-374 -251,-362 -355,-385c-68,-15 -138,-53 -175,-94c-37,-42 -56,-100 -41,-127c11,-22 26,-23 65,-9c36,14 40,7 15,-28c-35,-50 -90,-172 -101,-228c-8,-40 -8,-68 0,-108c11,-54 40,-94 59,-81c6,3 29,43 52,88c46,93 78,135 200,262c47,50 110,128 139,175c90,145 218,323 429,595c196,253 230,293 274,310c85,34 152,104 171,179c11,41 23,52 239,215l229,172l125,45c69,24 129,44 134,44c11,0 -20,-72 -36,-85c-8,-5 -36,-70 -64,-143c-56,-146 -64,-207 -35,-268c9,-18 31,-43 49,-54c51,-32 101,-26 177,20c50,30 144,64 399,144c458,143 474,148 522,144l42,-3l11,-62c13,-72 35,-110 71,-124c39,-15 55,4 48,60c-10,80 4,80 86,-2c77,-77 140,-117 184,-117c34,0 42,24 21,67c-38,81 -231,366 -264,391c-32,25 -43,27 -126,27c-99,0 -55,12 -706,-194c-124,-40 -234,-74 -244,-77c-25,-8 -19,7 38,94c34,51 58,75 93,95c72,39 133,85 133,101c0,8 11,28 25,44l24,29l168,6c332,13 537,72 705,205c146,114 207,264 208,508c0,81 4,125 13,136c6,8 59,44 117,79c260,158 390,290 498,504c74,148 100,334 68,484c-37,175 -124,292 -342,460c-136,105 -165,138 -171,195c-6,53 7,64 112,94c55,15 107,20 235,21c206,3 233,18 102,56c-34,10 -59,22 -55,26c4,4 35,9 68,11c45,2 60,7 60,18c0,11 -46,30 -155,66c-126,41 -171,61 -235,104c-128,87 -204,106 -281,71z" />
+                  <path
+                    d="m5404,-1199c-53,-24 -107,-88 -129,-154c-10,-30 -20,-94 -23,-154c-3,-85 -1,-114 17,-172c40,-132 139,-253 321,-391c176,-134 230,-214 238,-352c11,-187 -57,-312 -211,-388c-82,-40 -140,-47 -266,-30c-85,11 -104,11 -153,-4c-31,-9 -67,-16 -80,-16c-14,0 -95,43 -182,95c-274,164 -364,189 -681,190c-253,0 -318,-10 -526,-81c-135,-46 -177,-64 -499,-222c-113,-55 -237,-110 -275,-121c-110,-35 -246,-51 -422,-51c-182,0 -202,-6 -182,-58c6,-15 16,-34 23,-42c29,-34 28,-39 -11,-28c-21,5 -45,16 -53,23c-43,38 -206,45 -326,15c-204,-53 -392,-228 -465,-436c-24,-67 -25,-122 -3,-131c10,-3 47,9 88,29c39,19 86,39 103,42c41,9 42,3 8,-100c-31,-96 -33,-162 -4,-198c11,-14 27,-26 35,-26c8,0 58,41 111,90c66,62 104,90 120,90c16,0 23,-4 19,-12c-39,-94 -47,-231 -15,-251c18,-11 26,-8 154,67c107,63 263,108 423,123c50,5 57,2 115,-37c34,-23 98,-59 143,-81c98,-47 342,-129 479,-159c55,-13 104,-26 108,-30c12,-11 -72,-117 -164,-207c-125,-122 -270,-235 -338,-261c-106,-41 -159,-103 -186,-217c-9,-38 -39,-90 -120,-206c-60,-85 -156,-221 -213,-304c-262,-374 -251,-362 -355,-385c-68,-15 -138,-53 -175,-94c-37,-42 -56,-100 -41,-127c11,-22 26,-23 65,-9c36,14 40,7 15,-28c-35,-50 -90,-172 -101,-228c-8,-40 -8,-68 0,-108c11,-54 40,-94 59,-81c6,3 29,43 52,88c46,93 78,135 200,262c47,50 110,128 139,175c90,145 218,323 429,595c196,253 230,293 274,310c85,34 152,104 171,179c11,41 23,52 239,215l229,172l125,45c69,24 129,44 134,44c11,0 -20,-72 -36,-85c-8,-5 -36,-70 -64,-143c-56,-146 -64,-207 -35,-268c9,-18 31,-43 49,-54c51,-32 101,-26 177,20c50,30 144,64 399,144c458,143 474,148 522,144l42,-3l11,-62c13,-72 35,-110 71,-124c39,-15 55,4 48,60c-10,80 4,80 86,-2c77,-77 140,-117 184,-117c34,0 42,24 21,67c-38,81 -231,366 -264,391c-32,25 -43,27 -126,27c-99,0 -55,12 -706,-194c-124,-40 -234,-74 -244,-77c-25,-8 -19,7 38,94c34,51 58,75 93,95c72,39 133,85 133,101c0,8 11,28 25,44l24,29l168,6c332,13 537,72 705,205c146,114 207,264 208,508c0,81 4,125 13,136c6,8 59,44 117,79c260,158 390,290 498,504c74,148 100,334 68,484c-37,175 -124,292 -342,460c-136,105 -165,138 -171,195c-6,53 7,64 112,94c55,15 107,20 235,21c206,3 233,18 102,56c-34,10 -59,22 -55,26c4,4 35,9 68,11c45,2 60,7 60,18c0,11 -46,30 -155,66c-126,41 -171,61 -235,104c-128,87 -204,106 -281,71z"
+                  />
                 </g>
               </svg>
             </span>
@@ -459,11 +475,13 @@ let pollingInterval: number | null = null;
 // LNURL auth: prefer server response; only then data attribute / Vite (so false on server hides the option)
 const page = usePage();
 const lnurlAuthEnabled = computed(() => {
-  if (lnurlEnabledFromServer.value !== null) return lnurlEnabledFromServer.value;
+  if (lnurlEnabledFromServer.value !== null)
+    return lnurlEnabledFromServer.value;
   const el = document.getElementById("app");
   const dataVal = el?.getAttribute("data-lnurl-auth-enabled");
   if (dataVal !== null && dataVal !== undefined) return dataVal === "true";
-  if (page.props?.app?.lnurlAuthEnabled !== undefined) return page.props.app.lnurlAuthEnabled === true;
+  if (page.props?.app?.lnurlAuthEnabled !== undefined)
+    return page.props.app.lnurlAuthEnabled === true;
   return import.meta.env.VITE_LNURL_AUTH_ENABLED === "true";
 });
 const nostrAuthEnabled = computed(() => nostrEnabledFromServer.value === true);
@@ -542,10 +560,7 @@ async function handleGuestEnrolled(payload: {
     );
     storeGuestMnemonic(payload.mnemonic);
     // Be resilient to slight response shape differences.
-    let storeId =
-      response?.store_id ??
-      response?.data?.store_id ??
-      null;
+    let storeId = response?.store_id ?? response?.data?.store_id ?? null;
 
     if (!storeId) {
       try {
@@ -579,7 +594,8 @@ async function fetchAuthChallengeAndOpen(): Promise<boolean> {
   try {
     const response = await api.post("/lnurl-auth/challenge");
     const raw = response.data ?? {};
-    const challengeData = typeof raw === "object" && raw !== null && "data" in raw ? raw.data : raw;
+    const challengeData =
+      typeof raw === "object" && raw !== null && "data" in raw ? raw.data : raw;
     const k1 = challengeData?.k1 ?? challengeData?.K1;
     const lnurl = challengeData?.lnurl ?? challengeData?.lnurlAuthUrl;
 
@@ -635,13 +651,24 @@ function startPolling(k1: string) {
         `/lnurl-auth/challenge-status/${k1}?_=${Date.now()}`,
       );
       const raw = statusResponse.data ?? {};
-      const data = typeof raw === "object" && raw !== null && "data" in raw ? raw.data : raw;
+      const data =
+        typeof raw === "object" && raw !== null && "data" in raw
+          ? raw.data
+          : raw;
       const payload = typeof data === "object" && data !== null ? data : {};
       const status = payload.status;
       const user_id = payload.user_id != null ? Number(payload.user_id) : null;
 
-      if (!status && typeof payload === "object" && payload !== null && Object.keys(payload).length > 0) {
-        console.warn("[LNURL] challenge-status response missing .status:", payload);
+      if (
+        !status &&
+        typeof payload === "object" &&
+        payload !== null &&
+        Object.keys(payload).length > 0
+      ) {
+        console.warn(
+          "[LNURL] challenge-status response missing .status:",
+          payload,
+        );
       }
 
       if (status === "authenticated") {
@@ -649,7 +676,10 @@ function startPolling(k1: string) {
         closeLnurlModal();
         await authStore.fetchUser();
         router.push("/dashboard");
-      } else if (status === "pending_email" && (user_id || payload.k1 || lnurlK1.value)) {
+      } else if (
+        status === "pending_email" &&
+        (user_id || payload.k1 || lnurlK1.value)
+      ) {
         stopPolling();
         emailForm.value.user_id = user_id ?? null;
         showEmailStep.value = true;
@@ -658,7 +688,8 @@ function startPolling(k1: string) {
         lnurlError.value = t("account.challenge_expired");
         stopPolling();
       } else if (status === "error") {
-        lnurlError.value = (payload as { message?: string }).message || t("auth.error_occurred");
+        lnurlError.value =
+          (payload as { message?: string }).message || t("auth.error_occurred");
         stopPolling();
       }
     } catch (err: any) {
@@ -667,7 +698,7 @@ function startPolling(k1: string) {
         lnurlError.value = t("auth.error_occurred");
         stopPolling();
       } else {
-        // Transient network error – clear error on next successful poll
+        // Transient network error - clear error on next successful poll
         lnurlError.value = "";
       }
     }
@@ -690,7 +721,9 @@ async function handleCompleteRegistration() {
 
   try {
     await api.post("/lnurl-auth/complete-registration", {
-      ...(hasUserId ? { user_id: emailForm.value.user_id } : { k1: lnurlK1.value }),
+      ...(hasUserId
+        ? { user_id: emailForm.value.user_id }
+        : { k1: lnurlK1.value }),
       email: emailForm.value.email,
     });
 

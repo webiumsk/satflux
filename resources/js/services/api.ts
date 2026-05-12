@@ -19,7 +19,7 @@ function getCsrfToken(): string | null {
     return null;
 }
 
-// Post to a web route (no /api prefix) – for password reset etc., avoids Sanctum auth
+// Post to a web route (no /api prefix) - for password reset etc., avoids Sanctum auth
 export async function postWeb<T = unknown>(path: string, data: object): Promise<T> {
     const csrf = getCsrfToken();
     const { data: result } = await axios.request<T>({

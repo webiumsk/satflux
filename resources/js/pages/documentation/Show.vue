@@ -7,17 +7,43 @@
         <!-- Sidebar: Categories & Articles -->
         <aside class="lg:w-72 flex-shrink-0 border-r border-gray-700">
           <div class="lg:sticky lg:top-24 p-5 overflow-hidden">
-            <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">{{ t('documentation.categories') }}</h2>
+            <h2
+              class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4"
+            >
+              {{ t("documentation.categories") }}
+            </h2>
             <div v-if="sidebarLoading" class="flex justify-center py-8">
-              <svg class="animate-spin h-6 w-6 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              <svg
+                class="animate-spin h-6 w-6 text-indigo-500"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
               </svg>
             </div>
             <nav v-else class="space-y-6">
-              <div v-for="group in sidebarNav" :key="group.category?.id ?? 'uncategorized'" class="space-y-2">
-                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  {{ group.category?.name ?? t('documentation.uncategorized') }}
+              <div
+                v-for="group in sidebarNav"
+                :key="group.category?.id ?? 'uncategorized'"
+                class="space-y-2"
+              >
+                <div
+                  class="text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                >
+                  {{ group.category?.name ?? t("documentation.uncategorized") }}
                 </div>
                 <ul class="space-y-1">
                   <li v-for="a in group.articles" :key="a.slug">
@@ -27,7 +53,7 @@
                         'block rounded-lg px-3 py-2 text-sm transition-colors',
                         route.params.slug === a.slug
                           ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-                          : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                          : 'text-gray-400 hover:text-white hover:bg-gray-700/50',
                       ]"
                     >
                       {{ a.title }}
@@ -41,106 +67,122 @@
 
         <!-- Main Content -->
         <main class="min-w-0 flex-1">
-      <!-- Loading State -->
-      <div v-if="loading" class="flex justify-center items-center py-24">
-        <svg
-          class="animate-spin h-10 w-10 text-indigo-500"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            class="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            stroke-width="4"
-          ></circle>
-          <path
-            class="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          ></path>
-        </svg>
-      </div>
-
-      <!-- Article Content -->
-      <article v-else-if="article" class="p-8">
-        <!-- Back + Edit (Admin/Support) -->
-        <div class="flex items-center justify-between gap-4 mb-6">
-          <router-link
-            to="/documentation"
-            class="inline-flex items-center text-sm text-gray-400 hover:text-indigo-400 transition-colors"
-          >
+          <!-- Loading State -->
+          <div v-if="loading" class="flex justify-center items-center py-24">
             <svg
-              class="w-4 h-4 mr-2"
+              class="animate-spin h-10 w-10 text-indigo-500"
+              xmlns="http://www.w3.org/2000/svg"
               fill="none"
-              stroke="currentColor"
               viewBox="0 0 24 24"
             >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              ></circle>
               <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
             </svg>
-            {{ t('documentation.back_to_documentation') }}
-          </router-link>
-          <router-link
-            v-if="article.id && canEditArticle"
-            :to="`/admin/documentation/articles/${article.id}/edit`"
-            class="inline-flex items-center text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
-          >
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            {{ t('common.edit') }}
-          </router-link>
-        </div>
+          </div>
 
-        <!-- Category Badge -->
-        <div v-if="article.category" class="mb-4">
-          <span
-            class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
-          >
-            {{ article.category.name }}
-          </span>
-        </div>
+          <!-- Article Content -->
+          <article v-else-if="article" class="p-8">
+            <!-- Back + Edit (Admin/Support) -->
+            <div class="flex items-center justify-between gap-4 mb-6">
+              <router-link
+                to="/documentation"
+                class="inline-flex items-center text-sm text-gray-400 hover:text-indigo-400 transition-colors"
+              >
+                <svg
+                  class="w-4 h-4 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                  />
+                </svg>
+                {{ t("documentation.back_to_documentation") }}
+              </router-link>
+              <router-link
+                v-if="article.id && canEditArticle"
+                :to="`/admin/documentation/articles/${article.id}/edit`"
+                class="inline-flex items-center text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+              >
+                <svg
+                  class="w-4 h-4 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+                {{ t("common.edit") }}
+              </router-link>
+            </div>
 
-        <!-- Title -->
-        <h1 class="text-4xl font-bold text-white mb-4">
-          {{ article.title }}
-        </h1>
+            <!-- Category Badge -->
+            <div v-if="article.category" class="mb-4">
+              <span
+                class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+              >
+                {{ article.category.name }}
+              </span>
+            </div>
 
-        <!-- Meta -->
-        <div class="flex items-center text-sm text-gray-400 mb-8 pb-8 border-b border-gray-700">
-          <span>{{ formatDate(article.created_at) }}</span>
-          <span v-if="article.updated_at !== article.created_at" class="ml-4">
-            {{ t('documentation.updated') }}: {{ formatDate(article.updated_at) }}
-          </span>
-        </div>
+            <!-- Title -->
+            <h1 class="text-4xl font-bold text-white mb-4">
+              {{ article.title }}
+            </h1>
 
-        <!-- Content (sanitized HTML from rich editor or legacy plain text) -->
-        <div
-          class="prose prose-invert prose-lg max-w-none doc-content"
-          v-html="sanitizedContent(article.content)"
-        ></div>
-      </article>
+            <!-- Meta -->
+            <div
+              class="flex items-center text-sm text-gray-400 mb-8 pb-8 border-b border-gray-700"
+            >
+              <span>{{ formatDate(article.created_at) }}</span>
+              <span
+                v-if="article.updated_at !== article.created_at"
+                class="ml-4"
+              >
+                {{ t("documentation.updated") }}:
+                {{ formatDate(article.updated_at) }}
+              </span>
+            </div>
 
-      <!-- Not Found -->
-      <div v-else class="text-center py-20">
-        <h2 class="text-2xl font-bold text-white mb-4">
-          {{ t('documentation.article_not_found') }}
-        </h2>
-        <router-link
-          to="/documentation"
-          class="text-indigo-400 hover:text-indigo-300"
-        >
-          {{ t('documentation.back_to_documentation') }}
-        </router-link>
-      </div>
+            <!-- Content (sanitized HTML from rich editor or legacy plain text) -->
+            <div
+              class="prose prose-invert prose-lg max-w-none doc-content"
+              v-html="sanitizedContent(article.content)"
+            ></div>
+          </article>
+
+          <!-- Not Found -->
+          <div v-else class="text-center py-20">
+            <h2 class="text-2xl font-bold text-white mb-4">
+              {{ t("documentation.article_not_found") }}
+            </h2>
+            <router-link
+              to="/documentation"
+              class="text-indigo-400 hover:text-indigo-300"
+            >
+              {{ t("documentation.back_to_documentation") }}
+            </router-link>
+          </div>
         </main>
       </div>
     </div>
@@ -150,13 +192,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
-import { useRoute } from 'vue-router';
-import { useI18n } from 'vue-i18n';
-import DOMPurify from 'dompurify';
-import { useAuthStore } from '../../store/auth';
-import { updatePageMeta } from '../../composables/usePageMeta';
-import { documentationApi } from '../../services/api';
+import { ref, computed, onMounted, watch } from "vue";
+import { useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
+import DOMPurify from "dompurify";
+import { useAuthStore } from "../../store/auth";
+import { updatePageMeta } from "../../composables/usePageMeta";
+import { documentationApi } from "../../services/api";
 import PublicHeader from "../../components/layout/PublicHeader.vue";
 import AppFooter from "../../components/layout/AppFooter.vue";
 
@@ -166,7 +208,7 @@ const authStore = useAuthStore();
 
 const canEditArticle = computed(() => {
   const role = authStore.user?.role;
-  return role === 'admin' || role === 'support';
+  return role === "admin" || role === "support";
 });
 
 const loading = ref(false);
@@ -187,7 +229,7 @@ const sidebarNav = computed<SidebarGroup[]>(() => {
   const byCategory = new Map<string, { slug: string; title: string }[]>();
   articles.forEach((a: any) => {
     const rawId = a.category_id ?? a.category?.id;
-    const key = rawId != null ? String(rawId) : 'none';
+    const key = rawId != null ? String(rawId) : "none";
     if (!byCategory.has(key)) byCategory.set(key, []);
     byCategory.get(key)!.push({ slug: a.slug, title: a.title });
   });
@@ -195,10 +237,12 @@ const sidebarNav = computed<SidebarGroup[]>(() => {
   categories.forEach((cat: { id: string | number; name: string }) => {
     const idStr = String(cat.id);
     const list = byCategory.get(idStr);
-    if (list?.length) result.push({ category: { id: idStr, name: cat.name }, articles: list });
+    if (list?.length)
+      result.push({ category: { id: idStr, name: cat.name }, articles: list });
   });
-  const uncategorized = byCategory.get('none');
-  if (uncategorized?.length) result.push({ category: null, articles: uncategorized });
+  const uncategorized = byCategory.get("none");
+  if (uncategorized?.length)
+    result.push({ category: null, articles: uncategorized });
   return result;
 });
 
@@ -209,7 +253,7 @@ const loadSidebar = async () => {
     sidebarArticles.value = response.data.data || [];
     sidebarCategories.value = response.data.categories || [];
   } catch (error) {
-    console.error('Failed to load sidebar:', error);
+    console.error("Failed to load sidebar:", error);
     sidebarArticles.value = [];
     sidebarCategories.value = [];
   } finally {
@@ -221,10 +265,12 @@ const loadArticle = async () => {
   loading.value = true;
   try {
     const slug = route.params.slug as string;
-    const response = await documentationApi.show(slug, { locale: locale.value });
+    const response = await documentationApi.show(slug, {
+      locale: locale.value,
+    });
     article.value = response.data.data;
   } catch (error: any) {
-    console.error('Failed to load article:', error);
+    console.error("Failed to load article:", error);
     if (error.response?.status === 404) {
       article.value = null;
     }
@@ -239,42 +285,79 @@ const formatDate = (dateString: string) => {
 };
 
 const ALLOWED_TAGS = [
-  'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'strong', 'em', 'u', 's', 'a',
-  'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
-  'img', 'iframe', 'span', 'div',
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "p",
+  "br",
+  "strong",
+  "em",
+  "u",
+  "s",
+  "a",
+  "ul",
+  "ol",
+  "li",
+  "blockquote",
+  "pre",
+  "code",
+  "table",
+  "thead",
+  "tbody",
+  "tr",
+  "th",
+  "td",
+  "img",
+  "iframe",
+  "span",
+  "div",
 ];
-const ALLOWED_ATTR = ['href', 'src', 'alt', 'title', 'class', 'width', 'height', 'allow', 'allowfullscreen', 'frameborder'];
+const ALLOWED_ATTR = [
+  "href",
+  "src",
+  "alt",
+  "title",
+  "class",
+  "width",
+  "height",
+  "allow",
+  "allowfullscreen",
+  "frameborder",
+];
 
 function sanitizedContent(content: string): string {
-  if (!content) return '';
-  // Legacy: plain text (no HTML) – apply simple markdown-like formatting
-  if (!content.includes('<')) {
-    let formatted = content.replace(/\n\n/g, '</p><p>');
-    formatted = formatted.replace(/\n/g, '<br>');
-    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    formatted = formatted.replace(/^### (.*$)/gim, '<h3>$1</h3>');
-    formatted = formatted.replace(/^## (.*$)/gim, '<h2>$1</h2>');
-    formatted = formatted.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+  if (!content) return "";
+  // Legacy: plain text (no HTML) - apply simple markdown-like formatting
+  if (!content.includes("<")) {
+    let formatted = content.replace(/\n\n/g, "</p><p>");
+    formatted = formatted.replace(/\n/g, "<br>");
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+    formatted = formatted.replace(/\*(.*?)\*/g, "<em>$1</em>");
+    formatted = formatted.replace(/^### (.*$)/gim, "<h3>$1</h3>");
+    formatted = formatted.replace(/^## (.*$)/gim, "<h2>$1</h2>");
+    formatted = formatted.replace(/^# (.*$)/gim, "<h1>$1</h1>");
     content = `<p>${formatted}</p>`;
   }
   // Restrict iframe src to YouTube only
-  DOMPurify.addHook('uponSanitizeAttribute', (node, data) => {
-    if (data.attrName === 'src' && node.tagName === 'IFRAME') {
-      const url = data.attrValue || '';
+  DOMPurify.addHook("uponSanitizeAttribute", (node, data) => {
+    if (data.attrName === "src" && node.tagName === "IFRAME") {
+      const url = data.attrValue || "";
       const allowed =
-        url.startsWith('https://www.youtube.com/') ||
-        url.startsWith('https://www.youtube-nocookie.com/');
-      if (!allowed) data.attrValue = '';
+        url.startsWith("https://www.youtube.com/") ||
+        url.startsWith("https://www.youtube-nocookie.com/");
+      if (!allowed) data.attrValue = "";
     }
   });
   const result = DOMPurify.sanitize(content, {
     ALLOWED_TAGS,
     ALLOWED_ATTR,
-    ADD_ATTR: ['allowfullscreen'],
-    ADD_TAGS: ['iframe'],
+    ADD_ATTR: ["allowfullscreen"],
+    ADD_TAGS: ["iframe"],
   });
-  DOMPurify.removeHook('uponSanitizeAttribute');
+  DOMPurify.removeHook("uponSanitizeAttribute");
   return result;
 }
 
@@ -289,7 +372,7 @@ watch(
     if (newSlug && newSlug !== oldSlug) {
       loadArticle();
     }
-  }
+  },
 );
 
 watch(locale, () => {
@@ -299,14 +382,18 @@ watch(locale, () => {
   }
 });
 
-watch(article, (a: { title: string; meta_description?: string } | null) => {
-  if (a) {
-    updatePageMeta(route, {
-      title: a.title,
-      description: a.meta_description || a.title,
-    });
-  }
-}, { immediate: true });
+watch(
+  article,
+  (a: { title: string; meta_description?: string } | null) => {
+    if (a) {
+      updatePageMeta(route, {
+        title: a.title,
+        description: a.meta_description || a.title,
+      });
+    }
+  },
+  { immediate: true },
+);
 </script>
 
 <style scoped>
@@ -326,12 +413,24 @@ watch(article, (a: { title: string; meta_description?: string } | null) => {
   margin-bottom: 1em;
 }
 
-.doc-content :deep(h1) { font-size: 2.25em; }
-.doc-content :deep(h2) { font-size: 1.875em; }
-.doc-content :deep(h3) { font-size: 1.5em; }
-.doc-content :deep(h4) { font-size: 1.25em; }
-.doc-content :deep(h5) { font-size: 1.125em; }
-.doc-content :deep(h6) { font-size: 1em; }
+.doc-content :deep(h1) {
+  font-size: 2.25em;
+}
+.doc-content :deep(h2) {
+  font-size: 1.875em;
+}
+.doc-content :deep(h3) {
+  font-size: 1.5em;
+}
+.doc-content :deep(h4) {
+  font-size: 1.25em;
+}
+.doc-content :deep(h5) {
+  font-size: 1.125em;
+}
+.doc-content :deep(h6) {
+  font-size: 1em;
+}
 
 .doc-content :deep(p) {
   margin-bottom: 1.25em;

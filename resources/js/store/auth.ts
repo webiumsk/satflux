@@ -15,6 +15,7 @@ export interface User {
     id: number;
     email: string;
     is_guest?: boolean;
+    allows_satflux_email_changes?: boolean;
     guest_recovery_enrolled?: boolean;
     email_verified_at?: string;
     role?: string;

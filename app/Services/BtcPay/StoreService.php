@@ -197,7 +197,7 @@ class StoreService
 
     /**
      * Delete a store in BTCPay Server (DELETE /api/v1/stores/{storeId}).
-     * Must use server-level API key – merchant keys typically lack this permission.
+     * Must use server-level API key - merchant keys typically lack this permission.
      *
      * @param string|null $userApiKey Optional merchant key: HTTP delete always uses server key; when set, its hash-scoped store cache is cleared too
      */

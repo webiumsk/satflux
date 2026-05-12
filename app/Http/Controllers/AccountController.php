@@ -218,10 +218,10 @@ class AccountController extends Controller
     }
 
     /**
-     * Upgrade a guest account to a regular account identity.
-     * Supports:
-     * - email+password (recommended)
-     * - lightning / nostr linked login (guest flag removed, email unchanged)
+     * Upgrade a guest account to a regular (non-guest) identity.
+     *
+     * Every upgrade path requires a real email and password (same as normal registration).
+     * Lightning/Nostr paths additionally require that login method to already be linked.
      */
     public function upgradeGuest(Request $request)
     {
@@ -230,23 +230,20 @@ class AccountController extends Controller
             return response()->json(['message' => 'Only guest accounts can be upgraded.'], 422);
         }
 
-        // Normalize like registration flows: avoids false "taken" from whitespace/casing vs DB.
-        if ($request->input('method') === 'email' && is_string($request->input('email'))) {
+        if (is_string($request->input('email'))) {
             $request->merge(['email' => strtolower(trim($request->input('email')))]);
         }
 
         $validated = $request->validate([
             'method' => ['required', 'in:email,lightning,nostr'],
             'email' => [
-                'required_if:method,email',
-                'nullable',
+                'required',
                 'string',
                 'email:rfc,dns',
                 'max:255',
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
-            'password' => ['required_if:method,email', 'nullable', Password::defaults()],
-            'password_confirmation' => ['required_if:method,email', 'nullable', 'same:password'],
+            'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
         try {
