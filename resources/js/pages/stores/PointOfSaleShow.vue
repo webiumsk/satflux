@@ -1739,13 +1739,12 @@ async function handleUnarchive() {
     flashStore.success(t("stores.app_unarchived"));
     // Update layout's app ref so UI reflects change immediately
     const layoutApp = layoutRef.value?.app;
-    if (
-      layoutApp &&
-      typeof layoutApp === "object" &&
-      "value" in layoutApp &&
-      updatedApp
-    ) {
-      layoutApp.value = updatedApp;
+    if (updatedApp && layoutApp && typeof layoutApp === "object") {
+      if ("value" in layoutApp) {
+        (layoutApp as { value: unknown }).value = updatedApp;
+      } else if (layoutRef.value) {
+        layoutRef.value.app = updatedApp;
+      }
     }
   } catch (err: any) {
     const msg = err.response?.data?.message || "Failed to unarchive app";

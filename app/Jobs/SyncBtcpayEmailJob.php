@@ -5,16 +5,19 @@ namespace App\Jobs;
 use App\Models\User;
 use App\Services\BtcPay\UserService;
 use Illuminate\Bus\Queueable;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class SyncBtcpayEmailJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    /** @var bool|null Lazily resolved once per worker process */
+    private static ?bool $hasAllowsSatfluxEmailColumn = null;
 
     public int $tries = 5;
 
@@ -31,7 +34,10 @@ class SyncBtcpayEmailJob implements ShouldQueue
             return;
         }
 
-        if (Schema::hasColumn('users', 'allows_satflux_email_changes') && ! ($user->allows_satflux_email_changes ?? false)) {
+        if (self::$hasAllowsSatfluxEmailColumn === null) {
+            self::$hasAllowsSatfluxEmailColumn = Schema::hasColumn('users', 'allows_satflux_email_changes');
+        }
+        if (self::$hasAllowsSatfluxEmailColumn && ! ($user->allows_satflux_email_changes ?? false)) {
             return;
         }
 

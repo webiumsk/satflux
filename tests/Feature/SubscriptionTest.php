@@ -5,8 +5,8 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-use Tests\TestCase;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
 class SubscriptionTest extends TestCase
 {
@@ -38,6 +38,7 @@ class SubscriptionTest extends TestCase
                     'expiration' => now()->addHours(24)->timestamp,
                 ]);
             }
+
             return Http::response([], 404);
         });
     }
@@ -113,6 +114,8 @@ class SubscriptionTest extends TestCase
     #[Test]
     public function guest_user_cannot_create_subscription_checkout(): void
     {
+        Http::fake();
+
         $guest = User::factory()->guest()->create();
 
         config(['services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store']);
@@ -125,6 +128,8 @@ class SubscriptionTest extends TestCase
 
         $response->assertStatus(422)
             ->assertJsonPath('code', 'guest_subscription_blocked');
+
+        Http::assertNothingSent();
     }
 
     #[Test]
@@ -184,6 +189,7 @@ class SubscriptionTest extends TestCase
             if (str_contains($url, '/api/v1/stores/') && str_contains($url, '/offerings/')) {
                 return Http::response(['id' => 'offering_test', 'name' => 'Test Offering']);
             }
+
             return Http::response([], 404);
         });
 
@@ -194,4 +200,3 @@ class SubscriptionTest extends TestCase
         $response->assertStatus(422);
     }
 }
-

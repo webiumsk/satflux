@@ -115,7 +115,8 @@ export async function runConfigForConnection(connectionId) {
 
     const emailSel = 'input[name="email"], input[type="email"], #Email';
     const passSel = 'input[name="password"], input[type="password"], #Password';
-    await page.waitForSelector(`${emailSel}, ${passSel}`, { timeout: 10000 });
+    await page.waitForSelector(emailSel, { timeout: 10000 });
+    await page.waitForSelector(passSel, { timeout: 10000 });
     await page.fill(emailSel, btcpayEmail);
     await page.fill(passSel, btcpayPassword);
     await page.click(
@@ -257,6 +258,18 @@ export async function runConfigForConnection(connectionId) {
       });
       await page.click('form button[type="submit"], form input[type="submit"]');
       await page.waitForLoadState("networkidle");
+      await page
+        .waitForURL(
+          (u) =>
+            !u.pathname.includes("/Lbtc/import") &&
+            !u.search.includes("importMethod=Descriptor"),
+          { timeout: 25000 },
+        )
+        .catch(() => {
+          throw new Error(
+            "Boltz import did not leave the import/descriptor step (no success navigation).",
+          );
+        });
 
       const boltzError = await page
         .locator('.alert-danger, .text-danger, [role="alert"]')
@@ -343,6 +356,15 @@ export async function runConfigForConnection(connectionId) {
       logger.info("btcpay_lightning", "Clicking Save");
       await page.click("#page-primary");
       await page.waitForLoadState("networkidle");
+      await page
+        .waitForURL(/\/stores\/[^/]+\/lightning\/BTC\/settings/i, {
+          timeout: 30000,
+        })
+        .catch(() => {
+          throw new Error(
+            "Blink save did not reach Lightning settings (expected success URL).",
+          );
+        });
 
       const btcpayError = await page
         .locator('.alert-danger, .text-danger, [role="alert"]')

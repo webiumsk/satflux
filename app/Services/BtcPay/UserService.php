@@ -260,9 +260,14 @@ class UserService
      */
     public function updateCurrentUserProfile(string $merchantApiKey, array $payload): array
     {
-        $client = new BtcPayClient($merchantApiKey);
+        $previousKey = $this->client->getApiKey();
+        try {
+            $this->client->setApiKey($merchantApiKey);
 
-        return $client->put('/api/v1/users/me', $payload);
+            return $this->client->put('/api/v1/users/me', $payload);
+        } finally {
+            $this->client->setApiKey($previousKey);
+        }
     }
 
     /**

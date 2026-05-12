@@ -23,6 +23,17 @@
     <p class="text-gray-400 mt-4">{{ t("common.loading") }}</p>
   </div>
 
+  <div v-else-if="settingsLoadError" class="text-center py-12 max-w-lg mx-auto px-4">
+    <p class="text-red-400">{{ t("stores.settings_load_failed") }}</p>
+    <button
+      type="button"
+      class="mt-4 inline-flex items-center px-4 py-2 rounded-lg border border-indigo-500/50 text-indigo-300 hover:bg-indigo-500/10 text-sm font-medium"
+      @click="fetchSettings"
+    >
+      {{ t("common.retry") }}
+    </button>
+  </div>
+
   <div v-else-if="settings" class="space-y-6">
     <!-- Main card with tabs -->
     <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700">
@@ -224,7 +235,7 @@
       <div
         class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm transition-opacity"
         aria-hidden="true"
-        @click="showDeleteStoreModal = false"
+        @click="closeDeleteStoreModal"
       ></div>
 
       <span
@@ -298,17 +309,14 @@
             :disabled="deletingStore || deleteStoreConfirmText !== 'DELETE'"
             class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {{ deletingStore ? "Deleting..." : "Delete Store" }}
+            {{ deletingStore ? t("stores.settings_delete_deleting") : t("stores.settings_delete_store") }}
           </button>
           <button
             type="button"
-            @click="
-              showDeleteStoreModal = false;
-              deleteStoreConfirmText = '';
-            "
+            @click="closeDeleteStoreModal"
             class="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-600 shadow-sm px-4 py-2 bg-transparent text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
           >
-            Cancel
+            {{ t("common.cancel") }}
           </button>
         </div>
       </div>
@@ -380,6 +388,7 @@ const settingsTabs = [
 ];
 
 const loading = ref(false);
+const settingsLoadError = ref(false);
 const saving = ref(false);
 const settings = ref<any>(null);
 
@@ -566,14 +575,14 @@ const defaultLangOptions = [
   { label: "العربية", value: "ar" },
   { label: "فارسی", value: "fa" },
   { label: "አማርኛ", value: "am-ET" },
-  { label: "नेपाली", value: "np-NP" },
+  { label: "नेपाली", value: "ne-NP" },
   { label: "हिंदी", value: "hi" },
   { label: "ไทย", value: "th-TH" },
   { label: "한국어", value: "ko" },
   { label: "中文 (华语)", value: "zh-SG" },
   { label: "中文 (台語)", value: "zh-TW" },
   { label: "日本語", value: "ja-JP" },
-  { label: "英文", value: "zh-SP" },
+  { label: "中文 (简体)", value: "zh-CN" },
 ];
 
 function applySettingsTabFromRoute() {
@@ -594,10 +603,17 @@ onMounted(async () => {
   applySettingsTabFromRoute();
 });
 
+function closeDeleteStoreModal() {
+  showDeleteStoreModal.value = false;
+  deleteStoreConfirmText.value = "";
+  deleteStoreError.value = "";
+}
+
 async function fetchSettings() {
   if (!props.store) return;
 
   loading.value = true;
+  settingsLoadError.value = false;
   try {
     const response = await api.get(`/stores/${props.store.id}/settings`);
     const d = response.data.data;
@@ -692,6 +708,7 @@ async function fetchSettings() {
     settingsForm.value.preferred_exchange = d.preferred_exchange ?? "";
   } catch (err) {
     console.error("Failed to fetch settings:", err);
+    settingsLoadError.value = true;
   } finally {
     loading.value = false;
   }
@@ -848,7 +865,7 @@ async function handleDeleteStore() {
   if (!props.store) return;
 
   if (deleteStoreConfirmText.value !== "DELETE") {
-    flashStore.error("Please type DELETE to confirm");
+    flashStore.error(t("stores.settings_delete_must_confirm"));
     return;
   }
 
@@ -857,10 +874,11 @@ async function handleDeleteStore() {
 
   try {
     await storesStore.deleteStore(props.store.id);
-    showDeleteStoreModal.value = false;
+    closeDeleteStoreModal();
     router.push({ name: "home" });
   } catch (err: any) {
-    const msg = err.response?.data?.message || "Failed to delete store";
+    const msg =
+      err.response?.data?.message || t("stores.settings_delete_failed");
     deleteStoreError.value = msg;
     flashStore.error(msg);
     deletingStore.value = false;
