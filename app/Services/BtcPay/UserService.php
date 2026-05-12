@@ -2,6 +2,7 @@
 
 namespace App\Services\BtcPay;
 
+use App\Services\BtcPay\Exceptions\BtcPayException;
 use Illuminate\Support\Facades\Log;
 
 class UserService
@@ -105,17 +106,8 @@ class UserService
     public function checkEmailExists(string $email): bool
     {
         try {
-            $users = $this->listUsers();
-
-            // Check if any user has this email
-            foreach ($users as $user) {
-                if (isset($user['email']) && strtolower($user['email']) === strtolower($email)) {
-                    return true;
-                }
-            }
-
-            return false;
-        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+            return $this->getUserByEmail($email) !== null;
+        } catch (BtcPayException $e) {
             Log::error('BTCPay email check failed', [
                 'error' => $e->getMessage(),
                 'email' => $email,
@@ -127,31 +119,84 @@ class UserService
     /**
      * Get user by email from BTCPay Server.
      *
+     * Prefers Greenfield GET /api/v1/users/{idOrEmail} with URL-encoded email. Falls back to GET /api/v1/users
+     * when the server returns 404 for the direct lookup (older instances), and normalizes wrapped list payloads
+     * (for example an `items` array).
+     *
      * @param  string  $email  Email address
      * @return array|null User data or null if not found
      *
-     * @throws \App\Services\BtcPay\Exceptions\BtcPayException
+     * @throws BtcPayException
      */
     public function getUserByEmail(string $email): ?array
     {
-        try {
-            $users = $this->listUsers();
-
-            // Find user with matching email
-            foreach ($users as $user) {
-                if (isset($user['email']) && strtolower($user['email']) === strtolower($email)) {
-                    return $user;
-                }
-            }
-
+        $email = trim($email);
+        if ($email === '') {
             return null;
-        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+        }
+
+        try {
+            $segment = rawurlencode($email);
+
+            return $this->client->get("/api/v1/users/{$segment}");
+        } catch (BtcPayException $e) {
+            if ($e->getStatusCode() === 404) {
+                return $this->getUserByEmailViaUserList($email);
+            }
             Log::error('BTCPay user retrieval by email failed', [
                 'error' => $e->getMessage(),
+                'status' => $e->getStatusCode(),
                 'email' => $email,
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeUsersListResponse(array $response): array
+    {
+        foreach (['items', 'data', 'users'] as $key) {
+            if (isset($response[$key]) && is_array($response[$key]) && $this->arrayLooksLikeUserList($response[$key])) {
+                return $response[$key];
+            }
+        }
+
+        if ($this->arrayLooksLikeUserList($response)) {
+            return array_is_list($response) ? $response : array_values($response);
+        }
+
+        return [];
+    }
+
+    /**
+     * @param  array<int|string, mixed>  $arr
+     */
+    private function arrayLooksLikeUserList(array $arr): bool
+    {
+        if ($arr === []) {
+            return true;
+        }
+
+        $first = reset($arr);
+
+        return is_array($first) && (isset($first['email']) || isset($first['id']));
+    }
+
+    private function getUserByEmailViaUserList(string $email): ?array
+    {
+        $users = $this->normalizeUsersListResponse($this->listUsers());
+        foreach ($users as $user) {
+            if (! is_array($user)) {
+                continue;
+            }
+            if (isset($user['email']) && strtolower((string) $user['email']) === strtolower($email)) {
+                return $user;
+            }
+        }
+
+        return null;
     }
 
     /**

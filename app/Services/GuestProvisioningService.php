@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\Store;
 use App\Models\User;
+use App\Services\BtcPay\BtcPayClient;
+use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\StoreService;
 use App\Services\BtcPay\UserService;
 use App\Services\BtcPay\WebhookService;
@@ -22,6 +24,7 @@ class GuestProvisioningService
         protected StoreService $storeService,
         protected WebhookService $webhookService,
         protected GuestBtcPayDecommissioner $guestBtcPayDecommissioner,
+        protected BtcPayClient $btcPayClient,
     ) {}
 
     public function attachRecoveryKeyToGuest(User $user, string $recoveryPkHex): User
@@ -97,6 +100,17 @@ class GuestProvisioningService
             }
 
             $btcpayApiKey = $createdPerUserApiKey;
+
+            // Same as StoreController::store: server BTCPAY_API_KEY on the client, then POST /stores with null
+            // (server key). Merchant key is only for the Laravel user + webhooks, not for store creation.
+            $serverApiKey = (string) config('services.btcpay.api_key', env('BTCPAY_API_KEY') ?? '');
+            if ($serverApiKey === '') {
+                throw new \RuntimeException(
+                    'Server-level BTCPay API key (BTCPAY_API_KEY) is not configured; guest store cannot be provisioned.'
+                );
+            }
+            $this->btcPayClient->setApiKey($serverApiKey);
+
             $btcpayStore = $this->storeService->createStore([
                 'name' => $defaultStoreName,
                 'defaultCurrency' => 'EUR',
@@ -105,7 +119,7 @@ class GuestProvisioningService
                 'showRecommendedFee' => true,
                 'recommendedFeeBlockTarget' => 1,
                 'preferredExchange' => 'kraken',
-            ], $btcpayApiKey);
+            ], null);
             $btcpayStoreId = $btcpayStore['id'] ?? $btcpayStore['storeId'] ?? null;
             if (! $btcpayStoreId) {
                 throw new \RuntimeException('BTCPay store ID missing after guest store creation.');
@@ -125,6 +139,8 @@ class GuestProvisioningService
                     'error' => $e->getMessage(),
                 ]);
             }
+
+            $this->attachBtcpayServerKeyUserToGuestStore((string) $btcpayStoreId);
 
             try {
                 $webhookData = $this->webhookService->replacePanelWebhookForStore($btcpayStoreId, $btcpayApiKey);
@@ -248,6 +264,41 @@ class GuestProvisioningService
                 0,
                 $e
             );
+        }
+    }
+
+    /**
+     * Same as StoreController after store create: add the BTCPay user tied to the server Greenfield key (BTCPAY_API_KEY) as Owner.
+     */
+    private function attachBtcpayServerKeyUserToGuestStore(string $btcpayStoreId): void
+    {
+        try {
+            $adminBtcPayUserId = $this->userService->getAdminBtcPayUserId();
+            if (! $adminBtcPayUserId) {
+                Log::error('Guest store: could not determine server API key BTCPay user ID', [
+                    'btcpay_store_id' => $btcpayStoreId,
+                ]);
+
+                return;
+            }
+
+            $this->storeService->addUserToStore($btcpayStoreId, $adminBtcPayUserId, 'Owner');
+            Log::info('Assigned server API key user to guest store as Owner', [
+                'btcpay_store_id' => $btcpayStoreId,
+                'admin_btcpay_user_id' => $adminBtcPayUserId,
+            ]);
+        } catch (BtcPayException $e) {
+            Log::error('Failed to assign server API key user to guest store', [
+                'btcpay_store_id' => $btcpayStoreId,
+                'error' => $e->getMessage(),
+                'error_type' => $e::class,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Unexpected error when assigning server API key user to guest store', [
+                'btcpay_store_id' => $btcpayStoreId,
+                'error' => $e->getMessage(),
+                'error_type' => $e::class,
+            ]);
         }
     }
 }

@@ -4,6 +4,7 @@ namespace Tests\Unit\Services;
 
 use App\Services\GuestBtcPayDecommissioner;
 use App\Services\GuestProvisioningService;
+use App\Services\BtcPay\BtcPayClient;
 use App\Services\BtcPay\StoreService;
 use App\Services\BtcPay\UserService;
 use App\Services\BtcPay\WebhookService;
@@ -28,11 +29,14 @@ class GuestProvisioningServiceTest extends TestCase
         $decommissioner->expects($this->once())->method('decommissionPartial')
             ->with(null, 'btcpay-user-1', null);
 
+        $btcPayClient = $this->createMock(BtcPayClient::class);
+
         $svc = new GuestProvisioningService(
             $userService,
             $storeService,
             $webhookService,
             $decommissioner,
+            $btcPayClient,
         );
 
         $this->expectException(\RuntimeException::class);
