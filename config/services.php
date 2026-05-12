@@ -66,12 +66,19 @@ return [
     | Synthetic BTCPay user emails for guest sessions: guest+<token>@<domain>.
     | Set GUEST_EMAIL_DOMAIN when APP_URL host is localhost, *.local, or otherwise unsuitable for BTCPay.
     | Otherwise the host from APP_URL is used (e.g. satflux.io). Dev/unknown host fallback avoids .local.
+    | After editing this closure, run `php artisan config:clear` or `php artisan optimize:clear` if config is cached.
     */
     'auth' => [
         'guest_email_domain' => (static function (): string {
             $explicit = env('GUEST_EMAIL_DOMAIN');
-            if (is_string($explicit) && $explicit !== '') {
-                return strtolower($explicit);
+            if (is_string($explicit)) {
+                $explicit = trim($explicit);
+                if ($explicit !== '') {
+                    $validated = filter_var($explicit, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME);
+                    if ($validated !== false && is_string($validated)) {
+                        return strtolower($validated);
+                    }
+                }
             }
             $host = parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST);
             if (! is_string($host) || $host === '') {
