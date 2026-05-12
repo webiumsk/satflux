@@ -1189,7 +1189,7 @@
                 </svg>
               </div>
               <h3
-                class="mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 pr-24 text-xl font-bold"
+                class="mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 text-xl font-bold"
               >
                 {{ t("landing.feature_crowdfund_title") }}
               </h3>

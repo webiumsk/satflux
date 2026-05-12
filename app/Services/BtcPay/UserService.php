@@ -3,6 +3,7 @@
 namespace App\Services\BtcPay;
 
 use App\Services\BtcPay\Exceptions\BtcPayException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class UserService
@@ -123,6 +124,9 @@ class UserService
      * when the server returns 404 for the direct lookup (older instances), and normalizes wrapped list payloads
      * (for example an `items` array).
      *
+     * Results (including not-found) are cached briefly per API key + normalized email. Exceptions from BTCPay
+     * are not cached and propagate unchanged.
+     *
      * @param  string  $email  Email address
      * @return array|null User data or null if not found
      *
@@ -135,6 +139,22 @@ class UserService
             return null;
         }
 
+        $apiKey = $this->client->getApiKey();
+        $keyFingerprint = $apiKey !== '' ? hash('sha256', $apiKey) : 'no_api_key';
+        $normalized = strtolower($email);
+        $ttl = max(1, (int) config('services.btcpay.user_by_email_cache_ttl', 300));
+        $cacheKey = 'btcpay:user_by_email:'.$keyFingerprint.':'.hash('sha256', $normalized);
+
+        return Cache::remember($cacheKey, $ttl, function () use ($email) {
+            return $this->resolveGetUserByEmailUncached($email);
+        });
+    }
+
+    /**
+     * @throws BtcPayException
+     */
+    private function resolveGetUserByEmailUncached(string $email): ?array
+    {
         try {
             $segment = rawurlencode($email);
 

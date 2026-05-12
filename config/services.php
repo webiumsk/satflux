@@ -17,6 +17,8 @@ return [
     'btcpay' => [
         'base_url' => env('BTCPAY_BASE_URL', 'http://127.0.0.1:14142'),
         'api_key' => env('BTCPAY_API_KEY'),
+        // Seconds; BTCPay Greenfield user-by-email (per current API key hash).
+        'user_by_email_cache_ttl' => (int) env('BTCPAY_USER_BY_EMAIL_CACHE_TTL', 300),
         'webhook_secret' => env('BTCPAY_WEBHOOK_SECRET'),
         'subscription_success_url' => env('SUBSCRIPTION_SUCCESS_URL'),
         'subscription_cancel_url' => env('SUBSCRIPTION_CANCEL_URL'),

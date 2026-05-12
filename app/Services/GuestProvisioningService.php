@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 class GuestProvisioningService
 {
@@ -60,7 +61,13 @@ class GuestProvisioningService
     public function provisionGuest(?string $recoveryPkHex = null): array
     {
         $guestToken = strtolower((string) Str::ulid());
-        $guestEmailDomain = (string) config('services.auth.guest_email_domain');
+        $guestEmailDomain = config('services.auth.guest_email_domain');
+        $guestEmailDomain = is_string($guestEmailDomain) ? trim($guestEmailDomain) : '';
+        if ($guestEmailDomain === '') {
+            throw new InvalidArgumentException(
+                'Guest email domain is not configured (services.auth.guest_email_domain is empty). Set GUEST_EMAIL_DOMAIN or APP_URL so a valid synthetic domain is available.'
+            );
+        }
         $guestEmail = "guest+{$guestToken}@{$guestEmailDomain}";
         $guestPassword = Str::random(48);
         $defaultStoreName = 'My Store';
@@ -130,15 +137,7 @@ class GuestProvisioningService
                 Cache::forget("btcpay:store:{$btcpayStoreId}:".md5($btcpayApiKey));
             }
 
-            try {
-                $this->storeService->addUserToStore($btcpayStoreId, $btcpayUserId, 'Owner');
-            } catch (\Throwable $e) {
-                Log::warning('Failed to add guest BTCPay user to guest store', [
-                    'btcpay_store_id' => $btcpayStoreId,
-                    'btcpay_user_id' => $btcpayUserId,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            $this->storeService->addUserToStore($btcpayStoreId, $btcpayUserId, 'Owner');
 
             $this->attachBtcpayServerKeyUserToGuestStore((string) $btcpayStoreId);
 
@@ -208,11 +207,27 @@ class GuestProvisioningService
 
             return [$user, $store];
         } catch (ValidationException $e) {
-            $this->cleanupBtcPayResources($btcpayStoreId, $btcpayUserId, $createdPerUserApiKey);
+            $this->safeCleanupBtcPayResources($btcpayStoreId, $btcpayUserId, $createdPerUserApiKey, $e);
             throw $e;
         } catch (\Throwable $e) {
-            $this->cleanupBtcPayResources($btcpayStoreId, $btcpayUserId, $createdPerUserApiKey);
+            $this->safeCleanupBtcPayResources($btcpayStoreId, $btcpayUserId, $createdPerUserApiKey, $e);
             throw $e;
+        }
+    }
+
+    private function safeCleanupBtcPayResources(?string $btcpayStoreId, ?string $btcpayUserId, ?string $createdPerUserApiKey, \Throwable $original): void
+    {
+        try {
+            $this->cleanupBtcPayResources($btcpayStoreId, $btcpayUserId, $createdPerUserApiKey);
+        } catch (\Throwable $cleanupError) {
+            Log::error('Guest provisioning: BTCPay cleanup failed after provisioning error', [
+                'original_exception' => $original::class,
+                'original_message' => $original->getMessage(),
+                'cleanup_exception' => $cleanupError::class,
+                'cleanup_message' => $cleanupError->getMessage(),
+                'btcpay_store_id' => $btcpayStoreId,
+                'btcpay_user_id' => $btcpayUserId,
+            ]);
         }
     }
 
