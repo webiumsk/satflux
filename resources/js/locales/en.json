@@ -1493,7 +1493,14 @@
     "open_presenter": "Open presentation",
     "copy_presenter_link": "Copy presentation link",
     "presenter_failed": "Could not create presentation link",
-    "presenter_expires": "Last link expires: {time}"
+    "presenter_expires": "Last link expires: {time}",
+    "delete_raffle": "Delete raffle",
+    "delete_raffle_hint": "Permanently removes this raffle, all tickets, and draw history. Only available for drafts or completed raffles.",
+    "delete_failed": "Failed to delete raffle",
+    "deleted_success": "Raffle deleted",
+    "field_buyer_name": "Display name",
+    "field_buyer_email_masked": "Email (masked)",
+    "buyer_name_hint": "Optional nickname shown in the ticket list and during draws."
   },
   "landing": {
     "hero_kicker": "The merchant control panel for BTCPay Server.",

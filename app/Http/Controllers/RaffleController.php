@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Store;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\RaffleService;
+use App\Support\RaffleBuyerPrivacy;
 use App\Support\RaffleLifecycle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -130,8 +131,26 @@ class RaffleController extends Controller
 
         try {
             $result = $this->raffleService->drawRaffle($store->btcpay_store_id, $raffleId, $userApiKey);
+            if (isset($result['winnerEmail'])) {
+                $result['winnerEmail'] = RaffleBuyerPrivacy::maskEmail(
+                    is_string($result['winnerEmail'] ?? null) ? $result['winnerEmail'] : null
+                );
+            }
 
             return response()->json(['data' => $result]);
+        } catch (BtcPayException $e) {
+            return $this->handleBtcPayError($e);
+        }
+    }
+
+    public function destroy(Store $store, string $raffleId): JsonResponse
+    {
+        $userApiKey = $store->user->getBtcPayApiKeyOrFail();
+
+        try {
+            $this->raffleService->deleteRaffle($store->btcpay_store_id, $raffleId, $userApiKey);
+
+            return response()->json(['data' => ['deleted' => true]]);
         } catch (BtcPayException $e) {
             return $this->handleBtcPayError($e);
         }
@@ -149,7 +168,9 @@ class RaffleController extends Controller
         try {
             $tickets = $this->raffleService->listTickets($store->btcpay_store_id, $raffleId, $userApiKey);
 
-            return response()->json(['data' => $tickets]);
+            return response()->json([
+                'data' => RaffleBuyerPrivacy::maskTicketsBuyerEmails($tickets),
+            ]);
         } catch (BtcPayException $e) {
             return $this->handleBtcPayError($e);
         }
@@ -162,7 +183,9 @@ class RaffleController extends Controller
         try {
             $drawings = $this->raffleService->listDrawings($store->btcpay_store_id, $raffleId, $userApiKey);
 
-            return response()->json(['data' => $drawings]);
+            return response()->json([
+                'data' => RaffleBuyerPrivacy::maskDrawingsWinnerEmails($drawings),
+            ]);
         } catch (BtcPayException $e) {
             return $this->handleBtcPayError($e);
         }
@@ -303,6 +326,7 @@ class RaffleController extends Controller
 
         $raffle['allowedActions'] = RaffleLifecycle::allowedActions($status);
         $raffle['showsPublicLink'] = RaffleLifecycle::showsPublicLink($status);
+        $raffle['canDelete'] = RaffleLifecycle::canDelete($status);
 
         return $raffle;
     }

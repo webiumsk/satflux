@@ -525,7 +525,14 @@
     "open_presenter": "Abrir presentación",
     "copy_presenter_link": "Copiar enlace de presentación",
     "presenter_failed": "No se pudo crear el enlace de presentación",
-    "presenter_expires": "El último enlace expira: {time}"
+    "presenter_expires": "El último enlace expira: {time}",
+    "delete_raffle": "Eliminar rifa",
+    "delete_raffle_hint": "Elimina permanentemente la rifa, todos los boletos y el historial de sorteos. Solo en borrador o completada.",
+    "delete_failed": "No se pudo eliminar la rifa",
+    "deleted_success": "Rifa eliminada",
+    "field_buyer_name": "Nombre visible",
+    "field_buyer_email_masked": "Correo (enmascarado)",
+    "buyer_name_hint": "Apodo opcional en la lista de boletos y en el sorteo."
   },
   "stores": {
     "title": "Tiendas",

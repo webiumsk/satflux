@@ -59,6 +59,13 @@ class RaffleService
         });
     }
 
+    public function deleteRaffle(string $storeId, string $raffleId, string $apiKey): void
+    {
+        $this->withUserKey($apiKey, function () use ($storeId, $raffleId) {
+            $this->client->delete("/api/v1/stores/{$storeId}/raffle/{$raffleId}");
+        });
+    }
+
     /**
      * @return array{token: string, expiresAt: string, presenterUrl: string}
      */

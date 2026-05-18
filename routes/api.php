@@ -502,6 +502,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class])->group(function
         Route::get('/', [\App\Http\Controllers\RaffleController::class, 'index']);
         Route::post('/', [\App\Http\Controllers\RaffleController::class, 'store']);
         Route::put('/{raffleId}', [\App\Http\Controllers\RaffleController::class, 'update']);
+        Route::delete('/{raffleId}', [\App\Http\Controllers\RaffleController::class, 'destroy']);
         Route::get('/{raffleId}', [\App\Http\Controllers\RaffleController::class, 'show']);
         Route::post('/{raffleId}/presenter-token', [\App\Http\Controllers\RaffleController::class, 'presenterToken']);
         Route::post('/{raffleId}/open', [\App\Http\Controllers\RaffleController::class, 'open']);

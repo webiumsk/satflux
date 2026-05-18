@@ -13,8 +13,13 @@
           <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div class="flex items-start gap-4 min-w-0">
-                <button type="button" class="mt-1 text-gray-400 hover:text-white transition-colors shrink-0" @click="goList">
-                  <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button
+                  type="button"
+                  class="mt-1 text-gray-400 hover:text-white transition-colors shrink-0"
+                  :aria-label="t('raffles.back_to_list')"
+                  @click="goList"
+                >
+                  <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                   </svg>
                 </button>
@@ -165,6 +170,18 @@
           </p>
         </section>
 
+        <section v-if="raffle.canDelete" class="rounded-xl border border-red-500/30 bg-red-500/5 p-6">
+          <h2 class="text-lg font-semibold text-red-300">{{ t('raffles.delete_raffle') }}</h2>
+          <p class="text-sm text-gray-400 mt-2 mb-4">{{ t('raffles.delete_raffle_hint') }}</p>
+          <button
+            type="button"
+            class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg border border-red-600 text-red-400 hover:bg-red-600 hover:text-white transition-colors"
+            @click="showDeleteModal = true"
+          >
+            {{ t('raffles.delete_raffle') }}
+          </button>
+        </section>
+
         <div class="border-b border-gray-700">
           <nav class="flex gap-6">
             <button
@@ -194,7 +211,8 @@
               <thead class="bg-gray-800">
                 <tr>
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">#</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">{{ t('raffles.buyer') }}</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">{{ t('raffles.field_buyer_name') }}</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">{{ t('raffles.field_buyer_email_masked') }}</th>
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">{{ t('raffles.allocated_at') }}</th>
                   <th class="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase"></th>
                 </tr>
@@ -202,10 +220,8 @@
               <tbody class="divide-y divide-gray-700 bg-gray-900">
                 <tr v-for="ticket in tickets" :key="ticket.ticketNumber">
                   <td class="px-4 py-3 text-sm text-white font-mono">{{ ticket.ticketNumber }}</td>
-                  <td class="px-4 py-3 text-sm text-gray-300">
-                    <div>{{ ticket.buyerName || '—' }}</div>
-                    <div v-if="ticket.buyerEmail" class="text-xs text-gray-500">{{ ticket.buyerEmail }}</div>
-                  </td>
+                  <td class="px-4 py-3 text-sm text-gray-300">{{ ticket.buyerName || '—' }}</td>
+                  <td class="px-4 py-3 text-sm text-gray-500">{{ ticket.buyerEmail || '—' }}</td>
                   <td class="px-4 py-3 text-sm text-gray-400">{{ formatDate(ticket.allocatedAt) }}</td>
                   <td class="px-4 py-3 text-right">
                     <a
@@ -237,9 +253,8 @@
                 <p class="text-white font-medium">
                   {{ t('raffles.draw_winner', { order: d.drawOrder, ticket: d.winningTicketNumber }) }}
                 </p>
-                <p v-if="d.winnerName || d.winnerEmail" class="text-sm text-gray-400 mt-1">
-                  {{ [d.winnerName, d.winnerEmail].filter(Boolean).join(' · ') }}
-                </p>
+                <p v-if="d.winnerName && d.winnerName !== '—'" class="text-sm text-white mt-1">{{ d.winnerName }}</p>
+                <p v-if="d.winnerEmail" class="text-sm text-gray-500 mt-1">{{ d.winnerEmail }}</p>
               </div>
               <span class="text-xs text-gray-500">{{ formatDate(d.drawnAt) }}</span>
             </div>
@@ -260,7 +275,7 @@
           <p v-if="drawReveal.winnerName || drawReveal.winnerEmail" class="text-lg text-gray-200 mb-1">
             {{ drawReveal.winnerName || '—' }}
           </p>
-          <p v-if="drawReveal.winnerEmail" class="text-sm text-gray-400 mb-6">{{ drawReveal.winnerEmail }}</p>
+          <p v-if="drawReveal.winnerEmail" class="text-sm text-gray-500 mb-6">{{ drawReveal.winnerEmail }}</p>
           <p v-else class="mb-6" />
           <p class="text-xs text-gray-500 mb-6">
             {{ t('raffles.draw_reveal_meta', { order: drawReveal.drawOrder }) }}
@@ -292,6 +307,14 @@
           </div>
         </div>
       </div>
+
+      <DeleteAppModal
+        :is-open="showDeleteModal"
+        :app-name="raffle?.name ?? ''"
+        :deleting="deleting"
+        @close="showDeleteModal = false"
+        @delete="handleDelete"
+      />
       </template>
     </AppShowLayout>
   </RafflesPageLayout>
@@ -305,6 +328,7 @@ import RafflesPageLayout from '../../components/stores/RafflesPageLayout.vue';
 import AppShowLayout from '../../components/stores/AppShowLayout.vue';
 import RaffleTicketPricingFields from '../../components/stores/RaffleTicketPricingFields.vue';
 import UrlQrModal from '../../components/ui/UrlQrModal.vue';
+import DeleteAppModal from '../../components/stores/DeleteAppModal.vue';
 import { useStorePageShell } from '../../composables/useStorePageShell';
 import { useBtcPayUrl } from '../../composables/useBtcPayUrl';
 import { useCopiedFeedback } from '../../composables/useCopiedFeedback';
@@ -354,6 +378,8 @@ const presenterLoading = ref(false);
 const lastPresenterUrl = ref('');
 const presenterExpiresAt = ref('');
 const presenterCopied = ref(false);
+const showDeleteModal = ref(false);
+const deleting = ref(false);
 
 const canShowPresenter = computed(() => {
     const s = raffle.value?.status;
@@ -402,6 +428,22 @@ function receiptAbsoluteUrl(path: string): string {
 
 function goList() {
     router.push({ name: 'stores-raffles', params: { id: storeId.value } });
+}
+
+async function handleDelete() {
+    if (!raffle.value) return;
+    deleting.value = true;
+    try {
+        await rafflesStore.deleteRaffle(storeId.value, raffleId.value);
+        flashStore.success(t('raffles.deleted_success'));
+        showDeleteModal.value = false;
+        router.push({ name: 'stores-raffles', params: { id: storeId.value } });
+    } catch (err: unknown) {
+        const e = err as { response?: { data?: { message?: string } } };
+        flashStore.error(e.response?.data?.message || t('raffles.delete_failed'));
+    } finally {
+        deleting.value = false;
+    }
 }
 
 function syncEditFormFromRaffle() {

@@ -251,6 +251,72 @@ class RaffleApiTest extends TestCase
         $response->assertJsonPath('data.status', 'Draft');
     }
 
+    public function test_delete_draft_raffle_proxies_delete(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        $btcpayStoreId = $store->btcpay_store_id;
+        $baseUrl = rtrim(config('services.btcpay.base_url', 'http://localhost'), '/');
+        $raffleId = '44444444-4444-4444-4444-444444444444';
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, $btcpayStoreId, $raffleId) {
+            $url = (string) $request->url();
+            if (! str_contains($url, $baseUrl)) {
+                return Http::response([], 404);
+            }
+
+            if ($request->method() === 'DELETE' && str_ends_with($url, "/api/v1/stores/{$btcpayStoreId}/raffle/{$raffleId}")) {
+                return Http::response(['deleted' => true], 200);
+            }
+
+            return Http::response([], 404);
+        });
+
+        Sanctum::actingAs($user);
+
+        $response = $this->deleteJson("/api/stores/{$store->id}/raffles/{$raffleId}");
+
+        $response->assertOk();
+        $response->assertJsonPath('data.deleted', true);
+    }
+
+    public function test_tickets_list_masks_buyer_email(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        $btcpayStoreId = $store->btcpay_store_id;
+        $baseUrl = rtrim(config('services.btcpay.base_url', 'http://localhost'), '/');
+        $raffleId = '55555555-5555-5555-5555-555555555555';
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, $btcpayStoreId, $raffleId) {
+            $url = (string) $request->url();
+            if (! str_contains($url, $baseUrl)) {
+                return Http::response([], 404);
+            }
+
+            if ($request->method() === 'GET' && str_ends_with($url, "/api/v1/stores/{$btcpayStoreId}/raffle/{$raffleId}/tickets")) {
+                return Http::response([
+                    [
+                        'ticketNumber' => 1,
+                        'buyerName' => 'Alice',
+                        'buyerEmail' => 'alice@secret.com',
+                        'allocatedAt' => '2026-05-18T12:00:00Z',
+                    ],
+                ], 200);
+            }
+
+            return Http::response([], 404);
+        });
+
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson("/api/stores/{$store->id}/raffles/{$raffleId}/tickets");
+
+        $response->assertOk();
+        $response->assertJsonPath('data.0.buyerEmail', 'a***@secret.com');
+        $response->assertJsonPath('data.0.buyerName', 'Alice');
+    }
+
     public function test_presenter_token_proxies_post(): void
     {
         $user = User::factory()->create();

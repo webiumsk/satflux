@@ -1494,7 +1494,14 @@
     "open_presenter": "Otvoriť prezentáciu",
     "copy_presenter_link": "Kopírovať odkaz na prezentáciu",
     "presenter_failed": "Nepodarilo sa vytvoriť odkaz na prezentáciu",
-    "presenter_expires": "Posledný odkaz expiruje: {time}"
+    "presenter_expires": "Posledný odkaz expiruje: {time}",
+    "delete_raffle": "Vymazať tombolu",
+    "delete_raffle_hint": "Natrvalo odstráni tombolu, všetky lístky a históriu žrebovania. Len pre koncept alebo ukončenú tombolu.",
+    "delete_failed": "Tombolu sa nepodarilo vymazať",
+    "deleted_success": "Tombola vymazaná",
+    "field_buyer_name": "Zobrazované meno",
+    "field_buyer_email_masked": "E-mail (maskovaný)",
+    "buyer_name_hint": "Voliteľný nick v zozname lístkov a pri žrebovaní."
   },
   "landing": {
     "hero_kicker": "Ovládací panel pre obchodníkov na BTCPay Server.",

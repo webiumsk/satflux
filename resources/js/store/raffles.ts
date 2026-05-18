@@ -23,6 +23,7 @@ export interface Raffle {
     completedAt?: string | null;
     allowedActions?: RaffleAction[];
     showsPublicLink?: boolean;
+    canDelete?: boolean;
 }
 
 export interface RaffleTicket {
@@ -98,6 +99,10 @@ export const useRafflesStore = defineStore('raffles', () => {
     async function createRaffle(storeId: string, payload: CreateRafflePayload): Promise<Raffle> {
         const { data } = await api.post<{ data: Raffle }>(`/stores/${storeId}/raffles`, payload);
         return data.data;
+    }
+
+    async function deleteRaffle(storeId: string, raffleId: string): Promise<void> {
+        await api.delete(`/stores/${storeId}/raffles/${raffleId}`);
     }
 
     async function updateRaffle(
@@ -193,6 +198,7 @@ export const useRafflesStore = defineStore('raffles', () => {
         fetchAvailability,
         fetchRaffles,
         createRaffle,
+        deleteRaffle,
         updateRaffle,
         createPresenterToken,
         fetchRaffle,
