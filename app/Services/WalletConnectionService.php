@@ -22,7 +22,8 @@ class WalletConnectionService
         protected WalletConnectionValidator $validator,
         protected \App\Services\BtcPay\CashuService $cashuService,
         protected LightningService $lightningService,
-    ) {}
+    ) {
+    }
 
     /**
      * Create or update a wallet connection for a store.
@@ -41,7 +42,7 @@ class WalletConnectionService
             'store_btcpay_store_id' => $store->btcpay_store_id ?? 'NULL',
             'type' => $type,
             'secret_length' => strlen($secret),
-            'secret_preview' => substr($secret, 0, 50).'...',
+            'secret_preview' => substr($secret, 0, 50) . '...',
             'user_id' => $user->id,
         ]);
 
@@ -60,7 +61,7 @@ class WalletConnectionService
             'errors' => $validation['errors'] ?? [],
         ]);
 
-        if (! $validation['valid']) {
+        if (!$validation['valid']) {
             Log::error('Wallet connection validation failed', [
                 'store_id' => $store->id,
                 'type' => $type,
@@ -83,8 +84,8 @@ class WalletConnectionService
                 ]);
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'secret' => [
-                        'This descriptor is already in use by another store. '.
-                        'BTCPay allows each descriptor to be used only once. '.
+                        'This descriptor is already in use by another store. ' .
+                        'BTCPay allows each descriptor to be used only once. ' .
                         ($duplicateCheck['existing_store_name']
                             ? "It is currently used by store: {$duplicateCheck['existing_store_name']}"
                             : 'Please use a different wallet/descriptor.'),
@@ -167,7 +168,7 @@ class WalletConnectionService
                     ? $merchant->btcpay_api_key
                     : null;
 
-                if (! $userApiKey) {
+                if (!$userApiKey) {
                     Log::warning('Skipping BTCPay wallet sync after local save: merchant has no BTCPay API key', [
                         'store_id' => $store->id,
                         'user_id' => $merchant?->id,
@@ -251,7 +252,7 @@ class WalletConnectionService
             throw $e;
         }
 
-        // Notify support only when status is needs_support (e.g. not when initialStatus is 'pending' – bot runs first)
+        // Notify support only when status is needs_support (e.g. not when initialStatus is 'pending' - bot runs first)
         if ($connection->status === 'needs_support') {
             $this->notifySupportNeeded($connection, $store);
         }
@@ -290,9 +291,9 @@ class WalletConnectionService
      */
     protected function samRockPlaceholderDescriptor(Store $store): string
     {
-        $seed = hash('sha256', 'samrock:'.$store->id);
+        $seed = hash('sha256', 'samrock:' . $store->id);
         $fp = substr($seed, 0, 8);
-        $xpubBody = 'tpub'.str_pad(substr($seed, 0, 100), 100, '0');
+        $xpubBody = 'tpub' . str_pad(substr($seed, 0, 100), 100, '0');
 
         return "wpkh([{$fp}/84'/0'/0']{$xpubBody}/0/*)";
     }
@@ -352,7 +353,7 @@ class WalletConnectionService
             try {
                 $storeName = $store->name;
                 $typeLabel = $connection->type === 'blink' ? 'Blink' : 'Aqua';
-                $panelUrl = rtrim(config('app.url'), '/').'/support/wallet-connections';
+                $panelUrl = rtrim(config('app.url'), '/') . '/support/wallet-connections';
 
                 Http::timeout(10)->post($webhookUrl, [
                     'content' => "🔔 **Wallet connection needs support**: {$storeName} ({$typeLabel})",

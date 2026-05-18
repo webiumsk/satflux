@@ -34,7 +34,7 @@
 </head>
 <body>
     <h1>{{ $store->name }}</h1>
-    <p class="subtitle">Sales Report · {{ $dateFrom->format('M j, Y') }} – {{ $dateTo->format('M j, Y') }}</p>
+    <p class="subtitle">Sales Report · {{ $dateFrom->format('M j, Y') }} - {{ $dateTo->format('M j, Y') }}</p>
 
     <div class="section">
         <div class="section-title">Summary</div>

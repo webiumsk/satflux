@@ -79,6 +79,7 @@ return [
     'subscription_activated' => 'Subscription activated successfully',
     'subscription_config_incomplete' => 'Subscription configuration is incomplete. Please contact support.',
     'subscription_plan_not_found' => 'Plan or offering not found',
+    'subscription_guest_must_upgrade_account' => 'Guest accounts cannot subscribe until you upgrade to a full account with a real email address.',
     'subscription_checkout_failed' => 'Failed to create checkout. Please try again later.',
     'subscription_checkout_error' => 'An unexpected error occurred. Please try again later.',
     'subscription_missing_checkout_id' => 'Missing checkoutPlanId parameter',

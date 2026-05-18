@@ -2,6 +2,8 @@
 
 namespace App\Services\BtcPay;
 
+use App\Services\BtcPay\Exceptions\BtcPayException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class UserService
@@ -15,14 +17,15 @@ class UserService
 
     /**
      * Create a new user in BTCPay Server.
-     * 
+     *
      * When password is provided, user is created as active (not "Pending Invitation").
-     * 
-     * @param array $data User data containing:
-     *   - email (required): User email address
-     *   - password (optional): User password - if provided, user is created as active
-     *   - isAdministrator (optional): Whether user should be administrator (default: false)
+     *
+     * @param  array  $data  User data containing:
+     *                       - email (required): User email address
+     *                       - password (optional): User password - if provided, user is created as active
+     *                       - isAdministrator (optional): Whether user should be administrator (default: false)
      * @return array Created user data
+     *
      * @throws \App\Services\BtcPay\Exceptions\BtcPayException
      */
     public function createUser(array $data): array
@@ -36,7 +39,7 @@ class UserService
             ];
 
             // Add password if provided - this ensures user is created as active
-            if (isset($data['password']) && !empty($data['password'])) {
+            if (isset($data['password']) && ! empty($data['password'])) {
                 $userData['password'] = $data['password'];
             }
 
@@ -46,7 +49,7 @@ class UserService
                 'error' => $e->getMessage(),
                 'data' => [
                     'email' => $data['email'] ?? 'N/A',
-                    'has_password' => isset($data['password']) && !empty($data['password']),
+                    'has_password' => isset($data['password']) && ! empty($data['password']),
                 ],
             ]);
             throw $e;
@@ -55,9 +58,10 @@ class UserService
 
     /**
      * Get a user by ID from BTCPay Server.
-     * 
-     * @param string $userId BTCPay user ID
+     *
+     * @param  string  $userId  BTCPay user ID
      * @return array User data
+     *
      * @throws \App\Services\BtcPay\Exceptions\BtcPayException
      */
     public function getUser(string $userId): array
@@ -75,8 +79,9 @@ class UserService
 
     /**
      * List all users from BTCPay Server.
-     * 
+     *
      * @return array List of users
+     *
      * @throws \App\Services\BtcPay\Exceptions\BtcPayException
      */
     public function listUsers(): array
@@ -93,25 +98,17 @@ class UserService
 
     /**
      * Check if email exists on BTCPay Server.
-     * 
-     * @param string $email Email address to check
+     *
+     * @param  string  $email  Email address to check
      * @return bool True if email exists, false otherwise
+     *
      * @throws \App\Services\BtcPay\Exceptions\BtcPayException
      */
     public function checkEmailExists(string $email): bool
     {
         try {
-            $users = $this->listUsers();
-
-            // Check if any user has this email
-            foreach ($users as $user) {
-                if (isset($user['email']) && strtolower($user['email']) === strtolower($email)) {
-                    return true;
-                }
-            }
-
-            return false;
-        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+            return $this->getUserByEmail($email) !== null;
+        } catch (BtcPayException $e) {
             Log::error('BTCPay email check failed', [
                 'error' => $e->getMessage(),
                 'email' => $email,
@@ -122,27 +119,53 @@ class UserService
 
     /**
      * Get user by email from BTCPay Server.
-     * 
-     * @param string $email Email address
+     *
+     * Prefers Greenfield GET /api/v1/users/{idOrEmail} with URL-encoded email. Falls back to GET /api/v1/users
+     * when the server returns 404 for the direct lookup (older instances), and normalizes wrapped list payloads
+     * (for example an `items` array).
+     *
+     * Results (including not-found) are cached briefly per API key + normalized email. Exceptions from BTCPay
+     * are not cached and propagate unchanged.
+     *
+     * @param  string  $email  Email address
      * @return array|null User data or null if not found
-     * @throws \App\Services\BtcPay\Exceptions\BtcPayException
+     *
+     * @throws BtcPayException
      */
     public function getUserByEmail(string $email): ?array
     {
-        try {
-            $users = $this->listUsers();
-
-            // Find user with matching email
-            foreach ($users as $user) {
-                if (isset($user['email']) && strtolower($user['email']) === strtolower($email)) {
-                    return $user;
-                }
-            }
-
+        $email = trim($email);
+        if ($email === '') {
             return null;
-        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+        }
+
+        $apiKey = $this->client->getApiKey();
+        $keyFingerprint = $apiKey !== '' ? hash('sha256', $apiKey) : 'no_api_key';
+        $normalized = strtolower($email);
+        $ttl = max(1, (int) config('services.btcpay.user_by_email_cache_ttl', 300));
+        $cacheKey = 'btcpay:user_by_email:'.$keyFingerprint.':'.hash('sha256', $normalized);
+
+        return Cache::remember($cacheKey, $ttl, function () use ($email) {
+            return $this->resolveGetUserByEmailUncached($email);
+        });
+    }
+
+    /**
+     * @throws BtcPayException
+     */
+    private function resolveGetUserByEmailUncached(string $email): ?array
+    {
+        try {
+            $segment = rawurlencode($email);
+
+            return $this->client->get("/api/v1/users/{$segment}");
+        } catch (BtcPayException $e) {
+            if ($e->getStatusCode() === 404) {
+                return $this->getUserByEmailViaUserList($email);
+            }
             Log::error('BTCPay user retrieval by email failed', [
                 'error' => $e->getMessage(),
+                'status' => $e->getStatusCode(),
                 'email' => $email,
             ]);
             throw $e;
@@ -150,14 +173,62 @@ class UserService
     }
 
     /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeUsersListResponse(array $response): array
+    {
+        foreach (['items', 'data', 'users'] as $key) {
+            if (isset($response[$key]) && is_array($response[$key]) && $this->arrayLooksLikeUserList($response[$key])) {
+                return $response[$key];
+            }
+        }
+
+        if ($this->arrayLooksLikeUserList($response)) {
+            return array_is_list($response) ? $response : array_values($response);
+        }
+
+        return [];
+    }
+
+    /**
+     * @param  array<int|string, mixed>  $arr
+     */
+    private function arrayLooksLikeUserList(array $arr): bool
+    {
+        if ($arr === []) {
+            return true;
+        }
+
+        $first = reset($arr);
+
+        return is_array($first) && (isset($first['email']) || isset($first['id']));
+    }
+
+    private function getUserByEmailViaUserList(string $email): ?array
+    {
+        $users = $this->normalizeUsersListResponse($this->listUsers());
+        foreach ($users as $user) {
+            if (! is_array($user)) {
+                continue;
+            }
+            if (isset($user['email']) && strtolower((string) $user['email']) === strtolower($email)) {
+                return $user;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Create an API key for a user in BTCPay Server.
      * Requires server-level API key with user management permissions.
-     * 
-     * @param string $userId BTCPay user ID
-     * @param array $permissions Permissions for the API key (e.g., ['btcpay.store.cancreateinvoice', 'btcpay.store.canviewstoresettings'])
-     * @param array $specificStores Optional: array of store IDs to limit API key access to specific stores
-     * @param string $label Optional: label for the API key
+     *
+     * @param  string  $userId  BTCPay user ID
+     * @param  array  $permissions  Permissions for the API key (e.g., ['btcpay.store.cancreateinvoice', 'btcpay.store.canviewstoresettings'])
+     * @param  array  $specificStores  Optional: array of store IDs to limit API key access to specific stores
+     * @param  string  $label  Optional: label for the API key
      * @return array Created API key data (contains 'apiKey' field with the actual key)
+     *
      * @throws \App\Services\BtcPay\Exceptions\BtcPayException
      */
     public function createApiKey(string $userId, array $permissions = [], array $specificStores = [], string $label = 'satflux.io API Key'): array
@@ -171,15 +242,16 @@ class UserService
                 'btcpay.store.canviewinvoices',
                 'btcpay.user.canviewnotificationsforuser',
                 'btcpay.user.canmanagenotificationsforuser',
+                'btcpay.user.canmodifyprofile',
             ]);
-            $finalPermissions = !empty($permissions) ? $permissions : $defaultPermissions;
+            $finalPermissions = ! empty($permissions) ? $permissions : $defaultPermissions;
 
             $data = [
                 'label' => $label,
                 'permissions' => $finalPermissions,
             ];
 
-            if (!empty($specificStores)) {
+            if (! empty($specificStores)) {
                 $data['strict'] = true;
                 $data['storeMode'] = 'Specific';
                 $data['specificStores'] = $specificStores;
@@ -207,6 +279,7 @@ class UserService
      *
      * @param  string  $userId  BTCPay user ID
      * @param  string  $apiKey  The API key string to revoke
+     *
      * @throws \App\Services\BtcPay\Exceptions\BtcPayException
      */
     public function deleteUserApiKey(string $userId, string $apiKey): void
@@ -241,11 +314,35 @@ class UserService
     }
 
     /**
-     * Update a user in BTCPay Server.
-     * 
-     * @param string $userId BTCPay user ID
-     * @param array $data User data to update
-     * @return array Updated user data
+     * Update the BTCPay profile for whoever owns the given API key (PUT /api/v1/users/me).
+     * Greenfield does not expose PUT/PATCH on /api/v1/users/{id} for arbitrary users; server-key
+     * updates must go through this "current user" endpoint using that user's merchant API key.
+     *
+     * @param  array<string, mixed>  $payload  e.g. email, name, imageUrl, currentPassword, newPassword (see BTCPay swagger)
+     * @return array<string, mixed>
+     *
+     * @throws \App\Services\BtcPay\Exceptions\BtcPayException
+     */
+    public function updateCurrentUserProfile(string $merchantApiKey, array $payload): array
+    {
+        $previousKey = $this->client->getApiKey();
+        try {
+            $this->client->setApiKey($merchantApiKey);
+
+            return $this->client->put('/api/v1/users/me', $payload);
+        } finally {
+            $this->client->setApiKey($previousKey);
+        }
+    }
+
+    /**
+     * Update a user in BTCPay Server (PATCH/PUT /api/v1/users/{id}).
+     * Prefer {@see updateCurrentUserProfile} when you have the user's merchant API key; current
+     * BTCPay Greenfield only documents self-service updates on PUT /api/v1/users/me.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     *
      * @throws \App\Services\BtcPay\Exceptions\BtcPayException
      */
     public function updateUser(string $userId, array $data): array
@@ -275,9 +372,10 @@ class UserService
     /**
      * Confirm email for a user in BTCPay Server.
      * Tries various possible endpoints for email confirmation.
-     * 
-     * @param string $userId BTCPay user ID
+     *
+     * @param  string  $userId  BTCPay user ID
      * @return array Updated user data
+     *
      * @throws \App\Services\BtcPay\Exceptions\BtcPayException
      */
     public function confirmUserEmail(string $userId): array
@@ -308,10 +406,10 @@ class UserService
 
     /**
      * Accept a BTCPay user invitation by calling the invitation URL.
-     * 
+     *
      * Invitation URLs have format: https://pay.example.org/invite/{inviteId}/{approvalCode}
-     * 
-     * @param string $invitationUrl Full invitation URL from BTCPay API response
+     *
+     * @param  string  $invitationUrl  Full invitation URL from BTCPay API response
      * @return bool True if invitation was accepted successfully, false otherwise
      */
     public function acceptInvitation(string $invitationUrl): bool
@@ -319,10 +417,11 @@ class UserService
         try {
             // Parse invitation URL to extract invite ID and approval code
             // Format: https://pay.example.org/invite/{inviteId}/{approvalCode}
-            if (!preg_match('#/invite/([^/]+)/([^/?]+)#', $invitationUrl, $matches)) {
+            if (! preg_match('#/invite/([^/]+)/([^/?]+)#', $invitationUrl, $matches)) {
                 Log::warning('Invalid invitation URL format', [
                     'invitation_url' => $invitationUrl,
                 ]);
+
                 return false;
             }
 
@@ -342,6 +441,7 @@ class UserService
                         'invite_id' => $inviteId,
                         'endpoint' => $endpoint,
                     ]);
+
                     return true;
                 } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
                     // Continue to next endpoint if this one doesn't exist
@@ -378,6 +478,7 @@ class UserService
                         'url' => $invitationUrl,
                         'status' => $response->status(),
                     ]);
+
                     return true;
                 } else {
                     Log::warning('BTCPay invitation URL call failed', [
@@ -385,6 +486,7 @@ class UserService
                         'url' => $invitationUrl,
                         'status' => $response->status(),
                     ]);
+
                     return false;
                 }
             }
@@ -395,6 +497,7 @@ class UserService
                 'invitation_url' => $invitationUrl,
                 'error' => $e->getMessage(),
             ]);
+
             return false;
         }
     }
@@ -402,8 +505,9 @@ class UserService
     /**
      * Get the BTCPay user ID associated with the server-level API key (admin user).
      * This is the admin account that the server-level API key belongs to.
-     * 
+     *
      * @return string|null BTCPay user ID or null if not found
+     *
      * @throws \App\Services\BtcPay\Exceptions\BtcPayException
      */
     public function getAdminBtcPayUserId(): ?string
@@ -430,6 +534,7 @@ class UserService
                                 'user_id' => $userId,
                                 'endpoint' => $endpoint,
                             ]);
+
                             return $userId;
                         }
                     } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
@@ -455,6 +560,7 @@ class UserService
                                 \Illuminate\Support\Facades\Log::info('Found admin BTCPay user ID via user list', [
                                     'user_id' => $adminId,
                                 ]);
+
                                 return $adminId;
                             }
                         }
@@ -466,12 +572,14 @@ class UserService
                 }
 
                 \Illuminate\Support\Facades\Log::error('Could not determine admin BTCPay user ID');
+
                 return null;
             });
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
             \Illuminate\Support\Facades\Log::error('Failed to get admin BTCPay user ID', [
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }

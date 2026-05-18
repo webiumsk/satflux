@@ -4,10 +4,11 @@ namespace App\Services;
 
 use App\Models\Store;
 use App\Models\User;
+use App\Services\BtcPay\BtcPayClient;
+use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\StoreService;
 use App\Services\BtcPay\UserService;
 use App\Services\BtcPay\WebhookService;
-use App\Services\StoreChecklistService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -15,13 +16,16 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 class GuestProvisioningService
 {
     public function __construct(
         protected UserService $userService,
         protected StoreService $storeService,
-        protected WebhookService $webhookService
+        protected WebhookService $webhookService,
+        protected GuestBtcPayDecommissioner $guestBtcPayDecommissioner,
+        protected BtcPayClient $btcPayClient,
     ) {}
 
     public function attachRecoveryKeyToGuest(User $user, string $recoveryPkHex): User
@@ -57,14 +61,19 @@ class GuestProvisioningService
     public function provisionGuest(?string $recoveryPkHex = null): array
     {
         $guestToken = strtolower((string) Str::ulid());
-        $guestEmailDomain = (string) config('services.auth.guest_email_domain', 'guest.satflux.local');
+        $guestEmailDomain = config('services.auth.guest_email_domain');
+        $guestEmailDomain = is_string($guestEmailDomain) ? trim($guestEmailDomain) : '';
+        if ($guestEmailDomain === '') {
+            throw new InvalidArgumentException(
+                'Guest email domain is not configured (services.auth.guest_email_domain is empty). Set GUEST_EMAIL_DOMAIN or APP_URL so a valid synthetic domain is available.'
+            );
+        }
         $guestEmail = "guest+{$guestToken}@{$guestEmailDomain}";
         $guestPassword = Str::random(48);
         $defaultStoreName = 'My Store';
 
         $btcpayUserId = null;
         $btcpayStoreId = null;
-        $btcpayApiKey = null;
         $createdPerUserApiKey = null;
         $webhookData = null;
 
@@ -80,23 +89,35 @@ class GuestProvisioningService
                 throw new \RuntimeException('BTCPay user ID missing after guest user creation.');
             }
 
-            try {
-                $apiKeyData = $this->userService->createApiKey(
-                    $btcpayUserId,
-                    [],
-                    [],
-                    'satflux.io Guest API Key - '.$guestEmail
+            // Some BTCPay policies require a confirmed email before user API keys may call /stores.
+            // The create-user response includes invitationUrl; accept it with the server API key.
+            $this->ensureBtcPayGuestUserCanAuthenticate($btcpayUserId, $btcpayUser);
+
+            $apiKeyData = $this->userService->createApiKey(
+                $btcpayUserId,
+                [],
+                [],
+                'satflux.io Guest API Key - '.$guestEmail
+            );
+            $createdPerUserApiKey = $apiKeyData['apiKey'] ?? null;
+            if (! is_string($createdPerUserApiKey) || $createdPerUserApiKey === '') {
+                throw new \RuntimeException(
+                    'BTCPay did not return a merchant API key for the new guest user; guest provisioning cannot continue without it.'
                 );
-                $createdPerUserApiKey = $apiKeyData['apiKey'] ?? null;
-            } catch (\Throwable $apiKeyError) {
-                Log::warning('Guest BTCPay user API key creation failed, using server key for provisioning only', [
-                    'btcpay_user_id' => $btcpayUserId,
-                    'guest_email' => $guestEmail,
-                    'error' => $apiKeyError->getMessage(),
-                ]);
             }
 
-            $btcpayApiKey = $createdPerUserApiKey ?: null;
+            $btcpayApiKey = $createdPerUserApiKey;
+
+            // Same as StoreController::store: server BTCPAY_API_KEY on the client, then POST /stores with null
+            // (server key). Merchant key is only for the Laravel user + webhooks, not for store creation.
+            $serverApiKey = (string) config('services.btcpay.api_key', env('BTCPAY_API_KEY') ?? '');
+            if ($serverApiKey === '') {
+                throw new \RuntimeException(
+                    'Server-level BTCPay API key (BTCPAY_API_KEY) is not configured; guest store cannot be provisioned.'
+                );
+            }
+            $this->btcPayClient->setApiKey($serverApiKey);
+
             $btcpayStore = $this->storeService->createStore([
                 'name' => $defaultStoreName,
                 'defaultCurrency' => 'EUR',
@@ -105,7 +126,7 @@ class GuestProvisioningService
                 'showRecommendedFee' => true,
                 'recommendedFeeBlockTarget' => 1,
                 'preferredExchange' => 'kraken',
-            ], $btcpayApiKey);
+            ], null);
             $btcpayStoreId = $btcpayStore['id'] ?? $btcpayStore['storeId'] ?? null;
             if (! $btcpayStoreId) {
                 throw new \RuntimeException('BTCPay store ID missing after guest store creation.');
@@ -116,15 +137,9 @@ class GuestProvisioningService
                 Cache::forget("btcpay:store:{$btcpayStoreId}:".md5($btcpayApiKey));
             }
 
-            try {
-                $this->storeService->addUserToStore($btcpayStoreId, $btcpayUserId, 'Owner');
-            } catch (\Throwable $e) {
-                Log::warning('Failed to add guest BTCPay user to guest store', [
-                    'btcpay_store_id' => $btcpayStoreId,
-                    'btcpay_user_id' => $btcpayUserId,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            $this->storeService->addUserToStore($btcpayStoreId, $btcpayUserId, 'Owner');
+
+            $this->attachBtcpayServerKeyUserToGuestStore((string) $btcpayStoreId);
 
             try {
                 $webhookData = $this->webhookService->replacePanelWebhookForStore($btcpayStoreId, $btcpayApiKey);
@@ -158,9 +173,7 @@ class GuestProvisioningService
                     $userData['is_guest'] = true;
                 }
 
-                if ($createdPerUserApiKey) {
-                    $userData['btcpay_api_key'] = $createdPerUserApiKey;
-                }
+                $userData['btcpay_api_key'] = $createdPerUserApiKey;
 
                 if ($recoveryPkHex && Schema::hasColumn('users', 'guest_recovery_public_key')) {
                     if (User::where('guest_recovery_public_key', $recoveryPkHex)->exists()) {
@@ -194,48 +207,113 @@ class GuestProvisioningService
 
             return [$user, $store];
         } catch (ValidationException $e) {
-            $this->cleanupBtcPayResources($btcpayStoreId, $btcpayUserId, $createdPerUserApiKey);
+            $this->safeCleanupBtcPayResources($btcpayStoreId, $btcpayUserId, $createdPerUserApiKey, $e);
             throw $e;
         } catch (\Throwable $e) {
-            $this->cleanupBtcPayResources($btcpayStoreId, $btcpayUserId, $createdPerUserApiKey);
+            $this->safeCleanupBtcPayResources($btcpayStoreId, $btcpayUserId, $createdPerUserApiKey, $e);
             throw $e;
+        }
+    }
+
+    private function safeCleanupBtcPayResources(?string $btcpayStoreId, ?string $btcpayUserId, ?string $createdPerUserApiKey, \Throwable $original): void
+    {
+        try {
+            $this->cleanupBtcPayResources($btcpayStoreId, $btcpayUserId, $createdPerUserApiKey);
+        } catch (\Throwable $cleanupError) {
+            Log::error('Guest provisioning: BTCPay cleanup failed after provisioning error', [
+                'original_exception' => $original::class,
+                'original_message' => $original->getMessage(),
+                'cleanup_exception' => $cleanupError::class,
+                'cleanup_message' => $cleanupError->getMessage(),
+                'btcpay_store_id' => $btcpayStoreId,
+                'btcpay_user_id' => $btcpayUserId,
+            ]);
         }
     }
 
     private function cleanupBtcPayResources(?string $btcpayStoreId, ?string $btcpayUserId, ?string $createdPerUserApiKey): void
     {
-        if ($btcpayStoreId) {
-            try {
-                $this->storeService->deleteStore($btcpayStoreId);
-            } catch (\Throwable $cleanupError) {
-                Log::warning('Guest provisioning cleanup: failed to delete BTCPay store', [
+        $this->guestBtcPayDecommissioner->decommissionPartial(
+            $btcpayStoreId,
+            $btcpayUserId,
+            $createdPerUserApiKey,
+        );
+    }
+
+    /**
+     * When BTCPay enforces email confirmation, merchant API keys cannot authenticate until the
+     * invitation is accepted or email is confirmed (server key can still manage users).
+     */
+    private function ensureBtcPayGuestUserCanAuthenticate(string $btcpayUserId, array $btcpayUser): void
+    {
+        if (! empty($btcpayUser['emailConfirmed'])) {
+            return;
+        }
+
+        $invitationUrl = $btcpayUser['invitationUrl'] ?? null;
+        if (is_string($invitationUrl) && $invitationUrl !== '') {
+            if ($this->userService->acceptInvitation($invitationUrl)) {
+                Log::info('Guest BTCPay user: invitation accepted so API key auth can proceed', [
+                    'btcpay_user_id' => $btcpayUserId,
+                ]);
+
+                return;
+            }
+            Log::warning('Guest BTCPay user: invitation URL present but acceptInvitation failed; trying confirmUserEmail', [
+                'btcpay_user_id' => $btcpayUserId,
+            ]);
+        }
+
+        try {
+            $this->userService->confirmUserEmail($btcpayUserId);
+            Log::info('Guest BTCPay user: email confirmed via admin API', [
+                'btcpay_user_id' => $btcpayUserId,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Guest BTCPay user: could not confirm email or accept invitation', [
+                'btcpay_user_id' => $btcpayUserId,
+                'error' => $e->getMessage(),
+            ]);
+            throw new \RuntimeException(
+                'BTCPay requires email confirmation for new users; Satflux could not complete this automatically. Check server API key permissions and BTCPay policies.',
+                0,
+                $e
+            );
+        }
+    }
+
+    /**
+     * Same as StoreController after store create: add the BTCPay user tied to the server Greenfield key (BTCPAY_API_KEY) as Owner.
+     */
+    private function attachBtcpayServerKeyUserToGuestStore(string $btcpayStoreId): void
+    {
+        try {
+            $adminBtcPayUserId = $this->userService->getAdminBtcPayUserId();
+            if (! $adminBtcPayUserId) {
+                Log::error('Guest store: could not determine server API key BTCPay user ID', [
                     'btcpay_store_id' => $btcpayStoreId,
-                    'error' => $cleanupError->getMessage(),
                 ]);
-            }
-        }
 
-        if ($btcpayUserId && $createdPerUserApiKey) {
-            try {
-                $this->userService->deleteUserApiKey($btcpayUserId, $createdPerUserApiKey);
-            } catch (\Throwable $cleanupError) {
-                Log::warning('Guest provisioning cleanup: failed to delete BTCPay user API key', [
-                    'btcpay_user_id' => $btcpayUserId,
-                    'error' => $cleanupError->getMessage(),
-                ]);
+                return;
             }
-        }
 
-        if ($btcpayUserId) {
-            try {
-                $this->userService->deleteUser($btcpayUserId);
-            } catch (\Throwable $cleanupError) {
-                Log::warning('Guest provisioning cleanup: failed to delete BTCPay user', [
-                    'btcpay_user_id' => $btcpayUserId,
-                    'error' => $cleanupError->getMessage(),
-                ]);
-            }
+            $this->storeService->addUserToStore($btcpayStoreId, $adminBtcPayUserId, 'Owner');
+            Log::info('Assigned server API key user to guest store as Owner', [
+                'btcpay_store_id' => $btcpayStoreId,
+                'admin_btcpay_user_id' => $adminBtcPayUserId,
+            ]);
+        } catch (BtcPayException $e) {
+            Log::error('Failed to assign server API key user to guest store', [
+                'btcpay_store_id' => $btcpayStoreId,
+                'error' => $e->getMessage(),
+                'error_type' => $e::class,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Unexpected error when assigning server API key user to guest store', [
+                'btcpay_store_id' => $btcpayStoreId,
+                'error' => $e->getMessage(),
+                'error_type' => $e::class,
+            ]);
         }
     }
 }
-

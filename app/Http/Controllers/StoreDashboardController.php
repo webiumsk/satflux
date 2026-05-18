@@ -22,7 +22,8 @@ class StoreDashboardController extends Controller
         protected InvoiceSourceService $invoiceSourceService,
         protected StoreInvoiceStatsService $storeInvoiceStatsService,
         protected SubscriptionService $subscriptionService
-    ) {}
+    ) {
+    }
 
     /**
      * Get dashboard data for a store.
@@ -59,11 +60,11 @@ class StoreDashboardController extends Controller
                 }
                 foreach ($allInvoices as $invoice) {
                     $status = $invoice['status'] ?? null;
-                    if (! in_array($status, ['Settled', 'Complete'], true)) {
+                    if (!in_array($status, ['Settled', 'Complete'], true)) {
                         continue;
                     }
                     $source = $this->invoiceSourceService->detectSource($invoice);
-                    if (! isset($invoicesBySource[$source])) {
+                    if (!isset($invoicesBySource[$source])) {
                         $invoicesBySource[$source] = [];
                     }
                     $invoicesBySource[$source][] = $invoice;
@@ -97,7 +98,7 @@ class StoreDashboardController extends Controller
                     ];
                 }, $recentSlice);
 
-                // Sales over time (last 7 and 30 days) – all invoices
+                // Sales over time (last 7 and 30 days) - all invoices
                 $salesLast7Days = $this->buildSalesDaysArray(7);
                 $salesLast30Days = $this->buildSalesDaysArray(30);
                 $totalSales7d = 0;
@@ -105,7 +106,7 @@ class StoreDashboardController extends Controller
                 foreach ($allInvoices as $invoice) {
                     $status = $invoice['status'] ?? null;
                     $createdTime = $invoice['createdTime'] ?? null;
-                    if (! in_array($status, ['Settled', 'Complete'], true) || ! $createdTime) {
+                    if (!in_array($status, ['Settled', 'Complete'], true) || !$createdTime) {
                         continue;
                     }
                     $invoiceDate = \Carbon\Carbon::parse($createdTime)->startOfDay();
@@ -135,7 +136,7 @@ class StoreDashboardController extends Controller
                         }
                     }
                 }
-                uasort($itemCounts, fn ($a, $b) => $b['count'] <=> $a['count']);
+                uasort($itemCounts, fn($a, $b) => $b['count'] <=> $a['count']);
                 $topItems = array_slice(array_map(function ($name, $data) {
                     return ['name' => $name, 'count' => $data['count'], 'total' => $data['total'], 'currency' => $data['currency']];
                 }, array_keys($itemCounts), $itemCounts), 0, 5);
@@ -167,7 +168,7 @@ class StoreDashboardController extends Controller
                     if (is_array($btcpayApps)) {
                         foreach ($btcpayApps as $btcpayApp) {
                             $btcpayAppId = $btcpayApp['id'] ?? null;
-                            if (! $btcpayAppId) {
+                            if (!$btcpayAppId) {
                                 continue;
                             }
 
@@ -227,7 +228,7 @@ class StoreDashboardController extends Controller
                     || $store->walletConnection !== null;
                 $isReady = $hasWalletConnection;
 
-                // Total revenue for this store (sats + default currency) – BTCPay + PoS, visible for all tiers
+                // Total revenue for this store (sats + default currency) - BTCPay + PoS, visible for all tiers
                 $defaultCurrency = strtolower(trim($store->default_currency ?? 'EUR'));
                 $byCurrency = [];
                 try {
@@ -295,8 +296,11 @@ class StoreDashboardController extends Controller
                     'sales' => ['last_7_days' => [], 'last_30_days' => [], 'total_7d' => 0, 'total_30d' => 0],
                     'top_items' => [],
                     'by_source' => array_fill_keys(InvoiceSourceService::SOURCES, [
-                        'paid_invoices_last_7d' => 0, 'total_invoices' => 0, 'sales' => ['last_7_days' => [], 'last_30_days' => [], 'total_7d' => 0, 'total_30d' => 0],
-                        'top_items' => [], 'recent_invoices' => [],
+                        'paid_invoices_last_7d' => 0,
+                        'total_invoices' => 0,
+                        'sales' => ['last_7_days' => [], 'last_30_days' => [], 'total_7d' => 0, 'total_30d' => 0],
+                        'top_items' => [],
+                        'recent_invoices' => [],
                     ]),
                     'total_revenue_sats' => 0,
                     'total_revenue_default_currency' => 0,
@@ -333,7 +337,7 @@ class StoreDashboardController extends Controller
         do {
             $result = $this->invoiceService->listInvoices($btcpayStoreId, [], $skip, $take, $apiKey);
             $chunk = $result['data'] ?? $result;
-            if (! is_array($chunk)) {
+            if (!is_array($chunk)) {
                 break;
             }
             foreach ($chunk as $inv) {
@@ -395,7 +399,7 @@ class StoreDashboardController extends Controller
         $total30d = 0;
         foreach ($invoices as $inv) {
             $createdTime = $inv['createdTime'] ?? null;
-            if (! $createdTime) {
+            if (!$createdTime) {
                 continue;
             }
             $invoiceDate = \Carbon\Carbon::parse($createdTime)->startOfDay();
@@ -420,7 +424,7 @@ class StoreDashboardController extends Controller
                 $itemCounts[$itemName]['total'] += $amount;
             }
         }
-        uasort($itemCounts, fn ($a, $b) => $b['count'] <=> $a['count']);
+        uasort($itemCounts, fn($a, $b) => $b['count'] <=> $a['count']);
         $topItems = array_slice(array_map(function ($name, $data) {
             return ['name' => $name, 'count' => $data['count'], 'total' => $data['total'], 'currency' => $data['currency']];
         }, array_keys($itemCounts), $itemCounts), 0, 5);

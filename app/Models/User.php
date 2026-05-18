@@ -34,6 +34,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
         'subscription_expires_at',
         'subscription_grace_period_ends_at',
         'is_guest',
+        'allows_satflux_email_changes',
         'guest_recovery_public_key',
         'guest_recovery_enrolled_at',
     ];
@@ -65,6 +66,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
             'subscription_expires_at' => 'datetime',
             'subscription_grace_period_ends_at' => 'datetime',
             'is_guest' => 'boolean',
+            'allows_satflux_email_changes' => 'boolean',
             'guest_recovery_enrolled_at' => 'datetime',
         ];
     }

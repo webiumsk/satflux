@@ -9,8 +9,9 @@ use App\Services\GuestUpgradeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 class AccountController extends Controller
 {
@@ -217,10 +218,10 @@ class AccountController extends Controller
     }
 
     /**
-     * Upgrade a guest account to a regular account identity.
-     * Supports:
-     * - email+password (recommended)
-     * - lightning / nostr linked login (guest flag removed, email unchanged)
+     * Upgrade a guest account to a regular (non-guest) identity.
+     *
+     * Every upgrade path requires a real email and password (same as normal registration).
+     * Lightning/Nostr paths additionally require that login method to already be linked.
      */
     public function upgradeGuest(Request $request)
     {
@@ -229,11 +230,20 @@ class AccountController extends Controller
             return response()->json(['message' => 'Only guest accounts can be upgraded.'], 422);
         }
 
+        if (is_string($request->input('email'))) {
+            $request->merge(['email' => strtolower(trim($request->input('email')))]);
+        }
+
         $validated = $request->validate([
             'method' => ['required', 'in:email,lightning,nostr'],
-            'email' => ['required_if:method,email', 'nullable', 'email:rfc,dns', 'max:255', 'unique:users,email'],
-            'password' => ['required_if:method,email', 'nullable', Password::defaults()],
-            'password_confirmation' => ['required_if:method,email', 'nullable', 'same:password'],
+            'email' => [
+                'required',
+                'string',
+                'email:rfc,dns',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($user->id),
+            ],
+            'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
         try {

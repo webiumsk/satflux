@@ -37,7 +37,7 @@ class ExportReadyNotification extends Notification
             : "{$appUrl}/stores/{$this->store->id}?section=reports";
 
         $mail = (new MailMessage)
-            ->subject("Export ready – {$this->store->name}")
+            ->subject("Export ready - {$this->store->name}")
             ->line("Your invoice export is ready.")
             ->line("Store: {$this->store->name}")
             ->action('Download export', $downloadUrl)

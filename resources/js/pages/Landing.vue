@@ -1165,12 +1165,7 @@
           <!-- Crowdfund (coming soon) -->
           <div
             class="relative bg-gradient-to-br from-gray-800/90 to-gray-900 rounded-3xl p-8 border border-dashed border-violet-500/35 shadow-xl overflow-hidden group transition-all duration-300 hover:-translate-y-1 hover:border-violet-400/45 hover:shadow-2xl hover:shadow-violet-950/25"
-          >
-            <span
-              class="absolute right-4 top-4 z-20 rounded-full bg-violet-500/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-violet-200 ring-1 ring-violet-400/30"
-            >
-              {{ t("landing.coming_soon_badge") }}
-            </span>
+          >            
             <div
               class="absolute inset-0 bg-violet-600/[0.04] pointer-events-none"
             ></div>
@@ -1194,7 +1189,7 @@
                 </svg>
               </div>
               <h3
-                class="mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 pr-24 text-xl font-bold"
+                class="mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 text-xl font-bold"
               >
                 {{ t("landing.feature_crowdfund_title") }}
               </h3>

@@ -105,6 +105,12 @@
                   class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   :placeholder="t('account.confirm_new_password')"
                 />
+                <p
+                  class="text-xs text-amber-200/90 leading-relaxed rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2"
+                  role="note"
+                >
+                  {{ t("account.guest_upgrade_email_verify_notice") }}
+                </p>
                 <button
                   type="submit"
                   :disabled="guestUpgradeLoading"
@@ -114,32 +120,83 @@
                 </button>
               </form>
 
-              <div v-else class="flex flex-wrap gap-2 mt-3">
-                <button
-                  v-if="authStore.user?.has_lightning_login"
-                  type="button"
-                  :disabled="guestUpgradeLoading"
-                  class="px-3 py-2 border border-yellow-500/60 rounded-lg text-xs font-semibold text-yellow-300 hover:bg-yellow-500/10 disabled:opacity-50"
-                  @click="handleGuestUpgradeLinked('lightning')"
+              <form
+                v-else
+                class="space-y-3 mt-3"
+                @submit.prevent="handleGuestUpgradeLinkedSubmit"
+              >
+                <template
+                  v-if="
+                    authStore.user?.has_lightning_login ||
+                    authStore.user?.has_nostr_login
+                  "
                 >
-                  {{ t("account.guest_upgrade_use_lightning") }}
-                </button>
-                <button
-                  v-if="authStore.user?.has_nostr_login"
-                  type="button"
-                  :disabled="guestUpgradeLoading"
-                  class="px-3 py-2 border border-purple-500/60 rounded-lg text-xs font-semibold text-purple-300 hover:bg-purple-500/10 disabled:opacity-50"
-                  @click="handleGuestUpgradeLinked('nostr')"
-                >
-                  {{ t("account.guest_upgrade_use_nostr") }}
-                </button>
-                <p
-                  v-if="!authStore.user?.has_lightning_login && !authStore.user?.has_nostr_login"
-                  class="text-xs text-gray-400"
-                >
+                  <div
+                    v-if="hasBothLinkedLogins"
+                    class="flex flex-wrap gap-4 text-xs text-gray-300"
+                  >
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                      <input
+                        v-model="linkedUpgradeMethod"
+                        type="radio"
+                        value="lightning"
+                        class="text-indigo-500"
+                      />
+                      <span>{{ t("account.guest_upgrade_use_lightning") }}</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                      <input
+                        v-model="linkedUpgradeMethod"
+                        type="radio"
+                        value="nostr"
+                        class="text-indigo-500"
+                      />
+                      <span>{{ t("account.guest_upgrade_use_nostr") }}</span>
+                    </label>
+                  </div>
+                  <input
+                    v-model="guestUpgradeForm.email"
+                    type="email"
+                    required
+                    class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    :placeholder="t('auth.email_placeholder')"
+                  />
+                  <input
+                    v-model="guestUpgradeForm.password"
+                    type="password"
+                    required
+                    class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    :placeholder="t('account.new_password')"
+                  />
+                  <input
+                    v-model="guestUpgradeForm.password_confirmation"
+                    type="password"
+                    required
+                    class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    :placeholder="t('account.confirm_new_password')"
+                  />
+                  <p
+                    class="text-xs text-amber-200/90 leading-relaxed rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2"
+                    role="note"
+                  >
+                    {{ t("account.guest_upgrade_email_verify_notice") }}
+                  </p>
+                  <button
+                    type="submit"
+                    :disabled="guestUpgradeLoading"
+                    class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-50"
+                  >
+                    {{
+                      guestUpgradeLoading
+                        ? t("auth.saving")
+                        : t("account.guest_upgrade_linked_submit")
+                    }}
+                  </button>
+                </template>
+                <p v-else class="text-xs text-gray-400">
                   {{ t("account.guest_upgrade_linked_empty") }}
                 </p>
-              </div>
+              </form>
             </div>
           </div>
         </div>
@@ -886,6 +943,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed, onUnmounted } from "vue";
+import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
 import { useFlashStore } from "../../store/flash";
@@ -904,6 +962,7 @@ import {
 import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
 
 const { t, locale } = useI18n();
+const router = useRouter();
 const { btcPayUrl, load: loadBtcpayConfig } = useBtcPayUrl();
 const authStore = useAuthStore();
 const flashStore = useFlashStore();
@@ -944,12 +1003,19 @@ const guestUpgradeForm = ref({
   password: "",
   password_confirmation: "",
 });
+const linkedUpgradeMethod = ref<"lightning" | "nostr">("lightning");
 const lnurlLinkUrl = ref("");
 const lnurlK1 = ref("");
 const lnurlLinkLoading = ref(false);
 const lnurlLinkError = ref("");
 const lnurlLinkPolling = ref(false);
 let linkPollingInterval: number | null = null;
+
+const hasBothLinkedLogins = computed(
+  () =>
+    !!authStore.user?.has_lightning_login &&
+    !!authStore.user?.has_nostr_login,
+);
 
 // Plan information
 const currentPlanName = computed(() => {
@@ -995,6 +1061,9 @@ const isProPlan = computed(() => authStore.user?.role === "pro");
 // Upgrade options logic
 const showUpgradeOptions = computed(() => {
   const role = authStore.user?.role || "free";
+  if (authStore.user?.is_guest) {
+    return false;
+  }
   // Show upgrades if user is free or pro (can upgrade to enterprise)
   // Don't show for enterprise (top tier) or admin/support (not applicable)
   return role === "free" || role === "pro";
@@ -1263,11 +1332,11 @@ async function handleGuestUpgradeEmail() {
     } else {
       await authStore.fetchUser();
     }
-    flashStore.success(t("account.guest_upgrade_email_success"));
     clearStoredGuestMnemonic();
     storedGuestMnemonic.value = null;
     guestUpgradeForm.value.password = "";
     guestUpgradeForm.value.password_confirmation = "";
+    await router.push({ name: "account-check-email" });
   } catch (e: any) {
     flashStore.error(
       e?.response?.data?.message || t("account.guest_upgrade_failed"),
@@ -1277,14 +1346,41 @@ async function handleGuestUpgradeEmail() {
   }
 }
 
-async function handleGuestUpgradeLinked(method: "lightning" | "nostr") {
+function resolveLinkedUpgradeMethod(): "lightning" | "nostr" {
+  const u = authStore.user;
+  if (!u?.has_lightning_login && !u?.has_nostr_login) {
+    return "lightning";
+  }
+  if (hasBothLinkedLogins.value) {
+    return linkedUpgradeMethod.value;
+  }
+  if (u.has_lightning_login) {
+    return "lightning";
+  }
+
+  return "nostr";
+}
+
+async function handleGuestUpgradeLinkedSubmit() {
   guestUpgradeLoading.value = true;
   try {
-    await api.put("/user/guest/upgrade", { method });
-    await authStore.fetchUser();
-    flashStore.success(t("account.guest_upgrade_linked_success"));
+    const method = resolveLinkedUpgradeMethod();
+    const response = await api.put("/user/guest/upgrade", {
+      method,
+      email: guestUpgradeForm.value.email,
+      password: guestUpgradeForm.value.password,
+      password_confirmation: guestUpgradeForm.value.password_confirmation,
+    });
+    if (response?.data?.user) {
+      authStore.user = response.data.user;
+    } else {
+      await authStore.fetchUser();
+    }
     clearStoredGuestMnemonic();
     storedGuestMnemonic.value = null;
+    guestUpgradeForm.value.password = "";
+    guestUpgradeForm.value.password_confirmation = "";
+    await router.push({ name: "account-check-email" });
   } catch (e: any) {
     flashStore.error(
       e?.response?.data?.message || t("account.guest_upgrade_failed"),

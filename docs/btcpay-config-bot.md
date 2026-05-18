@@ -56,22 +56,22 @@ Then re-run a one-shot poll and confirm the log passes **`panel_reveal`** withou
 
 Cron must run **`npm install` / `npx playwright install chromium`** as the **same user** that runs `poll.js` (e.g. root uses `/root/.cache/ms-playwright`); switching users without reinstalling browsers can also produce confusing failures.
 
-3. **Environment** – bot loads, in order (later files override earlier keys): `.env`, `.env.production`, **`.env.standalone`**, then process environment. Use `.env.standalone` on the host if that is where you keep production secrets (same pattern as some Satflux deployments).
+3. **Environment** - bot loads, in order (later files override earlier keys): `.env`, `.env.production`, **`.env.standalone`**, then process environment. Use `.env.standalone` on the host if that is where you keep production secrets (same pattern as some Satflux deployments).
 
-| Variable | Description |
-|----------|-------------|
-| `PANEL_BOT_TOKEN` | Sanctum token for bot (support/admin user in the **panel**, not only BTCPay) |
-| `PANEL_BOT_PASSWORD` | Bot user password (if used by automation) |
-| `BTCPAY_BOT_EMAIL` | BTCPay login email |
-| `BTCPAY_BOT_PASSWORD` | BTCPay login password |
-| `BTCPAY_BASE_URL` | BTCPay Server URL (e.g. `https://pay.satflux.io`) |
-| `APP_URL` | Panel base URL (used if `PANEL_URL` / `BTCPAY_BOT_PANEL_URL` unset) |
-| `PANEL_URL` | Optional override for panel URL (first choice) |
-| `BTCPAY_BOT_PANEL_URL` | Optional panel URL for the bot (second choice; common in Docker job docs) |
+| Variable               | Description                                                                  |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| `PANEL_BOT_TOKEN`      | Sanctum token for bot (support/admin user in the **panel**, not only BTCPay) |
+| `PANEL_BOT_PASSWORD`   | Bot user password (if used by automation)                                    |
+| `BTCPAY_BOT_EMAIL`     | BTCPay login email                                                           |
+| `BTCPAY_BOT_PASSWORD`  | BTCPay login password                                                        |
+| `BTCPAY_BASE_URL`      | BTCPay Server URL (e.g. `https://pay.satflux.io`)                            |
+| `APP_URL`              | Panel base URL (used if `PANEL_URL` / `BTCPAY_BOT_PANEL_URL` unset)          |
+| `PANEL_URL`            | Optional override for panel URL (first choice)                               |
+| `BTCPAY_BOT_PANEL_URL` | Optional panel URL for the bot (second choice; common in Docker job docs)    |
 
 For local dev, **`APP_URL=http://localhost:8080`** (or your Vite host) is enough when the panel is reachable from the host. In production, set a URL the **bot host** can reach (often HTTPS), via `PANEL_URL`, `BTCPAY_BOT_PANEL_URL`, or `APP_URL`.
 
-4. **Panel API token** – create via tinker in Docker:
+4. **Panel API token** - create via tinker in Docker:
 
 ```bash
 docker compose exec -e XDG_CONFIG_HOME=/tmp php php artisan tinker
@@ -128,8 +128,8 @@ The poller on host is simpler and avoids Docker networking.
 
 ## Logging
 
-- **stdout** – JSON lines
-- **Log file** – `BTCPAY_BOT_LOG_FILE` or `/tmp/btcpay-config-bot.log`
+- **stdout** - JSON lines
+- **Log file** - `BTCPAY_BOT_LOG_FILE` or `/tmp/btcpay-config-bot.log`
 
 If you redirect cron output to another file (e.g. `/tmp/btcpay-bot.log`), shell errors and bot JSON may appear there in addition to the logger file above.
 

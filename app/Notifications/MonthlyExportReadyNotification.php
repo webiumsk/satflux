@@ -37,7 +37,7 @@ class MonthlyExportReadyNotification extends Notification
         $exportsUrl = "{$appUrl}/stores/{$this->store->id}?section=reports";
 
         $mail = (new MailMessage)
-            ->subject("Monthly export ready – {$this->store->name} ({$this->monthLabel})")
+            ->subject("Monthly export ready - {$this->store->name} ({$this->monthLabel})")
             ->line("Your automatic monthly export of settled invoices for {$this->monthLabel} is ready.")
             ->line("Store: {$this->store->name}")
             ->action('Download export', $exportsUrl)

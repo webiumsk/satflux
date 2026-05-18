@@ -34,6 +34,21 @@ class EnsureStoreLimit
             return $next($request);
         }
 
+        // Guest accounts: always at most one store (upgrade for more).
+        if ((bool) ($user->is_guest ?? false)) {
+            $currentStoreCount = $user->stores()->count();
+            if ($currentStoreCount >= 1) {
+                return response()->json([
+                    'message' => __('auth.guest_one_store_only'),
+                    'code' => 'guest_store_limit',
+                    'current_count' => $currentStoreCount,
+                    'max_allowed' => 1,
+                ], 403);
+            }
+
+            return $next($request);
+        }
+
         // Get user's current subscription plan
         $plan = $user->currentSubscriptionPlan();
 

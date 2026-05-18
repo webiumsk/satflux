@@ -10,10 +10,14 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class SyncBtcpayEmailJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    /** @var bool|null Lazily resolved once per worker process */
+    private static ?bool $hasAllowsSatfluxEmailColumn = null;
 
     public int $tries = 5;
 
@@ -26,12 +30,30 @@ class SyncBtcpayEmailJob implements ShouldQueue
     public function handle(UserService $userService): void
     {
         $user = User::find($this->userId);
-        if (! $user || empty($user->btcpay_user_id) || empty($user->email)) {
+        if (! $user || empty($user->email)) {
+            return;
+        }
+
+        if (self::$hasAllowsSatfluxEmailColumn === null) {
+            self::$hasAllowsSatfluxEmailColumn = Schema::hasColumn('users', 'allows_satflux_email_changes');
+        }
+        if (self::$hasAllowsSatfluxEmailColumn && ! ($user->allows_satflux_email_changes ?? false)) {
+            return;
+        }
+
+        if (! empty($user->btcpay_api_key)) {
+            $userService->updateCurrentUserProfile($user->getBtcPayApiKeyOrFail(), [
+                'email' => (string) $user->email,
+            ]);
+
+            return;
+        }
+
+        if (empty($user->btcpay_user_id)) {
             return;
         }
 
         $userService->updateUser((string) $user->btcpay_user_id, [
-            // Always sync the latest persisted email to avoid stale queued payload updates.
             'email' => (string) $user->email,
         ]);
     }

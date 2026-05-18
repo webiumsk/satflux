@@ -106,6 +106,22 @@ class AppController extends Controller
             ], 400);
         }
 
+        $owner = $store->user;
+        if ($owner && (bool) ($owner->is_guest ?? false)) {
+            if ($request->app_type !== 'PointOfSale') {
+                return response()->json([
+                    'message' => __('auth.guest_feature_requires_account'),
+                    'code' => 'guest_feature_locked',
+                ], 403);
+            }
+            if ($this->countActivePointOfSaleApps($store) >= 1) {
+                return response()->json([
+                    'message' => __('auth.guest_pos_limit_one'),
+                    'code' => 'guest_pos_limit',
+                ], 403);
+            }
+        }
+
         return DB::transaction(function () use ($request, $store) {
             // Load merchant API key from store owner
             $userApiKey = $store->user->getBtcPayApiKeyOrFail();
@@ -286,6 +302,13 @@ class AppController extends Controller
         if ($data === null) {
             return response()->json(['message' => 'App not found for this store.'], 404);
         }
+        if ($store->user && (bool) ($store->user->is_guest ?? false) && $app->app_type !== 'PointOfSale') {
+            return response()->json([
+                'message' => __('auth.guest_feature_requires_account'),
+                'code' => 'guest_feature_locked',
+            ], 403);
+        }
+
         return response()->json(['data' => $data]);
     }
 
@@ -305,6 +328,13 @@ class AppController extends Controller
             return response()->json([
                 'message' => 'App not found for this store.',
             ], 404);
+        }
+
+        if ($store->user && (bool) ($store->user->is_guest ?? false) && $app->app_type !== 'PointOfSale') {
+            return response()->json([
+                'message' => __('auth.guest_feature_requires_account'),
+                'code' => 'guest_feature_locked',
+            ], 403);
         }
 
         // Load merchant API key from store owner
@@ -631,6 +661,13 @@ class AppController extends Controller
             ], 404);
         }
 
+        if ($store->user && (bool) ($store->user->is_guest ?? false) && $app->app_type !== 'PointOfSale') {
+            return response()->json([
+                'message' => __('auth.guest_feature_requires_account'),
+                'code' => 'guest_feature_locked',
+            ], 403);
+        }
+
         // Load merchant API key from store owner
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
@@ -781,6 +818,23 @@ class AppController extends Controller
         }
 
         return $data;
+    }
+
+    protected function countActivePointOfSaleApps(Store $store): int
+    {
+        return App::query()
+            ->where('store_id', $store->id)
+            ->where('app_type', 'PointOfSale')
+            ->get()
+            ->filter(function (App $app) {
+                $archived = data_get($app->config, 'archived', false);
+                if (is_string($archived)) {
+                    return ! (strtolower($archived) === 'true' || $archived === '1');
+                }
+
+                return ! (bool) $archived;
+            })
+            ->count();
     }
 
     /**

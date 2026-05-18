@@ -79,7 +79,7 @@ Browser (Vue SPA)
 
 - Laravel Sanctum SPA cookie-based auth (not tokens)
 - Browser sends `laravel_session` cookie + `X-XSRF-TOKEN` header on every request
-- For local dev: `SESSION_SECURE_COOKIE=false`, `SANCTUM_STATEFUL_DOMAINS=localhost:8080`
+- For local dev: `SESSION_SECURE_COOKIE=false`, and set `SANCTUM_STATEFUL_DOMAINS` to the **exact** browser host:port (e.g. `localhost:8000` for `php artisan serve`, or `localhost:8080` for Docker). Plain `localhost` does not match `localhost:8000` for Sanctum stateful detection, so guest login and SPA sessions will not persist without the port.
 
 ## Key Conventions
 

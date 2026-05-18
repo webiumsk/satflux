@@ -21,6 +21,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SetLocale::class,
         ]);
         $middleware->statefulApi();
+
+        $middleware->alias([
+            'guest.restrict' => \App\Http\Middleware\RejectGuestRestrictedFeatures::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // For API routes, return JSON 401 instead of redirecting to login

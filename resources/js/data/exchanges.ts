@@ -1,4 +1,4 @@
-// Preferred Price Source / Exchange list from BTCPay (no CoinGecko – free API discontinued)
+// Preferred Price Source / Exchange list from BTCPay (no CoinGecko - free API discontinued)
 export const exchanges = [
   { value: '', label: 'Recommendation (Kraken)' },
   { value: 'barebitcoin', label: 'Bare Bitcoin' },

@@ -35,7 +35,7 @@ Multi-tenant web app for merchants to manage **BTCPay Server** stores (invoices,
 3. **Configure `.env`** - database, `BTCPAY_BASE_URL`, `BTCPAY_API_KEY`, webhooks, etc. For local SPA auth over HTTP:
 
    ```env
-   SANCTUM_STATEFUL_DOMAINS=localhost,localhost:8080,127.0.0.1,127.0.0.1:8080
+   SANCTUM_STATEFUL_DOMAINS=localhost,localhost:8000,localhost:8080,127.0.0.1,127.0.0.1:8000,127.0.0.1:8080
    SESSION_DOMAIN=
    SESSION_SECURE_COOKIE=false
    SESSION_SAME_SITE=lax

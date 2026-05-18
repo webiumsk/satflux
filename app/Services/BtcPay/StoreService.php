@@ -15,6 +15,23 @@ class StoreService
     }
 
     /**
+     * After temporarily using a merchant/user API key, restore the server key (or prior key).
+     * Never skip restore when $userApiKey was applied: an empty captured key must not leave the client on the merchant key.
+     */
+    private function restoreApiKeyAfterUserScopedCall(?string $userApiKey, ?string $previousApiKey): void
+    {
+        if ($userApiKey === null || $userApiKey === '') {
+            return;
+        }
+
+        $restore = (is_string($previousApiKey) && $previousApiKey !== '')
+            ? $previousApiKey
+            : (string) config('services.btcpay.api_key', '');
+
+        $this->client->setApiKey($restore);
+    }
+
+    /**
      * Create a new store in BTCPay Server.
      * If a user-level API key is provided, it will be used instead of server-level.
      */
@@ -30,10 +47,7 @@ class StoreService
         try {
             return $this->client->post('/api/v1/stores', $data);
         } finally {
-            // Restore original API key if we changed it
-            if ($userApiKey && $originalApiKey) {
-                $this->client->setApiKey($originalApiKey);
-            }
+            $this->restoreApiKeyAfterUserScopedCall($userApiKey, $originalApiKey);
         }
     }
 
@@ -58,10 +72,7 @@ class StoreService
             try {
                 return $this->client->get("/api/v1/stores/{$storeId}");
             } finally {
-                // Restore original API key if we changed it
-                if ($userApiKey && $originalApiKey) {
-                    $this->client->setApiKey($originalApiKey);
-                }
+                $this->restoreApiKeyAfterUserScopedCall($userApiKey, $originalApiKey);
             }
         });
     }
@@ -82,10 +93,7 @@ class StoreService
         try {
             return $this->client->get('/api/v1/stores');
         } finally {
-            // Restore original API key if we changed it
-            if ($userApiKey && $originalApiKey) {
-                $this->client->setApiKey($originalApiKey);
-            }
+            $this->restoreApiKeyAfterUserScopedCall($userApiKey, $originalApiKey);
         }
     }
 
@@ -108,10 +116,7 @@ class StoreService
 
             return $result;
         } finally {
-            // Restore original API key if we changed it
-            if ($userApiKey && $originalApiKey) {
-                $this->client->setApiKey($originalApiKey);
-            }
+            $this->restoreApiKeyAfterUserScopedCall($userApiKey, $originalApiKey);
         }
     }
 
@@ -197,7 +202,7 @@ class StoreService
 
     /**
      * Delete a store in BTCPay Server (DELETE /api/v1/stores/{storeId}).
-     * Must use server-level API key – merchant keys typically lack this permission.
+     * Must use server-level API key - merchant keys typically lack this permission.
      *
      * @param string|null $userApiKey Optional merchant key: HTTP delete always uses server key; when set, its hash-scoped store cache is cleared too
      */
@@ -238,10 +243,7 @@ class StoreService
 
             return $result;
         } finally {
-            // Restore original API key if we changed it
-            if ($userApiKey && $originalApiKey) {
-                $this->client->setApiKey($originalApiKey);
-            }
+            $this->restoreApiKeyAfterUserScopedCall($userApiKey, $originalApiKey);
         }
     }
 
@@ -272,16 +274,9 @@ class StoreService
             // Partial PUT matches how StoreSettingsController updates BTCPay.
             $this->updateStore($storeId, ['logoUrl' => null], $userApiKey);
         } finally {
-            // Restore original API key if we changed it
-            if ($userApiKey && $originalApiKey) {
-                $this->client->setApiKey($originalApiKey);
-            }
+            $this->restoreApiKeyAfterUserScopedCall($userApiKey, $originalApiKey);
         }
     }
 }
-
-
-
-
 
 

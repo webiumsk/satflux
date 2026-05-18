@@ -7,11 +7,11 @@ use App\Services\BtcPay\SubscriptionService as BtcPaySubscriptionService;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
 
 class SubscriptionController extends Controller
 {
     protected BtcPaySubscriptionService $btcpaySubscriptionService;
+
     protected SubscriptionService $subscriptionService;
 
     public function __construct(BtcPaySubscriptionService $btcpaySubscriptionService, SubscriptionService $subscriptionService)
@@ -22,10 +22,10 @@ class SubscriptionController extends Controller
 
     /**
      * Create a plan checkout and return the checkout URL.
-     * 
+     *
      * POST /api/subscriptions/checkout
      * Body: { plan: 'pro'|'enterprise', customerEmail? }
-     * 
+     *
      * For custom integrations, can also use:
      * Body: { storeId, planId, offeringId, customerEmail? }
      */
@@ -35,7 +35,7 @@ class SubscriptionController extends Controller
         // For MVP, we require auth, but this can be made optional later
         $allowGuestCheckout = config('services.btcpay.allow_guest_subscriptions', false);
 
-        if (!$allowGuestCheckout && !$request->user()) {
+        if (! $allowGuestCheckout && ! $request->user()) {
             return response()->json([
                 'message' => 'Authentication required to create checkout',
             ], 401);
@@ -49,13 +49,17 @@ class SubscriptionController extends Controller
             'customerEmail' => ['nullable', 'email', 'max:255'],
         ]);
 
+        if ($blocked = $this->subscriptionBlockedForGuestResponse($request)) {
+            return $blocked;
+        }
+
         // If plan name is provided, use subscription store config
         if ($request->has('plan')) {
             $storeId = config('services.btcpay.subscription_store_id');
             $offeringId = config('services.btcpay.subscription_offering_id');
             $planId = config("services.btcpay.subscription_plans.{$request->input('plan')}");
 
-            if (!$storeId || !$offeringId || !$planId) {
+            if (! $storeId || ! $offeringId || ! $planId) {
                 return response()->json([
                     'message' => 'Subscription configuration is incomplete. Please contact support.',
                 ], 500);
@@ -160,9 +164,9 @@ class SubscriptionController extends Controller
 
     /**
      * Handle subscription success redirect from BTCPay.
-     * 
+     *
      * GET /api/subscriptions/success?checkoutPlanId=...
-     * 
+     *
      * This endpoint processes the redirect after successful subscription checkout
      * and updates the user's role based on the plan they subscribed to.
      */
@@ -170,7 +174,7 @@ class SubscriptionController extends Controller
     {
         $checkoutPlanId = $request->query('checkoutPlanId');
 
-        if (!$checkoutPlanId) {
+        if (! $checkoutPlanId) {
             return response()->json([
                 'message' => 'Missing checkoutPlanId parameter',
             ], 400);
@@ -201,12 +205,13 @@ class SubscriptionController extends Controller
                 ?? $checkoutDetails['email']
                 ?? null;
 
-            if (!$planId) {
+            if (! $planId) {
                 Log::warning('Subscription success - plan ID not found in checkout details', [
                     'checkout_id' => $checkoutPlanId,
                     'checkout_details' => $checkoutDetails,
                     'checkout_keys' => array_keys($checkoutDetails),
                 ]);
+
                 return response()->json([
                     'message' => 'Plan information not found in checkout',
                 ], 400);
@@ -222,12 +227,13 @@ class SubscriptionController extends Controller
                 $planName = 'enterprise';
             }
 
-            if (!$planName) {
+            if (! $planName) {
                 Log::warning('Subscription success - unknown plan ID', [
                     'checkout_id' => $checkoutPlanId,
                     'plan_id' => $planId,
                     'subscription_plans' => $subscriptionPlans,
                 ]);
+
                 return response()->json([
                     'message' => 'Unknown subscription plan',
                 ], 400);
@@ -240,16 +246,17 @@ class SubscriptionController extends Controller
             }
 
             // Fallback: if user not found by email, try to get from session
-            if (!$user && $request->user()) {
+            if (! $user && $request->user()) {
                 $user = $request->user();
             }
 
-            if (!$user) {
+            if (! $user) {
                 Log::warning('Subscription success - user not found', [
                     'checkout_id' => $checkoutPlanId,
                     'customer_email' => $customerEmail,
                     'has_session' => $request->user() !== null,
                 ]);
+
                 // Don't return error - just log, user might need to login
                 return response()->json([
                     'message' => 'User not found. Please login to activate your subscription.',
@@ -319,17 +326,24 @@ class SubscriptionController extends Controller
 
     /**
      * Get user's subscription details.
-     * 
+     *
      * GET /api/subscriptions/details
      */
     public function details(Request $request)
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'message' => 'Unauthenticated',
             ], 401);
+        }
+
+        if ((bool) ($user->is_guest ?? false)) {
+            return response()->json([
+                'subscriber' => null,
+                'creditBalance' => 0,
+            ]);
         }
 
         $storeId = config('services.btcpay.subscription_store_id');
@@ -380,22 +394,31 @@ class SubscriptionController extends Controller
 
     /**
      * Get subscriber credit balance.
-     * 
+     *
      * GET /api/subscriptions/credits
      */
     public function getCredits(Request $request)
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'message' => 'Unauthenticated',
             ], 401);
         }
 
+        $currency = $this->normalizeSubscriptionCreditsCurrency((string) $request->query('currency', 'SATS'));
+
+        if ((bool) ($user->is_guest ?? false)) {
+            return response()->json([
+                'balance' => 0,
+                'currency' => $currency,
+                'details' => [],
+            ]);
+        }
+
         $storeId = config('services.btcpay.subscription_store_id');
         $offeringId = config('services.btcpay.subscription_offering_id');
-        $currency = $request->query('currency', 'SATS');
 
         try {
             $credits = $this->btcpaySubscriptionService->getSubscriberCredits($storeId, $offeringId, $user->email, $currency);
@@ -421,7 +444,7 @@ class SubscriptionController extends Controller
 
     /**
      * Add credit to subscriber account.
-     * 
+     *
      * POST /api/subscriptions/credits
      * Body: { amount: number, currency?: string }
      */
@@ -429,7 +452,7 @@ class SubscriptionController extends Controller
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'message' => 'Unauthenticated',
             ], 401);
@@ -440,9 +463,13 @@ class SubscriptionController extends Controller
             'currency' => ['nullable', 'string', 'in:SATS,BTC'],
         ]);
 
+        if ($blocked = $this->subscriptionBlockedForGuestResponse($request)) {
+            return $blocked;
+        }
+
         $storeId = config('services.btcpay.subscription_store_id');
         $offeringId = config('services.btcpay.subscription_offering_id');
-        $currency = $request->input('currency', 'SATS');
+        $currency = $this->normalizeSubscriptionCreditsCurrency((string) $request->input('currency', 'SATS'));
         $amount = $request->input('amount');
 
         try {
@@ -455,7 +482,7 @@ class SubscriptionController extends Controller
             $invoiceUrl = $result['invoiceUrl'] ?? $result['url'] ?? null;
 
             // If invoice URL is not in response, construct it from base URL and invoice ID
-            if (!$invoiceUrl && $invoiceId) {
+            if (! $invoiceUrl && $invoiceId) {
                 $baseUrl = config('services.btcpay.base_url');
                 $invoiceUrl = "{$baseUrl}/i/{$invoiceId}";
             }
@@ -481,5 +508,27 @@ class SubscriptionController extends Controller
             ], $e->getStatusCode() ?: 500);
         }
     }
-}
 
+    private function subscriptionBlockedForGuestResponse(Request $request): ?\Illuminate\Http\JsonResponse
+    {
+        $user = $request->user();
+        if ($user instanceof User && (bool) ($user->is_guest ?? false)) {
+            return response()->json([
+                'message' => __('messages.subscription_guest_must_upgrade_account'),
+                'code' => 'guest_subscription_blocked',
+            ], 422);
+        }
+
+        return null;
+    }
+
+    /**
+     * Credits API only supports SATS/BTC; reject arbitrary query/body values.
+     */
+    private function normalizeSubscriptionCreditsCurrency(string $raw): string
+    {
+        $upper = strtoupper(trim($raw));
+
+        return in_array($upper, ['SATS', 'BTC'], true) ? $upper : 'SATS';
+    }
+}

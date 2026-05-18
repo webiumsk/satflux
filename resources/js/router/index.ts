@@ -95,6 +95,16 @@ const router = createRouter({
             meta: { public: true, titleKey: 'seo.pricing_title' },
         },
         {
+            path: '/account/check-email',
+            name: 'account-check-email',
+            component: () => import('../pages/account/PendingEmailVerification.vue'),
+            meta: {
+                requiresAuth: true,
+                titleKey: 'seo.account_check_email_title',
+                descriptionKey: 'seo.account_check_email_description',
+            },
+        },
+        {
             path: '/account',
             name: 'account',
             component: () => import('../pages/account/Profile.vue'),
@@ -377,6 +387,7 @@ router.beforeEach(async (to, from, next) => {
             to.name === 'register' ||
             to.name === 'password-reset' ||
             to.name === 'verify-email' ||
+            to.name === 'account-check-email' ||
             to.name === 'account';
 
         if (!authOnlyExempt) {
@@ -404,6 +415,11 @@ router.beforeEach(async (to, from, next) => {
             const ready = await isGuestWalletReady(primaryStoreId);
             if (!ready && (to.name !== 'stores-wallet-connection' || to.params.id !== primaryStoreId)) {
                 next({ name: 'stores-wallet-connection', params: { id: primaryStoreId } });
+                return;
+            }
+
+            if (to.name === 'stores-create') {
+                next({ name: 'stores-show', params: { id: primaryStoreId } });
                 return;
             }
         }
