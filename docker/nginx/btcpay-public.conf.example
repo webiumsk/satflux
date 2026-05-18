@@ -11,8 +11,14 @@
 #
 # Greenfield API (/api/v1/...) is called server-side via BTCPAY_BASE_URL — configure that
 # separately (may be the same public URL or an internal Docker hostname).
+#
+# Use exact /raffle and prefix /raffle/ so /raffles (Satflux list) is not proxied.
 
-location ^~ /raffle {
+location = /raffle {
+    return 302 /raffle/;
+}
+
+location ^~ /raffle/ {
     proxy_pass http://127.0.0.1:14142;
     proxy_http_version 1.1;
     proxy_set_header Host $host;

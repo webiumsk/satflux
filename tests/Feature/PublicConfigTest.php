@@ -26,7 +26,7 @@ class PublicConfigTest extends TestCase
     {
         config([
             'services.btcpay.base_url' => 'https://pay.example.com',
-            'services.btcpay.public_url' => 'https://pay.example.com',
+            'services.btcpay.public_url' => '',
             'services.btcpay.lightning_address_domain' => '',
         ]);
 

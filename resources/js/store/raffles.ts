@@ -41,16 +41,25 @@ export interface RaffleDrawing {
     drawnAt: string;
 }
 
-export interface CreateRafflePayload {
+type RafflePricingSatsFields = {
+    ticketPriceSats: number;
+    ticketCurrency?: never;
+    ticketPrice?: never;
+};
+
+type RafflePricingFiatFields = {
+    ticketCurrency: string;
+    ticketPrice: number;
+    ticketPriceSats?: never;
+};
+
+export type CreateRafflePayload = {
     name: string;
     description?: string | null;
     maxTickets?: number | null;
-    ticketCurrency?: string;
-    ticketPrice?: number;
-    ticketPriceSats?: number;
-}
+} & (RafflePricingSatsFields | RafflePricingFiatFields);
 
-export type UpdateRafflePayload = CreateRafflePayload;
+export type UpdateRafflePayload = Partial<CreateRafflePayload>;
 
 export interface PresenterTokenResponse {
     token: string;

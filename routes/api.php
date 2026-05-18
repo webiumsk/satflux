@@ -119,6 +119,9 @@ Route::get('/version', function () {
 // Public BTCPay URL for SPA (BTCPAY_PUBLIC_URL or BTCPAY_BASE_URL; no Vite rebuild needed)
 Route::get('/config', function () {
     $publicBase = rtrim((string) config('services.btcpay.public_url', ''), '/');
+    if ($publicBase === '') {
+        $publicBase = rtrim((string) config('services.btcpay.base_url', ''), '/');
+    }
 
     return response()->json([
         'btcpay_base_url' => $publicBase,

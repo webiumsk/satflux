@@ -11,7 +11,7 @@
   <div v-else-if="error" class="flex min-h-0 flex-1 items-center justify-center bg-gray-900">
     <div class="text-center px-4">
       <p class="text-red-400 mb-4">{{ error }}</p>
-      <button type="button" @click="emit('retry')" class="text-indigo-400 hover:text-indigo-300">{{ t('common.retry') }}</button>
+      <button type="button" class="text-indigo-400 hover:text-indigo-300" @click="emit('retry')">{{ t('common.retry') }}</button>
     </div>
   </div>
   <div v-else class="flex min-h-0 flex-1 overflow-hidden bg-gray-900">

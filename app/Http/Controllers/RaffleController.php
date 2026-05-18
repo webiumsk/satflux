@@ -260,15 +260,16 @@ class RaffleController extends Controller
 
         $path = '/raffle/'.$raffleId.'/present';
         $presenterUrl = (string) ($tokenPayload['presenterUrl'] ?? '');
-        $publicHost = parse_url($publicBase, PHP_URL_HOST);
+        $publicOrigin = $this->normalizeHttpOrigin($publicBase);
 
         $needsRebuild = true;
         if ($presenterUrl !== '' && str_starts_with($presenterUrl, 'http')) {
             $parsed = parse_url($presenterUrl);
             $pathOk = isset($parsed['path']) && str_contains((string) $parsed['path'], $path);
-            $hostOk = $publicHost && isset($parsed['host'])
-                && strcasecmp((string) $parsed['host'], (string) $publicHost) === 0;
-            $needsRebuild = ! ($pathOk && $hostOk);
+            $presenterOrigin = $this->normalizeHttpOrigin($presenterUrl);
+            $originOk = $publicOrigin !== null && $presenterOrigin !== null
+                && strcasecmp($publicOrigin, $presenterOrigin) === 0;
+            $needsRebuild = ! ($pathOk && $originOk);
         }
 
         if ($needsRebuild) {
@@ -276,6 +277,24 @@ class RaffleController extends Controller
         }
 
         return $tokenPayload;
+    }
+
+    protected function normalizeHttpOrigin(string $url): ?string
+    {
+        $parts = parse_url($url);
+        if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'])) {
+            return null;
+        }
+
+        $scheme = strtolower((string) $parts['scheme']);
+        $host = strtolower((string) $parts['host']);
+        $port = $parts['port'] ?? ($scheme === 'https' ? 443 : 80);
+
+        if (($scheme === 'http' && (int) $port === 80) || ($scheme === 'https' && (int) $port === 443)) {
+            return "{$scheme}://{$host}";
+        }
+
+        return "{$scheme}://{$host}:{$port}";
     }
 
     protected function enrichRaffle(array $raffle): array

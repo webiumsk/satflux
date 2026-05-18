@@ -7,51 +7,64 @@
     @show-settings="goSettings"
     @show-section="goSection"
   >
-    <template #default>
-      <div v-if="detailLoading && !raffle" class="max-w-7xl mx-auto px-4 py-16 text-center text-gray-400">
-        {{ t('common.loading') }}
-      </div>
-      <div v-else-if="detailError" class="max-w-7xl mx-auto px-4 py-16 text-center text-red-400">
-        {{ detailError }}
-      </div>
-      <div v-else-if="raffle" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-          <div>
-            <button type="button" class="text-gray-400 hover:text-white text-sm mb-3 flex items-center gap-2" @click="goList">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-              {{ t('raffles.back_to_list') }}
-            </button>
-            <div class="flex items-center gap-3 flex-wrap">
-              <h1 class="text-2xl font-bold text-white">{{ raffle.name }}</h1>
-              <span :class="statusBadgeClass(raffle.status)" class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium">
-                {{ t(`raffles.status_${raffle.status.toLowerCase()}`) }}
-              </span>
+    <AppShowLayout v-if="store" :store="store" :app="virtualApp">
+      <template #toolbar>
+        <div class="border-b border-gray-800 bg-gray-900/80 backdrop-blur-md">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div class="flex items-start gap-4 min-w-0">
+                <button type="button" class="mt-1 text-gray-400 hover:text-white transition-colors shrink-0" @click="goList">
+                  <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                </button>
+                <div class="min-w-0">
+                  <div v-if="raffle" class="flex items-center gap-3 flex-wrap">
+                    <h1 class="text-2xl font-bold text-white">{{ raffle.name }}</h1>
+                    <span :class="statusBadgeClass(raffle.status)" class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium">
+                      {{ t(`raffles.status_${raffle.status.toLowerCase()}`) }}
+                    </span>
+                  </div>
+                  <h1 v-else class="text-2xl font-bold text-white">{{ t('raffles.title') }}</h1>
+                  <p v-if="raffle?.description" class="text-gray-400 mt-2 max-w-2xl">{{ raffle.description }}</p>
+                  <p v-else class="text-sm text-gray-400 mt-1">
+                    <span class="text-indigo-400">{{ store.name }}</span>
+                  </p>
+                </div>
+              </div>
+              <div v-if="raffle" class="flex flex-wrap gap-2 shrink-0">
+                <button
+                  v-for="action in raffle.allowedActions"
+                  :key="action"
+                  type="button"
+                  :disabled="actionLoading"
+                  class="px-4 py-2 text-sm font-medium rounded-lg text-white disabled:opacity-50"
+                  :class="actionButtonClass(action)"
+                  @click="openConfirm(action)"
+                >
+                  {{ t(`raffles.action_${action}`) }}
+                </button>
+                <button
+                  type="button"
+                  class="px-4 py-2 text-sm font-medium rounded-lg border border-gray-600 text-gray-200 hover:bg-gray-700"
+                  :disabled="refreshing"
+                  @click="refreshAll"
+                >
+                  {{ t('raffles.refresh') }}
+                </button>
+              </div>
             </div>
-            <p v-if="raffle.description" class="text-gray-400 mt-2 max-w-2xl">{{ raffle.description }}</p>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="action in raffle.allowedActions"
-              :key="action"
-              type="button"
-              :disabled="actionLoading"
-              class="px-4 py-2 text-sm font-medium rounded-lg text-white disabled:opacity-50"
-              :class="actionButtonClass(action)"
-              @click="openConfirm(action)"
-            >
-              {{ t(`raffles.action_${action}`) }}
-            </button>
-            <button
-              type="button"
-              class="px-4 py-2 text-sm font-medium rounded-lg border border-gray-600 text-gray-200 hover:bg-gray-700"
-              :disabled="refreshing"
-              @click="refreshAll"
-            >
-              {{ t('raffles.refresh') }}
-            </button>
           </div>
         </div>
-
+      </template>
+      <template #default>
+        <div v-if="detailLoading && !raffle" class="max-w-7xl mx-auto px-4 py-16 text-center text-gray-400">
+          {{ t('common.loading') }}
+        </div>
+        <div v-else-if="detailError" class="max-w-7xl mx-auto px-4 py-16 text-center text-red-400">
+          {{ detailError }}
+        </div>
+        <div v-else-if="raffle" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         <section v-if="raffle.status === 'Draft'" class="rounded-xl border border-gray-700 bg-gray-800 p-6 space-y-4">
           <h2 class="text-lg font-semibold text-white">{{ t('raffles.edit_draft') }}</h2>
           <form class="space-y-4 max-w-xl" @submit.prevent="saveDraft">
@@ -279,7 +292,8 @@
           </div>
         </div>
       </div>
-    </template>
+      </template>
+    </AppShowLayout>
   </RafflesPageLayout>
 </template>
 
@@ -288,6 +302,7 @@ import { ref, computed, reactive, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import RafflesPageLayout from '../../components/stores/RafflesPageLayout.vue';
+import AppShowLayout from '../../components/stores/AppShowLayout.vue';
 import RaffleTicketPricingFields from '../../components/stores/RaffleTicketPricingFields.vue';
 import UrlQrModal from '../../components/ui/UrlQrModal.vue';
 import { useStorePageShell } from '../../composables/useStorePageShell';
@@ -313,6 +328,7 @@ const { storeId, store, error, apps, loadStore, goSettings, goSection } = useSto
 
 const raffleId = computed(() => route.params.raffleId as string);
 const raffle = ref<Raffle | null>(null);
+const virtualApp = computed(() => ({ name: raffle.value?.name ?? t('raffles.title') }));
 const tickets = ref<RaffleTicket[]>([]);
 const drawings = ref<RaffleDrawing[]>([]);
 const detailLoading = ref(true);
