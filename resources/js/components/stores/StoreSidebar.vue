@@ -448,6 +448,45 @@
             </component>
           </div>
 
+          <!-- Raffles (BTCPay plugin; shown after availability probe) -->
+          <div v-if="raffleAvailable" class="mb-2">
+            <button
+              v-if="isGuestUser"
+              type="button"
+              class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-left text-gray-400 opacity-85 hover:opacity-100 border border-amber-500/20 cursor-pointer"
+              :title="t('stores.guest_nav_locked_hint')"
+              @click="goAccountUpgrade(); showMobileMenu = false"
+            >
+              <span class="flex items-center min-w-0">
+                <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a4 4 0 00-4-4H8.5M12 8h4.5a4 4 0 014 4v1M6 12h12M6 16h8" />
+                </svg>
+                {{ t('apps.raffles') }}
+              </span>
+              <span class="text-[10px] uppercase tracking-wide text-amber-400/90 shrink-0">{{ t('stores.guest_nav_locked_short') }}</span>
+            </button>
+            <component
+              v-else
+              :is="isInertia ? Link : RouterLink"
+              :href="isInertia ? `/stores/${store.id}/raffles` : undefined"
+              :to="!isInertia ? { name: 'stores-raffles', params: { id: store.id } } : undefined"
+              class="flex items-center w-full px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              :class="
+                isLinkActive(`/stores/${store.id}/raffles`, 'stores-raffles')
+                  || isLinkActive(`/stores/${store.id}/raffles/create`, 'stores-raffles-create')
+                  || currentPath.includes(`/stores/${store.id}/raffles/`)
+                  ? 'bg-gray-900 text-white'
+                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+              "
+              @click="showMobileMenu = false"
+            >
+              <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a4 4 0 00-4-4H8.5M12 8h4.5a4 4 0 014 4v1M6 12h12M6 16h8" />
+              </svg>
+              {{ t('apps.raffles') }}
+            </component>
+          </div>
+
           <!-- Tickets (store-level events, like LN Address) -->
           <div class="mb-2">
             <button
@@ -635,6 +674,7 @@ import { useStoresStore } from '../../store/stores';
 import { useAccountLimits } from '../../composables/useAccountLimits';
 import { useAuthStore } from '../../store/auth';
 import { useOnboardingStore } from '../../store/onboarding';
+import { useRaffleAvailability } from '../../composables/useRaffleAvailability';
 import ProPlanBadge from './ProPlanBadge.vue';
 
 const { t } = useI18n();
@@ -699,6 +739,10 @@ const showStripeProBadge = computed(() => isProOrAdminUser.value === false);
 const storesStore = useStoresStore();
 const showStoreDropdown = ref(false);
 const showMobileMenu = ref(false);
+
+const storeIdForRaffle = computed(() => props.store?.id);
+const { available: raffleAvailability } = useRaffleAvailability(storeIdForRaffle);
+const raffleAvailable = computed(() => raffleAvailability.value === true);
 
 const allStores = computed(() => storesStore.stores);
 const activeStores = computed(() => allStores.value.filter((s: any) => !s.archived));

@@ -493,6 +493,22 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class])->group(function
         Route::post('/events/{eventId}/orders/{orderId}/tickets/{ticketId}/send-reminder', [TicketController::class, 'sendReminder']);
     });
 
+    // BTCPay Raffle plugin
+    Route::prefix('stores/{store}/raffles')->middleware([EnsureStoreOwnership::class, 'guest.restrict'])->group(function () {
+        Route::get('/status', [\App\Http\Controllers\RaffleController::class, 'status']);
+        Route::get('/', [\App\Http\Controllers\RaffleController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\RaffleController::class, 'store']);
+        Route::put('/{raffleId}', [\App\Http\Controllers\RaffleController::class, 'update']);
+        Route::get('/{raffleId}', [\App\Http\Controllers\RaffleController::class, 'show']);
+        Route::post('/{raffleId}/presenter-token', [\App\Http\Controllers\RaffleController::class, 'presenterToken']);
+        Route::post('/{raffleId}/open', [\App\Http\Controllers\RaffleController::class, 'open']);
+        Route::post('/{raffleId}/close', [\App\Http\Controllers\RaffleController::class, 'close']);
+        Route::post('/{raffleId}/draw', [\App\Http\Controllers\RaffleController::class, 'draw']);
+        Route::post('/{raffleId}/complete', [\App\Http\Controllers\RaffleController::class, 'complete']);
+        Route::get('/{raffleId}/tickets', [\App\Http\Controllers\RaffleController::class, 'tickets']);
+        Route::get('/{raffleId}/drawings', [\App\Http\Controllers\RaffleController::class, 'drawings']);
+    });
+
     // Support routes
     Route::middleware([EnsureSupportRole::class])->group(function () {
         Route::get('/support/wallet-connections', [WalletConnectionController::class, 'indexSupport']);
