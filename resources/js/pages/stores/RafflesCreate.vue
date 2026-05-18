@@ -35,16 +35,11 @@
               class="w-full rounded-lg bg-gray-900 border border-gray-600 text-white px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('raffles.field_ticket_price') }} *</label>
-            <input
-              v-model.number="form.ticketPriceSats"
-              type="number"
-              min="1"
-              required
-              class="w-full rounded-lg bg-gray-900 border border-gray-600 text-white px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
+          <RaffleTicketPricingFields
+            v-model:ticket-currency="form.ticketCurrency"
+            v-model:ticket-price="form.ticketPrice"
+            :store-default-currency="store?.default_currency"
+          />
           <div>
             <label class="flex items-center gap-2 text-sm text-gray-300 mb-2">
               <input v-model="unlimitedTickets" type="checkbox" class="rounded border-gray-600 bg-gray-900 text-indigo-600" />
@@ -81,9 +76,11 @@ import { ref, reactive, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import RafflesPageLayout from '../../components/stores/RafflesPageLayout.vue';
+import RaffleTicketPricingFields from '../../components/stores/RaffleTicketPricingFields.vue';
 import { useStorePageShell } from '../../composables/useStorePageShell';
 import { useRafflesStore } from '../../store/raffles';
 import { useFlashStore } from '../../store/flash';
+import { buildRafflePricingPayload, defaultRafflePricingForm } from '../../utils/rafflePricing';
 
 const { t } = useI18n();
 const router = useRouter();
@@ -94,11 +91,25 @@ const { storeId, store, error, apps, loadStore, goSettings, goSection } = useSto
 const form = reactive({
     name: '',
     description: '',
-    ticketPriceSats: 21000,
+    ticketCurrency: 'EUR',
+    ticketPrice: 5,
     maxTickets: 100 as number | null,
 });
 const unlimitedTickets = ref(false);
 const saving = ref(false);
+const pricingInitialized = ref(false);
+
+watch(
+    () => store.value?.default_currency,
+    (currency) => {
+        if (pricingInitialized.value || !currency) return;
+        const defaults = defaultRafflePricingForm(currency);
+        form.ticketCurrency = defaults.ticketCurrency;
+        form.ticketPrice = defaults.ticketPrice;
+        pricingInitialized.value = true;
+    },
+    { immediate: true },
+);
 
 watch(unlimitedTickets, (v) => {
     form.maxTickets = v ? null : 100;
@@ -114,8 +125,11 @@ async function submit() {
         const raffle = await rafflesStore.createRaffle(storeId.value, {
             name: form.name.trim(),
             description: form.description.trim() || null,
-            ticketPriceSats: form.ticketPriceSats,
             maxTickets: unlimitedTickets.value ? null : form.maxTickets,
+            ...buildRafflePricingPayload({
+                ticketCurrency: form.ticketCurrency,
+                ticketPrice: form.ticketPrice,
+            }),
         });
         flashStore.success(t('raffles.created_success'));
         router.push({ name: 'stores-raffles-show', params: { id: storeId.value, raffleId: raffle.id } });

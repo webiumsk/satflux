@@ -71,7 +71,7 @@
                 <td class="px-4 py-3 text-sm text-gray-300">
                   {{ raffle.ticketsSold }} / {{ raffle.maxTickets ?? '∞' }}
                 </td>
-                <td class="px-4 py-3 text-sm text-gray-300">{{ formatSats(raffle.ticketPriceSats) }}</td>
+                <td class="px-4 py-3 text-sm text-gray-300">{{ formatTicketPrice(raffle) }}</td>
                 <td class="px-4 py-3 text-sm text-gray-400">{{ formatDate(raffle.createdAt) }}</td>
                 <td class="px-4 py-3 text-right">
                   <button
@@ -98,6 +98,7 @@ import { useI18n } from 'vue-i18n';
 import RafflesPageLayout from '../../components/stores/RafflesPageLayout.vue';
 import { useStorePageShell } from '../../composables/useStorePageShell';
 import { useRafflesStore, type Raffle, type RaffleStatus } from '../../store/raffles';
+import { formatRaffleTicketPrice } from '../../utils/rafflePricing';
 
 const { t } = useI18n();
 const router = useRouter();
@@ -120,8 +121,8 @@ function statusBadgeClass(status: RaffleStatus): string {
     return map[status] ?? 'bg-gray-700 text-gray-300';
 }
 
-function formatSats(sats: number): string {
-    return `${sats.toLocaleString()} sats`;
+function formatTicketPrice(raffle: Raffle): string {
+    return formatRaffleTicketPrice(raffle);
 }
 
 function formatDate(iso: string): string {

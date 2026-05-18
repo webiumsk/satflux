@@ -15,7 +15,10 @@ return [
     */
 
     'btcpay' => [
+        // Greenfield API (server-to-server). May be an internal Docker URL.
         'base_url' => env('BTCPAY_BASE_URL', 'http://127.0.0.1:14142'),
+        // Browser-facing BTCPay origin (/raffle, /i, PoS apps). Defaults to base_url when unset.
+        'public_url' => env('BTCPAY_PUBLIC_URL') ?: env('BTCPAY_BASE_URL', 'http://127.0.0.1:14142'),
         'api_key' => env('BTCPAY_API_KEY'),
         // Seconds; BTCPay Greenfield user-by-email (per current API key hash).
         'user_by_email_cache_ttl' => (int) env('BTCPAY_USER_BY_EMAIL_CACHE_TTL', 300),
@@ -35,7 +38,7 @@ return [
             if (is_string($explicit) && $explicit !== '') {
                 return $explicit;
             }
-            $base = (string) env('BTCPAY_BASE_URL', 'http://127.0.0.1:14142');
+            $base = (string) (env('BTCPAY_PUBLIC_URL') ?: env('BTCPAY_BASE_URL', 'http://127.0.0.1:14142'));
             $host = parse_url($base, PHP_URL_HOST);
 
             return is_string($host) && $host !== '' ? $host : '';

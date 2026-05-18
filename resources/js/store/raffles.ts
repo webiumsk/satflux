@@ -11,7 +11,9 @@ export interface Raffle {
     name: string;
     description?: string | null;
     storeId: string;
-    ticketPriceSats: number;
+    ticketCurrency: string;
+    ticketPrice: number;
+    ticketPriceSats: number | null;
     maxTickets: number | null;
     status: RaffleStatus;
     ticketsSold: number;
@@ -42,8 +44,10 @@ export interface RaffleDrawing {
 export interface CreateRafflePayload {
     name: string;
     description?: string | null;
-    ticketPriceSats: number;
     maxTickets?: number | null;
+    ticketCurrency?: string;
+    ticketPrice?: number;
+    ticketPriceSats?: number;
 }
 
 export type UpdateRafflePayload = CreateRafflePayload;

@@ -8,6 +8,7 @@ use App\Services\BtcPay\RaffleService;
 use App\Support\RaffleLifecycle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Cache;
 
 class RaffleController extends Controller
@@ -94,7 +95,7 @@ class RaffleController extends Controller
                 $userApiKey
             );
 
-            return response()->json(['data' => $token]);
+            return response()->json(['data' => $this->normalizePresenterUrl($token, $raffleId)]);
         } catch (BtcPayException $e) {
             return $this->handleBtcPayError($e);
         }
@@ -190,23 +191,91 @@ class RaffleController extends Controller
      * @return array<string, mixed>
      */
     /**
-     * @return array{name: string, description: string|null, ticketPriceSats: int, maxTickets: int|null}
+     * @return array<string, mixed>
      */
     protected function validatedRafflePayload(Request $request): array
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'ticketPriceSats' => ['required', 'integer', 'min:1'],
+            'ticketCurrency' => ['nullable', 'string', 'max:16', 'regex:/^[A-Za-z]{3,16}$/'],
+            'ticketPrice' => ['nullable', 'numeric', 'gt:0'],
+            'ticketPriceSats' => ['nullable', 'integer', 'min:1'],
             'maxTickets' => ['nullable', 'integer', 'min:1'],
         ]);
 
-        return [
+        $base = [
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
-            'ticketPriceSats' => (int) $validated['ticketPriceSats'],
             'maxTickets' => array_key_exists('maxTickets', $validated) ? $validated['maxTickets'] : null,
         ];
+
+        $hasCurrencyPrice = ! empty($validated['ticketCurrency']) && isset($validated['ticketPrice']);
+        $hasLegacySats = isset($validated['ticketPriceSats']);
+
+        if (! $hasCurrencyPrice && ! $hasLegacySats) {
+            throw ValidationException::withMessages([
+                'ticketPrice' => [__('raffles.validation_pricing_required')],
+            ]);
+        }
+
+        if ($hasCurrencyPrice) {
+            $currency = strtoupper(trim((string) $validated['ticketCurrency']));
+            $price = (float) $validated['ticketPrice'];
+
+            if ($currency === 'SATS' && $price != (int) $price) {
+                throw ValidationException::withMessages([
+                    'ticketPrice' => [__('raffles.validation_sats_whole_number')],
+                ]);
+            }
+
+            if ($currency === 'SATS') {
+                return array_merge($base, ['ticketPriceSats' => (int) $price]);
+            }
+
+            return array_merge($base, [
+                'ticketCurrency' => $currency,
+                'ticketPrice' => $price,
+            ]);
+        }
+
+        return array_merge($base, ['ticketPriceSats' => (int) $validated['ticketPriceSats']]);
+    }
+
+    /**
+     * BTCPay may return a relative URL or one with an internal request host (Docker) when
+     * presenter-token is called server-to-server. Always expose the public BTCPay base URL.
+     *
+     * @param  array<string, mixed>  $tokenPayload
+     * @return array<string, mixed>
+     */
+    protected function normalizePresenterUrl(array $tokenPayload, string $raffleId): array
+    {
+        $token = (string) ($tokenPayload['token'] ?? '');
+        $publicBase = rtrim((string) config('services.btcpay.public_url', ''), '/');
+
+        if ($publicBase === '' || $token === '') {
+            return $tokenPayload;
+        }
+
+        $path = '/raffle/'.$raffleId.'/present';
+        $presenterUrl = (string) ($tokenPayload['presenterUrl'] ?? '');
+        $publicHost = parse_url($publicBase, PHP_URL_HOST);
+
+        $needsRebuild = true;
+        if ($presenterUrl !== '' && str_starts_with($presenterUrl, 'http')) {
+            $parsed = parse_url($presenterUrl);
+            $pathOk = isset($parsed['path']) && str_contains((string) $parsed['path'], $path);
+            $hostOk = $publicHost && isset($parsed['host'])
+                && strcasecmp((string) $parsed['host'], (string) $publicHost) === 0;
+            $needsRebuild = ! ($pathOk && $hostOk);
+        }
+
+        if ($needsRebuild) {
+            $tokenPayload['presenterUrl'] = $publicBase.$path.'?token='.rawurlencode($token);
+        }
+
+        return $tokenPayload;
     }
 
     protected function enrichRaffle(array $raffle): array

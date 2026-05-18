@@ -69,10 +69,11 @@
               <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('raffles.field_description') }}</label>
               <textarea v-model="editForm.description" rows="3" class="w-full rounded-lg bg-gray-900 border border-gray-600 text-white px-3 py-2" />
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('raffles.field_ticket_price') }} *</label>
-              <input v-model.number="editForm.ticketPriceSats" type="number" min="1" required class="w-full rounded-lg bg-gray-900 border border-gray-600 text-white px-3 py-2" />
-            </div>
+            <RaffleTicketPricingFields
+              v-model:ticket-currency="editForm.ticketCurrency"
+              v-model:ticket-price="editForm.ticketPrice"
+              :store-default-currency="store?.default_currency"
+            />
             <div>
               <label class="flex items-center gap-2 text-sm text-gray-300 mb-2">
                 <input v-model="editUnlimitedTickets" type="checkbox" class="rounded border-gray-600 bg-gray-900 text-indigo-600" />
@@ -105,7 +106,7 @@
           </div>
           <div class="rounded-xl border border-gray-700 bg-gray-800 p-4">
             <p class="text-xs text-gray-500 uppercase">{{ t('raffles.kpi_revenue') }}</p>
-            <p class="text-2xl font-bold text-white mt-1">{{ formatSats(revenueSats) }}</p>
+            <p class="text-2xl font-bold text-white mt-1">{{ revenueLabel }}</p>
           </div>
         </div>
 
@@ -287,12 +288,19 @@ import { ref, computed, reactive, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import RafflesPageLayout from '../../components/stores/RafflesPageLayout.vue';
+import RaffleTicketPricingFields from '../../components/stores/RaffleTicketPricingFields.vue';
 import UrlQrModal from '../../components/ui/UrlQrModal.vue';
 import { useStorePageShell } from '../../composables/useStorePageShell';
 import { useBtcPayUrl } from '../../composables/useBtcPayUrl';
 import { useCopiedFeedback } from '../../composables/useCopiedFeedback';
 import { useRafflesStore, type Raffle, type RaffleStatus, type RaffleAction, type RaffleTicket, type RaffleDrawing } from '../../store/raffles';
 import { useFlashStore } from '../../store/flash';
+import { resolvePresenterUrl } from '../../utils/rafflePresenterUrl';
+import {
+    buildRafflePricingPayload,
+    formatRaffleRevenue,
+    pricingFromRaffle,
+} from '../../utils/rafflePricing';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -320,7 +328,8 @@ const drawReveal = ref<RaffleDrawing | null>(null);
 const editForm = reactive({
     name: '',
     description: '',
-    ticketPriceSats: 21000,
+    ticketCurrency: 'EUR',
+    ticketPrice: 5,
     maxTickets: 100 as number | null,
 });
 const editUnlimitedTickets = ref(false);
@@ -335,7 +344,9 @@ const canShowPresenter = computed(() => {
     return s === 'Closed' || s === 'Drawing' || s === 'Completed';
 });
 
-const revenueSats = computed(() => (raffle.value?.ticketsSold ?? 0) * (raffle.value?.ticketPriceSats ?? 0));
+const revenueLabel = computed(() =>
+    raffle.value ? formatRaffleRevenue(raffle.value) : '—',
+);
 
 const publicUrl = computed(() => {
     if (!raffle.value || !btcPayUrl.value) return '';
@@ -357,10 +368,6 @@ function actionButtonClass(action: RaffleAction): string {
     if (action === 'draw') return 'bg-amber-600 hover:bg-amber-500';
     if (action === 'close' || action === 'complete') return 'bg-gray-600 hover:bg-gray-500';
     return 'bg-indigo-600 hover:bg-indigo-500';
-}
-
-function formatSats(sats: number): string {
-    return `${sats.toLocaleString()} sats`;
 }
 
 function formatDate(iso: string): string {
@@ -385,7 +392,9 @@ function syncEditFormFromRaffle() {
     if (!raffle.value || raffle.value.status !== 'Draft') return;
     editForm.name = raffle.value.name;
     editForm.description = raffle.value.description ?? '';
-    editForm.ticketPriceSats = raffle.value.ticketPriceSats;
+    const pricing = pricingFromRaffle(raffle.value);
+    editForm.ticketCurrency = pricing.ticketCurrency;
+    editForm.ticketPrice = pricing.ticketPrice;
     editUnlimitedTickets.value = raffle.value.maxTickets == null;
     editForm.maxTickets = raffle.value.maxTickets ?? 100;
 }
@@ -401,8 +410,11 @@ async function saveDraft() {
         raffle.value = await rafflesStore.updateRaffle(storeId.value, raffleId.value, {
             name: editForm.name.trim(),
             description: editForm.description.trim() || null,
-            ticketPriceSats: editForm.ticketPriceSats,
             maxTickets: editUnlimitedTickets.value ? null : editForm.maxTickets,
+            ...buildRafflePricingPayload({
+                ticketCurrency: editForm.ticketCurrency,
+                ticketPrice: editForm.ticketPrice,
+            }),
         });
         flashStore.success(t('raffles.updated_success'));
         syncEditFormFromRaffle();
@@ -418,9 +430,10 @@ async function openPresenter() {
     presenterLoading.value = true;
     try {
         const data = await rafflesStore.createPresenterToken(storeId.value, raffleId.value);
-        lastPresenterUrl.value = data.presenterUrl;
+        const url = resolvePresenterUrl(data, raffleId.value, btcPayUrl.value);
+        lastPresenterUrl.value = url;
         presenterExpiresAt.value = data.expiresAt;
-        window.open(data.presenterUrl, '_blank', 'noopener,noreferrer');
+        window.open(url, '_blank', 'noopener,noreferrer');
     } catch (err: unknown) {
         const e = err as { response?: { data?: { message?: string } } };
         flashStore.error(e.response?.data?.message || t('raffles.presenter_failed'));

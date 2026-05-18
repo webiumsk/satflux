@@ -159,6 +159,53 @@ class RaffleApiTest extends TestCase
         $open->assertJsonPath('data.showsPublicLink', true);
     }
 
+    public function test_create_raffle_with_fiat_currency_proxies_to_btcpay(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        $btcpayStoreId = $store->btcpay_store_id;
+        $baseUrl = rtrim(config('services.btcpay.base_url', 'http://localhost'), '/');
+        $raffleId = 'raffle-eur-1';
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, $btcpayStoreId, $raffleId) {
+            $url = (string) $request->url();
+            if (! str_contains($url, $baseUrl)) {
+                return Http::response([], 404);
+            }
+
+            if ($request->method() === 'POST' && str_ends_with($url, "/api/v1/stores/{$btcpayStoreId}/raffle")) {
+                $body = $request->data();
+                $this->assertSame('EUR', $body['ticketCurrency'] ?? null);
+                $this->assertEquals(5, $body['ticketPrice'] ?? null);
+                $this->assertArrayNotHasKey('ticketPriceSats', $body);
+
+                return Http::response([
+                    'id' => $raffleId,
+                    'name' => 'Euro Raffle',
+                    'ticketCurrency' => 'EUR',
+                    'ticketPrice' => 5.0,
+                    'ticketPriceSats' => null,
+                    'status' => 'Draft',
+                    'ticketsSold' => 0,
+                    'maxTickets' => null,
+                ], 201);
+            }
+
+            return Http::response([], 404);
+        });
+
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson("/api/stores/{$store->id}/raffles", [
+            'name' => 'Euro Raffle',
+            'ticketCurrency' => 'eur',
+            'ticketPrice' => 5,
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('data.ticketCurrency', 'EUR');
+    }
+
     public function test_update_draft_raffle_proxies_put(): void
     {
         $user = User::factory()->create();
@@ -176,6 +223,7 @@ class RaffleApiTest extends TestCase
             if ($request->method() === 'PUT' && str_ends_with($url, "/api/v1/stores/{$btcpayStoreId}/raffle/{$raffleId}")) {
                 $body = $request->data();
                 $this->assertSame('Updated name', $body['name'] ?? null);
+                $this->assertSame(25000, $body['ticketPriceSats'] ?? null);
 
                 return Http::response([
                     'id' => $raffleId,
@@ -208,13 +256,18 @@ class RaffleApiTest extends TestCase
         $user = User::factory()->create();
         $store = Store::factory()->create(['user_id' => $user->id]);
         $btcpayStoreId = $store->btcpay_store_id;
-        $baseUrl = rtrim(config('services.btcpay.base_url', 'http://localhost'), '/');
+        config([
+            'services.btcpay.base_url' => 'http://btcpay-internal:49392',
+            'services.btcpay.public_url' => 'https://btcpay.example.com',
+        ]);
+        $apiBase = rtrim(config('services.btcpay.base_url'), '/');
+        $publicBase = rtrim(config('services.btcpay.public_url'), '/');
         $raffleId = '22222222-2222-2222-2222-222222222222';
-        $presenterUrl = 'https://btcpay.example.com/raffle/'.$raffleId.'/present?token=abc';
+        $internalPresenterUrl = 'http://btcpay:49392/raffle/'.$raffleId.'/present?token=abc';
 
-        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, $btcpayStoreId, $raffleId, $presenterUrl) {
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($apiBase, $btcpayStoreId, $raffleId, $internalPresenterUrl) {
             $url = (string) $request->url();
-            if (! str_contains($url, $baseUrl)) {
+            if (! str_contains($url, $apiBase)) {
                 return Http::response([], 404);
             }
 
@@ -222,7 +275,45 @@ class RaffleApiTest extends TestCase
                 return Http::response([
                     'token' => 'abc',
                     'expiresAt' => '2026-05-18T18:00:00Z',
-                    'presenterUrl' => $presenterUrl,
+                    'presenterUrl' => $internalPresenterUrl,
+                ], 200);
+            }
+
+            return Http::response([], 404);
+        });
+
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson("/api/stores/{$store->id}/raffles/{$raffleId}/presenter-token");
+
+        $expectedPublicUrl = $publicBase.'/raffle/'.$raffleId.'/present?token=abc';
+
+        $response->assertOk();
+        $response->assertJsonPath('data.presenterUrl', $expectedPublicUrl);
+        $response->assertJsonPath('data.token', 'abc');
+    }
+
+    public function test_presenter_token_rebuilds_relative_url(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        $btcpayStoreId = $store->btcpay_store_id;
+        config(['services.btcpay.public_url' => 'https://pay.example.com']);
+        $apiBase = rtrim(config('services.btcpay.base_url', 'http://localhost'), '/');
+        $publicBase = rtrim(config('services.btcpay.public_url'), '/');
+        $raffleId = '33333333-3333-3333-3333-333333333333';
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($apiBase, $btcpayStoreId, $raffleId) {
+            $url = (string) $request->url();
+            if (! str_contains($url, $apiBase)) {
+                return Http::response([], 404);
+            }
+
+            if ($request->method() === 'POST' && str_ends_with($url, "/api/v1/stores/{$btcpayStoreId}/raffle/{$raffleId}/presenter-token")) {
+                return Http::response([
+                    'token' => 'xyz',
+                    'expiresAt' => '2026-05-18T18:00:00Z',
+                    'presenterUrl' => '/raffle/'.$raffleId.'/present?token=xyz',
                 ], 200);
             }
 
@@ -234,7 +325,6 @@ class RaffleApiTest extends TestCase
         $response = $this->postJson("/api/stores/{$store->id}/raffles/{$raffleId}/presenter-token");
 
         $response->assertOk();
-        $response->assertJsonPath('data.presenterUrl', $presenterUrl);
-        $response->assertJsonPath('data.token', 'abc');
+        $response->assertJsonPath('data.presenterUrl', $publicBase.'/raffle/'.$raffleId.'/present?token=xyz');
     }
 }

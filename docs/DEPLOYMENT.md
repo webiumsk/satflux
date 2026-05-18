@@ -71,6 +71,16 @@ Single Docker stack with **Caddy** as the reverse proxy and automatic HTTPS (Let
 - Run `php artisan migrate` inside the PHP container after deploy; keep `APP_DEBUG=false`.
 - After any `.env` change: `php artisan optimize:clear`.
 
+## BTCPay Raffle public URLs (`/raffle/...`)
+
+The panel builds buyer and presenter links from **`BTCPAY_PUBLIC_URL`** (or `BTCPAY_BASE_URL` if unset), exposed to the SPA as `GET /api/config` → `btcpay_base_url`.
+
+- If that host is **only** the Satflux app (Laravel), `/raffle/*` returns **500** — those routes are served by **BTCPay Server**, not Satflux.
+- **Option A:** Set `BTCPAY_PUBLIC_URL` to the real public BTCPay origin (e.g. `https://pay.example.com`).
+- **Option B:** Same hostname as the panel (e.g. `satflux.org`): proxy `/raffle` to BTCPay in nginx — copy [`docker/nginx/btcpay-public.conf.example`](../docker/nginx/btcpay-public.conf.example) to `btcpay-public.conf`, set `proxy_pass`, mount it (see `docker-compose.standalone.yml`), reload nginx.
+
+Greenfield API calls use **`BTCPAY_BASE_URL`** (can be an internal Docker URL); browser links use **`BTCPAY_PUBLIC_URL`**.
+
 ## Troubleshooting
 
 - **Let’s Encrypt fails:** Confirm public DNS, open firewall for 80/443, and that nothing else binds those ports unexpectedly.
