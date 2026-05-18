@@ -509,6 +509,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class])->group(function
         Route::post('/{raffleId}/close', [\App\Http\Controllers\RaffleController::class, 'close']);
         Route::post('/{raffleId}/draw', [\App\Http\Controllers\RaffleController::class, 'draw']);
         Route::post('/{raffleId}/complete', [\App\Http\Controllers\RaffleController::class, 'complete']);
+        Route::post('/{raffleId}/tickets/manual', [\App\Http\Controllers\RaffleController::class, 'addManualTickets']);
         Route::get('/{raffleId}/tickets', [\App\Http\Controllers\RaffleController::class, 'tickets']);
         Route::get('/{raffleId}/drawings', [\App\Http\Controllers\RaffleController::class, 'drawings']);
     });

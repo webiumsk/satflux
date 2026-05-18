@@ -23,7 +23,7 @@
                 v-if="!pluginUnavailable && !listError"
                 type="button"
                 class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500"
-                @click="router.push({ name: 'stores-raffles-create', params: { id: storeId } })"
+                @click="onCreateClick"
               >
                 {{ t('raffles.create') }}
               </button>
@@ -51,7 +51,7 @@
             <button
               type="button"
               class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500"
-              @click="router.push({ name: 'stores-raffles-create', params: { id: storeId } })"
+              @click="onCreateClick"
             >
               {{ t('raffles.create_first') }}
             </button>
@@ -99,6 +99,17 @@
       </template>
     </AppShowLayout>
   </RafflesPageLayout>
+  <UpgradeModal
+    :show="showUpgradeModal"
+    :message="t('raffles.limit_modal_message')"
+    :limits="
+      raffleLimit != null
+        ? [{ feature: 'raffles', current: raffleCount, max: raffleLimit }]
+        : []
+    "
+    recommended-plan="pro"
+    @close="showUpgradeModal = false"
+  />
 </template>
 
 <script setup lang="ts">
@@ -107,6 +118,8 @@ import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import RafflesPageLayout from '../../components/stores/RafflesPageLayout.vue';
 import AppShowLayout from '../../components/stores/AppShowLayout.vue';
+import UpgradeModal from '../../components/stores/UpgradeModal.vue';
+import { useAccountLimits } from '../../composables/useAccountLimits';
 import { useStorePageShell } from '../../composables/useStorePageShell';
 import { useRafflesStore, type Raffle, type RaffleStatus } from '../../store/raffles';
 import { formatRaffleTicketPrice } from '../../utils/rafflePricing';
@@ -114,6 +127,7 @@ import { formatRaffleTicketPrice } from '../../utils/rafflePricing';
 const { t } = useI18n();
 const router = useRouter();
 const rafflesStore = useRafflesStore();
+const { limits } = useAccountLimits();
 const { storeId, store, error, apps, loadStore, goSettings, goSection } = useStorePageShell();
 
 const virtualApp = computed(() => ({ name: t('raffles.title') }));
@@ -122,6 +136,27 @@ const raffles = ref<Raffle[]>([]);
 const listLoading = ref(true);
 const listError = ref('');
 const pluginUnavailable = ref(false);
+const showUpgradeModal = ref(false);
+
+const raffleLimit = computed(() =>
+    limits.value?.raffles?.unlimited ? null : (limits.value?.raffles?.max ?? null),
+);
+
+const raffleCount = computed(() => limits.value?.raffles?.current ?? raffles.value.length);
+
+const canCreateRaffle = computed(() => {
+    if (limits.value?.raffles?.allowed === false) return false;
+    if (raffleLimit.value == null) return true;
+    return raffleCount.value < raffleLimit.value;
+});
+
+function onCreateClick() {
+    if (!canCreateRaffle.value) {
+        showUpgradeModal.value = true;
+        return;
+    }
+    router.push({ name: 'stores-raffles-create', params: { id: storeId.value } });
+}
 
 function statusBadgeClass(status: RaffleStatus): string {
     const map: Record<RaffleStatus, string> = {

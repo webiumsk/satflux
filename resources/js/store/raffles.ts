@@ -24,6 +24,13 @@ export interface Raffle {
     allowedActions?: RaffleAction[];
     showsPublicLink?: boolean;
     canDelete?: boolean;
+    canAddManualTickets?: boolean;
+}
+
+export interface AddManualTicketsPayload {
+    count: number;
+    buyerEmail: string;
+    buyerName?: string | null;
 }
 
 export interface RaffleTicket {
@@ -32,6 +39,7 @@ export interface RaffleTicket {
     buyerEmail?: string | null;
     allocatedAt: string;
     receiptUrl?: string;
+    isManual?: boolean;
 }
 
 export interface RaffleDrawing {
@@ -172,6 +180,18 @@ export const useRafflesStore = defineStore('raffles', () => {
         return data.data;
     }
 
+    async function addManualTickets(
+        storeId: string,
+        raffleId: string,
+        payload: AddManualTicketsPayload,
+    ): Promise<RaffleTicket[]> {
+        const { data } = await api.post<{ data: RaffleTicket[] }>(
+            `/stores/${storeId}/raffles/${raffleId}/tickets/manual`,
+            payload,
+        );
+        return data.data ?? [];
+    }
+
     async function fetchTickets(storeId: string, raffleId: string): Promise<RaffleTicket[]> {
         const { data } = await api.get<{ data: RaffleTicket[] }>(
             `/stores/${storeId}/raffles/${raffleId}/tickets`,
@@ -206,6 +226,7 @@ export const useRafflesStore = defineStore('raffles', () => {
         closeRaffle,
         drawRaffle,
         completeRaffle,
+        addManualTickets,
         fetchTickets,
         fetchDrawings,
     };

@@ -54,6 +54,24 @@ class RaffleController extends Controller
 
     public function store(Request $request, Store $store): JsonResponse
     {
+        $user = $store->user;
+        $maxRaffles = $user->getMaxRafflesPerStore();
+        if ($maxRaffles !== null) {
+            $count = 0;
+            try {
+                $userApiKey = $user->getBtcPayApiKeyOrFail();
+                $existing = $this->raffleService->listRaffles($store->btcpay_store_id, $userApiKey);
+                $count = is_array($existing) ? count($existing) : 0;
+            } catch (BtcPayException) {
+                // If listing fails, allow create; BTCPay will reject if needed.
+            }
+            if ($count >= $maxRaffles) {
+                return response()->json([
+                    'message' => __('messages.raffles_limit_free', ['max' => $maxRaffles]),
+                ], 403);
+            }
+        }
+
         $payload = $this->validatedRafflePayload($request);
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
@@ -159,6 +177,36 @@ class RaffleController extends Controller
     public function complete(Store $store, string $raffleId): JsonResponse
     {
         return $this->lifecycleAction($store, $raffleId, 'complete');
+    }
+
+    public function addManualTickets(Request $request, Store $store, string $raffleId): JsonResponse
+    {
+        $validated = $request->validate([
+            'count' => ['required', 'integer', 'min:1', 'max:100'],
+            'buyerEmail' => ['required', 'email', 'max:255'],
+            'buyerName' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $userApiKey = $store->user->getBtcPayApiKeyOrFail();
+
+        try {
+            $tickets = $this->raffleService->addManualTickets(
+                $store->btcpay_store_id,
+                $raffleId,
+                [
+                    'count' => (int) $validated['count'],
+                    'buyerEmail' => $validated['buyerEmail'],
+                    'buyerName' => $validated['buyerName'] ?? null,
+                ],
+                $userApiKey
+            );
+
+            return response()->json([
+                'data' => RaffleBuyerPrivacy::maskTicketsBuyerEmails($tickets),
+            ], 201);
+        } catch (BtcPayException $e) {
+            return $this->handleBtcPayError($e);
+        }
     }
 
     public function tickets(Store $store, string $raffleId): JsonResponse
@@ -327,6 +375,7 @@ class RaffleController extends Controller
         $raffle['allowedActions'] = RaffleLifecycle::allowedActions($status);
         $raffle['showsPublicLink'] = RaffleLifecycle::showsPublicLink($status);
         $raffle['canDelete'] = RaffleLifecycle::canDelete($status);
+        $raffle['canAddManualTickets'] = RaffleLifecycle::canAddManualTickets($status);
 
         return $raffle;
     }

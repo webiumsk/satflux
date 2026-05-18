@@ -1455,7 +1455,7 @@
     "kpi_revenue": "Tržby",
     "public_link": "Verejná stránka lístkov",
     "public_link_hint": "Kupujúci kupujú lístky na BTCPay na tejto URL (nie v Satflux).",
-    "copy_link": "Kopírovať odkaz",
+    "open_public_link": "Otvoriť",
     "copy_failed": "Odkaz sa nepodarilo skopírovať",
     "draw_reveal_kicker": "Víťaz",
     "draw_reveal_meta": "Žreb #{order}",
@@ -1500,8 +1500,17 @@
     "delete_failed": "Tombolu sa nepodarilo vymazať",
     "deleted_success": "Tombola vymazaná",
     "field_buyer_name": "Zobrazované meno",
+    "field_buyer_email": "E-mail kupujúceho",
     "field_buyer_email_masked": "E-mail (maskovaný)",
-    "buyer_name_hint": "Voliteľný nick v zozname lístkov a pri žrebovaní."
+    "buyer_name_hint": "Voliteľný nick v zozname lístkov a pri žrebovaní.",
+    "manual_tickets_title": "Pridať lístky manuálne",
+    "manual_tickets_hint": "Pre hotovosť alebo prevod. Len pri otvorených/uzavretých predajoch a pred prvým žrebovaním.",
+    "manual_tickets_count": "Počet lístkov",
+    "manual_tickets_add": "Pridať lístky",
+    "manual_tickets_success": "Pridaných {count} lístkov",
+    "manual_tickets_failed": "Lístky sa nepodarilo pridať",
+    "manual_ticket_badge": "Manuálne",
+    "limit_modal_message": "Na voľnom pláne môžete mať maximálne 1 tombolu na obchod. Pre neobmedzené tomboly prejdite na Pro."
   },
   "landing": {
     "hero_kicker": "Ovládací panel pre obchodníkov na BTCPay Server.",

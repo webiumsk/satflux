@@ -486,7 +486,7 @@
     "kpi_revenue": "Ingresos",
     "public_link": "Página pública de boletos",
     "public_link_hint": "Los compradores compran en BTCPay en esta URL (no en Satflux).",
-    "copy_link": "Copiar enlace",
+    "open_public_link": "Abrir",
     "copy_failed": "No se pudo copiar el enlace",
     "draw_reveal_kicker": "Ganador",
     "draw_reveal_meta": "Sorteo #{order}",
@@ -531,8 +531,17 @@
     "delete_failed": "No se pudo eliminar la rifa",
     "deleted_success": "Rifa eliminada",
     "field_buyer_name": "Nombre visible",
+    "field_buyer_email": "Correo del comprador",
     "field_buyer_email_masked": "Correo (enmascarado)",
-    "buyer_name_hint": "Apodo opcional en la lista de boletos y en el sorteo."
+    "buyer_name_hint": "Apodo opcional en la lista de boletos y en el sorteo.",
+    "manual_tickets_title": "Añadir boletos manualmente",
+    "manual_tickets_hint": "Para efectivo o transferencia. Solo con ventas abiertas o cerradas y antes del primer sorteo.",
+    "manual_tickets_count": "Número de boletos",
+    "manual_tickets_add": "Añadir boletos",
+    "manual_tickets_success": "{count} boleto(s) añadido(s)",
+    "manual_tickets_failed": "No se pudieron añadir los boletos",
+    "manual_ticket_badge": "Manual",
+    "limit_modal_message": "En el plan gratuito puedes tener como máximo 1 rifa por tienda. Actualiza a Pro para rifas ilimitadas."
   },
   "stores": {
     "title": "Tiendas",

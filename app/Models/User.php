@@ -182,6 +182,24 @@ class User extends Authenticatable implements MustVerifyEmailContract
     }
 
     /**
+     * Maximum raffles per store. Guest: 0 (feature blocked). Free: 1. Paid / admin / support: unlimited.
+     *
+     * @return int|null null = unlimited
+     */
+    public function getMaxRafflesPerStore(): ?int
+    {
+        if ((bool) ($this->is_guest ?? false)) {
+            return 0;
+        }
+
+        if ($this->hasUnlimitedAccess() || $this->isPaidPlan()) {
+            return null;
+        }
+
+        return 1;
+    }
+
+    /**
      * Get the stores for the user.
      */
     public function stores(): HasMany

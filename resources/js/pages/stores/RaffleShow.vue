@@ -133,8 +133,22 @@
           <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
             <code class="flex-1 text-sm text-indigo-300 break-all bg-gray-900 rounded-lg px-3 py-2">{{ publicUrl }}</code>
             <div class="flex gap-2 shrink-0">
-              <button type="button" class="px-3 py-2 text-sm rounded-lg border border-gray-600 text-gray-200 hover:bg-gray-700" @click="copyPublicUrl">
-                {{ copied ? t('common.copied') : t('raffles.copy_link') }}
+              <button
+                type="button"
+                class="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-gray-600 text-gray-200 hover:bg-gray-700 disabled:opacity-50"
+                :disabled="!publicUrl"
+                :title="t('raffles.open_public_link')"
+                @click="openPublicUrl"
+              >
+                {{ t('raffles.open_public_link') }}
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
+                </svg>
               </button>
               <button type="button" class="px-3 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-500" @click="showQr = true">
                 {{ t('common.qr_code') }}
@@ -203,6 +217,61 @@
           </nav>
         </div>
 
+        <section
+          v-if="activeTab === 'tickets' && canAddManualTickets"
+          class="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-4 sm:p-6 space-y-4"
+        >
+          <div class="flex flex-col gap-1 lg:flex-row lg:items-baseline lg:justify-between lg:gap-4">
+            <h2 class="text-lg font-semibold text-white shrink-0">{{ t('raffles.manual_tickets_title') }}</h2>
+            <p class="text-xs sm:text-sm text-gray-400 lg:text-right lg:max-w-xl">{{ t('raffles.manual_tickets_hint') }}</p>
+          </div>
+          <form
+            class="flex flex-col gap-4 lg:flex-row lg:items-end lg:gap-3"
+            @submit.prevent="submitManualTickets"
+          >
+            <div class="w-full lg:w-24 shrink-0">
+              <label class="block text-xs font-medium text-gray-400 mb-1">{{ t('raffles.manual_tickets_count') }} *</label>
+              <input
+                v-model.number="manualForm.count"
+                type="number"
+                min="1"
+                max="100"
+                required
+                class="w-full rounded-lg bg-gray-900 border border-gray-600 text-white px-3 py-2 text-sm"
+              />
+            </div>
+            <div class="flex-1 min-w-0">
+              <label class="block text-xs font-medium text-gray-400 mb-1">{{ t('raffles.field_buyer_email') }} *</label>
+              <input
+                v-model="manualForm.buyerEmail"
+                type="email"
+                required
+                maxlength="255"
+                autocomplete="email"
+                class="w-full rounded-lg bg-gray-900 border border-gray-600 text-white px-3 py-2 text-sm"
+              />
+            </div>
+            <div class="flex-1 min-w-0">
+              <label class="block text-xs font-medium text-gray-400 mb-1">{{ t('raffles.field_buyer_name') }}</label>
+              <input
+                v-model="manualForm.buyerName"
+                type="text"
+                maxlength="100"
+                :title="t('raffles.buyer_name_hint')"
+                class="w-full rounded-lg bg-gray-900 border border-gray-600 text-white px-3 py-2 text-sm"
+              />
+              <p class="text-xs text-gray-500 mt-1 lg:hidden">{{ t('raffles.buyer_name_hint') }}</p>
+            </div>
+            <button
+              type="submit"
+              :disabled="manualSaving"
+              class="w-full lg:w-auto shrink-0 px-4 py-2 text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 whitespace-nowrap"
+            >
+              {{ manualSaving ? t('raffles.saving') : t('raffles.manual_tickets_add') }}
+            </button>
+          </form>
+        </section>
+
         <div v-if="activeTab === 'tickets'">
           <div v-if="ticketsLoading" class="text-gray-400 py-8 text-center">{{ t('common.loading') }}</div>
           <p v-else-if="tickets.length === 0" class="text-gray-400 py-8 text-center">{{ t('raffles.no_tickets') }}</p>
@@ -211,6 +280,7 @@
               <thead class="bg-gray-800">
                 <tr>
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">#</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase"></th>
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">{{ t('raffles.field_buyer_name') }}</th>
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">{{ t('raffles.field_buyer_email_masked') }}</th>
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">{{ t('raffles.allocated_at') }}</th>
@@ -220,6 +290,14 @@
               <tbody class="divide-y divide-gray-700 bg-gray-900">
                 <tr v-for="ticket in tickets" :key="ticket.ticketNumber">
                   <td class="px-4 py-3 text-sm text-white font-mono">{{ ticket.ticketNumber }}</td>
+                  <td class="px-4 py-3 text-sm">
+                    <span
+                      v-if="ticket.isManual"
+                      class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-indigo-900/50 text-indigo-300"
+                    >
+                      {{ t('raffles.manual_ticket_badge') }}
+                    </span>
+                  </td>
                   <td class="px-4 py-3 text-sm text-gray-300">{{ ticket.buyerName || '—' }}</td>
                   <td class="px-4 py-3 text-sm text-gray-500">{{ ticket.buyerEmail || '—' }}</td>
                   <td class="px-4 py-3 text-sm text-gray-400">{{ formatDate(ticket.allocatedAt) }}</td>
@@ -331,7 +409,6 @@ import UrlQrModal from '../../components/ui/UrlQrModal.vue';
 import DeleteAppModal from '../../components/stores/DeleteAppModal.vue';
 import { useStorePageShell } from '../../composables/useStorePageShell';
 import { useBtcPayUrl } from '../../composables/useBtcPayUrl';
-import { useCopiedFeedback } from '../../composables/useCopiedFeedback';
 import { useRafflesStore, type Raffle, type RaffleStatus, type RaffleAction, type RaffleTicket, type RaffleDrawing } from '../../store/raffles';
 import { useFlashStore } from '../../store/flash';
 import { resolvePresenterUrl } from '../../utils/rafflePresenterUrl';
@@ -347,7 +424,6 @@ const router = useRouter();
 const flashStore = useFlashStore();
 const rafflesStore = useRafflesStore();
 const { btcPayUrl, load: loadBtcPayUrl } = useBtcPayUrl();
-const { copied, flashAfter } = useCopiedFeedback();
 const { storeId, store, error, apps, loadStore, goSettings, goSection } = useStorePageShell();
 
 const raffleId = computed(() => route.params.raffleId as string);
@@ -380,6 +456,18 @@ const presenterExpiresAt = ref('');
 const presenterCopied = ref(false);
 const showDeleteModal = ref(false);
 const deleting = ref(false);
+const manualForm = reactive({
+    count: 1,
+    buyerEmail: '',
+    buyerName: '',
+});
+const manualSaving = ref(false);
+
+const canAddManualTickets = computed(() => {
+    if (!raffle.value?.canAddManualTickets) return false;
+    if (drawingsLoading.value) return false;
+    return drawings.value.length === 0;
+});
 
 const canShowPresenter = computed(() => {
     const s = raffle.value?.status;
@@ -539,6 +627,28 @@ async function loadTickets() {
     }
 }
 
+async function submitManualTickets() {
+    manualSaving.value = true;
+    try {
+        const added = await rafflesStore.addManualTickets(storeId.value, raffleId.value, {
+            count: manualForm.count,
+            buyerEmail: manualForm.buyerEmail.trim(),
+            buyerName: manualForm.buyerName.trim() || null,
+        });
+        flashStore.success(t('raffles.manual_tickets_success', { count: added.length }));
+        manualForm.buyerEmail = '';
+        manualForm.buyerName = '';
+        manualForm.count = 1;
+        await loadDetail();
+        await loadTickets();
+    } catch (err: unknown) {
+        const e = err as { response?: { data?: { message?: string } } };
+        flashStore.error(e.response?.data?.message || t('raffles.manual_tickets_failed'));
+    } finally {
+        manualSaving.value = false;
+    }
+}
+
 async function loadDrawings() {
     drawingsLoading.value = true;
     try {
@@ -601,14 +711,9 @@ async function runConfirmedAction() {
     }
 }
 
-async function copyPublicUrl() {
+function openPublicUrl() {
     if (!publicUrl.value) return;
-    try {
-        await navigator.clipboard.writeText(publicUrl.value);
-        flashAfter();
-    } catch {
-        flashStore.error(t('raffles.copy_failed'));
-    }
+    window.open(publicUrl.value, '_blank', 'noopener,noreferrer');
 }
 
 watch(activeTab, (tab) => {
@@ -619,7 +724,7 @@ watch(activeTab, (tab) => {
 onMounted(async () => {
     await loadBtcPayUrl();
     await loadDetail();
-    await loadTickets();
+    await Promise.all([loadTickets(), loadDrawings()]);
 });
 
 watch(raffleId, async () => {

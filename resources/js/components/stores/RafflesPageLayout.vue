@@ -28,14 +28,29 @@
 </template>
 
 <script setup lang="ts">
+import { watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import StoreSidebar from './StoreSidebar.vue';
+import { useAccountLimits } from '../../composables/useAccountLimits';
 
-defineProps<{
+const props = defineProps<{
   store: Record<string, unknown> | null;
   apps: Array<{ id: string; name: string; app_type: string }>;
   error?: string;
 }>();
+
+const { load: loadLimits } = useAccountLimits();
+
+watch(
+  () => props.store,
+  (s) => {
+    const id = s?.id;
+    if (typeof id === 'string' && id) {
+      void loadLimits(id);
+    }
+  },
+  { immediate: true },
+);
 
 const emit = defineEmits<{
   retry: [];

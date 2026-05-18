@@ -83,15 +83,28 @@
       </template>
     </AppShowLayout>
   </RafflesPageLayout>
+  <UpgradeModal
+    :show="showUpgradeModal"
+    :message="t('raffles.limit_modal_message')"
+    :limits="
+      raffleLimit != null
+        ? [{ feature: 'raffles', current: raffleCount, max: raffleLimit }]
+        : []
+    "
+    recommended-plan="pro"
+    @close="onUpgradeModalClose"
+  />
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue';
+import { ref, reactive, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import RafflesPageLayout from '../../components/stores/RafflesPageLayout.vue';
 import AppShowLayout from '../../components/stores/AppShowLayout.vue';
 import RaffleTicketPricingFields from '../../components/stores/RaffleTicketPricingFields.vue';
+import UpgradeModal from '../../components/stores/UpgradeModal.vue';
+import { useAccountLimits } from '../../composables/useAccountLimits';
 import { useStorePageShell } from '../../composables/useStorePageShell';
 import { useRafflesStore } from '../../store/raffles';
 import { useFlashStore } from '../../store/flash';
@@ -101,6 +114,7 @@ const { t } = useI18n();
 const router = useRouter();
 const flashStore = useFlashStore();
 const rafflesStore = useRafflesStore();
+const { limits } = useAccountLimits();
 const { storeId, store, error, apps, loadStore, goSettings, goSection } = useStorePageShell();
 
 const virtualApp = computed(() => ({ name: t('raffles.create') }));
@@ -115,6 +129,40 @@ const form = reactive({
 const unlimitedTickets = ref(false);
 const saving = ref(false);
 const pricingInitialized = ref(false);
+const showUpgradeModal = ref(false);
+const raffleCount = ref(0);
+
+const raffleLimit = computed(() =>
+    limits.value?.raffles?.unlimited ? null : (limits.value?.raffles?.max ?? null),
+);
+
+const canCreateRaffle = computed(() => {
+    if (limits.value?.raffles?.allowed === false) return false;
+    if (raffleLimit.value == null) return true;
+    const current = limits.value?.raffles?.current ?? raffleCount.value;
+    return current < raffleLimit.value;
+});
+
+onMounted(async () => {
+    if (limits.value?.raffles?.current != null) {
+        raffleCount.value = limits.value.raffles.current;
+    } else {
+        try {
+            const list = await rafflesStore.fetchRaffles(storeId.value);
+            raffleCount.value = list.length;
+        } catch {
+            raffleCount.value = 0;
+        }
+    }
+    if (!canCreateRaffle.value) {
+        showUpgradeModal.value = true;
+    }
+});
+
+function onUpgradeModalClose() {
+    showUpgradeModal.value = false;
+    router.push({ name: 'stores-raffles', params: { id: storeId.value } });
+}
 
 watch(
     () => store.value?.default_currency,

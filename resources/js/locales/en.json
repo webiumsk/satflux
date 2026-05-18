@@ -1454,7 +1454,7 @@
     "kpi_revenue": "Revenue",
     "public_link": "Public ticket page",
     "public_link_hint": "Buyers purchase tickets on BTCPay at this URL (not in Satflux).",
-    "copy_link": "Copy link",
+    "open_public_link": "Open",
     "copy_failed": "Could not copy link",
     "draw_reveal_kicker": "Winner",
     "draw_reveal_meta": "Draw #{order}",
@@ -1499,8 +1499,17 @@
     "delete_failed": "Failed to delete raffle",
     "deleted_success": "Raffle deleted",
     "field_buyer_name": "Display name",
+    "field_buyer_email": "Buyer email",
     "field_buyer_email_masked": "Email (masked)",
-    "buyer_name_hint": "Optional nickname shown in the ticket list and during draws."
+    "buyer_name_hint": "Optional nickname shown in the ticket list and during draws.",
+    "manual_tickets_title": "Add tickets manually",
+    "manual_tickets_hint": "For cash or bank transfers. Only while sales are open or closed and before the first draw.",
+    "manual_tickets_count": "Number of tickets",
+    "manual_tickets_add": "Add tickets",
+    "manual_tickets_success": "{count} ticket(s) added",
+    "manual_tickets_failed": "Could not add manual tickets",
+    "manual_ticket_badge": "Manual",
+    "limit_modal_message": "You have reached the maximum number of raffles (1) per store on the Free plan. Upgrade to Pro for unlimited raffles."
   },
   "landing": {
     "hero_kicker": "The merchant control panel for BTCPay Server.",

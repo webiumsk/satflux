@@ -67,6 +67,22 @@ class RaffleService
     }
 
     /**
+     * @param  array{count: int, buyerEmail: string, buyerName?: string|null}  $payload
+     * @return list<array<string, mixed>>
+     */
+    public function addManualTickets(string $storeId, string $raffleId, array $payload, string $apiKey): array
+    {
+        $result = $this->withUserKey($apiKey, function () use ($storeId, $raffleId, $payload) {
+            return $this->client->post(
+                "/api/v1/stores/{$storeId}/raffle/{$raffleId}/tickets/manual",
+                $payload
+            );
+        });
+
+        return $this->normalizeList($result);
+    }
+
+    /**
      * @return array{token: string, expiresAt: string, presenterUrl: string}
      */
     public function createPresenterToken(string $storeId, string $raffleId, string $apiKey): array
