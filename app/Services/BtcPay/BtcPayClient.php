@@ -268,9 +268,13 @@ class BtcPayClient
         $body = $response->body();
         $json = $response->json();
 
-        $message = $json['message'] ?? $json['error'] ?? "HTTP {$statusCode}";
+        $message = $json['message'] ?? $json['error'] ?? null;
         if (is_array($message)) {
             $message = json_encode($message);
+        }
+        if ($message === null || $message === '') {
+            $trimmed = trim($body);
+            $message = $trimmed !== '' ? $trimmed : "HTTP {$statusCode}";
         }
 
         // Include more details for 422 validation errors

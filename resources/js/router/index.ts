@@ -204,6 +204,24 @@ const router = createRouter({
             meta: { requiresAuth: true },
         },
         {
+            path: '/stores/:id/raffles',
+            name: 'stores-raffles',
+            component: () => import('../pages/stores/RafflesIndex.vue'),
+            meta: { requiresAuth: true },
+        },
+        {
+            path: '/stores/:id/raffles/create',
+            name: 'stores-raffles-create',
+            component: () => import('../pages/stores/RafflesCreate.vue'),
+            meta: { requiresAuth: true },
+        },
+        {
+            path: '/stores/:id/raffles/:raffleId',
+            name: 'stores-raffles-show',
+            component: () => import('../pages/stores/RaffleShow.vue'),
+            meta: { requiresAuth: true },
+        },
+        {
             path: '/stores/:id/api-keys',
             name: 'stores-api-keys',
             component: () => import('../pages/stores/ApiKeys.vue'),
