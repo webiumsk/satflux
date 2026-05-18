@@ -192,11 +192,35 @@ class User extends Authenticatable implements MustVerifyEmailContract
             return 0;
         }
 
-        if ($this->hasUnlimitedAccess() || $this->isPaidPlan()) {
+        if ($this->hasUnlimitedAccess() || $this->hasActivePaidSubscription()) {
             return null;
         }
 
         return 1;
+    }
+
+    /**
+     * True when the user has an active (or grace) subscription on a paid plan (Pro / Enterprise).
+     */
+    public function hasActivePaidSubscription(): bool
+    {
+        $subscription = $this->currentSubscription();
+        if (! $subscription) {
+            return false;
+        }
+
+        if (! $subscription->isActive() && ! $subscription->isInGracePeriod()) {
+            return false;
+        }
+
+        $plan = $subscription->plan;
+        if (! $plan) {
+            return false;
+        }
+
+        $code = strtolower((string) ($plan->code ?? ''));
+
+        return in_array($code, ['pro', 'enterprise'], true);
     }
 
     /**

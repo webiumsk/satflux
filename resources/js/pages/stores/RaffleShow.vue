@@ -731,6 +731,6 @@ watch(raffleId, async () => {
     await loadDetail();
     tickets.value = [];
     drawings.value = [];
-    await loadTickets();
+    await Promise.all([loadTickets(), loadDrawings()]);
 });
 </script>

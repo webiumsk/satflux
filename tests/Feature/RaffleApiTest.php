@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Store;
+use App\Models\Subscription;
+use App\Models\SubscriptionPlan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -414,7 +416,26 @@ class RaffleApiTest extends TestCase
 
     public function test_pro_plan_allows_multiple_raffles(): void
     {
-        $user = User::factory()->create(['role' => 'pro']);
+        $proPlan = SubscriptionPlan::create([
+            'code' => 'pro',
+            'name' => 'pro',
+            'display_name' => 'Pro',
+            'price_eur' => 99,
+            'billing_period' => 'year',
+            'max_stores' => 3,
+            'max_api_keys' => 3,
+            'max_ln_addresses' => null,
+            'features' => [],
+            'is_active' => true,
+        ]);
+        $user = User::factory()->create(['role' => 'free']);
+        Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $proPlan->id,
+            'status' => 'active',
+            'starts_at' => now(),
+            'expires_at' => now()->addYear(),
+        ]);
         $store = Store::factory()->create(['user_id' => $user->id]);
         $btcpayStoreId = $store->btcpay_store_id;
         $baseUrl = rtrim(config('services.btcpay.base_url', 'http://localhost'), '/');

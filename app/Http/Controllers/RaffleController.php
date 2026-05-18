@@ -5,16 +5,21 @@ namespace App\Http\Controllers;
 use App\Models\Store;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\RaffleService;
+use App\Services\Raffle\RafflePayloadService;
+use App\Support\PresenterUrlNormalizer;
 use App\Support\RaffleBuyerPrivacy;
 use App\Support\RaffleLifecycle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Cache;
 
 class RaffleController extends Controller
 {
-    public function __construct(protected RaffleService $raffleService) {}
+    public function __construct(
+        protected RaffleService $raffleService,
+        protected RafflePayloadService $rafflePayloadService,
+        protected PresenterUrlNormalizer $presenterUrlNormalizer,
+    ) {}
 
     public function status(Request $request, Store $store): JsonResponse
     {
@@ -72,7 +77,7 @@ class RaffleController extends Controller
             }
         }
 
-        $payload = $this->validatedRafflePayload($request);
+        $payload = $this->rafflePayloadService->validate($request);
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
         try {
@@ -86,7 +91,7 @@ class RaffleController extends Controller
 
     public function update(Request $request, Store $store, string $raffleId): JsonResponse
     {
-        $payload = $this->validatedRafflePayload($request);
+        $payload = $this->rafflePayloadService->validate($request);
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
         try {
@@ -114,7 +119,7 @@ class RaffleController extends Controller
                 $userApiKey
             );
 
-            return response()->json(['data' => $this->normalizePresenterUrl($token, $raffleId)]);
+            return response()->json(['data' => $this->presenterUrlNormalizer->normalize($token, $raffleId)]);
         } catch (BtcPayException $e) {
             return $this->handleBtcPayError($e);
         }
@@ -261,113 +266,6 @@ class RaffleController extends Controller
      * @param  array<string, mixed>  $raffle
      * @return array<string, mixed>
      */
-    /**
-     * @return array<string, mixed>
-     */
-    protected function validatedRafflePayload(Request $request): array
-    {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'ticketCurrency' => ['nullable', 'string', 'max:16', 'regex:/^[A-Za-z]{3,16}$/'],
-            'ticketPrice' => ['nullable', 'numeric', 'gt:0'],
-            'ticketPriceSats' => ['nullable', 'integer', 'min:1'],
-            'maxTickets' => ['nullable', 'integer', 'min:1'],
-        ]);
-
-        $base = [
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
-            'maxTickets' => array_key_exists('maxTickets', $validated) ? $validated['maxTickets'] : null,
-        ];
-
-        $hasCurrencyPrice = ! empty($validated['ticketCurrency']) && isset($validated['ticketPrice']);
-        $hasLegacySats = isset($validated['ticketPriceSats']);
-
-        if (! $hasCurrencyPrice && ! $hasLegacySats) {
-            throw ValidationException::withMessages([
-                'ticketPrice' => [__('raffles.validation_pricing_required')],
-            ]);
-        }
-
-        if ($hasCurrencyPrice) {
-            $currency = strtoupper(trim((string) $validated['ticketCurrency']));
-            $price = (float) $validated['ticketPrice'];
-
-            if ($currency === 'SATS' && $price != (int) $price) {
-                throw ValidationException::withMessages([
-                    'ticketPrice' => [__('raffles.validation_sats_whole_number')],
-                ]);
-            }
-
-            if ($currency === 'SATS') {
-                return array_merge($base, ['ticketPriceSats' => (int) $price]);
-            }
-
-            return array_merge($base, [
-                'ticketCurrency' => $currency,
-                'ticketPrice' => $price,
-            ]);
-        }
-
-        return array_merge($base, ['ticketPriceSats' => (int) $validated['ticketPriceSats']]);
-    }
-
-    /**
-     * BTCPay may return a relative URL or one with an internal request host (Docker) when
-     * presenter-token is called server-to-server. Always expose the public BTCPay base URL.
-     *
-     * @param  array<string, mixed>  $tokenPayload
-     * @return array<string, mixed>
-     */
-    protected function normalizePresenterUrl(array $tokenPayload, string $raffleId): array
-    {
-        $token = (string) ($tokenPayload['token'] ?? '');
-        $publicBase = rtrim((string) config('services.btcpay.public_url', ''), '/');
-
-        if ($publicBase === '' || $token === '') {
-            return $tokenPayload;
-        }
-
-        $path = '/raffle/'.$raffleId.'/present';
-        $presenterUrl = (string) ($tokenPayload['presenterUrl'] ?? '');
-        $publicOrigin = $this->normalizeHttpOrigin($publicBase);
-
-        $needsRebuild = true;
-        if ($presenterUrl !== '' && str_starts_with($presenterUrl, 'http')) {
-            $parsed = parse_url($presenterUrl);
-            $pathOk = isset($parsed['path']) && str_contains((string) $parsed['path'], $path);
-            $presenterOrigin = $this->normalizeHttpOrigin($presenterUrl);
-            $originOk = $publicOrigin !== null && $presenterOrigin !== null
-                && strcasecmp($publicOrigin, $presenterOrigin) === 0;
-            $needsRebuild = ! ($pathOk && $originOk);
-        }
-
-        if ($needsRebuild) {
-            $tokenPayload['presenterUrl'] = $publicBase.$path.'?token='.rawurlencode($token);
-        }
-
-        return $tokenPayload;
-    }
-
-    protected function normalizeHttpOrigin(string $url): ?string
-    {
-        $parts = parse_url($url);
-        if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'])) {
-            return null;
-        }
-
-        $scheme = strtolower((string) $parts['scheme']);
-        $host = strtolower((string) $parts['host']);
-        $port = $parts['port'] ?? ($scheme === 'https' ? 443 : 80);
-
-        if (($scheme === 'http' && (int) $port === 80) || ($scheme === 'https' && (int) $port === 443)) {
-            return "{$scheme}://{$host}";
-        }
-
-        return "{$scheme}://{$host}:{$port}";
-    }
-
     protected function enrichRaffle(array $raffle): array
     {
         $status = (string) ($raffle['status'] ?? '');
