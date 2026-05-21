@@ -26,6 +26,8 @@ export interface TicketEvent {
     purchaseLink?: string;
     ticketsSold?: number;
     createdAt?: string;
+    bundledRaffleId?: string | null;
+    bundledRaffleTicketsPerAdmission?: number;
 }
 
 export interface TicketType {

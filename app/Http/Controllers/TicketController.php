@@ -93,6 +93,8 @@ class TicketController extends Controller
             'eventLogoUrl' => ['sometimes', 'nullable', 'string', 'max:500', Rule::when($request->filled('eventLogoUrl'), ['url'])],
             'eventLogoFileId' => ['sometimes', 'nullable', 'string', 'max:255'],
             'enable' => ['sometimes', 'boolean'],
+            'bundledRaffleId' => ['sometimes', 'nullable', 'uuid'],
+            'bundledRaffleTicketsPerAdmission' => ['sometimes', 'integer', 'min:0', 'max:20'],
         ]);
 
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
@@ -114,6 +116,8 @@ class TicketController extends Controller
             'eventLogoUrl',
             'eventLogoFileId',
             'enable',
+            'bundledRaffleId',
+            'bundledRaffleTicketsPerAdmission',
         ]), (fn ($v, $k) => $v !== null && ($k !== 'eventLogoUrl' || (string) $v !== '')), ARRAY_FILTER_USE_BOTH);
         // Default enable to true so new events are Active and visible in the list immediately
         if (! array_key_exists('enable', $data)) {
@@ -153,6 +157,8 @@ class TicketController extends Controller
             'maximumEventCapacity' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'eventLogoUrl' => ['sometimes', 'nullable', 'string', 'max:500', Rule::when($request->filled('eventLogoUrl'), ['url'])],
             'eventLogoFileId' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'bundledRaffleId' => ['sometimes', 'nullable', 'uuid'],
+            'bundledRaffleTicketsPerAdmission' => ['sometimes', 'integer', 'min:0', 'max:20'],
         ]);
 
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
@@ -172,6 +178,8 @@ class TicketController extends Controller
             'maximumEventCapacity',
             'eventLogoUrl',
             'eventLogoFileId',
+            'bundledRaffleId',
+            'bundledRaffleTicketsPerAdmission',
         ]), (fn ($v, $k) => $v !== null && ($k !== 'eventLogoUrl' || (string) $v !== '')), ARRAY_FILTER_USE_BOTH);
         if ($request->has('eventLogoFileId')) {
             $data['eventLogoFileId'] = $request->input('eventLogoFileId');

@@ -379,6 +379,60 @@
                 </div>
               </div>
 
+              <!-- Raffle bundle (BTCPay Raffle plugin) -->
+              <div
+                v-if="raffleBundleAvailable"
+                class="bg-gray-900/50 rounded-xl p-5 border border-gray-700/50 space-y-3"
+              >
+                <div>
+                  <label class="text-sm font-medium text-gray-300">{{
+                    t("tickets.raffle_bundle_title")
+                  }}</label>
+                  <p class="mt-1 text-xs text-gray-500">
+                    {{ t("tickets.raffle_bundle_hint") }}
+                  </p>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-300 mb-1">{{
+                    t("tickets.raffle_bundle_per_admission")
+                  }}</label>
+                  <input
+                    v-model.number="eventForm.bundledRaffleTicketsPerAdmission"
+                    type="number"
+                    min="0"
+                    max="20"
+                    class="input-field max-w-xs"
+                  />
+                </div>
+                <div v-if="eventForm.bundledRaffleTicketsPerAdmission > 0">
+                  <label class="block text-sm font-medium text-gray-300 mb-1">{{
+                    t("tickets.raffle_bundle_select")
+                  }}</label>
+                  <select
+                    v-model="eventForm.bundledRaffleId"
+                    class="input-field"
+                    required
+                  >
+                    <option value="">
+                      {{ t("tickets.raffle_bundle_select_placeholder") }}
+                    </option>
+                    <option
+                      v-for="r in openRaffles"
+                      :key="r.id"
+                      :value="r.id"
+                    >
+                      {{ r.name }}
+                    </option>
+                  </select>
+                  <p
+                    v-if="openRaffles.length === 0"
+                    class="mt-1 text-xs text-amber-400"
+                  >
+                    {{ t("tickets.raffle_bundle_no_open") }}
+                  </p>
+                </div>
+              </div>
+
               <!-- Redirect URL -->
               <div>
                 <label class="block text-sm font-medium text-gray-300 mb-1">{{
@@ -1664,6 +1718,7 @@ import {
   type TicketType,
   type Ticket,
 } from "../../store/tickets";
+import { useRafflesStore } from "../../store/raffles";
 import { useFlashStore } from "../../store/flash";
 import api from "../../services/api";
 import AppShowLayout from "../../components/stores/AppShowLayout.vue";
@@ -1673,7 +1728,12 @@ import UrlQrModal from "../../components/ui/UrlQrModal.vue";
 
 const { t } = useI18n();
 const ticketsStore = useTicketsStore();
+const rafflesStore = useRafflesStore();
 const flashStore = useFlashStore();
+const raffleBundleAvailable = ref(false);
+const openRaffles = computed(() =>
+  rafflesStore.raffles.filter((r) => r.status === "Open"),
+);
 const props = withDefaults(
   defineProps<{
     app: any;
@@ -1713,6 +1773,8 @@ const eventForm = ref({
   maximumEventCapacity: null as number | null,
   eventLogoUrl: "" as string,
   eventLogoFileId: "" as string,
+  bundledRaffleId: "" as string,
+  bundledRaffleTicketsPerAdmission: 0,
 });
 
 // Image upload
@@ -1805,6 +1867,8 @@ function resetForm() {
     maximumEventCapacity: null,
     eventLogoUrl: "",
     eventLogoFileId: "",
+    bundledRaffleId: "",
+    bundledRaffleTicketsPerAdmission: 0,
   };
   editingEvent.value = null;
   showEmailSettings.value = false;
@@ -2034,6 +2098,22 @@ async function handleSubmitEvent() {
     data.eventLogoFileId = "";
   }
 
+  const bundlePer = Math.max(
+    0,
+    Number(eventForm.value.bundledRaffleTicketsPerAdmission) || 0,
+  );
+  data.bundledRaffleTicketsPerAdmission = bundlePer;
+  if (bundlePer > 0) {
+    if (!eventForm.value.bundledRaffleId) {
+      showError(t("tickets.raffle_bundle_select_required"));
+      submitting.value = false;
+      return;
+    }
+    data.bundledRaffleId = eventForm.value.bundledRaffleId;
+  } else {
+    data.bundledRaffleId = null;
+  }
+
   try {
     if (editingEvent.value) {
       await ticketsStore.updateEvent(
@@ -2096,6 +2176,9 @@ function handleEditEvent(event: TicketEvent) {
     maximumEventCapacity: event.maximumEventCapacity || null,
     eventLogoUrl: event.eventLogoUrl || (event as any).logoUrl || "",
     eventLogoFileId: (event as any).eventLogoFileId || "",
+    bundledRaffleId: event.bundledRaffleId || "",
+    bundledRaffleTicketsPerAdmission:
+      event.bundledRaffleTicketsPerAdmission ?? 0,
   };
   imagePreview.value = null;
   if (event.emailSubject || event.emailBody) showEmailSettings.value = true;
@@ -2391,8 +2474,22 @@ function exportTicketsCsv(event: TicketEvent) {
 }
 
 // ── Lifecycle ───────────────────────────────────
+async function loadRaffleBundleOptions() {
+  try {
+    raffleBundleAvailable.value = await rafflesStore.fetchAvailability(
+      props.store.id,
+    );
+    if (raffleBundleAvailable.value) {
+      await rafflesStore.fetchRaffles(props.store.id);
+    }
+  } catch {
+    raffleBundleAvailable.value = false;
+  }
+}
+
 onMounted(() => {
   loadEvents();
+  loadRaffleBundleOptions();
 });
 </script>
 
