@@ -174,6 +174,14 @@ class RaffleController extends Controller
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
         try {
+            $raffle = $this->raffleService->getRaffle($store->btcpay_store_id, $raffleId, $userApiKey);
+            $enriched = $this->enrichRaffle($raffle);
+            if (! ($enriched['canDelete'] ?? false)) {
+                return response()->json([
+                    'message' => __('messages.raffles_cannot_delete'),
+                ], 403);
+            }
+
             $this->raffleService->deleteRaffle($store->btcpay_store_id, $raffleId, $userApiKey);
 
             return response()->json(['data' => ['deleted' => true]]);

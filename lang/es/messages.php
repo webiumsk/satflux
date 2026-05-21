@@ -62,6 +62,7 @@ return [
     'tickets_event_limit_free' => 'En el plan gratuito puedes tener como máximo :max evento por tienda. Actualiza a Pro para eventos ilimitados.',
     'raffles_limit_free' => 'En el plan gratuito puedes tener como máximo :max rifa por tienda. Actualiza a Pro para rifas ilimitadas.',
     'raffles_quota_verification_failed' => 'No se pudo verificar el límite de rifas en BTCPay. Inténtalo de nuevo.',
+    'raffles_cannot_delete' => 'Esta rifa solo se puede eliminar en borrador o cuando está completada.',
     'tickets_bundled_raffle_required' => 'Selecciona una rifa abierta cuando incluyas entradas de rifa por admisión.',
     'tickets_bundled_tickets_required' => 'Indica entradas de rifa por admisión (1–20) cuando selecciones una rifa.',
     'tickets_bundled_raffle_invalid' => 'La rifa seleccionada no existe en esta tienda.',

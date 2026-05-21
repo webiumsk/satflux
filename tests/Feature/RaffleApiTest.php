@@ -275,6 +275,16 @@ class RaffleApiTest extends TestCase
                 return Http::response([], 404);
             }
 
+            if ($request->method() === 'GET' && str_ends_with($url, "/api/v1/stores/{$btcpayStoreId}/raffle/{$raffleId}")) {
+                return Http::response([
+                    'id' => $raffleId,
+                    'name' => 'Draft raffle',
+                    'status' => 'Draft',
+                    'ticketsSold' => 0,
+                    'ticketPriceSats' => 1000,
+                ], 200);
+            }
+
             if ($request->method() === 'DELETE' && str_ends_with($url, "/api/v1/stores/{$btcpayStoreId}/raffle/{$raffleId}")) {
                 return Http::response(['deleted' => true], 200);
             }
@@ -288,6 +298,53 @@ class RaffleApiTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('data.deleted', true);
+    }
+
+    public function test_delete_open_raffle_returns_forbidden_without_btcpay_delete(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        $btcpayStoreId = $store->btcpay_store_id;
+        $baseUrl = rtrim(config('services.btcpay.base_url', 'http://localhost'), '/');
+        $raffleId = '77777777-7777-7777-7777-777777777777';
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, $btcpayStoreId, $raffleId) {
+            $url = (string) $request->url();
+            if (! str_contains($url, $baseUrl)) {
+                return Http::response([], 404);
+            }
+
+            if ($request->method() === 'GET' && str_ends_with($url, "/api/v1/stores/{$btcpayStoreId}/raffle/{$raffleId}")) {
+                return Http::response([
+                    'id' => $raffleId,
+                    'name' => 'Open raffle',
+                    'status' => 'Open',
+                    'ticketsSold' => 0,
+                    'ticketPriceSats' => 1000,
+                ], 200);
+            }
+
+            if ($request->method() === 'DELETE' && str_ends_with($url, "/api/v1/stores/{$btcpayStoreId}/raffle/{$raffleId}")) {
+                return Http::response(['deleted' => true], 200);
+            }
+
+            return Http::response([], 404);
+        });
+
+        Sanctum::actingAs($user);
+
+        $response = $this->deleteJson("/api/stores/{$store->id}/raffles/{$raffleId}");
+
+        $response->assertForbidden();
+        $response->assertJsonFragment(['message' => __('messages.raffles_cannot_delete')]);
+
+        Http::assertNotSent(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, $btcpayStoreId, $raffleId) {
+            $url = (string) $request->url();
+
+            return $request->method() === 'DELETE'
+                && str_contains($url, $baseUrl)
+                && str_ends_with($url, "/api/v1/stores/{$btcpayStoreId}/raffle/{$raffleId}");
+        });
     }
 
     public function test_tickets_list_masks_buyer_email(): void
