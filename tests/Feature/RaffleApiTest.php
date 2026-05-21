@@ -412,6 +412,53 @@ class RaffleApiTest extends TestCase
 
         $response->assertForbidden();
         $response->assertJsonFragment(['message' => __('messages.raffles_limit_free', ['max' => 1])]);
+
+        Http::assertNotSent(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, $btcpayStoreId) {
+            $url = (string) $request->url();
+
+            return $request->method() === 'POST'
+                && str_contains($url, $baseUrl)
+                && str_ends_with($url, "/api/v1/stores/{$btcpayStoreId}/raffle");
+        });
+    }
+
+    public function test_free_plan_create_returns_503_when_quota_list_fails(): void
+    {
+        $user = User::factory()->create(['role' => 'free']);
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        $btcpayStoreId = $store->btcpay_store_id;
+        $baseUrl = rtrim(config('services.btcpay.base_url', 'http://localhost'), '/');
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, $btcpayStoreId) {
+            $url = (string) $request->url();
+            if (! str_contains($url, $baseUrl)) {
+                return Http::response([], 404);
+            }
+
+            if ($request->method() === 'GET' && str_ends_with($url, "/api/v1/stores/{$btcpayStoreId}/raffle")) {
+                return Http::response(['message' => 'upstream down'], 502);
+            }
+
+            return Http::response([], 404);
+        });
+
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson("/api/stores/{$store->id}/raffles", [
+            'name' => 'Should not create',
+            'ticketPriceSats' => 5000,
+        ]);
+
+        $response->assertStatus(503);
+        $response->assertJsonFragment(['message' => __('messages.raffles_quota_verification_failed')]);
+
+        Http::assertNotSent(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, $btcpayStoreId) {
+            $url = (string) $request->url();
+
+            return $request->method() === 'POST'
+                && str_contains($url, $baseUrl)
+                && str_ends_with($url, "/api/v1/stores/{$btcpayStoreId}/raffle");
+        });
     }
 
     public function test_pro_plan_allows_multiple_raffles(): void
@@ -577,6 +624,9 @@ class RaffleApiTest extends TestCase
             'create' => ['POST', ''],
             'show' => ['GET', '{raffleId}'],
             'open' => ['POST', '{raffleId}/open'],
+            'delete' => ['DELETE', '{raffleId}'],
+            'manualTicket' => ['POST', '{raffleId}/tickets/manual'],
+            'presenterToken' => ['POST', '{raffleId}/presenter-token'],
         ];
     }
 

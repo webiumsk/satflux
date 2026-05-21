@@ -61,6 +61,12 @@ return [
     // Tickets (events limit)
     'tickets_event_limit_free' => 'En el plan gratuito puedes tener como máximo :max evento por tienda. Actualiza a Pro para eventos ilimitados.',
     'raffles_limit_free' => 'En el plan gratuito puedes tener como máximo :max rifa por tienda. Actualiza a Pro para rifas ilimitadas.',
+    'raffles_quota_verification_failed' => 'No se pudo verificar el límite de rifas en BTCPay. Inténtalo de nuevo.',
+    'tickets_bundled_raffle_required' => 'Selecciona una rifa abierta cuando incluyas entradas de rifa por admisión.',
+    'tickets_bundled_tickets_required' => 'Indica entradas de rifa por admisión (1–20) cuando selecciones una rifa.',
+    'tickets_bundled_raffle_invalid' => 'La rifa seleccionada no existe en esta tienda.',
+    'tickets_bundled_raffle_not_open' => 'La rifa seleccionada debe estar abierta para la venta (Open).',
+    'tickets_bundled_raffle_verify_failed' => 'No se pudo verificar la rifa en BTCPay. Inténtalo de nuevo.',
     'tickets_quantity_required_when_capacity' => 'La cantidad es obligatoria cuando el evento tiene límite de capacidad.',
     'tickets_cannot_delete_event_with_sold_tickets' => 'No se puede eliminar un evento con entradas vendidas.',
     'tickets_cannot_deactivate_event_with_sold_tickets' => 'No se puede desactivar un evento con entradas vendidas.',

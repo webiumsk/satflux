@@ -72,7 +72,7 @@
               </button>
               <button
                 type="submit"
-                :disabled="saving"
+                :disabled="saving || !canCreateRaffle"
                 class="px-4 py-2 text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
               >
                 {{ saving ? t('raffles.saving') : t('raffles.create') }}
@@ -154,10 +154,15 @@ onMounted(async () => {
             raffleCount.value = 0;
         }
     }
-    if (!canCreateRaffle.value) {
-        showUpgradeModal.value = true;
-    }
 });
+
+watch(
+    canCreateRaffle,
+    (can) => {
+        showUpgradeModal.value = !can;
+    },
+    { immediate: true },
+);
 
 function onUpgradeModalClose() {
     showUpgradeModal.value = false;

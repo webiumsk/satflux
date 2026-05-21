@@ -31,6 +31,17 @@ class TicketEventRaffleBundleTest extends TestCase
                 return Http::response([], 404);
             }
 
+            if ($request->method() === 'GET' && str_ends_with($url, "/api/v1/stores/{$btcpayStoreId}/raffle")) {
+                return Http::response([
+                    [
+                        'id' => $raffleId,
+                        'name' => 'Open bundle raffle',
+                        'status' => 'Open',
+                        'ticketsSold' => 0,
+                    ],
+                ], 200);
+            }
+
             if ($request->method() === 'GET'
                 && str_contains($url, "/api/v1/stores/{$btcpayStoreId}/satoshi-tickets/events")
                 && ! str_contains($url, '/satoshi-tickets/events/')
@@ -76,5 +87,53 @@ class TicketEventRaffleBundleTest extends TestCase
         $this->assertTrue($postSeen, 'Create event should POST bundle fields to BTCPay');
         $this->assertSame($raffleId, $postedBundleRaffleId);
         $this->assertSame(2, $postedBundlePerAdmission);
+    }
+
+    public function test_update_event_forwards_explicit_null_bundled_raffle_id(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        $btcpayStoreId = $store->btcpay_store_id;
+        $eventId = 'evt-clear-bundle';
+        $baseUrl = rtrim(config('services.btcpay.base_url', 'http://localhost'), '/');
+        $postedBundleRaffleId = 'unset';
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, $btcpayStoreId, $eventId, &$postedBundleRaffleId) {
+            $url = (string) $request->url();
+            if (! str_contains($url, $baseUrl)) {
+                return Http::response([], 404);
+            }
+
+            if ($request->method() === 'PUT'
+                && str_ends_with($url, "/api/v1/stores/{$btcpayStoreId}/satoshi-tickets/events/{$eventId}")
+            ) {
+                $body = $request->data();
+                $postedBundleRaffleId = array_key_exists('bundledRaffleId', $body)
+                    ? $body['bundledRaffleId']
+                    : 'missing';
+
+                return Http::response([
+                    'id' => $eventId,
+                    'title' => 'Cleared bundle',
+                    'eventState' => 'Active',
+                    'bundledRaffleId' => null,
+                    'bundledRaffleTicketsPerAdmission' => 0,
+                ], 200);
+            }
+
+            return Http::response([], 404);
+        });
+
+        Sanctum::actingAs($user);
+
+        $response = $this->putJson("/api/stores/{$store->id}/tickets/events/{$eventId}", [
+            'title' => 'Cleared bundle',
+            'startDate' => '2030-06-01T12:00:00Z',
+            'bundledRaffleId' => null,
+            'bundledRaffleTicketsPerAdmission' => 0,
+        ]);
+
+        $response->assertOk();
+        $this->assertNull($postedBundleRaffleId);
     }
 }

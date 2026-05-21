@@ -68,7 +68,10 @@ class RaffleController extends Controller
                 $existing = $this->raffleService->listRaffles($store->btcpay_store_id, $userApiKey);
                 $count = is_array($existing) ? count($existing) : 0;
             } catch (BtcPayException) {
-                // If listing fails, allow create; BTCPay will reject if needed.
+                return response()->json([
+                    'message' => __('messages.raffles_quota_verification_failed'),
+                    'code' => 'raffle_quota_verification_failed',
+                ], 503);
             }
             if ($count >= $maxRaffles) {
                 return response()->json([

@@ -93,7 +93,13 @@ function onCurrencyChange(event: Event) {
 
 function onPriceInput(event: Event) {
     const raw = (event.target as HTMLInputElement).value;
-    const parsed = isSats.value ? Number(raw) : parseFloat(raw);
+    if (isSats.value) {
+        const parsed = Number(raw);
+        const rounded = Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0;
+        emit('update:ticketPrice', rounded);
+        return;
+    }
+    const parsed = parseFloat(raw);
     emit('update:ticketPrice', Number.isFinite(parsed) ? parsed : 0);
 }
 

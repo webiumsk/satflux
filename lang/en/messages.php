@@ -61,6 +61,12 @@ return [
     // Tickets (events limit)
     'tickets_event_limit_free' => 'Ticket events are limited to :max per store on the Free plan. Upgrade to Pro for unlimited events.',
     'raffles_limit_free' => 'Raffles are limited to :max per store on the Free plan. Upgrade to Pro for unlimited raffles.',
+    'raffles_quota_verification_failed' => 'Could not verify raffle limit with BTCPay. Please try again.',
+    'tickets_bundled_raffle_required' => 'Select an open raffle when including raffle tickets per admission.',
+    'tickets_bundled_tickets_required' => 'Set raffle tickets per admission (1–20) when a raffle is selected.',
+    'tickets_bundled_raffle_invalid' => 'The selected raffle was not found for this store.',
+    'tickets_bundled_raffle_not_open' => 'The selected raffle must be open for ticket sales.',
+    'tickets_bundled_raffle_verify_failed' => 'Could not verify the raffle with BTCPay. Please try again.',
     'tickets_quantity_required_when_capacity' => 'Quantity is required when the event has a capacity limit.',
     'tickets_cannot_delete_event_with_sold_tickets' => 'Cannot delete an event that has sold tickets.',
     'tickets_cannot_deactivate_event_with_sold_tickets' => 'Cannot deactivate an event that has sold tickets.',

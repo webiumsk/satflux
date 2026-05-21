@@ -42,9 +42,8 @@ const props = defineProps<{
 const { load: loadLimits } = useAccountLimits();
 
 watch(
-  () => props.store,
-  (s) => {
-    const id = s?.id;
+  () => props.store?.id,
+  (id) => {
     if (typeof id === 'string' && id) {
       void loadLimits(id);
     }
