@@ -1,0 +1,29 @@
+# Optional: proxy BTCPay Raffle (and other /raffle/*) public pages to BTCPay Server.
+#
+# Required when BTCPAY_PUBLIC_URL (or BTCPAY_BASE_URL) uses the same host as the Satflux
+# panel (e.g. https://satflux.org). Without this, /raffle/* is handled by Laravel → 500.
+#
+# Setup:
+#   1. cp docker/nginx/btcpay-public.conf.example docker/nginx/btcpay-public.conf
+#   2. Set proxy_pass to your BTCPay Server (host:port reachable from nginx container)
+#   3. Mount in docker-compose (prod.conf already includes btcpay-public.conf):
+#        - ./docker/nginx/btcpay-public.conf:/etc/nginx/conf.d/btcpay-public.conf:ro
+#
+# Greenfield API (/api/v1/...) is called server-side via BTCPAY_BASE_URL — configure that
+# separately (may be the same public URL or an internal Docker hostname).
+#
+# Use exact /raffle and prefix /raffle/ so /raffles (Satflux list) is not proxied.
+
+location = /raffle {
+    return 302 /raffle/;
+}
+
+location ^~ /raffle/ {
+    proxy_pass http://127.0.0.1:14142;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_read_timeout 300;
+}

@@ -32,4 +32,14 @@ class RaffleLifecycle
     {
         return $status !== self::STATUS_DRAFT;
     }
+
+    public static function canDelete(string $status): bool
+    {
+        return $status === self::STATUS_DRAFT || $status === self::STATUS_COMPLETED;
+    }
+
+    public static function canAddManualTickets(string $status): bool
+    {
+        return $status === self::STATUS_OPEN || $status === self::STATUS_CLOSED;
+    }
 }

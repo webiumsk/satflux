@@ -116,12 +116,15 @@ Route::get('/version', function () {
     ]);
 });
 
-// Public BTCPay URL for SPA (matches server .env BTCPAY_BASE_URL; no Vite rebuild needed)
+// Public BTCPay URL for SPA (BTCPAY_PUBLIC_URL or BTCPAY_BASE_URL; no Vite rebuild needed)
 Route::get('/config', function () {
-    $base = rtrim((string) config('services.btcpay.base_url', ''), '/');
+    $publicBase = rtrim((string) config('services.btcpay.public_url', ''), '/');
+    if ($publicBase === '') {
+        $publicBase = rtrim((string) config('services.btcpay.base_url', ''), '/');
+    }
 
     return response()->json([
-        'btcpay_base_url' => $base,
+        'btcpay_base_url' => $publicBase,
         'btcpay_lightning_address_domain' => (string) (config('services.btcpay.lightning_address_domain') ?? ''),
     ]);
 });
@@ -499,12 +502,14 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class])->group(function
         Route::get('/', [\App\Http\Controllers\RaffleController::class, 'index']);
         Route::post('/', [\App\Http\Controllers\RaffleController::class, 'store']);
         Route::put('/{raffleId}', [\App\Http\Controllers\RaffleController::class, 'update']);
+        Route::delete('/{raffleId}', [\App\Http\Controllers\RaffleController::class, 'destroy']);
         Route::get('/{raffleId}', [\App\Http\Controllers\RaffleController::class, 'show']);
         Route::post('/{raffleId}/presenter-token', [\App\Http\Controllers\RaffleController::class, 'presenterToken']);
         Route::post('/{raffleId}/open', [\App\Http\Controllers\RaffleController::class, 'open']);
         Route::post('/{raffleId}/close', [\App\Http\Controllers\RaffleController::class, 'close']);
         Route::post('/{raffleId}/draw', [\App\Http\Controllers\RaffleController::class, 'draw']);
         Route::post('/{raffleId}/complete', [\App\Http\Controllers\RaffleController::class, 'complete']);
+        Route::post('/{raffleId}/tickets/manual', [\App\Http\Controllers\RaffleController::class, 'addManualTickets']);
         Route::get('/{raffleId}/tickets', [\App\Http\Controllers\RaffleController::class, 'tickets']);
         Route::get('/{raffleId}/drawings', [\App\Http\Controllers\RaffleController::class, 'drawings']);
     });

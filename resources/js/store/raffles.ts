@@ -11,7 +11,9 @@ export interface Raffle {
     name: string;
     description?: string | null;
     storeId: string;
-    ticketPriceSats: number;
+    ticketCurrency: string;
+    ticketPrice: number;
+    ticketPriceSats: number | null;
     maxTickets: number | null;
     status: RaffleStatus;
     ticketsSold: number;
@@ -21,6 +23,14 @@ export interface Raffle {
     completedAt?: string | null;
     allowedActions?: RaffleAction[];
     showsPublicLink?: boolean;
+    canDelete?: boolean;
+    canAddManualTickets?: boolean;
+}
+
+export interface AddManualTicketsPayload {
+    count: number;
+    buyerEmail: string;
+    buyerName?: string | null;
 }
 
 export interface RaffleTicket {
@@ -29,6 +39,7 @@ export interface RaffleTicket {
     buyerEmail?: string | null;
     allocatedAt: string;
     receiptUrl?: string;
+    isManual?: boolean;
 }
 
 export interface RaffleDrawing {
@@ -39,14 +50,25 @@ export interface RaffleDrawing {
     drawnAt: string;
 }
 
-export interface CreateRafflePayload {
+type RafflePricingSatsFields = {
+    ticketPriceSats: number;
+    ticketCurrency?: never;
+    ticketPrice?: never;
+};
+
+type RafflePricingFiatFields = {
+    ticketCurrency: string;
+    ticketPrice: number;
+    ticketPriceSats?: never;
+};
+
+export type CreateRafflePayload = {
     name: string;
     description?: string | null;
-    ticketPriceSats: number;
     maxTickets?: number | null;
-}
+} & (RafflePricingSatsFields | RafflePricingFiatFields);
 
-export type UpdateRafflePayload = CreateRafflePayload;
+export type UpdateRafflePayload = Partial<CreateRafflePayload>;
 
 export interface PresenterTokenResponse {
     token: string;
@@ -85,6 +107,10 @@ export const useRafflesStore = defineStore('raffles', () => {
     async function createRaffle(storeId: string, payload: CreateRafflePayload): Promise<Raffle> {
         const { data } = await api.post<{ data: Raffle }>(`/stores/${storeId}/raffles`, payload);
         return data.data;
+    }
+
+    async function deleteRaffle(storeId: string, raffleId: string): Promise<void> {
+        await api.delete(`/stores/${storeId}/raffles/${raffleId}`);
     }
 
     async function updateRaffle(
@@ -154,6 +180,18 @@ export const useRafflesStore = defineStore('raffles', () => {
         return data.data;
     }
 
+    async function addManualTickets(
+        storeId: string,
+        raffleId: string,
+        payload: AddManualTicketsPayload,
+    ): Promise<RaffleTicket[]> {
+        const { data } = await api.post<{ data: RaffleTicket[] }>(
+            `/stores/${storeId}/raffles/${raffleId}/tickets/manual`,
+            payload,
+        );
+        return data.data ?? [];
+    }
+
     async function fetchTickets(storeId: string, raffleId: string): Promise<RaffleTicket[]> {
         const { data } = await api.get<{ data: RaffleTicket[] }>(
             `/stores/${storeId}/raffles/${raffleId}/tickets`,
@@ -180,6 +218,7 @@ export const useRafflesStore = defineStore('raffles', () => {
         fetchAvailability,
         fetchRaffles,
         createRaffle,
+        deleteRaffle,
         updateRaffle,
         createPresenterToken,
         fetchRaffle,
@@ -187,6 +226,7 @@ export const useRafflesStore = defineStore('raffles', () => {
         closeRaffle,
         drawRaffle,
         completeRaffle,
+        addManualTickets,
         fetchTickets,
         fetchDrawings,
     };

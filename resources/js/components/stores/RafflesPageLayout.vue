@@ -11,7 +11,7 @@
   <div v-else-if="error" class="flex min-h-0 flex-1 items-center justify-center bg-gray-900">
     <div class="text-center px-4">
       <p class="text-red-400 mb-4">{{ error }}</p>
-      <button type="button" @click="emit('retry')" class="text-indigo-400 hover:text-indigo-300">{{ t('common.retry') }}</button>
+      <button type="button" class="text-indigo-400 hover:text-indigo-300" @click="emit('retry')">{{ t('common.retry') }}</button>
     </div>
   </div>
   <div v-else class="flex min-h-0 flex-1 overflow-hidden bg-gray-900">
@@ -28,14 +28,29 @@
 </template>
 
 <script setup lang="ts">
+import { watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import StoreSidebar from './StoreSidebar.vue';
+import { useAccountLimits } from '../../composables/useAccountLimits';
 
-defineProps<{
+const props = defineProps<{
   store: Record<string, unknown> | null;
   apps: Array<{ id: string; name: string; app_type: string }>;
   error?: string;
 }>();
+
+const { load: loadLimits } = useAccountLimits();
+
+watch(
+  () => props.store,
+  (s) => {
+    const id = s?.id;
+    if (typeof id === 'string' && id) {
+      void loadLimits(id);
+    }
+  },
+  { immediate: true },
+);
 
 const emit = defineEmits<{
   retry: [];
