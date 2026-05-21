@@ -31,7 +31,11 @@
                     </span>
                   </div>
                   <h1 v-else class="text-2xl font-bold text-white">{{ t('raffles.title') }}</h1>
-                  <p v-if="raffle?.description" class="text-gray-400 mt-2 max-w-2xl">{{ raffle.description }}</p>
+                  <div
+                    v-if="raffle?.description"
+                    class="prose prose-invert prose-sm max-w-2xl text-gray-400 mt-2 raffle-description-preview"
+                    v-html="raffle.description"
+                  />
                   <p v-else class="text-sm text-gray-400 mt-1">
                     <span class="text-indigo-400">{{ store.name }}</span>
                   </p>
@@ -85,7 +89,10 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('raffles.field_description') }}</label>
-              <textarea v-model="editForm.description" rows="3" class="w-full rounded-lg bg-gray-900 border border-gray-600 text-white px-3 py-2" />
+              <RichTextEditor v-model="editForm.description" />
+              <p class="mt-1 text-xs text-gray-500">
+                {{ t('raffles.description_rich_hint') }}
+              </p>
             </div>
             <RaffleTicketPricingFields
               v-model:ticket-currency="editForm.ticketCurrency"
@@ -404,6 +411,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import RafflesPageLayout from '../../components/stores/RafflesPageLayout.vue';
 import AppShowLayout from '../../components/stores/AppShowLayout.vue';
+import RichTextEditor from '../../components/admin/RichTextEditor.vue';
 import RaffleTicketPricingFields from '../../components/stores/RaffleTicketPricingFields.vue';
 import UrlQrModal from '../../components/ui/UrlQrModal.vue';
 import DeleteAppModal from '../../components/stores/DeleteAppModal.vue';
@@ -549,13 +557,19 @@ watch(editUnlimitedTickets, (v) => {
     editForm.maxTickets = v ? null : (editForm.maxTickets ?? 100);
 });
 
+function raffleDescriptionForApi(html: string): string | null {
+    const text = html.replace(/<[^>]*>/g, '').trim();
+    if (text.length === 0) return null;
+    return html.trim();
+}
+
 async function saveDraft() {
     if (!raffle.value || raffle.value.status !== 'Draft') return;
     editSaving.value = true;
     try {
         raffle.value = await rafflesStore.updateRaffle(storeId.value, raffleId.value, {
             name: editForm.name.trim(),
-            description: editForm.description.trim() || null,
+            description: raffleDescriptionForApi(editForm.description),
             maxTickets: editUnlimitedTickets.value ? null : editForm.maxTickets,
             ...buildRafflePricingPayload({
                 ticketCurrency: editForm.ticketCurrency,

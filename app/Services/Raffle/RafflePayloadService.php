@@ -14,7 +14,7 @@ class RafflePayloadService
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
+            'description' => ['nullable', 'string', 'max:8000'],
             'ticketCurrency' => ['nullable', 'string', 'max:16', 'regex:/^[A-Za-z]{3,16}$/'],
             'ticketPrice' => ['nullable', 'numeric', 'gt:0'],
             'ticketPriceSats' => ['nullable', 'integer', 'min:1'],

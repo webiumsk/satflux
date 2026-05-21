@@ -42,11 +42,10 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('raffles.field_description') }}</label>
-              <textarea
-                v-model="form.description"
-                rows="3"
-                class="w-full rounded-lg bg-gray-900 border border-gray-600 text-white px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
+              <RichTextEditor v-model="form.description" />
+              <p class="mt-1 text-xs text-gray-500">
+                {{ t('raffles.description_rich_hint') }}
+              </p>
             </div>
             <RaffleTicketPricingFields
               v-model:ticket-currency="form.ticketCurrency"
@@ -102,6 +101,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import RafflesPageLayout from '../../components/stores/RafflesPageLayout.vue';
 import AppShowLayout from '../../components/stores/AppShowLayout.vue';
+import RichTextEditor from '../../components/admin/RichTextEditor.vue';
 import RaffleTicketPricingFields from '../../components/stores/RaffleTicketPricingFields.vue';
 import UpgradeModal from '../../components/stores/UpgradeModal.vue';
 import { useAccountLimits } from '../../composables/useAccountLimits';
@@ -189,12 +189,18 @@ function goBack() {
     router.push({ name: 'stores-raffles', params: { id: storeId.value } });
 }
 
+function raffleDescriptionForApi(html: string): string | null {
+    const text = html.replace(/<[^>]*>/g, '').trim();
+    if (text.length === 0) return null;
+    return html.trim();
+}
+
 async function submit() {
     saving.value = true;
     try {
         const raffle = await rafflesStore.createRaffle(storeId.value, {
             name: form.name.trim(),
-            description: form.description.trim() || null,
+            description: raffleDescriptionForApi(form.description),
             maxTickets: unlimitedTickets.value ? null : form.maxTickets,
             ...buildRafflePricingPayload({
                 ticketCurrency: form.ticketCurrency,

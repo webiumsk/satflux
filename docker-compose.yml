@@ -111,7 +111,7 @@ services:
     image: axllent/mailpit
     container_name: satflux.io_mailpit
     ports:
-      - "1025:1025"  # SMTP server
+      #- "1025:1025"  # SMTP server
       - "8025:8025"  # Web UI
     networks:
       - satflux.io

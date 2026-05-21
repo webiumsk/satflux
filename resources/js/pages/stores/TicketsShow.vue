@@ -161,17 +161,18 @@
               </div>
 
               <!-- Description & Event Image -->
-              <div class="grid grid-cols-1 md:grid-cols-[1fr,auto] gap-6">
-                <div>
+              <div class="grid grid-cols-1 md:grid-cols-[1fr,auto] gap-6 md:items-start">
+                <div class="min-w-0">
                   <label class="block text-sm font-medium text-gray-300 mb-1">{{
                     t("tickets.description")
                   }}</label>
-                  <textarea
+                  <RichTextEditor
                     v-model="eventForm.description"
-                    rows="5"
-                    class="input-field resize-none"
                     :placeholder="t('tickets.description_placeholder')"
-                  ></textarea>
+                  />
+                  <p class="mt-1 text-xs text-gray-500">
+                    {{ t("tickets.description_rich_hint") }}
+                  </p>
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-300 mb-1">{{
@@ -1613,6 +1614,52 @@
                           <td class="py-3">
                             <div class="flex items-center gap-1">
                               <button
+                                v-if="
+                                  ticket.paymentStatus === 'Settled' &&
+                                  ticket.orderId
+                                "
+                                type="button"
+                                :disabled="resendingTicketId === ticket.id"
+                                :title="t('tickets.resend_ticket_email')"
+                                class="p-1.5 rounded-lg text-indigo-400 hover:bg-indigo-500/10 disabled:opacity-50 transition-colors"
+                                @click="handleResendTicketEmail(event.id, ticket)"
+                              >
+                                <svg
+                                  v-if="resendingTicketId !== ticket.id"
+                                  class="w-3.5 h-3.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                  />
+                                </svg>
+                                <svg
+                                  v-else
+                                  class="w-3.5 h-3.5 animate-spin"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <circle
+                                    class="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    stroke-width="4"
+                                  />
+                                  <path
+                                    class="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                  />
+                                </svg>
+                              </button>
+                              <button
                                 v-if="!ticket.checkedIn"
                                 @click="handleCheckIn(event.id, ticket)"
                                 :title="t('tickets.check_in')"
@@ -1632,7 +1679,11 @@
                                   />
                                 </svg>
                               </button>
-                              <span v-else class="p-1.5 text-gray-600">
+                              <span
+                                v-else-if="ticket.checkedIn"
+                                class="p-1.5 text-gray-600"
+                                :title="t('tickets.check_in')"
+                              >
                                 <svg
                                   class="w-3.5 h-3.5"
                                   fill="none"
@@ -1725,6 +1776,7 @@ import AppShowLayout from "../../components/stores/AppShowLayout.vue";
 import DatePicker from "../../components/ui/DatePicker.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 import UrlQrModal from "../../components/ui/UrlQrModal.vue";
+import RichTextEditor from "../../components/admin/RichTextEditor.vue";
 
 const { t } = useI18n();
 const ticketsStore = useTicketsStore();
@@ -1751,6 +1803,7 @@ const showUpgradeModal = ref(false);
 const events = ref<TicketEvent[]>([]);
 const loadingEvents = ref(false);
 const showCheckInQrEventId = ref<number | null>(null);
+const resendingTicketId = ref<string | null>(null);
 const showCreateForm = ref(false);
 const eventFormRef = ref<HTMLElement | null>(null);
 const showEmailSettings = ref(false);
@@ -2369,6 +2422,37 @@ function debouncedSearchTickets(eventId: string) {
   searchTimeout = setTimeout(() => {
     loadTickets(eventId, ticketSearch.value || undefined);
   }, 400);
+}
+
+async function handleResendTicketEmail(eventId: string, ticket: Ticket) {
+  if (!ticket.orderId) {
+    showError(t("tickets.resend_missing_order"));
+    return;
+  }
+  resendingTicketId.value = ticket.id;
+  try {
+    await ticketsStore.sendReminder(
+      props.store.id,
+      eventId,
+      ticket.orderId,
+      ticket.id,
+    );
+    showSuccess(t("tickets.resend_success"));
+  } catch (err: unknown) {
+    const e = err as {
+      response?: { status?: number; data?: { message?: string } };
+      message?: string;
+    };
+    const message =
+      e.response?.status === 422
+        ? e.response?.data?.message || t("tickets.resend_smtp_not_configured")
+        : e.response?.data?.message ||
+          e.message ||
+          t("tickets.resend_failed");
+    showError(message);
+  } finally {
+    resendingTicketId.value = null;
+  }
 }
 
 async function handleCheckIn(eventId: string, ticket: Ticket) {
