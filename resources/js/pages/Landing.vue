@@ -1158,6 +1158,16 @@
                     t("landing.feature_checkout_tools_bullet_pay")
                   }}</span>
                 </li>
+                <li class="flex items-start gap-2">
+                  <span
+                    class="text-emerald-400 mt-0.5 shrink-0"
+                    aria-hidden="true"
+                    >✓</span
+                  >
+                  <span>{{
+                    t("landing.feature_checkout_tools_bullet_raffle")
+                  }}</span>
+                </li>
               </ul>
             </div>
           </div>
@@ -1199,6 +1209,7 @@
             </div>
           </div>
         </div>
+
       </div>
     </section>
 
@@ -1636,7 +1647,8 @@
 
             <!-- Step 3: PoS Terminal (Interactive) -->
             <div
-              class="landing-howitworks-step flex flex-col md:flex-row items-center justify-between gap-10 py-16 md:min-h-[min(100svh,920px)] md:py-20 relative group"
+              id="how-it-works-pos"
+              class="landing-howitworks-step scroll-mt-24 flex flex-col md:flex-row items-center justify-between gap-10 py-16 md:min-h-[min(100svh,920px)] md:py-20 relative group"
             >
               <div
                 class="absolute left-1/2 top-1/2 z-20 hidden h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-indigo-500/35 bg-gray-950/90 shadow-[0_0_32px_rgba(99,102,241,0.35)] backdrop-blur-sm md:flex motion-safe:transition-transform motion-safe:duration-300 group-hover:scale-110"
@@ -1742,7 +1754,8 @@
 
             <!-- Step 4: Integrations -->
             <div
-              class="landing-howitworks-step flex flex-col md:flex-row items-center justify-between gap-10 py-16 md:py-24 relative group"
+              id="how-it-works-eshop"
+              class="landing-howitworks-step scroll-mt-24 flex flex-col md:flex-row items-center justify-between gap-10 py-16 md:py-24 relative group"
             >
               <div
                 class="absolute left-1/2 top-1/2 z-20 hidden h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-indigo-500/35 bg-gray-950/90 shadow-[0_0_32px_rgba(99,102,241,0.35)] backdrop-blur-sm md:flex motion-safe:transition-transform motion-safe:duration-300 group-hover:scale-110"
@@ -1853,9 +1866,10 @@
               </div>
             </div>
 
-            <!-- Step 5: LN Address -->
+            <!-- Step 5: Crowdfund -->
             <div
-              class="landing-howitworks-step flex flex-col md:flex-row items-center justify-between gap-10 py-16 md:py-24 relative group"
+              id="how-it-works-crowdfund"
+              class="landing-howitworks-step scroll-mt-24 flex flex-col md:flex-row items-center justify-between gap-10 py-16 md:py-24 relative group"
             >
               <div
                 class="absolute left-1/2 top-1/2 z-20 hidden h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-indigo-500/35 bg-gray-950/90 shadow-[0_0_32px_rgba(99,102,241,0.35)] backdrop-blur-sm md:flex motion-safe:transition-transform motion-safe:duration-300 group-hover:scale-110"
@@ -1890,17 +1904,56 @@
                     {{ t("landing.step5_title") }}
                   </h3>
                   <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
-                    {{
-                      t("landing.step5_text", {
-                        domain: displayLightningDomain || "…",
-                      })
-                    }}
+                    {{ t("landing.step5_text") }}
                   </p>
                 </div>
               </div>
 
               <div
                 class="md:w-5/12 flex justify-start pl-16 md:pl-16 order-2 md:order-2"
+              >
+                <div
+                  class="w-full max-w-md rounded-2xl border border-violet-500/30 bg-gray-800 p-6 shadow-xl shadow-violet-950/20 transform group-hover:scale-105 transition-transform duration-500"
+                >
+                  <p class="text-xs font-medium uppercase tracking-wider text-violet-300/80 mb-2">
+                    {{ t("landing.step5_goal_label") }}
+                  </p>
+                  <p class="text-lg font-bold text-white mb-4">
+                    {{ t("landing.step5_goal_amount") }}
+                  </p>
+                  <div class="h-3 w-full rounded-full bg-gray-700 overflow-hidden mb-2">
+                    <div
+                      class="h-full w-[64%] rounded-full bg-gradient-to-r from-violet-500 to-indigo-500"
+                    />
+                  </div>
+                  <p class="text-sm text-violet-200/90 font-medium">
+                    {{ t("landing.step5_goal_progress") }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 6: LN Address -->
+            <div
+              id="how-it-works-ln-address"
+              class="landing-howitworks-step scroll-mt-24 flex flex-col md:flex-row items-center justify-between gap-10 py-16 md:py-24 relative group"
+            >
+              <div
+                class="absolute left-1/2 top-1/2 z-20 hidden h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-indigo-500/35 bg-gray-950/90 shadow-[0_0_32px_rgba(99,102,241,0.35)] backdrop-blur-sm md:flex motion-safe:transition-transform motion-safe:duration-300 group-hover:scale-110"
+                aria-hidden="true"
+              >
+                <span
+                  class="block h-3 w-3 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 shadow-[0_0_14px_rgba(167,139,250,0.85)]"
+                />
+              </div>
+              <div
+                class="absolute left-6 top-14 z-20 flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full border-2 border-orange-400/60 bg-gray-950/95 font-mono text-sm font-bold text-orange-200 shadow-[0_0_24px_rgba(251,146,60,0.4)] ring-2 ring-orange-500/15 md:hidden"
+              >
+                6
+              </div>
+
+              <div
+                class="md:w-5/12 flex justify-start pl-16 md:justify-end pr-8 md:pr-16 order-2 md:order-1"
               >
                 <div
                   class="bg-gradient-to-r from-purple-600 to-indigo-600 p-1 rounded-2xl w-full max-w-sm shadow-xl shadow-purple-900/20 transform group-hover:scale-105 transition-transform duration-500"
@@ -1937,11 +1990,40 @@
                   </div>
                 </div>
               </div>
+
+              <div
+                class="md:w-5/12 text-left pl-16 md:pl-16 order-1 md:order-2"
+              >
+                <div class="mb-4 flex justify-start">
+                  <span
+                    class="inline-flex rounded-lg border border-orange-500/35 bg-orange-500/10 px-2.5 py-1 font-mono text-[11px] font-bold tabular-nums tracking-[0.2em] text-orange-300/95"
+                    aria-hidden="true"
+                    >06</span
+                  >
+                </div>
+                <div
+                  class="rounded-2xl border border-gray-700/10 p-6 shadow-xl shadow-black/25 ring-1 ring-white/[0.04] backdrop-blur-md transition-all duration-300 group-hover:border-orange-500/25 group-hover:bg-gray-950/55 group-hover:shadow-orange-950/10 md:p-8"
+                >
+                  <h3
+                    class="mb-4 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 text-3xl font-bold md:text-5xl"
+                  >
+                    {{ t("landing.step6_title") }}
+                  </h3>
+                  <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
+                    {{
+                      t("landing.step6_text", {
+                        domain: displayLightningDomain || "…",
+                      })
+                    }}
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <!-- Step 6: Ticket Sale -->
+            <!-- Step 7: Ticket Sale -->
             <div
-              class="landing-howitworks-step flex flex-col md:flex-row items-center justify-between gap-10 py-16 md:py-24 relative group"
+              id="how-it-works-tickets"
+              class="landing-howitworks-step scroll-mt-24 flex flex-col md:flex-row items-center justify-between gap-10 py-16 md:py-24 relative group"
             >
               <div
                 class="absolute left-1/2 top-1/2 z-20 hidden h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-indigo-500/35 bg-gray-950/90 shadow-[0_0_32px_rgba(99,102,241,0.35)] backdrop-blur-sm md:flex motion-safe:transition-transform motion-safe:duration-300 group-hover:scale-110"
@@ -1954,11 +2036,69 @@
               <div
                 class="absolute left-6 top-14 z-20 flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full border-2 border-orange-400/60 bg-gray-950/95 font-mono text-sm font-bold text-orange-200 shadow-[0_0_24px_rgba(251,146,60,0.4)] ring-2 ring-orange-500/15 md:hidden"
               >
-                6
+                7
               </div>
 
               <div
-                class="md:w-5/12 flex justify-start pl-16 md:justify-end pr-8 md:pr-16 order-2 md:order-1"
+                class="md:w-5/12 text-left md:text-right pl-16 md:pl-0 pr-0 md:pr-16 order-1 md:order-1"
+              >
+                <div class="mb-4 flex justify-start md:justify-end">
+                  <span
+                    class="inline-flex rounded-lg border border-orange-500/35 bg-orange-500/10 px-2.5 py-1 font-mono text-[11px] font-bold tabular-nums tracking-[0.2em] text-orange-300/95"
+                    aria-hidden="true"
+                  >
+                    07
+                  </span>
+                </div>
+                <div
+                  class="rounded-2xl border border-gray-700/10 p-6 shadow-xl shadow-black/25 ring-1 ring-white/[0.04] backdrop-blur-md transition-all duration-300 group-hover:border-orange-500/25 group-hover:bg-gray-950/55 group-hover:shadow-orange-950/10 md:p-8"
+                >
+                  <h3
+                    class="mb-4 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 text-3xl font-bold md:text-5xl"
+                  >
+                    {{ t("landing.step7_title") }}
+                  </h3>
+                  <p
+                    class="mb-6 text-gray-400 text-lg md:text-xl leading-relaxed"
+                  >
+                    {{ t("landing.step7_text") }}
+                  </p>
+                  <div class="space-y-3 border-t border-gray-700/50 pt-6">
+                    <p
+                      class="text-sm font-medium uppercase tracking-wider text-gray-500"
+                    >
+                      {{ t("landing.step7_plugins_title") }}
+                    </p>
+                    <div class="flex flex-wrap gap-3">
+                      <a
+                        href="https://github.com/webiumsk/btcpay-greenfield-tickets/releases"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="BTCPay Satoshi Tickets for WooCommerce - GitHub Releases"
+                        class="group inline-flex flex-wrap items-center gap-2 rounded-xl border border-gray-600 bg-gray-800/80 px-4 py-2.5 transition-all hover:border-orange-500/50 hover:bg-gray-800"
+                      >
+                        <span
+                          class="font-semibold text-white transition-colors group-hover:text-orange-400"
+                          >{{ t("landing.step7_plugin_woocommerce") }}</span
+                        >
+                        <img
+                          src="https://img.shields.io/badge/license-MIT-blue.svg"
+                          alt="MIT"
+                          class="h-4"
+                        />
+                        <img
+                          src="https://img.shields.io/github/v/release/webiumsk/btcpay-greenfield-tickets?label=release"
+                          alt="release"
+                          class="h-4"
+                        />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                class="md:w-5/12 flex justify-start pl-16 md:pl-16 order-2 md:order-2"
               >
                 <div
                   class="w-full max-w-md bg-gray-800 rounded-2xl border border-gray-700 p-6 flex flex-col items-center gap-4 transform group-hover:scale-105 transition-transform duration-500 relative overflow-hidden"
@@ -2000,7 +2140,7 @@
                       </div>
                       <div>
                         <div class="text-white font-bold text-sm">
-                          {{ t("landing.step6_badge_event") }}
+                          {{ t("landing.step7_badge_event") }}
                         </div>
                         <div class="text-orange-300/70 text-xs">
                           14 Mar 2026 &middot; 18:00
@@ -2019,7 +2159,7 @@
                           />
                         </svg>
                         <span class="text-gray-300"
-                          >{{ t("landing.step6_badge_tickets") }}:
+                          >{{ t("landing.step7_badge_tickets") }}:
                           <span class="text-green-400 font-bold"
                             >142</span
                           ></span
@@ -2038,7 +2178,7 @@
                           />
                         </svg>
                         <span class="text-gray-300"
-                          >{{ t("landing.step6_badge_checkin") }}:
+                          >{{ t("landing.step7_badge_checkin") }}:
                           <span class="text-indigo-400 font-bold"
                             >89</span
                           ></span
@@ -2299,7 +2439,7 @@
                     </div>
                     <div class="flex-1 min-w-0">
                       <div class="text-xs text-gray-400 mb-1.5">
-                        {{ t("landing.step6_scan_label") }}
+                        {{ t("landing.step7_scan_label") }}
                       </div>
                       <div class="flex items-center gap-2">
                         <div
@@ -2342,69 +2482,12 @@
                   </div>
                 </div>
               </div>
-
-              <div
-                class="md:w-5/12 text-left pl-16 md:pl-16 order-1 md:order-2"
-              >
-                <div class="mb-4 flex justify-start">
-                  <span
-                    class="inline-flex rounded-lg border border-orange-500/35 bg-orange-500/10 px-2.5 py-1 font-mono text-[11px] font-bold tabular-nums tracking-[0.2em] text-orange-300/95"
-                    aria-hidden="true"
-                  >
-                    06
-                  </span>
-                </div>
-                <div
-                  class="rounded-2xl border border-gray-700/10 p-6 shadow-xl shadow-black/25 ring-1 ring-white/[0.04] backdrop-blur-md transition-all duration-300 group-hover:border-orange-500/25 group-hover:bg-gray-950/55 group-hover:shadow-orange-950/10 md:p-8"
-                >
-                  <h3
-                    class="mb-4 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 text-3xl font-bold md:text-5xl"
-                  >
-                    {{ t("landing.step6_title") }}
-                  </h3>
-                  <p
-                    class="mb-6 text-gray-400 text-lg md:text-xl leading-relaxed"
-                  >
-                    {{ t("landing.step6_text") }}
-                  </p>
-                  <div class="space-y-3 border-t border-gray-700/50 pt-6">
-                    <p
-                      class="text-sm font-medium uppercase tracking-wider text-gray-500"
-                    >
-                      {{ t("landing.step6_plugins_title") }}
-                    </p>
-                    <div class="flex flex-wrap gap-3">
-                      <a
-                        href="https://github.com/webiumsk/btcpay-greenfield-tickets/releases"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="BTCPay Satoshi Tickets for WooCommerce - GitHub Releases"
-                        class="group inline-flex flex-wrap items-center gap-2 rounded-xl border border-gray-600 bg-gray-800/80 px-4 py-2.5 transition-all hover:border-orange-500/50 hover:bg-gray-800"
-                      >
-                        <span
-                          class="font-semibold text-white transition-colors group-hover:text-orange-400"
-                          >{{ t("landing.step6_plugin_woocommerce") }}</span
-                        >
-                        <img
-                          src="https://img.shields.io/badge/license-MIT-blue.svg"
-                          alt="MIT"
-                          class="h-4"
-                        />
-                        <img
-                          src="https://img.shields.io/github/v/release/webiumsk/btcpay-greenfield-tickets?label=release"
-                          alt="release"
-                          class="h-4"
-                        />
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
 
-            <!-- Step 7: Accounting Exports -->
+            <!-- Step 8: Raffle / Tombola -->
             <div
-              class="landing-howitworks-step flex flex-col md:flex-row items-center justify-between gap-10 py-16 md:py-24 relative group"
+              id="how-it-works-raffle"
+              class="landing-howitworks-step scroll-mt-24 flex flex-col md:flex-row items-center justify-between gap-10 py-16 md:py-24 relative group"
             >
               <div
                 class="absolute left-1/2 top-1/2 z-20 hidden h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-indigo-500/35 bg-gray-950/90 shadow-[0_0_32px_rgba(99,102,241,0.35)] backdrop-blur-sm md:flex motion-safe:transition-transform motion-safe:duration-300 group-hover:scale-110"
@@ -2417,7 +2500,60 @@
               <div
                 class="absolute left-6 top-14 z-20 flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full border-2 border-orange-400/60 bg-gray-950/95 font-mono text-sm font-bold text-orange-200 shadow-[0_0_24px_rgba(251,146,60,0.4)] ring-2 ring-orange-500/15 md:hidden"
               >
-                7
+                8
+              </div>
+
+              <div
+                class="md:w-5/12 flex justify-start pl-16 md:justify-end pr-8 md:pr-16 order-2 md:order-1"
+              >
+                <LandingRafflePresenterPreview
+                  class="group-hover:scale-105"
+                />
+              </div>
+
+              <div
+                class="md:w-5/12 text-left pl-16 md:pl-16 order-1 md:order-2"
+              >
+                <div class="mb-4 flex justify-start">
+                  <span
+                    class="inline-flex rounded-lg border border-orange-500/35 bg-orange-500/10 px-2.5 py-1 font-mono text-[11px] font-bold tabular-nums tracking-[0.2em] text-orange-300/95"
+                    aria-hidden="true"
+                  >
+                    08
+                  </span>
+                </div>
+                <div
+                  class="rounded-2xl border border-gray-700/10 p-6 shadow-xl shadow-black/25 ring-1 ring-white/[0.04] backdrop-blur-md transition-all duration-300 group-hover:border-orange-500/25 group-hover:bg-gray-950/55 group-hover:shadow-orange-950/10 md:p-8"
+                >
+                  <h3
+                    class="mb-4 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 text-3xl font-bold md:text-5xl"
+                  >
+                    {{ t("landing.step8_title") }}
+                  </h3>
+                  <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
+                    {{ t("landing.step8_text") }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 9: Pay Button -->
+            <div
+              id="how-it-works-pay-button"
+              class="landing-howitworks-step scroll-mt-24 flex flex-col md:flex-row items-center justify-between gap-10 py-16 md:py-24 relative group"
+            >
+              <div
+                class="absolute left-1/2 top-1/2 z-20 hidden h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-indigo-500/35 bg-gray-950/90 shadow-[0_0_32px_rgba(99,102,241,0.35)] backdrop-blur-sm md:flex motion-safe:transition-transform motion-safe:duration-300 group-hover:scale-110"
+                aria-hidden="true"
+              >
+                <span
+                  class="block h-3 w-3 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 shadow-[0_0_14px_rgba(167,139,250,0.85)]"
+                />
+              </div>
+              <div
+                class="absolute left-6 top-14 z-20 flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full border-2 border-orange-400/60 bg-gray-950/95 font-mono text-sm font-bold text-orange-200 shadow-[0_0_24px_rgba(251,146,60,0.4)] ring-2 ring-orange-500/15 md:hidden"
+              >
+                9
               </div>
 
               <div
@@ -2428,7 +2564,7 @@
                     class="inline-flex rounded-lg border border-orange-500/35 bg-orange-500/10 px-2.5 py-1 font-mono text-[11px] font-bold tabular-nums tracking-[0.2em] text-orange-300/95"
                     aria-hidden="true"
                   >
-                    07
+                    09
                   </span>
                 </div>
                 <div
@@ -2437,16 +2573,49 @@
                   <h3
                     class="mb-4 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 text-3xl font-bold md:text-5xl"
                   >
-                    {{ t("landing.step7_title") }}
+                    {{ t("landing.step9_title") }}
                   </h3>
                   <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
-                    {{ t("landing.step7_text") }}
+                    {{ t("landing.step9_text") }}
                   </p>
                 </div>
               </div>
 
               <div
                 class="md:w-5/12 flex justify-start pl-16 md:pl-16 order-2 md:order-2"
+              >
+                <div
+                  class="transform group-hover:scale-105 transition-transform duration-500"
+                >
+                  <LandingPayButtonEmbed />
+                  <p class="mt-4 text-center text-xs text-gray-500 max-w-sm">
+                    {{ t("landing.step9_embed_hint") }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 10: Accounting Exports -->
+            <div
+              id="how-it-works-exports"
+              class="landing-howitworks-step scroll-mt-24 flex flex-col md:flex-row items-center justify-between gap-10 py-16 md:py-24 relative group"
+            >
+              <div
+                class="absolute left-1/2 top-1/2 z-20 hidden h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-indigo-500/35 bg-gray-950/90 shadow-[0_0_32px_rgba(99,102,241,0.35)] backdrop-blur-sm md:flex motion-safe:transition-transform motion-safe:duration-300 group-hover:scale-110"
+                aria-hidden="true"
+              >
+                <span
+                  class="block h-3 w-3 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 shadow-[0_0_14px_rgba(167,139,250,0.85)]"
+                />
+              </div>
+              <div
+                class="absolute left-6 top-14 z-20 flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full border-2 border-orange-400/60 bg-gray-950/95 font-mono text-sm font-bold text-orange-200 shadow-[0_0_24px_rgba(251,146,60,0.4)] ring-2 ring-orange-500/15 md:hidden"
+              >
+                10
+              </div>
+
+              <div
+                class="md:w-5/12 flex justify-start pl-16 md:justify-end pr-8 md:pr-16 order-2 md:order-1"
               >
                 <div
                   class="w-full max-w-md bg-gray-800 rounded-2xl border border-gray-700 p-6 flex flex-col items-center gap-6 transform group-hover:scale-105 transition-transform duration-500 relative overflow-hidden"
@@ -2500,6 +2669,31 @@
                       ></path>
                     </svg>
                   </div>
+                </div>
+              </div>
+
+              <div
+                class="md:w-5/12 text-left pl-16 md:pl-16 order-1 md:order-2"
+              >
+                <div class="mb-4 flex justify-start">
+                  <span
+                    class="inline-flex rounded-lg border border-orange-500/35 bg-orange-500/10 px-2.5 py-1 font-mono text-[11px] font-bold tabular-nums tracking-[0.2em] text-orange-300/95"
+                    aria-hidden="true"
+                  >
+                    10
+                  </span>
+                </div>
+                <div
+                  class="rounded-2xl border border-gray-700/10 p-6 shadow-xl shadow-black/25 ring-1 ring-white/[0.04] backdrop-blur-md transition-all duration-300 group-hover:border-orange-500/25 group-hover:bg-gray-950/55 group-hover:shadow-orange-950/10 md:p-8"
+                >
+                  <h3
+                    class="mb-4 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 text-3xl font-bold md:text-5xl"
+                  >
+                    {{ t("landing.step10_title") }}
+                  </h3>
+                  <p class="text-gray-400 text-lg md:text-xl leading-relaxed">
+                    {{ t("landing.step10_text") }}
+                  </p>
                 </div>
               </div>
             </div>
@@ -2890,6 +3084,8 @@ import { onMounted, ref, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import PublicHeader from "../components/layout/PublicHeader.vue";
 import AppFooter from "../components/layout/AppFooter.vue";
+import LandingPayButtonEmbed from "../components/landing/LandingPayButtonEmbed.vue";
+import LandingRafflePresenterPreview from "../components/landing/LandingRafflePresenterPreview.vue";
 import api from "../services/api";
 import { useBtcPayUrl } from "../composables/useBtcPayUrl";
 
