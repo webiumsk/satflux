@@ -152,7 +152,7 @@
           <!-- Mobile Menu Button (Right side) -->
           <div class="flex items-center md:hidden ml-auto">
             <button
-              @click="showMobileMenu = !showMobileMenu"
+              @click="toggleMobileMenu"
               class="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               :aria-label="t('header.open_menu')"
             >
@@ -196,7 +196,7 @@
       <div
         v-if="showMobileMenu"
         class="fixed inset-0 bg-black bg-opacity-70 z-40 md:hidden backdrop-blur-sm"
-        @click="showMobileMenu = false"
+        @click="closeMobileMenu"
       ></div>
     </transition>
 
@@ -213,7 +213,7 @@
         <h2 class="text-lg font-bold text-white">{{ t("header.menu") }}</h2>
         <LanguageSwitcher />
         <button
-          @click="showMobileMenu = false"
+          @click="closeMobileMenu"
           class="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           :aria-label="t('header.close_menu')"
         >
@@ -435,6 +435,14 @@ const userName = computed(() => {
 function closeMobileMenu() {
   showMobileMenu.value = false;
   showFeaturesMobile.value = false;
+}
+
+function toggleMobileMenu() {
+  if (showMobileMenu.value) {
+    closeMobileMenu();
+  } else {
+    showMobileMenu.value = true;
+  }
 }
 
 const handleLogout = async () => {

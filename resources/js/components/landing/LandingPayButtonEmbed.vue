@@ -93,6 +93,20 @@ const payButtonLogoUrl = computed(
 );
 
 function initBtcpayFormHandlers(root: HTMLElement) {
+  function getLastValidPrice(el: HTMLInputElement, min: number): number {
+    const stored = parseInt(el.dataset.lastValid || "", 10);
+    if (!Number.isNaN(stored)) {
+      return stored;
+    }
+    const initial = parseInt(el.dataset.price || "", 10);
+    return Number.isNaN(initial) ? min : initial;
+  }
+
+  function setLastValidPrice(el: HTMLInputElement, value: number) {
+    el.dataset.lastValid = String(value);
+    el.value = String(value);
+  }
+
   function handlePlusMinus(event: Event) {
     event.preventDefault();
     const target = event.target as HTMLButtonElement;
@@ -104,14 +118,15 @@ function initBtcpayFormHandlers(root: HTMLElement) {
     const min = parseInt(target.dataset.min || "", 10) || 1;
     const max = parseInt(target.dataset.max || "", 10);
     const type = target.dataset.type;
-    const price = parseInt(el.value, 10) || min;
+    const price = parseInt(el.value, 10) || getLastValidPrice(el, min);
+    let next = price;
     if (type === "-") {
-      el.value = String(price - step < min ? min : price - step);
+      next = price - step < min ? min : price - step;
     } else if (type === "+") {
-      el.value = String(
-        !Number.isNaN(max) && price + step > max ? max : price + step,
-      );
+      next =
+        !Number.isNaN(max) && price + step > max ? max : price + step;
     }
+    setLastValidPrice(el, next);
   }
 
   function handlePriceInput(event: Event) {
@@ -119,18 +134,22 @@ function initBtcpayFormHandlers(root: HTMLElement) {
     const el = event.target as HTMLInputElement;
     const formRoot = el.closest(".btcpay-form");
     if (!formRoot) return;
-    const price = parseInt(el.dataset.price || "", 10);
-    if (Number.isNaN(parseInt(el.value, 10))) {
-      el.value = String(price);
-    }
     const min = parseInt(el.getAttribute("min") || "", 10) || 1;
     const max = parseInt(el.getAttribute("max") || "", 10);
-    const value = parseInt(el.value, 10);
-    if (value < min) {
-      el.value = String(min);
-    } else if (!Number.isNaN(max) && value > max) {
-      el.value = String(max);
+    const lastValid = getLastValidPrice(el, min);
+
+    if (Number.isNaN(parseInt(el.value, 10))) {
+      setLastValidPrice(el, lastValid);
+      return;
     }
+
+    let value = parseInt(el.value, 10);
+    if (value < min) {
+      value = min;
+    } else if (!Number.isNaN(max) && value > max) {
+      value = max;
+    }
+    setLastValidPrice(el, value);
   }
 
   root.querySelectorAll<HTMLButtonElement>(".btcpay-form .plus-minus").forEach((el) => {
@@ -141,6 +160,9 @@ function initBtcpayFormHandlers(root: HTMLElement) {
 
   root.querySelectorAll<HTMLInputElement>(".btcpay-form .btcpay-input-price").forEach((el) => {
     if (el.dataset.initialized) return;
+    const min = parseInt(el.getAttribute("min") || "", 10) || 1;
+    const initial = parseInt(el.value, 10);
+    el.dataset.lastValid = String(Number.isNaN(initial) ? min : initial);
     el.addEventListener("input", handlePriceInput);
     el.dataset.initialized = "true";
   });
