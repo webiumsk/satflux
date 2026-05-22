@@ -60,6 +60,14 @@ return [
 
     // Tickets (events limit)
     'tickets_event_limit_free' => 'Na voľnom pláne môžete mať maximálne :max event na obchod. Pre neobmedzené eventy prejdite na Pro.',
+    'raffles_limit_free' => 'Na voľnom pláne môžete mať maximálne :max tombolu na obchod. Pre neobmedzené tomboly prejdite na Pro.',
+    'raffles_quota_verification_failed' => 'Nepodarilo sa overiť limit tombol v BTCPay. Skúste to znova.',
+    'raffles_cannot_delete' => 'Tombolu je možné zmazať len v stave koncept alebo dokončená.',
+    'tickets_bundled_raffle_required' => 'Pri raffle lístkoch na vstupenku vyberte otvorenú tombolu.',
+    'tickets_bundled_tickets_required' => 'Pri vybranej tombole nastavte počet raffle lístkov na vstupenku (1–20).',
+    'tickets_bundled_raffle_invalid' => 'Vybraná tombola pre tento obchod neexistuje.',
+    'tickets_bundled_raffle_not_open' => 'Vybraná tombola musí mať stav otvorený predaj (Open).',
+    'tickets_bundled_raffle_verify_failed' => 'Tombolu sa nepodarilo overiť v BTCPay. Skúste to znova.',
     'tickets_quantity_required_when_capacity' => 'Počet vstupeniek je povinný, ak má event nastavenú kapacitu.',
     'tickets_cannot_delete_event_with_sold_tickets' => 'Podujatie s predanými vstupenkami nie je možné zmazať.',
     'tickets_cannot_deactivate_event_with_sold_tickets' => 'Podujatie s predanými vstupenkami nie je možné deaktivovať.',

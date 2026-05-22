@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Store;
 use App\Services\BtcPay\BtcPayFileResolver;
 use App\Services\BtcPay\TicketService;
+use App\Services\Tickets\EventBundleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
@@ -13,7 +14,8 @@ class TicketController extends Controller
 {
     public function __construct(
         protected TicketService $ticketService,
-        protected BtcPayFileResolver $btcPayFileResolver
+        protected BtcPayFileResolver $btcPayFileResolver,
+        protected EventBundleService $eventBundleService,
     ) {}
 
     // ──────────────────────────────────────────────────
@@ -77,28 +79,16 @@ class TicketController extends Controller
             }
         }
 
-        $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'startDate' => ['required', 'string'],
-            'description' => ['sometimes', 'nullable', 'string'],
-            'eventType' => ['sometimes', 'string', 'in:Physical,Virtual'],
-            'location' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'endDate' => ['sometimes', 'nullable', 'string'],
-            'currency' => ['sometimes', 'nullable', 'string', 'max:10'],
-            'redirectUrl' => ['sometimes', 'nullable', 'string', 'url', 'max:500'],
-            'emailSubject' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'emailBody' => ['sometimes', 'nullable', 'string'],
-            'hasMaximumCapacity' => ['sometimes', 'boolean'],
-            'maximumEventCapacity' => ['sometimes', 'nullable', 'integer', 'min:1'],
-            'eventLogoUrl' => ['sometimes', 'nullable', 'string', 'max:500', Rule::when($request->filled('eventLogoUrl'), ['url'])],
-            'eventLogoFileId' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'enable' => ['sometimes', 'boolean'],
-        ]);
+        $request->validate(array_merge($this->baseEventValidationRules($request), $this->eventBundleService->validationRules()));
+
+        if ($response = $this->eventBundleService->validateForStore($request, $store)) {
+            return $response;
+        }
 
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
         // Build request data - include eventLogoFileId (plugin 1.5), optional eventLogoUrl, and enable (default true = Active)
-        $data = array_filter($request->only([
+        $data = $this->eventBundleService->filterPayload($request->only([
             'title',
             'description',
             'eventType',
@@ -114,7 +104,9 @@ class TicketController extends Controller
             'eventLogoUrl',
             'eventLogoFileId',
             'enable',
-        ]), (fn ($v, $k) => $v !== null && ($k !== 'eventLogoUrl' || (string) $v !== '')), ARRAY_FILTER_USE_BOTH);
+            'bundledRaffleId',
+            'bundledRaffleTicketsPerAdmission',
+        ]));
         // Default enable to true so new events are Active and visible in the list immediately
         if (! array_key_exists('enable', $data)) {
             $data['enable'] = true;
@@ -138,26 +130,15 @@ class TicketController extends Controller
      */
     public function updateEvent(Request $request, Store $store, string $eventId)
     {
-        $request->validate([
-            'title' => ['sometimes', 'required', 'string', 'max:255'],
-            'startDate' => ['sometimes', 'required', 'string'],
-            'description' => ['sometimes', 'nullable', 'string'],
-            'eventType' => ['sometimes', 'string', 'in:Physical,Virtual'],
-            'location' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'endDate' => ['sometimes', 'nullable', 'string'],
-            'currency' => ['sometimes', 'nullable', 'string', 'max:10'],
-            'redirectUrl' => ['sometimes', 'nullable', 'string', 'url', 'max:500'],
-            'emailSubject' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'emailBody' => ['sometimes', 'nullable', 'string'],
-            'hasMaximumCapacity' => ['sometimes', 'boolean'],
-            'maximumEventCapacity' => ['sometimes', 'nullable', 'integer', 'min:1'],
-            'eventLogoUrl' => ['sometimes', 'nullable', 'string', 'max:500', Rule::when($request->filled('eventLogoUrl'), ['url'])],
-            'eventLogoFileId' => ['sometimes', 'nullable', 'string', 'max:255'],
-        ]);
+        $request->validate(array_merge($this->baseEventValidationRules($request, forUpdate: true), $this->eventBundleService->validationRules()));
+
+        if ($response = $this->eventBundleService->validateForStore($request, $store)) {
+            return $response;
+        }
 
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
-        $data = array_filter($request->only([
+        $data = $this->eventBundleService->filterPayload($request->only([
             'title',
             'description',
             'eventType',
@@ -172,7 +153,9 @@ class TicketController extends Controller
             'maximumEventCapacity',
             'eventLogoUrl',
             'eventLogoFileId',
-        ]), (fn ($v, $k) => $v !== null && ($k !== 'eventLogoUrl' || (string) $v !== '')), ARRAY_FILTER_USE_BOTH);
+            'bundledRaffleId',
+            'bundledRaffleTicketsPerAdmission',
+        ]));
         if ($request->has('eventLogoFileId')) {
             $data['eventLogoFileId'] = $request->input('eventLogoFileId');
         }
@@ -186,6 +169,38 @@ class TicketController extends Controller
         );
 
         return response()->json(['data' => $this->normalizeEventLogo($event)]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function baseEventValidationRules(Request $request, bool $forUpdate = false): array
+    {
+        $rules = [
+            'description' => ['sometimes', 'nullable', 'string'],
+            'eventType' => ['sometimes', 'string', 'in:Physical,Virtual'],
+            'location' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'endDate' => ['sometimes', 'nullable', 'string'],
+            'currency' => ['sometimes', 'nullable', 'string', 'max:10'],
+            'redirectUrl' => ['sometimes', 'nullable', 'string', 'url', 'max:500'],
+            'emailSubject' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'emailBody' => ['sometimes', 'nullable', 'string'],
+            'hasMaximumCapacity' => ['sometimes', 'boolean'],
+            'maximumEventCapacity' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'eventLogoUrl' => ['sometimes', 'nullable', 'string', 'max:500', Rule::when($request->filled('eventLogoUrl'), ['url'])],
+            'eventLogoFileId' => ['sometimes', 'nullable', 'string', 'max:255'],
+        ];
+
+        if ($forUpdate) {
+            $rules['title'] = ['sometimes', 'required', 'string', 'max:255'];
+            $rules['startDate'] = ['sometimes', 'required', 'string'];
+        } else {
+            $rules['title'] = ['required', 'string', 'max:255'];
+            $rules['startDate'] = ['required', 'string'];
+            $rules['enable'] = ['sometimes', 'boolean'];
+        }
+
+        return $rules;
     }
 
     /**

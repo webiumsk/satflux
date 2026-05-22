@@ -12,6 +12,7 @@ export interface AccountLimitsData {
   ln_addresses: LimitInfo;
   api_keys: LimitInfo;
   events?: { current?: number; max: number | null; unlimited: boolean };
+  raffles?: { current?: number; max: number | null; unlimited: boolean; allowed?: boolean };
 }
 
 const cached = ref<AccountLimitsData | null>(null);

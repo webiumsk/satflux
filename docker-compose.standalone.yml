@@ -33,6 +33,7 @@ services:
     container_name: satflux_nginx_standalone
     volumes:
       - ./docker/nginx/prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/nginx/btcpay-public.conf:/etc/nginx/conf.d/btcpay-public.conf:ro
       - ./public:/var/www/public:ro
       - ./storage:/var/www/storage:rw
     depends_on:

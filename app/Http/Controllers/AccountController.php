@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Store;
 use App\Services\BtcPay\LightningAddressService;
+use App\Services\BtcPay\RaffleService;
 use App\Services\BtcPay\TicketService;
 use App\Services\GuestUpgradeService;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ class AccountController extends Controller
     public function __construct(
         protected LightningAddressService $lightningAddressService,
         protected TicketService $ticketService,
+        protected RaffleService $raffleService,
         protected GuestUpgradeService $guestUpgradeService
     ) {}
 
@@ -99,6 +101,11 @@ class AccountController extends Controller
                     'max' => null,
                     'unlimited' => true,
                 ],
+                'raffles' => [
+                    'max' => null,
+                    'unlimited' => true,
+                    'allowed' => true,
+                ],
             ]);
         }
 
@@ -142,6 +149,7 @@ class AccountController extends Controller
             }
 
             $maxEvents = $user->getMaxEventsPerStore();
+            $maxRaffles = $user->getMaxRafflesPerStore();
 
             return [
                 'stores' => [
@@ -163,10 +171,15 @@ class AccountController extends Controller
                     'max' => $maxEvents,
                     'unlimited' => $maxEvents === null,
                 ],
+                'raffles' => [
+                    'max' => $maxRaffles,
+                    'unlimited' => $maxRaffles === null,
+                    'allowed' => $maxRaffles !== 0,
+                ],
             ];
         });
 
-        // When store_id is provided, add events.current (event count for that store) for sidebar display
+        // When store_id is provided, add per-store counts for sidebar display
         if ($request->filled('store_id')) {
             $store = $user->stores()->find($request->store_id);
             if ($store) {
@@ -176,6 +189,13 @@ class AccountController extends Controller
                     $limits['events']['current'] = is_array($eventList) ? count($eventList) : 0;
                 } catch (\Throwable $e) {
                     $limits['events']['current'] = 0;
+                }
+                try {
+                    $apiKey = $user->getBtcPayApiKeyOrFail();
+                    $raffleList = $this->raffleService->listRaffles($store->btcpay_store_id, $apiKey);
+                    $limits['raffles']['current'] = is_array($raffleList) ? count($raffleList) : 0;
+                } catch (\Throwable $e) {
+                    $limits['raffles']['current'] = 0;
                 }
             }
         }

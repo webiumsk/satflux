@@ -459,7 +459,7 @@
             >
               <span class="flex items-center min-w-0">
                 <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a4 4 0 00-4-4H8.5M12 8h4.5a4 4 0 014 4v1M6 12h12M6 16h8" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                 </svg>
                 {{ t('apps.raffles') }}
               </span>
@@ -470,7 +470,7 @@
               :is="isInertia ? Link : RouterLink"
               :href="isInertia ? `/stores/${store.id}/raffles` : undefined"
               :to="!isInertia ? { name: 'stores-raffles', params: { id: store.id } } : undefined"
-              class="flex items-center w-full px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="
                 isLinkActive(`/stores/${store.id}/raffles`, 'stores-raffles')
                   || isLinkActive(`/stores/${store.id}/raffles/create`, 'stores-raffles-create')
@@ -480,10 +480,14 @@
               "
               @click="showMobileMenu = false"
             >
-              <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a4 4 0 00-4-4H8.5M12 8h4.5a4 4 0 014 4v1M6 12h12M6 16h8" />
-              </svg>
-              {{ t('apps.raffles') }}
+              <span class="flex items-center min-w-0">
+                <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                </svg>
+                {{ t('apps.raffles') }}
+              </span>
+              <span v-if="limits?.raffles?.max != null" class="ml-2 bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded-full shrink-0">{{ limits.raffles.current ?? 0 }} / {{ limits.raffles.max }}</span>
+              <span v-else-if="limits?.raffles?.unlimited" class="ml-2 text-xs text-gray-500 shrink-0">∞</span>
             </component>
           </div>
 

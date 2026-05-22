@@ -289,6 +289,8 @@ class TicketService
         'eventLogoUrl',
         'logoUrl',
         'enable',
+        'bundledRaffleId',
+        'bundledRaffleTicketsPerAdmission',
     ];
 
     /**

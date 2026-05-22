@@ -161,17 +161,18 @@
               </div>
 
               <!-- Description & Event Image -->
-              <div class="grid grid-cols-1 md:grid-cols-[1fr,auto] gap-6">
-                <div>
+              <div class="grid grid-cols-1 md:grid-cols-[1fr,auto] gap-6 md:items-start">
+                <div class="min-w-0">
                   <label class="block text-sm font-medium text-gray-300 mb-1">{{
                     t("tickets.description")
                   }}</label>
-                  <textarea
+                  <RichTextEditor
                     v-model="eventForm.description"
-                    rows="5"
-                    class="input-field resize-none"
                     :placeholder="t('tickets.description_placeholder')"
-                  ></textarea>
+                  />
+                  <p class="mt-1 text-xs text-gray-500">
+                    {{ t("tickets.description_rich_hint") }}
+                  </p>
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-300 mb-1">{{
@@ -376,6 +377,60 @@
                     class="input-field"
                     :placeholder="t('tickets.capacity_placeholder')"
                   />
+                </div>
+              </div>
+
+              <!-- Raffle bundle (BTCPay Raffle plugin) -->
+              <div
+                v-if="raffleBundleAvailable"
+                class="bg-gray-900/50 rounded-xl p-5 border border-gray-700/50 space-y-3"
+              >
+                <div>
+                  <label class="text-sm font-medium text-gray-300">{{
+                    t("tickets.raffle_bundle_title")
+                  }}</label>
+                  <p class="mt-1 text-xs text-gray-500">
+                    {{ t("tickets.raffle_bundle_hint") }}
+                  </p>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-300 mb-1">{{
+                    t("tickets.raffle_bundle_per_admission")
+                  }}</label>
+                  <input
+                    v-model.number="eventForm.bundledRaffleTicketsPerAdmission"
+                    type="number"
+                    min="0"
+                    max="20"
+                    class="input-field max-w-xs"
+                  />
+                </div>
+                <div v-if="eventForm.bundledRaffleTicketsPerAdmission > 0">
+                  <label class="block text-sm font-medium text-gray-300 mb-1">{{
+                    t("tickets.raffle_bundle_select")
+                  }}</label>
+                  <select
+                    v-model="eventForm.bundledRaffleId"
+                    class="input-field"
+                    required
+                  >
+                    <option value="">
+                      {{ t("tickets.raffle_bundle_select_placeholder") }}
+                    </option>
+                    <option
+                      v-for="r in openRaffles"
+                      :key="r.id"
+                      :value="r.id"
+                    >
+                      {{ r.name }}
+                    </option>
+                  </select>
+                  <p
+                    v-if="openRaffles.length === 0"
+                    class="mt-1 text-xs text-amber-400"
+                  >
+                    {{ t("tickets.raffle_bundle_no_open") }}
+                  </p>
                 </div>
               </div>
 
@@ -1559,6 +1614,52 @@
                           <td class="py-3">
                             <div class="flex items-center gap-1">
                               <button
+                                v-if="
+                                  ticket.paymentStatus === 'Settled' &&
+                                  ticket.orderId
+                                "
+                                type="button"
+                                :disabled="resendingTicketId === ticket.id"
+                                :title="t('tickets.resend_ticket_email')"
+                                class="p-1.5 rounded-lg text-indigo-400 hover:bg-indigo-500/10 disabled:opacity-50 transition-colors"
+                                @click="handleResendTicketEmail(event.id, ticket)"
+                              >
+                                <svg
+                                  v-if="resendingTicketId !== ticket.id"
+                                  class="w-3.5 h-3.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                  />
+                                </svg>
+                                <svg
+                                  v-else
+                                  class="w-3.5 h-3.5 animate-spin"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <circle
+                                    class="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    stroke-width="4"
+                                  />
+                                  <path
+                                    class="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                  />
+                                </svg>
+                              </button>
+                              <button
                                 v-if="!ticket.checkedIn"
                                 @click="handleCheckIn(event.id, ticket)"
                                 :title="t('tickets.check_in')"
@@ -1578,7 +1679,11 @@
                                   />
                                 </svg>
                               </button>
-                              <span v-else class="p-1.5 text-gray-600">
+                              <span
+                                v-else-if="ticket.checkedIn"
+                                class="p-1.5 text-gray-600"
+                                :title="t('tickets.check_in')"
+                              >
                                 <svg
                                   class="w-3.5 h-3.5"
                                   fill="none"
@@ -1664,16 +1769,23 @@ import {
   type TicketType,
   type Ticket,
 } from "../../store/tickets";
+import { useRafflesStore } from "../../store/raffles";
 import { useFlashStore } from "../../store/flash";
 import api from "../../services/api";
 import AppShowLayout from "../../components/stores/AppShowLayout.vue";
 import DatePicker from "../../components/ui/DatePicker.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 import UrlQrModal from "../../components/ui/UrlQrModal.vue";
+import RichTextEditor from "../../components/admin/RichTextEditor.vue";
 
 const { t } = useI18n();
 const ticketsStore = useTicketsStore();
+const rafflesStore = useRafflesStore();
 const flashStore = useFlashStore();
+const raffleBundleAvailable = ref(false);
+const openRaffles = computed(() =>
+  rafflesStore.raffles.filter((r) => r.status === "Open"),
+);
 const props = withDefaults(
   defineProps<{
     app: any;
@@ -1691,6 +1803,7 @@ const showUpgradeModal = ref(false);
 const events = ref<TicketEvent[]>([]);
 const loadingEvents = ref(false);
 const showCheckInQrEventId = ref<number | null>(null);
+const resendingTicketId = ref<string | null>(null);
 const showCreateForm = ref(false);
 const eventFormRef = ref<HTMLElement | null>(null);
 const showEmailSettings = ref(false);
@@ -1713,6 +1826,8 @@ const eventForm = ref({
   maximumEventCapacity: null as number | null,
   eventLogoUrl: "" as string,
   eventLogoFileId: "" as string,
+  bundledRaffleId: "" as string,
+  bundledRaffleTicketsPerAdmission: 0,
 });
 
 // Image upload
@@ -1805,6 +1920,8 @@ function resetForm() {
     maximumEventCapacity: null,
     eventLogoUrl: "",
     eventLogoFileId: "",
+    bundledRaffleId: "",
+    bundledRaffleTicketsPerAdmission: 0,
   };
   editingEvent.value = null;
   showEmailSettings.value = false;
@@ -2034,6 +2151,22 @@ async function handleSubmitEvent() {
     data.eventLogoFileId = "";
   }
 
+  const bundlePer = Math.max(
+    0,
+    Number(eventForm.value.bundledRaffleTicketsPerAdmission) || 0,
+  );
+  data.bundledRaffleTicketsPerAdmission = bundlePer;
+  if (bundlePer > 0) {
+    if (!eventForm.value.bundledRaffleId) {
+      showError(t("tickets.raffle_bundle_select_required"));
+      submitting.value = false;
+      return;
+    }
+    data.bundledRaffleId = eventForm.value.bundledRaffleId;
+  } else {
+    data.bundledRaffleId = null;
+  }
+
   try {
     if (editingEvent.value) {
       await ticketsStore.updateEvent(
@@ -2096,6 +2229,9 @@ function handleEditEvent(event: TicketEvent) {
     maximumEventCapacity: event.maximumEventCapacity || null,
     eventLogoUrl: event.eventLogoUrl || (event as any).logoUrl || "",
     eventLogoFileId: (event as any).eventLogoFileId || "",
+    bundledRaffleId: event.bundledRaffleId || "",
+    bundledRaffleTicketsPerAdmission:
+      event.bundledRaffleTicketsPerAdmission ?? 0,
   };
   imagePreview.value = null;
   if (event.emailSubject || event.emailBody) showEmailSettings.value = true;
@@ -2288,6 +2424,37 @@ function debouncedSearchTickets(eventId: string) {
   }, 400);
 }
 
+async function handleResendTicketEmail(eventId: string, ticket: Ticket) {
+  if (!ticket.orderId) {
+    showError(t("tickets.resend_missing_order"));
+    return;
+  }
+  resendingTicketId.value = ticket.id;
+  try {
+    await ticketsStore.sendReminder(
+      props.store.id,
+      eventId,
+      ticket.orderId,
+      ticket.id,
+    );
+    showSuccess(t("tickets.resend_success"));
+  } catch (err: unknown) {
+    const e = err as {
+      response?: { status?: number; data?: { message?: string } };
+      message?: string;
+    };
+    const message =
+      e.response?.status === 422
+        ? e.response?.data?.message || t("tickets.resend_smtp_not_configured")
+        : e.response?.data?.message ||
+          e.message ||
+          t("tickets.resend_failed");
+    showError(message);
+  } finally {
+    resendingTicketId.value = null;
+  }
+}
+
 async function handleCheckIn(eventId: string, ticket: Ticket) {
   if (
     !confirm(
@@ -2391,8 +2558,22 @@ function exportTicketsCsv(event: TicketEvent) {
 }
 
 // ── Lifecycle ───────────────────────────────────
+async function loadRaffleBundleOptions() {
+  try {
+    raffleBundleAvailable.value = await rafflesStore.fetchAvailability(
+      props.store.id,
+    );
+    if (raffleBundleAvailable.value) {
+      await rafflesStore.fetchRaffles(props.store.id);
+    }
+  } catch {
+    raffleBundleAvailable.value = false;
+  }
+}
+
 onMounted(() => {
   loadEvents();
+  loadRaffleBundleOptions();
 });
 </script>
 

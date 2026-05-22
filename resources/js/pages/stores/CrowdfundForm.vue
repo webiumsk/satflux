@@ -147,13 +147,10 @@
               {{ t("stores.crowdfund_description") }}
               <span class="text-red-400">*</span>
             </label>
-            <textarea
-              id="description"
-              v-model="form.description"
-              rows="6"
-              required
-              class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-            ></textarea>
+            <RichTextEditor v-model="form.description" />
+            <p class="mt-1 text-xs text-gray-500">
+              {{ t("stores.crowdfund_description_rich_hint") }}
+            </p>
           </div>
         </div>
 
@@ -557,6 +554,7 @@ import { useI18n } from "vue-i18n";
 import { useAppsStore } from "../../store/apps";
 import { useFlashStore } from "../../store/flash";
 import { currencies } from "../../data/currencies";
+import RichTextEditor from "../../components/admin/RichTextEditor.vue";
 import PerkEditDrawer from "../../components/stores/PerkEditDrawer.vue";
 import AdditionalOptions from "../../components/stores/AdditionalOptions.vue";
 import DatePicker from "../../components/ui/DatePicker.vue";
@@ -733,10 +731,21 @@ function perkImageDisplayUrl(perk: any): string {
   return fromImage || fromAlt;
 }
 
+function isRichTextEmpty(html: string): boolean {
+  const text = html.replace(/<[^>]*>/g, "").trim();
+  return text.length === 0;
+}
+
 async function handleSubmit() {
   saving.value = true;
 
   try {
+    if (isRichTextEmpty(form.value.description)) {
+      flashStore.error(t("stores.crowdfund_description_required"));
+      saving.value = false;
+      return;
+    }
+
     // If switching from code view, parse JSON first
     if (perksViewMode.value === "code") {
       try {

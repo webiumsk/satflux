@@ -26,6 +26,8 @@ export interface TicketEvent {
     purchaseLink?: string;
     ticketsSold?: number;
     createdAt?: string;
+    bundledRaffleId?: string | null;
+    bundledRaffleTicketsPerAdmission?: number;
 }
 
 export interface TicketType {
@@ -57,6 +59,8 @@ export interface Ticket {
     checkedInAt?: string | null;
     emailSent: boolean;
     createdAt: string;
+    /** Populated when loading tickets with orders (required for resend email). */
+    orderId?: string;
 }
 
 export interface TicketOrder {
@@ -242,10 +246,27 @@ export const useTicketsStore = defineStore('tickets', () => {
     async function fetchTickets(storeId: string, eventId: string, searchText?: string) {
         loading.value = true;
         try {
-            const response = await api.get(`/stores/${storeId}/tickets/events/${eventId}/tickets`, {
-                params: searchText ? { searchText } : {},
-            });
-            tickets.value = response.data.data || [];
+            const searchParams = searchText ? { searchText } : {};
+            const [ticketsResponse, ordersResponse] = await Promise.all([
+                api.get(`/stores/${storeId}/tickets/events/${eventId}/tickets`, {
+                    params: searchParams,
+                }),
+                api.get(`/stores/${storeId}/tickets/events/${eventId}/orders`, {
+                    params: searchParams,
+                }),
+            ]);
+            const ticketList: Ticket[] = ticketsResponse.data.data || [];
+            const orderList: TicketOrder[] = ordersResponse.data.data || [];
+            const orderIdByTicketId = new Map<string, string>();
+            for (const order of orderList) {
+                for (const ticket of order.tickets ?? []) {
+                    orderIdByTicketId.set(ticket.id, order.id);
+                }
+            }
+            tickets.value = ticketList.map((ticket) => ({
+                ...ticket,
+                orderId: orderIdByTicketId.get(ticket.id),
+            }));
             return tickets.value;
         } catch (error) {
             tickets.value = [];
