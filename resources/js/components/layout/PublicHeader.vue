@@ -27,13 +27,46 @@
             >
               {{ t("header.what_satflux_is") }}
             </router-link>
-            <router-link
-              to="/#features"
-              @click="handleAnchorClick('/#features')"
-              class="px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-all"
-            >
-              {{ t("header.features") }}
-            </router-link>
+            <div class="relative group/features">
+              <router-link
+                to="/#features"
+                class="inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-all"
+                @click="handleAnchorClick('/#features')"
+              >
+                {{ t("header.features") }}
+                <svg
+                  class="h-4 w-4 opacity-60"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </router-link>
+              <div
+                class="absolute left-0 top-full z-50 hidden pt-1 group-hover/features:block group-focus-within/features:block"
+              >
+                <div
+                  class="min-w-[15rem] rounded-xl border border-gray-700 bg-gray-800 py-1 shadow-2xl ring-1 ring-black/20"
+                >
+                  <router-link
+                    v-for="item in featureNavLinks"
+                    :key="item.id"
+                    :to="`/#${item.id}`"
+                    class="block px-4 py-2 text-sm text-gray-400 hover:bg-gray-700 hover:text-white transition-colors"
+                    @click="handleAnchorClick(`/#${item.id}`)"
+                  >
+                    {{ t(item.labelKey) }}
+                  </router-link>
+                </div>
+              </div>
+            </div>
             <router-link
               to="/#how-it-works"
               @click="handleAnchorClick('/#how-it-works')"
@@ -53,6 +86,13 @@
               class="px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-all"
             >
               {{ t("header.support") }}
+            </router-link>
+            <router-link
+              v-if="authStore.isAuthenticated"
+              to="/stores"
+              class="inline-flex items-center px-3.5 py-2 rounded-lg text-sm font-semibold text-indigo-100 bg-indigo-600/25 border border-indigo-500/45 hover:bg-indigo-600/40 hover:text-white hover:border-indigo-400/60 transition-all shadow-sm shadow-indigo-950/40"
+            >
+              {{ t("header.my_stores") }}
             </router-link>
           </nav>
         </div>
@@ -96,12 +136,6 @@
             </template>
             <template v-else>
               <router-link
-                to="/stores"
-                class="px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-all"
-              >
-                {{ t("header.my_stores") }}
-              </router-link>
-              <router-link
                 to="/dashboard"
                 class="flex items-center space-x-3 p-1.5 pl-3 rounded-full hover:bg-gray-800 border border-transparent hover:border-gray-700 transition-all group"
               >
@@ -118,7 +152,7 @@
           <!-- Mobile Menu Button (Right side) -->
           <div class="flex items-center md:hidden ml-auto">
             <button
-              @click="showMobileMenu = !showMobileMenu"
+              @click="toggleMobileMenu"
               class="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               :aria-label="t('header.open_menu')"
             >
@@ -162,7 +196,7 @@
       <div
         v-if="showMobileMenu"
         class="fixed inset-0 bg-black bg-opacity-70 z-40 md:hidden backdrop-blur-sm"
-        @click="showMobileMenu = false"
+        @click="closeMobileMenu"
       ></div>
     </transition>
 
@@ -179,7 +213,7 @@
         <h2 class="text-lg font-bold text-white">{{ t("header.menu") }}</h2>
         <LanguageSwitcher />
         <button
-          @click="showMobileMenu = false"
+          @click="closeMobileMenu"
           class="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           :aria-label="t('header.close_menu')"
         >
@@ -209,13 +243,57 @@
           >
             {{ t("header.what_satflux_is") }}
           </router-link>
-          <router-link
-            to="/#features"
-            @click="handleAnchorClick('/#features'); closeMobileMenu();"
-            class="flex items-center px-4 py-3 rounded-xl text-base font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
-          >
-            {{ t("header.features") }}
-          </router-link>
+          <div>
+            <div class="flex items-center rounded-xl hover:bg-gray-800">
+              <router-link
+                to="/#features"
+                class="flex flex-1 items-center px-4 py-3 text-base font-medium text-gray-400 hover:text-white transition-colors"
+                @click="
+                  handleAnchorClick('/#features');
+                  closeMobileMenu();
+                "
+              >
+                {{ t("header.features") }}
+              </router-link>
+              <button
+                type="button"
+                class="p-3 text-gray-400 hover:text-white"
+                :aria-expanded="showFeaturesMobile"
+                :aria-label="t('header.features')"
+                @click="showFeaturesMobile = !showFeaturesMobile"
+              >
+                <svg
+                  class="h-5 w-5 transition-transform"
+                  :class="{ 'rotate-180': showFeaturesMobile }"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div v-show="showFeaturesMobile" class="ml-2 space-y-0.5 pb-2">
+              <router-link
+                v-for="item in featureNavLinks"
+                :key="item.id"
+                :to="`/#${item.id}`"
+                class="flex items-center px-4 py-2.5 rounded-lg text-sm text-gray-500 hover:bg-gray-800 hover:text-white transition-colors"
+                @click="
+                  handleAnchorClick(`/#${item.id}`);
+                  closeMobileMenu();
+                "
+              >
+                {{ t(item.labelKey) }}
+              </router-link>
+            </div>
+          </div>
           <router-link
             to="/#how-it-works"
             @click="handleAnchorClick('/#how-it-works'); closeMobileMenu();"
@@ -237,7 +315,14 @@
           >
             {{ t("header.support") }}
           </router-link>
-
+          <router-link
+            v-if="authStore.isAuthenticated"
+            to="/stores"
+            @click="closeMobileMenu"
+            class="flex items-center px-4 py-3 rounded-xl text-base font-semibold text-indigo-100 bg-indigo-600/25 border border-indigo-500/45 hover:bg-indigo-600/40 hover:text-white transition-colors shadow-sm shadow-indigo-950/40"
+          >
+            {{ t("header.my_stores") }}
+          </router-link>
 
           <!-- Auth Links (Logged Out) -->
           <div v-if="!authStore.isAuthenticated" class="pt-4 flex flex-col gap-3">
@@ -271,13 +356,6 @@
                 {{ userInitials }}
               </div>
               {{ t("header.dashboard") }}
-            </router-link>
-            <router-link
-              to="/stores"
-              @click="closeMobileMenu"
-              class="flex items-center px-4 py-3 rounded-xl text-base font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
-            >
-              {{ t("header.my_stores") }}
             </router-link>
           </template>
         </nav>
@@ -324,13 +402,16 @@ import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "../../store/auth";
 import LanguageSwitcher from "../LanguageSwitcher.vue";
 import { useI18n } from "vue-i18n";
+import { LANDING_FEATURE_NAV } from "../../constants/landingFeatureNav";
 
 const { t } = useI18n();
 
 const router = useRouter();
 const route = useRoute();
 const showMobileMenu = ref(false);
+const showFeaturesMobile = ref(false);
 const authStore = useAuthStore();
+const featureNavLinks = LANDING_FEATURE_NAV;
 
 const userInitials = computed(() => {
   if (!authStore.user?.email) return "?";
@@ -353,6 +434,15 @@ const userName = computed(() => {
 
 function closeMobileMenu() {
   showMobileMenu.value = false;
+  showFeaturesMobile.value = false;
+}
+
+function toggleMobileMenu() {
+  if (showMobileMenu.value) {
+    closeMobileMenu();
+  } else {
+    showMobileMenu.value = true;
+  }
 }
 
 const handleLogout = async () => {
