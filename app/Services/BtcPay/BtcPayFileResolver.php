@@ -86,7 +86,7 @@ class BtcPayFileResolver
      */
     protected function fileMetadataCacheKey(string $fileId): string
     {
-        $apiKeyHash = md5($this->client->getApiKey());
+        $apiKeyHash = hash('sha256', $this->client->getApiKey());
 
         return 'btcpay:files:'.$apiKeyHash.':'.rawurlencode($fileId);
     }

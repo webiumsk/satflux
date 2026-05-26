@@ -192,12 +192,11 @@
 import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
+import type { Store } from '../../store/stores';
 
 const { t } = useI18n();
 
-const props = defineProps({
-  store: { type: Object, required: true },
-});
+const props = defineProps<{ store: Store }>();
 
 const loading = ref(true);
 const saving = ref(false);

@@ -29,32 +29,29 @@ class InvoiceController extends Controller
         // Load merchant API key from store owner
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
         
+        $request->validate([
+            'date_from' => ['nullable', 'date_format:Y-m-d'],
+            'date_to'   => ['nullable', 'date_format:Y-m-d'],
+            'status'    => ['nullable', 'string', 'max:32'],
+            'skip'      => ['nullable', 'integer', 'min:0'],
+            'take'      => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
         // Build filters from query parameters
         $filters = [];
-        
+
         // Status filter
-        if ($request->has('status') && $request->status) {
+        if ($request->filled('status')) {
             $filters['status'] = $request->status;
         }
-        
+
         // Date range filters (BTCPay expects Unix timestamps)
-        if ($request->has('date_from') && $request->date_from) {
-            // Convert date string to Unix timestamp (seconds)
-            $dateFrom = strtotime($request->date_from);
-            if ($dateFrom !== false) {
-                // BTCPay expects startDate as Unix timestamp in seconds
-                $filters['startDate'] = $dateFrom;
-            }
+        if ($request->filled('date_from')) {
+            $filters['startDate'] = strtotime($request->date_from);
         }
-        
-        if ($request->has('date_to') && $request->date_to) {
-            // Convert date string to Unix timestamp (seconds)
-            // Add 23:59:59 to include the entire day
-            $dateTo = strtotime($request->date_to . ' 23:59:59');
-            if ($dateTo !== false) {
-                // BTCPay expects endDate as Unix timestamp in seconds
-                $filters['endDate'] = $dateTo;
-            }
+
+        if ($request->filled('date_to')) {
+            $filters['endDate'] = strtotime($request->date_to . ' 23:59:59');
         }
         
         // Pagination

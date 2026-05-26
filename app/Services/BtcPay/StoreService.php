@@ -58,7 +58,7 @@ class StoreService
     public function getStore(string $storeId, ?string $userApiKey = null): array
     {
         // Include API key hash in cache key to prevent cross-merchant cache pollution
-        $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
+        $apiKeyHash = $userApiKey ? hash('sha256', $userApiKey) : 'server';
         $cacheKey = "btcpay:store:{$storeId}:{$apiKeyHash}";
 
         return Cache::remember($cacheKey, 60, function () use ($storeId, $userApiKey) {
@@ -219,7 +219,7 @@ class StoreService
      */
     protected function forgetStoreCache(string $storeId, ?string $userApiKey): void
     {
-        $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
+        $apiKeyHash = $userApiKey ? hash('sha256', $userApiKey) : 'server';
         Cache::forget("btcpay:store:{$storeId}:{$apiKeyHash}");
         Cache::forget("btcpay:store:{$storeId}:server");
     }

@@ -93,7 +93,7 @@ class DocumentationArticleController extends Controller
         $article = DocumentationArticle::create([
             'slug' => $slug,
             'title' => $request->title,
-            'content' => $request->content,
+            'content' => $this->sanitizeContent($request->content),
             'category_id' => $request->category_id,
             'order' => $request->order ?? 0,
             'is_published' => $request->boolean('is_published', false),
@@ -125,7 +125,7 @@ class DocumentationArticleController extends Controller
         $article->update([
             'slug' => $slug,
             'title' => $request->title,
-            'content' => $request->content,
+            'content' => $this->sanitizeContent($request->content),
             'category_id' => $request->category_id,
             'order' => $request->order ?? $article->order,
             'is_published' => $request->boolean('is_published', $article->is_published),
@@ -151,6 +151,36 @@ class DocumentationArticleController extends Controller
         return response()->json([
             'message' => __('messages.documentation_article_deleted'),
         ]);
+    }
+
+    /**
+     * Strip iframe tags whose src is not an allowed embed origin (YouTube only).
+     * Content is multilingual: array of locale => html strings.
+     */
+    private function sanitizeContent(mixed $content): mixed
+    {
+        if (!is_array($content)) {
+            return $content;
+        }
+
+        return array_map(function (string $html): string {
+            return preg_replace_callback(
+                '/<iframe[^>]*>/i',
+                function (array $matches): string {
+                    $tag = $matches[0];
+                    if (preg_match('/src=["\']([^"\']*)["\']/', $tag, $src)) {
+                        $url = $src[1];
+                        $allowed = str_starts_with($url, 'https://www.youtube.com/')
+                            || str_starts_with($url, 'https://www.youtube-nocookie.com/');
+                        if (!$allowed) {
+                            return '';
+                        }
+                    }
+                    return $tag;
+                },
+                $html
+            );
+        }, $content);
     }
 }
 

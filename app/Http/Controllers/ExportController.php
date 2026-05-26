@@ -107,6 +107,7 @@ class ExportController extends Controller
         $exports = Export::where('user_id', $request->user()->id)
             ->with('store')
             ->orderBy('created_at', 'desc')
+            ->take(200)
             ->get();
 
         $data = $exports->map(function (Export $export) {

@@ -294,7 +294,11 @@ class BtcPayClient
 
         $this->logRequest($method, $endpoint, [], $response, $json, "Error: {$message}");
 
-        throw new BtcPayException($message, $statusCode);
+        // For server-side errors (5xx), expose only a generic message to callers so
+        // internal BTCPay details don't leak to the frontend. The full message is logged above.
+        $clientMessage = $statusCode >= 500 ? "BTCPay Server error (HTTP {$statusCode})" : $message;
+
+        throw new BtcPayException($clientMessage, $statusCode);
     }
 
     /**
