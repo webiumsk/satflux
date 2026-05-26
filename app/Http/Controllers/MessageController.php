@@ -229,9 +229,10 @@ class MessageController extends Controller
             if ($btcpayBase !== '' && str_starts_with($link, $btcpayBase)) {
                 return null; // BTCPay URL - do not expose
             }
+
             return $link; // External URL (e.g. payout explorer) - keep
         }
-        $path = str_starts_with($link, '/') ? $link : '/' . $link;
+        $path = str_starts_with($link, '/') ? $link : '/'.$link;
         $panelUrl = rtrim(config('app.url', ''), '/');
         if ($panelUrl === '') {
             return null;
@@ -253,6 +254,7 @@ class MessageController extends Controller
                 return "{$panelUrl}/stores/{$store->id}/invoices/{$invoiceId}";
             }
         }
+
         return null; // Unmapped BTCPay path - no link
     }
 
@@ -276,7 +278,7 @@ class MessageController extends Controller
 
         $firstLine = trim(explode("\n", $body)[0] ?? '');
         if (strlen($firstLine) > 80) {
-            return substr($firstLine, 0, 77) . '...';
+            return substr($firstLine, 0, 77).'...';
         }
 
         return $firstLine ?: 'Notification';

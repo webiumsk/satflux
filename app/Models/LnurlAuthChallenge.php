@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class LnurlAuthChallenge extends Model
 {
     public $incrementing = false;
+
     protected $primaryKey = 'k1';
+
     protected $keyType = 'string';
 
     /**
@@ -72,7 +74,3 @@ class LnurlAuthChallenge extends Model
         return $this->belongsTo(User::class, 'link_user_id');
     }
 }
-
-
-
-

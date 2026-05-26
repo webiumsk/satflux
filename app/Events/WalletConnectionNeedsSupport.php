@@ -4,7 +4,6 @@ namespace App\Events;
 
 use App\Models\Store;
 use App\Models\WalletConnection;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
@@ -23,8 +22,7 @@ class WalletConnectionNeedsSupport implements ShouldBroadcastNow
     public function __construct(
         public WalletConnection $walletConnection,
         public Store $store
-    ) {
-    }
+    ) {}
 
     /**
      * Get the channels the event should broadcast on.

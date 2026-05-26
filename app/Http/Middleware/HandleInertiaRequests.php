@@ -65,6 +65,7 @@ class HandleInertiaRequests extends Middleware
             'role' => $user->role ?? null,
             'plan' => (function () use ($user) {
                 $plan = $user->currentSubscriptionPlan();
+
                 return $plan ? [
                     'code' => $plan->code,
                     'name' => $plan->display_name,

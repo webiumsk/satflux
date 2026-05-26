@@ -4,9 +4,7 @@ namespace App\Services\BtcPay;
 
 class SamRockService
 {
-    public function __construct(protected BtcPayClient $client)
-    {
-    }
+    public function __construct(protected BtcPayClient $client) {}
 
     protected function withUserKey(?string $userApiKey, callable $fn)
     {

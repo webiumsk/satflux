@@ -3,7 +3,6 @@
 namespace Database\Factories;
 
 use App\Models\Store;
-use App\Models\WalletConnection;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Crypt;
 
@@ -70,4 +69,3 @@ class WalletConnectionFactory extends Factory
         ]);
     }
 }
-

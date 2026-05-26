@@ -73,11 +73,13 @@ class NostrEventVerifier
 
         try {
             $schnorr = new SchnorrSigner;
+
             return $schnorr->verify($pubkeyHex, $signatureHex, $eventIdHash);
         } catch (\Throwable $e) {
             Log::warning('Nostr signature verification failed', [
                 'error' => $e->getMessage(),
             ]);
+
             return false;
         }
     }

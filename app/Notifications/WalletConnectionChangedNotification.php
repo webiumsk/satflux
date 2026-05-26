@@ -19,8 +19,7 @@ class WalletConnectionChangedNotification extends Notification
     public function __construct(
         public Store $store,
         public WalletConnection $walletConnection
-    ) {
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -35,10 +34,10 @@ class WalletConnectionChangedNotification extends Notification
         $type = $this->walletConnection->type === 'blink' ? 'Blink' : 'Aqua (Boltz)';
 
         return (new MailMessage)
-            ->subject('Wallet connection updated - ' . $this->store->name)
-            ->line('Your wallet connection for store **' . $this->store->name . '** has been updated.')
-            ->line('**Type:** ' . $type)
-            ->line('**Masked connection (for your records):** `' . $masked . '`')
+            ->subject('Wallet connection updated - '.$this->store->name)
+            ->line('Your wallet connection for store **'.$this->store->name.'** has been updated.')
+            ->line('**Type:** '.$type)
+            ->line('**Masked connection (for your records):** `'.$masked.'`')
             ->line('**If this was not you,** please contact our support immediately to secure your account.')
             ->action('Wallet connection settings', $storeUrl)
             ->line('Thank you for using our service!');

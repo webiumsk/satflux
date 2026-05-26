@@ -21,7 +21,7 @@ class AppFactory extends Factory
     {
         return [
             'store_id' => Store::factory(),
-            'name' => fake()->words(3, true) . ' App',
+            'name' => fake()->words(3, true).' App',
             'app_type' => 'PointOfSale',
             'btcpay_app_id' => Str::uuid(),
         ];
@@ -67,4 +67,3 @@ class AppFactory extends Factory
         ]);
     }
 }
-

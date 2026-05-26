@@ -19,14 +19,14 @@ class EnsureStoreOwnership
     {
         $store = $request->route('store');
 
-        if (!$store instanceof Store) {
+        if (! $store instanceof Store) {
             abort(404, 'Store not found');
         }
 
         // Owner, admin and support can access the store
         $user = $request->user();
         if ($store->user_id !== $user->id) {
-            if (!$user->isSupport() && !$user->isAdmin()) {
+            if (! $user->isSupport() && ! $user->isAdmin()) {
                 abort(403, 'Unauthorized access to store');
             }
 
@@ -46,8 +46,3 @@ class EnsureStoreOwnership
         return $next($request);
     }
 }
-
-
-
-
-

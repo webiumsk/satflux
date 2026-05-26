@@ -6,7 +6,6 @@ use App\Models\Store;
 use App\Policies\StorePolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
@@ -56,11 +55,8 @@ class AppServiceProvider extends ServiceProvider
         // Per-user limiter for authenticated API endpoints (avoids shared-IP throttling)
         RateLimiter::for('api-user', function (Request $request) {
             return $request->user()
-                ? Limit::perMinute(120)->by('user:' . $request->user()->id)
+                ? Limit::perMinute(120)->by('user:'.$request->user()->id)
                 : Limit::perMinute(30)->by($request->ip());
         });
     }
 }
-
-
-

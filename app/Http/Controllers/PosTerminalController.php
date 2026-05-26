@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\PosOrder;
 use App\Models\PosTerminal;
 use App\Models\Store;
 use App\Services\SubscriptionService;
@@ -24,6 +23,7 @@ class PosTerminalController extends Controller
         }
 
         $terminals = $store->posTerminals()->orderBy('name')->get()->map(fn (PosTerminal $t) => $this->formatTerminal($t));
+
         return response()->json(['data' => $terminals]);
     }
 
@@ -43,7 +43,7 @@ class PosTerminalController extends Controller
         ]);
 
         $methods = $request->input('enabled_payment_methods', PosTerminal::DEFAULT_PAYMENT_METHODS);
-        if (!$this->subscriptionService->canUseOfflinePaymentMethods($request->user())) {
+        if (! $this->subscriptionService->canUseOfflinePaymentMethods($request->user())) {
             $methods = array_values(array_intersect($methods, ['lightning', 'onchain']));
         }
 
@@ -74,7 +74,7 @@ class PosTerminalController extends Controller
         $settings = $posTerminal->settings_json ?? [];
         if ($request->has('enabled_payment_methods')) {
             $methods = $request->input('enabled_payment_methods');
-            if (!$this->subscriptionService->canUseOfflinePaymentMethods($request->user())) {
+            if (! $this->subscriptionService->canUseOfflinePaymentMethods($request->user())) {
                 $methods = array_values(array_intersect($methods, ['lightning', 'onchain']));
             }
             $settings['enabled_payment_methods'] = $methods;
@@ -98,6 +98,7 @@ class PosTerminalController extends Controller
         }
 
         $posTerminal->delete();
+
         return response()->json(['message' => 'PoS terminal deleted'], 204);
     }
 

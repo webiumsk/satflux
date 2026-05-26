@@ -77,6 +77,7 @@ class SubscriptionPlan extends Model
     public function hasFeature(string $feature): bool
     {
         $features = $this->features ?? [];
+
         return in_array($feature, $features);
     }
 
@@ -104,4 +105,3 @@ class SubscriptionPlan extends Model
         return $query->where('is_active', true);
     }
 }
-

@@ -5,13 +5,12 @@ namespace App\Services;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Service for managing subscriptions and feature flags.
- * 
+ *
  * IMPORTANT: This is a non-custodial system. Feature flags only affect
  * UX/management features, never payment acceptance or existing infrastructure.
  */
@@ -30,7 +29,7 @@ class SubscriptionService
 
         // Get FREE plan
         $freePlan = SubscriptionPlan::where('code', 'free')->orWhere('name', 'free')->first();
-        if (!$freePlan) {
+        if (! $freePlan) {
             throw new \Exception('FREE subscription plan not found. Please run the seeder.');
         }
 
@@ -60,15 +59,15 @@ class SubscriptionService
     public function activateSubscription(User $user, string $planName, ?string $btcpaySubscriptionId = null): Subscription
     {
         $plan = SubscriptionPlan::where('code', $planName)->orWhere('name', $planName)->first();
-        if (!$plan) {
+        if (! $plan) {
             throw new \Exception("Subscription plan '{$planName}' not found.");
         }
 
         return DB::transaction(function () use ($user, $plan, $planName, $btcpaySubscriptionId) {
             // Lock user row to serialize concurrent webhooks for the same user
             $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
-            if (!$lockedUser) {
-                throw new \Exception("User not found.");
+            if (! $lockedUser) {
+                throw new \Exception('User not found.');
             }
 
             // Get existing active subscription under lock (same user, so lock is held)
@@ -128,6 +127,7 @@ class SubscriptionService
             return true;
         }
         $plan = $user->currentSubscriptionPlan();
+
         return in_array($plan?->code ?? '', ['pro', 'enterprise'], true);
     }
 
@@ -141,6 +141,7 @@ class SubscriptionService
             return true;
         }
         $plan = $user->currentSubscriptionPlan();
+
         return $plan?->hasFeature('automatic_csv_exports') ?? false;
     }
 
@@ -154,6 +155,7 @@ class SubscriptionService
         }
 
         $plan = $user->currentSubscriptionPlan();
+
         return $plan?->hasFeature('automatic_csv_exports') ?? false;
     }
 
@@ -163,6 +165,7 @@ class SubscriptionService
     public function canUseOfflinePaymentMethods(User $user): bool
     {
         $plan = $user->currentSubscriptionPlan();
+
         return $plan?->hasFeature('offline_payment_methods') ?? false;
     }
 
@@ -172,6 +175,7 @@ class SubscriptionService
     public function canViewAdvancedStats(User $user): bool
     {
         $plan = $user->currentSubscriptionPlan();
+
         return $plan?->hasFeature('advanced_statistics') ?? false;
     }
 
@@ -183,6 +187,7 @@ class SubscriptionService
         if ($user->hasUnlimitedAccess()) {
             return true;
         }
+
         return $user->planFeature('stripe');
     }
 
@@ -192,6 +197,7 @@ class SubscriptionService
     public function canManageStoreUsers(User $user): bool
     {
         $plan = $user->currentSubscriptionPlan();
+
         return $plan?->hasFeature('per_store_user_management') ?? false;
     }
 
@@ -214,4 +220,3 @@ class SubscriptionService
         ]);
     }
 }
-

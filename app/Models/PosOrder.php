@@ -34,12 +34,17 @@ class PosOrder extends Model
     }
 
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_PAID = 'paid';
+
     public const STATUS_EXPIRED = 'expired';
 
     public const PAID_METHOD_LIGHTNING = 'lightning';
+
     public const PAID_METHOD_ONCHAIN = 'onchain';
+
     public const PAID_METHOD_CASH = 'cash';
+
     public const PAID_METHOD_CARD = 'card';
 
     public function posTerminal(): BelongsTo

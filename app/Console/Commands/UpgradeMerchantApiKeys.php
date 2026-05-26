@@ -46,6 +46,7 @@ class UpgradeMerchantApiKeys extends Command
                 if ($delay > 0) {
                     sleep($delay);
                 }
+
                 continue;
             }
 

@@ -23,4 +23,3 @@ return [
     'guest_one_store_only' => 'Guest sessions are limited to one store. Create a full account to add more stores.',
     'guest_pos_limit_one' => 'Guest mode allows only one Point of Sale app per store.',
 ];
-

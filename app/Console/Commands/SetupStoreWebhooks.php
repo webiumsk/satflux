@@ -22,7 +22,7 @@ class SetupStoreWebhooks extends Command
         $repair = $this->option('repair');
 
         $serverApiKey = config('services.btcpay.api_key');
-        if (!$serverApiKey) {
+        if (! $serverApiKey) {
             $this->error('Server-level BTCPAY_API_KEY is not configured. Cannot create webhooks.');
 
             return Command::FAILURE;
@@ -97,8 +97,8 @@ class SetupStoreWebhooks extends Command
             return Command::SUCCESS;
         }
 
-        $this->warn('Repair: each store will have exactly one BTCPay webhook for: ' . $panelUrl);
-        if (!$dryRun) {
+        $this->warn('Repair: each store will have exactly one BTCPay webhook for: '.$panelUrl);
+        if (! $dryRun) {
             $this->warn('Existing panel webhooks for that URL are deleted first, then one new webhook is created.');
         }
 
@@ -111,7 +111,7 @@ class SetupStoreWebhooks extends Command
                 $list = $webhookService->listWebhooks($store->btcpay_store_id, null);
                 $matchCount = 0;
                 foreach ($list as $item) {
-                    if (!is_array($item)) {
+                    if (! is_array($item)) {
                         continue;
                     }
                     $url = (string) ($item['url'] ?? $item['Url'] ?? '');

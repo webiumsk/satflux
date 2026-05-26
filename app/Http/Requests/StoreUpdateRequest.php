@@ -92,11 +92,3 @@ class StoreUpdateRequest extends FormRequest
         ];
     }
 }
-
-
-
-
-
-
-
-

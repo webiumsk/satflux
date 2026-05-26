@@ -42,7 +42,7 @@ class UserApiKey extends Model
      */
     public static function createKey(User $user, string $name): array
     {
-        $plain = 'd21_' . Str::random(48);
+        $plain = 'd21_'.Str::random(48);
         $hash = hash('sha256', $plain);
 
         $key = self::create([
@@ -69,6 +69,7 @@ class UserApiKey extends Model
         if ($key) {
             $key->update(['last_used_at' => now()]);
         }
+
         return $key;
     }
 }

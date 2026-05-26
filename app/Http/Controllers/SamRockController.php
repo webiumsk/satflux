@@ -15,8 +15,7 @@ class SamRockController extends Controller
     public function __construct(
         protected SamRockService $samRockService,
         protected WalletConnectionService $walletConnectionService
-    ) {
-    }
+    ) {}
 
     public function createOtp(Request $request, Store $store): \Illuminate\Http\JsonResponse
     {

@@ -28,10 +28,11 @@ class BackupListCommand extends Command
     public function handle(): int
     {
         $backupDir = base_path('backups');
-        $metadataDir = $backupDir . '/metadata';
+        $metadataDir = $backupDir.'/metadata';
 
-        if (!is_dir($metadataDir)) {
-            $this->error('Backup metadata directory not found: ' . $metadataDir);
+        if (! is_dir($metadataDir)) {
+            $this->error('Backup metadata directory not found: '.$metadataDir);
+
             return Command::FAILURE;
         }
 
@@ -39,11 +40,13 @@ class BackupListCommand extends Command
 
         if ($backups->isEmpty()) {
             $this->warn('No backups found.');
+
             return Command::SUCCESS;
         }
 
         if ($this->option('json')) {
             $this->line($backups->toJson(JSON_PRETTY_PRINT));
+
             return Command::SUCCESS;
         }
 
@@ -75,13 +78,13 @@ class BackupListCommand extends Command
     {
         $backups = collect();
 
-        $files = glob($metadataDir . '/satflux.io_backup_*.json');
+        $files = glob($metadataDir.'/satflux.io_backup_*.json');
 
         foreach ($files as $file) {
             try {
                 $metadata = json_decode(file_get_contents($file), true);
 
-                if (!$metadata) {
+                if (! $metadata) {
                     continue;
                 }
 
@@ -108,7 +111,8 @@ class BackupListCommand extends Command
                     'redis' => $metadata['redis'] ?? null,
                 ]);
             } catch (\Exception $e) {
-                $this->warn('Failed to read backup metadata: ' . basename($file));
+                $this->warn('Failed to read backup metadata: '.basename($file));
+
                 continue;
             }
         }
@@ -128,10 +132,6 @@ class BackupListCommand extends Command
         $pow = min($pow, count($units) - 1);
         $bytes /= (1 << (10 * $pow));
 
-        return round($bytes, 2) . ' ' . $units[$pow];
+        return round($bytes, 2).' '.$units[$pow];
     }
 }
-
-
-
-

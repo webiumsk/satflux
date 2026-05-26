@@ -6,10 +6,10 @@ class WalletConnectionValidator
 {
     /**
      * Parse Blink connection string.
-     * 
+     *
      * Format: type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx
-     * 
-     * @param string $connectionString Connection string to parse
+     *
+     * @param  string  $connectionString  Connection string to parse
      * @return array Parsed values with keys: 'type', 'server', 'api_key', 'wallet_id', 'errors'
      */
     public function parseBlinkConnectionString(string $connectionString): array
@@ -35,6 +35,7 @@ class WalletConnectionValidator
 
                 if (strpos($part, '=') === false) {
                     $result['errors'][] = "Invalid part format: {$part}";
+
                     continue;
                 }
 
@@ -65,15 +66,15 @@ class WalletConnectionValidator
                 $result['errors'][] = "Type must be 'blink'";
             }
             if (empty($result['server'])) {
-                $result['errors'][] = "Server is required";
-            } elseif (!filter_var($result['server'], FILTER_VALIDATE_URL)) {
-                $result['errors'][] = "Server must be a valid URL";
+                $result['errors'][] = 'Server is required';
+            } elseif (! filter_var($result['server'], FILTER_VALIDATE_URL)) {
+                $result['errors'][] = 'Server must be a valid URL';
             }
             if (empty($result['api_key'])) {
-                $result['errors'][] = "API key is required";
+                $result['errors'][] = 'API key is required';
             }
             if (empty($result['wallet_id'])) {
-                $result['errors'][] = "Wallet ID is required";
+                $result['errors'][] = 'Wallet ID is required';
             }
         } else {
             // Legacy format: just a URL or token (allow for backward compatibility)
@@ -81,7 +82,7 @@ class WalletConnectionValidator
                 // Valid URL format
                 $result['server'] = $connectionString;
             } else {
-                $result['errors'][] = "Invalid connection string format. Expected: type=blink;server=...;api-key=...;wallet-id=...";
+                $result['errors'][] = 'Invalid connection string format. Expected: type=blink;server=...;api-key=...;wallet-id=...';
             }
         }
 
@@ -90,11 +91,11 @@ class WalletConnectionValidator
 
     /**
      * Parse Boltz connection string.
-     * 
+     *
      * Note: Boltz/Aqua typically uses watch-only descriptors, not connection strings.
      * This method is for future compatibility if Boltz uses connection strings.
-     * 
-     * @param string $connectionString Connection string to parse
+     *
+     * @param  string  $connectionString  Connection string to parse
      * @return array Parsed values with keys: 'type', 'server', 'macaroon', 'wallet_id', 'errors'
      */
     public function parseBoltzConnectionString(string $connectionString): array
@@ -113,7 +114,7 @@ class WalletConnectionValidator
     /**
      * Validate Blink connection string/token.
      *
-     * @param string $token Connection string or token
+     * @param  string  $token  Connection string or token
      * @return bool True if valid
      */
     public function validateBlinkToken(string $token): bool
@@ -126,7 +127,7 @@ class WalletConnectionValidator
 
         // Fallback: legacy format validation (URL or simple token)
         $token = trim($token);
-        
+
         if (empty($token) || strlen($token) < 10) {
             return false;
         }
@@ -148,7 +149,7 @@ class WalletConnectionValidator
     /**
      * Validate Aqua watch-only descriptor.
      *
-     * @param string $descriptor Aqua wallet output descriptor
+     * @param  string  $descriptor  Aqua wallet output descriptor
      * @return bool True if valid
      */
     public function validateAquaDescriptor(string $descriptor): bool
@@ -178,20 +179,20 @@ class WalletConnectionValidator
             'wpkh', 'wsh', 'tr', 'pkh', 'sh', 'addr', 'raw',  // Basic functions
             'ct', 'elsh', 'slip77',  // Complex nested functions (for Boltz/Aqua)
         ];
-        
+
         $hasValidFunction = false;
         $descriptorLower = strtolower($descriptor);
-        
+
         foreach ($validFunctions as $func) {
             // Check if function appears in the descriptor (not just at start)
             // Pattern: function name followed by opening parenthesis
-            if (preg_match('/\b' . preg_quote($func, '/') . '\s*\(/', $descriptorLower)) {
+            if (preg_match('/\b'.preg_quote($func, '/').'\s*\(/', $descriptorLower)) {
                 $hasValidFunction = true;
                 break;
             }
         }
 
-        if (!$hasValidFunction) {
+        if (! $hasValidFunction) {
             return false;
         }
 
@@ -205,7 +206,7 @@ class WalletConnectionValidator
 
         // Should contain at least one xpub/ypub/zpub (extended public key)
         // This is required for watch-only descriptors
-        if (!preg_match('/(xpub|ypub|zpub|tpub|upub|vpub)/i', $descriptor)) {
+        if (! preg_match('/(xpub|ypub|zpub|tpub|upub|vpub)/i', $descriptor)) {
             return false;
         }
 
@@ -215,8 +216,8 @@ class WalletConnectionValidator
     /**
      * Validate wallet connection based on type.
      *
-     * @param string $type Connection type ('blink' or 'aqua_descriptor')
-     * @param string $value Secret value to validate
+     * @param  string  $type  Connection type ('blink' or 'aqua_descriptor')
+     * @param  string  $value  Secret value to validate
      * @return array ['valid' => bool, 'type' => string|null, 'errors' => array, 'error' => string|null]
      */
     public function validate(string $type, string $value): array
@@ -224,9 +225,9 @@ class WalletConnectionValidator
         \Illuminate\Support\Facades\Log::info('WalletConnectionValidator::validate called', [
             'type' => $type,
             'value_length' => strlen($value),
-            'value_preview' => substr($value, 0, 100) . '...',
+            'value_preview' => substr($value, 0, 100).'...',
         ]);
-        
+
         $errors = [];
         $returnType = null;
 
@@ -235,7 +236,7 @@ class WalletConnectionValidator
             \Illuminate\Support\Facades\Log::info('Validating Blink connection string', [
                 'type' => $type,
             ]);
-            
+
             // Validate Blink connection string format
             $parsed = $this->parseBlinkConnectionString($value);
             \Illuminate\Support\Facades\Log::info('Blink connection string parsed', [
@@ -244,10 +245,10 @@ class WalletConnectionValidator
                 'parsed_type' => $parsed['type'] ?? 'NULL',
                 'parsed_server' => $parsed['server'] ?? 'NULL',
             ]);
-            
-            if (!empty($parsed['errors'])) {
+
+            if (! empty($parsed['errors'])) {
                 $errors = array_merge($errors, $parsed['errors']);
-            } elseif (!$this->validateBlinkToken($value)) {
+            } elseif (! $this->validateBlinkToken($value)) {
                 $errors[] = 'Invalid Blink connection string format. Expected: type=blink;server=https://...;api-key=...;wallet-id=...';
             }
         } elseif ($type === 'aqua_descriptor') {
@@ -255,14 +256,14 @@ class WalletConnectionValidator
             \Illuminate\Support\Facades\Log::info('Validating Aqua descriptor', [
                 'type' => $type,
             ]);
-            
+
             $isValid = $this->validateAquaDescriptor($value);
             \Illuminate\Support\Facades\Log::info('Aqua descriptor validation result', [
                 'type' => $type,
                 'is_valid' => $isValid,
             ]);
-            
-            if (!$isValid) {
+
+            if (! $isValid) {
                 $errors[] = 'Invalid descriptor format. Must be a valid Aqua wallet output descriptor (e.g., wpkh(), tr(), wsh(), or complex formats like ct(slip77(...),elsh(wpkh(...)))) and must not contain private keys (prv).';
             }
         } else {
@@ -276,18 +277,16 @@ class WalletConnectionValidator
             'valid' => empty($errors),
             'type' => $returnType,
             'errors' => $errors,
-            'error' => !empty($errors) ? implode('; ', $errors) : null,
+            'error' => ! empty($errors) ? implode('; ', $errors) : null,
         ];
-        
+
         \Illuminate\Support\Facades\Log::info('WalletConnectionValidator::validate result', [
             'type' => $type,
             'valid' => $result['valid'],
             'errors_count' => count($errors),
             'errors' => $errors,
         ]);
-        
+
         return $result;
     }
 }
-
-

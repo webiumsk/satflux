@@ -1,9 +1,6 @@
 <?php
 
 use Monolog\Handler\NullHandler;
-use Monolog\Handler\StreamHandler;
-use Monolog\Handler\SyslogUdpHandler;
-use Monolog\Processor\PsrLogMessageProcessor;
 
 return [
 
@@ -106,7 +103,7 @@ return [
             'handler' => NullHandler::class,
         ],
 
-        'emergency' => env('APP_ENV') === 'testing' 
+        'emergency' => env('APP_ENV') === 'testing'
             ? [
                 'driver' => 'monolog',
                 'handler' => NullHandler::class,
@@ -118,11 +115,3 @@ return [
     ],
 
 ];
-
-
-
-
-
-
-
-

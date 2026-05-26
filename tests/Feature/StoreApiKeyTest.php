@@ -9,8 +9,8 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
-use Tests\TestCase;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
 class StoreApiKeyTest extends TestCase
 {
@@ -41,11 +41,12 @@ class StoreApiKeyTest extends TestCase
             $url = (string) $request->url();
             if ($request->method() === 'POST' && str_contains($url, '/api/v1/users/') && str_contains($url, '/api-keys')) {
                 return Http::response([
-                    'id' => 'btcpay-key-' . uniqid(),
+                    'id' => 'btcpay-key-'.uniqid(),
                     'label' => 'Test Key',
-                    'apiKey' => 'secret-api-key-' . bin2hex(random_bytes(8)),
+                    'apiKey' => 'secret-api-key-'.bin2hex(random_bytes(8)),
                 ], 201);
             }
+
             return Http::response([], 404);
         });
     }

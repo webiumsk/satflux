@@ -8,7 +8,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Middleware to ensure user doesn't exceed store limit.
- * 
+ *
  * IMPORTANT: This is a non-custodial system. This middleware:
  * - Blocks creation of NEW stores if limit is reached
  * - NEVER affects existing stores or payment acceptance
@@ -25,7 +25,7 @@ class EnsureStoreLimit
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             abort(401, 'Unauthenticated');
         }
 
@@ -76,4 +76,3 @@ class EnsureStoreLimit
         return $next($request);
     }
 }
-

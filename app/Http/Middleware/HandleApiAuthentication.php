@@ -16,10 +16,9 @@ class HandleApiAuthentication
     {
         // This middleware ensures API routes return JSON 401 instead of redirects
         // The actual authentication is handled by Sanctum middleware
-        
+
         $response = $next($request);
-        
+
         return $response;
     }
 }
-

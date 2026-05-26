@@ -26,9 +26,10 @@ class DiagnoseWalletEncryption extends Command
         $key = config('app.key');
         if (empty($key) || $key === 'base64:') {
             $this->error('APP_KEY is empty or not set.');
+
             return 1;
         }
-        $this->info('APP_KEY: ' . substr($key, 0, 15) . '... (length: ' . strlen($key) . ')');
+        $this->info('APP_KEY: '.substr($key, 0, 15).'... (length: '.strlen($key).')');
 
         $this->newLine();
         $this->info('1. Testing fresh encrypt/decrypt cycle...');
@@ -41,7 +42,8 @@ class DiagnoseWalletEncryption extends Command
                 $this->error('   FAIL - Decrypted value does not match.');
             }
         } catch (\Throwable $e) {
-            $this->error('   FAIL - ' . $e->getMessage());
+            $this->error('   FAIL - '.$e->getMessage());
+
             return 1;
         }
 
@@ -50,6 +52,7 @@ class DiagnoseWalletEncryption extends Command
         $connections = WalletConnection::all();
         if ($connections->isEmpty()) {
             $this->warn('   No wallet connections in database.');
+
             return 0;
         }
 
@@ -64,21 +67,21 @@ class DiagnoseWalletEncryption extends Command
             $secretEncryptedRaw = $hasSecretEncrypted ? (DB::table('wallet_connections')->where('id', $conn->id)->value('secret_encrypted') ?? '') : '';
 
             $this->line("   Connection {$conn->id} (store: {$conn->store_id}):");
-            $this->line("     encrypted_secret length: " . strlen($raw));
+            $this->line('     encrypted_secret length: '.strlen($raw));
             if ($hasSecretEncrypted && $secretEncryptedRaw !== '') {
-                $this->line("     secret_encrypted length: " . strlen($secretEncryptedRaw) . " (has data - run migration to copy)");
+                $this->line('     secret_encrypted length: '.strlen($secretEncryptedRaw).' (has data - run migration to copy)');
             }
-            $this->line("     Looks like Laravel payload: " . (strlen($raw) > 0 && str_starts_with($raw, 'eyJ') ? 'yes' : 'no'));
+            $this->line('     Looks like Laravel payload: '.(strlen($raw) > 0 && str_starts_with($raw, 'eyJ') ? 'yes' : 'no'));
 
             try {
                 if (strlen($raw) > 0) {
                     Crypt::decryptString($raw);
-                    $this->info("     Decrypt: OK");
+                    $this->info('     Decrypt: OK');
                 } else {
-                    $this->error("     Decrypt: SKIP (empty). Run: php artisan migrate");
+                    $this->error('     Decrypt: SKIP (empty). Run: php artisan migrate');
                 }
             } catch (\Throwable $e) {
-                $this->error("     Decrypt: FAIL - " . $e->getMessage());
+                $this->error('     Decrypt: FAIL - '.$e->getMessage());
             }
             $this->newLine();
         }

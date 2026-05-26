@@ -77,6 +77,7 @@ class FaqItem extends Model
         if ($categoryId) {
             return $query->where('category_id', $categoryId);
         }
+
         return $query;
     }
 
@@ -103,16 +104,16 @@ class FaqItem extends Model
     {
         $locale = app()->getLocale();
         $question = $this->question;
-        
+
         if (is_array($question) && isset($question[$locale])) {
             return $question[$locale];
         }
-        
+
         // Fallback to English
         if (is_array($question) && isset($question['en'])) {
             return $question['en'];
         }
-        
+
         return null;
     }
 
@@ -123,16 +124,16 @@ class FaqItem extends Model
     {
         $locale = app()->getLocale();
         $answer = $this->answer;
-        
+
         if (is_array($answer) && isset($answer[$locale])) {
             return $answer[$locale];
         }
-        
+
         // Fallback to English
         if (is_array($answer) && isset($answer['en'])) {
             return $answer['en'];
         }
-        
+
         return null;
     }
 
@@ -146,11 +147,10 @@ class FaqItem extends Model
         $counter = 1;
 
         while (static::where('slug', $slug)->exists()) {
-            $slug = $originalSlug . '-' . $counter;
+            $slug = $originalSlug.'-'.$counter;
             $counter++;
         }
 
         return $slug;
     }
 }
-

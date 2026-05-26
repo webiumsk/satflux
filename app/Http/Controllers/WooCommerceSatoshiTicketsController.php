@@ -139,7 +139,7 @@ class WooCommerceSatoshiTicketsController extends Controller
 
         $queryString = http_build_query($params);
         $separator = str_contains($returnUrl, '?') ? '&' : '?';
-        $targetUrl = $returnUrl . $separator . $queryString;
+        $targetUrl = $returnUrl.$separator.$queryString;
 
         Log::info('WooCommerce Satoshi Tickets connect: redirecting to return_url', [
             'user_id' => $user->id,
@@ -157,7 +157,7 @@ class WooCommerceSatoshiTicketsController extends Controller
         ]);
 
         $separator = str_contains($returnUrl, '?') ? '&' : '?';
-        $targetUrl = $returnUrl . $separator . $params;
+        $targetUrl = $returnUrl.$separator.$params;
 
         return redirect()->away($targetUrl);
     }

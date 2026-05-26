@@ -92,7 +92,8 @@ class WalletConnection extends Model
                 // If secret is too short, just show stars
                 return str_repeat('*', strlen($decrypted));
             }
-            return substr($decrypted, 0, 6) . '...' . substr($decrypted, -6);
+
+            return substr($decrypted, 0, 6).'...'.substr($decrypted, -6);
         } catch (\Exception $e) {
             // If decryption fails, return masked placeholder
             return '******...******';
@@ -109,4 +110,3 @@ class WalletConnection extends Model
         return Crypt::decryptString($this->encrypted_secret);
     }
 }
-

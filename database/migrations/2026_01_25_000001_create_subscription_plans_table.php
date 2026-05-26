@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Creates subscription_plans table to store plan definitions.
      * Plans define limits and features for each tier (FREE, PRO, ENTERPRISE).
      */

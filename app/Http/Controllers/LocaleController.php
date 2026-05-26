@@ -38,7 +38,7 @@ class LocaleController extends Controller
     public function setLocale(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'locale' => ['required', 'string', 'in:' . implode(',', array_keys(self::SUPPORTED_LOCALES))],
+            'locale' => ['required', 'string', 'in:'.implode(',', array_keys(self::SUPPORTED_LOCALES))],
         ]);
 
         if ($validator->fails()) {
@@ -49,13 +49,13 @@ class LocaleController extends Controller
         }
 
         $locale = $request->input('locale');
-        
+
         // Store locale in session if session is available
         if ($request->hasSession()) {
             $request->session()->put('locale', $locale);
             $request->session()->save(); // Force save to ensure it's persisted
         }
-        
+
         // Set application locale
         app()->setLocale($locale);
 
@@ -65,4 +65,3 @@ class LocaleController extends Controller
         ]);
     }
 }
-

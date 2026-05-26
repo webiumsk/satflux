@@ -15,8 +15,7 @@ class WalletConnectionReadyNotification extends Notification
     public function __construct(
         public Store $store,
         public WalletConnection $walletConnection
-    ) {
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -30,10 +29,10 @@ class WalletConnectionReadyNotification extends Notification
         $masked = $this->walletConnection->masked_secret ?: '******';
 
         return (new MailMessage)
-            ->subject('Wallet Connection Ready - ' . $this->store->name)
+            ->subject('Wallet Connection Ready - '.$this->store->name)
             ->line('Your wallet connection has been successfully configured!')
             ->line("Store: {$this->store->name}")
-            ->line('**Masked connection (for your records):** `' . $masked . '`')
+            ->line('**Masked connection (for your records):** `'.$masked.'`')
             ->line('Your store is now ready to accept Lightning payments.')
             ->action('View Store Dashboard', $storeUrl)
             ->line('Thank you for using our service!');
@@ -47,4 +46,3 @@ class WalletConnectionReadyNotification extends Notification
         ];
     }
 }
-

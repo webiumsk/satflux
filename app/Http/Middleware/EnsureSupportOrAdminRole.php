@@ -17,11 +17,10 @@ class EnsureSupportOrAdminRole
     {
         $user = $request->user();
 
-        if (!$user || (!$user->isSupport() && !$user->isAdmin())) {
+        if (! $user || (! $user->isSupport() && ! $user->isAdmin())) {
             abort(403, 'Unauthorized. Support or Admin role required.');
         }
 
         return $next($request);
     }
 }
-

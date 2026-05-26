@@ -45,6 +45,7 @@ class StoreAppPageController extends Controller
             return redirect()->back()->withErrors($data['errors'])->withInput();
         }
         $message = $data['message'] ?? 'Failed to create app.';
+
         return redirect()->back()->with('error', $message)->withInput();
     }
 

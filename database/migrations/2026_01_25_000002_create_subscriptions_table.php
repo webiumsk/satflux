@@ -8,10 +8,10 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Creates subscriptions table to track user subscriptions.
      * Status values: 'active', 'grace', 'expired'
-     * 
+     *
      * IMPORTANT: This is a non-custodial system. Expired subscriptions
      * do NOT affect payment acceptance - only management features are limited.
      */

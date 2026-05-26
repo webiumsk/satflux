@@ -6,7 +6,7 @@ class BtcPayRateLimitException extends BtcPayException
 {
     protected $retryAfter;
 
-    public function __construct(string $message = 'Rate limit exceeded', int $retryAfter = 60, Exception $previous = null)
+    public function __construct(string $message = 'Rate limit exceeded', int $retryAfter = 60, ?Exception $previous = null)
     {
         parent::__construct($message, 429, $previous);
         $this->retryAfter = $retryAfter;
@@ -17,11 +17,3 @@ class BtcPayRateLimitException extends BtcPayException
         return $this->retryAfter;
     }
 }
-
-
-
-
-
-
-
-

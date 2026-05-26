@@ -47,9 +47,6 @@ class UserMessage extends Model
     /**
      * Create a message for a user. Use from webhooks, jobs, or controllers.
      *
-     * @param  int  $userId
-     * @param  string  $title
-     * @param  string|null  $body
      * @param  string  $type  info|success|warning|invoice|subscription|support
      * @param  string|null  $link  Optional URL
      * @param  string|null  $linkText  Optional link label

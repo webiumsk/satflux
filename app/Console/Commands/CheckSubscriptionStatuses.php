@@ -39,7 +39,7 @@ class CheckSubscriptionStatuses extends Command
         $this->info('Checking subscription statuses from BTCPay API...');
 
         $storeId = config('services.btcpay.subscription_store_id');
-        
+
         // Find ALL users with subscription_id (regardless of role)
         // This includes users who have active subscription in BTCPay but still "free" role in DB
         $usersWithSubscriptions = User::whereNotNull('btcpay_subscription_id')->get();
@@ -56,10 +56,11 @@ class CheckSubscriptionStatuses extends Command
             try {
                 // Check subscription status directly from BTCPay API
                 // BTCPay manages grace period internally, so we trust its status
-                if (!$user->btcpay_subscription_id) {
+                if (! $user->btcpay_subscription_id) {
                     // User has paid role but no subscription ID - downgrade
                     $this->downgradeUser($user, 'No subscription ID found');
                     $downgraded++;
+
                     continue;
                 }
 
@@ -71,7 +72,7 @@ class CheckSubscriptionStatuses extends Command
                     );
 
                     $status = $subscription['status'] ?? null;
-                    
+
                     // BTCPay subscription statuses:
                     // - active: subscription is active and paid
                     // - activeRenewing: subscription is active and will renew
@@ -80,7 +81,7 @@ class CheckSubscriptionStatuses extends Command
                     // - suspended: subscription is suspended
                     // BTCPay handles grace period internally, so if status is "expired",
                     // it means grace period has passed
-                    
+
                     if (in_array($status, ['expired', 'cancelled', 'suspended'])) {
                         // Subscription is truly expired/cancelled/suspended - downgrade immediately
                         // BTCPay has already handled grace period
@@ -90,41 +91,41 @@ class CheckSubscriptionStatuses extends Command
                         // Subscription is active - sync expiration date from BTCPay
                         $expiresAt = null;
                         if (isset($subscription['expiresAt'])) {
-                            $expiresAt = is_numeric($subscription['expiresAt']) 
+                            $expiresAt = is_numeric($subscription['expiresAt'])
                                 ? now()->parse($subscription['expiresAt'])
                                 : now()->parse($subscription['expiresAt']);
                         } elseif (isset($subscription['endDate'])) {
-                            $expiresAt = is_numeric($subscription['endDate']) 
+                            $expiresAt = is_numeric($subscription['endDate'])
                                 ? now()->parse($subscription['endDate'])
                                 : now()->parse($subscription['endDate']);
                         }
-                        
+
                         // Update expiration date and clear any old grace period tracking
                         $user->update([
                             'subscription_expires_at' => $expiresAt,
                             'subscription_grace_period_ends_at' => null, // BTCPay handles grace period
                         ]);
-                        
+
                         // Ensure user role matches subscription plan
                         $planId = $subscription['planId'] ?? null;
                         $subscriptionPlans = config('services.btcpay.subscription_plans', []);
                         $expectedRole = null;
-                        
+
                         if ($planId === ($subscriptionPlans['pro'] ?? null)) {
                             $expectedRole = 'pro';
                         } elseif ($planId === ($subscriptionPlans['enterprise'] ?? null)) {
                             $expectedRole = 'enterprise';
                         }
-                        
+
                         if ($expectedRole && $user->role !== $expectedRole) {
                             $oldRole = $user->role;
                             $user->update(['role' => $expectedRole]);
-                            
+
                             if (in_array($oldRole, ['free']) && in_array($expectedRole, ['pro', 'enterprise'])) {
                                 $upgraded++;
                                 $this->line("Upgraded {$user->email} from {$oldRole} to {$expectedRole} (subscription active in BTCPay)");
                             }
-                            
+
                             Log::info('User role synced with subscription plan', [
                                 'user_id' => $user->id,
                                 'old_role' => $oldRole,
@@ -211,4 +212,3 @@ class CheckSubscriptionStatuses extends Command
         $this->line("Downgraded {$user->email} from {$oldRole} to free: {$reason}");
     }
 }
-

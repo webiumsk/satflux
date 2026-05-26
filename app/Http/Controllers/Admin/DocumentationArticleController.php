@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\DocumentationArticleRequest;
 use App\Models\DocumentationArticle;
-use App\Models\DocumentationCategory;
 use Illuminate\Http\Request;
 
 class DocumentationArticleController extends Controller
@@ -34,7 +33,7 @@ class DocumentationArticleController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->whereRaw("title->>'en' ILIKE ?", ["%{$search}%"])
-                  ->orWhereRaw("content->>'en' ILIKE ?", ["%{$search}%"]);
+                    ->orWhereRaw("content->>'en' ILIKE ?", ["%{$search}%"]);
             });
         }
 
@@ -76,13 +75,13 @@ class DocumentationArticleController extends Controller
             $titleForSlug = $request->title['en'] ?? null;
             if (empty($titleForSlug)) {
                 foreach (['sk', 'es', 'cz', 'de', 'fr', 'hu', 'pl'] as $locale) {
-                    if (!empty($request->title[$locale])) {
+                    if (! empty($request->title[$locale])) {
                         $titleForSlug = $request->title[$locale];
                         break;
                     }
                 }
             }
-            if (!empty($titleForSlug)) {
+            if (! empty($titleForSlug)) {
                 $slug = DocumentationArticle::generateSlug($titleForSlug);
             }
         }
@@ -159,7 +158,7 @@ class DocumentationArticleController extends Controller
      */
     private function sanitizeContent(mixed $content): mixed
     {
-        if (!is_array($content)) {
+        if (! is_array($content)) {
             return $content;
         }
 
@@ -172,10 +171,11 @@ class DocumentationArticleController extends Controller
                         $url = $src[1];
                         $allowed = str_starts_with($url, 'https://www.youtube.com/')
                             || str_starts_with($url, 'https://www.youtube-nocookie.com/');
-                        if (!$allowed) {
+                        if (! $allowed) {
                             return '';
                         }
                     }
+
                     return $tag;
                 },
                 $html
@@ -183,4 +183,3 @@ class DocumentationArticleController extends Controller
         }, $content);
     }
 }
-

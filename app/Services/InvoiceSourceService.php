@@ -9,10 +9,15 @@ namespace App\Services;
 class InvoiceSourceService
 {
     public const SOURCE_POS = 'pos';
+
     public const SOURCE_PAY_BUTTON = 'pay_button';
+
     public const SOURCE_LN_ADDRESS = 'ln_address';
+
     public const SOURCE_TICKETS = 'tickets';
+
     public const SOURCE_API = 'api';
+
     public const SOURCE_OTHER = 'other';
 
     public const SOURCES = [
@@ -100,6 +105,7 @@ class InvoiceSourceService
                 $out[$k] = $data[$k];
             }
         }
+
         return $out;
     }
 

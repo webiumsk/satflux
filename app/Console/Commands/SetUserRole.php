@@ -31,16 +31,18 @@ class SetUserRole extends Command
 
         // Validate role
         $validRoles = ['free', 'support', 'admin', 'pro', 'enterprise'];
-        if (!in_array($role, $validRoles)) {
-            $this->error("Invalid role. Allowed roles: " . implode(', ', $validRoles));
+        if (! in_array($role, $validRoles)) {
+            $this->error('Invalid role. Allowed roles: '.implode(', ', $validRoles));
+
             return Command::FAILURE;
         }
 
         // Find user
         $user = User::where('email', $email)->first();
 
-        if (!$user) {
+        if (! $user) {
             $this->error("User with email '{$email}' not found.");
+
             return Command::FAILURE;
         }
 
@@ -49,7 +51,7 @@ class SetUserRole extends Command
         $user->role = $role;
         $user->save();
 
-        $this->info("✓ User role updated successfully!");
+        $this->info('✓ User role updated successfully!');
         $this->line("  Email: {$user->email}");
         $this->line("  Old role: {$oldRole}");
         $this->line("  New role: {$role}");
@@ -57,4 +59,3 @@ class SetUserRole extends Command
         return Command::SUCCESS;
     }
 }
-

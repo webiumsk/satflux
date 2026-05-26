@@ -8,12 +8,12 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Middleware to ensure user has an active subscription.
- * 
+ *
  * IMPORTANT: This is a non-custodial system. This middleware:
  * - Allows READ operations even if subscription is expired (grace or expired)
  * - Blocks WRITE operations if subscription is expired (beyond grace period)
  * - Never blocks payment acceptance or existing PoS terminals
- * 
+ *
  * This middleware should be applied to management/write endpoints only.
  * Read endpoints should allow access even with expired subscriptions.
  */
@@ -28,7 +28,7 @@ class EnsureActiveSubscription
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             abort(401, 'Unauthenticated');
         }
 
@@ -36,12 +36,13 @@ class EnsureActiveSubscription
         $subscription = $user->currentSubscription();
 
         // If no subscription, treat as FREE plan
-        if (!$subscription) {
+        if (! $subscription) {
             // FREE plan users can still read, but writes are limited
             if ($mode === 'write') {
                 // Allow writes for FREE plan (they have limits enforced elsewhere)
                 return $next($request);
             }
+
             return $next($request);
         }
 
@@ -66,4 +67,3 @@ class EnsureActiveSubscription
         return $next($request);
     }
 }
-

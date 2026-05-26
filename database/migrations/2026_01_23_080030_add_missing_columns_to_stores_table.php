@@ -9,19 +9,19 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('stores', function (Blueprint $table) {
-            if (!Schema::hasColumn('stores', 'default_currency')) {
+            if (! Schema::hasColumn('stores', 'default_currency')) {
                 $table->string('default_currency', 10)->default('EUR')->after('name');
             }
-            if (!Schema::hasColumn('stores', 'timezone')) {
+            if (! Schema::hasColumn('stores', 'timezone')) {
                 $table->string('timezone')->default('UTC')->after('default_currency');
             }
-            if (!Schema::hasColumn('stores', 'preferred_exchange')) {
+            if (! Schema::hasColumn('stores', 'preferred_exchange')) {
                 $table->string('preferred_exchange')->nullable()->after('timezone');
             }
-            if (!Schema::hasColumn('stores', 'wallet_type')) {
+            if (! Schema::hasColumn('stores', 'wallet_type')) {
                 $table->enum('wallet_type', ['blink', 'aqua_boltz'])->nullable()->after('preferred_exchange');
             }
-            if (!Schema::hasColumn('stores', 'metadata')) {
+            if (! Schema::hasColumn('stores', 'metadata')) {
                 $table->json('metadata')->nullable()->after('wallet_type');
             }
         });

@@ -48,6 +48,7 @@ class StoreInvoiceStatsService
         }
         $apiKeyHash = md5($apiKey);
         $cacheKey = "btcpay:store_total_revenue_sats:{$store->id}:{$apiKeyHash}";
+
         return (int) Cache::remember($cacheKey, 3600, function () use ($store, $apiKey) {
             $allInvoices = $this->fetchAllInvoices($store->btcpay_store_id, $apiKey);
             $sats = 0;
@@ -58,6 +59,7 @@ class StoreInvoiceStatsService
                 }
                 $sats += $this->getReceivedSatsForInvoice($store->btcpay_store_id, $apiKey, $inv);
             }
+
             return $sats;
         });
     }
@@ -98,6 +100,7 @@ class StoreInvoiceStatsService
                 }
             }
             $byCurrency['sats'] = (int) $byCurrency['sats'];
+
             return $byCurrency;
         });
     }
@@ -123,6 +126,7 @@ class StoreInvoiceStatsService
         return (int) Cache::remember($cacheKey, 3600, function () use ($store, $invoiceId, $apiKey) {
             try {
                 $methods = $this->invoiceService->getInvoicePaymentMethods($store->btcpay_store_id, $invoiceId, $apiKey);
+
                 return InvoiceService::sumReceivedSatsFromPaymentMethods($methods);
             } catch (\Throwable) {
                 return 0;
@@ -150,6 +154,7 @@ class StoreInvoiceStatsService
         }
         try {
             $methods = $this->invoiceService->getInvoicePaymentMethods($btcpayStoreId, $invoiceId, $apiKey);
+
             return InvoiceService::sumReceivedSatsFromPaymentMethods($methods);
         } catch (\Throwable) {
             return 0;
@@ -214,6 +219,7 @@ class StoreInvoiceStatsService
                     'total_30d' => $total30d,
                 ];
             }
+
             return ['by_source' => $bySource];
         });
     }
@@ -230,6 +236,7 @@ class StoreInvoiceStatsService
                 'total_30d' => 0,
             ];
         }
+
         return ['by_source' => $bySource];
     }
 
@@ -240,6 +247,7 @@ class StoreInvoiceStatsService
             $date = now()->subDays($i)->startOfDay();
             $arr[$date->format('Y-m-d')] = ['date' => $date->format('M j'), 'count' => 0];
         }
+
         return $arr;
     }
 
@@ -259,6 +267,7 @@ class StoreInvoiceStatsService
             }
             $skip += $take;
         } while (count($chunk) === $take);
+
         return $out;
     }
 }

@@ -47,6 +47,7 @@ class AttemptWalletConnectionConfig extends Command
 
         if ($connections->isEmpty()) {
             $this->info('No wallet connections in needs_support status.');
+
             return self::SUCCESS;
         }
 
@@ -62,6 +63,7 @@ class AttemptWalletConnectionConfig extends Command
                 Log::warning('AttemptWalletConnectionConfig: store or btcpay_store_id missing', [
                     'connection_id' => $connection->id,
                 ]);
+
                 continue;
             }
 
@@ -71,6 +73,7 @@ class AttemptWalletConnectionConfig extends Command
                     'connection_id' => $connection->id,
                     'store_id' => $store->id,
                 ]);
+
                 continue;
             }
 
@@ -81,6 +84,7 @@ class AttemptWalletConnectionConfig extends Command
                     'connection_id' => $connection->id,
                     'user_id' => $user->id,
                 ]);
+
                 continue;
             }
 
@@ -91,6 +95,7 @@ class AttemptWalletConnectionConfig extends Command
                     'connection_id' => $connection->id,
                     'error' => $e->getMessage(),
                 ]);
+
                 continue;
             }
 
@@ -132,6 +137,7 @@ class AttemptWalletConnectionConfig extends Command
         }
 
         $this->info("Done. Attempted: {$attempted}, configured: {$configured}.");
+
         return self::SUCCESS;
     }
 }

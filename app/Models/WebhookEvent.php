@@ -61,11 +61,3 @@ class WebhookEvent extends Model
         $this->update(['processed_at' => now()]);
     }
 }
-
-
-
-
-
-
-
-

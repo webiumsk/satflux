@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 class StoreApiKeyService
 {
     protected UserService $userService;
+
     protected BtcPayClient $client;
 
     public function __construct(UserService $userService, BtcPayClient $client)
@@ -21,11 +22,12 @@ class StoreApiKeyService
     /**
      * Generate an API key for a store.
      *
-     * @param string $storeId Local store UUID
-     * @param array $permissions Permissions for the API key
-     * @param string $label Label for the API key
-     * @param string|null $callbackUrl Optional callback URL to send the API key to
+     * @param  string  $storeId  Local store UUID
+     * @param  array  $permissions  Permissions for the API key
+     * @param  string  $label  Label for the API key
+     * @param  string|null  $callbackUrl  Optional callback URL to send the API key to
      * @return StoreApiKey Created API key model
+     *
      * @throws \Exception
      */
     public function generateApiKey(string $storeId, array $permissions, string $label, ?string $callbackUrl = null): StoreApiKey
@@ -33,7 +35,7 @@ class StoreApiKeyService
         $store = Store::findOrFail($storeId);
         $user = $store->user;
 
-        if (!$user->btcpay_user_id) {
+        if (! $user->btcpay_user_id) {
             throw new \Exception('User does not have a BTCPay user ID. Please ensure the user account is properly linked to BTCPay.');
         }
 
@@ -48,7 +50,7 @@ class StoreApiKeyService
             'btcpay.store.cancreatenonapprovedpullpayments',
         ];
 
-        $finalPermissions = !empty($permissions) ? $permissions : $defaultPermissions;
+        $finalPermissions = ! empty($permissions) ? $permissions : $defaultPermissions;
 
         // Create API key in BTCPay
         $btcpayApiKeyData = $this->userService->createApiKey(
@@ -58,7 +60,7 @@ class StoreApiKeyService
             $label
         );
 
-        if (!isset($btcpayApiKeyData['apiKey'])) {
+        if (! isset($btcpayApiKeyData['apiKey'])) {
             throw new \Exception('BTCPay API did not return an API key');
         }
 
@@ -87,7 +89,7 @@ class StoreApiKeyService
             'store_id' => $storeId,
             'api_key_id' => $storeApiKey->id,
             'label' => $label,
-            'has_callback_url' => !empty($callbackUrl),
+            'has_callback_url' => ! empty($callbackUrl),
         ]);
 
         return $storeApiKey;
@@ -145,7 +147,7 @@ class StoreApiKeyService
     /**
      * List all API keys for a store.
      *
-     * @param string $storeId Local store UUID
+     * @param  string  $storeId  Local store UUID
      * @return \Illuminate\Database\Eloquent\Collection
      */
     public function listApiKeys(string $storeId)
@@ -163,15 +165,16 @@ class StoreApiKeyService
         try {
             // Create a temporary client with the API key
             $testClient = new BtcPayClient($apiKey);
-            
+
             // Try to get current API key info (lightweight test)
             $testClient->get('/api/v1/api-keys/current');
-            
+
             return true;
         } catch (\Exception $e) {
             Log::warning('API key test failed', [
                 'error' => $e->getMessage(),
             ]);
+
             return false;
         }
     }
@@ -182,12 +185,12 @@ class StoreApiKeyService
     public function regenerateApiKey(string $apiKeyId, array $permissions = [], ?string $label = null, ?string $callbackUrl = null): StoreApiKey
     {
         $oldApiKey = StoreApiKey::findOrFail($apiKeyId);
-        
+
         // Deactivate old key
         $oldApiKey->update(['is_active' => false]);
 
         // Create new key with same or new permissions
-        $newPermissions = !empty($permissions) ? $permissions : $oldApiKey->permissions;
+        $newPermissions = ! empty($permissions) ? $permissions : $oldApiKey->permissions;
         $newLabel = $label ?? $oldApiKey->label;
         $newCallbackUrl = $callbackUrl ?? $oldApiKey->callback_url;
 
@@ -199,4 +202,3 @@ class StoreApiKeyService
         );
     }
 }
-

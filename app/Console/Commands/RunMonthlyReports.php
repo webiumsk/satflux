@@ -20,7 +20,7 @@ class RunMonthlyReports extends Command
         $storeId = $this->option('store-id') ?: null;
         $sync = (bool) $this->option('sync');
 
-        if ($month !== null && !preg_match('/^\d{4}-\d{2}$/', $month)) {
+        if ($month !== null && ! preg_match('/^\d{4}-\d{2}$/', $month)) {
             $this->error('Invalid --month format. Use Y-m, e.g. 2026-03.');
 
             return self::FAILURE;
@@ -36,10 +36,9 @@ class RunMonthlyReports extends Command
             $this->info('Monthly reports job queued.');
         }
 
-        $this->line('month=' . ($month ?? 'previous-month'));
-        $this->line('store-id=' . ($storeId ?? 'all-stores'));
+        $this->line('month='.($month ?? 'previous-month'));
+        $this->line('store-id='.($storeId ?? 'all-stores'));
 
         return self::SUCCESS;
     }
 }
-

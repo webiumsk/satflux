@@ -17,8 +17,7 @@ class MonthlyExportReadyNotification extends Notification
         public Export $export,
         public Store $store,
         public string $monthLabel
-    ) {
-    }
+    ) {}
 
     /**
      * Get the notification's delivery channels.

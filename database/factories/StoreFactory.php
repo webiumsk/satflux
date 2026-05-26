@@ -21,7 +21,7 @@ class StoreFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'name' => fake()->company() . ' Store',
+            'name' => fake()->company().' Store',
             'btcpay_store_id' => Str::random(32),
             'default_currency' => 'EUR',
             'timezone' => 'Europe/Vienna',
@@ -50,4 +50,3 @@ class StoreFactory extends Factory
         ]);
     }
 }
-

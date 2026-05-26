@@ -132,4 +132,3 @@ return [
     'faq_category_has_items' => 'Cannot delete category with items',
     'faq_marked_helpful' => 'Thank you for your feedback!',
 ];
-

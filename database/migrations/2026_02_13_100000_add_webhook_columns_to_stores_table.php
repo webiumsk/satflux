@@ -9,10 +9,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('stores', function (Blueprint $table) {
-            if (!Schema::hasColumn('stores', 'webhook_secret')) {
+            if (! Schema::hasColumn('stores', 'webhook_secret')) {
                 $table->text('webhook_secret')->nullable()->after('auto_report_format');
             }
-            if (!Schema::hasColumn('stores', 'btcpay_webhook_id')) {
+            if (! Schema::hasColumn('stores', 'btcpay_webhook_id')) {
                 $table->string('btcpay_webhook_id')->nullable()->after('webhook_secret');
             }
         });

@@ -62,6 +62,7 @@ class UserApiKeyController extends Controller
         }
 
         $userApiKey->update(['revoked_at' => now()]);
+
         return response()->json(['message' => 'API key revoked'], 204);
     }
 }

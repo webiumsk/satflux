@@ -27,7 +27,7 @@ class SetLocale
         }
 
         // If no locale in session, try to get from Accept-Language header
-        if (!$locale && $request->hasHeader('Accept-Language')) {
+        if (! $locale && $request->hasHeader('Accept-Language')) {
             $preferredLocales = $request->getLanguages();
             foreach ($preferredLocales as $preferredLocale) {
                 // Extract language code (e.g., 'en' from 'en-US')
@@ -40,7 +40,7 @@ class SetLocale
         }
 
         // Fallback to default if locale is not supported
-        if (!$locale || !in_array($locale, $supportedLocales)) {
+        if (! $locale || ! in_array($locale, $supportedLocales)) {
             $locale = $defaultLocale;
         }
 
@@ -50,4 +50,3 @@ class SetLocale
         return $next($request);
     }
 }
-

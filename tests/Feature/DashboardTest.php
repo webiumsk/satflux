@@ -7,8 +7,8 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
-use Tests\TestCase;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
 class DashboardTest extends TestCase
 {
@@ -64,10 +64,10 @@ class DashboardTest extends TestCase
         Http::fake(function ($request) use ($baseUrl) {
             $url = (string) $request->url();
             $method = $request->method();
-            if ($method === 'GET' && $url === $baseUrl . '/api/v1/users/me') {
+            if ($method === 'GET' && $url === $baseUrl.'/api/v1/users/me') {
                 return Http::response(['code' => 'unauthenticated'], 401);
             }
-            if ($method === 'GET' && $url === $baseUrl . '/api/v1/stores') {
+            if ($method === 'GET' && $url === $baseUrl.'/api/v1/stores') {
                 return Http::response([
                     ['id' => 'btcpay-store-1', 'name' => 'My Store', 'defaultCurrency' => 'EUR', 'timeZone' => 'Europe/Vienna', 'created' => 1704067200],
                 ], 200);
@@ -80,6 +80,7 @@ class DashboardTest extends TestCase
                     ['id' => 'inv-3', 'status' => 'Complete', 'amount' => 50.5, 'currency' => 'EUR'],
                 ], 200);
             }
+
             return Http::response([], 404);
         });
 
@@ -112,15 +113,16 @@ class DashboardTest extends TestCase
         $baseUrl = 'https://btcpay.test';
         Http::fake(function ($request) use ($baseUrl) {
             $url = (string) $request->url();
-            if ($request->method() === 'GET' && $url === $baseUrl . '/api/v1/users/me') {
+            if ($request->method() === 'GET' && $url === $baseUrl.'/api/v1/users/me') {
                 return Http::response(['code' => 'unauthenticated'], 401);
             }
-            if ($request->method() === 'GET' && $url === $baseUrl . '/api/v1/stores') {
+            if ($request->method() === 'GET' && $url === $baseUrl.'/api/v1/stores') {
                 // BTCPay returns only one store - orphan-store is not in list
                 return Http::response([
                     ['id' => 'other-store', 'name' => 'Other', 'defaultCurrency' => 'EUR', 'timeZone' => 'UTC'],
                 ], 200);
             }
+
             return Http::response([], 404);
         });
 
@@ -140,12 +142,13 @@ class DashboardTest extends TestCase
         $baseUrl = 'https://btcpay.test';
         Http::fake(function ($request) use ($baseUrl) {
             $url = (string) $request->url();
-            if ($request->method() === 'GET' && $url === $baseUrl . '/api/v1/users/me') {
+            if ($request->method() === 'GET' && $url === $baseUrl.'/api/v1/users/me') {
                 return Http::response(['code' => 'unauthenticated'], 401);
             }
-            if ($request->method() === 'GET' && $url === $baseUrl . '/api/v1/stores') {
+            if ($request->method() === 'GET' && $url === $baseUrl.'/api/v1/stores') {
                 return Http::response(['error' => 'Unauthorized'], 401);
             }
+
             return Http::response([], 404);
         });
 

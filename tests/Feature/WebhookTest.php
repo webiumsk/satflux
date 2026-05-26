@@ -144,7 +144,7 @@ class WebhookTest extends TestCase
         $signature = hash_hmac('sha256', $body, 'store-secret');
 
         $response = $this->postJson('/api/webhooks/btcpay', $payload, [
-            'BTCPay-Sig' => 'sha256=' . $signature,
+            'BTCPay-Sig' => 'sha256='.$signature,
         ]);
 
         $response->assertStatus(200);
@@ -167,7 +167,7 @@ class WebhookTest extends TestCase
         $signature = hash_hmac('sha256', $body, 'config-secret');
 
         $response = $this->postJson('/api/webhooks/btcpay', $payload, [
-            'BTCPay-Sig' => 'sha256=' . $signature,
+            'BTCPay-Sig' => 'sha256='.$signature,
         ]);
 
         $response->assertStatus(401);

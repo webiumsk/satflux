@@ -15,7 +15,7 @@ class EnsurePlanAllowsUserApiKeyCreation
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             abort(401, 'Unauthenticated');
         }
 

@@ -27,7 +27,7 @@ class ExportController extends Controller
 
     /**
      * Create a new export.
-     * 
+     *
      * IMPORTANT: Manual CSV exports are available for ALL plans (FREE, PRO, ENTERPRISE).
      * Automatic monthly exports are handled by a scheduled job that checks the
      * 'automatic_csv_exports' feature flag via SubscriptionService.
@@ -65,7 +65,7 @@ class ExportController extends Controller
             abort(403);
         }
 
-        if (!$export->isFinished()) {
+        if (! $export->isFinished()) {
             return response()->json(['message' => 'Export is not ready yet'], 202);
         }
 
@@ -151,7 +151,7 @@ class ExportController extends Controller
             abort(403);
         }
 
-        if (!$export->hasFailed() && $export->status !== 'pending' && $export->status !== 'running') {
+        if (! $export->hasFailed() && $export->status !== 'pending' && $export->status !== 'running') {
             return response()->json(['message' => 'Export can only be retried when failed or stuck'], 400);
         }
 
@@ -191,4 +191,3 @@ class ExportController extends Controller
         return response()->json(['message' => 'Export deleted']);
     }
 }
-

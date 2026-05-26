@@ -40,7 +40,7 @@ class StorePolicy
      */
     public function create(User $user): bool
     {
-        return !$user->is_guest;
+        return ! $user->is_guest;
     }
 
     /**

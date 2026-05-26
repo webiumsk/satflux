@@ -30,9 +30,10 @@ class StoreDashboardTest extends TestCase
             if ($method === 'GET' && str_contains($url, "/api/v1/stores/{$storeId}/invoices")) {
                 return Http::response($invoices, 200);
             }
-            if ($method === 'GET' && ($url === $baseUrl . "/stores/{$storeId}/apps" || $url === $baseUrl . "/api/v1/stores/{$storeId}/apps")) {
+            if ($method === 'GET' && ($url === $baseUrl."/stores/{$storeId}/apps" || $url === $baseUrl."/api/v1/stores/{$storeId}/apps")) {
                 return Http::response($apps, 200);
             }
+
             return Http::response([], 404);
         });
     }
@@ -122,7 +123,7 @@ class StoreDashboardTest extends TestCase
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
         $store = Store::factory()->create(['user_id' => $user->id, 'btcpay_store_id' => 'store-1']);
         $baseUrl = 'https://btcpay.test';
-        Http::fake(function ($request) use ($baseUrl) {
+        Http::fake(function ($request) {
             $url = (string) $request->url();
             if (str_contains($url, '/invoices')) {
                 return Http::response(['error' => 'Unauthorized'], 401);
@@ -130,6 +131,7 @@ class StoreDashboardTest extends TestCase
             if (str_contains($url, '/apps')) {
                 return Http::response([], 200);
             }
+
             return Http::response([], 404);
         });
 

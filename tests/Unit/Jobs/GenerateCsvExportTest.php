@@ -10,8 +10,8 @@ use App\Models\User;
 use App\Services\BtcPay\InvoiceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-use Tests\TestCase;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
 class GenerateCsvExportTest extends TestCase
 {
@@ -44,6 +44,7 @@ class GenerateCsvExportTest extends TestCase
             if (str_contains($url, '/api/v1/stores/') && str_contains($url, '/invoices')) {
                 return Http::response(['data' => []], 200);
             }
+
             return Http::response([], 404);
         });
 
@@ -146,7 +147,8 @@ class GenerateCsvExportTest extends TestCase
 
     private function failingInvoiceService(): InvoiceService
     {
-        return new class(app(\App\Services\BtcPay\BtcPayClient::class)) extends InvoiceService {
+        return new class(app(\App\Services\BtcPay\BtcPayClient::class)) extends InvoiceService
+        {
             public function listInvoices(string $storeId, array $filters = [], ?int $skip = null, ?int $take = null, ?string $userApiKey = null): array
             {
                 throw new \RuntimeException('Unable to create export file: /var/private/exports/secret.csv');

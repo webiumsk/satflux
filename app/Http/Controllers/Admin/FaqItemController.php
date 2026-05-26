@@ -33,7 +33,7 @@ class FaqItemController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->whereRaw("question->>'en' ILIKE ?", ["%{$search}%"])
-                  ->orWhereRaw("answer->>'en' ILIKE ?", ["%{$search}%"]);
+                    ->orWhereRaw("answer->>'en' ILIKE ?", ["%{$search}%"]);
             });
         }
 
@@ -136,4 +136,3 @@ class FaqItemController extends Controller
         ]);
     }
 }
-

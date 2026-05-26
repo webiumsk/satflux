@@ -8,7 +8,7 @@ class BtcPayException extends Exception
 {
     protected $statusCode;
 
-    public function __construct(string $message = '', int $statusCode = 0, Exception $previous = null)
+    public function __construct(string $message = '', int $statusCode = 0, ?Exception $previous = null)
     {
         parent::__construct($message, 0, $previous);
         $this->statusCode = $statusCode;
@@ -19,11 +19,3 @@ class BtcPayException extends Exception
         return $this->statusCode;
     }
 }
-
-
-
-
-
-
-
-

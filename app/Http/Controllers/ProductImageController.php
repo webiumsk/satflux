@@ -60,4 +60,3 @@ class ProductImageController extends Controller
         }
     }
 }
-

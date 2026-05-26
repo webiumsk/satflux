@@ -2,8 +2,6 @@
 
 namespace App\Services\BtcPay;
 
-use Illuminate\Support\Facades\Log;
-
 class StripeService
 {
     protected BtcPayClient $client;
@@ -16,8 +14,8 @@ class StripeService
     /**
      * Get Stripe settings for a store.
      *
-     * @param string $storeId BTCPay store ID
-     * @param string|null $userApiKey User-level API key (optional)
+     * @param  string  $storeId  BTCPay store ID
+     * @param  string|null  $userApiKey  User-level API key (optional)
      * @return array Stripe settings (keys are masked)
      */
     public function getSettings(string $storeId, ?string $userApiKey = null): array
@@ -30,9 +28,9 @@ class StripeService
     /**
      * Update Stripe settings.
      *
-     * @param string $storeId BTCPay store ID
-     * @param array $data Settings (enabled, publishableKey, secretKey, settlementCurrency, advancedConfig)
-     * @param string|null $userApiKey User-level API key (optional)
+     * @param  string  $storeId  BTCPay store ID
+     * @param  array  $data  Settings (enabled, publishableKey, secretKey, settlementCurrency, advancedConfig)
+     * @param  string|null  $userApiKey  User-level API key (optional)
      * @return array Updated settings (keys masked)
      */
     public function updateSettings(string $storeId, array $data, ?string $userApiKey = null): array
@@ -45,9 +43,8 @@ class StripeService
     /**
      * Delete Stripe credentials.
      *
-     * @param string $storeId BTCPay store ID
-     * @param string|null $userApiKey User-level API key (optional)
-     * @return void
+     * @param  string  $storeId  BTCPay store ID
+     * @param  string|null  $userApiKey  User-level API key (optional)
      */
     public function deleteSettings(string $storeId, ?string $userApiKey = null): void
     {
@@ -59,8 +56,8 @@ class StripeService
     /**
      * Test Stripe connection.
      *
-     * @param string $storeId BTCPay store ID
-     * @param string|null $userApiKey User-level API key (optional)
+     * @param  string  $storeId  BTCPay store ID
+     * @param  string|null  $userApiKey  User-level API key (optional)
      * @return array { success, message, mode }
      */
     public function testConnection(string $storeId, ?string $userApiKey = null): array
@@ -73,8 +70,8 @@ class StripeService
     /**
      * Register Stripe webhook.
      *
-     * @param string $storeId BTCPay store ID
-     * @param string|null $userApiKey User-level API key (optional)
+     * @param  string  $storeId  BTCPay store ID
+     * @param  string|null  $userApiKey  User-level API key (optional)
      * @return array { success, message }
      */
     public function registerWebhook(string $storeId, ?string $userApiKey = null): array
@@ -87,8 +84,8 @@ class StripeService
     /**
      * Get webhook status.
      *
-     * @param string $storeId BTCPay store ID
-     * @param string|null $userApiKey User-level API key (optional)
+     * @param  string  $storeId  BTCPay store ID
+     * @param  string|null  $userApiKey  User-level API key (optional)
      * @return array { configured, webhookId, webhookUrl, message }
      */
     public function getWebhookStatus(string $storeId, ?string $userApiKey = null): array

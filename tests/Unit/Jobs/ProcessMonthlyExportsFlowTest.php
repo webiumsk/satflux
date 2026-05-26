@@ -67,4 +67,3 @@ class ProcessMonthlyExportsFlowTest extends TestCase
         Queue::assertPushed(GenerateCsvExport::class);
     }
 }
-

@@ -134,7 +134,7 @@ class StoreChecklistService
         $existingKeys = $store->checklistItems()->pluck('item_key')->all();
 
         foreach ($definitions as $item) {
-            if (!in_array($item['key'], $existingKeys, true)) {
+            if (! in_array($item['key'], $existingKeys, true)) {
                 StoreChecklist::create([
                     'store_id' => $store->id,
                     'item_key' => $item['key'],

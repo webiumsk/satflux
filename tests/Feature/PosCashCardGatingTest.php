@@ -8,16 +8,19 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
 class PosCashCardGatingTest extends TestCase
 {
     use RefreshDatabase;
 
     protected User $freeUser;
+
     protected User $proUser;
+
     protected Store $store;
+
     protected PosTerminal $terminal;
 
     protected function setUp(): void

@@ -31,11 +31,3 @@ return new class extends Migration
         Schema::dropIfExists('store_checklists');
     }
 };
-
-
-
-
-
-
-
-
