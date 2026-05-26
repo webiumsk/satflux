@@ -31,7 +31,7 @@ class InvoiceController extends Controller
 
         $request->validate([
             'date_from' => ['nullable', 'date_format:Y-m-d'],
-            'date_to' => ['nullable', 'date_format:Y-m-d'],
+            'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
             'status' => ['nullable', 'string', 'max:32'],
             'skip' => ['nullable', 'integer', 'min:0'],
             'take' => ['nullable', 'integer', 'min:1', 'max:200'],

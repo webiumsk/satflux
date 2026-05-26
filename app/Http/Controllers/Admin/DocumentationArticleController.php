@@ -164,19 +164,18 @@ class DocumentationArticleController extends Controller
 
         return array_map(function (string $html): string {
             return preg_replace_callback(
-                '/<iframe[^>]*>/i',
+                '/<iframe\b[^>]*>.*?<\/iframe>/si',
                 function (array $matches): string {
-                    $tag = $matches[0];
-                    if (preg_match('/src=["\']([^"\']*)["\']/', $tag, $src)) {
+                    $full = $matches[0];
+                    if (preg_match('/\bsrc=["\']([^"\']*)["\']/', $full, $src)) {
                         $url = $src[1];
-                        $allowed = str_starts_with($url, 'https://www.youtube.com/')
-                            || str_starts_with($url, 'https://www.youtube-nocookie.com/');
-                        if (! $allowed) {
-                            return '';
+                        if (str_starts_with($url, 'https://www.youtube.com/')
+                            || str_starts_with($url, 'https://www.youtube-nocookie.com/')) {
+                            return $full;
                         }
                     }
 
-                    return $tag;
+                    return '';
                 },
                 $html
             );

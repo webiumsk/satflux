@@ -19,6 +19,17 @@ class MonitorFailedJobs extends Command
         $hours = (int) $this->option('hours');
         $threshold = (int) $this->option('threshold');
 
+        if ($hours <= 0) {
+            $this->error("Invalid --hours value ({$hours}): must be a positive integer.");
+
+            return self::FAILURE;
+        }
+        if ($threshold <= 0) {
+            $this->error("Invalid --threshold value ({$threshold}): must be a positive integer.");
+
+            return self::FAILURE;
+        }
+
         $count = DB::table('failed_jobs')
             ->where('failed_at', '>=', now()->subHours($hours))
             ->count();
@@ -31,12 +42,12 @@ class MonitorFailedJobs extends Command
             ->where('failed_at', '>=', now()->subHours($hours))
             ->orderByDesc('failed_at')
             ->limit(10)
-            ->get(['uuid', 'connection', 'queue', 'failed_at', 'exception'])
+            ->get(['uuid', 'queue', 'failed_at', 'exception'])
             ->map(fn ($job) => [
                 'uuid' => $job->uuid,
                 'queue' => $job->queue,
                 'failed_at' => $job->failed_at,
-                'exception' => substr($job->exception, 0, 200),
+                'exception_class' => preg_match('/^[\w\\\\]+/', $job->exception ?? '', $m) ? $m[0] : 'Unknown',
             ])
             ->all();
 

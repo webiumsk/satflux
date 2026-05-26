@@ -681,6 +681,7 @@ import { useI18n } from "vue-i18n";
 import { currencies } from "../../data/currencies";
 import Select from "../../components/ui/Select.vue";
 import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
+import { escapeAttr } from "../../utils/escapeAttr";
 
 const { t } = useI18n();
 const { btcPayUrl, load: loadBtcpayConfig } = useBtcPayUrl();
@@ -823,9 +824,6 @@ const generatedCode = computed(() => {
   }
 });
 
-function escapeAttr(value: string | number | undefined | null): string {
-  return String(value ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
 
 function generateHtmlCode(): string {
   if (!storeId.value) {

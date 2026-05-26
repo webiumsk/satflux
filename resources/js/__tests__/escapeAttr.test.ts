@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
-
-// Pure function extracted for testing — mirrors PayButtonForm.vue::escapeAttr
-function escapeAttr(value: string | number | undefined | null): string {
-    return String(value ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
+import { escapeAttr } from '../utils/escapeAttr';
 
 describe('escapeAttr', () => {
     it('escapes double quotes', () => {
         expect(escapeAttr('"hello"')).toBe('&quot;hello&quot;');
+    });
+
+    it('escapes single quotes', () => {
+        expect(escapeAttr("it's")).toBe('it&#39;s');
     });
 
     it('escapes angle brackets', () => {
@@ -24,6 +24,11 @@ describe('escapeAttr', () => {
         expect(result).not.toContain('"');
         expect(result).not.toContain('<');
         expect(result).not.toContain('>');
+    });
+
+    it("blocks single-quote injection vector", () => {
+        const payload = "' onmouseover='alert(1)";
+        expect(escapeAttr(payload)).not.toContain("'");
     });
 
     it('passes through safe numeric values', () => {

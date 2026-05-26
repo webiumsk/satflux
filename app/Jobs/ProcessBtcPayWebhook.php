@@ -11,6 +11,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ProcessBtcPayWebhook implements ShouldQueue
@@ -31,7 +32,13 @@ class ProcessBtcPayWebhook implements ShouldQueue
      */
     public function handle(): void
     {
-        if ($this->webhookEvent->processed_at !== null) {
+        // Atomic claim: only the first worker to flip processed_at from NULL proceeds.
+        $claimed = DB::table('webhook_events')
+            ->where('id', $this->webhookEvent->id)
+            ->whereNull('processed_at')
+            ->update(['processed_at' => now()]);
+
+        if ($claimed === 0) {
             return;
         }
 

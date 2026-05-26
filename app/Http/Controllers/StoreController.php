@@ -233,7 +233,7 @@ class StoreController extends Controller
                 \Illuminate\Support\Facades\Cache::forget("btcpay:store:{$btcpayStoreId}:server");
                 // Also clear for merchant key if they have one
                 if ($user->btcpay_api_key) {
-                    $apiKeyHash = md5($user->btcpay_api_key);
+                    $apiKeyHash = hash('sha256', $user->btcpay_api_key);
                     \Illuminate\Support\Facades\Cache::forget("btcpay:store:{$btcpayStoreId}:{$apiKeyHash}");
                 }
             }
