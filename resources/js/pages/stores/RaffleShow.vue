@@ -34,7 +34,7 @@
                   <div
                     v-if="raffle?.description"
                     class="prose prose-invert prose-sm max-w-2xl text-gray-400 mt-2 raffle-description-preview"
-                    v-html="raffle.description"
+                    v-html="sanitizedDescription"
                   />
                   <p v-else class="text-sm text-gray-400 mt-1">
                     <span class="text-indigo-400">{{ store.name }}</span>
@@ -407,6 +407,7 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted, watch } from 'vue';
+import DOMPurify from 'dompurify';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import RafflesPageLayout from '../../components/stores/RafflesPageLayout.vue';
@@ -437,6 +438,11 @@ const { storeId, store, error, apps, loadStore, goSettings, goSection } = useSto
 const raffleId = computed(() => route.params.raffleId as string);
 const raffle = ref<Raffle | null>(null);
 const virtualApp = computed(() => ({ name: raffle.value?.name ?? t('raffles.title') }));
+const sanitizedDescription = computed(() =>
+  raffle.value?.description
+    ? DOMPurify.sanitize(raffle.value.description, { ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'a'], ALLOWED_ATTR: ['href', 'target', 'rel'] })
+    : ''
+);
 const tickets = ref<RaffleTicket[]>([]);
 const drawings = ref<RaffleDrawing[]>([]);
 const detailLoading = ref(true);

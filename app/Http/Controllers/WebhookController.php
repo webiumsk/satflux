@@ -48,18 +48,12 @@ class WebhookController extends Controller
 
             $verified = true;
         } else {
-            if (app()->environment('production')) {
-                Log::error('BTCPay webhook rejected in production because no webhook secret is configured', [
-                    'ip' => $request->ip(),
-                    'store_id' => $store?->id,
-                ]);
-
-                return response()->json(['error' => 'Webhook secret not configured'], 401);
-            }
-
-            Log::warning('BTCPay webhook received without verification (no store webhook_secret and BTCPAY_WEBHOOK_SECRET not set)', [
+            Log::error('BTCPay webhook rejected: no webhook secret configured', [
                 'ip' => $request->ip(),
+                'store_id' => $store?->id,
             ]);
+
+            return response()->json(['error' => 'Webhook secret not configured'], 401);
         }
 
         $eventType = $payload['type'] ?? $payload['eventType'] ?? 'unknown';

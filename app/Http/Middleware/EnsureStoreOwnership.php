@@ -22,9 +22,9 @@ class EnsureStoreOwnership
             abort(404, 'Store not found');
         }
 
-        // Owner, admin and support can access the store (admin/support have same access as owner for management)
+        // Owner, admin and support can access the store
         $user = $request->user();
-        if ($store->user_id !== $user->id && !$user->isSupport()) {
+        if ($store->user_id !== $user->id && !$user->isSupport() && !$user->isAdmin()) {
             abort(403, 'Unauthorized access to store');
         }
 

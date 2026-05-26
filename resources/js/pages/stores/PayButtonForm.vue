@@ -823,6 +823,10 @@ const generatedCode = computed(() => {
   }
 });
 
+function escapeAttr(value: string | number | undefined | null): string {
+  return String(value ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function generateHtmlCode(): string {
   if (!storeId.value) {
     throw new Error("Store ID is required");
@@ -947,16 +951,16 @@ function generateHtmlCode(): string {
 
   // Add price if fixed amount
   if (form.value.buttonType === "fixed" && form.value.price) {
-    html += `  <input type="hidden" name="price" value="${form.value.price}" />
-  <input type="hidden" name="currency" value="${form.value.currency || "EUR"}" />
+    html += `  <input type="hidden" name="price" value="${escapeAttr(form.value.price)}" />
+  <input type="hidden" name="currency" value="${escapeAttr(form.value.currency || 'EUR')}" />
 `;
   }
 
   // Custom amount: simple input or plus-minus + currency select
   if (form.value.buttonType === "custom") {
     if (form.value.simpleInputStyle) {
-      html += `  <input type="number" name="price" min="${form.value.minAmount}" max="${form.value.maxAmount}" step="${form.value.stepAmount}" value="${form.value.minAmount}" class="btcpay-input-price" required />
-  <input type="hidden" name="currency" value="${form.value.currency || "EUR"}" />
+      html += `  <input type="number" name="price" min="${escapeAttr(form.value.minAmount)}" max="${escapeAttr(form.value.maxAmount)}" step="${escapeAttr(form.value.stepAmount)}" value="${escapeAttr(form.value.minAmount)}" class="btcpay-input-price" required />
+  <input type="hidden" name="currency" value="${escapeAttr(form.value.currency || 'EUR')}" />
 `;
     } else {
       const commonCurrencies = ["USD", "GBP", "EUR", "BTC"];
@@ -964,9 +968,9 @@ function generateHtmlCode(): string {
 
       html += `  <div class="btcpay-custom-container">
     <div class="btcpay-custom">
-      <button class="plus-minus" type="button" data-type="-" data-step="${form.value.stepAmount || 1}" data-min="${form.value.minAmount || 1}" data-max="${form.value.maxAmount || ""}">-</button>
-      <input class="btcpay-input-price" type="number" name="price" min="${form.value.minAmount || 1}" max="${form.value.maxAmount || ""}" step="${form.value.stepAmount || 1}" value="${form.value.minAmount || 1}" data-price="${form.value.minAmount || 1}" style="width:3em;" />
-      <button class="plus-minus" type="button" data-type="+" data-step="${form.value.stepAmount || 1}" data-min="${form.value.minAmount || 1}" data-max="${form.value.maxAmount || ""}">+</button>
+      <button class="plus-minus" type="button" data-type="-" data-step="${escapeAttr(form.value.stepAmount || 1)}" data-min="${escapeAttr(form.value.minAmount || 1)}" data-max="${escapeAttr(form.value.maxAmount || '')}">-</button>
+      <input class="btcpay-input-price" type="number" name="price" min="${escapeAttr(form.value.minAmount || 1)}" max="${escapeAttr(form.value.maxAmount || '')}" step="${escapeAttr(form.value.stepAmount || 1)}" value="${escapeAttr(form.value.minAmount || 1)}" data-price="${escapeAttr(form.value.minAmount || 1)}" style="width:3em;" />
+      <button class="plus-minus" type="button" data-type="+" data-step="${escapeAttr(form.value.stepAmount || 1)}" data-min="${escapeAttr(form.value.minAmount || 1)}" data-max="${escapeAttr(form.value.maxAmount || '')}">+</button>
     </div>
     <select name="currency">
 `;
@@ -984,44 +988,44 @@ function generateHtmlCode(): string {
     const max = form.value.maxAmount ?? min;
     const step = form.value.stepAmount ?? 1;
     html += `  <div class="btcpay-slider-container">
-    <input type="number" id="btcpay-slider-value" class="btcpay-input-price" readonly min="${min}" max="${max}" step="${step}" value="${min}" style="width:3em; margin-bottom: 8px;" />
-    <input type="range" name="price" class="btcpay-range" min="${min}" max="${max}" step="${step}" value="${min}" data-sync-target="btcpay-slider-value" required />
+    <input type="number" id="btcpay-slider-value" class="btcpay-input-price" readonly min="${escapeAttr(min)}" max="${escapeAttr(max)}" step="${escapeAttr(step)}" value="${escapeAttr(min)}" style="width:3em; margin-bottom: 8px;" />
+    <input type="range" name="price" class="btcpay-range" min="${escapeAttr(min)}" max="${escapeAttr(max)}" step="${escapeAttr(step)}" value="${escapeAttr(min)}" data-sync-target="btcpay-slider-value" required />
   </div>
-  <input type="hidden" name="currency" value="${form.value.currency || "EUR"}" />
+  <input type="hidden" name="currency" value="${escapeAttr(form.value.currency || 'EUR')}" />
 `;
   } else if (form.value.buttonType === "fixed" && !form.value.price) {
     // Fixed amount without price: currency as hidden field
-    html += `  <input type="hidden" name="currency" value="${form.value.currency || "EUR"}" />
+    html += `  <input type="hidden" name="currency" value="${escapeAttr(form.value.currency || 'EUR')}" />
 `;
   }
 
   // Add optional fields
   if (form.value.defaultPaymentMethod) {
-    html += `  <input type="hidden" name="defaultPaymentMethod" value="${form.value.defaultPaymentMethod}" />
+    html += `  <input type="hidden" name="defaultPaymentMethod" value="${escapeAttr(form.value.defaultPaymentMethod)}" />
 `;
   }
   if (form.value.checkoutDescription) {
-    html += `  <input type="hidden" name="checkoutDesc" value="${form.value.checkoutDescription}" />
+    html += `  <input type="hidden" name="checkoutDesc" value="${escapeAttr(form.value.checkoutDescription)}" />
 `;
   }
   if (form.value.orderId) {
-    html += `  <input type="hidden" name="orderId" value="${form.value.orderId}" />
+    html += `  <input type="hidden" name="orderId" value="${escapeAttr(form.value.orderId)}" />
 `;
   }
   if (form.value.serverIpn) {
-    html += `  <input type="hidden" name="notificationURL" value="${form.value.serverIpn}" />
+    html += `  <input type="hidden" name="notificationURL" value="${escapeAttr(form.value.serverIpn)}" />
 `;
   }
   if (form.value.emailNotifications) {
-    html += `  <input type="hidden" name="buyerEmail" value="${form.value.emailNotifications}" />
+    html += `  <input type="hidden" name="buyerEmail" value="${escapeAttr(form.value.emailNotifications)}" />
 `;
   }
   if (form.value.browserRedirect) {
-    html += `  <input type="hidden" name="redirectURL" value="${form.value.browserRedirect}" />
+    html += `  <input type="hidden" name="redirectURL" value="${escapeAttr(form.value.browserRedirect)}" />
 `;
   }
   if (form.value.checkoutQueryString) {
-    html += `  <input type="hidden" name="checkoutQueryString" value="${form.value.checkoutQueryString}" />
+    html += `  <input type="hidden" name="checkoutQueryString" value="${escapeAttr(form.value.checkoutQueryString)}" />
 `;
   }
 
@@ -1041,10 +1045,10 @@ function generateHtmlCode(): string {
 `;
   } else {
     const src = form.value.buttonImageUrl
-      ? form.value.buttonImageUrl
+      ? escapeAttr(form.value.buttonImageUrl)
       : `${baseUrl}/img/paybutton/pay.svg`;
     const width = form.value.buttonImageUrl
-      ? form.value.imageSize.split("x")[0]
+      ? escapeAttr(form.value.imageSize.split("x")[0])
       : "209";
     html += `  <input type="image" class="submit" name="submit" src="${src}" style="width:${width}px" alt="${defaultTitle}" />
 `;
