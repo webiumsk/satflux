@@ -31,6 +31,10 @@ class ProcessBtcPayWebhook implements ShouldQueue
      */
     public function handle(): void
     {
+        if ($this->webhookEvent->processed_at !== null) {
+            return;
+        }
+
         $payload = $this->webhookEvent->payload;
         $eventType = $this->webhookEvent->event_type;
         $storeId = $payload['storeId'] ?? null;

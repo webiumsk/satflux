@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\AuditLog;
 use App\Models\Store;
 use Closure;
 use Illuminate\Http\Request;
@@ -24,8 +25,22 @@ class EnsureStoreOwnership
 
         // Owner, admin and support can access the store
         $user = $request->user();
-        if ($store->user_id !== $user->id && !$user->isSupport() && !$user->isAdmin()) {
-            abort(403, 'Unauthorized access to store');
+        if ($store->user_id !== $user->id) {
+            if (!$user->isSupport() && !$user->isAdmin()) {
+                abort(403, 'Unauthorized access to store');
+            }
+
+            AuditLog::log(
+                'store.privileged_access',
+                'store',
+                $store->id,
+                [
+                    'accessor_role' => $user->role,
+                    'store_owner_id' => $store->user_id,
+                    'method' => $request->method(),
+                    'path' => $request->path(),
+                ]
+            );
         }
 
         return $next($request);

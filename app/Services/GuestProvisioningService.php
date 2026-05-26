@@ -187,10 +187,9 @@ class GuestProvisioningService
 
                 $user = User::create($userData);
 
-                $store = Store::create([
+                $store = new Store([
                     'id' => (string) Str::uuid(),
                     'user_id' => $user->id,
-                    'btcpay_store_id' => $btcpayStoreId,
                     'name' => $defaultStoreName,
                     'default_currency' => 'EUR',
                     'timezone' => 'Europe/Vienna',
@@ -199,6 +198,8 @@ class GuestProvisioningService
                     'btcpay_webhook_id' => $webhookData['id'] ?? null,
                     'webhook_secret' => $webhookData['secret'] ?? null,
                 ]);
+                $store->btcpay_store_id = $btcpayStoreId;
+                $store->save();
 
                 StoreChecklistService::ensureChecklistInitialized($store);
 

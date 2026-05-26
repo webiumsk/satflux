@@ -18,7 +18,7 @@ Schedule::command('subscriptions:check-statuses')
 //     ->runInBackground();
 
 // Automatic monthly CSV exports for Pro users (1st of month at 03:00 for previous month)
-Schedule::job(new \App\Jobs\ProcessMonthlyExports())->monthlyOn(1, '03:00');
+Schedule::job(new \App\Jobs\ProcessMonthlyExports())->monthlyOn(1, '03:00')->withoutOverlapping();
 
 // Inactive guest purge (opt-in via GUEST_PURGE_ENABLED in .env)
 Schedule::command('guests:purge-inactive')

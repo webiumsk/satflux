@@ -311,16 +311,17 @@ class StoreController extends Controller
                 }
             }
 
-            $store = Store::create([
+            $store = new Store([
                 'id' => (string) Str::uuid(),
                 'user_id' => $request->user()->id,
-                'btcpay_store_id' => $btcpayStoreId,
                 'name' => $request->name,
                 'default_currency' => $request->default_currency ?? 'EUR',
                 'timezone' => $request->timezone ?? 'Europe/Vienna',
                 'preferred_exchange' => $request->preferred_exchange ?? 'kraken',
                 'wallet_type' => $request->wallet_type,
             ]);
+            $store->btcpay_store_id = $btcpayStoreId;
+            $store->save();
 
             // Cashu setup (no wallet_connection secret, configured via BTCPay Cashu plugin).
             if ($request->filled('wallet_type') && $request->wallet_type === 'cashu') {
