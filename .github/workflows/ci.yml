@@ -54,6 +54,12 @@ jobs:
       - name: Run tests
         run: php artisan test
 
+      - name: Check code style (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Security audit (composer)
+        run: composer audit
+
   frontend:
     name: Node (lint + build)
     runs-on: ubuntu-latest
@@ -71,6 +77,9 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: Unit tests
+        run: npm run test
 
       - name: Build
         run: npm run build

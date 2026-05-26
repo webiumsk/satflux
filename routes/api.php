@@ -251,7 +251,7 @@ Route::get('/nostr-auth/challenge-status/{id}', [NostrAuthController::class, 'ch
     ->middleware(['throttle:60,1']);
 
 // Authenticated routes (email must be verified — classic registration and API use)
-Route::middleware(['auth:sanctum', RequireVerifiedEmail::class])->group(function () {
+Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-user'])->group(function () {
     // User/Account routes
     Route::get('/user', [AccountController::class, 'user']);
     Route::post('/lnurl-auth/link-challenge', [LnurlAuthController::class, 'linkChallenge']);
