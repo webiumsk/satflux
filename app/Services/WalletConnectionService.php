@@ -10,6 +10,7 @@ use App\Models\WalletConnection;
 use App\Notifications\SupportNeededNotification;
 use App\Notifications\WalletConnectionChangedNotification;
 use App\Notifications\WalletConnectionNeedsSupportMerchantNotification;
+use App\Services\BtcPay\BoltzService;
 use App\Services\BtcPay\LightningService;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
@@ -22,6 +23,7 @@ class WalletConnectionService
         protected WalletConnectionValidator $validator,
         protected \App\Services\BtcPay\CashuService $cashuService,
         protected LightningService $lightningService,
+        protected BoltzService $boltzService,
     ) {}
 
     /**
@@ -236,6 +238,29 @@ class WalletConnectionService
                             ]);
                         }
                     }
+
+                    if ($type === 'aqua_descriptor' && $initialStatus === 'pending') {
+                        try {
+                            $walletName = $this->boltzService->buildWalletName($store);
+                            $boltzResult = $this->boltzService->importDescriptorAndEnableSetup(
+                                $store->btcpay_store_id,
+                                $walletName,
+                                $secret,
+                                $userApiKey
+                            );
+                            if ($boltzResult['success'] ?? false) {
+                                $connection->refresh();
+                                if ($connection->status === 'pending') {
+                                    $this->markConnected($connection, $user);
+                                }
+                            }
+                        } catch (\Throwable $e) {
+                            Log::info('Boltz Greenfield import not applied; config bot may configure', [
+                                'store_id' => $store->id,
+                                'message' => $e->getMessage(),
+                            ]);
+                        }
+                    }
                 }
             }
 
@@ -291,10 +316,11 @@ class WalletConnectionService
     protected function samRockPlaceholderDescriptor(Store $store): string
     {
         $seed = hash('sha256', 'samrock:'.$store->id);
+        $slip77 = substr($seed, 0, 64);
         $fp = substr($seed, 0, 8);
-        $xpubBody = 'tpub'.str_pad(substr($seed, 0, 100), 100, '0');
+        $xpubBody = 'xpub'.str_pad(substr($seed, 8, 100), 100, '0');
 
-        return "wpkh([{$fp}/84'/0'/0']{$xpubBody}/0/*)";
+        return "ct(slip77({$slip77}),elsh(wpkh([{$fp}/84h/0h/0h]{$xpubBody}/0/*)))";
     }
 
     /**
@@ -351,7 +377,7 @@ class WalletConnectionService
         if ($webhookUrl) {
             try {
                 $storeName = $store->name;
-                $typeLabel = $connection->type === 'blink' ? 'Blink' : 'Aqua';
+                $typeLabel = $connection->type === 'blink' ? 'Blink' : 'Aqua/Bull (Boltz)';
                 $panelUrl = rtrim(config('app.url'), '/').'/support/wallet-connections';
 
                 Http::timeout(10)->post($webhookUrl, [
