@@ -58,7 +58,7 @@ class StoreService
     public function getStore(string $storeId, ?string $userApiKey = null): array
     {
         // Include API key hash in cache key to prevent cross-merchant cache pollution
-        $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
+        $apiKeyHash = $userApiKey ? hash('sha256', $userApiKey) : 'server';
         $cacheKey = "btcpay:store:{$storeId}:{$apiKeyHash}";
 
         return Cache::remember($cacheKey, 60, function () use ($storeId, $userApiKey) {
@@ -123,11 +123,12 @@ class StoreService
     /**
      * Add a user to a store.
      * Requires server-level API key with store management permissions.
-     * 
-     * @param string $storeId BTCPay store ID
-     * @param string $userId BTCPay user ID
-     * @param string $role User role in store (e.g., 'Owner', 'Guest', 'Viewer')
+     *
+     * @param  string  $storeId  BTCPay store ID
+     * @param  string  $userId  BTCPay user ID
+     * @param  string  $role  User role in store (e.g., 'Owner', 'Guest', 'Viewer')
      * @return array Store user data
+     *
      * @throws \App\Services\BtcPay\Exceptions\BtcPayException
      */
     public function addUserToStore(string $storeId, string $userId, string $role = 'Owner'): array
@@ -166,6 +167,7 @@ class StoreService
                         'error' => $fetchE->getMessage(),
                     ]);
                 }
+
                 // Return empty array to indicate success (user already exists)
                 return [];
             }
@@ -176,9 +178,10 @@ class StoreService
 
     /**
      * Get all users for a store.
-     * 
-     * @param string $storeId BTCPay store ID
+     *
+     * @param  string  $storeId  BTCPay store ID
      * @return array List of store users
+     *
      * @throws \App\Services\BtcPay\Exceptions\BtcPayException
      */
     public function getStoreUsers(string $storeId): array
@@ -188,15 +191,17 @@ class StoreService
 
     /**
      * Remove a user from a store.
-     * 
-     * @param string $storeId BTCPay store ID
-     * @param string $userId BTCPay user ID
+     *
+     * @param  string  $storeId  BTCPay store ID
+     * @param  string  $userId  BTCPay user ID
      * @return bool True if successful
+     *
      * @throws \App\Services\BtcPay\Exceptions\BtcPayException
      */
     public function removeUserFromStore(string $storeId, string $userId): bool
     {
         $this->client->delete("/api/v1/stores/{$storeId}/users/{$userId}");
+
         return true;
     }
 
@@ -204,7 +209,7 @@ class StoreService
      * Delete a store in BTCPay Server (DELETE /api/v1/stores/{storeId}).
      * Must use server-level API key - merchant keys typically lack this permission.
      *
-     * @param string|null $userApiKey Optional merchant key: HTTP delete always uses server key; when set, its hash-scoped store cache is cleared too
+     * @param  string|null  $userApiKey  Optional merchant key: HTTP delete always uses server key; when set, its hash-scoped store cache is cleared too
      */
     public function deleteStore(string $storeId, ?string $userApiKey = null): void
     {
@@ -219,7 +224,7 @@ class StoreService
      */
     protected function forgetStoreCache(string $storeId, ?string $userApiKey): void
     {
-        $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
+        $apiKeyHash = $userApiKey ? hash('sha256', $userApiKey) : 'server';
         Cache::forget("btcpay:store:{$storeId}:{$apiKeyHash}");
         Cache::forget("btcpay:store:{$storeId}:server");
     }
@@ -278,5 +283,3 @@ class StoreService
         }
     }
 }
-
-

@@ -50,4 +50,3 @@ class SendVerificationEmailJob implements ShouldQueue
         ]);
     }
 }
-

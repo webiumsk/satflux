@@ -21,15 +21,15 @@ class StoreSettingsController extends Controller
     public function show(Request $request)
     {
         $store = $request->route('store');
-        
+
         // Load merchant API key from store owner
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
-        
+
         // Clear cache before fetching to ensure we get the latest data
         $apiKeyHash = md5($userApiKey);
         $cacheKey = "btcpay:store:{$store->btcpay_store_id}:{$apiKeyHash}";
         \Illuminate\Support\Facades\Cache::forget($cacheKey);
-        
+
         // Get store data from BTCPay using merchant token
         $btcpayStore = $this->storeService->getStore($store->btcpay_store_id, $userApiKey);
 
@@ -89,7 +89,7 @@ class StoreSettingsController extends Controller
             'payment_method_criteria' => $get('paymentMethodCriteria', []),
             'timezone' => $get('timeZone', $get('timezone', 'UTC')),
             'preferred_exchange' => $get('preferredExchange', $get('preferred_exchange')),
-            'store_url' => rtrim(config('app.url', ''), '/') . '/stores/' . $store->id,
+            'store_url' => rtrim(config('app.url', ''), '/').'/stores/'.$store->id,
             // LNURL: default enabled so Lightning Addresses work; BTCPay may expose lnurlEnabled, lnurlClassicMode, allowPayeeToPassComment
             'lnurl_enabled' => $get('lnurlEnabled', true),
             'lnurl_classic_mode' => $get('lnurlClassicMode', true),
@@ -99,9 +99,10 @@ class StoreSettingsController extends Controller
 
     protected function normalizeReceipt($receipt): array
     {
-        if (!is_array($receipt)) {
+        if (! is_array($receipt)) {
             return ['enabled' => true, 'show_qr' => null, 'show_payments' => null];
         }
+
         return [
             'enabled' => $receipt['enabled'] ?? true,
             'show_qr' => $receipt['showQR'] ?? $receipt['show_qr'] ?? null,
@@ -193,7 +194,7 @@ class StoreSettingsController extends Controller
             'payment_method_criteria' => $request->input('payment_method_criteria', []),
             'timezone' => $request->timezone,
             'preferred_exchange' => $request->input('preferred_exchange'),
-            'store_url' => rtrim(config('app.url', ''), '/') . '/stores/' . $store->id,
+            'store_url' => rtrim(config('app.url', ''), '/').'/stores/'.$store->id,
             'lnurl_enabled' => $request->boolean('lnurl_enabled'),
             'lnurl_classic_mode' => $request->boolean('lnurl_classic_mode'),
             'lnurl_allow_payee_comment' => $request->boolean('lnurl_allow_payee_comment'),
@@ -253,7 +254,7 @@ class StoreSettingsController extends Controller
 
         $payload = [];
         foreach ($map as $snake => $camel) {
-            if (!$request->has($snake)) {
+            if (! $request->has($snake)) {
                 continue;
             }
             $value = $request->input($snake);
@@ -263,17 +264,20 @@ class StoreSettingsController extends Controller
                     'showQR' => $value['show_qr'] ?? $value['showQR'] ?? null,
                     'showPayments' => $value['show_payments'] ?? $value['showPayments'] ?? null,
                 ];
+
                 continue;
             }
             if ($snake === 'payment_method_criteria' && is_array($value)) {
                 $criteria = $this->mapPaymentMethodCriteriaForBtcPay($value, $request->input('default_currency', 'USD'));
-                if (!empty($criteria)) {
+                if (! empty($criteria)) {
                     $payload[$camel] = $criteria;
                 }
+
                 continue;
             }
             if ($snake === 'additional_tracked_rates') {
                 $payload[$camel] = is_array($value) ? $value : (is_string($value) ? array_map('trim', explode(',', $value)) : []);
+
                 continue;
             }
             $payload[$camel] = $value;
@@ -299,7 +303,7 @@ class StoreSettingsController extends Controller
 
         $result = [];
         foreach (array_values($items) as $item) {
-            if (!is_array($item)) {
+            if (! is_array($item)) {
                 continue;
             }
             $rawMethod = $item['paymentMethod'] ?? $item['payment_method'] ?? null;
@@ -335,10 +339,3 @@ class StoreSettingsController extends Controller
         return $result;
     }
 }
-
-
-
-
-
-
-

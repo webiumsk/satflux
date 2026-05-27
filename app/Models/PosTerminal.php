@@ -47,6 +47,7 @@ class PosTerminal extends Model
     public function getEnabledPaymentMethods(): array
     {
         $methods = $this->settings_json['enabled_payment_methods'] ?? self::DEFAULT_PAYMENT_METHODS;
+
         return is_array($methods) ? $methods : self::DEFAULT_PAYMENT_METHODS;
     }
 

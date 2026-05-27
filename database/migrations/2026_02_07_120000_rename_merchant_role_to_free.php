@@ -3,7 +3,8 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
-return new class extends Migration {
+return new class extends Migration
+{
     /**
      * Unify free tier: rename role 'merchant' to 'free' so plan level and role match.
      */
@@ -14,8 +15,8 @@ return new class extends Migration {
         if ($driver === 'pgsql') {
             // PostgreSQL: column uses native ENUM type; we must create a new enum with 'free'
             // and convert the column (merchant -> free) in one ALTER USING.
-            DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check");
-            DB::statement("ALTER TABLE users ALTER COLUMN role DROP DEFAULT");
+            DB::statement('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check');
+            DB::statement('ALTER TABLE users ALTER COLUMN role DROP DEFAULT');
 
             $enumType = DB::selectOne("
                 SELECT t.typname
@@ -30,7 +31,7 @@ return new class extends Migration {
             ");
 
             $oldTypeName = $enumType->typname ?? 'users_role_enum';
-            $newTypeName = $oldTypeName . '_free';
+            $newTypeName = $oldTypeName.'_free';
 
             DB::statement("CREATE TYPE {$newTypeName} AS ENUM ('free', 'support', 'admin', 'pro', 'enterprise')");
             DB::statement("ALTER TABLE users ALTER COLUMN role TYPE {$newTypeName} USING (CASE WHEN role::text = 'merchant' OR role IS NULL THEN 'free'::{$newTypeName} ELSE role::text::{$newTypeName} END)");
@@ -53,7 +54,7 @@ return new class extends Migration {
         $driver = DB::getDriverName();
 
         if ($driver === 'pgsql') {
-            DB::statement("ALTER TABLE users ALTER COLUMN role DROP DEFAULT");
+            DB::statement('ALTER TABLE users ALTER COLUMN role DROP DEFAULT');
 
             $enumType = DB::selectOne("
                 SELECT t.typname
@@ -68,7 +69,7 @@ return new class extends Migration {
             ");
 
             $oldTypeName = $enumType->typname ?? 'users_role_enum';
-            $newTypeName = $oldTypeName . '_merchant';
+            $newTypeName = $oldTypeName.'_merchant';
 
             DB::statement("CREATE TYPE {$newTypeName} AS ENUM ('merchant', 'support', 'admin', 'pro', 'enterprise')");
             DB::statement("ALTER TABLE users ALTER COLUMN role TYPE {$newTypeName} USING (CASE WHEN role::text = 'free' THEN 'merchant'::{$newTypeName} ELSE role::text::{$newTypeName} END)");

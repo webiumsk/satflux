@@ -44,12 +44,12 @@ class StoreAndApiKeyLimitTest extends TestCase
 
         $baseUrl = config('services.btcpay.base_url', 'http://localhost');
         Http::fake([
-            $baseUrl . '/api/v1/stores' => Http::response(['id' => 'new-store-id', 'name' => 'New'], 201),
-            $baseUrl . '/api/v1/stores' => Http::response([], 200),
-            $baseUrl . '/api/v1/users' => Http::response([[]], 200),
-            $baseUrl . '/api/v1/users/me' => Http::response([], 200),
-            $baseUrl . '/api/v1/api-keys/current' => Http::response([], 200),
-            $baseUrl . '/api/v1/stores/*/users' => Http::response([], 200),
+            $baseUrl.'/api/v1/stores' => Http::response(['id' => 'new-store-id', 'name' => 'New'], 201),
+            $baseUrl.'/api/v1/stores' => Http::response([], 200),
+            $baseUrl.'/api/v1/users' => Http::response([[]], 200),
+            $baseUrl.'/api/v1/users/me' => Http::response([], 200),
+            $baseUrl.'/api/v1/api-keys/current' => Http::response([], 200),
+            $baseUrl.'/api/v1/stores/*/users' => Http::response([], 200),
         ]);
 
         Sanctum::actingAs($user);
@@ -81,7 +81,7 @@ class StoreAndApiKeyLimitTest extends TestCase
 
         $baseUrl = config('services.btcpay.base_url', 'http://localhost');
         Http::fake([
-            $baseUrl . '/api/v1/stores/*/api-keys' => Http::response([
+            $baseUrl.'/api/v1/stores/*/api-keys' => Http::response([
                 'id' => 'new-key-id',
                 'label' => 'Test Key',
                 'apiKey' => 'secret-token',
@@ -119,11 +119,12 @@ class StoreAndApiKeyLimitTest extends TestCase
             $url = (string) $request->url();
             if ($request->method() === 'POST' && str_contains($url, '/api/v1/users/') && str_contains($url, '/api-keys')) {
                 return Http::response([
-                    'id' => 'btcpay-key-' . uniqid(),
+                    'id' => 'btcpay-key-'.uniqid(),
                     'label' => 'Test Key',
-                    'apiKey' => 'secret-api-key-' . bin2hex(random_bytes(8)),
+                    'apiKey' => 'secret-api-key-'.bin2hex(random_bytes(8)),
                 ], 201);
             }
+
             return Http::response([], 404);
         });
 

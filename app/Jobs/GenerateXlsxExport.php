@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Models\Export;
-use App\Notifications\MonthlyExportReadyNotification;
 use App\Services\BtcPay\InvoiceService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -44,27 +43,28 @@ class GenerateXlsxExport implements ShouldQueue
                 $store->user->getBtcPayApiKeyOrFail();
             } catch (\Illuminate\Http\Exceptions\HttpResponseException|\Symfony\Component\HttpKernel\Exception\HttpException $e) {
                 $this->export->markAsFailed('BTCPay API key not configured. Please contact support.');
+
                 return;
             }
 
             $btcpayFilters = $this->buildBtcpayFilters($filters);
 
             $disk = Storage::disk('exports');
-            $filePath = $this->export->id . '_' . time() . '.xlsx';
+            $filePath = $this->export->id.'_'.time().'.xlsx';
             $fullPath = $disk->path($filePath);
 
             $directory = dirname($fullPath);
-            if (!is_dir($directory)) {
+            if (! is_dir($directory)) {
                 mkdir($directory, 0775, true);
             }
-            if (!is_writable($directory)) {
+            if (! is_writable($directory)) {
                 @chmod($directory, 0775);
             }
-            if (!is_writable($directory)) {
+            if (! is_writable($directory)) {
                 throw new \RuntimeException("Export directory is not writable: {$directory}");
             }
 
-            $spreadsheet = new Spreadsheet();
+            $spreadsheet = new Spreadsheet;
             $sheet = $spreadsheet->getActiveSheet();
             $sheet->setTitle('Invoices');
 
@@ -88,7 +88,7 @@ class GenerateXlsxExport implements ShouldQueue
                     $userApiKey
                 );
                 $invoices = $response['data'] ?? $response;
-                if (!is_array($invoices)) {
+                if (! is_array($invoices)) {
                     $invoices = [];
                 }
 
@@ -128,7 +128,7 @@ class GenerateXlsxExport implements ShouldQueue
                         $invoice['buyer']['buyerEmail'] ?? '',
                         $invoice['metadata']['orderId'] ?? '',
                         $invoice['checkoutLink'] ?? '',
-                    ], null, 'A' . $row);
+                    ], null, 'A'.$row);
                     $row++;
                 }
 
@@ -193,11 +193,12 @@ class GenerateXlsxExport implements ShouldQueue
             }
         }
         if (isset($filters['date_to']) && $filters['date_to']) {
-            $dateTo = strtotime($filters['date_to'] . ' 23:59:59');
+            $dateTo = strtotime($filters['date_to'].' 23:59:59');
             if ($dateTo !== false) {
                 $btcpayFilters['endDate'] = $dateTo;
             }
         }
+
         return $btcpayFilters;
     }
 
@@ -208,7 +209,7 @@ class GenerateXlsxExport implements ShouldQueue
             return ['pos' => '', 'tax' => '', 'tip' => '', 'discount' => ''];
         }
         $data = is_string($posData) ? json_decode($posData, true) : $posData;
-        if (!is_array($data)) {
+        if (! is_array($data)) {
             return ['pos' => '', 'tax' => '', 'tip' => '', 'discount' => ''];
         }
         $posLabel = '';
@@ -220,6 +221,7 @@ class GenerateXlsxExport implements ShouldQueue
         $tax = isset($data['tax']) ? (string) $data['tax'] : '';
         $tip = isset($data['tip']) ? (string) $data['tip'] : '';
         $discount = isset($data['discountAmount']) ? (string) $data['discountAmount'] : '';
+
         return ['pos' => $posLabel, 'tax' => $tax, 'tip' => $tip, 'discount' => $discount];
     }
 
@@ -236,6 +238,7 @@ class GenerateXlsxExport implements ShouldQueue
             $ts = $ts / 1000;
         }
         $date = \DateTime::createFromFormat('U', (string) (int) $ts);
+
         return $date ? $date->format('d.m.Y H:i') : (string) $createdTime;
     }
 }

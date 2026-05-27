@@ -59,9 +59,9 @@ class AdminController extends Controller
             fclose($out);
         });
 
-        $filename = 'platform-stats-' . now()->format('Y-m-d-His') . '.csv';
+        $filename = 'platform-stats-'.now()->format('Y-m-d-His').'.csv';
         $response->headers->set('Content-Type', 'text/csv');
-        $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
+        $response->headers->set('Content-Disposition', 'attachment; filename="'.$filename.'"');
 
         return $response;
     }
@@ -408,7 +408,7 @@ class AdminController extends Controller
 
             // Clear cached limits when role changes so the new plan takes effect immediately
             if (isset($updated['role'])) {
-                \Illuminate\Support\Facades\Cache::forget('user_limits_' . $user->id);
+                \Illuminate\Support\Facades\Cache::forget('user_limits_'.$user->id);
             }
 
             Log::info('Admin updated user', [
@@ -450,7 +450,7 @@ class AdminController extends Controller
         DB::transaction(function () use ($user) {
             // Delete user's stores (cascade will handle related records)
             $user->stores()->delete();
-            
+
             // Delete the user
             $user->delete();
         });
@@ -466,10 +466,3 @@ class AdminController extends Controller
         ]);
     }
 }
-
-
-
-
-
-
-

@@ -16,6 +16,7 @@ class Export extends Model
      * @var array<int, string>
      */
     public const SOURCE_MANUAL = 'manual';
+
     public const SOURCE_AUTOMATIC = 'automatic';
 
     protected $fillable = [
@@ -116,11 +117,3 @@ class Export extends Model
         ]);
     }
 }
-
-
-
-
-
-
-
-

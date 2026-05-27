@@ -19,7 +19,7 @@ class EnsurePlanAllowsOfflinePaymentMethods
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             abort(401, 'Unauthenticated');
         }
 
@@ -37,7 +37,7 @@ class EnsurePlanAllowsOfflinePaymentMethods
         if (is_string($enabled)) {
             $enabled = json_decode($enabled, true) ?? [];
         }
-        $wantsOffline = !empty(array_intersect(['cash', 'card'], $enabled));
+        $wantsOffline = ! empty(array_intersect(['cash', 'card'], $enabled));
 
         if ($wantsOffline) {
             return response()->json([

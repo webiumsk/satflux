@@ -23,4 +23,3 @@ return [
     'guest_one_store_only' => 'Las sesiones de invitado están limitadas a una tienda. Cree una cuenta completa para añadir más.',
     'guest_pos_limit_one' => 'El modo invitado permite solo una aplicación Punto de venta por tienda.',
 ];
-

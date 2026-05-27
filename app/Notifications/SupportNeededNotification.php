@@ -13,7 +13,6 @@ use Illuminate\Notifications\Notification;
  */
 class SupportNeededNotification extends Notification
 {
-
     /**
      * Create a new notification instance.
      */
@@ -35,6 +34,7 @@ class SupportNeededNotification extends Notification
         if (config('broadcasting.default') !== 'null') {
             $channels[] = 'broadcast';
         }
+
         return $channels;
     }
 
@@ -67,14 +67,14 @@ class SupportNeededNotification extends Notification
         $supportUrl = "{$appUrl}/support/wallet-connections";
         $storeName = $this->store->name;
         $type = $this->walletConnection->type === 'blink' ? 'Blink' : 'Aqua';
-        
+
         return (new MailMessage)
             ->subject("New Wallet Connection Needs Support - {$storeName}")
             ->greeting('Hello!')
-            ->line("A new wallet connection requires your support:")
+            ->line('A new wallet connection requires your support:')
             ->line("**Store:** {$storeName}")
             ->line("**Type:** {$type}")
-            ->line("**Status:** Needs Support")
+            ->line('**Status:** Needs Support')
             ->action('Review Connection', $supportUrl)
             ->line('Please review and configure the wallet connection when you have a moment.')
             ->line('Thank you for your support!');

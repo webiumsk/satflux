@@ -54,5 +54,3 @@ class App extends Model
         return $query->where('store_id', $storeId);
     }
 }
-
-

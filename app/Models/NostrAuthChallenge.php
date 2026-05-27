@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class NostrAuthChallenge extends Model
 {
     public $incrementing = false;
+
     protected $primaryKey = 'id';
+
     protected $keyType = 'string';
 
     protected $fillable = [

@@ -4,7 +4,6 @@ namespace App\Http\Requests;
 
 use App\Services\WalletConnectionValidator;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\ValidationException;
 
 class WalletConnectionStoreRequest extends FormRequest
 {
@@ -33,7 +32,6 @@ class WalletConnectionStoreRequest extends FormRequest
      * Configure the validator instance.
      *
      * @param  \Illuminate\Validation\Validator  $validator
-     * @return void
      */
     public function withValidator($validator): void
     {
@@ -42,10 +40,10 @@ class WalletConnectionStoreRequest extends FormRequest
             $secret = $this->input('secret');
 
             if ($type && $secret) {
-                $connectionValidator = new WalletConnectionValidator();
+                $connectionValidator = new WalletConnectionValidator;
                 $validation = $connectionValidator->validate($type, $secret);
 
-                if (!$validation['valid']) {
+                if (! $validation['valid']) {
                     foreach ($validation['errors'] as $error) {
                         $validator->errors()->add('secret', $error);
                     }
@@ -54,5 +52,3 @@ class WalletConnectionStoreRequest extends FormRequest
         });
     }
 }
-
-

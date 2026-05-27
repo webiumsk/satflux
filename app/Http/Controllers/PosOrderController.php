@@ -34,6 +34,7 @@ class PosOrderController extends Controller
             $q->where('status', $request->input('status'));
         }
         $orders = $q->limit(100)->get()->map(fn (PosOrder $o) => $this->formatOrder($o));
+
         return response()->json(['data' => $orders]);
     }
 
@@ -57,18 +58,18 @@ class PosOrderController extends Controller
         ]);
 
         $terminal = PosTerminal::where('id', $request->input('pos_terminal_id'))->where('store_id', $store->id)->first();
-        if (!$terminal) {
+        if (! $terminal) {
             abort(404, 'PoS terminal not found');
         }
 
         $paidMethod = $request->input('paid_method');
         if (in_array($paidMethod, ['cash', 'card'], true)) {
-            if (!$this->subscriptionService->canUseOfflinePaymentMethods($request->user())) {
+            if (! $this->subscriptionService->canUseOfflinePaymentMethods($request->user())) {
                 return response()->json([
                     'message' => '"Mark as Paid in Cash" and "Mark as Paid by Card" are available on Pro. Please upgrade.',
                 ], 403);
             }
-            if (!in_array($paidMethod, $terminal->getEnabledPaymentMethods(), true)) {
+            if (! in_array($paidMethod, $terminal->getEnabledPaymentMethods(), true)) {
                 return response()->json([
                     'message' => "Payment method \"{$paidMethod}\" is not enabled for this terminal.",
                 ], 422);

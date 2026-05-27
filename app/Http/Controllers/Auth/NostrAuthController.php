@@ -83,6 +83,7 @@ class NostrAuthController extends Controller
 
         if (! $this->verifier->verify($event)) {
             Log::warning('Nostr event verification failed', ['challenge_id' => $challengeId]);
+
             return response()->json(['error' => 'Invalid signature'], 400);
         }
 
@@ -90,7 +91,7 @@ class NostrAuthController extends Controller
 
         if ($challenge->link_user_id) {
             if ($challenge->purpose === 'reveal') {
-                Cache::put('reveal_confirmed:' . $challenge->link_user_id, true, now()->addSeconds(120));
+                Cache::put('reveal_confirmed:'.$challenge->link_user_id, true, now()->addSeconds(120));
                 $challenge->update(['consumed_at' => now(), 'nostr_public_key' => $pubkey]);
 
                 return response()->json(['status' => 'OK']);
@@ -384,5 +385,4 @@ class NostrAuthController extends Controller
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
             ->header('Pragma', 'no-cache');
     }
-
 }

@@ -65,4 +65,3 @@ class DocumentationArticleRequest extends FormRequest
         ];
     }
 }
-

@@ -21,8 +21,7 @@ class ExportReadyNotification extends Notification
         public Export $export,
         public Store $store,
         public string $label
-    ) {
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -38,7 +37,7 @@ class ExportReadyNotification extends Notification
 
         $mail = (new MailMessage)
             ->subject("Export ready - {$this->store->name}")
-            ->line("Your invoice export is ready.")
+            ->line('Your invoice export is ready.')
             ->line("Store: {$this->store->name}")
             ->action('Download export', $downloadUrl)
             ->line('Thank you for using our service!');

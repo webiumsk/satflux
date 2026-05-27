@@ -106,18 +106,17 @@ class WebhookTest extends TestCase
         $this->assertSame($store->id, $event->store_id);
     }
 
-    public function test_webhook_accepts_without_secret_in_dev_mode(): void
+    public function test_webhook_rejects_without_secret_in_any_environment(): void
     {
         config(['services.btcpay.webhook_secret' => null]);
         $payload = ['type' => 'StoreUpdated', 'storeId' => 'any'];
 
         $response = $this->postJson('/api/webhooks/btcpay', $payload);
 
-        $response->assertStatus(200);
-        $response->assertJson(['status' => 'received']);
-        $this->assertDatabaseCount('webhook_events', 1);
-        $this->assertFalse(WebhookEvent::first()->verified);
-        Queue::assertPushed(ProcessBtcPayWebhook::class);
+        $response->assertStatus(401);
+        $response->assertJson(['error' => 'Webhook secret not configured']);
+        $this->assertDatabaseCount('webhook_events', 0);
+        Queue::assertNotPushed(ProcessBtcPayWebhook::class);
     }
 
     public function test_webhook_rejects_without_secret_in_production(): void
@@ -145,7 +144,7 @@ class WebhookTest extends TestCase
         $signature = hash_hmac('sha256', $body, 'store-secret');
 
         $response = $this->postJson('/api/webhooks/btcpay', $payload, [
-            'BTCPay-Sig' => 'sha256=' . $signature,
+            'BTCPay-Sig' => 'sha256='.$signature,
         ]);
 
         $response->assertStatus(200);
@@ -168,7 +167,7 @@ class WebhookTest extends TestCase
         $signature = hash_hmac('sha256', $body, 'config-secret');
 
         $response = $this->postJson('/api/webhooks/btcpay', $payload, [
-            'BTCPay-Sig' => 'sha256=' . $signature,
+            'BTCPay-Sig' => 'sha256='.$signature,
         ]);
 
         $response->assertStatus(401);

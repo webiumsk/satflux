@@ -60,7 +60,7 @@ class TicketEventImageController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
-            return response()->json(['message' => 'Failed to upload image: ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'Failed to upload image: '.$e->getMessage()], 500);
         }
     }
 
@@ -90,6 +90,7 @@ class TicketEventImageController extends Controller
                 'store_id' => $store->id,
                 'event_id' => $eventId,
             ]);
+
             return response()->json(['data' => $this->normalizeEventLogo($event)]);
         } catch (\Exception $e) {
             Log::error('Failed to upload ticket event logo', [
@@ -97,7 +98,8 @@ class TicketEventImageController extends Controller
                 'event_id' => $eventId,
                 'error' => $e->getMessage(),
             ]);
-            return response()->json(['message' => 'Failed to upload logo: ' . $e->getMessage()], 500);
+
+            return response()->json(['message' => 'Failed to upload logo: '.$e->getMessage()], 500);
         }
     }
 
@@ -118,6 +120,7 @@ class TicketEventImageController extends Controller
                 $eventId,
                 $userApiKey
             );
+
             return response()->json(['data' => $this->normalizeEventLogo($event)]);
         } catch (\Exception $e) {
             Log::error('Failed to delete ticket event logo', [
@@ -125,7 +128,8 @@ class TicketEventImageController extends Controller
                 'event_id' => $eventId,
                 'error' => $e->getMessage(),
             ]);
-            return response()->json(['message' => 'Failed to delete logo: ' . $e->getMessage()], 500);
+
+            return response()->json(['message' => 'Failed to delete logo: '.$e->getMessage()], 500);
         }
     }
 
@@ -138,9 +142,9 @@ class TicketEventImageController extends Controller
         $fileId = trim((string) ($event['eventLogoFileId'] ?? ''));
         if (($event['eventLogoUrl'] ?? '') === '' && $fileId !== '') {
             $baseUrl = rtrim(config('services.btcpay.base_url', ''), '/');
-            $event['eventLogoUrl'] = $baseUrl . '/LocalStorage/' . $fileId;
+            $event['eventLogoUrl'] = $baseUrl.'/LocalStorage/'.$fileId;
         }
+
         return $event;
     }
-
 }

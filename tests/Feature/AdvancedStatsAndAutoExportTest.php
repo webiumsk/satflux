@@ -2,13 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\Store;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
-use App\Models\Store;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
 class AdvancedStatsAndAutoExportTest extends TestCase
 {

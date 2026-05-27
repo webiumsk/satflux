@@ -20,7 +20,6 @@ class Store extends Model
      */
     protected $fillable = [
         'user_id',
-        'btcpay_store_id',
         'name',
         'default_currency',
         'timezone',

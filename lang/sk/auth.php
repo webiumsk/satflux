@@ -23,4 +23,3 @@ return [
     'guest_one_store_only' => 'Hosťovská relácia je obmedzená na jeden obchod. Pre viac obchodov vytvorte plný účet.',
     'guest_pos_limit_one' => 'V hosťovskom režime môže byť na obchod len jedna PoS aplikácia.',
 ];
-

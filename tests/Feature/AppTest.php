@@ -16,22 +16,22 @@ class AppTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Mock BTCPay API responses
         $baseUrl = config('services.btcpay.base_url', 'http://localhost');
-        
+
         Http::fake([
             // Store creation
-            $baseUrl . '/api/v1/stores' => Http::response([
+            $baseUrl.'/api/v1/stores' => Http::response([
                 'id' => 'test-store-id',
                 'name' => 'Test Store',
             ], 201),
-            
+
             // App creation - use wildcard pattern to match any store ID
-            $baseUrl . '/api/v1/stores/*/apps/pos' => Http::response([], 201, ['Location' => $baseUrl . '/api/v1/apps/pos/test-app-id']),
-            
+            $baseUrl.'/api/v1/stores/*/apps/pos' => Http::response([], 201, ['Location' => $baseUrl.'/api/v1/apps/pos/test-app-id']),
+
             // App get/update
-            $baseUrl . '/api/v1/apps/pos/*' => Http::response([
+            $baseUrl.'/api/v1/apps/pos/*' => Http::response([
                 'id' => 'test-app-id',
                 'appName' => 'Test PoS',
                 'appType' => 'PointOfSale',
@@ -42,12 +42,12 @@ class AppTest extends TestCase
                     'currency' => 'EUR',
                 ],
             ], 200),
-            
+
             // App delete
-            $baseUrl . '/api/v1/apps/*' => Http::response([], 204),
-            
+            $baseUrl.'/api/v1/apps/*' => Http::response([], 204),
+
             // Store get/update
-            $baseUrl . '/api/v1/stores/*' => Http::response([
+            $baseUrl.'/api/v1/stores/*' => Http::response([
                 'id' => 'test-store-id',
                 'name' => 'Test Store',
                 'defaultCurrency' => 'EUR',
@@ -79,7 +79,7 @@ class AppTest extends TestCase
         $response->assertJsonStructure([
             'data' => ['id', 'name', 'app_type'],
         ]);
-        
+
         $this->assertDatabaseHas('apps', [
             'store_id' => $store->id,
             'app_type' => 'PointOfSale',
@@ -105,21 +105,22 @@ class AppTest extends TestCase
         ]);
 
         $response->assertStatus(201);
-        
+
         // The app should use store's default currency
         // Verify the request was sent with the correct currency
         // AppService flattens config into request body directly (not nested under 'config')
         Http::assertSent(function ($request) use ($store) {
             $url = (string) $request->url();
             // Check if this is a POST request to the app creation endpoint
-            if ($request->method() !== 'POST' || !str_contains($url, '/api/v1/stores/') || !str_contains($url, '/apps/pos')) {
+            if ($request->method() !== 'POST' || ! str_contains($url, '/api/v1/stores/') || ! str_contains($url, '/apps/pos')) {
                 return false;
             }
-            
+
             $body = $request->data();
             // AppService creates request body by flattening config fields directly
             // So currency is at root level: { appName: "...", title: "...", defaultView: "...", currency: "USD" }
             $currency = $body['currency'] ?? null;
+
             return $currency === $store->default_currency;
         });
     }
@@ -285,4 +286,3 @@ class AppTest extends TestCase
         });
     }
 }
-

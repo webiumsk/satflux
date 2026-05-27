@@ -27,12 +27,13 @@ class StoreSettingsTest extends TestCase
         Http::fake(function ($request) use ($baseUrl, $storeId, $btcpayStore) {
             $url = (string) $request->url();
             $method = $request->method();
-            if ($method === 'GET' && $url === $baseUrl . "/api/v1/stores/{$storeId}") {
+            if ($method === 'GET' && $url === $baseUrl."/api/v1/stores/{$storeId}") {
                 return Http::response($btcpayStore, 200);
             }
-            if ($method === 'PUT' && $url === $baseUrl . "/api/v1/stores/{$storeId}") {
+            if ($method === 'PUT' && $url === $baseUrl."/api/v1/stores/{$storeId}") {
                 return Http::response($btcpayStore, 200);
             }
+
             return Http::response([], 404);
         });
     }
@@ -72,7 +73,7 @@ class StoreSettingsTest extends TestCase
             ->assertJsonPath('data.default_currency', 'EUR')
             ->assertJsonPath('data.timezone', 'Europe/Vienna')
             ->assertJsonPath('data.preferred_exchange', 'kraken')
-            ->assertJsonPath('data.store_url', rtrim(config('app.url'), '/') . '/stores/' . $store->id);
+            ->assertJsonPath('data.store_url', rtrim(config('app.url'), '/').'/stores/'.$store->id);
     }
 
     public function test_user_cannot_get_store_settings_for_other_users_store(): void

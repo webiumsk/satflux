@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Models\Export;
-use App\Notifications\MonthlyExportReadyNotification;
 use App\Services\BtcPay\InvoiceService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -44,6 +43,7 @@ class GenerateCsvExport implements ShouldQueue
                 $store->user->getBtcPayApiKeyOrFail();
             } catch (\Illuminate\Http\Exceptions\HttpResponseException|\Symfony\Component\HttpKernel\Exception\HttpException $e) {
                 $this->export->markAsFailed('BTCPay API key not configured. Please contact support.');
+
                 return;
             }
 
@@ -63,7 +63,7 @@ class GenerateCsvExport implements ShouldQueue
 
             if (isset($filters['date_to']) && $filters['date_to']) {
                 // Add 23:59:59 to include the entire day
-                $dateTo = strtotime($filters['date_to'] . ' 23:59:59');
+                $dateTo = strtotime($filters['date_to'].' 23:59:59');
                 if ($dateTo !== false) {
                     $btcpayFilters['endDate'] = $dateTo;
                 }
@@ -71,18 +71,18 @@ class GenerateCsvExport implements ShouldQueue
 
             $disk = Storage::disk('exports');
             // Disk root is already storage/app/exports - avoid exports/exports/… nesting.
-            $filePath = $this->export->id . '_' . time() . '.csv';
+            $filePath = $this->export->id.'_'.time().'.csv';
             $fullPath = $disk->path($filePath);
 
             // Ensure directory exists and is writable for queue worker process.
             $directory = dirname($fullPath);
-            if (!is_dir($directory)) {
+            if (! is_dir($directory)) {
                 mkdir($directory, 0775, true);
             }
-            if (!is_writable($directory)) {
+            if (! is_writable($directory)) {
                 @chmod($directory, 0775);
             }
-            if (!is_writable($directory)) {
+            if (! is_writable($directory)) {
                 throw new \RuntimeException("Export directory is not writable: {$directory}");
             }
 
@@ -181,7 +181,7 @@ class GenerateCsvExport implements ShouldQueue
             $invoices = $response['data'] ?? $response;
 
             // Ensure it's an array
-            if (!is_array($invoices)) {
+            if (! is_array($invoices)) {
                 $invoices = [];
             }
 
@@ -236,7 +236,7 @@ class GenerateCsvExport implements ShouldQueue
             return ['pos' => '', 'tax' => '', 'tip' => '', 'discount' => ''];
         }
         $data = is_string($posData) ? json_decode($posData, true) : $posData;
-        if (!is_array($data)) {
+        if (! is_array($data)) {
             return ['pos' => '', 'tax' => '', 'tip' => '', 'discount' => ''];
         }
         $posLabel = '';
@@ -269,6 +269,7 @@ class GenerateCsvExport implements ShouldQueue
             $ts = $ts / 1000;
         }
         $date = \DateTime::createFromFormat('U', (string) (int) $ts);
+
         return $date ? $date->format('d.m.Y H:i') : (string) $createdTime;
     }
 
@@ -300,7 +301,7 @@ class GenerateCsvExport implements ShouldQueue
             $invoices = $response['data'] ?? $response;
 
             // Ensure it's an array
-            if (!is_array($invoices)) {
+            if (! is_array($invoices)) {
                 $invoices = [];
             }
 
@@ -327,4 +328,3 @@ class GenerateCsvExport implements ShouldQueue
         } while (count($invoices) === $take);
     }
 }
-

@@ -251,7 +251,7 @@ Route::get('/nostr-auth/challenge-status/{id}', [NostrAuthController::class, 'ch
     ->middleware(['throttle:60,1']);
 
 // Authenticated routes (email must be verified — classic registration and API use)
-Route::middleware(['auth:sanctum', RequireVerifiedEmail::class])->group(function () {
+Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-user'])->group(function () {
     // User/Account routes
     Route::get('/user', [AccountController::class, 'user']);
     Route::post('/lnurl-auth/link-challenge', [LnurlAuthController::class, 'linkChallenge']);
@@ -260,7 +260,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class])->group(function
     Route::post('/nostr-auth/reveal-confirm-challenge', [NostrAuthController::class, 'revealConfirmChallenge']);
     Route::get('/user/limits', [AccountController::class, 'limits']);
     Route::put('/user', [AccountController::class, 'updateProfile']);
-    Route::put('/user/password', [AccountController::class, 'updatePassword']);
+    Route::put('/user/password', [AccountController::class, 'updatePassword'])
+        ->middleware('throttle:5,1');
     Route::put('/user/guest/upgrade', [AccountController::class, 'upgradeGuest']);
 
     // Panel API keys (for our API, not BTCPay)
@@ -418,13 +419,13 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class])->group(function
         Route::get('/stores/{store}/api-keys', [\App\Http\Controllers\StoreApiKeyController::class, 'index'])
             ->middleware(EnsureStoreOwnership::class);
         Route::post('/stores/{store}/api-keys', [\App\Http\Controllers\StoreApiKeyController::class, 'store'])
-            ->middleware([EnsureStoreOwnership::class, EnsureApiKeyLimit::class, AuditLog::class.':api-key.created']);
+            ->middleware([EnsureStoreOwnership::class, EnsureApiKeyLimit::class, AuditLog::class.':api-key.created', 'throttle:10,1']);
         Route::get('/stores/{store}/api-keys/{apiKey}', [\App\Http\Controllers\StoreApiKeyController::class, 'show'])
             ->middleware(EnsureStoreOwnership::class);
         Route::delete('/stores/{store}/api-keys/{apiKey}', [\App\Http\Controllers\StoreApiKeyController::class, 'destroy'])
             ->middleware([EnsureStoreOwnership::class, AuditLog::class.':api-key.deleted']);
         Route::post('/stores/{store}/api-keys/{apiKey}/regenerate', [\App\Http\Controllers\StoreApiKeyController::class, 'regenerate'])
-            ->middleware([EnsureStoreOwnership::class, AuditLog::class.':api-key.regenerated']);
+            ->middleware([EnsureStoreOwnership::class, AuditLog::class.':api-key.regenerated', 'throttle:5,1']);
         Route::post('/stores/{store}/api-keys/token', [\App\Http\Controllers\StoreApiKeyController::class, 'generateToken'])
             ->middleware([EnsureStoreOwnership::class, AuditLog::class.':api-key.token.generated']);
     });
@@ -460,7 +461,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class])->group(function
     Route::get('/stores/{store}/wallet-connection', [WalletConnectionController::class, 'show'])
         ->middleware([EnsureStoreOwnership::class]);
     Route::post('/stores/{store}/wallet-connection/reveal', [WalletConnectionController::class, 'revealForOwner'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':wallet_connection.revealed']);
+        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':wallet_connection.revealed', 'throttle:5,1']);
     Route::post('/stores/{store}/wallet-connection', [WalletConnectionController::class, 'store'])
         ->middleware([EnsureStoreOwnership::class, AuditLog::class.':wallet_connection.created']);
     Route::post('/stores/{store}/wallet-connection/check-duplicate', [WalletConnectionController::class, 'checkDuplicate'])

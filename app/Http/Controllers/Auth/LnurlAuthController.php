@@ -185,7 +185,7 @@ class LnurlAuthController extends Controller
 
         // Find challenge
         $challenge = LnurlAuthChallenge::find($k1);
-        
+
         if (! $challenge) {
             return response()->json(['status' => 'ERROR', 'reason' => 'Invalid challenge'], 200);
         }
@@ -200,7 +200,7 @@ class LnurlAuthController extends Controller
 
         // Verify signature (LUD-04: wallet signs the raw 32-byte k1 as digest; sends DER-encoded sig)
         try {
-            $secp256k1 = new Secp256k1();
+            $secp256k1 = new Secp256k1;
             // kornrunner verify($hashHex, $signature, $publicKeyHex): hash and key must be hex strings
             // Signature from wallet is DER; kornrunner expects 128-char flat hex (r||s)
             $signatureFlatHex = $this->derSignatureToFlatHex($signature);
@@ -211,6 +211,7 @@ class LnurlAuthController extends Controller
                     'k1' => $k1,
                     'ip' => $request->ip(),
                 ]);
+
                 return response()->json(['status' => 'ERROR', 'reason' => 'Invalid signature'], 200);
             }
         } catch (\Exception $e) {
@@ -219,6 +220,7 @@ class LnurlAuthController extends Controller
                 'k1' => $k1,
                 'ip' => $request->ip(),
             ]);
+
             return response()->json(['status' => 'ERROR', 'reason' => 'Signature verification failed'], 200);
         }
 
@@ -246,7 +248,7 @@ class LnurlAuthController extends Controller
 
         // Find user by lightning public key (including unverified users)
         $user = User::where('lightning_public_key', $publicKey)->first();
-        
+
         if ($user) {
             // User exists
             if ($user->hasVerifiedEmail()) {
@@ -426,7 +428,7 @@ class LnurlAuthController extends Controller
 
         try {
             $exists = $this->userService->checkEmailExists($request->email);
-            
+
             return response()->json([
                 'exists' => $exists,
             ]);
@@ -435,7 +437,7 @@ class LnurlAuthController extends Controller
                 'email' => $request->email,
                 'error' => $e->getMessage(),
             ]);
-            
+
             return response()->json([
                 'exists' => false, // Default to false on error
                 'error' => 'Could not verify email availability',
@@ -524,6 +526,7 @@ class LnurlAuthController extends Controller
                     'user' => $userByKey,
                 ]));
             }
+
             // New key: no user or unverified; user completes registration with email
             return $noCache(response()->json([
                 'status' => 'pending_email',
@@ -574,6 +577,6 @@ class LnurlAuthController extends Controller
         $s = gmp_init(bin2hex($sBytes), 16);
 
         return str_pad(gmp_strval($r, 16), 64, '0', STR_PAD_LEFT)
-            . str_pad(gmp_strval($s, 16), 64, '0', STR_PAD_LEFT);
+            .str_pad(gmp_strval($s, 16), 64, '0', STR_PAD_LEFT);
     }
 }

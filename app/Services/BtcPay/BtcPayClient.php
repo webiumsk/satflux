@@ -12,9 +12,13 @@ use Illuminate\Support\Facades\Log;
 class BtcPayClient
 {
     protected PendingRequest $client;
+
     protected string $baseUrl;
+
     protected string $apiKey;
+
     protected int $maxRetries = 3;
+
     protected int $initialBackoff = 1; // seconds
 
     public function __construct(?string $apiKey = null)
@@ -110,9 +114,9 @@ class BtcPayClient
 
     /**
      * Make a POST request with multipart form data (for file uploads).
-     * 
-     * @param string $endpoint API endpoint
-     * @param \Illuminate\Http\UploadedFile $file The uploaded file
+     *
+     * @param  string  $endpoint  API endpoint
+     * @param  \Illuminate\Http\UploadedFile  $file  The uploaded file
      * @return array Response data
      */
     public function postMultipart(string $endpoint, $file): array
@@ -140,6 +144,7 @@ class BtcPayClient
                 if ($response->successful()) {
                     $responseData = $response->json();
                     $this->logRequest('POST', $endpoint, ['multipart' => true], $response, $responseData);
+
                     return $responseData ?? [];
                 }
 
@@ -152,10 +157,11 @@ class BtcPayClient
                         sleep($backoff);
                         $backoff = $this->exponentialBackoff($backoff);
                         $attempt++;
+
                         continue;
                     }
 
-                    throw new BtcPayRateLimitException("Rate limit exceeded", $retryAfter);
+                    throw new BtcPayRateLimitException('Rate limit exceeded', $retryAfter);
                 }
 
                 // Handle other errors
@@ -167,11 +173,12 @@ class BtcPayClient
                 throw $e;
             } catch (\Exception $e) {
                 $this->logRequest('POST', $endpoint, ['multipart' => true], null, null, "Exception: {$e->getMessage()}");
-                
+
                 if ($attempt < $this->maxRetries) {
                     sleep($backoff);
                     $backoff = $this->exponentialBackoff($backoff);
                     $attempt++;
+
                     continue;
                 }
 
@@ -199,6 +206,7 @@ class BtcPayClient
                     // or 200 OK with empty/null body
                     $data = $response->json();
                     $this->logRequest($method, $endpoint, $options, $response, $data);
+
                     return $data ?? [];
                 }
 
@@ -211,10 +219,11 @@ class BtcPayClient
                         sleep($backoff);
                         $backoff = $this->exponentialBackoff($backoff);
                         $attempt++;
+
                         continue;
                     }
 
-                    throw new BtcPayRateLimitException("Rate limit exceeded", $retryAfter);
+                    throw new BtcPayRateLimitException('Rate limit exceeded', $retryAfter);
                 }
 
                 // Handle other errors
@@ -226,11 +235,12 @@ class BtcPayClient
                 throw $e;
             } catch (\Exception $e) {
                 $this->logRequest($method, $endpoint, $options, null, null, "Exception: {$e->getMessage()}");
-                
+
                 if ($attempt < $this->maxRetries) {
                     sleep($backoff);
                     $backoff = $this->exponentialBackoff($backoff);
                     $attempt++;
+
                     continue;
                 }
 
@@ -280,7 +290,7 @@ class BtcPayClient
         // Include more details for 422 validation errors
         if ($statusCode === 422) {
             if (isset($json['errors'])) {
-                $message .= ' - Validation errors: ' . json_encode($json['errors']);
+                $message .= ' - Validation errors: '.json_encode($json['errors']);
             }
             // Also include the full response body for debugging
             Log::error('BTCPay API 422 Validation Error', [
@@ -294,7 +304,11 @@ class BtcPayClient
 
         $this->logRequest($method, $endpoint, [], $response, $json, "Error: {$message}");
 
-        throw new BtcPayException($message, $statusCode);
+        // For server-side errors (5xx), expose only a generic message to callers so
+        // internal BTCPay details don't leak to the frontend. The full message is logged above.
+        $clientMessage = $statusCode >= 500 ? "BTCPay Server error (HTTP {$statusCode})" : $message;
+
+        throw new BtcPayException($clientMessage, $statusCode);
     }
 
     /**
@@ -313,7 +327,8 @@ class BtcPayClient
         ];
         $mime = $file->getMimeType();
         $ext = $mimeToExt[$mime] ?? 'bin';
-        return 'upload_' . uniqid('', true) . '.' . $ext;
+
+        return 'upload_'.uniqid('', true).'.'.$ext;
     }
 
     /**
@@ -348,6 +363,7 @@ class BtcPayClient
                         sleep($backoff);
                         $backoff = $this->exponentialBackoff($backoff);
                         $attempt++;
+
                         continue;
                     }
 
@@ -366,6 +382,7 @@ class BtcPayClient
                     sleep($backoff);
                     $backoff = $this->exponentialBackoff($backoff);
                     $attempt++;
+
                     continue;
                 }
 
@@ -418,7 +435,7 @@ class BtcPayClient
             Log::channel('btcpay')->info('BTCPay API Request', $logData);
         } catch (\Exception $e) {
             // Silently fail logging in tests to avoid permission errors
-            if (!app()->environment('testing')) {
+            if (! app()->environment('testing')) {
                 throw $e;
             }
         }
@@ -443,9 +460,3 @@ class BtcPayClient
         return $sanitized;
     }
 }
-
-
-
-
-
-

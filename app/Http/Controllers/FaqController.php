@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\FaqItem;
 use App\Models\FaqCategory;
+use App\Models\FaqItem;
 use Illuminate\Http\Request;
 
 class FaqController extends Controller
@@ -32,14 +32,14 @@ class FaqController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search, $locale) {
                 $q->whereRaw("question->>'{$locale}' ILIKE ?", ["%{$search}%"])
-                  ->orWhereRaw("answer->>'{$locale}' ILIKE ?", ["%{$search}%"])
+                    ->orWhereRaw("answer->>'{$locale}' ILIKE ?", ["%{$search}%"])
                   // Fallback to English if current locale doesn't have content
-                  ->orWhereRaw("question->>'en' ILIKE ?", ["%{$search}%"])
-                  ->orWhereRaw("answer->>'en' ILIKE ?", ["%{$search}%"]);
+                    ->orWhereRaw("question->>'en' ILIKE ?", ["%{$search}%"])
+                    ->orWhereRaw("answer->>'en' ILIKE ?", ["%{$search}%"]);
             });
         }
 
-        $items = $query->get()->map(function ($item) use ($locale) {
+        $items = $query->get()->map(function ($item) {
             return [
                 'id' => $item->id,
                 'slug' => $item->slug,
@@ -61,7 +61,7 @@ class FaqController extends Controller
         $categories = FaqCategory::active()
             ->orderBy('order')
             ->get()
-            ->map(function ($category) use ($locale) {
+            ->map(function ($category) {
                 return [
                     'id' => $category->id,
                     'slug' => $category->slug,
@@ -82,7 +82,7 @@ class FaqController extends Controller
     public function show(string $slug)
     {
         $locale = app()->getLocale();
-        
+
         $item = FaqItem::where('slug', $slug)
             ->published()
             ->with(['category'])
@@ -127,4 +127,3 @@ class FaqController extends Controller
         ]);
     }
 }
-

@@ -35,7 +35,7 @@ class EshopIntegrationController extends Controller
         $tokenKey = "eshop_token:{$validated['token']}";
         $tokenData = Cache::get($tokenKey);
 
-        if (!$tokenData) {
+        if (! $tokenData) {
             return response()->json([
                 'message' => 'Invalid or expired token',
             ], 400);
@@ -56,7 +56,7 @@ class EshopIntegrationController extends Controller
 
         // Load store
         $store = Store::find($validated['store_id']);
-        if (!$store) {
+        if (! $store) {
             return response()->json([
                 'message' => 'Store not found',
             ], 404);
@@ -77,7 +77,7 @@ class EshopIntegrationController extends Controller
             Log::info('E-shop API key created via public endpoint', [
                 'store_id' => $store->id,
                 'api_key_id' => $apiKey->id,
-                'has_callback_url' => !empty($validated['callback_url']),
+                'has_callback_url' => ! empty($validated['callback_url']),
                 'ip' => $request->ip(),
             ]);
 
@@ -121,7 +121,7 @@ class EshopIntegrationController extends Controller
         $tokenKey = "eshop_token:{$token}";
         $tokenData = Cache::get($tokenKey);
 
-        if (!$tokenData) {
+        if (! $tokenData) {
             return response()->json([
                 'message' => 'Invalid or expired token',
             ], 400);
@@ -129,7 +129,7 @@ class EshopIntegrationController extends Controller
 
         // Load store
         $store = Store::find($tokenData['store_id']);
-        if (!$store) {
+        if (! $store) {
             return response()->json([
                 'message' => 'Store not found',
             ], 404);
@@ -142,7 +142,7 @@ class EshopIntegrationController extends Controller
             ->latest('created_at')
             ->first();
 
-        if (!$apiKey) {
+        if (! $apiKey) {
             return response()->json([
                 'message' => 'API key not found. Please generate a new token.',
             ], 404);
@@ -186,6 +186,3 @@ class EshopIntegrationController extends Controller
         return $token;
     }
 }
-
-
-

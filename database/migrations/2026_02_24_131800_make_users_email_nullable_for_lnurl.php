@@ -17,6 +17,7 @@ return new class extends Migration
 
         if ($driver === 'pgsql') {
             DB::statement('ALTER TABLE users ALTER COLUMN email DROP NOT NULL');
+
             return;
         }
 
@@ -24,6 +25,7 @@ return new class extends Migration
             Schema::table('users', function (Blueprint $table) {
                 $table->string('email')->nullable()->unique()->change();
             });
+
             return;
         }
 
@@ -54,6 +56,7 @@ return new class extends Migration
             DB::statement('DROP TABLE users');
             DB::statement('ALTER TABLE users_new RENAME TO users');
             DB::statement('PRAGMA foreign_keys = ON');
+
             return;
         }
 
@@ -72,6 +75,7 @@ return new class extends Migration
         if ($driver === 'pgsql') {
             DB::statement("UPDATE users SET email = 'pending@lnurl.local' WHERE email IS NULL");
             DB::statement('ALTER TABLE users ALTER COLUMN email SET NOT NULL');
+
             return;
         }
 

@@ -9,6 +9,9 @@
     "preview": "vite preview",
     "lint": "eslint resources/js --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts",
     "lint:fix": "eslint resources/js --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "version:patch": "node scripts/bump-version.js patch",
     "version:minor": "node scripts/bump-version.js minor",
     "version:major": "node scripts/bump-version.js major"
@@ -50,17 +53,22 @@
     "vue-router": "^4.3.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/dompurify": "^3.0.5",
     "@types/node": "^20.11.0",
     "@vitejs/plugin-vue": "^5.0.0",
+    "@vitest/coverage-v8": "^4.1.7",
     "@vue/eslint-config-typescript": "^13.0.0",
+    "@vue/test-utils": "^2.4.10",
     "autoprefixer": "^10.4.17",
     "eslint": "^8.57.0",
     "eslint-plugin-vue": "^9.28.0",
+    "jsdom": "^29.1.1",
     "laravel-vite-plugin": "^1.0",
     "postcss": "^8.4.33",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3",
-    "vite": "^5.0.11"
+    "vite": "^5.0.11",
+    "vitest": "^4.1.7"
   }
 }

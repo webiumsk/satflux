@@ -34,7 +34,7 @@ class StoreApiKeyController extends Controller
                 'last_used_at' => $apiKey->last_used_at?->toISOString(),
                 'expires_at' => $apiKey->expires_at?->toISOString(),
                 'created_at' => $apiKey->created_at->toISOString(),
-                'has_api_key' => !empty($apiKey->btcpay_api_key), // Just indicate if it exists
+                'has_api_key' => ! empty($apiKey->btcpay_api_key), // Just indicate if it exists
             ];
         });
 
@@ -131,7 +131,7 @@ class StoreApiKeyController extends Controller
                 'last_used_at' => $apiKey->last_used_at?->toISOString(),
                 'expires_at' => $apiKey->expires_at?->toISOString(),
                 'created_at' => $apiKey->created_at->toISOString(),
-                'has_api_key' => !empty($apiKey->btcpay_api_key),
+                'has_api_key' => ! empty($apiKey->btcpay_api_key),
             ],
         ]);
     }
@@ -256,11 +256,10 @@ class StoreApiKeyController extends Controller
             'data' => [
                 'token' => $token,
                 'panel_url' => config('app.url'),
-                'api_endpoint' => config('app.url') . '/api/public/eshop/token/' . $token,
+                'api_endpoint' => config('app.url').'/api/public/eshop/token/'.$token,
                 'expires_in_minutes' => $expirationMinutes,
             ],
             'message' => 'Token generated successfully',
         ]);
     }
 }
-

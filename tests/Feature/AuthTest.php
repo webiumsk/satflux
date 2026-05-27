@@ -220,7 +220,7 @@ class AuthTest extends TestCase
 
     public function test_email_verification_verify_returns_404_for_invalid_user_id(): void
     {
-        $response = $this->getJson('/api/auth/verify-email/99999/invalidhash?' . http_build_query([
+        $response = $this->getJson('/api/auth/verify-email/99999/invalidhash?'.http_build_query([
             'expires' => now()->addHour()->timestamp,
             'signature' => 'invalid',
         ]));
@@ -233,15 +233,9 @@ class AuthTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->getJson("/api/auth/verify-email/{$user->id}/" . sha1($user->email));
+        $response = $this->getJson("/api/auth/verify-email/{$user->id}/".sha1($user->email));
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors(['expires', 'signature']);
     }
 }
-
-
-
-
-
-

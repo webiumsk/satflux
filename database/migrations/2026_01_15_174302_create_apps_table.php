@@ -20,7 +20,7 @@ return new class extends Migration
             $table->json('config')->nullable(); // App-specific configuration
             $table->json('metadata')->nullable(); // Local metadata
             $table->timestamps();
-            
+
             $table->foreign('store_id')->references('id')->on('stores')->onDelete('cascade');
             $table->index('store_id');
             $table->unique(['store_id', 'btcpay_app_id']);

@@ -34,27 +34,29 @@ class BackupRunCommand extends Command
 
         $backupScript = base_path('backup.sh');
 
-        if (!file_exists($backupScript)) {
-            $this->error('Backup script not found: ' . $backupScript);
+        if (! file_exists($backupScript)) {
+            $this->error('Backup script not found: '.$backupScript);
+
             return Command::FAILURE;
         }
 
-        if (!is_executable($backupScript)) {
-            $this->error('Backup script is not executable. Run: chmod +x ' . $backupScript);
+        if (! is_executable($backupScript)) {
+            $this->error('Backup script is not executable. Run: chmod +x '.$backupScript);
+
             return Command::FAILURE;
         }
 
         // Build environment variables
         $env = [];
-        
+
         if ($this->option('redis')) {
             $env['BACKUP_REDIS'] = 'true';
         }
-        
+
         if ($this->option('no-files')) {
             $env['BACKUP_FILES'] = 'false';
         }
-        
+
         if ($this->option('no-env')) {
             $env['BACKUP_ENV'] = 'false';
         }
@@ -62,7 +64,7 @@ class BackupRunCommand extends Command
         // Check if we're running in Docker container
         // If so, we need to execute backup.sh on the host system
         $isDocker = file_exists('/.dockerenv') || getenv('DOCKER_CONTAINER') === 'true';
-        
+
         if ($isDocker) {
             // Running in Docker - backup.sh needs docker compose which is on host
             // We need to execute backup.sh on the host system, not in container
@@ -72,24 +74,24 @@ class BackupRunCommand extends Command
             $this->newLine();
             $this->info('Please run backup on host system using one of these methods:');
             $this->newLine();
-            
+
             $command = './backup.sh';
             if ($this->option('redis')) {
                 $command = 'BACKUP_REDIS=true ./backup.sh';
             }
             if ($this->option('no-files')) {
-                $command .= ($this->option('redis') ? ' ' : '') . 'BACKUP_FILES=false';
+                $command .= ($this->option('redis') ? ' ' : '').'BACKUP_FILES=false';
             }
             if ($this->option('no-env')) {
                 $command .= ' BACKUP_ENV=false';
             }
-            
-            $this->line('  1. Direct: ' . $command);
+
+            $this->line('  1. Direct: '.$command);
             $this->line('  2. Via cron: Add to crontab');
             $this->line('  3. Via Laravel scheduler: Already configured for 2:30 AM daily');
             $this->newLine();
             $this->info('Note: Laravel scheduler will automatically run backups when scheduled.');
-            
+
             return Command::FAILURE;
         }
 
@@ -106,7 +108,7 @@ class BackupRunCommand extends Command
 
         try {
             $process->mustRun(function ($type, $buffer) {
-                if (Process::ERR === $type) {
+                if ($type === Process::ERR) {
                     $this->error($buffer);
                 } else {
                     $this->line($buffer);
@@ -114,17 +116,17 @@ class BackupRunCommand extends Command
             });
 
             $this->info('Backup completed successfully!');
-            
+
             Log::info('Backup completed successfully', [
                 'redis' => $this->option('redis'),
-                'files' => !$this->option('no-files'),
-                'env' => !$this->option('no-env'),
+                'files' => ! $this->option('no-files'),
+                'env' => ! $this->option('no-env'),
             ]);
 
             return Command::SUCCESS;
         } catch (\Exception $e) {
-            $this->error('Backup failed: ' . $e->getMessage());
-            
+            $this->error('Backup failed: '.$e->getMessage());
+
             Log::error('Backup failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -134,4 +136,3 @@ class BackupRunCommand extends Command
         }
     }
 }
-

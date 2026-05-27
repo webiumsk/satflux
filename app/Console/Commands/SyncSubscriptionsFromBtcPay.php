@@ -39,39 +39,40 @@ class SyncSubscriptionsFromBtcPay extends Command
         $this->info('Fetching subscriptions from BTCPay...');
 
         $storeId = config('services.btcpay.subscription_store_id');
-        
+
         try {
             // Fetch all subscriptions from BTCPay
             $this->info("Attempting to fetch subscriptions from store: {$storeId}");
-            
+
             try {
                 $subscriptions = $this->subscriptionService->listSubscriptions($storeId);
-                
+
                 // BTCPay API might return array of subscriptions or wrapped in a data property
                 $subscriptionsList = $subscriptions['data'] ?? $subscriptions;
-                
-                if (!is_array($subscriptionsList)) {
+
+                if (! is_array($subscriptionsList)) {
                     $this->error('Unexpected response format from BTCPay API');
                     Log::error('Unexpected subscription list format', ['response' => $subscriptions]);
+
                     return Command::FAILURE;
                 }
 
-                $this->info("Found " . count($subscriptionsList) . " subscriptions in BTCPay");
-                
+                $this->info('Found '.count($subscriptionsList).' subscriptions in BTCPay');
+
             } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
                 if ($e->getStatusCode() === 404) {
-                    $this->warn("Direct subscriptions endpoint returned 404, trying via offerings/subscribers...");
-                    
+                    $this->warn('Direct subscriptions endpoint returned 404, trying via offerings/subscribers...');
+
                     // Try alternative: get subscriptions via offerings/subscribers endpoint
                     try {
                         return $this->syncViaOfferings($storeId);
                     } catch (\Exception $e2) {
-                        $this->error("HTTP 404 - Subscription API endpoints not found.");
+                        $this->error('HTTP 404 - Subscription API endpoints not found.');
                         $this->warn("Tried: /api/v1/stores/{$storeId}/subscriptions");
                         $this->warn("Tried: /api/v1/stores/{$storeId}/offerings/{offeringId}/subscribers");
                         $this->newLine();
-                        $this->info("Attempting alternative method: checking subscription invoices...");
-                        
+                        $this->info('Attempting alternative method: checking subscription invoices...');
+
                         // Alternative: try to find subscriptions via invoices with subscription metadata
                         return $this->syncViaInvoices($storeId);
                     }
@@ -85,47 +86,50 @@ class SyncSubscriptionsFromBtcPay extends Command
 
             foreach ($subscriptionsList as $subscriptionData) {
                 $subscriptionId = $subscriptionData['id'] ?? null;
-                
-                if (!$subscriptionId) {
+
+                if (! $subscriptionId) {
                     $this->warn('Subscription without ID found, skipping...');
+
                     continue;
                 }
 
                 // Get customer email from subscription
-                $customerEmail = $subscriptionData['customerEmail'] 
+                $customerEmail = $subscriptionData['customerEmail']
                     ?? $subscriptionData['subscriberEmail']
                     ?? $subscriptionData['email']
                     ?? $subscriptionData['metadata']['customerEmail']
                     ?? $subscriptionData['metadata']['buyerEmail']
                     ?? null;
 
-                if (!$customerEmail) {
+                if (! $customerEmail) {
                     $this->warn("Subscription {$subscriptionId} has no customer email, skipping...");
                     $notFound++;
+
                     continue;
                 }
 
                 // Find user by email
                 $user = User::where('email', $customerEmail)->first();
 
-                if (!$user) {
+                if (! $user) {
                     $this->warn("User with email {$customerEmail} not found for subscription {$subscriptionId}");
                     $notFound++;
+
                     continue;
                 }
 
                 // Get subscription status and plan
                 $status = $subscriptionData['status'] ?? null;
                 $planId = $subscriptionData['planId'] ?? null;
-                
+
                 // Get expiration date
                 $expiresAt = null;
                 if (isset($subscriptionData['expiresAt'])) {
-                    $expiresAt = is_numeric($subscriptionData['expiresAt']) 
+                    $expiresAt = is_numeric($subscriptionData['expiresAt'])
                         ? now()->parse($subscriptionData['expiresAt'])
                         : now()->parse($subscriptionData['expiresAt']);
                 } elseif (isset($subscriptionData['endDate'])) {
-                    $expiresAt = is_numeric($subscriptionData['endDate']) 
+                    $expiresAt = is_numeric($subscriptionData['endDate'])
                         ? now()->parse($subscriptionData['endDate'])
                         : now()->parse($subscriptionData['endDate']);
                 }
@@ -148,11 +152,11 @@ class SyncSubscriptionsFromBtcPay extends Command
                 ];
 
                 $oldRole = $user->role;
-                
+
                 // Only update role if subscription is active
                 if (in_array($status, ['active', 'activeRenewing']) && $expectedRole) {
                     $updateData['role'] = $expectedRole;
-                    
+
                     if ($oldRole !== $expectedRole) {
                         $upgraded++;
                         $this->line("Upgraded {$user->email} from {$oldRole} to {$expectedRole} (subscription: {$subscriptionId})");
@@ -195,6 +199,7 @@ class SyncSubscriptionsFromBtcPay extends Command
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return Command::FAILURE;
         }
     }
@@ -207,23 +212,24 @@ class SyncSubscriptionsFromBtcPay extends Command
     protected function syncViaOfferings(string $storeId): int
     {
         $this->info('Fetching subscriptions via offerings/subscribers endpoint...');
-        
+
         try {
             $offeringId = config('services.btcpay.subscription_offering_id');
-            
-            if (!$offeringId) {
+
+            if (! $offeringId) {
                 $this->error('Subscription offering ID not configured');
+
                 return Command::FAILURE;
             }
 
             $this->info("Checking subscribers for offering: {$offeringId}");
-            
+
             // BTCPay API doesn't support listing all subscribers
             // We need to check each user individually by email
             $users = User::whereNotNull('email')
                 ->where('email', '!=', '')
                 ->get();
-            
+
             $this->info("Checking {$users->count()} users for subscriptions...");
 
             $synced = 0;
@@ -235,9 +241,9 @@ class SyncSubscriptionsFromBtcPay extends Command
                 try {
                     // Use email as customerSelector (BTCPay supports Email: prefix or just email)
                     $customerSelector = $user->email;
-                    
+
                     $subscriberData = $this->subscriptionService->getSubscriber($storeId, $offeringId, $customerSelector);
-                    
+
                 } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
                     if ($e->getStatusCode() === 404) {
                         // User doesn't have a subscription for this offering - skip
@@ -245,6 +251,7 @@ class SyncSubscriptionsFromBtcPay extends Command
                     }
                     // Other error - log and continue
                     $this->warn("Error checking subscription for {$user->email}: {$e->getMessage()}");
+
                     continue;
                 }
 
@@ -253,29 +260,29 @@ class SyncSubscriptionsFromBtcPay extends Command
                 $isActive = $subscriberData['isActive'] ?? false;
                 $isSuspended = $subscriberData['isSuspended'] ?? false;
                 $phase = $subscriberData['phase'] ?? null;
-                
+
                 // Determine status
                 $status = null;
                 if ($isSuspended) {
                     $status = 'suspended';
-                } elseif (!$isActive) {
+                } elseif (! $isActive) {
                     $status = 'expired';
                 } elseif ($phase === 'Normal') {
                     $status = 'active';
                 } else {
                     $status = 'active'; // Default to active if we can't determine
                 }
-                
+
                 // Get expiration date
                 $expiresAt = null;
                 if (isset($subscriberData['periodEnd'])) {
-                    $expiresAt = is_numeric($subscriberData['periodEnd']) 
+                    $expiresAt = is_numeric($subscriberData['periodEnd'])
                         ? now()->parse($subscriberData['periodEnd'])
                         : now()->parse($subscriberData['periodEnd']);
                 }
-                
+
                 // Try to get subscription ID from customer or other fields
-                $subscriptionId = $subscriberData['customer']['id'] 
+                $subscriptionId = $subscriberData['customer']['id']
                     ?? $subscriberData['id']
                     ?? null;
 
@@ -297,11 +304,11 @@ class SyncSubscriptionsFromBtcPay extends Command
                 ];
 
                 $oldRole = $user->role;
-                
+
                 // Only update role if subscription is active
                 if (in_array($status, ['active']) && $expectedRole) {
                     $updateData['role'] = $expectedRole;
-                    
+
                     if ($oldRole !== $expectedRole) {
                         $upgraded++;
                         $this->line("Upgraded {$user->email} from {$oldRole} to {$expectedRole} (plan: {$planId})");
@@ -355,21 +362,22 @@ class SyncSubscriptionsFromBtcPay extends Command
     protected function syncViaInvoices(string $storeId): int
     {
         $this->info('Fetching invoices from subscription store to find subscriptions...');
-        
+
         try {
             $invoiceService = app(\App\Services\BtcPay\InvoiceService::class);
-            
+
             // Fetch recent invoices (last 100 should be enough)
             $invoices = $invoiceService->listInvoices($storeId, [], 0, 100);
-            
+
             $invoicesList = $invoices['data'] ?? $invoices;
-            
-            if (!is_array($invoicesList)) {
+
+            if (! is_array($invoicesList)) {
                 $this->error('Unexpected response format from BTCPay invoices API');
+
                 return Command::FAILURE;
             }
 
-            $this->info("Found " . count($invoicesList) . " invoices to check");
+            $this->info('Found '.count($invoicesList).' invoices to check');
 
             $synced = 0;
             $upgraded = 0;
@@ -377,30 +385,30 @@ class SyncSubscriptionsFromBtcPay extends Command
 
             foreach ($invoicesList as $invoice) {
                 // Look for subscription ID in invoice metadata
-                $subscriptionId = $invoice['metadata']['subscriptionId'] 
+                $subscriptionId = $invoice['metadata']['subscriptionId']
                     ?? $invoice['subscriptionId']
                     ?? null;
 
-                if (!$subscriptionId || isset($subscriptionsFound[$subscriptionId])) {
+                if (! $subscriptionId || isset($subscriptionsFound[$subscriptionId])) {
                     continue; // Skip if no subscription ID or already processed
                 }
 
                 $subscriptionsFound[$subscriptionId] = true;
 
                 // Get customer email
-                $customerEmail = $invoice['metadata']['customerEmail'] 
+                $customerEmail = $invoice['metadata']['customerEmail']
                     ?? $invoice['metadata']['buyerEmail']
-                    ?? $invoice['buyerEmail'] 
+                    ?? $invoice['buyerEmail']
                     ?? $invoice['customerEmail']
                     ?? null;
 
-                if (!$customerEmail) {
+                if (! $customerEmail) {
                     continue;
                 }
 
                 // Find user
                 $user = User::where('email', $customerEmail)->first();
-                if (!$user) {
+                if (! $user) {
                     continue;
                 }
 
@@ -409,11 +417,11 @@ class SyncSubscriptionsFromBtcPay extends Command
                     $subscription = $this->subscriptionService->getSubscription($storeId, $subscriptionId);
                     $status = $subscription['status'] ?? null;
                     $planId = $subscription['planId'] ?? null;
-                    
+
                     // Get expiration
                     $expiresAt = null;
                     if (isset($subscription['expiresAt'])) {
-                        $expiresAt = is_numeric($subscription['expiresAt']) 
+                        $expiresAt = is_numeric($subscription['expiresAt'])
                             ? now()->parse($subscription['expiresAt'])
                             : now()->parse($subscription['expiresAt']);
                     }
@@ -471,8 +479,8 @@ class SyncSubscriptionsFromBtcPay extends Command
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return Command::FAILURE;
         }
     }
 }
-

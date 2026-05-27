@@ -29,10 +29,11 @@ class BackupVerifyCommand extends Command
     public function handle(): int
     {
         $backupDir = base_path('backups');
-        $metadataDir = $backupDir . '/metadata';
+        $metadataDir = $backupDir.'/metadata';
 
-        if (!is_dir($metadataDir)) {
-            $this->error('Backup metadata directory not found: ' . $metadataDir);
+        if (! is_dir($metadataDir)) {
+            $this->error('Backup metadata directory not found: '.$metadataDir);
+
             return Command::FAILURE;
         }
 
@@ -42,11 +43,12 @@ class BackupVerifyCommand extends Command
 
         $timestamp = $this->argument('timestamp');
 
-        if (!$timestamp) {
+        if (! $timestamp) {
             // Find latest backup
-            $files = glob($metadataDir . '/satflux.io_backup_*.json');
+            $files = glob($metadataDir.'/satflux.io_backup_*.json');
             if (empty($files)) {
                 $this->error('No backups found.');
+
                 return Command::FAILURE;
             }
 
@@ -57,13 +59,14 @@ class BackupVerifyCommand extends Command
 
             $latestFile = $files[0];
             $timestamp = basename($latestFile, '.json');
-            $this->info('No timestamp specified, verifying latest backup: ' . $timestamp);
+            $this->info('No timestamp specified, verifying latest backup: '.$timestamp);
         }
 
-        $metadataFile = $metadataDir . '/' . $timestamp . '.json';
+        $metadataFile = $metadataDir.'/'.$timestamp.'.json';
 
-        if (!file_exists($metadataFile)) {
-            $this->error('Backup metadata not found: ' . $metadataFile);
+        if (! file_exists($metadataFile)) {
+            $this->error('Backup metadata not found: '.$metadataFile);
+
             return Command::FAILURE;
         }
 
@@ -75,14 +78,15 @@ class BackupVerifyCommand extends Command
      */
     protected function verifyAll(string $metadataDir): int
     {
-        $files = glob($metadataDir . '/satflux.io_backup_*.json');
+        $files = glob($metadataDir.'/satflux.io_backup_*.json');
 
         if (empty($files)) {
             $this->error('No backups found.');
+
             return Command::FAILURE;
         }
 
-        $this->info('Verifying ' . count($files) . ' backups...');
+        $this->info('Verifying '.count($files).' backups...');
         $this->newLine();
 
         $verified = 0;
@@ -90,7 +94,7 @@ class BackupVerifyCommand extends Command
 
         foreach ($files as $file) {
             $timestamp = basename($file, '.json');
-            $this->line('Verifying: ' . $timestamp);
+            $this->line('Verifying: '.$timestamp);
 
             if ($this->verifyBackup($file)) {
                 $verified++;
@@ -115,8 +119,9 @@ class BackupVerifyCommand extends Command
         try {
             $metadata = json_decode(file_get_contents($metadataFile), true);
 
-            if (!$metadata) {
+            if (! $metadata) {
                 $this->error('  Invalid metadata file');
+
                 return false;
             }
 
@@ -125,8 +130,8 @@ class BackupVerifyCommand extends Command
 
             // Verify database backup
             if (isset($metadata['database']['file'])) {
-                $dbFile = $backupDir . '/database/' . $metadata['database']['file'];
-                if (!$this->verifyFile($dbFile, $metadata['database']['checksum'] ?? null)) {
+                $dbFile = $backupDir.'/database/'.$metadata['database']['file'];
+                if (! $this->verifyFile($dbFile, $metadata['database']['checksum'] ?? null)) {
                     $this->error('  Database backup: FAILED');
                     $allValid = false;
                 } else {
@@ -136,8 +141,8 @@ class BackupVerifyCommand extends Command
 
             // Verify files backup
             if (isset($metadata['files']['file'])) {
-                $filesFile = $backupDir . '/files/' . $metadata['files']['file'];
-                if (!$this->verifyFile($filesFile, $metadata['files']['checksum'] ?? null)) {
+                $filesFile = $backupDir.'/files/'.$metadata['files']['file'];
+                if (! $this->verifyFile($filesFile, $metadata['files']['checksum'] ?? null)) {
                     $this->error('  Files backup: FAILED');
                     $allValid = false;
                 } else {
@@ -147,8 +152,8 @@ class BackupVerifyCommand extends Command
 
             // Verify Redis backup
             if (isset($metadata['redis']['file'])) {
-                $redisFile = $backupDir . '/redis/' . $metadata['redis']['file'];
-                if (!$this->verifyFile($redisFile, $metadata['redis']['checksum'] ?? null)) {
+                $redisFile = $backupDir.'/redis/'.$metadata['redis']['file'];
+                if (! $this->verifyFile($redisFile, $metadata['redis']['checksum'] ?? null)) {
                     $this->error('  Redis backup: FAILED');
                     $allValid = false;
                 } else {
@@ -158,11 +163,12 @@ class BackupVerifyCommand extends Command
 
             return $allValid;
         } catch (\Exception $e) {
-            $this->error('  Error verifying backup: ' . $e->getMessage());
+            $this->error('  Error verifying backup: '.$e->getMessage());
             Log::error('Backup verification error', [
                 'file' => $metadataFile,
                 'error' => $e->getMessage(),
             ]);
+
             return false;
         }
     }
@@ -172,19 +178,22 @@ class BackupVerifyCommand extends Command
      */
     protected function verifyFile(string $file, ?string $expectedChecksum): bool
     {
-        if (!file_exists($file)) {
-            $this->error('    File not found: ' . basename($file));
+        if (! file_exists($file)) {
+            $this->error('    File not found: '.basename($file));
+
             return false;
         }
 
-        if (!is_readable($file)) {
-            $this->error('    File not readable: ' . basename($file));
+        if (! is_readable($file)) {
+            $this->error('    File not readable: '.basename($file));
+
             return false;
         }
 
         // Check if file is empty
         if (filesize($file) === 0) {
-            $this->error('    File is empty: ' . basename($file));
+            $this->error('    File is empty: '.basename($file));
+
             return false;
         }
 
@@ -192,8 +201,9 @@ class BackupVerifyCommand extends Command
         if (str_ends_with($file, '.gz')) {
             $process = new \Symfony\Component\Process\Process(['gzip', '-t', $file]);
             $process->run();
-            if (!$process->isSuccessful()) {
-                $this->error('    File is corrupted (gzip): ' . basename($file));
+            if (! $process->isSuccessful()) {
+                $this->error('    File is corrupted (gzip): '.basename($file));
+
                 return false;
             }
         }
@@ -202,9 +212,10 @@ class BackupVerifyCommand extends Command
         if ($expectedChecksum && $expectedChecksum !== 'unknown') {
             $actualChecksum = $this->calculateChecksum($file);
             if ($actualChecksum && $actualChecksum !== $expectedChecksum) {
-                $this->error('    Checksum mismatch: ' . basename($file));
-                $this->line('      Expected: ' . substr($expectedChecksum, 0, 16) . '...');
-                $this->line('      Actual:   ' . substr($actualChecksum, 0, 16) . '...');
+                $this->error('    Checksum mismatch: '.basename($file));
+                $this->line('      Expected: '.substr($expectedChecksum, 0, 16).'...');
+                $this->line('      Actual:   '.substr($actualChecksum, 0, 16).'...');
+
                 return false;
             }
         }
@@ -245,4 +256,3 @@ class BackupVerifyCommand extends Command
         return null;
     }
 }
-

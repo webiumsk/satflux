@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -81,6 +80,7 @@ class Subscription extends Model
         }
 
         $graceEnds = $this->grace_ends_at ?? $this->expires_at->copy()->addDays(14);
+
         return $this->expires_at->isPast() && now()->isBefore($graceEnds);
     }
 
@@ -95,6 +95,7 @@ class Subscription extends Model
 
         if ($this->expires_at->isPast()) {
             $gracePeriodEnds = $this->expires_at->copy()->addDays(14);
+
             return now()->isAfter($gracePeriodEnds);
         }
 
@@ -168,4 +169,3 @@ class Subscription extends Model
         });
     }
 }
-

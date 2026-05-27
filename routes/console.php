@@ -18,10 +18,15 @@ Schedule::command('subscriptions:check-statuses')
 //     ->runInBackground();
 
 // Automatic monthly CSV exports for Pro users (1st of month at 03:00 for previous month)
-Schedule::job(new \App\Jobs\ProcessMonthlyExports())->monthlyOn(1, '03:00');
+Schedule::job(new \App\Jobs\ProcessMonthlyExports)->monthlyOn(1, '03:00')->withoutOverlapping();
 
 // Inactive guest purge (opt-in via GUEST_PURGE_ENABLED in .env)
 Schedule::command('guests:purge-inactive')
     ->dailyAt('03:30')
     ->withoutOverlapping()
     ->runInBackground();
+
+// Failed jobs monitoring — alert if more than 5 failures in the last hour
+Schedule::command('jobs:monitor-failed --hours=1 --threshold=5')
+    ->hourly()
+    ->withoutOverlapping();

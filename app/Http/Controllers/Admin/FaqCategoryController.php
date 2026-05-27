@@ -58,7 +58,7 @@ class FaqCategoryController extends Controller
             $originalSlug = $validated['slug'];
             $counter = 1;
             while (FaqCategory::where('slug', $validated['slug'])->exists()) {
-                $validated['slug'] = $originalSlug . '-' . $counter;
+                $validated['slug'] = $originalSlug.'-'.$counter;
                 $counter++;
             }
         }
@@ -102,7 +102,7 @@ class FaqCategoryController extends Controller
             $originalSlug = $validated['slug'];
             $counter = 1;
             while (FaqCategory::where('slug', $validated['slug'])->where('id', '!=', $category->id)->exists()) {
-                $validated['slug'] = $originalSlug . '-' . $counter;
+                $validated['slug'] = $originalSlug.'-'.$counter;
                 $counter++;
             }
         }
@@ -134,4 +134,3 @@ class FaqCategoryController extends Controller
         ]);
     }
 }
-

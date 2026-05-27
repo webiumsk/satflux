@@ -16,16 +16,17 @@ class SubscriptionService
 
     /**
      * Create a plan checkout in BTCPay.
-     * 
-     * @param string $storeId BTCPay store ID
-     * @param string $offeringId BTCPay offering ID
-     * @param string $planId BTCPay plan ID
-     * @param array $options Optional checkout options:
-     *   - successRedirectUrl (string): URL to redirect after successful checkout
-     *   - cancelRedirectUrl (string|null): URL to redirect if checkout cancelled
-     *   - newSubscriberEmail (string|null): Email for new subscriber (creates new subscriber)
-     *   - customerSelector (string|null): Email to find existing customer (customer must exist)
+     *
+     * @param  string  $storeId  BTCPay store ID
+     * @param  string  $offeringId  BTCPay offering ID
+     * @param  string  $planId  BTCPay plan ID
+     * @param  array  $options  Optional checkout options:
+     *                          - successRedirectUrl (string): URL to redirect after successful checkout
+     *                          - cancelRedirectUrl (string|null): URL to redirect if checkout cancelled
+     *                          - newSubscriberEmail (string|null): Email for new subscriber (creates new subscriber)
+     *                          - customerSelector (string|null): Email to find existing customer (customer must exist)
      * @return array Checkout data with checkoutUrl, checkoutId, and optional expiresAt
+     *
      * @throws BtcPayException
      */
     public function createPlanCheckout(
@@ -40,14 +41,14 @@ class SubscriptionService
         try {
             // Verify offering belongs to store
             $offering = $this->client->get("/api/v1/stores/{$storeId}/offerings/{$offeringId}");
-            if (!isset($offering['id']) || $offering['id'] !== $offeringId) {
-                throw new BtcPayException("Offering not found or does not belong to this store", 404);
+            if (! isset($offering['id']) || $offering['id'] !== $offeringId) {
+                throw new BtcPayException('Offering not found or does not belong to this store', 404);
             }
 
             // Verify plan belongs to offering
             $plan = $this->client->get("/api/v1/stores/{$storeId}/offerings/{$offeringId}/plans/{$planId}");
-            if (!isset($plan['id']) || $plan['id'] !== $planId) {
-                throw new BtcPayException("Plan not found or does not belong to this offering", 404);
+            if (! isset($plan['id']) || $plan['id'] !== $planId) {
+                throw new BtcPayException('Plan not found or does not belong to this offering', 404);
             }
         } catch (BtcPayException $e) {
             // If error is due to insufficient permissions (403), log warning but continue
@@ -108,7 +109,7 @@ class SubscriptionService
 
         // Handle subscriber email - use newSubscriberEmail if provided, otherwise skip
         // Do NOT use customerSelector unless we're certain the customer exists
-        if (isset($options['newSubscriberEmail']) && !empty($options['newSubscriberEmail'])) {
+        if (isset($options['newSubscriberEmail']) && ! empty($options['newSubscriberEmail'])) {
             $payload['newSubscriberEmail'] = $options['newSubscriberEmail'];
         }
 
@@ -128,7 +129,7 @@ class SubscriptionService
             $checkoutId = $response['id'] ?? $response['checkoutId'] ?? null;
             $checkoutUrl = $response['url'] ?? $response['checkoutUrl'] ?? null;
 
-            if (!$checkoutId || !$checkoutUrl) {
+            if (! $checkoutId || ! $checkoutUrl) {
                 Log::error('Invalid checkout response from BTCPay', [
                     'response' => $response,
                 ]);
@@ -170,15 +171,17 @@ class SubscriptionService
 
     /**
      * Get plan checkout details by checkout ID.
-     * 
-     * @param string $checkoutId BTCPay plan checkout ID
+     *
+     * @param  string  $checkoutId  BTCPay plan checkout ID
      * @return array Checkout details including plan ID, subscription info, etc.
+     *
      * @throws BtcPayException
      */
     public function getPlanCheckout(string $checkoutId): array
     {
         try {
             $response = $this->client->get("/api/v1/plan-checkout/{$checkoutId}");
+
             return $response;
         } catch (BtcPayException $e) {
             Log::error('Failed to get plan checkout details', [
@@ -192,16 +195,18 @@ class SubscriptionService
 
     /**
      * Get subscription details by subscription ID.
-     * 
-     * @param string $storeId BTCPay store ID
-     * @param string $subscriptionId BTCPay subscription ID
+     *
+     * @param  string  $storeId  BTCPay store ID
+     * @param  string  $subscriptionId  BTCPay subscription ID
      * @return array Subscription details including status, expiration, etc.
+     *
      * @throws BtcPayException
      */
     public function getSubscription(string $storeId, string $subscriptionId): array
     {
         try {
             $response = $this->client->get("/api/v1/stores/{$storeId}/subscriptions/{$subscriptionId}");
+
             return $response;
         } catch (BtcPayException $e) {
             Log::error('Failed to get subscription details', [
@@ -216,16 +221,18 @@ class SubscriptionService
 
     /**
      * List subscriptions for a store.
-     * 
-     * @param string $storeId BTCPay store ID
-     * @param array $filters Optional filters (status, etc.)
+     *
+     * @param  string  $storeId  BTCPay store ID
+     * @param  array  $filters  Optional filters (status, etc.)
      * @return array List of subscriptions
+     *
      * @throws BtcPayException
      */
     public function listSubscriptions(string $storeId, array $filters = []): array
     {
         try {
             $response = $this->client->get("/api/v1/stores/{$storeId}/subscriptions", $filters);
+
             return $response;
         } catch (BtcPayException $e) {
             Log::error('Failed to list subscriptions', [
@@ -240,11 +247,12 @@ class SubscriptionService
     /**
      * Get a subscriber by customer selector (email, customer ID, or identity).
      * BTCPay API doesn't support listing all subscribers, only getting individual ones.
-     * 
-     * @param string $storeId BTCPay store ID
-     * @param string $offeringId BTCPay offering ID
-     * @param string $customerSelector Customer selector (email, customer ID, or Email:email@example.com)
+     *
+     * @param  string  $storeId  BTCPay store ID
+     * @param  string  $offeringId  BTCPay offering ID
+     * @param  string  $customerSelector  Customer selector (email, customer ID, or Email:email@example.com)
      * @return array Subscriber/subscription details
+     *
      * @throws BtcPayException
      */
     public function getSubscriber(string $storeId, string $offeringId, string $customerSelector): array
@@ -253,6 +261,7 @@ class SubscriptionService
             // URL encode the customer selector to handle email addresses and special characters
             $encodedSelector = rawurlencode($customerSelector);
             $response = $this->client->get("/api/v1/stores/{$storeId}/offerings/{$offeringId}/subscribers/{$encodedSelector}");
+
             return $response;
         } catch (BtcPayException $e) {
             Log::error('Failed to get subscriber', [
@@ -268,12 +277,13 @@ class SubscriptionService
 
     /**
      * Get subscriber credit balance.
-     * 
-     * @param string $storeId BTCPay store ID
-     * @param string $offeringId BTCPay offering ID
-     * @param string $customerSelector Customer selector (email, customer ID, or Email:email@example.com)
-     * @param string $currency Currency code (e.g., "SATS", "BTC")
+     *
+     * @param  string  $storeId  BTCPay store ID
+     * @param  string  $offeringId  BTCPay offering ID
+     * @param  string  $customerSelector  Customer selector (email, customer ID, or Email:email@example.com)
+     * @param  string  $currency  Currency code (e.g., "SATS", "BTC")
      * @return array Credit balance information
+     *
      * @throws BtcPayException
      */
     public function getSubscriberCredits(string $storeId, string $offeringId, string $customerSelector, string $currency = 'SATS'): array
@@ -282,6 +292,7 @@ class SubscriptionService
             $encodedSelector = rawurlencode($customerSelector);
             $encodedCurrency = rawurlencode($currency);
             $response = $this->client->get("/api/v1/stores/{$storeId}/offerings/{$offeringId}/subscribers/{$encodedSelector}/credits/{$encodedCurrency}");
+
             return $response;
         } catch (BtcPayException $e) {
             Log::error('Failed to get subscriber credits', [
@@ -298,13 +309,14 @@ class SubscriptionService
 
     /**
      * Add credit to subscriber account.
-     * 
-     * @param string $storeId BTCPay store ID
-     * @param string $offeringId BTCPay offering ID
-     * @param string $customerSelector Customer selector (email, customer ID, or Email:email@example.com)
-     * @param string $currency Currency code (e.g., "SATS", "BTC")
-     * @param float|int|string $amount Amount to add
+     *
+     * @param  string  $storeId  BTCPay store ID
+     * @param  string  $offeringId  BTCPay offering ID
+     * @param  string  $customerSelector  Customer selector (email, customer ID, or Email:email@example.com)
+     * @param  string  $currency  Currency code (e.g., "SATS", "BTC")
+     * @param  float|int|string  $amount  Amount to add
      * @return array Result of credit addition
+     *
      * @throws BtcPayException
      */
     public function addSubscriberCredits(string $storeId, string $offeringId, string $customerSelector, string $currency, $amount, ?string $description = null): array
@@ -324,6 +336,7 @@ class SubscriptionService
             }
 
             $response = $this->client->post("/api/v1/stores/{$storeId}/offerings/{$offeringId}/subscribers/{$encodedSelector}/credits/{$encodedCurrency}", $payload);
+
             return $response;
         } catch (BtcPayException $e) {
             Log::error('Failed to add subscriber credits', [
@@ -339,4 +352,3 @@ class SubscriptionService
         }
     }
 }
-

@@ -77,4 +77,3 @@ class GuestRecoveryTest extends TestCase
         $restoreResponse->assertJsonPath('message', 'Invalid signature.');
     }
 }
-

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\DocumentationArticleRequest;
 use App\Models\DocumentationArticle;
-use App\Models\DocumentationCategory;
 use Illuminate\Http\Request;
 
 class DocumentationArticleController extends Controller
@@ -34,7 +33,7 @@ class DocumentationArticleController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->whereRaw("title->>'en' ILIKE ?", ["%{$search}%"])
-                  ->orWhereRaw("content->>'en' ILIKE ?", ["%{$search}%"]);
+                    ->orWhereRaw("content->>'en' ILIKE ?", ["%{$search}%"]);
             });
         }
 
@@ -76,13 +75,13 @@ class DocumentationArticleController extends Controller
             $titleForSlug = $request->title['en'] ?? null;
             if (empty($titleForSlug)) {
                 foreach (['sk', 'es', 'cz', 'de', 'fr', 'hu', 'pl'] as $locale) {
-                    if (!empty($request->title[$locale])) {
+                    if (! empty($request->title[$locale])) {
                         $titleForSlug = $request->title[$locale];
                         break;
                     }
                 }
             }
-            if (!empty($titleForSlug)) {
+            if (! empty($titleForSlug)) {
                 $slug = DocumentationArticle::generateSlug($titleForSlug);
             }
         }
@@ -93,7 +92,7 @@ class DocumentationArticleController extends Controller
         $article = DocumentationArticle::create([
             'slug' => $slug,
             'title' => $request->title,
-            'content' => $request->content,
+            'content' => $this->sanitizeContent($request->content),
             'category_id' => $request->category_id,
             'order' => $request->order ?? 0,
             'is_published' => $request->boolean('is_published', false),
@@ -125,7 +124,7 @@ class DocumentationArticleController extends Controller
         $article->update([
             'slug' => $slug,
             'title' => $request->title,
-            'content' => $request->content,
+            'content' => $this->sanitizeContent($request->content),
             'category_id' => $request->category_id,
             'order' => $request->order ?? $article->order,
             'is_published' => $request->boolean('is_published', $article->is_published),
@@ -152,5 +151,34 @@ class DocumentationArticleController extends Controller
             'message' => __('messages.documentation_article_deleted'),
         ]);
     }
-}
 
+    /**
+     * Strip iframe tags whose src is not an allowed embed origin (YouTube only).
+     * Content is multilingual: array of locale => html strings.
+     */
+    private function sanitizeContent(mixed $content): mixed
+    {
+        if (! is_array($content)) {
+            return $content;
+        }
+
+        return array_map(function (string $html): string {
+            return preg_replace_callback(
+                '/<iframe\b[^>]*>.*?<\/iframe>/si',
+                function (array $matches): string {
+                    $full = $matches[0];
+                    if (preg_match('/\bsrc=["\']([^"\']*)["\']/', $full, $src)) {
+                        $url = $src[1];
+                        if (str_starts_with($url, 'https://www.youtube.com/')
+                            || str_starts_with($url, 'https://www.youtube-nocookie.com/')) {
+                            return $full;
+                        }
+                    }
+
+                    return '';
+                },
+                $html
+            );
+        }, $content);
+    }
+}

@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\Store;
+use App\Policies\StorePolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -24,6 +26,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Authorization policies
+        Gate::policy(Store::class, StorePolicy::class);
+
         // Custom route model binding for Store (UUID)
         Route::bind('store', function ($value) {
             return \App\Models\Store::where('id', $value)->firstOrFail();
@@ -47,8 +52,11 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('password-reset', function (Request $request) {
             return Limit::perMinute(5)->by($request->ip());
         });
+        // Per-user limiter for authenticated API endpoints (avoids shared-IP throttling)
+        RateLimiter::for('api-user', function (Request $request) {
+            return $request->user()
+                ? Limit::perMinute(120)->by('user:'.$request->user()->id)
+                : Limit::perMinute(30)->by($request->ip());
+        });
     }
 }
-
-
-

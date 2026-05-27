@@ -6,7 +6,6 @@ use App\Models\PosOrder;
 use App\Models\Store;
 use App\Models\User;
 use App\Services\BtcPay\InvoiceService;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Basic stats: invoice count and paid amount (30d + all time) per store.
@@ -46,7 +45,7 @@ class StatsService
 
         foreach ($all as $inv) {
             $status = $inv['status'] ?? null;
-            if (!in_array($status, ['Settled', 'Complete'], true)) {
+            if (! in_array($status, ['Settled', 'Complete'], true)) {
                 continue;
             }
             $countAll++;
@@ -88,7 +87,7 @@ class StatsService
             $overallInvoicesAll += $basic['invoice_count_all_time'];
 
             $currency = $basic['currency'] ?? 'EUR';
-            if (!isset($overallByCurrency[$currency])) {
+            if (! isset($overallByCurrency[$currency])) {
                 $overallByCurrency[$currency] = ['paid_amount_30d' => 0, 'paid_amount_all_time' => 0];
             }
             $overallByCurrency[$currency]['paid_amount_30d'] += $basic['paid_amount_30d'];
@@ -147,7 +146,7 @@ class StatsService
         do {
             $result = $this->invoiceService->listInvoices($btcpayStoreId, [], $skip, $take, $apiKey);
             $chunk = $result['data'] ?? $result;
-            if (!is_array($chunk)) {
+            if (! is_array($chunk)) {
                 break;
             }
             foreach ($chunk as $inv) {
@@ -155,6 +154,7 @@ class StatsService
             }
             $skip += $take;
         } while (count($chunk) === $take);
+
         return $out;
     }
 }

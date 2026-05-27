@@ -65,11 +65,3 @@ class StoreChecklist extends Model
         $this->update(['completed_at' => null]);
     }
 }
-
-
-
-
-
-
-
-

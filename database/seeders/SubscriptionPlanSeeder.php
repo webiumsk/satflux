@@ -9,7 +9,7 @@ class SubscriptionPlanSeeder extends Seeder
 {
     /**
      * Run the database seeds.
-     * 
+     *
      * Creates the three subscription plans: FREE, PRO, ENTERPRISE
      */
     public function run(): void
@@ -86,4 +86,3 @@ class SubscriptionPlanSeeder extends Seeder
         );
     }
 }
-

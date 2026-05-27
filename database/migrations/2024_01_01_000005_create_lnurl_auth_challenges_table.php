@@ -29,11 +29,3 @@ return new class extends Migration
         Schema::dropIfExists('lnurl_auth_challenges');
     }
 };
-
-
-
-
-
-
-
-

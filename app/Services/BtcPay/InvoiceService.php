@@ -62,14 +62,14 @@ class InvoiceService
      */
     public function forgetInvoiceCache(string $storeId, string $invoiceId, ?string $userApiKey = null): void
     {
-        $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
+        $apiKeyHash = $userApiKey ? hash('sha256', $userApiKey) : 'server';
         Cache::forget("btcpay:invoice:{$storeId}:{$invoiceId}:{$apiKeyHash}");
     }
 
     public function getInvoice(string $storeId, string $invoiceId, ?string $userApiKey = null): array
     {
         // Include API key hash in cache key to prevent cross-merchant cache pollution
-        $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
+        $apiKeyHash = $userApiKey ? hash('sha256', $userApiKey) : 'server';
         $cacheKey = "btcpay:invoice:{$storeId}:{$invoiceId}:{$apiKeyHash}";
 
         return Cache::remember($cacheKey, 3600, function () use ($storeId, $invoiceId, $userApiKey) {
@@ -98,8 +98,8 @@ class InvoiceService
     public function getInvoiceCount(string $storeId, array $filters = [], ?string $userApiKey = null): int
     {
         // Include API key hash in cache key to prevent cross-merchant cache pollution
-        $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
-        $cacheKey = "btcpay:invoice:count:{$storeId}:{$apiKeyHash}:".md5(serialize($filters));
+        $apiKeyHash = $userApiKey ? hash('sha256', $userApiKey) : 'server';
+        $cacheKey = "btcpay:invoice:count:{$storeId}:{$apiKeyHash}:".hash('sha256', serialize($filters));
 
         return Cache::remember($cacheKey, 3600, function () use ($storeId, $filters, $userApiKey) {
             // BTCPay API doesn't have a direct count endpoint, so we fetch a small page
@@ -119,7 +119,7 @@ class InvoiceService
      */
     public function getInvoicePaymentMethods(string $storeId, string $invoiceId, ?string $userApiKey = null): array
     {
-        $apiKeyHash = $userApiKey ? md5($userApiKey) : 'server';
+        $apiKeyHash = $userApiKey ? hash('sha256', $userApiKey) : 'server';
         $cacheKey = "btcpay:invoice:payment_methods:{$storeId}:{$invoiceId}:{$apiKeyHash}";
 
         return Cache::remember($cacheKey, 3600, function () use ($storeId, $invoiceId, $userApiKey) {

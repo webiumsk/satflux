@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasColumn('wallet_connections', 'encrypted_secret')) {
+        if (! Schema::hasColumn('wallet_connections', 'encrypted_secret')) {
             Schema::table('wallet_connections', function (Blueprint $table) {
                 $table->text('encrypted_secret')->nullable()->after('type');
             });

@@ -2,8 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Jobs\GenerateCsvExport;
-use App\Jobs\GenerateXlsxExport;
 use App\Models\Export;
 use App\Models\Store;
 use App\Services\SubscriptionService;
@@ -54,7 +52,7 @@ class ProcessMonthlyExports implements ShouldQueue
 
         foreach ($stores as $store) {
             $user = $store->user;
-            if (!$user || !$subscriptionService->canUseAutomaticExports($user)) {
+            if (! $user || ! $subscriptionService->canUseAutomaticExports($user)) {
                 continue;
             }
 
@@ -96,4 +94,3 @@ class ProcessMonthlyExports implements ShouldQueue
         }
     }
 }
-

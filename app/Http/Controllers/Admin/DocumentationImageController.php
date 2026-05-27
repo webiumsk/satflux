@@ -26,7 +26,7 @@ class DocumentationImageController extends Controller
             // Return relative URL so images load from the same origin as the frontend
             $fullUrl = Storage::disk('public')->url($path);
             $pathOnly = parse_url($fullUrl, PHP_URL_PATH);
-            $url = $pathOnly ? ('/' . ltrim($pathOnly, '/')) : '/storage/' . $path;
+            $url = $pathOnly ? ('/'.ltrim($pathOnly, '/')) : '/storage/'.$path;
 
             Log::info('Documentation image uploaded', [
                 'user_id' => $request->user()?->id,
@@ -46,7 +46,7 @@ class DocumentationImageController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
-            return response()->json(['message' => 'Failed to upload image: ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'Failed to upload image: '.$e->getMessage()], 500);
         }
     }
 }

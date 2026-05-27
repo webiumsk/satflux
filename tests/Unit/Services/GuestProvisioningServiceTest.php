@@ -2,12 +2,12 @@
 
 namespace Tests\Unit\Services;
 
-use App\Services\GuestBtcPayDecommissioner;
-use App\Services\GuestProvisioningService;
 use App\Services\BtcPay\BtcPayClient;
 use App\Services\BtcPay\StoreService;
 use App\Services\BtcPay\UserService;
 use App\Services\BtcPay\WebhookService;
+use App\Services\GuestBtcPayDecommissioner;
+use App\Services\GuestProvisioningService;
 use Tests\TestCase;
 
 class GuestProvisioningServiceTest extends TestCase

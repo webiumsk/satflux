@@ -36,8 +36,10 @@ class AppController extends Controller
                 $userApiKey = $store->user->getBtcPayApiKeyOrFail();
                 $btcpayApps = $this->appService->listApps($store->btcpay_store_id, $userApiKey);
                 $btcpayAppsMap = collect($btcpayApps)->keyBy('id');
+
                 return $localApps->map(function ($localApp) use ($btcpayAppsMap) {
                     $btcpayApp = $btcpayAppsMap->get($localApp->btcpay_app_id);
+
                     return $this->formatApp($localApp, $btcpayApp);
                 })->values()->all();
             } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
@@ -45,6 +47,7 @@ class AppController extends Controller
                     'store_id' => $store->id,
                     'error' => $e->getMessage(),
                 ]);
+
                 return $localApps->map(fn ($app) => $this->formatApp($app))->values()->all();
             }
         }
@@ -55,9 +58,10 @@ class AppController extends Controller
             if (empty($btcpayApps)) {
                 return [];
             }
+
             return collect($btcpayApps)->map(function ($btcpayApp) use ($store) {
                 $btcpayAppId = $btcpayApp['id'] ?? null;
-                if (!$btcpayAppId) {
+                if (! $btcpayAppId) {
                     return null;
                 }
                 $appType = $this->determineAppType($btcpayApp);
@@ -69,6 +73,7 @@ class AppController extends Controller
                     'name' => $btcpayApp['appName'] ?? $btcpayApp['name'] ?? 'Untitled App',
                     'config' => $btcpayApp,
                 ]);
+
                 return $this->formatApp($localApp, $btcpayApp);
             })->filter()->values()->all();
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
@@ -76,6 +81,7 @@ class AppController extends Controller
                 'store_id' => $store->id,
                 'error' => $e->getMessage(),
             ]);
+
             return [];
         }
     }
@@ -131,12 +137,12 @@ class AppController extends Controller
             $config['name'] = $request->name;
 
             // If currency is not specified in config, use store's default currency
-            if (!isset($config['currency'])) {
+            if (! isset($config['currency'])) {
                 $config['currency'] = $store->default_currency ?? 'EUR';
             }
 
             // Set default view for PointOfSale apps to Light (Keypad)
-            if ($request->app_type === 'PointOfSale' && !isset($config['defaultView'])) {
+            if ($request->app_type === 'PointOfSale' && ! isset($config['defaultView'])) {
                 $config['defaultView'] = 'Light';
             }
 
@@ -190,14 +196,16 @@ class AppController extends Controller
                     $matchingApps = array_filter($apps, function ($a) use ($appName, $appType) {
                         $nameMatches = ($a['name'] ?? $a['appName'] ?? '') === $appName;
                         $typeMatches = ($a['appType'] ?? $a['type'] ?? '') === $appType;
+
                         return $nameMatches && $typeMatches;
                     });
 
-                    if (!empty($matchingApps)) {
+                    if (! empty($matchingApps)) {
                         // Sort by created date (most recent first) to get the newly created app
                         usort($matchingApps, function ($a, $b) {
                             $aCreated = $a['created'] ?? $a['createdTime'] ?? 0;
                             $bCreated = $b['created'] ?? $b['createdTime'] ?? 0;
+
                             return $bCreated <=> $aCreated; // Descending order
                         });
 
@@ -282,6 +290,7 @@ class AppController extends Controller
                 $app->app_type,
                 $userApiKey
             );
+
             return $this->formatApp($app, $btcpayApp);
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
             Log::warning('BTCPay API failed when loading app, using local fallback', [
@@ -289,6 +298,7 @@ class AppController extends Controller
                 'btcpay_app_id' => $app->btcpay_app_id,
                 'error' => $e->getMessage(),
             ]);
+
             return $this->formatApp($app);
         }
     }
@@ -341,7 +351,7 @@ class AppController extends Controller
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
         // If app doesn't have btcpay_app_id, we need to create it in BTCPay first
-        if (!$app->btcpay_app_id) {
+        if (! $app->btcpay_app_id) {
             Log::warning('App update called but btcpay_app_id is missing - creating app in BTCPay first', [
                 'app_id' => $app->id,
                 'store_id' => $store->id,
@@ -360,7 +370,7 @@ class AppController extends Controller
             // Merge in any additional config fields from request
             if ($request->has('config')) {
                 $requestConfig = $request->config;
-                if (isset($requestConfig['name']) && !isset($requestConfig['appName'])) {
+                if (isset($requestConfig['name']) && ! isset($requestConfig['appName'])) {
                     $requestConfig['appName'] = $requestConfig['name'];
                     unset($requestConfig['name']);
                 }
@@ -425,7 +435,7 @@ class AppController extends Controller
             );
 
             // Map 'name' to 'appName' in request config
-            if (isset($config['name']) && !isset($config['appName'])) {
+            if (isset($config['name']) && ! isset($config['appName'])) {
                 $config['appName'] = $config['name'];
                 unset($config['name']);
             }
@@ -506,14 +516,16 @@ class AppController extends Controller
                 $matchingApps = array_filter($apps, function ($a) use ($appName, $appType) {
                     $nameMatches = ($a['name'] ?? $a['appName'] ?? '') === $appName;
                     $typeMatches = ($a['appType'] ?? $a['type'] ?? '') === $appType;
+
                     return $nameMatches && $typeMatches;
                 });
 
-                if (!empty($matchingApps)) {
+                if (! empty($matchingApps)) {
                     // Get the most recent matching app
                     usort($matchingApps, function ($a, $b) {
                         $aCreated = $a['created'] ?? $a['createdTime'] ?? 0;
                         $bCreated = $b['created'] ?? $b['createdTime'] ?? 0;
+
                         return $bCreated <=> $aCreated;
                     });
 
@@ -538,7 +550,7 @@ class AppController extends Controller
             }
 
             // If still no btcpay_app_id after trying to find it, return error
-            if (!$app->btcpay_app_id) {
+            if (! $app->btcpay_app_id) {
                 return response()->json([
                     'message' => 'Cannot update app: BTCPay app ID is missing. Please contact support.',
                 ], 400);
@@ -554,7 +566,7 @@ class AppController extends Controller
                     'message' => 'BTCPay Greenfield API does not expose PUT for Payment Button apps. Change settings in BTCPay Server UI or recreate the app.',
                 ], 422);
             }
-            if (!$request->has('archived')) {
+            if (! $request->has('archived')) {
                 return response()->json([
                     'message' => 'No updatable fields provided for this app type.',
                 ], 422);
@@ -699,7 +711,7 @@ class AppController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Failed to delete app from BTCPay: ' . $e->getMessage(),
+                'message' => 'Failed to delete app from BTCPay: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -714,7 +726,7 @@ class AppController extends Controller
 
         // BTCPay API may return products in 'items' field (GET) or 'template' field (POST/PUT)
         // Normalize 'items' to 'template' for frontend consistency
-        if (isset($config['items']) && !isset($config['template'])) {
+        if (isset($config['items']) && ! isset($config['template'])) {
             $config['template'] = $config['items'];
         }
 
@@ -756,7 +768,7 @@ class AppController extends Controller
         if ($btcpayApp) {
             // Update local app config with BTCPay data (but keep local-only fields)
             // This ensures we have the latest template/products from BTCPay
-            if (!empty($btcpayApp)) {
+            if (! empty($btcpayApp)) {
                 $app->config = array_merge($app->config ?? [], $btcpayApp);
                 $app->save();
             }
@@ -840,26 +852,22 @@ class AppController extends Controller
     /**
      * Generate BTCPay app URL based on app type.
      * Different app types have different URL patterns in BTCPay.
-     *
-     * @param string $appType
-     * @param string $appId
-     * @return string
      */
     protected function generateAppUrl(string $appType, string $appId): string
     {
         $baseUrl = config('services.btcpay.base_url');
-        $basePath = $baseUrl . '/apps/' . $appId;
+        $basePath = $baseUrl.'/apps/'.$appId;
 
         // Different app types have different URL patterns
         switch (strtolower($appType)) {
             case 'pointofsale':
-                return $basePath . '/pos';
+                return $basePath.'/pos';
             case 'crowdfund':
-                return $basePath . '/crowdfund';
+                return $basePath.'/crowdfund';
             case 'paymentbutton':
-                return $basePath . '/paymentbutton';
+                return $basePath.'/paymentbutton';
             case 'lightningaddress':
-                return $basePath . '/lnaddress';
+                return $basePath.'/lnaddress';
             default:
                 // Default to base path if app type is unknown
                 return $basePath;
@@ -881,5 +889,3 @@ class AppController extends Controller
         return 'PointOfSale';
     }
 }
-
-

@@ -9,5 +9,6 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 /** Support/admin only: instant wallet connection notifications (Reverb) */
 Broadcast::channel('support.wallet-connections', function ($user) {
     $user->makeVisible('role');
+
     return $user->role === 'support' || $user->role === 'admin';
 });

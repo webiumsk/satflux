@@ -8,10 +8,10 @@ use App\Services\BtcPay\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
@@ -35,7 +35,7 @@ class EmailVerificationController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user) {
+        if (! $user) {
             throw ValidationException::withMessages([
                 'email' => ['We could not find a user with that email address.'],
             ]);
@@ -70,7 +70,7 @@ class EmailVerificationController extends Controller
     public function verify(Request $request, $id, $hash)
     {
         // Ensure we always return JSON, never redirect
-        if (!$request->expectsJson() && !$request->wantsJson()) {
+        if (! $request->expectsJson() && ! $request->wantsJson()) {
             $request->headers->set('Accept', 'application/json');
         }
 
@@ -81,7 +81,7 @@ class EmailVerificationController extends Controller
         ]);
 
         // id and hash come from route parameters
-        if (!$id || !$hash) {
+        if (! $id || ! $hash) {
             return response()->json([
                 'message' => 'Invalid verification link. Missing id or hash.',
             ], 400);
@@ -142,7 +142,7 @@ class EmailVerificationController extends Controller
 
         // Get the correct base URL
         $baseUrl = rtrim(config('app.url'), '/');
-        $correctUrl = $baseUrl . '/api/auth/verify-email/' . $id . '/' . $hash;
+        $correctUrl = $baseUrl.'/api/auth/verify-email/'.$id.'/'.$hash;
 
         // Get query parameters for signature validation
         // Password is now stored in cache, not in URL query params
@@ -152,11 +152,11 @@ class EmailVerificationController extends Controller
         $queryStringForValidation = http_build_query($queryParams);
 
         // Create a proper request with correct URL for validation (without password)
-        $validationRequest = Request::create($correctUrl . '?' . $queryStringForValidation, 'GET');
+        $validationRequest = Request::create($correctUrl.'?'.$queryStringForValidation, 'GET');
 
         // Set server variables to match Laravel's expectations
         $parsedUrl = parse_url($baseUrl);
-        $validationRequest->server->set('HTTP_HOST', $parsedUrl['host'] . (isset($parsedUrl['port']) ? ':' . $parsedUrl['port'] : ''));
+        $validationRequest->server->set('HTTP_HOST', $parsedUrl['host'].(isset($parsedUrl['port']) ? ':'.$parsedUrl['port'] : ''));
         $validationRequest->server->set('SERVER_NAME', $parsedUrl['host']);
         $validationRequest->server->set('QUERY_STRING', $queryStringForValidation);
 
@@ -187,7 +187,7 @@ class EmailVerificationController extends Controller
         }
 
         // Verify hash matches email (hash comes from route parameter, not request)
-        if (!$user->email || !hash_equals((string) $hash, sha1($user->email))) {
+        if (! $user->email || ! hash_equals((string) $hash, sha1($user->email))) {
             return response()->json([
                 'message' => 'Invalid verification link.',
             ], 400);
@@ -209,7 +209,7 @@ class EmailVerificationController extends Controller
 
             // Create or link BTCPay user
             // When password is provided, user will be created as active (not "Pending Invitation")
-            if (!$user->btcpay_user_id && $user->email) {
+            if (! $user->btcpay_user_id && $user->email) {
                 try {
                     // First check if user exists on BTCPay Server
                     $existingBtcpayUser = $this->userService->getUserByEmail($user->email);
@@ -244,12 +244,12 @@ class EmailVerificationController extends Controller
                             'user_id' => $user->id,
                             'btcpay_user_id' => $btcpayUserId,
                             'email_confirmed_btcpay' => $btcpayUser['emailConfirmed'] ?? false,
-                            'has_invitation_url' => !empty($btcpayUser['invitationUrl'] ?? null),
+                            'has_invitation_url' => ! empty($btcpayUser['invitationUrl'] ?? null),
                         ];
 
                         // Even when password is provided, BTCPay may still return invitationUrl
                         // In this case, we need to accept the invitation to activate the user
-                        if (!empty($btcpayUser['invitationUrl'] ?? null)) {
+                        if (! empty($btcpayUser['invitationUrl'] ?? null)) {
                             Log::info('Created new BTCPay user but invitation URL present, attempting to accept invitation', $logData);
 
                             // Try to accept invitation programmatically
@@ -276,7 +276,7 @@ class EmailVerificationController extends Controller
 
                     // Create user-level API key for BTCPay user (if not already exists)
                     // User should be active now since password was provided, so API key creation should work
-                    if ($user->btcpay_user_id && !$user->btcpay_api_key) {
+                    if ($user->btcpay_user_id && ! $user->btcpay_api_key) {
                         try {
                             // Check user status first
                             $btcpayUser = $this->userService->getUser($user->btcpay_user_id);
@@ -295,7 +295,7 @@ class EmailVerificationController extends Controller
                                 $user->btcpay_user_id,
                                 [], // Empty = use config('btcpay_merchant_permissions.merchant_api_key')
                                 [], // Allow access to all user's stores (empty = no restriction)
-                                'satflux.io API Key - ' . $user->email
+                                'satflux.io API Key - '.$user->email
                             );
 
                             $apiKey = $apiKeyData['apiKey'] ?? null;
@@ -352,4 +352,3 @@ class EmailVerificationController extends Controller
         });
     }
 }
-

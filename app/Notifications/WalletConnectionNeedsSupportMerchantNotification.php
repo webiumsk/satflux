@@ -18,8 +18,7 @@ class WalletConnectionNeedsSupportMerchantNotification extends Notification
     public function __construct(
         public Store $store,
         public WalletConnection $walletConnection
-    ) {
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -33,14 +32,14 @@ class WalletConnectionNeedsSupportMerchantNotification extends Notification
         $masked = $this->walletConnection->masked_secret ?: '******';
 
         $mail = (new MailMessage)
-            ->subject('Wallet connection needs support - ' . $this->store->name)
+            ->subject('Wallet connection needs support - '.$this->store->name)
             ->line('Your wallet connection is being configured by our support team.')
             ->line("Store: {$this->store->name}")
-            ->line('**Masked connection (for your records):** `' . $masked . '`')
+            ->line('**Masked connection (for your records):** `'.$masked.'`')
             ->line("You'll be notified when it's ready.");
 
         if ($this->walletConnection->bot_failure_message) {
-            $mail->line('**Technical details (for your reference):** ' . $this->walletConnection->bot_failure_message);
+            $mail->line('**Technical details (for your reference):** '.$this->walletConnection->bot_failure_message);
         }
 
         return $mail

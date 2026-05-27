@@ -1,9 +1,6 @@
 <?php
 
 use Monolog\Handler\NullHandler;
-use Monolog\Handler\StreamHandler;
-use Monolog\Handler\SyslogUdpHandler;
-use Monolog\Processor\PsrLogMessageProcessor;
 
 return [
 
@@ -55,7 +52,7 @@ return [
     'channels' => [
         'stack' => [
             'driver' => 'stack',
-            'channels' => ['single'],
+            'channels' => ['daily'],
             'ignore_exceptions' => false,
         ],
 
@@ -81,9 +78,10 @@ return [
                 'level' => env('LOG_LEVEL', 'debug'),
             ]
             : [
-                'driver' => 'single',
+                'driver' => 'daily',
                 'path' => storage_path('logs/btcpay.log'),
                 'level' => env('LOG_LEVEL', 'debug'),
+                'days' => 14,
                 'replace_placeholders' => true,
             ],
 
@@ -105,7 +103,7 @@ return [
             'handler' => NullHandler::class,
         ],
 
-        'emergency' => env('APP_ENV') === 'testing' 
+        'emergency' => env('APP_ENV') === 'testing'
             ? [
                 'driver' => 'monolog',
                 'handler' => NullHandler::class,
@@ -117,11 +115,3 @@ return [
     ],
 
 ];
-
-
-
-
-
-
-
-

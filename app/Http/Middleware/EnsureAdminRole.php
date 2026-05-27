@@ -17,17 +17,10 @@ class EnsureAdminRole
     {
         $user = $request->user();
 
-        if (!$user || !$user->isAdmin()) {
+        if (! $user || ! $user->isAdmin()) {
             abort(403, 'Unauthorized. Admin role required.');
         }
 
         return $next($request);
     }
 }
-
-
-
-
-
-
-

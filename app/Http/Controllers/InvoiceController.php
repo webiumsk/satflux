@@ -25,42 +25,39 @@ class InvoiceController extends Controller
     public function index(Request $request)
     {
         $store = $request->route('store');
-        
+
         // Load merchant API key from store owner
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
-        
+
+        $request->validate([
+            'date_from' => ['nullable', 'date_format:Y-m-d'],
+            'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+            'status' => ['nullable', 'string', 'max:32'],
+            'skip' => ['nullable', 'integer', 'min:0'],
+            'take' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
         // Build filters from query parameters
         $filters = [];
-        
+
         // Status filter
-        if ($request->has('status') && $request->status) {
+        if ($request->filled('status')) {
             $filters['status'] = $request->status;
         }
-        
+
         // Date range filters (BTCPay expects Unix timestamps)
-        if ($request->has('date_from') && $request->date_from) {
-            // Convert date string to Unix timestamp (seconds)
-            $dateFrom = strtotime($request->date_from);
-            if ($dateFrom !== false) {
-                // BTCPay expects startDate as Unix timestamp in seconds
-                $filters['startDate'] = $dateFrom;
-            }
+        if ($request->filled('date_from')) {
+            $filters['startDate'] = strtotime($request->date_from);
         }
-        
-        if ($request->has('date_to') && $request->date_to) {
-            // Convert date string to Unix timestamp (seconds)
-            // Add 23:59:59 to include the entire day
-            $dateTo = strtotime($request->date_to . ' 23:59:59');
-            if ($dateTo !== false) {
-                // BTCPay expects endDate as Unix timestamp in seconds
-                $filters['endDate'] = $dateTo;
-            }
+
+        if ($request->filled('date_to')) {
+            $filters['endDate'] = strtotime($request->date_to.' 23:59:59');
         }
-        
+
         // Pagination
         $skip = $request->get('skip', 0);
         $take = $request->get('take', 100);
-        
+
         try {
             // Fetch invoices from BTCPay API
             $response = $this->invoiceService->listInvoices(
@@ -70,10 +67,10 @@ class InvoiceController extends Controller
                 $take,
                 $userApiKey
             );
-            
+
             // BTCPay API returns invoices in the data array
             $invoices = $response['data'] ?? $response;
-            
+
             // Format invoices for frontend
             $formattedInvoices = array_map(function ($invoice) {
                 return [
@@ -88,7 +85,7 @@ class InvoiceController extends Controller
                     'paid_at' => $invoice['paidTime'] ?? null,
                 ];
             }, is_array($invoices) ? $invoices : []);
-            
+
             return response()->json([
                 'data' => $formattedInvoices,
                 'meta' => [
@@ -99,7 +96,7 @@ class InvoiceController extends Controller
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Failed to load invoices: ' . $e->getMessage(),
+                'message' => 'Failed to load invoices: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -114,7 +111,7 @@ class InvoiceController extends Controller
         $store = $request->route('store');
         $format = $request->query('format', 'csv');
 
-        if ($format === 'xlsx' && !$this->subscriptionService->canUseXlsxExport($request->user())) {
+        if ($format === 'xlsx' && ! $this->subscriptionService->canUseXlsxExport($request->user())) {
             return response()->json([
                 'message' => 'XLSX export is available in Pro and above. Please upgrade.',
             ], 403);
@@ -133,7 +130,7 @@ class InvoiceController extends Controller
             }
         }
         if ($request->has('date_to') && $request->date_to) {
-            $dateTo = strtotime($request->date_to . ' 23:59:59');
+            $dateTo = strtotime($request->date_to.' 23:59:59');
             if ($dateTo !== false) {
                 $filters['endDate'] = $dateTo;
             }
@@ -157,6 +154,7 @@ class InvoiceController extends Controller
                 if ($format === 'xlsx') {
                     return $this->streamXlsxExport($store, $filters, $userApiKey);
                 }
+
                 return $this->streamCsvExport($store, $filters, $userApiKey);
             }
 
@@ -183,7 +181,7 @@ class InvoiceController extends Controller
             ], 202);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Failed to export invoices: ' . $e->getMessage(),
+                'message' => 'Failed to export invoices: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -193,7 +191,7 @@ class InvoiceController extends Controller
      */
     protected function streamCsvExport($store, array $filters, string $userApiKey): StreamedResponse
     {
-        $filename = 'invoices-' . date('Y-m-d_His') . '.csv';
+        $filename = 'invoices-'.date('Y-m-d_His').'.csv';
 
         return new StreamedResponse(function () use ($store, $filters, $userApiKey) {
             $handle = fopen('php://output', 'w');
@@ -236,7 +234,7 @@ class InvoiceController extends Controller
                 $invoices = $response['data'] ?? $response;
 
                 // Ensure it's an array
-                if (!is_array($invoices)) {
+                if (! is_array($invoices)) {
                     $invoices = [];
                 }
 
@@ -246,12 +244,12 @@ class InvoiceController extends Controller
                     if (isset($invoice['buyer']['buyerEmail'])) {
                         $buyerEmail = $invoice['buyer']['buyerEmail'];
                     }
-                    
+
                     $orderId = '';
                     if (isset($invoice['metadata']['orderId'])) {
                         $orderId = $invoice['metadata']['orderId'];
                     }
-                    
+
                     $paymentMethods = '';
                     if (isset($invoice['availablePaymentMethods']) && is_array($invoice['availablePaymentMethods'])) {
                         $paymentMethods = implode(',', $invoice['availablePaymentMethods']);
@@ -299,7 +297,7 @@ class InvoiceController extends Controller
             fclose($handle);
         }, 200, [
             'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
     }
 
@@ -308,10 +306,10 @@ class InvoiceController extends Controller
      */
     protected function streamXlsxExport($store, array $filters, string $userApiKey): StreamedResponse
     {
-        $filename = 'invoices-' . date('Y-m-d_His') . '.xlsx';
+        $filename = 'invoices-'.date('Y-m-d_His').'.xlsx';
 
         return new StreamedResponse(function () use ($store, $filters, $userApiKey) {
-            $spreadsheet = new Spreadsheet();
+            $spreadsheet = new Spreadsheet;
             $sheet = $spreadsheet->getActiveSheet();
             $sheet->setTitle('Invoices');
 
@@ -334,7 +332,7 @@ class InvoiceController extends Controller
                     $userApiKey
                 );
                 $invoices = $response['data'] ?? $response;
-                if (!is_array($invoices)) {
+                if (! is_array($invoices)) {
                     $invoices = [];
                 }
 
@@ -374,7 +372,7 @@ class InvoiceController extends Controller
                         $invoice['buyer']['buyerEmail'] ?? '',
                         $invoice['metadata']['orderId'] ?? '',
                         $invoice['checkoutLink'] ?? '',
-                    ], null, 'A' . $row);
+                    ], null, 'A'.$row);
                     $row++;
                 }
 
@@ -385,7 +383,7 @@ class InvoiceController extends Controller
             $writer->save('php://output');
         }, 200, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
     }
 
@@ -399,7 +397,7 @@ class InvoiceController extends Controller
             return ['pos' => '', 'tax' => '', 'tip' => '', 'discount' => ''];
         }
         $data = is_string($posData) ? json_decode($posData, true) : $posData;
-        if (!is_array($data)) {
+        if (! is_array($data)) {
             return ['pos' => '', 'tax' => '', 'tip' => '', 'discount' => ''];
         }
         $posLabel = '';
@@ -432,8 +430,7 @@ class InvoiceController extends Controller
             $ts = $ts / 1000;
         }
         $date = \DateTime::createFromFormat('U', (string) (int) $ts);
+
         return $date ? $date->format('d.m.Y H:i') : (string) $createdTime;
     }
 }
-
-

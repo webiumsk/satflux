@@ -32,6 +32,7 @@ class ListUsers extends Command
 
         if ($users->isEmpty()) {
             $this->info('No users found.');
+
             return Command::SUCCESS;
         }
 
@@ -56,4 +57,3 @@ class ListUsers extends Command
         return Command::SUCCESS;
     }
 }
-

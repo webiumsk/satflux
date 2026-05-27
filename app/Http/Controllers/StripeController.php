@@ -6,8 +6,6 @@ use App\Models\Store;
 use App\Services\BtcPay\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
 
 class StripeController extends Controller
 {
@@ -24,6 +22,7 @@ class StripeController extends Controller
 
         try {
             $settings = $this->stripeService->getSettings($store->btcpay_store_id, $userApiKey);
+
             return response()->json($settings);
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
             return $this->handleBtcPayError($e, 'get Stripe settings');
@@ -54,6 +53,7 @@ class StripeController extends Controller
 
         try {
             $settings = $this->stripeService->updateSettings($store->btcpay_store_id, $payload, $userApiKey);
+
             return response()->json($settings);
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
             return $this->handleBtcPayError($e, 'update Stripe settings', true);
@@ -69,6 +69,7 @@ class StripeController extends Controller
 
         try {
             $this->stripeService->deleteSettings($store->btcpay_store_id, $userApiKey);
+
             return response()->json([], 200);
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
             return $this->handleBtcPayError($e, 'delete Stripe credentials');
@@ -84,6 +85,7 @@ class StripeController extends Controller
 
         try {
             $result = $this->stripeService->testConnection($store->btcpay_store_id, $userApiKey);
+
             return response()->json($result);
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
             return $this->handleBtcPayError($e, 'test Stripe connection');
@@ -99,6 +101,7 @@ class StripeController extends Controller
 
         try {
             $result = $this->stripeService->registerWebhook($store->btcpay_store_id, $userApiKey);
+
             return response()->json($result);
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
             return $this->handleBtcPayError($e, 'register Stripe webhook');
@@ -114,6 +117,7 @@ class StripeController extends Controller
 
         try {
             $status = $this->stripeService->getWebhookStatus($store->btcpay_store_id, $userApiKey);
+
             return response()->json($status);
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
             return $this->handleBtcPayError($e, 'get webhook status');

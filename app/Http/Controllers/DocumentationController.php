@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\DocumentationArticle;
 use App\Models\DocumentationCategory;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class DocumentationController extends Controller
 {
@@ -18,6 +17,7 @@ class DocumentationController extends Controller
         if ($locale && in_array($locale, self::SUPPORTED_LOCALES, true)) {
             return $locale;
         }
+
         return app()->getLocale();
     }
 
@@ -47,14 +47,14 @@ class DocumentationController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search, $locale) {
                 $q->whereRaw("title->>'{$locale}' ILIKE ?", ["%{$search}%"])
-                  ->orWhereRaw("content->>'{$locale}' ILIKE ?", ["%{$search}%"])
+                    ->orWhereRaw("content->>'{$locale}' ILIKE ?", ["%{$search}%"])
                   // Fallback to English if current locale doesn't have content
-                  ->orWhereRaw("title->>'en' ILIKE ?", ["%{$search}%"])
-                  ->orWhereRaw("content->>'en' ILIKE ?", ["%{$search}%"]);
+                    ->orWhereRaw("title->>'en' ILIKE ?", ["%{$search}%"])
+                    ->orWhereRaw("content->>'en' ILIKE ?", ["%{$search}%"]);
             });
         }
 
-        $articles = $query->get()->map(function ($article) use ($locale) {
+        $articles = $query->get()->map(function ($article) {
             return [
                 'id' => $article->id,
                 'slug' => $article->slug,
@@ -75,7 +75,7 @@ class DocumentationController extends Controller
         $categories = DocumentationCategory::active()
             ->orderBy('order')
             ->get()
-            ->map(function ($category) use ($locale) {
+            ->map(function ($category) {
                 return [
                     'id' => $category->id,
                     'slug' => $category->slug,
@@ -125,4 +125,3 @@ class DocumentationController extends Controller
         ]);
     }
 }
-

@@ -38,11 +38,12 @@ class MerchantApiKeyService
      * the stored btcpay_api_key directly. The DELETE endpoint accepts the key string.
      *
      * @return bool True if upgraded, false if skipped (e.g. no key found)
+     *
      * @throws BtcPayException
      */
     public function upgradeApiKey(User $user): bool
     {
-        if (!$user->btcpay_user_id || !$user->btcpay_api_key) {
+        if (! $user->btcpay_user_id || ! $user->btcpay_api_key) {
             Log::info('MerchantApiKeyService: skipping upgrade - user has no btcpay_user_id or btcpay_api_key', [
                 'user_id' => $user->id,
             ]);
@@ -51,7 +52,7 @@ class MerchantApiKeyService
         }
 
         $oldKey = $user->btcpay_api_key;
-        $label = self::LABEL_PREFIX . ' - ' . $user->email;
+        $label = self::LABEL_PREFIX.' - '.$user->email;
 
         try {
             $apiKeyData = $this->userService->createApiKey(
@@ -62,7 +63,7 @@ class MerchantApiKeyService
             );
 
             $newKey = $apiKeyData['apiKey'] ?? null;
-            if (!$newKey) {
+            if (! $newKey) {
                 Log::error('MerchantApiKeyService: createApiKey did not return apiKey', [
                     'user_id' => $user->id,
                 ]);

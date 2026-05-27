@@ -63,4 +63,3 @@ class FaqItemRequest extends FormRequest
         ];
     }
 }
-

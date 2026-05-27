@@ -3,7 +3,8 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
-return new class extends Migration {
+return new class extends Migration
+{
     /**
      * Run the migrations.
      */
@@ -13,7 +14,7 @@ return new class extends Migration {
 
         if ($driver === 'pgsql') {
             // Drop existing check constraint
-            DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check");
+            DB::statement('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check');
 
             // Create new check constraint with all valid roles including 'pro' and 'enterprise'
             DB::statement("ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('merchant', 'support', 'admin', 'pro', 'enterprise'))");
@@ -30,7 +31,7 @@ return new class extends Migration {
 
         if ($driver === 'pgsql') {
             // Drop the new constraint
-            DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check");
+            DB::statement('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check');
 
             // Restore old constraint (without pro and enterprise)
             DB::statement("ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('merchant', 'support', 'admin'))");

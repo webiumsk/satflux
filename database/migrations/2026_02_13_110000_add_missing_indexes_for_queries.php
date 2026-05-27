@@ -40,6 +40,7 @@ return new class extends Migration
                 'SELECT 1 FROM pg_indexes WHERE schemaname = ? AND tablename = ? AND indexname = ?',
                 ['public', $tableName, $indexName]
             );
+
             return $result !== null;
         }
         if ($driver === 'mysql') {
@@ -48,6 +49,7 @@ return new class extends Migration
                 'SELECT 1 FROM information_schema.statistics WHERE table_schema = ? AND table_name = ? AND index_name = ?',
                 [$db, $tableName, $indexName]
             );
+
             return $result !== null;
         }
         if ($driver === 'sqlite') {
@@ -55,8 +57,10 @@ return new class extends Migration
                 "SELECT 1 FROM sqlite_master WHERE type = 'index' AND tbl_name = ? AND name = ?",
                 [$tableName, $indexName]
             );
+
             return $result !== null;
         }
+
         return false;
     }
 

@@ -75,6 +75,7 @@ class DocumentationArticle extends Model
         if ($categoryId) {
             return $query->where('category_id', $categoryId);
         }
+
         return $query;
     }
 
@@ -85,16 +86,16 @@ class DocumentationArticle extends Model
     {
         $locale = app()->getLocale();
         $title = $this->title;
-        
+
         if (is_array($title) && isset($title[$locale])) {
             return $title[$locale];
         }
-        
+
         // Fallback to English
         if (is_array($title) && isset($title['en'])) {
             return $title['en'];
         }
-        
+
         return null;
     }
 
@@ -105,16 +106,16 @@ class DocumentationArticle extends Model
     {
         $locale = app()->getLocale();
         $content = $this->content;
-        
+
         if (is_array($content) && isset($content[$locale])) {
             return $content[$locale];
         }
-        
+
         // Fallback to English
         if (is_array($content) && isset($content['en'])) {
             return $content['en'];
         }
-        
+
         return null;
     }
 
@@ -125,16 +126,16 @@ class DocumentationArticle extends Model
     {
         $locale = app()->getLocale();
         $meta = $this->meta_description;
-        
+
         if (is_array($meta) && isset($meta[$locale])) {
             return $meta[$locale];
         }
-        
+
         // Fallback to English
         if (is_array($meta) && isset($meta['en'])) {
             return $meta['en'];
         }
-        
+
         return null;
     }
 
@@ -148,11 +149,10 @@ class DocumentationArticle extends Model
         $counter = 1;
 
         while (static::where('slug', $slug)->exists()) {
-            $slug = $originalSlug . '-' . $counter;
+            $slug = $originalSlug.'-'.$counter;
             $counter++;
         }
 
         return $slug;
     }
 }
-

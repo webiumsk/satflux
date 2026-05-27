@@ -28,10 +28,11 @@ class WebhookController extends Controller
 
         if ($secret) {
             $signature = $request->header('BTCPay-Sig');
-            if (!$signature) {
+            if (! $signature) {
                 Log::warning('BTCPay webhook received without signature header', [
                     'ip' => $request->ip(),
                 ]);
+
                 return response()->json(['error' => 'Missing signature'], 401);
             }
 
@@ -39,27 +40,22 @@ class WebhookController extends Controller
             $rawPayload = $request->getContent();
             $expectedSignature = hash_hmac('sha256', $rawPayload, $secret);
 
-            if (!hash_equals($expectedSignature, $signature)) {
+            if (! hash_equals($expectedSignature, $signature)) {
                 Log::warning('BTCPay webhook signature verification failed', [
                     'ip' => $request->ip(),
                 ]);
+
                 return response()->json(['error' => 'Invalid signature'], 401);
             }
 
             $verified = true;
         } else {
-            if (app()->environment('production')) {
-                Log::error('BTCPay webhook rejected in production because no webhook secret is configured', [
-                    'ip' => $request->ip(),
-                    'store_id' => $store?->id,
-                ]);
-
-                return response()->json(['error' => 'Webhook secret not configured'], 401);
-            }
-
-            Log::warning('BTCPay webhook received without verification (no store webhook_secret and BTCPAY_WEBHOOK_SECRET not set)', [
+            Log::error('BTCPay webhook rejected: no webhook secret configured', [
                 'ip' => $request->ip(),
+                'store_id' => $store?->id,
             ]);
+
+            return response()->json(['error' => 'Webhook secret not configured'], 401);
         }
 
         $eventType = $payload['type'] ?? $payload['eventType'] ?? 'unknown';
@@ -78,10 +74,3 @@ class WebhookController extends Controller
         return response()->json(['status' => 'received']);
     }
 }
-
-
-
-
-
-
-

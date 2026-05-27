@@ -60,16 +60,16 @@ class FaqCategory extends Model
     {
         $locale = app()->getLocale();
         $name = $this->name;
-        
+
         if (is_array($name) && isset($name[$locale])) {
             return $name[$locale];
         }
-        
+
         // Fallback to English
         if (is_array($name) && isset($name['en'])) {
             return $name['en'];
         }
-        
+
         return null;
     }
 
@@ -80,17 +80,16 @@ class FaqCategory extends Model
     {
         $locale = app()->getLocale();
         $description = $this->description;
-        
+
         if (is_array($description) && isset($description[$locale])) {
             return $description[$locale];
         }
-        
+
         // Fallback to English
         if (is_array($description) && isset($description['en'])) {
             return $description['en'];
         }
-        
+
         return null;
     }
 }
-

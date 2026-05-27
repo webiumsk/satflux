@@ -76,6 +76,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import DOMPurify from 'dompurify';
 
 const { t } = useI18n();
 
@@ -111,14 +112,14 @@ const handleHelpful = (itemId: string) => {
 
 const formatAnswer = (answer: string) => {
   if (!answer) return '';
-  
-  // Simple markdown-like formatting
   let formatted = answer.replace(/\n\n/g, '</p><p>');
   formatted = formatted.replace(/\n/g, '<br>');
   formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  
-  return `<p>${formatted}</p>`;
+  return DOMPurify.sanitize(`<p>${formatted}</p>`, {
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'em'],
+    ALLOWED_ATTR: [],
+  });
 };
 
 // Auto-open items that match search query

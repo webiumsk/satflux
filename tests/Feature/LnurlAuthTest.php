@@ -6,8 +6,8 @@ use App\Models\LnurlAuthChallenge;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
-use Tests\TestCase;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
 class LnurlAuthTest extends TestCase
 {
@@ -122,7 +122,7 @@ class LnurlAuthTest extends TestCase
     #[Test]
     public function challenge_status_returns_404_for_unknown_k1(): void
     {
-        $response = $this->getJson('/api/lnurl-auth/challenge-status/' . str_repeat('a', 64));
+        $response = $this->getJson('/api/lnurl-auth/challenge-status/'.str_repeat('a', 64));
 
         $response->assertStatus(404)
             ->assertJsonPath('status', 'error')
@@ -137,7 +137,7 @@ class LnurlAuthTest extends TestCase
             'expires_at' => now()->addMinutes(5),
         ]);
 
-        $response = $this->getJson('/api/lnurl-auth/challenge-status/' . $challenge->k1);
+        $response = $this->getJson('/api/lnurl-auth/challenge-status/'.$challenge->k1);
 
         $response->assertStatus(200)
             ->assertJsonPath('status', 'pending');
@@ -151,7 +151,7 @@ class LnurlAuthTest extends TestCase
             'expires_at' => now()->subMinute(),
         ]);
 
-        $response = $this->getJson('/api/lnurl-auth/challenge-status/' . $challenge->k1);
+        $response = $this->getJson('/api/lnurl-auth/challenge-status/'.$challenge->k1);
 
         $response->assertStatus(200)
             ->assertJsonPath('status', 'expired');
@@ -169,7 +169,7 @@ class LnurlAuthTest extends TestCase
             'consumed_at' => now(),
         ]);
 
-        $response = $this->getJson('/api/lnurl-auth/challenge-status/' . $challenge->k1);
+        $response = $this->getJson('/api/lnurl-auth/challenge-status/'.$challenge->k1);
 
         $response->assertStatus(200)
             ->assertJsonPath('status', 'linked')
@@ -188,7 +188,7 @@ class LnurlAuthTest extends TestCase
             'consumed_at' => now(),
         ]);
 
-        $response = $this->getJson('/api/lnurl-auth/challenge-status/' . $challenge->k1);
+        $response = $this->getJson('/api/lnurl-auth/challenge-status/'.$challenge->k1);
 
         $response->assertStatus(200)
             ->assertJsonPath('status', 'reveal_confirmed');

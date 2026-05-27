@@ -1,9 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -30,31 +28,31 @@ return new class extends Migration
                 AND a.attname = 'role' 
                 AND t.typtype = 'e'
             ");
-            
+
             if ($enumType && isset($enumType->typname)) {
                 $oldTypeName = $enumType->typname;
-                $newTypeName = $oldTypeName . '_new';
-                
+                $newTypeName = $oldTypeName.'_new';
+
                 // First, drop the default constraint
-                DB::statement("ALTER TABLE users ALTER COLUMN role DROP DEFAULT");
-                
+                DB::statement('ALTER TABLE users ALTER COLUMN role DROP DEFAULT');
+
                 // Create new enum type with all values
                 DB::statement("CREATE TYPE {$newTypeName} AS ENUM ('merchant', 'support', 'admin', 'pro', 'enterprise')");
-                
+
                 // Alter column to use new type
                 DB::statement("ALTER TABLE users ALTER COLUMN role TYPE {$newTypeName} USING role::text::{$newTypeName}");
-                
+
                 // Set default back
                 DB::statement("ALTER TABLE users ALTER COLUMN role SET DEFAULT 'merchant'");
-                
+
                 // Drop old type and rename new one
                 DB::statement("DROP TYPE IF EXISTS {$oldTypeName} CASCADE");
                 DB::statement("ALTER TYPE {$newTypeName} RENAME TO {$oldTypeName}");
             } else {
                 // Fallback: Create type if it doesn't exist
                 DB::statement("CREATE TYPE users_role_enum AS ENUM ('merchant', 'support', 'admin', 'pro', 'enterprise')");
-                DB::statement("ALTER TABLE users ALTER COLUMN role DROP DEFAULT");
-                DB::statement("ALTER TABLE users ALTER COLUMN role TYPE users_role_enum USING role::text::users_role_enum");
+                DB::statement('ALTER TABLE users ALTER COLUMN role DROP DEFAULT');
+                DB::statement('ALTER TABLE users ALTER COLUMN role TYPE users_role_enum USING role::text::users_role_enum');
                 DB::statement("ALTER TABLE users ALTER COLUMN role SET DEFAULT 'merchant'");
             }
         } else {
@@ -74,7 +72,7 @@ return new class extends Migration
         DB::table('users')
             ->whereIn('role', ['pro', 'enterprise'])
             ->update(['role' => 'merchant']);
-        
+
         if ($driver === 'sqlite') {
             return;
         }

@@ -16,7 +16,7 @@ class EnsurePlanAllowsLnAddressCreation
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             abort(401, 'Unauthenticated');
         }
 
@@ -31,7 +31,7 @@ class EnsurePlanAllowsLnAddressCreation
         }
 
         $store = $request->route('store');
-        if (!$store || $store->user_id !== $user->id) {
+        if (! $store || $store->user_id !== $user->id) {
             return $next($request);
         }
 

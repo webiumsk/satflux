@@ -17,12 +17,10 @@ class EnsureSupportRole
     {
         $user = $request->user();
 
-        if (!$user || !$user->isSupport()) {
+        if (! $user || ! $user->isSupport()) {
             abort(403, 'Unauthorized. Support role required.');
         }
 
         return $next($request);
     }
 }
-
-

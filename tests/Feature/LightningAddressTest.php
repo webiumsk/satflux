@@ -7,8 +7,8 @@ use App\Models\SubscriptionPlan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-use Tests\TestCase;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
 class LightningAddressTest extends TestCase
 {
@@ -41,25 +41,28 @@ class LightningAddressTest extends TestCase
             $url = (string) $request->url();
             $method = $request->method();
             $path = "/api/v1/stores/{$storeId}/lightning-addresses";
-            if ($method === 'GET' && $url === $baseUrl . $path) {
+            if ($method === 'GET' && $url === $baseUrl.$path) {
                 return Http::response($list, 200);
             }
-            if ($method === 'GET' && str_contains($url, $path . '/')) {
+            if ($method === 'GET' && str_contains($url, $path.'/')) {
                 $username = basename(parse_url($url, PHP_URL_PATH));
                 if ($get !== null && isset($get[$username])) {
                     return Http::response($get[$username], 200);
                 }
+
                 return Http::response(['message' => 'Not found'], 404);
             }
-            if ($method === 'POST' && str_contains($url, $path . '/')) {
+            if ($method === 'POST' && str_contains($url, $path.'/')) {
                 if ($post !== null) {
                     return Http::response($post, 200);
                 }
+
                 return Http::response(['username' => basename(parse_url($url, PHP_URL_PATH)), 'currencyCode' => null], 200);
             }
-            if ($method === 'DELETE' && str_contains($url, $path . '/')) {
+            if ($method === 'DELETE' && str_contains($url, $path.'/')) {
                 return $deleteOk ? Http::response(null, 200) : Http::response(['message' => 'Not found'], 404);
             }
+
             return Http::response([], 404);
         });
     }

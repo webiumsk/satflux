@@ -37,7 +37,7 @@ class ReportSettingsController extends Controller
             ? ($validated['auto_report_email'] ?: $request->user()->email)
             : null;
 
-        if ($validated['auto_report_enabled'] && !$email) {
+        if ($validated['auto_report_enabled'] && ! $email) {
             return response()->json([
                 'message' => 'Email address is required when automatic reports are enabled.',
             ], 422);

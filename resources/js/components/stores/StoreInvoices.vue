@@ -227,6 +227,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import type { Store } from '../../store/stores';
 import { useAuthStore } from '../../store/auth';
 import { useFlashStore } from '../../store/flash';
 import api from '../../services/api';
@@ -246,12 +247,7 @@ const canUseXlsx = computed(() =>
 );
 const showXlsxUpgradeModal = ref(false);
 
-const props = defineProps({
-  store: {
-    type: Object,
-    required: true,
-  },
-});
+const props = defineProps<{ store: Store }>();
 
 const loading = ref(false);
 const invoices = ref<any[]>([]);
