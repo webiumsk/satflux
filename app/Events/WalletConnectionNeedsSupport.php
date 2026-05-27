@@ -51,7 +51,7 @@ class WalletConnectionNeedsSupport implements ShouldBroadcastNow
     {
         $appUrl = config('app.url');
         $storeName = $this->store->name;
-        $type = $this->walletConnection->type === 'blink' ? 'Blink' : 'Aqua';
+        $type = $this->walletConnection->type === 'blink' ? 'Blink' : 'Aqua/Bull (Boltz)';
 
         return [
             'message' => "New wallet connection needs support: {$storeName} ({$type})",

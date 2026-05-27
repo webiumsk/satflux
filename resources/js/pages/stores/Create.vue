@@ -614,6 +614,46 @@
                 </div>
 
                 <div v-show="aquaSetupTab === 'descriptor'" class="space-y-3">
+                  <div class="flex flex-wrap items-center gap-3 mb-2">
+                    <span class="text-sm font-medium text-gray-400">{{
+                      t("create_store.wallet_brand_label")
+                    }}</span>
+                    <div class="flex gap-2">
+                      <button
+                        type="button"
+                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all"
+                        :class="
+                          aquaWalletBrand === 'aqua'
+                            ? 'border-indigo-500 bg-indigo-600/20 text-white'
+                            : 'border-gray-600 text-gray-400 hover:border-gray-500'
+                        "
+                        @click="aquaWalletBrand = 'aqua'"
+                      >
+                        <WalletTypeIcon type="aqua_boltz" brand="aqua" size="sm" />
+                      </button>
+                      <button
+                        type="button"
+                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all"
+                        :class="
+                          aquaWalletBrand === 'bull'
+                            ? 'border-indigo-500 bg-indigo-600/20 text-white'
+                            : 'border-gray-600 text-gray-400 hover:border-gray-500'
+                        "
+                        @click="aquaWalletBrand = 'bull'"
+                      >
+                        <WalletTypeIcon type="aqua_boltz" brand="bull" size="sm" />
+                      </button>
+                    </div>
+                  </div>
+                  <p
+                    v-if="
+                      detectedAquaWalletBrand &&
+                      detectedAquaWalletBrand !== aquaWalletBrand
+                    "
+                    class="text-sm text-amber-400"
+                  >
+                    {{ t("create_store.wallet_brand_mismatch") }}
+                  </p>
                   <label
                     for="connection_string_aqua"
                     class="block text-sm font-medium text-indigo-300 mb-2"
@@ -625,7 +665,7 @@
                     v-model="form.connection_string"
                     rows="4"
                     class="block w-full rounded-lg p-2 border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono text-sm placeholder-gray-600"
-                    placeholder="ct(slip77(...),elsh(wpkh(...))))"
+                    :placeholder="t('create_store.descriptor_placeholder')"
                   ></textarea>
                   <p class="mt-3 text-sm text-gray-400 leading-relaxed">
                     {{ t("create_store.descriptor_help") }}<br />
@@ -818,6 +858,12 @@ import Select from "../../components/ui/Select.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 import api from "../../services/api";
 import { DEFAULT_CASHU_MINT_URL } from "../../constants/cashu";
+import { isValidAquaBoltzDescriptor } from "../../utils/aquaBoltzDescriptor";
+import {
+  detectWalletBrandFromDescriptor,
+  type AquaBoltzWalletBrand,
+} from "../../utils/aquaBoltzWalletBrand";
+import WalletTypeIcon from "../../components/WalletTypeIcon.vue";
 
 const { t } = useI18n();
 
@@ -846,6 +892,9 @@ let botPollInterval: ReturnType<typeof setInterval> | null = null;
 
 /** Aqua step 2: primary SamRock tab vs secondary manual descriptor tab */
 const aquaSetupTab = ref<"samrock" | "descriptor">("samrock");
+
+/** Explicit wallet brand for descriptor tab (chips); auto-detected from pasted descriptor when possible */
+const aquaWalletBrand = ref<AquaBoltzWalletBrand>("aqua");
 
 /** SamRock pairing (step 2, Aqua tab) */
 const samrockOtp = ref("");
@@ -899,13 +948,16 @@ function validateBlinkConnectionString(s: string): boolean {
   return typeVal === "blink" && !!serverVal && !!apiKeyVal && !!walletIdVal;
 }
 
-// Validate Aqua descriptor: must be format ct(slip77(...),elsh(wpkh(...)))
-function validateDescriptor(s: string): boolean {
-  const trimmed = s.trim();
-  if (!trimmed) return false;
-  const lower = trimmed.toLowerCase();
-  return lower.startsWith("ct(slip77") && lower.includes(",elsh(wpkh(");
-}
+const detectedAquaWalletBrand = computed((): AquaBoltzWalletBrand | null => {
+  const cs = form.value.connection_string?.trim() ?? "";
+  return detectWalletBrandFromDescriptor(cs);
+});
+
+watch(detectedAquaWalletBrand, (detected) => {
+  if (detected) {
+    aquaWalletBrand.value = detected;
+  }
+});
 
 const canProceedFromStep2 = computed(() => {
   const wt = form.value.wallet_type;
@@ -921,8 +973,14 @@ const canProceedFromStep2 = computed(() => {
       return false;
     }
     const cs = form.value.connection_string?.trim() ?? "";
-
-    return validateDescriptor(cs);
+    if (!isValidAquaBoltzDescriptor(cs)) {
+      return false;
+    }
+    const detected = detectWalletBrandFromDescriptor(cs);
+    if (detected && detected !== aquaWalletBrand.value) {
+      return false;
+    }
+    return true;
   }
 
   if (wt === "cashu") {

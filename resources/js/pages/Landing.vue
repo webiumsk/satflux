@@ -326,7 +326,7 @@
                           {{ t("landing.flow_wallet") }}
                         </div>
                         <div class="text-sm font-bold text-emerald-300/95">
-                          Blink · Aqua · Cashu
+                          {{ t("landing.flow_wallet_types") }}
                         </div>
                       </div>
                     </div>
@@ -1438,12 +1438,17 @@
                       class="bg-gray-800 rounded-2xl p-6 border border-gray-700 shadow-xl flex items-center gap-6 transition-all duration-300 group-hover/card:border-blue-500/50 group-hover/card:bg-gray-800/80"
                     >
                       <div
-                        class="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center p-2 shadow-inner"
+                        class="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex flex-col items-center justify-center gap-1.5 p-2 shadow-inner"
                       >
                         <img
                           src="/img/wallets/aqua-64.webp"
-                          :alt="t('landing.aqua_wallet_title')"
-                          class="w-full h-full object-contain"
+                          :alt="t('create_store.wallet_type_aqua')"
+                          class="w-8 h-8 object-contain flex-shrink-0"
+                        />
+                        <img
+                          src="/img/wallets/bull-64.webp"
+                          :alt="t('create_store.wallet_type_bull')"
+                          class="h-4 w-auto max-w-[3.25rem] object-contain flex-shrink-0"
                         />
                       </div>
                       <div>

@@ -351,7 +351,7 @@ class WalletConnectionService
         if ($webhookUrl) {
             try {
                 $storeName = $store->name;
-                $typeLabel = $connection->type === 'blink' ? 'Blink' : 'Aqua';
+                $typeLabel = $connection->type === 'blink' ? 'Blink' : 'Aqua/Bull (Boltz)';
                 $panelUrl = rtrim(config('app.url'), '/').'/support/wallet-connections';
 
                 Http::timeout(10)->post($webhookUrl, [

@@ -160,7 +160,7 @@
                                     </p>
                                 </div>
                                 <div v-else class="space-y-2 text-sm text-gray-700">
-                                    <p><strong>Steps to configure Aqua (Boltz) wallet:</strong></p>
+                                    <p><strong>Steps to configure Aqua/Bull (Boltz) wallet:</strong></p>
                                     <ol class="list-decimal list-inside space-y-1 ml-2">
                                         <li>Click "Open Wallet Connection" button below to open Store settings in a new tab</li>
                                         <li>Select Boltz plugin (enable it first if not already enabled)</li>

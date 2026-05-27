@@ -48,7 +48,7 @@ class StoreChecklistService
             'aqua_boltz' => [
                 'configure_wallet' => [
                     'key' => 'configure_wallet',
-                    'description' => 'Confirm Aqua / Boltz wallet connection is saved (Wallet connection)',
+                    'description' => 'Confirm Aqua/Bull (Boltz) wallet connection is saved (Wallet connection)',
                     'link' => null,
                     'order' => 1,
                 ],
@@ -60,7 +60,7 @@ class StoreChecklistService
                 ],
                 'connect_aqua_wallet' => [
                     'key' => 'connect_aqua_wallet',
-                    'description' => 'Confirm Aqua is routed via Boltz as expected (support can help)',
+                    'description' => 'Confirm Aqua or Bull Bitcoin is routed via Boltz as expected (support can help)',
                     'link' => null,
                     'order' => 3,
                 ],

@@ -727,6 +727,46 @@
             {{ t("stores.aqua_limits_warning") }}
           </p>
         </div>
+        <div class="flex flex-wrap items-center gap-3 mb-4">
+          <span class="text-sm font-medium text-gray-400">{{
+            t("create_store.wallet_brand_label")
+          }}</span>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all"
+              :class="
+                aquaWalletBrand === 'aqua'
+                  ? 'border-indigo-500 bg-indigo-600/20 text-white'
+                  : 'border-gray-600 text-gray-400 hover:border-gray-500'
+              "
+              @click="aquaWalletBrand = 'aqua'"
+            >
+              <WalletTypeIcon type="aqua_boltz" brand="aqua" size="sm" />
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all"
+              :class="
+                aquaWalletBrand === 'bull'
+                  ? 'border-indigo-500 bg-indigo-600/20 text-white'
+                  : 'border-gray-600 text-gray-400 hover:border-gray-500'
+              "
+              @click="aquaWalletBrand = 'bull'"
+            >
+              <WalletTypeIcon type="aqua_boltz" brand="bull" size="sm" />
+            </button>
+          </div>
+        </div>
+        <p
+          v-if="
+            detectedAquaWalletBrand &&
+            detectedAquaWalletBrand !== aquaWalletBrand
+          "
+          class="text-sm text-amber-400 mb-4"
+        >
+          {{ t("create_store.wallet_brand_mismatch") }}
+        </p>
         <div>
           <label
             for="secret-aqua"
@@ -739,7 +779,7 @@
             v-model="form.secret"
             rows="5"
             class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono p-4"
-            placeholder="ct(slip77(...),elsh(wpkh(...))))"
+            :placeholder="t('create_store.descriptor_placeholder')"
             required
           ></textarea>
           <div
@@ -936,6 +976,11 @@
             >
             <WalletTypeIcon
               :type="existingConnection.type"
+              :brand="
+                existingConnection.type === 'aqua_descriptor'
+                  ? detectedAquaWalletBrand ?? aquaWalletBrand
+                  : undefined
+              "
               size="lg"
               :show-label="true"
               class="font-medium text-white"
@@ -1380,6 +1425,37 @@
             v-show="lightningFormAquaTab === 'descriptor'"
             class="rounded-2xl border border-gray-700 bg-gray-900/30 p-6"
           >
+            <div class="flex flex-wrap items-center gap-3 mb-4">
+              <span class="text-sm font-medium text-gray-400">{{
+                t("create_store.wallet_brand_label")
+              }}</span>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all"
+                  :class="
+                    aquaWalletBrand === 'aqua'
+                      ? 'border-indigo-500 bg-indigo-600/20 text-white'
+                      : 'border-gray-600 text-gray-400 hover:border-gray-500'
+                  "
+                  @click="aquaWalletBrand = 'aqua'"
+                >
+                  <WalletTypeIcon type="aqua_boltz" brand="aqua" size="sm" />
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all"
+                  :class="
+                    aquaWalletBrand === 'bull'
+                      ? 'border-indigo-500 bg-indigo-600/20 text-white'
+                      : 'border-gray-600 text-gray-400 hover:border-gray-500'
+                  "
+                  @click="aquaWalletBrand = 'bull'"
+                >
+                  <WalletTypeIcon type="aqua_boltz" brand="bull" size="sm" />
+                </button>
+              </div>
+            </div>
             <label
               for="secret-lightning-aqua"
               class="block text-sm font-medium text-indigo-300 mb-2 uppercase tracking-wider"
@@ -1391,7 +1467,7 @@
               v-model="form.secret"
               rows="5"
               class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono p-4"
-              placeholder="ct(slip77(...),elsh(wpkh(...))))"
+              :placeholder="t('create_store.descriptor_placeholder')"
             ></textarea>
             <div
               class="mt-3 text-sm text-gray-400 bg-gray-900/30 p-4 rounded-xl border border-gray-700/50"
@@ -1420,7 +1496,7 @@
             v-model="form.secret"
             rows="5"
             class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono p-4"
-            placeholder="ct(slip77(...),elsh(wpkh(...))))"
+            :placeholder="t('create_store.descriptor_placeholder')"
             required
           ></textarea>
           <div
@@ -1626,6 +1702,11 @@ import { useAuthStore } from "../../store/auth";
 import api from "../../services/api";
 import { DEFAULT_CASHU_MINT_URL } from "../../constants/cashu";
 import WalletTypeIcon from "../WalletTypeIcon.vue";
+import { isValidAquaBoltzDescriptor } from "../../utils/aquaBoltzDescriptor";
+import {
+  detectWalletBrandFromDescriptor,
+  type AquaBoltzWalletBrand,
+} from "../../utils/aquaBoltzWalletBrand";
 import LnurlQrModal from "../auth/LnurlQrModal.vue";
 import NostrAuthModal from "../auth/NostrAuthModal.vue";
 
@@ -1908,6 +1989,18 @@ const form = reactive({
     | "blink"
     | "aqua_descriptor",
   secret: "",
+});
+
+const aquaWalletBrand = ref<AquaBoltzWalletBrand>("aqua");
+
+const detectedAquaWalletBrand = computed((): AquaBoltzWalletBrand | null =>
+  detectWalletBrandFromDescriptor(form.secret),
+);
+
+watch(detectedAquaWalletBrand, (detected) => {
+  if (detected) {
+    aquaWalletBrand.value = detected;
+  }
 });
 
 const showLightningWalletForm = computed(() => {
@@ -2496,10 +2589,14 @@ function validateBlinkConnectionString(connectionString: string): boolean {
 }
 
 function validateDescriptor(descriptor: string): boolean {
-  const trimmed = descriptor.trim();
-  if (!trimmed) return false;
-  const lower = trimmed.toLowerCase();
-  return lower.startsWith("ct(slip77") && lower.includes(",elsh(wpkh(");
+  if (!isValidAquaBoltzDescriptor(descriptor)) {
+    return false;
+  }
+  const detected = detectWalletBrandFromDescriptor(descriptor);
+  if (detected && detected !== aquaWalletBrand.value) {
+    return false;
+  }
+  return true;
 }
 
 /** Drop Blink-shaped secrets when the form expects a descriptor (and vice versa). */
@@ -2571,8 +2668,7 @@ async function handleTestConnection() {
   if (form.type === "aqua_descriptor" && !validateDescriptor(form.secret)) {
     testResult.value = {
       success: false,
-      message:
-        "Invalid descriptor. Required format: ct(slip77(...),elsh(wpkh(...)))",
+      message: t("create_store.invalid_descriptor_format"),
     };
     return;
   }
@@ -2614,8 +2710,7 @@ async function handleSubmit() {
     return;
   }
   if (form.type === "aqua_descriptor" && !validateDescriptor(form.secret)) {
-    errors.secret =
-      "Invalid descriptor. Required format: ct(slip77(...),elsh(wpkh(...)))";
+    errors.secret = t("create_store.invalid_descriptor_format");
     submitting.value = false;
     return;
   }

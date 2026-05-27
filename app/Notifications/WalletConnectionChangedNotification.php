@@ -31,7 +31,7 @@ class WalletConnectionChangedNotification extends Notification
         $appUrl = rtrim(config('app.url', 'http://localhost:8080'), '/');
         $storeUrl = "{$appUrl}/stores/{$this->store->id}/wallet-connection";
         $masked = $this->walletConnection->masked_secret ?: '******';
-        $type = $this->walletConnection->type === 'blink' ? 'Blink' : 'Aqua (Boltz)';
+        $type = $this->walletConnection->type === 'blink' ? 'Blink' : 'Aqua/Bull (Boltz)';
 
         return (new MailMessage)
             ->subject('Wallet connection updated - '.$this->store->name)

@@ -147,65 +147,63 @@ class WalletConnectionValidator
     }
 
     /**
-     * Validate Aqua watch-only descriptor.
+     * Strip optional descriptor checksum suffix (#...) after the closing paren.
+     */
+    public function stripDescriptorChecksum(string $descriptor): string
+    {
+        $descriptor = trim($descriptor);
+        $hashIdx = strrpos($descriptor, '#');
+        if ($hashIdx === false) {
+            return $descriptor;
+        }
+        $lastClose = strrpos($descriptor, ')');
+        if ($lastClose !== false && $hashIdx > $lastClose) {
+            return rtrim(substr($descriptor, 0, $hashIdx));
+        }
+
+        return $descriptor;
+    }
+
+    /**
+     * Validate Aqua/Bull (Boltz) watch-only output descriptor.
      *
-     * @param  string  $descriptor  Aqua wallet output descriptor
+     * Supports Aqua: ct(slip77(...),elsh(wpkh(...))) and Bull: ct(slip77(...),elwpkh(...))
+     *
+     * @param  string  $descriptor  Watch-only output descriptor
      * @return bool True if valid
      */
     public function validateAquaDescriptor(string $descriptor): bool
     {
-        $descriptor = trim($descriptor);
+        $descriptor = $this->stripDescriptorChecksum($descriptor);
 
-        if (empty($descriptor)) {
+        if ($descriptor === '') {
             return false;
         }
 
-        // Must NOT contain "prv" anywhere (private keys)
         if (stripos($descriptor, 'prv') !== false) {
             return false;
         }
 
-        // Should contain xpub, ypub, zpub, or similar extended public keys
-        // But NOT xprv, yprv, zprv (private keys)
         if (preg_match('/(xprv|yprv|zprv)/i', $descriptor)) {
             return false;
         }
 
-        // Must be a valid output descriptor format
-        // Common formats: wpkh(), wsh(), tr(), pkh(), sh(), etc.
-        // Also supports complex nested formats like ct(slip77(...),elsh(wpkh(...)))
-        // Check if descriptor contains at least one valid descriptor function
-        $validFunctions = [
-            'wpkh', 'wsh', 'tr', 'pkh', 'sh', 'addr', 'raw',  // Basic functions
-            'ct', 'elsh', 'slip77',  // Complex nested functions (for Boltz/Aqua)
-        ];
-
-        $hasValidFunction = false;
-        $descriptorLower = strtolower($descriptor);
-
-        foreach ($validFunctions as $func) {
-            // Check if function appears in the descriptor (not just at start)
-            // Pattern: function name followed by opening parenthesis
-            if (preg_match('/\b'.preg_quote($func, '/').'\s*\(/', $descriptorLower)) {
-                $hasValidFunction = true;
-                break;
-            }
-        }
-
-        if (! $hasValidFunction) {
+        if (! preg_match('/^ct\s*\(\s*slip77\s*\(/i', $descriptor)) {
             return false;
         }
 
-        // Basic structure validation: should have balanced parentheses
-        // This is a simple check - full validation would require a parser
+        $hasSecondBranch = preg_match('/,\s*elsh\s*\(\s*wpkh\s*\(/i', $descriptor)
+            || preg_match('/,\s*elwpkh\s*\(/i', $descriptor);
+        if (! $hasSecondBranch) {
+            return false;
+        }
+
         $openParens = substr_count($descriptor, '(');
         $closeParens = substr_count($descriptor, ')');
         if ($openParens !== $closeParens || $openParens === 0) {
             return false;
         }
 
-        // Should contain at least one xpub/ypub/zpub (extended public key)
-        // This is required for watch-only descriptors
         if (! preg_match('/(xpub|ypub|zpub|tpub|upub|vpub)/i', $descriptor)) {
             return false;
         }
@@ -264,7 +262,7 @@ class WalletConnectionValidator
             ]);
 
             if (! $isValid) {
-                $errors[] = 'Invalid descriptor format. Must be a valid Aqua wallet output descriptor (e.g., wpkh(), tr(), wsh(), or complex formats like ct(slip77(...),elsh(wpkh(...)))) and must not contain private keys (prv).';
+                $errors[] = 'Invalid descriptor format. Must be a valid Aqua/Bull (Boltz) watch-only descriptor: ct(slip77(...),elsh(wpkh(...))) or ct(slip77(...),elwpkh(...)). Must not contain private keys.';
             }
         } else {
             \Illuminate\Support\Facades\Log::error('Unsupported wallet connection type', [
