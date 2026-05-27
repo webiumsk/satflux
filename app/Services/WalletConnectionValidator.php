@@ -180,10 +180,6 @@ class WalletConnectionValidator
             return false;
         }
 
-        if (stripos($descriptor, 'prv') !== false) {
-            return false;
-        }
-
         if (preg_match('/(xprv|yprv|zprv)/i', $descriptor)) {
             return false;
         }
@@ -201,6 +197,11 @@ class WalletConnectionValidator
         $openParens = substr_count($descriptor, '(');
         $closeParens = substr_count($descriptor, ')');
         if ($openParens !== $closeParens || $openParens === 0) {
+            return false;
+        }
+
+        $lastClose = strrpos($descriptor, ')');
+        if ($lastClose === false || trim(substr($descriptor, $lastClose + 1)) !== '') {
             return false;
         }
 

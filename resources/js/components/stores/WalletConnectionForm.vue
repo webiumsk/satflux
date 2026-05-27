@@ -978,7 +978,7 @@
               :type="existingConnection.type"
               :brand="
                 existingConnection.type === 'aqua_descriptor'
-                  ? detectedAquaWalletBrand ?? aquaWalletBrand
+                  ? readonlyAquaWalletBrand
                   : undefined
               "
               size="lg"
@@ -1456,6 +1456,15 @@
                 </button>
               </div>
             </div>
+            <p
+              v-if="
+                detectedAquaWalletBrand &&
+                detectedAquaWalletBrand !== aquaWalletBrand
+              "
+              class="text-sm text-amber-400 mb-4"
+            >
+              {{ t("create_store.wallet_brand_mismatch") }}
+            </p>
             <label
               for="secret-lightning-aqua"
               class="block text-sm font-medium text-indigo-300 mb-2 uppercase tracking-wider"
@@ -1997,8 +2006,16 @@ const detectedAquaWalletBrand = computed((): AquaBoltzWalletBrand | null =>
   detectWalletBrandFromDescriptor(form.secret),
 );
 
+/** Stable brand for read-only view (no mutable chip state). */
+const readonlyAquaWalletBrand = computed((): AquaBoltzWalletBrand => {
+  if (props.existingConnection?.configuration_source === "samrock") {
+    return "aqua";
+  }
+  return detectedAquaWalletBrand.value ?? "aqua";
+});
+
 watch(detectedAquaWalletBrand, (detected) => {
-  if (detected) {
+  if (detected && viewMode.value !== "readonly") {
     aquaWalletBrand.value = detected;
   }
 });

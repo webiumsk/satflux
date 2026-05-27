@@ -84,6 +84,7 @@ const labelText = computed(() => {
   if (!props.type) return props.fallbackText ?? '';
   if (props.type === 'blink') return t('create_store.wallet_type_blink');
   if (props.type === 'cashu') return t('create_store.wallet_type_cashu');
+  if (resolvedBrand.value === 'bull') return t('create_store.wallet_type_bull');
   return t('create_store.wallet_type_aqua');
 });
 

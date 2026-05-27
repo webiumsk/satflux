@@ -22,10 +22,6 @@ export function isValidAquaBoltzDescriptor(descriptor: string): boolean {
     return false;
   }
 
-  const lower = d.toLowerCase();
-  if (lower.includes('prv')) {
-    return false;
-  }
   if (/(xprv|yprv|zprv)/i.test(d)) {
     return false;
   }
@@ -43,6 +39,11 @@ export function isValidAquaBoltzDescriptor(descriptor: string): boolean {
   const openParens = (d.match(/\(/g) ?? []).length;
   const closeParens = (d.match(/\)/g) ?? []).length;
   if (openParens !== closeParens || openParens === 0) {
+    return false;
+  }
+
+  const lastClose = d.lastIndexOf(')');
+  if (lastClose < 0 || d.slice(lastClose + 1).trim() !== '') {
     return false;
   }
 

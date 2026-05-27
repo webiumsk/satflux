@@ -73,6 +73,24 @@ class WalletConnectionValidatorTest extends TestCase
         $this->assertFalse($this->validator->validateAquaDescriptor($descriptor));
     }
 
+    public function test_rejects_descriptor_with_trailing_garbage(): void
+    {
+        $descriptor = 'ct(slip77(xpub6D4BDPcP2GT577Vvch3Reb8P8CH),elsh(wpkh(xpub6E8...))))extra';
+
+        $this->assertFalse($this->validator->validateAquaDescriptor($descriptor));
+    }
+
+    public function test_valid_samrock_placeholder_shape(): void
+    {
+        $seed = hash('sha256', 'samrock:019e6827-e61c-7000-8000-000000000001');
+        $slip77 = substr($seed, 0, 64);
+        $fp = substr($seed, 0, 8);
+        $xpubBody = 'xpub'.str_pad(substr($seed, 8, 100), 100, '0');
+        $descriptor = "ct(slip77({$slip77}),elsh(wpkh([{$fp}/84h/0h/0h]{$xpubBody}/0/*)))";
+
+        $this->assertTrue($this->validator->validateAquaDescriptor($descriptor));
+    }
+
     public function test_validation_rejects_empty_string(): void
     {
         $result = $this->validator->validate('blink', '');

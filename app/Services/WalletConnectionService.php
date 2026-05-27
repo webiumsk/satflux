@@ -291,10 +291,11 @@ class WalletConnectionService
     protected function samRockPlaceholderDescriptor(Store $store): string
     {
         $seed = hash('sha256', 'samrock:'.$store->id);
+        $slip77 = substr($seed, 0, 64);
         $fp = substr($seed, 0, 8);
-        $xpubBody = 'tpub'.str_pad(substr($seed, 0, 100), 100, '0');
+        $xpubBody = 'xpub'.str_pad(substr($seed, 8, 100), 100, '0');
 
-        return "wpkh([{$fp}/84'/0'/0']{$xpubBody}/0/*)";
+        return "ct(slip77({$slip77}),elsh(wpkh([{$fp}/84h/0h/0h]{$xpubBody}/0/*)))";
     }
 
     /**

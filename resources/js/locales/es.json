@@ -183,10 +183,10 @@
   },
   "create_store": {
     "invalid_blink_format": "Formato no válido. Requerido: type=blink;server=...;api-key=...;wallet-id=...",
-    "invalid_descriptor_format": "Descriptor no válido. Aqua: ct(slip77(...),elsh(wpkh(...))). Bull: ct(slip77(...),elwpkh(...)).",
+    "invalid_descriptor_format": "Descriptor no válido. Usa ct(slip77(...),elsh(wpkh(...))) para Aqua o ct(slip77(...),elwpkh(...)) para Bull Bitcoin.",
     "descriptor_placeholder": "ct(slip77(...),elwpkh(...)) o ct(slip77(...),elsh(wpkh(...)))",
     "wallet_brand_label": "Monedero",
-    "wallet_brand_mismatch": "El formato del descriptor no coincide con el monedero seleccionado.",
+    "wallet_brand_mismatch": "El formato del descriptor no coincide con el monedero seleccionado. Cambie de monedero o pegue el descriptor correcto.",
     "doc_link_blink": "Guía de configuración Blink",
     "doc_link_aqua": "Guía descriptor Aqua/Bull (Boltz)",
     "title": "Create Store",
