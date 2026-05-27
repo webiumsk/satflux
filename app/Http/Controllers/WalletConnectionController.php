@@ -8,6 +8,7 @@ use App\Models\Store;
 use App\Models\WalletConnection;
 use App\Services\BtcPay\LightningService;
 use App\Services\WalletConnectionService;
+use App\Services\WalletConnectionValidator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
@@ -102,6 +103,10 @@ class WalletConnectionController extends Controller
             return response()->json([
                 'message' => 'Unable to decrypt the stored secret. Please re-submit your wallet connection.',
             ], 500);
+        }
+
+        if ($connection->type === 'aqua_descriptor') {
+            $plaintext = app(WalletConnectionValidator::class)->stripDescriptorChecksum($plaintext);
         }
 
         return response()->json([
@@ -363,6 +368,10 @@ class WalletConnectionController extends Controller
             return response()->json([
                 'message' => 'Unable to decrypt the stored secret. This usually happens when APP_KEY was changed after the secret was saved. The merchant will need to re-submit their wallet connection.',
             ], 500);
+        }
+
+        if ($connection->type === 'aqua_descriptor') {
+            $plaintext = app(WalletConnectionValidator::class)->stripDescriptorChecksum($plaintext);
         }
 
         $connection->loadMissing('store');

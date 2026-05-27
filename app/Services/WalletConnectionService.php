@@ -10,6 +10,7 @@ use App\Models\WalletConnection;
 use App\Notifications\SupportNeededNotification;
 use App\Notifications\WalletConnectionChangedNotification;
 use App\Notifications\WalletConnectionNeedsSupportMerchantNotification;
+use App\Services\BtcPay\BoltzService;
 use App\Services\BtcPay\LightningService;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
@@ -22,6 +23,7 @@ class WalletConnectionService
         protected WalletConnectionValidator $validator,
         protected \App\Services\BtcPay\CashuService $cashuService,
         protected LightningService $lightningService,
+        protected BoltzService $boltzService,
     ) {}
 
     /**
@@ -231,6 +233,29 @@ class WalletConnectionService
                             }
                         } catch (\Throwable $e) {
                             Log::info('Blink Greenfield connect not applied; config bot may configure', [
+                                'store_id' => $store->id,
+                                'message' => $e->getMessage(),
+                            ]);
+                        }
+                    }
+
+                    if ($type === 'aqua_descriptor' && $initialStatus === 'pending') {
+                        try {
+                            $walletName = $this->boltzService->buildWalletName($store);
+                            $boltzResult = $this->boltzService->importDescriptorAndEnableSetup(
+                                $store->btcpay_store_id,
+                                $walletName,
+                                $secret,
+                                $userApiKey
+                            );
+                            if ($boltzResult['success'] ?? false) {
+                                $connection->refresh();
+                                if ($connection->status === 'pending') {
+                                    $this->markConnected($connection, $user);
+                                }
+                            }
+                        } catch (\Throwable $e) {
+                            Log::info('Boltz Greenfield import not applied; config bot may configure', [
                                 'store_id' => $store->id,
                                 'message' => $e->getMessage(),
                             ]);

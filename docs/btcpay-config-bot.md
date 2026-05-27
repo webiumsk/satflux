@@ -137,4 +137,5 @@ If you redirect cron output to another file (e.g. `/tmp/btcpay-bot.log`), shell 
 
 - No 2FA, no CAPTCHA
 - **Blink**: Lightning setup page has "Use custom node" tab; bot fills `#ConnectionString` and clicks Save
-- **Aqua (Boltz)**: Lightning setup page has "Configure Boltz" link; bot follows the wizard (Standalone → Continue → Import wallet → Enter core descriptor) and submits the descriptor in "Import Readonly L-BTC Wallet"
+- **Aqua/Bull (Boltz)**: When the merchant has a BTCPay API key, Satflux first tries the Boltz plugin **Greenfield API** (`POST .../boltz/wallets` with `coreDescriptor`, then `POST .../boltz/setup`). If that succeeds, the connection is marked `connected` and Playwright is skipped.
+- **Aqua/Bull (Boltz) fallback**: Lightning setup → Configure Boltz → wizard (Standalone → Continue → Import wallet → Enter core descriptor). Descriptors with a `#checksum` suffix are stripped before import (Bull Bitcoin and BTCPay plugin v2.3+).

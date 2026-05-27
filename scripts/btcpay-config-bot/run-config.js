@@ -68,6 +68,19 @@ export async function runConfigForConnection(connectionId) {
   const isAqua = connectionType === "aqua_descriptor";
   const isBlinkReconfig = !isAqua && reconfig;
 
+  /** Boltz plugin uses first line only; strip optional #checksum suffix for import. */
+  function normalizeDescriptorForBoltz(descriptor) {
+    const t = descriptor.trim();
+    const lastClose = t.lastIndexOf(")");
+    const hashIdx = t.lastIndexOf("#");
+    if (lastClose >= 0 && hashIdx > lastClose) {
+      return t.slice(0, hashIdx).trimEnd();
+    }
+    return t;
+  }
+
+  const boltzDescriptor = isAqua ? normalizeDescriptorForBoltz(secret) : secret;
+
   /** Unique Boltz wallet name for this connection (identifiable in BTCPay when debugging duplicates). */
   const boltzWalletName = (() => {
     const slug = (store_name || "store")
@@ -251,7 +264,7 @@ export async function runConfigForConnection(connectionId) {
         timeout: 5000,
       });
       await page.fill("#WalletName", boltzWalletName);
-      await page.fill("#WalletCredentials_CoreDescriptor", secret);
+      await page.fill("#WalletCredentials_CoreDescriptor", boltzDescriptor);
       await new Promise((r) => setTimeout(r, 300));
       logger.info("btcpay_boltz", "Submitting Import (core descriptor)", {
         walletName: boltzWalletName,
