@@ -46,7 +46,7 @@ class SupportNeededNotification extends Notification
         $appUrl = config('app.url');
         $supportUrl = "{$appUrl}/support/wallet-connections";
         $storeName = $this->store->name;
-        $type = $this->walletConnection->type === 'blink' ? 'Blink' : 'Aqua';
+        $type = $this->walletConnection->type === 'blink' ? 'Blink' : 'Aqua/Bull (Boltz)';
 
         return new BroadcastMessage([
             'message' => "New wallet connection needs support: {$storeName} ({$type})",
@@ -66,7 +66,7 @@ class SupportNeededNotification extends Notification
         $appUrl = config('app.url');
         $supportUrl = "{$appUrl}/support/wallet-connections";
         $storeName = $this->store->name;
-        $type = $this->walletConnection->type === 'blink' ? 'Blink' : 'Aqua';
+        $type = $this->walletConnection->type === 'blink' ? 'Blink' : 'Aqua/Bull (Boltz)';
 
         return (new MailMessage)
             ->subject("New Wallet Connection Needs Support - {$storeName}")

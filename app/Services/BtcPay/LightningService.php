@@ -35,7 +35,7 @@ class LightningService
      * @param  string  $cryptoCode  Cryptocurrency code (e.g., 'BTC')
      * @param  string  $connectionString  Connection string or descriptor
      *                                    - Blink: type=blink;server=...;api-key=...;wallet-id=...
-     *                                    - Boltz/Aqua: ct(slip77(...),elsh(wpkh([...]xpub...)))
+     *                                    - Aqua/Bull (Boltz): ct(slip77(...),elsh(wpkh(...))) or ct(slip77(...),elwpkh(...))
      * @param  string|null  $userApiKey  User-level API key (optional)
      * @return array Response data with success status and message
      *
