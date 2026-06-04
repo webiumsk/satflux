@@ -226,7 +226,6 @@ export function useInvoicingLayout() {
   }
 
   function newDocumentLabel(): string {
-    const key = `invoicing.new_${activeDocumentKind.value}` as const;
     const fallbacks: Record<InvoicingDocumentKind, string> = {
       invoice: 'invoicing.new_invoice',
       proforma: 'invoicing.new_proforma',

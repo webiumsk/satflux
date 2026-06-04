@@ -6,7 +6,6 @@ use App\Models\Company;
 use App\Support\Invoicing\CompanyEmailSettings;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class CompanyEmailSettingsService

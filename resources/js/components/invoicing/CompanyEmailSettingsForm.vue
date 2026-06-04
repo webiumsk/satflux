@@ -201,12 +201,19 @@ const smtpTestOk = ref(false);
 const selectedTemplateKey = ref<EmailTemplateKey>('invoice');
 const form = reactive<CompanyEmailSettingsState>(emailSettingsFromCompany(null));
 
+watch(
+  selectedTemplateKey,
+  (key) => {
+    if (!form.templates[key]) {
+      form.templates[key] = { subject: '', body: '' };
+    }
+  },
+  { immediate: true }
+);
+
 const activeTemplate = computed({
   get() {
-    if (!form.templates[selectedTemplateKey.value]) {
-      form.templates[selectedTemplateKey.value] = { subject: '', body: '' };
-    }
-    return form.templates[selectedTemplateKey.value];
+    return form.templates[selectedTemplateKey.value] ?? { subject: '', body: '' };
   },
   set(v) {
     form.templates[selectedTemplateKey.value] = v;

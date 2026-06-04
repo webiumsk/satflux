@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Enums\CompanyJurisdiction;
-use App\Models\BusinessDocument;
 use App\Models\BusinessDocumentLine;
 use App\Models\Company;
 use App\Models\CompanyContact;

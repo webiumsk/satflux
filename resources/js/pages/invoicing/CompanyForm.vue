@@ -304,7 +304,7 @@ async function pickRegistrySuggestion(item: RegistrySummary) {
   }
 }
 
-function applyJurisdictionDefaults(jurisdiction: string, _previous: string) {
+function applyJurisdictionDefaults(jurisdiction: string) {
   const prevCountry = form.country;
   if (isUsJurisdiction(jurisdiction)) {
     form.country = 'US';
@@ -333,8 +333,8 @@ function applyJurisdictionDefaults(jurisdiction: string, _previous: string) {
 
 watch(
   () => form.jurisdiction,
-  (jurisdiction: string, previous?: string) => {
-    applyJurisdictionDefaults(jurisdiction, previous ?? jurisdiction);
+  (jurisdiction: string) => {
+    applyJurisdictionDefaults(jurisdiction);
     clearSuggestions();
     if (registrySupportsAutocomplete(registryCountry.value) && form.legal_name.trim().length >= 2) {
       scheduleSearch(form.legal_name, registryCountry.value);

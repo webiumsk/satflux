@@ -8,7 +8,6 @@ use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\BusinessDocumentLine;
 use App\Models\BusinessRecurringProfile;
-use App\Support\Invoicing\CompanyAppSettings;
 use Carbon\Carbon;
 
 class RecurringDocumentGeneratorService

@@ -174,8 +174,8 @@ export function useInvoiceDocument() {
       subtotal += net;
       tax += lineTax;
     }
-    let gross = subtotal + tax;
-    let total = gross * (1 - (form.discount_percent || 0) / 100);
+    const gross = subtotal + tax;
+    const total = gross * (1 - (form.discount_percent || 0) / 100);
     if (form.discount_percent > 0 && gross > 0) {
       const ratio = total / gross;
       subtotal *= ratio;

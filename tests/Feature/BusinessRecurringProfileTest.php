@@ -11,7 +11,6 @@ use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\Invoicing\DocumentSequenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 

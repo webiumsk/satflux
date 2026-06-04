@@ -157,5 +157,4 @@ class BusinessDocument extends Model
     {
         return $this->appendResolvedQuoteStatus(parent::toArray());
     }
-
 }

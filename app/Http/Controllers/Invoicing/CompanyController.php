@@ -4,15 +4,15 @@ namespace App\Http\Controllers\Invoicing;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Invoicing\StoreCompanyRequest;
-use App\Http\Requests\Invoicing\UpdateCompanyRequest;
 use App\Http\Requests\Invoicing\UpdateCompanyAppSettingsRequest;
+use App\Http\Requests\Invoicing\UpdateCompanyRequest;
 use App\Http\Requests\Invoicing\UpdateCompanyStoresRequest;
-use App\Support\Invoicing\CompanyAppSettings;
 use App\Models\AuditLog;
 use App\Models\Company;
 use App\Models\Store;
 use App\Services\Invoicing\CompanyBrandingService;
 use App\Services\Invoicing\DocumentSequenceService;
+use App\Support\Invoicing\CompanyAppSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
