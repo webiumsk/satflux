@@ -44,7 +44,13 @@ class BusinessDocumentPayController extends Controller
         }
 
         try {
-            $this->btcPayService->syncForDocument($document, forceRefresh: true);
+            if ($this->btcPayService->syncPaidFromBtcpayIfSettled($document)) {
+                return view('pay.business-invoice-paid', [
+                    'document' => $document->fresh(),
+                ]);
+            }
+
+            $this->btcPayService->syncForDocument($document, forceRefresh: false);
         } catch (\Throwable $e) {
             return view('pay.business-invoice-error', [
                 'document' => $document,

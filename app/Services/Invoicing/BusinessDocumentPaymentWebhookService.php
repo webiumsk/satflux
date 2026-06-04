@@ -12,6 +12,7 @@ class BusinessDocumentPaymentWebhookService
 {
     public function __construct(
         protected BusinessDocumentMarkPaidService $markPaidService,
+        protected BusinessDocumentBtcPayService $btcPayService,
     ) {}
 
     /**
@@ -23,7 +24,7 @@ class BusinessDocumentPaymentWebhookService
             return false;
         }
 
-        if (! BtcPayWebhookEventType::isInvoiceSettled($eventType)) {
+        if (! BtcPayWebhookEventType::shouldMarkBusinessDocumentPaid($eventType)) {
             return false;
         }
 
@@ -46,6 +47,16 @@ class BusinessDocumentPaymentWebhookService
             return false;
         }
 
+        if ($this->btcPayService->syncPaidFromBtcpayIfSettled($document->fresh())) {
+            Log::info('Business document marked paid from BTCPay webhook', [
+                'business_document_id' => $document->id,
+                'store_id' => $store->id,
+                'event_type' => BtcPayWebhookEventType::normalize($eventType),
+            ]);
+
+            return true;
+        }
+
         $this->markPaidService->markPaid(
             $document,
             (float) $document->total,
@@ -53,9 +64,10 @@ class BusinessDocumentPaymentWebhookService
             'btcpay_webhook',
         );
 
-        Log::info('Business document marked paid from BTCPay webhook', [
+        Log::info('Business document marked paid from BTCPay webhook (event only)', [
             'business_document_id' => $document->id,
             'store_id' => $store->id,
+            'event_type' => BtcPayWebhookEventType::normalize($eventType),
         ]);
 
         return true;
@@ -91,10 +103,7 @@ class BusinessDocumentPaymentWebhookService
             return null;
         }
 
-        return BusinessDocument::query()
-            ->where('store_id', $store->id)
-            ->where('btcpay_invoice_id', $invoiceId)
-            ->first();
+        return $this->btcPayService->resolveDocumentForBtcpayInvoice($store, $invoiceId);
     }
 
     /**

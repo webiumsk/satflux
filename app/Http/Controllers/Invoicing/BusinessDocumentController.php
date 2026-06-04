@@ -176,6 +176,14 @@ class BusinessDocumentController extends Controller
     {
         $this->assertDocumentCompany($businessDocument, $company);
 
+        if (
+            $businessDocument->payment_btc_enabled
+            && $businessDocument->status === BusinessDocumentStatus::Issued
+        ) {
+            $this->btcPayService->syncPaidFromBtcpayIfSettled($businessDocument);
+            $businessDocument->refresh();
+        }
+
         return response()->json([
             'data' => $businessDocument->load(array_merge(['lines', 'company'], $this->documentRelations())),
         ]);
