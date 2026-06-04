@@ -3,15 +3,15 @@
 namespace App\Services\Invoicing;
 
 use App\Enums\BusinessDocumentStatus;
-use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\Store;
+use App\Support\BtcPay\BtcPayWebhookEventType;
 use Illuminate\Support\Facades\Log;
 
 class BusinessDocumentPaymentWebhookService
 {
     public function __construct(
-        protected BusinessDocumentPaymentTokenService $paymentTokenService,
+        protected BusinessDocumentMarkPaidService $markPaidService,
     ) {}
 
     /**
@@ -23,38 +23,13 @@ class BusinessDocumentPaymentWebhookService
             return false;
         }
 
-        if (! in_array($eventType, [
-            'InvoiceSettled',
-            'InvoicePaymentSettled',
-            'InvoiceReceivedPayment',
-            'invoice.paid',
-        ], true)) {
+        if (! BtcPayWebhookEventType::isInvoiceSettled($eventType)) {
             return false;
         }
 
-        if ($eventType !== 'InvoiceSettled' && $eventType !== 'invoice.paid') {
-            return false;
-        }
-
-        $invoiceData = $payload['invoiceData'] ?? $payload['invoice'] ?? $payload;
-        $metadata = $invoiceData['metadata'] ?? [];
-        $documentId = $metadata['businessDocumentId'] ?? null;
-
-        if (! $documentId) {
-            return false;
-        }
-
-        $document = BusinessDocument::query()
-            ->where('id', $documentId)
-            ->where('store_id', $store->id)
-            ->first();
+        $document = $this->resolveDocument($payload, $store);
 
         if (! $document) {
-            Log::warning('Business document payment webhook: document not found', [
-                'business_document_id' => $documentId,
-                'store_id' => $store->id,
-            ]);
-
             return false;
         }
 
@@ -71,21 +46,114 @@ class BusinessDocumentPaymentWebhookService
             return false;
         }
 
-        $document->update([
-            'status' => BusinessDocumentStatus::Paid,
-            'paid_at' => now(),
-            'amount_paid' => $document->total,
-        ]);
+        $this->markPaidService->markPaid(
+            $document,
+            (float) $document->total,
+            null,
+            'btcpay_webhook',
+        );
 
-        $this->paymentTokenService->revokeAfterPaid($document->fresh());
-
-        AuditLog::log('business_document.marked_paid', 'business_document', $document->id, [
-            'company_id' => $document->company_id,
-            'number' => $document->number,
-            'source' => 'btcpay_webhook',
-            'btcpay_invoice_id' => $invoiceData['id'] ?? null,
+        Log::info('Business document marked paid from BTCPay webhook', [
+            'business_document_id' => $document->id,
+            'store_id' => $store->id,
         ]);
 
         return true;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function resolveDocument(array $payload, Store $store): ?BusinessDocument
+    {
+        $documentId = $this->extractBusinessDocumentId($payload);
+
+        if ($documentId) {
+            $document = BusinessDocument::query()
+                ->where('id', $documentId)
+                ->where('store_id', $store->id)
+                ->first();
+
+            if ($document) {
+                return $document;
+            }
+
+            Log::warning('Business document payment webhook: document not found by metadata', [
+                'business_document_id' => $documentId,
+                'store_id' => $store->id,
+            ]);
+        }
+
+        $invoiceId = $this->extractInvoiceId($payload);
+        if (! $invoiceId) {
+            Log::debug('Business document payment webhook: no document id or invoice id in payload');
+
+            return null;
+        }
+
+        return BusinessDocument::query()
+            ->where('store_id', $store->id)
+            ->where('btcpay_invoice_id', $invoiceId)
+            ->first();
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function extractBusinessDocumentId(array $payload): ?string
+    {
+        $metadata = $this->extractMetadata($payload);
+
+        foreach (['businessDocumentId', 'business_document_id'] as $key) {
+            $value = $metadata[$key] ?? null;
+            if (is_string($value) && $value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    protected function extractMetadata(array $payload): array
+    {
+        $nested = $payload['invoice'] ?? $payload['invoiceData'] ?? null;
+        if (is_array($nested) && is_array($nested['metadata'] ?? null)) {
+            return $nested['metadata'];
+        }
+
+        if (is_array($payload['metadata'] ?? null)) {
+            return $payload['metadata'];
+        }
+
+        return [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function extractInvoiceId(array $payload): ?string
+    {
+        $candidates = [
+            $payload['invoiceId'] ?? null,
+            $payload['invoice_id'] ?? null,
+        ];
+
+        $nested = $payload['invoice'] ?? $payload['invoiceData'] ?? null;
+        if (is_array($nested)) {
+            $candidates[] = $nested['id'] ?? null;
+            $candidates[] = $nested['invoiceId'] ?? null;
+        }
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && $candidate !== '') {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 }

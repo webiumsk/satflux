@@ -23,6 +23,7 @@ use App\Services\Invoicing\BusinessDocumentFromProformaService;
 use App\Services\Invoicing\BusinessDocumentFromQuoteService;
 use App\Services\Invoicing\BusinessDocumentIsdocService;
 use App\Services\Invoicing\BusinessDocumentIssueService;
+use App\Services\Invoicing\BusinessDocumentMarkPaidService;
 use App\Services\Invoicing\BusinessDocumentPaymentTokenService;
 use App\Services\Invoicing\BusinessDocumentPdfService;
 use App\Services\Invoicing\BusinessDocumentQuoteService;
@@ -40,6 +41,7 @@ class BusinessDocumentController extends Controller
     public function __construct(
         protected DocumentTotalsCalculator $totalsCalculator,
         protected BusinessDocumentIssueService $issueService,
+        protected BusinessDocumentMarkPaidService $markPaidService,
         protected BusinessDocumentPaymentTokenService $paymentTokenService,
         protected BusinessDocumentBtcPayService $btcPayService,
         protected BusinessDocumentPdfService $pdfService,
@@ -65,6 +67,8 @@ class BusinessDocumentController extends Controller
             'store:id,name',
             'sourceDocument:id,number,type,status',
             'finalInvoice:id,number,status,source_document_id,type',
+            'bankMatch:id,business_document_id,bank_transaction_id,match_type,matched_at',
+            'bankMatch.transaction:id,booked_at',
         ];
     }
 
@@ -351,52 +355,24 @@ class BusinessDocumentController extends Controller
     {
         $this->assertDocumentCompany($businessDocument, $company);
 
-        if ($businessDocument->status === BusinessDocumentStatus::Draft) {
-            $businessDocument = $this->issueService->issue($businessDocument);
-        }
+        $document = $this->markPaidService->markPaid(
+            $businessDocument,
+            null,
+            null,
+            'manual',
+            request()->user()?->id,
+        );
 
-        if ($businessDocument->status === BusinessDocumentStatus::Cancelled) {
-            throw ValidationException::withMessages([
-                'status' => ['Cancelled invoices cannot be marked as paid.'],
-            ]);
-        }
-
-        if ($businessDocument->status !== BusinessDocumentStatus::Paid) {
-            $businessDocument->update([
-                'status' => BusinessDocumentStatus::Paid,
-                'paid_at' => now(),
-                'amount_paid' => $businessDocument->total,
-            ]);
-            $this->paymentTokenService->revokeAfterPaid($businessDocument->fresh());
-            AuditLog::log('business_document.marked_paid', 'business_document', $businessDocument->id, [
-                'company_id' => $company->id,
-                'number' => $businessDocument->number,
-            ]);
-        }
-
-        return response()->json(['data' => $businessDocument->fresh(['contact', 'store'])]);
+        return response()->json(['data' => $document]);
     }
 
     public function unmarkPaid(Company $company, BusinessDocument $businessDocument): JsonResponse
     {
         $this->assertDocumentCompany($businessDocument, $company);
 
-        if ($businessDocument->status !== BusinessDocumentStatus::Paid) {
-            return response()->json(['data' => $businessDocument->fresh(['contact', 'store'])]);
-        }
+        $document = $this->markPaidService->unmarkPaid($businessDocument, request()->user()?->id);
 
-        $businessDocument->update([
-            'status' => BusinessDocumentStatus::Issued,
-            'paid_at' => null,
-            'amount_paid' => null,
-        ]);
-
-        AuditLog::log('business_document.unmarked_paid', 'business_document', $businessDocument->id, [
-            'company_id' => $company->id,
-            'number' => $businessDocument->number,
-        ]);
-
-        return response()->json(['data' => $businessDocument->fresh(['contact', 'store'])]);
+        return response()->json(['data' => $document]);
     }
 
     public function emailPreview(Company $company, BusinessDocument $businessDocument, Request $request): JsonResponse

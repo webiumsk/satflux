@@ -34,4 +34,7 @@ return [
     /** Remove public BTC pay token after document is marked paid. */
     'clear_payment_token_when_paid' => (bool) env('DATA_RETENTION_CLEAR_PAYMENT_TOKEN_WHEN_PAID', true),
 
+    /** Delegates to bank_import.file_retention_days when retention job runs. */
+    'bank_import_files' => true,
+
 ];

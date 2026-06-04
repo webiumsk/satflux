@@ -141,6 +141,11 @@ class BusinessDocument extends Model
         return $this->hasMany(BusinessDocumentCompliance::class);
     }
 
+    public function bankMatch(): HasOne
+    {
+        return $this->hasOne(BankTransactionMatch::class, 'business_document_id');
+    }
+
     public function canUpdate(): bool
     {
         return in_array($this->status, [

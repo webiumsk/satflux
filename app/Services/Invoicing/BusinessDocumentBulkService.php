@@ -23,7 +23,7 @@ class BusinessDocumentBulkService
 {
     public function __construct(
         protected BusinessDocumentPdfService $pdfService,
-        protected BusinessDocumentPaymentTokenService $paymentTokenService,
+        protected BusinessDocumentMarkPaidService $markPaidService,
     ) {}
 
     /**
@@ -207,12 +207,7 @@ class BusinessDocumentBulkService
 
                 continue;
             }
-            $document->update([
-                'status' => BusinessDocumentStatus::Paid,
-                'paid_at' => now(),
-                'amount_paid' => $document->total,
-            ]);
-            $this->paymentTokenService->revokeAfterPaid($document->fresh());
+            $this->markPaidService->markPaid($document, null, null, 'bulk_manual');
             $processed++;
         }
 

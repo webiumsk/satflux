@@ -214,6 +214,7 @@ Route::get('/debug/stores', function (\Illuminate\Http\Request $request) {
 
 // Webhooks (no auth required - verified via signature)
 Route::post('/webhooks/btcpay', [WebhookController::class, 'handle']);
+Route::post('/webhooks/bank-inbound', [\App\Http\Controllers\Invoicing\BankInboundWebhookController::class, 'handle']);
 
 // Public E-shop Integration API (rate limited, no auth required - uses tokens)
 Route::middleware(['throttle:10,1'])->group(function () {
@@ -415,6 +416,25 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::post('/companies/{company}/documents/{businessDocument}/duplicate', [BusinessDocumentController::class, 'duplicate'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::delete('/companies/{company}/documents/{businessDocument}', [BusinessDocumentController::class, 'destroy'])
+                ->middleware(EnsureCompanyOwnership::class);
+
+            Route::get('/companies/{company}/bank-transactions', [\App\Http\Controllers\Invoicing\BankTransactionController::class, 'index'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/bank-transactions/batches', [\App\Http\Controllers\Invoicing\BankTransactionController::class, 'batches'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/bank-transactions/import', [\App\Http\Controllers\Invoicing\BankTransactionController::class, 'import'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/bank-transactions/batches/{batch}/auto-match', [\App\Http\Controllers\Invoicing\BankTransactionController::class, 'autoMatchBatch'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/bank-transactions/inbound-email', [\App\Http\Controllers\Invoicing\BankTransactionController::class, 'inboundEmailAddress'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/bank-transactions/{bankTransaction}/suggestions', [\App\Http\Controllers\Invoicing\BankTransactionController::class, 'suggestions'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/bank-transactions/{bankTransaction}/match', [\App\Http\Controllers\Invoicing\BankTransactionController::class, 'match'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/bank-transactions/{bankTransaction}/ignore', [\App\Http\Controllers\Invoicing\BankTransactionController::class, 'ignore'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/bank-transactions/{bankTransaction}/unmatch', [\App\Http\Controllers\Invoicing\BankTransactionController::class, 'unmatch'])
                 ->middleware(EnsureCompanyOwnership::class);
         });
 

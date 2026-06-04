@@ -97,6 +97,16 @@ class Company extends Model
         return $this->hasMany(BusinessDocument::class);
     }
 
+    public function bankTransactions(): HasMany
+    {
+        return $this->hasMany(BankTransaction::class);
+    }
+
+    public function bankImportBatches(): HasMany
+    {
+        return $this->hasMany(BankImportBatch::class);
+    }
+
     public function documentSequences(): HasMany
     {
         return $this->hasMany(CompanyDocumentSequence::class);

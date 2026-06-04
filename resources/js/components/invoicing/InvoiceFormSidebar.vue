@@ -101,6 +101,20 @@
       <div class="text-emerald-800 font-medium mb-1">{{ t('invoicing.status_paid') }}</div>
       <div v-if="paidAt" class="text-xs text-gray-600">{{ formatDate(paidAt) }}</div>
       <div class="text-gray-900 font-semibold mt-1">{{ formatMoney(amountPaid) }}</div>
+      <p class="text-xs text-gray-700 mt-2">
+        <span class="text-gray-500">{{ t('invoicing.payment_method_label') }}:</span>
+        {{ paymentMethodText }}
+      </p>
+      <p v-if="bankPaymentBookedDate" class="text-xs text-gray-500 mt-0.5">
+        {{ bankPaymentBookedDate }}
+      </p>
+      <RouterLink
+        v-if="bankMatch"
+        :to="{ name: 'invoicing-payments', params: { companyId } }"
+        class="text-xs text-indigo-700 hover:text-indigo-900 hover:underline mt-1 inline-block"
+      >
+        {{ t('invoicing.view_bank_payments') }}
+      </RouterLink>
       <button
         v-if="!isLocked"
         type="button"
@@ -160,9 +174,10 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     mode?: 'show';
     companyId: string;
@@ -183,6 +198,12 @@ withDefaults(
     busy: boolean;
     paidAt?: string | null;
     amountPaid?: number | null;
+    bankMatch?: {
+      match_type?: string;
+      matched_at?: string;
+      transaction?: { booked_at?: string };
+    } | null;
+    paidViaBtcpay?: boolean;
   }>(),
   {
     canSendEmail: false,
@@ -193,8 +214,31 @@ withDefaults(
     showRejectQuote: false,
     showCreateInvoiceFromQuote: false,
     editRouteName: 'invoicing-invoice-edit',
+    bankMatch: null,
+    paidViaBtcpay: false,
   }
 );
+
+const paymentMethodText = computed(() => {
+  if (props.bankMatch) {
+    return props.bankMatch.match_type === 'auto'
+      ? t('invoicing.payment_method_bank_auto')
+      : t('invoicing.payment_method_bank_manual');
+  }
+  if (props.paidViaBtcpay) {
+    return t('invoicing.payment_method_btcpay');
+  }
+
+  return t('invoicing.payment_method_manual');
+});
+
+const bankPaymentBookedDate = computed(() => {
+  const booked = props.bankMatch?.transaction?.booked_at;
+  if (!booked) {
+    return '';
+  }
+  return t('invoicing.payment_method_bank_payment_date', { date: formatDate(booked) });
+});
 
 defineEmits<{
   'send-email': [];

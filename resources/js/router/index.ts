@@ -157,6 +157,12 @@ const router = createRouter({
             meta: { requiresAuth: true, invoicingSection: 'tools' },
         },
         {
+            path: '/invoicing/companies/:companyId/payments',
+            name: 'invoicing-payments',
+            component: () => import('../pages/invoicing/CompanyPayments.vue'),
+            meta: { requiresAuth: true, invoicingSection: 'payments' },
+        },
+        {
             path: '/invoicing/companies/:companyId/contacts',
             name: 'invoicing-contacts',
             component: () => import('../pages/invoicing/Contacts.vue'),

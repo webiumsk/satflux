@@ -88,6 +88,7 @@ const displayToolsSubNav = computed(() => {
 
 const mainNav: { id: InvoicingMainSection; labelKey: string }[] = [
   { id: 'documents', labelKey: 'invoicing.main_nav_documents' },
+  { id: 'payments', labelKey: 'invoicing.main_nav_payments' },
   { id: 'expenses', labelKey: 'invoicing.main_nav_expenses' },
   { id: 'contacts', labelKey: 'invoicing.main_nav_contacts' },
   { id: 'tools', labelKey: 'invoicing.main_nav_tools' },

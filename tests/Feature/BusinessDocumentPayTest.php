@@ -146,4 +146,81 @@ class BusinessDocumentPayTest extends TestCase
         $this->assertNotNull($document->paid_at);
         $this->assertNull($document->payment_token);
     }
+
+    #[Test]
+    public function webhook_handles_invoice_settled_dot_notation(): void
+    {
+        $user = User::factory()->create();
+        $company = Company::create([
+            'user_id' => $user->id,
+            'legal_name' => 'Acme',
+            'jurisdiction' => CompanyJurisdiction::EuSk,
+        ]);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'company_id' => $company->id,
+            'btcpay_store_id' => 'btcpay-store-dot',
+        ]);
+
+        $document = BusinessDocument::create([
+            'company_id' => $company->id,
+            'store_id' => $store->id,
+            'type' => BusinessDocumentType::Invoice,
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => '20260004',
+            'total' => 50,
+            'currency' => 'EUR',
+            'payment_btc_enabled' => true,
+            'btcpay_invoice_id' => 'btcpay-inv-dot',
+            'issue_date' => now(),
+        ]);
+
+        $handled = app(BusinessDocumentPaymentWebhookService::class)->handleInvoicePayment(
+            'invoice.settled',
+            [
+                'storeId' => 'btcpay-store-dot',
+                'invoiceId' => 'btcpay-inv-dot',
+            ],
+            $store
+        );
+
+        $this->assertTrue($handled);
+        $document->refresh();
+        $this->assertSame(BusinessDocumentStatus::Paid, $document->status);
+    }
+
+    #[Test]
+    public function webhook_ignores_invoice_received_payment(): void
+    {
+        $store = Store::factory()->create(['btcpay_store_id' => 'store-1']);
+        $document = BusinessDocument::create([
+            'company_id' => Company::create([
+                'user_id' => $store->user_id,
+                'legal_name' => 'Co',
+                'jurisdiction' => CompanyJurisdiction::EuSk,
+            ])->id,
+            'store_id' => $store->id,
+            'type' => BusinessDocumentType::Invoice,
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => '20260005',
+            'total' => 10,
+            'currency' => 'EUR',
+            'payment_btc_enabled' => true,
+            'issue_date' => now(),
+        ]);
+
+        $handled = app(BusinessDocumentPaymentWebhookService::class)->handleInvoicePayment(
+            'invoice.receivedPayment',
+            [
+                'storeId' => $store->btcpay_store_id,
+                'invoiceData' => [
+                    'metadata' => ['businessDocumentId' => $document->id],
+                ],
+            ],
+            $store
+        );
+
+        $this->assertFalse($handled);
+        $this->assertSame(BusinessDocumentStatus::Issued, $document->fresh()->status);
+    }
 }

@@ -24,6 +24,11 @@ export function useInvoiceDocument() {
   const nextNumberPreview = ref('');
   const paidAt = ref<string | null>(null);
   const amountPaid = ref<number | null>(null);
+  const bankMatch = ref<{
+    match_type?: string;
+    matched_at?: string;
+    transaction?: { booked_at?: string };
+  } | null>(null);
   const company = ref<Record<string, any> | null>(null);
   const contacts = ref<any[]>([]);
   const linkedStores = ref<any[]>([]);
@@ -322,6 +327,7 @@ export function useInvoiceDocument() {
     paymentToken.value = d.payment_token ?? null;
     paidAt.value = d.paid_at;
     amountPaid.value = d.amount_paid != null ? parseFloat(d.amount_paid) : null;
+    bankMatch.value = d.bank_match ?? null;
     tagsInput.value = (d.tags || []).join(', ');
     Object.assign(form, {
       title: d.title || '',
@@ -509,6 +515,7 @@ export function useInvoiceDocument() {
     loadNextNumberPreview,
     paidAt,
     amountPaid,
+    bankMatch,
     company,
     contacts,
     linkedStores,

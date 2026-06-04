@@ -19,6 +19,10 @@ User-scoped module for company profiles, customer contacts, and accounting invoi
 
 Existing companies above the Free limit (0) are **not** removed; the user simply cannot open the module until Pro is active again. Creating new companies is blocked when at plan limit (Pro: 2, or beta: 5).
 
+## Bank payment matching
+
+Import bank statements (CSV/CAMT.053), pair credits to issued invoices by variable symbol, and mark documents paid. Optional b-mail inbound for SK banks. See [BANK_PAYMENT_MATCHING.md](BANK_PAYMENT_MATCHING.md).
+
 ## Data retention
 
 Buyer PII on issued documents is frozen in `buyer_snapshot` at issue. Contact delete anonymizes the row when issued documents exist. Scheduled cleanup: see [DATA_RETENTION.md](DATA_RETENTION.md) (`data:retention-run`, `DATA_RETENTION_ENABLED`).
@@ -42,7 +46,7 @@ Buyer PII on issued documents is frozen in `buyer_snapshot` at issue. Contact de
 ## Payments on issued invoices
 
 1. **Bank (EU):** `PayBySquareGenerator` builds PAY by square string (LZMA via `xz`, package `trinetus/pay-by-square-generator`); QR embedded in PDF (EU template). Server needs `/usr/bin/xz` (`xz-utils` in the PHP Docker image).
-2. **Bitcoin (lazy checkout):** when `payment_btc_enabled`, issue assigns a stable `payment_token` (64 chars). PDF QR points to `GET /pay/i/{payment_token}` (public, throttled). That page creates a fresh BTCPay store invoice (60 min checkout, 24h monitoring) with the current fiat amount and redirects to `checkoutLink`. Lightning BOLT11 is generated at checkout time, not at issue time. Metadata on BTCPay invoices: `businessDocumentId`, `companyId`, `documentNumber`. `InvoiceSettled` webhooks on merchant stores mark the business document as paid via `BusinessDocumentPaymentWebhookService`.
+2. **Bitcoin (lazy checkout):** when `payment_btc_enabled`, issue assigns a stable `payment_token` (64 chars). PDF QR points to `GET /pay/i/{payment_token}` (public, throttled). That page creates a fresh BTCPay store invoice (60 min checkout, 24h monitoring) with the current fiat amount and redirects to `checkoutLink`. Lightning BOLT11 is generated at checkout time, not at issue time. Metadata on BTCPay invoices: `businessDocumentId`, `companyId`, `documentNumber`. `InvoiceSettled` / `invoice.settled` webhooks on merchant stores mark the business document as paid via `BusinessDocumentPaymentWebhookService` (also matches by `btcpay_invoice_id` when metadata is missing). The invoice list and detail views poll every 5s while status is `issued` and BTC pay is enabled.
 
 ## API (authenticated, Pro+)
 
