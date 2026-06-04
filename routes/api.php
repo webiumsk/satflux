@@ -22,6 +22,7 @@ use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FaqController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\Invoicing\BusinessDocumentController;
+use App\Http\Controllers\Invoicing\BusinessExpenseController;
 use App\Http\Controllers\Invoicing\CompanyBrandingController;
 use App\Http\Controllers\Invoicing\CompanyContactController;
 use App\Http\Controllers\Invoicing\CompanyController;
@@ -416,6 +417,29 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::post('/companies/{company}/documents/{businessDocument}/duplicate', [BusinessDocumentController::class, 'duplicate'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::delete('/companies/{company}/documents/{businessDocument}', [BusinessDocumentController::class, 'destroy'])
+                ->middleware(EnsureCompanyOwnership::class);
+
+            Route::get('/companies/{company}/expenses', [BusinessExpenseController::class, 'index'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/expenses', [BusinessExpenseController::class, 'store'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/expenses/{businessExpense}', [BusinessExpenseController::class, 'show'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::patch('/companies/{company}/expenses/{businessExpense}', [BusinessExpenseController::class, 'update'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/expenses/{businessExpense}/duplicate', [BusinessExpenseController::class, 'duplicate'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/expenses/{businessExpense}/mark-paid', [BusinessExpenseController::class, 'markPaid'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/expenses/{businessExpense}/unmark-paid', [BusinessExpenseController::class, 'unmarkPaid'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::delete('/companies/{company}/expenses/{businessExpense}', [BusinessExpenseController::class, 'destroy'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/expenses/{businessExpense}/attachment', [BusinessExpenseController::class, 'uploadAttachment'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/expenses/{businessExpense}/attachment', [BusinessExpenseController::class, 'attachment'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/expenses/{businessExpense}/history', [BusinessExpenseController::class, 'history'])
                 ->middleware(EnsureCompanyOwnership::class);
 
             Route::get('/companies/{company}/bank-transactions', [\App\Http\Controllers\Invoicing\BankTransactionController::class, 'index'])

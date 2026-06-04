@@ -1,0 +1,203 @@
+<template>
+  <InvoicingPageShell>
+    <template #header>
+      <InvoicingAppHeader :show-filter-bar="false" />
+    </template>
+    <template #toolbar>
+      <RouterLink :to="expenseListTo()" class="invoicing-back mb-0">
+        ← {{ t('invoicing.main_nav_expenses') }}
+      </RouterLink>
+    </template>
+
+    <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
+      <h1 class="invoicing-title">
+        {{ isNew ? t('invoicing.expenses_new') : expenseLabel }}
+      </h1>
+      <button type="button" class="invoicing-btn-primary" :disabled="saving" @click="save">
+        {{ t('common.save') }}
+      </button>
+    </div>
+
+    <form class="invoicing-card-pad max-w-2xl space-y-4" @submit.prevent="save">
+      <div>
+        <label class="invoicing-sf-label">{{ t('invoicing.expense_col_title') }}</label>
+        <input v-model="form.title" type="text" class="invoicing-sf-input w-full" />
+      </div>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="invoicing-sf-label">{{ t('invoicing.expense_col_external') }}</label>
+          <input v-model="form.external_number" type="text" class="invoicing-sf-input w-full" />
+        </div>
+        <div v-if="!isNew">
+          <label class="invoicing-sf-label">{{ t('invoicing.expense_col_internal') }}</label>
+          <input :value="internalNumber" type="text" class="invoicing-sf-input w-full bg-gray-50" readonly />
+        </div>
+      </div>
+      <div class="grid sm:grid-cols-3 gap-4">
+        <div>
+          <label class="invoicing-sf-label">{{ t('invoicing.variable_symbol') }}</label>
+          <input v-model="form.variable_symbol" type="text" class="invoicing-sf-input w-full" />
+        </div>
+        <div>
+          <label class="invoicing-sf-label">{{ t('invoicing.expense_col_ks') }}</label>
+          <input v-model="form.constant_symbol" type="text" class="invoicing-sf-input w-full" />
+        </div>
+        <div>
+          <label class="invoicing-sf-label">{{ t('invoicing.expense_col_ss') }}</label>
+          <input v-model="form.specific_symbol" type="text" class="invoicing-sf-input w-full" />
+        </div>
+      </div>
+      <div class="grid sm:grid-cols-3 gap-4">
+        <div>
+          <label class="invoicing-sf-label">{{ t('invoicing.expense_col_issue') }} *</label>
+          <input v-model="form.issue_date" type="date" class="invoicing-sf-input w-full" required />
+        </div>
+        <div>
+          <label class="invoicing-sf-label">{{ t('invoicing.expense_col_delivery') }}</label>
+          <input v-model="form.delivery_date" type="date" class="invoicing-sf-input w-full" />
+        </div>
+        <div>
+          <label class="invoicing-sf-label">{{ t('invoicing.expense_col_due') }}</label>
+          <input v-model="form.due_date" type="date" class="invoicing-sf-input w-full" />
+        </div>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="invoicing-sf-label">{{ t('invoicing.expense_col_total') }} *</label>
+          <input v-model.number="form.total" type="number" min="0" step="0.01" class="invoicing-sf-input w-full" required />
+        </div>
+        <div>
+          <label class="invoicing-sf-label">{{ t('invoicing.currency') }}</label>
+          <select v-model="form.currency" class="invoicing-sf-input w-full">
+            <option value="EUR">EUR</option>
+            <option value="CZK">CZK</option>
+            <option value="USD">USD</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="invoicing-sf-label">{{ t('invoicing.expense_internal_note') }}</label>
+        <textarea v-model="form.internal_note" rows="3" class="invoicing-sf-input w-full"></textarea>
+      </div>
+      <label v-if="isNew" class="flex items-center gap-2 text-sm">
+        <input v-model="form.mark_paid" type="checkbox" class="rounded border-gray-300" />
+        {{ t('invoicing.expense_mark_paid_on_create') }}
+      </label>
+      <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
+      <button type="submit" class="invoicing-btn-primary" :disabled="saving">{{ t('common.save') }}</button>
+    </form>
+  </InvoicingPageShell>
+</template>
+
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
+import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
+import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
+import api from '../../services/api';
+import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
+
+const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
+const { companyId, rememberCompany } = useInvoicingLayout();
+const expenseId = computed(() => route.params.expenseId as string | undefined);
+const isNew = computed(() => route.name === 'invoicing-expense-new');
+
+const today = new Date().toISOString().slice(0, 10);
+
+const form = ref({
+  title: '',
+  external_number: '',
+  variable_symbol: '',
+  constant_symbol: '',
+  specific_symbol: '',
+  issue_date: today,
+  delivery_date: today,
+  due_date: '',
+  total: 0,
+  currency: 'EUR',
+  internal_note: '',
+  mark_paid: false,
+});
+
+const internalNumber = ref('');
+const expenseLabel = ref('');
+const saving = ref(false);
+const error = ref('');
+
+function expenseListTo() {
+  return { name: 'invoicing-expenses', params: { companyId: companyId.value } };
+}
+
+function expenseShowTo(id: string) {
+  return { name: 'invoicing-expense-show', params: { companyId: companyId.value, expenseId: id } };
+}
+
+async function loadExpense() {
+  if (isNew.value) return;
+  const res = await api.get(`/invoicing/companies/${companyId.value}/expenses/${expenseId.value}`);
+  const e = res.data.data;
+  internalNumber.value = e.internal_number;
+  expenseLabel.value = e.internal_number + (e.title ? ` · ${e.title}` : '');
+  form.value = {
+    title: e.title || '',
+    external_number: e.external_number || '',
+    variable_symbol: e.variable_symbol || '',
+    constant_symbol: e.constant_symbol || '',
+    specific_symbol: e.specific_symbol || '',
+    issue_date: (e.issue_date || '').slice(0, 10),
+    delivery_date: (e.delivery_date || e.issue_date || '').slice(0, 10),
+    due_date: e.due_date ? e.due_date.slice(0, 10) : '',
+    total: parseFloat(e.total) || 0,
+    currency: e.currency || 'EUR',
+    internal_note: e.internal_note || '',
+    mark_paid: false,
+  };
+}
+
+async function save() {
+  error.value = '';
+  if (!form.value.issue_date) {
+    error.value = t('validation.required');
+    return;
+  }
+  saving.value = true;
+  try {
+    const payload = {
+      title: form.value.title || null,
+      external_number: form.value.external_number || null,
+      variable_symbol: form.value.variable_symbol || null,
+      constant_symbol: form.value.constant_symbol || null,
+      specific_symbol: form.value.specific_symbol || null,
+      issue_date: form.value.issue_date,
+      delivery_date: form.value.delivery_date || form.value.issue_date,
+      due_date: form.value.due_date || null,
+      total: form.value.total,
+      currency: form.value.currency,
+      internal_note: form.value.internal_note || null,
+      mark_paid: isNew.value ? form.value.mark_paid : undefined,
+    };
+    if (isNew.value) {
+      const res = await api.post(`/invoicing/companies/${companyId.value}/expenses`, payload);
+      await router.push(expenseShowTo(res.data.data.id));
+    } else {
+      await api.patch(`/invoicing/companies/${companyId.value}/expenses/${expenseId.value}`, payload);
+      await router.push(expenseShowTo(expenseId.value!));
+    }
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } } };
+    error.value = err?.response?.data?.message || t('errors.generic');
+  } finally {
+    saving.value = false;
+  }
+}
+
+onMounted(async () => {
+  rememberCompany(companyId.value);
+  const companyRes = await api.get(`/invoicing/companies/${companyId.value}`);
+  form.value.currency = companyRes.data.data?.default_currency || 'EUR';
+  await loadExpense();
+});
+</script>

@@ -97,6 +97,11 @@ class Company extends Model
         return $this->hasMany(BusinessDocument::class);
     }
 
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(BusinessExpense::class);
+    }
+
     public function bankTransactions(): HasMany
     {
         return $this->hasMany(BankTransaction::class);

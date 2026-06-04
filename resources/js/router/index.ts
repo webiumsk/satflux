@@ -253,6 +253,24 @@ const router = createRouter({
             meta: { requiresAuth: true, invoicingSection: 'expenses' },
         },
         {
+            path: '/invoicing/companies/:companyId/expenses/new',
+            name: 'invoicing-expense-new',
+            component: () => import('../pages/invoicing/ExpenseForm.vue'),
+            meta: { requiresAuth: true, invoicingSection: 'expenses' },
+        },
+        {
+            path: '/invoicing/companies/:companyId/expenses/:expenseId',
+            name: 'invoicing-expense-show',
+            component: () => import('../pages/invoicing/ExpenseShow.vue'),
+            meta: { requiresAuth: true, invoicingSection: 'expenses' },
+        },
+        {
+            path: '/invoicing/companies/:companyId/expenses/:expenseId/edit',
+            name: 'invoicing-expense-edit',
+            component: () => import('../pages/invoicing/ExpenseForm.vue'),
+            meta: { requiresAuth: true, invoicingSection: 'expenses' },
+        },
+        {
             path: '/invoicing/companies/:companyId/proformas/new',
             name: 'invoicing-proforma-new',
             component: () => import('../pages/invoicing/InvoiceForm.vue'),

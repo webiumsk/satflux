@@ -23,6 +23,10 @@ Existing companies above the Free limit (0) are **not** removed; the user simply
 
 Import bank statements (CSV/CAMT.053), pair credits to issued invoices by variable symbol, and mark documents paid. Optional b-mail inbound for SK banks. See [BANK_PAYMENT_MATCHING.md](BANK_PAYMENT_MATCHING.md).
 
+## Business expenses (náklady)
+
+Record supplier costs (document number, total, dates, attachment). Duplicate workflow for recurring costs. See [BUSINESS_EXPENSES.md](BUSINESS_EXPENSES.md).
+
 ## Data retention
 
 Buyer PII on issued documents is frozen in `buyer_snapshot` at issue. Contact delete anonymizes the row when issued documents exist. Scheduled cleanup: see [DATA_RETENTION.md](DATA_RETENTION.md) (`data:retention-run`, `DATA_RETENTION_ENABLED`).
