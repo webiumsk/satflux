@@ -20,11 +20,16 @@ class BusinessExpenseIsdocImportService
             return false;
         }
 
+        return $this->hasIsdocAtPath($path, $file->getClientOriginalExtension());
+    }
+
+    public function hasIsdocAtPath(string $path, ?string $clientExtension = null): bool
+    {
         try {
-            $this->extractFromPath($path);
+            $this->readInvoice($path, $clientExtension);
 
             return true;
-        } catch (ValidationException) {
+        } catch (ReaderException) {
             return false;
         }
     }
@@ -41,23 +46,54 @@ class BusinessExpenseIsdocImportService
             ]);
         }
 
-        return $this->extractFromPath($path);
+        return $this->extractFromPath($path, $file->getClientOriginalExtension());
     }
 
     /**
      * @return array<string, mixed>
      */
-    public function extractFromPath(string $path): array
+    public function extractFromPath(string $path, ?string $clientExtension = null): array
     {
         try {
-            $invoice = Manager::create()->getReader()->file($path);
+            $invoice = $this->readInvoice($path, $clientExtension);
         } catch (ReaderException $exception) {
             throw ValidationException::withMessages([
-                'file' => ['Could not read ISDOC from this file. Use .isdoc, ISDOC XML, or PDF with embedded ISDOC.'],
+                'file' => [$this->readerErrorMessage($exception)],
             ]);
         }
 
         return $this->mapInvoice($invoice);
+    }
+
+    protected function readInvoice(string $path, ?string $clientExtension = null): IsdocInvoiceSchema
+    {
+        $reader = Manager::create()->getReader();
+        $format = $this->readerFormatForExtension($clientExtension);
+
+        if ($format !== null) {
+            return $reader->file($path, IsdocInvoiceSchema::class, $format);
+        }
+
+        return $reader->file($path);
+    }
+
+    protected function readerFormatForExtension(?string $extension): ?string
+    {
+        return match (strtolower((string) $extension)) {
+            'pdf' => Manager::FORMAT_PDF,
+            'isdocx' => Manager::FORMAT_ISDOCX,
+            'isdoc', 'xml' => Manager::FORMAT_ISDOC,
+            default => null,
+        };
+    }
+
+    protected function readerErrorMessage(ReaderException $exception): string
+    {
+        if (str_contains($exception->getMessage(), 'No ISDOC data found in PDF')) {
+            return 'No ISDOC data found in this PDF. Use a PDF with embedded ISDOC or upload .isdoc / XML.';
+        }
+
+        return 'Could not read ISDOC from this file. Use .isdoc, ISDOC XML, or PDF with embedded ISDOC.';
     }
 
     /**

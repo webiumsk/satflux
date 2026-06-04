@@ -36,99 +36,88 @@
       {{ importNotice }}
     </div>
 
-    <form class="invoicing-card-pad max-w-2xl space-y-4" @submit.prevent="save">
-      <div class="rounded-lg border border-dashed border-gray-300 p-4 text-sm space-y-2">
-        <label class="invoicing-sf-label block">{{ t('invoicing.expense_attachment') }}</label>
-        <p class="text-gray-600">{{ t('invoicing.expense_attachment_isdoc_hint') }}</p>
-        <div class="flex flex-wrap items-center gap-2">
-          <label class="invoicing-btn-secondary cursor-pointer inline-block">
-            {{ detecting ? t('common.loading') : t('invoicing.expense_attachment_choose') }}
-            <input
-              type="file"
-              class="hidden"
-              accept=".pdf,.jpg,.jpeg,.png,.webp,.xml,.isdoc,application/pdf,application/xml,text/xml"
-              @change="onAttachmentPick"
-            />
-          </label>
-          <span v-if="pendingAttachmentName" class="text-gray-700">{{ pendingAttachmentName }}</span>
-          <button
-            v-if="pendingAttachmentName"
-            type="button"
-            class="text-gray-500 hover:text-gray-800 text-xs"
-            @click="clearPendingAttachment"
-          >
-            {{ t('invoicing.expense_attachment_remove') }}
-          </button>
+    <div class="grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,42%)] gap-6 items-start">
+      <form class="invoicing-card-pad space-y-4 min-w-0" @submit.prevent="save">
+        <div>
+          <label class="invoicing-sf-label">{{ t('invoicing.expense_col_title') }}</label>
+          <input v-model="form.title" type="text" class="invoicing-sf-input w-full" />
         </div>
-      </div>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label class="invoicing-sf-label">{{ t('invoicing.expense_col_external') }}</label>
+            <input v-model="form.external_number" type="text" class="invoicing-sf-input w-full" />
+          </div>
+          <div v-if="!isNew">
+            <label class="invoicing-sf-label">{{ t('invoicing.expense_col_internal') }}</label>
+            <input :value="internalNumber" type="text" class="invoicing-sf-input w-full bg-gray-50" readonly />
+          </div>
+        </div>
+        <div class="grid sm:grid-cols-3 gap-4">
+          <div>
+            <label class="invoicing-sf-label">{{ t('invoicing.variable_symbol') }}</label>
+            <input v-model="form.variable_symbol" type="text" class="invoicing-sf-input w-full" />
+          </div>
+          <div>
+            <label class="invoicing-sf-label">{{ t('invoicing.expense_col_ks') }}</label>
+            <input v-model="form.constant_symbol" type="text" class="invoicing-sf-input w-full" />
+          </div>
+          <div>
+            <label class="invoicing-sf-label">{{ t('invoicing.expense_col_ss') }}</label>
+            <input v-model="form.specific_symbol" type="text" class="invoicing-sf-input w-full" />
+          </div>
+        </div>
+        <div class="grid sm:grid-cols-3 gap-4">
+          <div>
+            <label class="invoicing-sf-label">{{ t('invoicing.expense_col_issue') }} *</label>
+            <input v-model="form.issue_date" type="date" class="invoicing-sf-input w-full" required />
+          </div>
+          <div>
+            <label class="invoicing-sf-label">{{ t('invoicing.expense_col_delivery') }}</label>
+            <input v-model="form.delivery_date" type="date" class="invoicing-sf-input w-full" />
+          </div>
+          <div>
+            <label class="invoicing-sf-label">{{ t('invoicing.expense_col_due') }}</label>
+            <input v-model="form.due_date" type="date" class="invoicing-sf-input w-full" />
+          </div>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label class="invoicing-sf-label">{{ t('invoicing.expense_col_total') }} *</label>
+            <input v-model.number="form.total" type="number" min="0" step="0.01" class="invoicing-sf-input w-full" required />
+          </div>
+          <div>
+            <label class="invoicing-sf-label">{{ t('invoicing.currency') }}</label>
+            <select v-model="form.currency" class="invoicing-sf-input w-full">
+              <option value="EUR">EUR</option>
+              <option value="CZK">CZK</option>
+              <option value="USD">USD</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="invoicing-sf-label">{{ t('invoicing.expense_internal_note') }}</label>
+          <textarea v-model="form.internal_note" rows="3" class="invoicing-sf-input w-full"></textarea>
+        </div>
+        <label v-if="isNew" class="flex items-center gap-2 text-sm">
+          <input v-model="form.mark_paid" type="checkbox" class="rounded border-gray-300" />
+          {{ t('invoicing.expense_mark_paid_on_create') }}
+        </label>
+        <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
+        <button type="submit" class="invoicing-btn-primary" :disabled="saving">{{ t('common.save') }}</button>
+      </form>
 
-      <div>
-        <label class="invoicing-sf-label">{{ t('invoicing.expense_col_title') }}</label>
-        <input v-model="form.title" type="text" class="invoicing-sf-input w-full" />
-      </div>
-      <div class="grid sm:grid-cols-2 gap-4">
-        <div>
-          <label class="invoicing-sf-label">{{ t('invoicing.expense_col_external') }}</label>
-          <input v-model="form.external_number" type="text" class="invoicing-sf-input w-full" />
-        </div>
-        <div v-if="!isNew">
-          <label class="invoicing-sf-label">{{ t('invoicing.expense_col_internal') }}</label>
-          <input :value="internalNumber" type="text" class="invoicing-sf-input w-full bg-gray-50" readonly />
-        </div>
-      </div>
-      <div class="grid sm:grid-cols-3 gap-4">
-        <div>
-          <label class="invoicing-sf-label">{{ t('invoicing.variable_symbol') }}</label>
-          <input v-model="form.variable_symbol" type="text" class="invoicing-sf-input w-full" />
-        </div>
-        <div>
-          <label class="invoicing-sf-label">{{ t('invoicing.expense_col_ks') }}</label>
-          <input v-model="form.constant_symbol" type="text" class="invoicing-sf-input w-full" />
-        </div>
-        <div>
-          <label class="invoicing-sf-label">{{ t('invoicing.expense_col_ss') }}</label>
-          <input v-model="form.specific_symbol" type="text" class="invoicing-sf-input w-full" />
-        </div>
-      </div>
-      <div class="grid sm:grid-cols-3 gap-4">
-        <div>
-          <label class="invoicing-sf-label">{{ t('invoicing.expense_col_issue') }} *</label>
-          <input v-model="form.issue_date" type="date" class="invoicing-sf-input w-full" required />
-        </div>
-        <div>
-          <label class="invoicing-sf-label">{{ t('invoicing.expense_col_delivery') }}</label>
-          <input v-model="form.delivery_date" type="date" class="invoicing-sf-input w-full" />
-        </div>
-        <div>
-          <label class="invoicing-sf-label">{{ t('invoicing.expense_col_due') }}</label>
-          <input v-model="form.due_date" type="date" class="invoicing-sf-input w-full" />
-        </div>
-      </div>
-      <div class="grid sm:grid-cols-2 gap-4">
-        <div>
-          <label class="invoicing-sf-label">{{ t('invoicing.expense_col_total') }} *</label>
-          <input v-model.number="form.total" type="number" min="0" step="0.01" class="invoicing-sf-input w-full" required />
-        </div>
-        <div>
-          <label class="invoicing-sf-label">{{ t('invoicing.currency') }}</label>
-          <select v-model="form.currency" class="invoicing-sf-input w-full">
-            <option value="EUR">EUR</option>
-            <option value="CZK">CZK</option>
-            <option value="USD">USD</option>
-          </select>
-        </div>
-      </div>
-      <div>
-        <label class="invoicing-sf-label">{{ t('invoicing.expense_internal_note') }}</label>
-        <textarea v-model="form.internal_note" rows="3" class="invoicing-sf-input w-full"></textarea>
-      </div>
-      <label v-if="isNew" class="flex items-center gap-2 text-sm">
-        <input v-model="form.mark_paid" type="checkbox" class="rounded border-gray-300" />
-        {{ t('invoicing.expense_mark_paid_on_create') }}
-      </label>
-      <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
-      <button type="submit" class="invoicing-btn-primary" :disabled="saving">{{ t('common.save') }}</button>
-    </form>
+      <ExpenseAttachmentPanel
+        :file-name="pendingAttachmentName"
+        :has-file="Boolean(pendingAttachmentName)"
+        :preview-url="previewUrl"
+        :preview-kind="previewKind"
+        :detecting="detecting"
+        :detect-error="detectErrorMessage"
+        :has-isdoc="lastDetectHasIsdoc"
+        @file-selected="onFileSelected"
+        @clear="clearPendingAttachment"
+      />
+    </div>
   </InvoicingPageShell>
 </template>
 
@@ -136,6 +125,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
+import ExpenseAttachmentPanel from '../../components/invoicing/ExpenseAttachmentPanel.vue';
 import ExpenseIsdocExtractModal from '../../components/invoicing/ExpenseIsdocExtractModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
@@ -156,6 +146,10 @@ const isNew = computed(() => route.name === 'invoicing-expense-new');
 const {
   quota,
   pendingAttachmentName,
+  previewUrl,
+  previewKind,
+  lastDetectHasIsdoc,
+  detectError,
   showExtractModal,
   detecting,
   extracting,
@@ -168,6 +162,14 @@ const {
   clearPendingAttachment,
   uploadPendingAttachment,
 } = useExpenseIsdocAttachment(companyId);
+
+const detectErrorMessage = computed(() => {
+  if (!detectError.value) return '';
+  if (detectError.value === 'detect_failed') {
+    return t('invoicing.expense_attachment_detect_failed');
+  }
+  return detectError.value;
+});
 
 const today = new Date().toISOString().slice(0, 10);
 
@@ -206,17 +208,9 @@ function applyImportDraft(draft: ExpenseImportDraft) {
   importNotice.value = t('invoicing.expense_import_prefilled');
 }
 
-async function onAttachmentPick(ev: Event) {
-  const input = ev.target as HTMLInputElement;
-  const file = input.files?.[0];
-  input.value = '';
-  if (!file) return;
+async function onFileSelected(file: File) {
   error.value = '';
-  try {
-    await onDocumentSelected(file);
-  } catch {
-    error.value = t('invoicing.expense_attachment_detect_failed');
-  }
+  await onDocumentSelected(file);
 }
 
 async function onConfirmExtract() {

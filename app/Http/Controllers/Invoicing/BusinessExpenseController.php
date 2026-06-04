@@ -76,7 +76,13 @@ class BusinessExpenseController extends Controller
     public function detectIsdoc(Request $request, Company $company): JsonResponse
     {
         $request->validate([
-            'file' => ['required', 'file', 'max:10240', 'extensions:pdf,isdoc,xml'],
+            'file' => [
+                'required',
+                'file',
+                'max:10240',
+                'extensions:pdf,isdoc,xml,jpg,jpeg,png,webp',
+                'mimetypes:application/pdf,application/xml,text/xml,image/jpeg,image/png,image/webp,application/octet-stream',
+            ],
         ]);
 
         $file = $request->file('file');
@@ -85,6 +91,7 @@ class BusinessExpenseController extends Controller
             'data' => [
                 'has_isdoc' => $this->isdocImportService->hasIsdocInUpload($file),
                 'quota' => $this->isdocQuotaService->snapshot($request->user()),
+                'filename' => $file->getClientOriginalName(),
             ],
         ]);
     }

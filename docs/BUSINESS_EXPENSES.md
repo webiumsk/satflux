@@ -37,6 +37,8 @@ Workflow: duplicate recurring expense, fill total and external number, upload at
 
 ## ISDOC import (0.2, SuperFaktúra-style)
 
+**Dependency:** embedded ISDOC in PDF requires `smalot/pdfparser` (declared in root `composer.json`). After deploy run `composer install` so PDF detection works; without it uploads succeed but `has_isdoc` is always false.
+
 1. User uploads attachment (PDF / `.isdoc` / XML) on new or edit expense form (or detail).
 2. `POST .../expenses/detect-isdoc` - checks for readable ISDOC (does not consume quota).
 3. If found, UI asks whether to extract (modal).

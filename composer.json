@@ -7,6 +7,7 @@
     "require": {
         "php": "^8.3",
         "adawolfa/isdoc": "^1.5",
+        "smalot/pdfparser": "^2.12",
         "dompdf/dompdf": "^3.1",
         "galbar/jsonpath": "^2.1",
         "inertiajs/inertia-laravel": "^2.0",

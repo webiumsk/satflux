@@ -103,29 +103,18 @@
           </div>
         </div>
 
-        <div class="invoicing-card-pad space-y-3">
-          <h2 class="font-medium text-gray-900">{{ t('invoicing.expense_attachment') }}</h2>
-          <p v-if="expense.original_filename" class="text-sm text-gray-600">{{ expense.original_filename }}</p>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-if="expense.attachment_path"
-              type="button"
-              class="invoicing-btn-secondary text-sm"
-              @click="openAttachment"
-            >
-              {{ t('invoicing.expense_attachment_view') }}
-            </button>
-            <label v-if="expense.status !== 'cancelled'" class="invoicing-btn-secondary text-sm cursor-pointer">
-              {{ uploading || detecting ? t('common.loading') : t('invoicing.expense_attachment_upload') }}
-              <input
-                type="file"
-                class="hidden"
-                accept=".pdf,.jpg,.jpeg,.png,.webp,.xml,.isdoc,application/pdf,application/xml,text/xml"
-                @change="onAttachmentPick"
-              />
-            </label>
-          </div>
-        </div>
+        <ExpenseAttachmentPanel
+          v-if="expense.status !== 'cancelled' || expense.attachment_path"
+          :file-name="panelFileName"
+          :has-file="panelHasFile"
+          :preview-url="panelPreviewUrl"
+          :preview-kind="panelPreviewKind"
+          :detecting="detecting"
+          :detect-error="detectErrorMessage"
+          :has-isdoc="lastDetectHasIsdoc"
+          @file-selected="onFileSelected"
+          @clear="onPanelClear"
+        />
       </div>
 
       <div v-if="history.length" class="invoicing-card-pad mt-6">
@@ -142,9 +131,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
+import ExpenseAttachmentPanel from '../../components/invoicing/ExpenseAttachmentPanel.vue';
 import ExpenseIsdocExtractModal from '../../components/invoicing/ExpenseIsdocExtractModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
@@ -186,9 +176,16 @@ const loading = ref(true);
 const acting = ref(false);
 const duplicating = ref(false);
 const uploading = ref(false);
+const savedPreviewUrl = ref<string | null>(null);
+const savedPreviewKind = ref<'pdf' | 'image' | 'other' | null>(null);
 
 const {
   quota,
+  pendingAttachmentName,
+  previewUrl,
+  previewKind,
+  lastDetectHasIsdoc,
+  detectError,
   showExtractModal,
   detecting,
   extracting,
@@ -198,8 +195,29 @@ const {
   onDocumentSelected,
   confirmExtract,
   skipExtract,
+  clearPendingAttachment,
   uploadPendingAttachment,
 } = useExpenseIsdocAttachment(companyId);
+
+const detectErrorMessage = computed(() => {
+  if (!detectError.value) return '';
+  if (detectError.value === 'detect_failed') {
+    return t('invoicing.expense_attachment_detect_failed');
+  }
+  return detectError.value;
+});
+
+const panelFileName = computed(
+  () => pendingAttachmentName.value || expense.value?.original_filename || '',
+);
+
+const panelHasFile = computed(
+  () => Boolean(pendingAttachmentName.value || expense.value?.attachment_path),
+);
+
+const panelPreviewUrl = computed(() => previewUrl.value || savedPreviewUrl.value);
+
+const panelPreviewKind = computed(() => previewKind.value || savedPreviewKind.value);
 
 const isOverdue = computed(() => {
   if (!expense.value || expense.value.status !== 'recorded' || !expense.value.due_date) return false;
@@ -250,8 +268,40 @@ async function load() {
     ]);
     expense.value = expRes.data.data;
     history.value = histRes.data.data ?? [];
+    await loadSavedPreview();
   } finally {
     loading.value = false;
+  }
+}
+
+function revokeSavedPreview() {
+  if (savedPreviewUrl.value) {
+    URL.revokeObjectURL(savedPreviewUrl.value);
+    savedPreviewUrl.value = null;
+  }
+  savedPreviewKind.value = null;
+}
+
+async function loadSavedPreview() {
+  revokeSavedPreview();
+  if (!expense.value?.attachment_path) return;
+  try {
+    const blob = await getWebBlob(
+      `/api/invoicing/companies/${companyId.value}/expenses/${expenseId.value}/attachment`,
+    );
+    const name = expense.value.original_filename || '';
+    if (name.toLowerCase().endsWith('.pdf') || blob.type === 'application/pdf') {
+      savedPreviewKind.value = 'pdf';
+    } else if (blob.type.startsWith('image/')) {
+      savedPreviewKind.value = 'image';
+    } else {
+      savedPreviewKind.value = 'other';
+    }
+    if (savedPreviewKind.value === 'pdf' || savedPreviewKind.value === 'image') {
+      savedPreviewUrl.value = URL.createObjectURL(blob);
+    }
+  } catch {
+    savedPreviewKind.value = 'other';
   }
 }
 
@@ -327,24 +377,30 @@ async function uploadAttachmentOnly() {
     await uploadPendingAttachment(expenseId.value);
     const res = await api.get(`/invoicing/companies/${companyId.value}/expenses/${expenseId.value}`);
     expense.value = res.data.data;
+    clearPendingAttachment();
+    await loadSavedPreview();
   } finally {
     uploading.value = false;
   }
 }
 
-async function onAttachmentPick(ev: Event) {
-  const input = ev.target as HTMLInputElement;
-  const file = input.files?.[0];
-  input.value = '';
-  if (!file) return;
+async function onFileSelected(file: File) {
   try {
     await onDocumentSelected(file);
     if (!showExtractModal.value) {
       await uploadAttachmentOnly();
     }
   } catch {
-    window.alert(t('invoicing.expense_attachment_detect_failed'));
+    /* detectError shown in panel */
   }
+}
+
+function onPanelClear() {
+  if (pendingAttachmentName.value) {
+    clearPendingAttachment();
+    return;
+  }
+  revokeSavedPreview();
 }
 
 async function onConfirmExtract() {
@@ -370,16 +426,13 @@ async function onSkipExtract() {
   await uploadAttachmentOnly();
 }
 
-async function openAttachment() {
-  const path = `/api/invoicing/companies/${companyId.value}/expenses/${expenseId.value}/attachment`;
-  const blob = await getWebBlob(path);
-  const url = URL.createObjectURL(blob);
-  window.open(url, '_blank', 'noopener');
-}
-
 onMounted(() => {
   rememberCompany(companyId.value);
   loadQuota();
   load();
+});
+
+onUnmounted(() => {
+  revokeSavedPreview();
 });
 </script>

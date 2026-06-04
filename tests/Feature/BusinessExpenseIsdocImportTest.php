@@ -14,6 +14,7 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\Invoicing\BusinessDocumentIsdocService;
+use App\Services\Invoicing\BusinessDocumentPdfService;
 use App\Services\Invoicing\BusinessExpenseIsdocImportService;
 use App\Services\Invoicing\BusinessExpenseIsdocQuotaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -115,12 +116,27 @@ class BusinessExpenseIsdocImportTest extends TestCase
     }
 
     #[Test]
+    public function service_extracts_isdoc_when_temp_path_has_no_extension(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'exp-isdoc-');
+        file_put_contents($path, $this->sampleIsdocXml());
+
+        $service = app(BusinessExpenseIsdocImportService::class);
+        $this->assertTrue($service->hasIsdocAtPath($path, 'isdoc'));
+
+        $draft = $service->extractFromPath($path, 'isdoc');
+        @unlink($path);
+
+        $this->assertSame('FV20261234', $draft['external_number']);
+    }
+
+    #[Test]
     public function service_extracts_fields_from_isdoc_xml(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'exp-isdoc-');
         file_put_contents($path, $this->sampleIsdocXml());
 
-        $draft = app(BusinessExpenseIsdocImportService::class)->extractFromPath($path);
+        $draft = app(BusinessExpenseIsdocImportService::class)->extractFromPath($path, 'isdoc');
         @unlink($path);
 
         $this->assertSame('isdoc', $draft['source']);
@@ -129,6 +145,57 @@ class BusinessExpenseIsdocImportTest extends TestCase
         $this->assertSame('2026-06-01', $draft['issue_date']);
         $this->assertGreaterThan(0, $draft['total']);
         $this->assertNotEmpty($draft['title']);
+    }
+
+    #[Test]
+    public function service_detects_isdoc_in_satflux_issued_pdf(): void
+    {
+        $doc = BusinessDocument::create([
+            'company_id' => $this->company->id,
+            'type' => 'invoice',
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => 'FV20261234',
+            'variable_symbol' => '20261234',
+            'total' => 121.50,
+            'subtotal' => 100,
+            'tax_total' => 21.50,
+            'currency' => 'EUR',
+            'issue_date' => '2026-06-01',
+            'due_date' => '2026-06-15',
+            'payment_bank_enabled' => true,
+        ]);
+
+        BusinessDocumentLine::create([
+            'business_document_id' => $doc->id,
+            'sort_order' => 0,
+            'name' => 'Služba',
+            'quantity' => 1,
+            'unit' => 'ks.',
+            'unit_price' => 100,
+            'line_total' => 100,
+            'tax_rate' => 21,
+        ]);
+
+        $doc = $doc->fresh(['company', 'contact', 'lines']);
+        $xml = app(BusinessDocumentIsdocService::class)->xml($doc);
+        $this->assertStringContainsString('<Invoice', $xml);
+
+        $binary = app(BusinessDocumentPdfService::class)->renderBinary($doc);
+        $this->assertStringContainsString('invoice.isdoc', $binary);
+
+        $path = tempnam(sys_get_temp_dir(), 'exp-satflux-pdf-');
+        file_put_contents($path, $binary);
+
+        $service = app(BusinessExpenseIsdocImportService::class);
+        $this->assertTrue(
+            $service->hasIsdocAtPath($path, 'pdf'),
+            'Satflux PDF with embedded ISDOC should be detected. XML prefix: '.substr($xml, 0, 30),
+        );
+
+        $draft = $service->extractFromPath($path, 'pdf');
+        @unlink($path);
+
+        $this->assertSame('FV20261234', $draft['external_number']);
     }
 
     #[Test]

@@ -1,6 +1,6 @@
 <template>
   <div class="invoicing-page">
-    <div class="sticky top-0 z-30 shadow-sm bg-gray-100">
+    <div class="sticky top-0 z-20 shadow-sm bg-gray-100">
       <InvoicingAppHeader
         :company-label="company?.trade_name || company?.legal_name"
         :show-filter-bar="false"

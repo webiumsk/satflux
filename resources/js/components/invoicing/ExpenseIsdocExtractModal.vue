@@ -21,9 +21,30 @@
         {{ bodyText }}
       </p>
 
-      <p v-if="quotaHint" class="mt-2 text-xs text-gray-500">{{ quotaHint }}</p>
+      <p v-if="quotaHint" class="mt-2 text-xs text-gray-500">
+        {{ quotaHint }}
+        <template v-if="showTopupLink">
+          <span aria-hidden="true"> · </span>
+          <button
+            type="button"
+            class="text-indigo-700 hover:text-indigo-900 hover:underline font-medium"
+            @click="showPacks = !showPacks"
+          >
+            {{ showPacks ? t('invoicing.expense_isdoc_topup_hide') : t('invoicing.expense_isdoc_topup_link') }}
+          </button>
+        </template>
+      </p>
+      <p v-else-if="showTopupLink" class="mt-2 text-sm">
+        <button
+          type="button"
+          class="text-indigo-700 hover:text-indigo-900 hover:underline font-medium"
+          @click="showPacks = !showPacks"
+        >
+          {{ showPacks ? t('invoicing.expense_isdoc_topup_hide') : t('invoicing.expense_isdoc_topup_link') }}
+        </button>
+      </p>
 
-      <div v-if="!canExtract && packs.length" class="mt-5 space-y-3">
+      <div v-if="showPacksSection" class="mt-5 space-y-3">
         <p class="text-sm font-medium text-gray-800">{{ t('invoicing.expense_isdoc_packs_title') }}</p>
         <p class="text-xs text-gray-500">{{ t('invoicing.expense_isdoc_packs_vat') }}</p>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -62,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 export type IsdocPack = { credits: number; price_eur: number };
@@ -95,9 +116,32 @@ defineEmits<{
 
 const { t } = useI18n();
 
+const showPacks = ref(false);
+
 const canExtract = computed(() => props.quota?.can_extract ?? true);
 
 const packs = computed(() => props.quota?.packs ?? []);
+
+const showTopupLink = computed(
+  () => !props.quota?.unlimited && packs.value.length > 0 && canExtract.value,
+);
+
+const showPacksSection = computed(
+  () => packs.value.length > 0 && (!canExtract.value || showPacks.value),
+);
+
+watch(
+  () => props.open,
+  (isOpen) => {
+    if (!isOpen) {
+      showPacks.value = false;
+      return;
+    }
+    if (!canExtract.value && packs.value.length > 0) {
+      showPacks.value = true;
+    }
+  },
+);
 
 const bodyText = computed(() => {
   if (props.quota?.unlimited) {

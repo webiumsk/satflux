@@ -1,5 +1,5 @@
 <template>
-  <header class="bg-gray-900 border-b border-gray-800 relative z-30">
+  <header class="bg-gray-900 border-b border-gray-800 relative z-40">
     <!-- Push notification toast for support/admin (new wallet connection needs support) -->
     <div
       v-if="supportToastVisible && supportToastMessage"
@@ -148,7 +148,7 @@
 
         <!-- Right side: Mobile menu button (mobile) / User button (desktop) -->
         <div class="flex items-center ml-auto md:ml-0 gap-4">
-          <div class="hidden md:block">
+          <div class="hidden md:block relative z-50">
             <!-- Language Switcher -->
             <LanguageSwitcher />
           </div>
@@ -218,7 +218,7 @@
           </button>
 
           <!-- Desktop: User button with dropdown -->
-          <div class="hidden md:block relative" v-click-outside="closeUserMenu">
+          <div class="hidden md:block relative z-50" v-click-outside="closeUserMenu">
             <button
               @click="handleUserButtonClick"
               class="flex items-center space-x-3 p-1.5 pl-3 rounded-full hover:bg-gray-800 border border-transparent hover:border-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900"
@@ -245,7 +245,7 @@
             >
               <div
                 v-if="showUserMenu"
-                class="absolute right-0 mt-2 w-56 rounded-xl shadow-2xl bg-gray-800 border border-gray-700 ring-1 ring-black ring-opacity-5 z-50 overflow-hidden"
+                class="absolute right-0 mt-2 w-56 rounded-xl shadow-2xl bg-gray-800 border border-gray-700 ring-1 ring-black ring-opacity-5 z-[60] overflow-hidden"
               >
                 <div class="px-4 py-3 border-b border-gray-700 bg-gray-800/50">
                   <p

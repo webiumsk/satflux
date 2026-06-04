@@ -1,5 +1,5 @@
 <template>
-  <div class="relative" v-click-outside="closeDropdown">
+  <div class="relative z-50" v-click-outside="closeDropdown">
     <button
       @click="toggleDropdown"
       class="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -24,7 +24,7 @@
     >
       <div
         v-if="showDropdown"
-        class="absolute right-0 mt-2 w-48 rounded-xl shadow-2xl bg-gray-800 border border-gray-700 ring-1 ring-black ring-opacity-5 z-50 overflow-hidden"
+        class="absolute right-0 mt-2 w-48 rounded-xl shadow-2xl bg-gray-800 border border-gray-700 ring-1 ring-black ring-opacity-5 z-[60] overflow-hidden"
       >
         <div class="py-1">
           <button
