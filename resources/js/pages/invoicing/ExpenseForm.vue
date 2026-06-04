@@ -9,6 +9,17 @@
       </RouterLink>
     </template>
 
+    <ExpenseIsdocExtractModal
+      :open="showExtractModal"
+      :extracting="extracting"
+      :purchasing="purchasing"
+      :quota="quota"
+      @close="skipExtract"
+      @skip="onSkipExtract"
+      @confirm="onConfirmExtract"
+      @purchase="purchasePack"
+    />
+
     <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
       <h1 class="invoicing-title">
         {{ isNew ? t('invoicing.expenses_new') : expenseLabel }}
@@ -18,7 +29,39 @@
       </button>
     </div>
 
+    <div
+      v-if="importNotice"
+      class="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900"
+    >
+      {{ importNotice }}
+    </div>
+
     <form class="invoicing-card-pad max-w-2xl space-y-4" @submit.prevent="save">
+      <div class="rounded-lg border border-dashed border-gray-300 p-4 text-sm space-y-2">
+        <label class="invoicing-sf-label block">{{ t('invoicing.expense_attachment') }}</label>
+        <p class="text-gray-600">{{ t('invoicing.expense_attachment_isdoc_hint') }}</p>
+        <div class="flex flex-wrap items-center gap-2">
+          <label class="invoicing-btn-secondary cursor-pointer inline-block">
+            {{ detecting ? t('common.loading') : t('invoicing.expense_attachment_choose') }}
+            <input
+              type="file"
+              class="hidden"
+              accept=".pdf,.jpg,.jpeg,.png,.webp,.xml,.isdoc,application/pdf,application/xml,text/xml"
+              @change="onAttachmentPick"
+            />
+          </label>
+          <span v-if="pendingAttachmentName" class="text-gray-700">{{ pendingAttachmentName }}</span>
+          <button
+            v-if="pendingAttachmentName"
+            type="button"
+            class="text-gray-500 hover:text-gray-800 text-xs"
+            @click="clearPendingAttachment"
+          >
+            {{ t('invoicing.expense_attachment_remove') }}
+          </button>
+        </div>
+      </div>
+
       <div>
         <label class="invoicing-sf-label">{{ t('invoicing.expense_col_title') }}</label>
         <input v-model="form.title" type="text" class="invoicing-sf-input w-full" />
@@ -93,10 +136,15 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
+import ExpenseIsdocExtractModal from '../../components/invoicing/ExpenseIsdocExtractModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
-import api from '../../services/api';
+import {
+  useExpenseIsdocAttachment,
+  type ExpenseImportDraft,
+} from '../../composables/useExpenseIsdocAttachment';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
+import api from '../../services/api';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -104,6 +152,22 @@ const router = useRouter();
 const { companyId, rememberCompany } = useInvoicingLayout();
 const expenseId = computed(() => route.params.expenseId as string | undefined);
 const isNew = computed(() => route.name === 'invoicing-expense-new');
+
+const {
+  quota,
+  pendingAttachmentName,
+  showExtractModal,
+  detecting,
+  extracting,
+  purchasing,
+  loadQuota,
+  purchasePack,
+  onDocumentSelected,
+  confirmExtract,
+  skipExtract,
+  clearPendingAttachment,
+  uploadPendingAttachment,
+} = useExpenseIsdocAttachment(companyId);
 
 const today = new Date().toISOString().slice(0, 10);
 
@@ -126,6 +190,51 @@ const internalNumber = ref('');
 const expenseLabel = ref('');
 const saving = ref(false);
 const error = ref('');
+const importNotice = ref('');
+
+function applyImportDraft(draft: ExpenseImportDraft) {
+  if (draft.title) form.value.title = draft.title;
+  if (draft.external_number) form.value.external_number = draft.external_number;
+  if (draft.variable_symbol) form.value.variable_symbol = draft.variable_symbol;
+  if (draft.constant_symbol) form.value.constant_symbol = draft.constant_symbol;
+  if (draft.specific_symbol) form.value.specific_symbol = draft.specific_symbol;
+  if (draft.issue_date) form.value.issue_date = draft.issue_date.slice(0, 10);
+  if (draft.delivery_date) form.value.delivery_date = draft.delivery_date.slice(0, 10);
+  if (draft.due_date) form.value.due_date = draft.due_date.slice(0, 10);
+  if (draft.total != null) form.value.total = Number(draft.total);
+  if (draft.currency) form.value.currency = draft.currency;
+  importNotice.value = t('invoicing.expense_import_prefilled');
+}
+
+async function onAttachmentPick(ev: Event) {
+  const input = ev.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  error.value = '';
+  try {
+    await onDocumentSelected(file);
+  } catch {
+    error.value = t('invoicing.expense_attachment_detect_failed');
+  }
+}
+
+async function onConfirmExtract() {
+  error.value = '';
+  try {
+    const draft = await confirmExtract();
+    if (draft) applyImportDraft(draft);
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { errors?: { quota?: string[] }; message?: string } } };
+    const quotaMsg = err?.response?.data?.errors?.quota?.[0];
+    error.value = quotaMsg || err?.response?.data?.message || t('invoicing.expense_extract_failed');
+    skipExtract();
+  }
+}
+
+function onSkipExtract() {
+  skipExtract();
+}
 
 function expenseListTo() {
   return { name: 'invoicing-expenses', params: { companyId: companyId.value } };
@@ -179,13 +288,16 @@ async function save() {
       internal_note: form.value.internal_note || null,
       mark_paid: isNew.value ? form.value.mark_paid : undefined,
     };
+    let savedId: string;
     if (isNew.value) {
       const res = await api.post(`/invoicing/companies/${companyId.value}/expenses`, payload);
-      await router.push(expenseShowTo(res.data.data.id));
+      savedId = res.data.data.id;
     } else {
       await api.patch(`/invoicing/companies/${companyId.value}/expenses/${expenseId.value}`, payload);
-      await router.push(expenseShowTo(expenseId.value!));
+      savedId = expenseId.value!;
     }
+    await uploadPendingAttachment(savedId);
+    await router.push(expenseShowTo(savedId));
   } catch (e: unknown) {
     const err = e as { response?: { data?: { message?: string } } };
     error.value = err?.response?.data?.message || t('errors.generic');
@@ -196,6 +308,7 @@ async function save() {
 
 onMounted(async () => {
   rememberCompany(companyId.value);
+  await loadQuota();
   const companyRes = await api.get(`/invoicing/companies/${companyId.value}`);
   form.value.currency = companyRes.data.data?.default_currency || 'EUR';
   await loadExpense();

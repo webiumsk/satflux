@@ -423,6 +423,16 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/expenses', [BusinessExpenseController::class, 'store'])
                 ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/expenses/isdoc-extract-quota', [BusinessExpenseController::class, 'isdocExtractQuota'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/expenses/isdoc-packs/purchase', [BusinessExpenseController::class, 'purchaseIsdocPack'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/expenses/detect-isdoc', [BusinessExpenseController::class, 'detectIsdoc'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/expenses/extract', [BusinessExpenseController::class, 'extract'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/expenses/import', [BusinessExpenseController::class, 'importFromDocument'])
+                ->middleware(EnsureCompanyOwnership::class);
             Route::get('/companies/{company}/expenses/{businessExpense}', [BusinessExpenseController::class, 'show'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::patch('/companies/{company}/expenses/{businessExpense}', [BusinessExpenseController::class, 'update'])

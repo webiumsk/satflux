@@ -1,5 +1,15 @@
 <template>
   <InvoicingPageShell>
+    <ExpenseIsdocExtractModal
+      :open="showExtractModal"
+      :extracting="extracting"
+      :purchasing="purchasing"
+      :quota="quota"
+      @close="onSkipExtract"
+      @skip="onSkipExtract"
+      @confirm="onConfirmExtract"
+      @purchase="purchasePack"
+    />
     <template #header>
       <InvoicingAppHeader :show-filter-bar="false" />
     </template>
@@ -106,8 +116,13 @@
               {{ t('invoicing.expense_attachment_view') }}
             </button>
             <label v-if="expense.status !== 'cancelled'" class="invoicing-btn-secondary text-sm cursor-pointer">
-              {{ uploading ? t('common.loading') : t('invoicing.expense_attachment_upload') }}
-              <input type="file" class="hidden" accept=".pdf,.jpg,.jpeg,.png,.webp,.xml,.isdoc" @change="onFile" />
+              {{ uploading || detecting ? t('common.loading') : t('invoicing.expense_attachment_upload') }}
+              <input
+                type="file"
+                class="hidden"
+                accept=".pdf,.jpg,.jpeg,.png,.webp,.xml,.isdoc,application/pdf,application/xml,text/xml"
+                @change="onAttachmentPick"
+              />
             </label>
           </div>
         </div>
@@ -130,10 +145,15 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
+import ExpenseIsdocExtractModal from '../../components/invoicing/ExpenseIsdocExtractModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
-import api, { getWebBlob } from '../../services/api';
+import {
+  useExpenseIsdocAttachment,
+  type ExpenseImportDraft,
+} from '../../composables/useExpenseIsdocAttachment';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
+import api, { getWebBlob } from '../../services/api';
 
 type Expense = {
   id: string;
@@ -166,6 +186,20 @@ const loading = ref(true);
 const acting = ref(false);
 const duplicating = ref(false);
 const uploading = ref(false);
+
+const {
+  quota,
+  showExtractModal,
+  detecting,
+  extracting,
+  purchasing,
+  loadQuota,
+  purchasePack,
+  onDocumentSelected,
+  confirmExtract,
+  skipExtract,
+  uploadPendingAttachment,
+} = useExpenseIsdocAttachment(companyId);
 
 const isOverdue = computed(() => {
   if (!expense.value || expense.value.status !== 'recorded' || !expense.value.due_date) return false;
@@ -271,24 +305,69 @@ async function cancelExpense() {
   }
 }
 
-async function onFile(ev: Event) {
-  const input = ev.target as HTMLInputElement;
-  const file = input.files?.[0];
-  if (!file) return;
+function draftToPayload(draft: ExpenseImportDraft) {
+  return {
+    title: draft.title ?? expense.value?.title,
+    external_number: draft.external_number ?? expense.value?.external_number,
+    variable_symbol: draft.variable_symbol ?? expense.value?.variable_symbol,
+    constant_symbol: draft.constant_symbol ?? expense.value?.constant_symbol,
+    specific_symbol: draft.specific_symbol ?? expense.value?.specific_symbol,
+    issue_date: draft.issue_date?.slice(0, 10) ?? expense.value?.issue_date,
+    delivery_date: draft.delivery_date?.slice(0, 10) ?? expense.value?.delivery_date,
+    due_date: draft.due_date?.slice(0, 10) ?? expense.value?.due_date,
+    total: draft.total ?? expense.value?.total,
+    currency: draft.currency ?? expense.value?.currency,
+    internal_note: expense.value?.internal_note,
+  };
+}
+
+async function uploadAttachmentOnly() {
   uploading.value = true;
-  const fd = new FormData();
-  fd.append('file', file);
   try {
-    const res = await api.post(
-      `/invoicing/companies/${companyId.value}/expenses/${expenseId.value}/attachment`,
-      fd,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
-    );
+    await uploadPendingAttachment(expenseId.value);
+    const res = await api.get(`/invoicing/companies/${companyId.value}/expenses/${expenseId.value}`);
     expense.value = res.data.data;
   } finally {
     uploading.value = false;
-    input.value = '';
   }
+}
+
+async function onAttachmentPick(ev: Event) {
+  const input = ev.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  try {
+    await onDocumentSelected(file);
+    if (!showExtractModal.value) {
+      await uploadAttachmentOnly();
+    }
+  } catch {
+    window.alert(t('invoicing.expense_attachment_detect_failed'));
+  }
+}
+
+async function onConfirmExtract() {
+  try {
+    const draft = await confirmExtract();
+    if (draft) {
+      const res = await api.patch(
+        `/invoicing/companies/${companyId.value}/expenses/${expenseId.value}`,
+        draftToPayload(draft),
+      );
+      expense.value = res.data.data;
+    }
+    await uploadAttachmentOnly();
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { errors?: { quota?: string[] }; message?: string } } };
+    window.alert(err?.response?.data?.errors?.quota?.[0] || err?.response?.data?.message || t('invoicing.expense_extract_failed'));
+    skipExtract();
+  }
+}
+
+async function onSkipExtract() {
+  skipExtract();
+  await uploadAttachmentOnly();
 }
 
 async function openAttachment() {
@@ -300,6 +379,7 @@ async function openAttachment() {
 
 onMounted(() => {
   rememberCompany(companyId.value);
+  loadQuota();
   load();
 });
 </script>

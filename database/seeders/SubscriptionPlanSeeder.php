@@ -85,6 +85,7 @@ class SubscriptionPlanSeeder extends Seeder
                     'priority_support',
                     'stripe',
                     'business_invoicing',
+                    'expense_isdoc_extract_unlimited',
                 ],
                 'is_active' => true,
             ]

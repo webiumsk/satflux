@@ -7,6 +7,9 @@ use App\Http\Requests\Invoicing\StoreBusinessExpenseRequest;
 use App\Models\AuditLog;
 use App\Models\BusinessExpense;
 use App\Models\Company;
+use App\Services\Invoicing\BusinessExpenseIsdocImportService;
+use App\Services\Invoicing\BusinessExpenseIsdocPackService;
+use App\Services\Invoicing\BusinessExpenseIsdocQuotaService;
 use App\Services\Invoicing\BusinessExpenseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,6 +21,9 @@ class BusinessExpenseController extends Controller
 {
     public function __construct(
         protected BusinessExpenseService $expenseService,
+        protected BusinessExpenseIsdocImportService $isdocImportService,
+        protected BusinessExpenseIsdocQuotaService $isdocQuotaService,
+        protected BusinessExpenseIsdocPackService $isdocPackService,
     ) {}
 
     public function index(Request $request, Company $company): JsonResponse
@@ -44,6 +50,96 @@ class BusinessExpenseController extends Controller
         ]);
 
         return response()->json(['data' => $expense], 201);
+    }
+
+    public function isdocExtractQuota(Request $request, Company $company): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->isdocQuotaService->snapshot($request->user()),
+        ]);
+    }
+
+    public function purchaseIsdocPack(Request $request, Company $company): JsonResponse
+    {
+        $request->validate([
+            'credits' => ['required', 'integer'],
+        ]);
+
+        $checkout = $this->isdocPackService->startPurchase(
+            $request->user(),
+            (int) $request->input('credits'),
+        );
+
+        return response()->json(['data' => $checkout]);
+    }
+
+    public function detectIsdoc(Request $request, Company $company): JsonResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'max:10240', 'extensions:pdf,isdoc,xml'],
+        ]);
+
+        $file = $request->file('file');
+
+        return response()->json([
+            'data' => [
+                'has_isdoc' => $this->isdocImportService->hasIsdocInUpload($file),
+                'quota' => $this->isdocQuotaService->snapshot($request->user()),
+            ],
+        ]);
+    }
+
+    public function extract(Request $request, Company $company): JsonResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'max:10240', 'extensions:pdf,isdoc,xml'],
+        ]);
+
+        $user = $request->user();
+        $this->isdocQuotaService->assertCanExtract($user);
+
+        $draft = $this->isdocImportService->extractFromUpload($request->file('file'));
+
+        $this->isdocQuotaService->recordExtraction($user, null, $company->id);
+
+        return response()->json([
+            'data' => $draft,
+            'quota' => $this->isdocQuotaService->snapshot($user),
+        ]);
+    }
+
+    public function importFromDocument(Request $request, Company $company): JsonResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'max:10240', 'extensions:pdf,isdoc,xml'],
+            'mark_paid' => ['sometimes', 'boolean'],
+        ]);
+
+        $user = $request->user();
+        $this->isdocQuotaService->assertCanExtract($user);
+
+        $draft = $this->isdocImportService->extractFromUpload($request->file('file'));
+
+        $expense = $this->expenseService->create(
+            $company,
+            $draft,
+            $request->boolean('mark_paid'),
+        );
+
+        $expense = $this->expenseService->storeAttachment($expense, $request->file('file'));
+
+        $this->isdocQuotaService->recordExtraction($user, $expense->id, $company->id);
+
+        AuditLog::log('business_expense.imported', 'business_expense', $expense->id, [
+            'company_id' => $company->id,
+            'source' => 'isdoc',
+            'internal_number' => $expense->internal_number,
+        ]);
+
+        return response()->json([
+            'data' => $expense,
+            'quota' => $this->isdocQuotaService->snapshot($user),
+        ], 201);
     }
 
     public function show(Company $company, BusinessExpense $businessExpense): JsonResponse
@@ -124,7 +220,7 @@ class BusinessExpenseController extends Controller
         $this->assertExpenseCompany($businessExpense, $company);
 
         $request->validate([
-            'file' => ['required', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png,webp,isdoc,xml'],
+            'file' => ['required', 'file', 'max:10240', 'extensions:pdf,jpg,jpeg,png,webp,isdoc,xml'],
         ]);
 
         $expense = $this->expenseService->storeAttachment(

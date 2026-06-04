@@ -59,6 +59,7 @@ class AccountController extends Controller
             'automatic_exports' => $user->planFeature('automatic_csv_exports'),
             'offline_payment_methods' => $user->planFeature('offline_payment_methods'),
             'business_invoicing' => $user->planFeature('business_invoicing'),
+            'expense_isdoc_extract_unlimited' => $user->planFeature('expense_isdoc_extract_unlimited'),
         ];
         $payload['has_lightning_login'] = ! empty($user->lightning_public_key);
         $payload['has_nostr_login'] = ! empty($user->nostr_public_key);

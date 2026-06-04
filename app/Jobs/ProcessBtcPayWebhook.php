@@ -113,6 +113,26 @@ class ProcessBtcPayWebhook implements ShouldQueue
         try {
             $invoiceData = $payload['invoiceData'] ?? $payload['invoice'] ?? $payload;
             $invoiceId = $invoiceData['id'] ?? $invoiceData['invoiceId'] ?? null;
+            $metadata = $invoiceData['metadata'] ?? [];
+
+            if (($metadata['purpose'] ?? null) === 'expense_isdoc_pack' && $invoiceId) {
+                $fulfilled = app(\App\Services\Invoicing\BusinessExpenseIsdocPackService::class)
+                    ->fulfillPaidInvoice(
+                        $invoiceId,
+                        isset($metadata['userId']) ? (string) $metadata['userId'] : null,
+                        isset($metadata['purchaseId']) ? (string) $metadata['purchaseId'] : null,
+                    );
+
+                if ($fulfilled) {
+                    Log::info('ISDOC pack purchase fulfilled', [
+                        'invoice_id' => $invoiceId,
+                        'user_id' => $metadata['userId'] ?? null,
+                        'credits' => $metadata['packCredits'] ?? null,
+                    ]);
+                }
+
+                return;
+            }
 
             if (! $invoiceId) {
                 Log::warning('Subscription invoice payment webhook missing invoice ID', [

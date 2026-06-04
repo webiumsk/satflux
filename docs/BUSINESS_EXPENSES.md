@@ -35,6 +35,33 @@ Routes under `/invoicing/companies/:companyId/expenses` - list, new, show, edit.
 
 Workflow: duplicate recurring expense, fill total and external number, upload attachment, mark paid.
 
-## Later (accounting export)
+## ISDOC import (0.2, SuperFaktúra-style)
 
-ISDOC import, bank debit matching, unified export - see accounting export plan.
+1. User uploads attachment (PDF / `.isdoc` / XML) on new or edit expense form (or detail).
+2. `POST .../expenses/detect-isdoc` - checks for readable ISDOC (does not consume quota).
+3. If found, UI asks whether to extract (modal).
+4. On confirm, `POST .../expenses/extract` - fills draft fields; counts against free allowance.
+
+**Quota:** `INVOICING_EXPENSE_ISDOC_FREE_LIMIT` (default **20**) per user. Enterprise: **unlimited** (`expense_isdoc_extract_unlimited`). After free tier: **purchased credits** from packs.
+
+**Packs (EUR incl. VAT, SuperFaktúra-aligned)** in `config/invoicing.php`:
+
+| Doklady | Cena |
+|--------|------|
+| 25 | 11,07 € |
+| 50 | 18,45 € |
+| 100 | 28,29 € |
+| 500 | 92,25 € |
+
+**Payment:** one-time **BTCPay invoice** on `SUBSCRIPTION_STORE_ID` (`POST .../expenses/isdoc-packs/purchase`). Webhook metadata `purpose=expense_isdoc_pack` credits balance on `InvoiceSettled`.
+
+- `GET .../expenses/isdoc-extract-quota` - free + purchased + packs list
+- `POST .../expenses/isdoc-packs/purchase` - `{ credits: 25|50|100|500 }` → `checkoutLink`
+
+Parser: [`BusinessExpenseIsdocImportService`](../app/Services/Invoicing/BusinessExpenseIsdocImportService.php). Quota: [`BusinessExpenseIsdocQuotaService`](../app/Services/Invoicing/BusinessExpenseIsdocQuotaService.php). Packs: [`BusinessExpenseIsdocPackService`](../app/Services/Invoicing/BusinessExpenseIsdocPackService.php).
+
+## Later
+
+- Bulk extract on list
+- Bank debit matching (0.3)
+- Unified accounting export
