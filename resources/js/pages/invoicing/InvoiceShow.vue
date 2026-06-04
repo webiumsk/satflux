@@ -198,7 +198,6 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { useBtcpayPaymentPoll } from '../../composables/useBtcpayPaymentPoll';
 import '../../styles/invoicing-theme.css';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingDocumentSubNav from '../../components/invoicing/InvoicingDocumentSubNav.vue';
@@ -266,12 +265,6 @@ const paidViaBtcpay = computed(
     && !!form.payment_btc_enabled
     && !bankMatch.value
 );
-
-useBtcpayPaymentPoll({
-  enabled: computed(() => !!form.payment_btc_enabled),
-  status: documentStatus,
-  reload: reloadDocument,
-});
 
 const listTitle = computed(() => {
   if (isProforma.value) return t('invoicing.proformas_title');

@@ -3,7 +3,6 @@
 namespace App\Services\Invoicing;
 
 use App\Enums\BankImportSource;
-use App\Enums\BankTransactionDirection;
 use App\Enums\BankTransactionMatchStatus;
 use App\Models\BankImportBatch;
 use App\Models\BankTransaction;

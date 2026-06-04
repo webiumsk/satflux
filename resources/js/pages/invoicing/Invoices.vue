@@ -591,7 +591,6 @@ import CreditNoteStartModal from '../../components/invoicing/CreditNoteStartModa
 import SendDocumentEmailModal from '../../components/invoicing/SendDocumentEmailModal.vue';
 import api, { businessDocumentPdfPath, getWebBlob } from '../../services/api';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
-import { useBtcpayPaymentPoll } from '../../composables/useBtcpayPaymentPoll';
 import { invoicingDocumentRoutesForType } from '../../composables/useInvoicingDocumentRoutes';
 
 type StatusKind =
@@ -641,10 +640,6 @@ const newDocumentLink = computed(() => ({
 }));
 
 const documents = ref<any[]>([]);
-const listAwaitingBtcpay = computed(() =>
-  documents.value.some((d) => d.status === 'issued' && d.payment_btc_enabled)
-);
-const listPollStatus = computed(() => (listAwaitingBtcpay.value ? 'issued' : 'paid'));
 const loading = ref(false);
 const error = ref('');
 const success = ref('');
@@ -1300,12 +1295,6 @@ watch(
     load();
   }
 );
-
-useBtcpayPaymentPoll({
-  enabled: listAwaitingBtcpay,
-  status: listPollStatus,
-  reload: load,
-});
 
 onMounted(() => {
   rememberCompany(companyId.value);
