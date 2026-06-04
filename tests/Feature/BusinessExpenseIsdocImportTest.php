@@ -4,14 +4,15 @@ namespace Tests\Feature;
 
 use App\Enums\BusinessDocumentStatus;
 use App\Enums\CompanyJurisdiction;
+use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\BusinessDocumentLine;
 use App\Models\Company;
 use App\Models\CompanyContact;
+use App\Models\ExpenseIsdocCreditBalance;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
-use App\Models\AuditLog;
 use App\Services\Invoicing\BusinessDocumentIsdocService;
 use App\Services\Invoicing\BusinessExpenseIsdocImportService;
 use App\Services\Invoicing\BusinessExpenseIsdocQuotaService;
@@ -193,7 +194,7 @@ class BusinessExpenseIsdocImportTest extends TestCase
     public function extract_uses_purchased_credits_after_free_tier(): void
     {
         config(['invoicing.expense_isdoc_extract_free_limit' => 0]);
-        \App\Models\ExpenseIsdocCreditBalance::create([
+        ExpenseIsdocCreditBalance::create([
             'user_id' => $this->user->id,
             'balance' => 2,
         ]);
@@ -205,7 +206,7 @@ class BusinessExpenseIsdocImportTest extends TestCase
             ['file' => $file],
         )->assertOk();
 
-        $this->assertSame(1, \App\Models\ExpenseIsdocCreditBalance::query()
+        $this->assertSame(1, ExpenseIsdocCreditBalance::query()
             ->where('user_id', $this->user->id)
             ->value('balance'));
     }
