@@ -231,6 +231,11 @@ class User extends Authenticatable implements MustVerifyEmailContract
         return $this->hasMany(Store::class);
     }
 
+    public function companies(): HasMany
+    {
+        return $this->hasMany(Company::class);
+    }
+
     /**
      * Get the subscriptions for the user.
      */

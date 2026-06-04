@@ -1,5 +1,6 @@
 import './bootstrap';
 import '../css/app.css';
+import './styles/invoicing-theme.css';
 
 import { createApp, h } from 'vue';
 import { createPinia } from 'pinia';

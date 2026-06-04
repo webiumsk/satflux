@@ -26,6 +26,8 @@ export interface User {
         max_stores: number | null;
         max_api_keys: number | null;
         max_ln_addresses: number | null;
+        max_companies?: number | null;
+        companies_unlimited?: boolean;
         features: string[];
     };
     subscription?: {
@@ -37,6 +39,7 @@ export interface User {
         advanced_stats: boolean;
         automatic_exports: boolean;
         offline_payment_methods: boolean;
+        business_invoicing?: boolean;
     };
     has_lightning_login?: boolean;
     has_nostr_login?: boolean;

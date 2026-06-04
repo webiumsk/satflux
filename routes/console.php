@@ -30,3 +30,8 @@ Schedule::command('guests:purge-inactive')
 Schedule::command('jobs:monitor-failed --hours=1 --threshold=5')
     ->hourly()
     ->withoutOverlapping();
+
+Schedule::command('invoicing:process-recurring')
+    ->dailyAt('06:00')
+    ->withoutOverlapping()
+    ->runInBackground();

@@ -14,6 +14,25 @@ return [
     |
     */
 
+    'subjekt_registry' => [
+        'base_url' => env('SUBJEKT_REGISTRY_BASE_URL', 'https://api.subjekt.sk/v1'),
+    ],
+
+    'openregistry' => [
+        'enabled' => env('OPENREGISTRY_ENABLED', true),
+        'base_url' => env('OPENREGISTRY_BASE_URL', 'https://openregistry.sophymarine.com/api/v1'),
+        'bearer_token' => env('OPENREGISTRY_BEARER_TOKEN'),
+    ],
+
+    'vies' => [
+        'base_url' => env('VIES_API_BASE_URL', 'https://ec.europa.eu/taxation_customs/vies/rest-api'),
+        'timeout' => (int) env('VIES_API_TIMEOUT', 15),
+    ],
+
+    'stripe' => [
+        'tax_secret_key' => env('STRIPE_TAX_SECRET_KEY'),
+    ],
+
     'btcpay' => [
         // Greenfield API (server-to-server). May be an internal Docker URL.
         'base_url' => env('BTCPAY_BASE_URL', 'http://127.0.0.1:14142'),

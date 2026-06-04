@@ -2,8 +2,11 @@
 
 namespace App\Providers;
 
+use App\Contracts\Invoicing\UsSalesTaxCalculator;
 use App\Models\Store;
 use App\Policies\StorePolicy;
+use App\Services\Invoicing\UsSalesTax\StripeTaxUsSalesTaxCalculator;
+use App\Services\Invoicing\UsSalesTax\UsSalesTaxCalculationService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -18,7 +21,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(UsSalesTaxCalculationService::class, function ($app) {
+            return new UsSalesTaxCalculationService([
+                $app->make(StripeTaxUsSalesTaxCalculator::class),
+            ]);
+        });
+
+        $this->app->bind(UsSalesTaxCalculator::class, StripeTaxUsSalesTaxCalculator::class);
     }
 
     /**
@@ -42,6 +51,32 @@ class AppServiceProvider extends ServiceProvider
         // Custom route model binding for WalletConnection (UUID)
         Route::bind('connection', function ($value) {
             return \App\Models\WalletConnection::where('id', $value)->firstOrFail();
+        });
+
+        Route::bind('company', function ($value) {
+            return \App\Models\Company::where('id', $value)->firstOrFail();
+        });
+
+        Route::bind('businessDocument', function ($value, $route) {
+            $company = $route->parameter('company');
+            if ($company instanceof \App\Models\Company) {
+                return \App\Models\BusinessDocument::where('id', $value)
+                    ->where('company_id', $company->id)
+                    ->firstOrFail();
+            }
+
+            return \App\Models\BusinessDocument::where('id', $value)->firstOrFail();
+        });
+
+        Route::bind('contact', function ($value, $route) {
+            $company = $route->parameter('company');
+            if ($company instanceof \App\Models\Company) {
+                return \App\Models\CompanyContact::where('id', $value)
+                    ->where('company_id', $company->id)
+                    ->firstOrFail();
+            }
+
+            return \App\Models\CompanyContact::where('id', $value)->firstOrFail();
         });
 
         // Define rate limiters

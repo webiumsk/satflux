@@ -8,6 +8,7 @@ use App\Services\BtcPay\RaffleService;
 use App\Services\BtcPay\TicketService;
 use App\Services\GuestUpgradeService;
 use Illuminate\Http\Request;
+use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -35,12 +36,17 @@ class AccountController extends Controller
         $plan = $user->currentSubscriptionPlan();
 
         $payload = $user->toArray();
+        $subscriptionService = app(SubscriptionService::class);
+        $maxCompanies = $subscriptionService->maxCompaniesForUser($user);
+
         $payload['plan'] = $plan ? [
             'code' => $plan->code,
             'name' => $plan->display_name,
             'max_stores' => $plan->max_stores,
             'max_api_keys' => $plan->max_api_keys,
             'max_ln_addresses' => $user->getMaxLightningAddresses(),
+            'max_companies' => $maxCompanies,
+            'companies_unlimited' => $maxCompanies === null && $subscriptionService->canUseBusinessInvoicing($user),
             'features' => $plan->features ?? [],
         ] : null;
         $payload['subscription'] = $subscription ? [
@@ -52,6 +58,7 @@ class AccountController extends Controller
             'advanced_stats' => $user->planFeature('advanced_statistics'),
             'automatic_exports' => $user->planFeature('automatic_csv_exports'),
             'offline_payment_methods' => $user->planFeature('offline_payment_methods'),
+            'business_invoicing' => $user->planFeature('business_invoicing'),
         ];
         $payload['has_lightning_login'] = ! empty($user->lightning_public_key);
         $payload['has_nostr_login'] = ! empty($user->nostr_public_key);
@@ -81,9 +88,16 @@ class AccountController extends Controller
                 $apiKeyCount += $store->apiKeys()->count();
             }
 
+            $companyCount = $user->companies()->count();
+
             return response()->json([
                 'stores' => [
                     'current' => $storeCount,
+                    'max' => null,
+                    'unlimited' => true,
+                ],
+                'companies' => [
+                    'current' => $companyCount,
                     'max' => null,
                     'unlimited' => true,
                 ],
@@ -150,6 +164,9 @@ class AccountController extends Controller
 
             $maxEvents = $user->getMaxEventsPerStore();
             $maxRaffles = $user->getMaxRafflesPerStore();
+            $subscriptionService = app(SubscriptionService::class);
+            $maxCompanies = $subscriptionService->maxCompaniesForUser($user);
+            $companyCount = $user->companies()->count();
 
             return [
                 'stores' => [
@@ -175,6 +192,11 @@ class AccountController extends Controller
                     'max' => $maxRaffles,
                     'unlimited' => $maxRaffles === null,
                     'allowed' => $maxRaffles !== 0,
+                ],
+                'companies' => [
+                    'current' => $companyCount,
+                    'max' => $maxCompanies,
+                    'unlimited' => $maxCompanies === null && $subscriptionService->canUseBusinessInvoicing($user),
                 ],
             ];
         });

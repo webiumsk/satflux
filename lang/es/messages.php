@@ -102,6 +102,14 @@ return [
     'subscription_credit_created' => 'Credit invoice created successfully',
     'subscription_credit_failed' => 'Failed to add credit',
 
+    // Business invoice Bitcoin pay
+    'business_invoice_pay_title' => 'Pago Bitcoin / Lightning',
+    'business_invoice_pay_redirecting' => 'Redirigiendo al pago con el tipo de cambio actual…',
+    'business_invoice_pay_continue' => 'Continuar al pago',
+    'business_invoice_pay_already_paid' => 'Esta factura ya está pagada.',
+    'business_invoice_pay_error_title' => 'No se pudo preparar el pago',
+    'business_invoice_pay_checkout_failed' => 'No se pudo crear el enlace de pago. Inténtelo de nuevo en un momento.',
+
     // Locale
     'locale_set' => 'Language changed to :locale',
 
@@ -112,4 +120,7 @@ return [
     'server_error' => 'Server error',
     'try_again_later' => 'Please try again later',
     'contact_support' => 'Please contact support',
+
+    'business_invoicing_available_in_pro' => 'La facturación empresarial está disponible en el plan Pro. Actualice para crear facturas.',
+    'company_limit_reached' => 'Ha alcanzado el número máximo de empresas (:max) de su plan.',
 ];

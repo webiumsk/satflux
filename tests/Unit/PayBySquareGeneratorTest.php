@@ -1,0 +1,58 @@
+<?php
+
+namespace Tests\Unit;
+
+use App\Enums\BusinessDocumentStatus;
+use App\Enums\CompanyJurisdiction;
+use App\Models\BusinessDocument;
+use App\Models\Company;
+use App\Services\Invoicing\PayBySquareGenerator;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
+
+class PayBySquareGeneratorTest extends TestCase
+{
+    use RefreshDatabase;
+
+    #[Test]
+    public function it_generates_lzma_encoded_pay_by_square_payload(): void
+    {
+        if (! is_executable('/usr/bin/xz')) {
+            $this->markTestSkipped('xz binary required for Pay by square encoding');
+        }
+
+        $company = Company::create([
+            'user_id' => \App\Models\User::factory()->create()->id,
+            'legal_name' => 'Acme s.r.o.',
+            'jurisdiction' => CompanyJurisdiction::EuSk,
+            'iban' => 'SK31 1200 0000 1987 4754 7509',
+            'default_currency' => 'EUR',
+        ]);
+
+        $document = BusinessDocument::create([
+            'company_id' => $company->id,
+            'type' => 'invoice',
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => '20260001',
+            'variable_symbol' => '20260001',
+            'total' => 125.50,
+            'currency' => 'EUR',
+            'payment_bank_enabled' => true,
+            'issue_date' => now()->subDays(3),
+            'due_date' => now()->addDays(14),
+        ]);
+
+        $service = app(PayBySquareGenerator::class);
+        $this->assertTrue($service->canGenerate($company, $document));
+
+        $payload = $service->generatePayload($company, $document);
+        $this->assertNotEmpty($payload);
+        $this->assertMatchesRegularExpression('/^[0-9A-V]+$/', $payload);
+        $this->assertGreaterThan(40, strlen($payload));
+
+        $qr = $service->generateQrDataUri($company, $document);
+        $this->assertNotNull($qr);
+        $this->assertStringStartsWith('data:image/png;base64,', $qr);
+    }
+}

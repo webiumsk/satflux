@@ -102,6 +102,14 @@ return [
     'subscription_credit_created' => 'Credit invoice created successfully',
     'subscription_credit_failed' => 'Failed to add credit',
 
+    // Business invoice Bitcoin pay
+    'business_invoice_pay_title' => 'Bitcoin / Lightning payment',
+    'business_invoice_pay_redirecting' => 'Redirecting to checkout with the current exchange rate…',
+    'business_invoice_pay_continue' => 'Continue to payment',
+    'business_invoice_pay_already_paid' => 'This invoice has already been paid.',
+    'business_invoice_pay_error_title' => 'Could not prepare payment',
+    'business_invoice_pay_checkout_failed' => 'Could not create a payment link. Please try again shortly.',
+
     // Locale
     'locale_set' => 'Language changed to :locale',
 
@@ -131,4 +139,8 @@ return [
     'faq_category_deleted' => 'FAQ category deleted successfully',
     'faq_category_has_items' => 'Cannot delete category with items',
     'faq_marked_helpful' => 'Thank you for your feedback!',
+
+    // Business invoicing
+    'business_invoicing_available_in_pro' => 'Business invoicing is available on the Pro plan. Please upgrade to create invoices.',
+    'company_limit_reached' => 'You have reached the maximum number of companies (:max) for your plan.',
 ];

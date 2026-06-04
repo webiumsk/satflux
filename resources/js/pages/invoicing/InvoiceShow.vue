@@ -1,0 +1,546 @@
+<template>
+  <div class="invoicing-page">
+    <div class="sticky top-0 z-30 shadow-sm bg-gray-100">
+      <InvoicingAppHeader
+        :company-label="company?.trade_name || company?.legal_name"
+        :show-filter-bar="false"
+      />
+      <InvoicingDocumentSubNav />
+    </div>
+    <div class="invoicing-toolbar">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex flex-wrap items-center gap-4 py-3">
+        <RouterLink :to="{ name: documentRoutes.list, params: { companyId } }" class="invoicing-back mb-0">
+          ← {{ listTitle }}
+        </RouterLink>
+        <h1 class="text-lg font-semibold text-gray-900">
+          {{ displayDocumentNumber || t('invoicing.draft_label') }}
+        </h1>
+        <div v-if="neighborIds.length > 1 && neighborIndex >= 0" class="flex items-center gap-1 text-sm text-gray-600">
+          <button type="button" class="px-2 hover:text-indigo-700 disabled:opacity-30" :disabled="neighborIndex <= 0" @click="goNeighbor(-1, documentRoutes.show)">‹</button>
+          <span>{{ neighborIndex + 1 }} / {{ neighborIds.length }}</span>
+          <button type="button" class="px-2 hover:text-indigo-700 disabled:opacity-30" :disabled="neighborIndex >= neighborIds.length - 1" @click="goNeighbor(1, documentRoutes.show)">›</button>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 ml-auto">
+          <label class="text-xs text-gray-600 flex items-center gap-2">
+            {{ t('invoicing.pdf_language') }}
+            <select
+              v-model="form.pdf_locale"
+              class="invoicing-sf-input w-auto py-1"
+              :disabled="isLocked"
+              @change="persistPdfOptions"
+            >
+              <option value="sk">Slovenčina</option>
+              <option value="en">English</option>
+              <option value="cs">Čeština</option>
+            </select>
+          </label>
+          <label class="text-xs text-gray-700 flex items-center gap-1.5">
+            <input v-model="form.pdf_show_signature" type="checkbox" class="rounded border-gray-300" @change="persistPdfOptions" />
+            {{ t('invoicing.pdf_signature') }}
+          </label>
+          <label class="text-xs text-gray-700 flex items-center gap-1.5">
+            <input v-model="form.pdf_show_payment_info" type="checkbox" class="rounded border-gray-300" @change="persistPdfOptions" />
+            {{ t('invoicing.pdf_payment_info') }}
+          </label>
+          <RouterLink
+            v-if="canUpdate"
+            :to="{ name: documentRoutes.edit, params: { companyId, documentId } }"
+            class="invoicing-btn-primary py-1.5"
+          >
+            {{ t('invoicing.action_edit') }}
+          </RouterLink>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-6 flex flex-col lg:flex-row gap-6">
+      <div class="flex-1 min-w-0 space-y-6">
+        <div
+          v-if="sourceDocument?.number"
+          class="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900"
+        >
+          <template v-if="isCreditNote && sourceDocument.type === 'invoice'">
+            {{ t('invoicing.linked_credited_invoice', { number: sourceDocument.number }) }}
+            <RouterLink
+              :to="sourceDocumentShowTo"
+              class="ml-2 font-medium underline"
+            >
+              {{ t('invoicing.view_invoice') }}
+            </RouterLink>
+          </template>
+          <template v-else-if="isProforma || sourceDocument.type === 'proforma'">
+            {{ t('invoicing.linked_proforma', { number: sourceDocument.number }) }}
+            <RouterLink
+              :to="{ name: 'invoicing-proforma-show', params: { companyId, documentId: sourceDocument.id } }"
+              class="ml-2 font-medium underline"
+            >
+              {{ t('invoicing.view_proforma') }}
+            </RouterLink>
+          </template>
+        </div>
+
+        <div
+          v-if="finalInvoice?.id"
+          class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+        >
+          {{ t('invoicing.linked_final_invoice', { number: finalInvoice.number || t('invoicing.draft_label') }) }}
+          <RouterLink
+            :to="{ name: 'invoicing-invoice-show', params: { companyId, documentId: finalInvoice.id } }"
+            class="ml-2 font-medium underline"
+          >
+            {{ t('invoicing.view_invoice') }}
+          </RouterLink>
+        </div>
+
+        <InvoiceLivePreview
+          :company="company"
+          :selected-contact="selectedContact"
+          :form="previewForm"
+          :totals="previewTotals"
+          :document-status="documentStatus"
+          :document-type="documentType"
+          :amount-paid="amountPaid"
+        />
+
+        <div class="invoicing-card-pad space-y-4">
+          <div v-if="pdfUrl">
+            <label class="invoicing-sf-label">{{ t('invoicing.pdf_link') }}</label>
+            <div class="flex gap-2 mt-1">
+              <input :value="pdfUrl" readonly class="invoicing-sf-input flex-1 text-xs" />
+              <button type="button" class="invoicing-btn-secondary text-sm" @click="copyPdfUrl">
+                {{ t('common.copy_url') }}
+              </button>
+            </div>
+          </div>
+          <div v-if="btcPayUrl && documentStatus !== 'paid'">
+            <label class="invoicing-sf-label">{{ t('invoicing.btc_pay_link') }}</label>
+            <div class="flex gap-2 mt-1">
+              <input :value="btcPayUrl" readonly class="invoicing-sf-input flex-1 text-xs" />
+              <a :href="btcPayUrl" target="_blank" rel="noopener" class="invoicing-btn-secondary text-sm shrink-0">
+                {{ t('invoicing.btc_pay_open') }}
+              </a>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">{{ t('invoicing.payment_btc_lazy_hint') }}</p>
+          </div>
+          <div v-if="(tagsInput || '').length">
+            <span class="invoicing-sf-label">{{ t('invoicing.tags') }}: </span>
+            <span class="text-indigo-700 text-sm">{{ tagsInput }}</span>
+          </div>
+          <div v-if="form.internal_note">
+            <h3 class="invoicing-sf-label">{{ t('invoicing.internal_note') }}</h3>
+            <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ form.internal_note }}</p>
+          </div>
+          <div>
+            <h3 class="invoicing-sf-label mb-2">{{ t('invoicing.action_history') }}</h3>
+            <ul v-if="history.length" class="space-y-2 text-sm text-gray-600 max-h-48 overflow-y-auto">
+              <li v-for="h in history" :key="h.id" class="border-b border-gray-100 pb-2">
+                <span class="text-gray-500">{{ formatDateTime(h.created_at) }}</span>
+                · {{ historyLabel(h.action) }}
+                <span v-if="h.user?.email" class="text-gray-400"> / {{ h.user.email }}</span>
+              </li>
+            </ul>
+            <p v-else class="text-sm text-gray-500">{{ t('invoicing.no_history') }}</p>
+          </div>
+        </div>
+
+        <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
+        <p v-if="success" class="text-sm text-emerald-700">{{ success }}</p>
+      </div>
+
+      <SendDocumentEmailModal
+        :open="sendEmailOpen"
+        :company-id="companyId"
+        :document-id="documentId || ''"
+        @close="sendEmailOpen = false"
+        @sent="onEmailSent"
+      />
+
+      <InvoiceFormSidebar
+        mode="show"
+        :company-id="companyId"
+        :document-id="documentId"
+        :edit-route-name="documentRoutes.edit"
+        :document-status="documentStatus"
+        :is-locked="isLocked"
+        :can-update="canUpdate"
+        :can-pdf="documentStatus !== 'draft'"
+        :can-eu-export="supportsEuExport && documentStatus !== 'draft'"
+        :can-send-email="documentStatus !== 'draft' && documentStatus !== 'cancelled'"
+        :can-issue="documentStatus === 'draft'"
+        :show-create-final-invoice="canCreateFinalInvoice"
+        :show-approve-quote="canApproveQuote"
+        :show-reject-quote="canRejectQuote"
+        :show-create-invoice-from-quote="canCreateInvoiceFromQuote"
+        :can-mark-paid="!isQuote && !isCreditNote && (documentStatus === 'issued' || documentStatus === 'draft')"
+        :busy="saving"
+        :paid-at="paidAt"
+        :amount-paid="amountPaid"
+        @issue="issueDocument"
+        @send-email="sendEmailOpen = true"
+        @pdf="downloadPdf"
+        @isdoc="downloadIsdoc"
+        @ubl="downloadUbl"
+        @duplicate="duplicateCurrent"
+        @delete="deleteDoc"
+        @cancel="cancelDoc"
+        @mark-paid="markPaid"
+        @unmark-paid="unmarkPaid"
+        @create-final-invoice="createFinalInvoice"
+        @approve-quote="approveQuote"
+        @reject-quote="rejectQuote"
+        @create-invoice-from-quote="createInvoiceFromQuote"
+      />
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue';
+import '../../styles/invoicing-theme.css';
+import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
+import InvoicingDocumentSubNav from '../../components/invoicing/InvoicingDocumentSubNav.vue';
+import InvoiceFormSidebar from '../../components/invoicing/InvoiceFormSidebar.vue';
+import SendDocumentEmailModal from '../../components/invoicing/SendDocumentEmailModal.vue';
+import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
+import InvoiceLivePreview from '../../components/invoicing/InvoiceLivePreview.vue';
+import { useInvoiceDocument } from '../../composables/useInvoiceDocument';
+import { invoicingDocumentRoutesForType } from '../../composables/useInvoicingDocumentRoutes';
+import api, {
+  businessDocumentIsdocPath,
+  businessDocumentPdfPath,
+  businessDocumentUblPath,
+  getWebBlob,
+} from '../../services/api';
+
+const {
+  t,
+  locale,
+  router,
+  companyId,
+  documentId,
+  saving,
+  error,
+  success,
+  documentStatus,
+  displayDocumentNumber,
+  documentNumber,
+  paidAt,
+  amountPaid,
+  company,
+  history,
+  neighborIds,
+  tagsInput,
+  isLocked,
+  canUpdate,
+  form,
+  selectedContact,
+  neighborIndex,
+  pdfUrl,
+  btcPayUrl,
+  previewForm,
+  previewTotals,
+  extractError,
+  loadCompanyAndContacts,
+  reloadDocument,
+  loadHistory,
+  loadNeighbors,
+  goNeighbor,
+  payload,
+  documentRoutes,
+  documentType,
+  isProforma,
+  isQuote,
+  isCreditNote,
+  resolvedQuoteStatus,
+  sourceDocument,
+  finalInvoice,
+} = useInvoiceDocument();
+
+const listTitle = computed(() => {
+  if (isProforma.value) return t('invoicing.proformas_title');
+  if (isQuote.value) return t('invoicing.quotes_title');
+  if (isCreditNote.value) return t('invoicing.credit_notes_title');
+  return t('invoicing.invoices_title');
+});
+
+const sourceDocumentShowTo = computed(() => {
+  if (!sourceDocument.value?.id) {
+    return { name: documentRoutes.value.list, params: { companyId: companyId.value } };
+  }
+  const routes = invoicingDocumentRoutesForType(sourceDocument.value.type || 'invoice');
+  return {
+    name: routes.show,
+    params: { companyId: companyId.value, documentId: sourceDocument.value.id },
+  };
+});
+
+const canCreateFinalInvoice = computed(
+  () =>
+    isProforma.value
+    && documentStatus.value === 'paid'
+    && !finalInvoice.value?.id
+);
+
+const canApproveQuote = computed(
+  () => isQuote.value && documentStatus.value === 'issued' && resolvedQuoteStatus.value === 'pending'
+);
+
+const canRejectQuote = computed(
+  () => isQuote.value && documentStatus.value === 'issued' && resolvedQuoteStatus.value === 'pending'
+);
+
+const canCreateInvoiceFromQuote = computed(
+  () =>
+    isQuote.value
+    && documentStatus.value === 'issued'
+    && resolvedQuoteStatus.value === 'approved'
+    && !finalInvoice.value?.id
+);
+
+const sendEmailOpen = ref(false);
+
+const supportsEuExport = computed(() => {
+  const j = company.value?.jurisdiction;
+  return j === 'eu_sk' || j === 'eu_cz' || j === 'eu_other';
+});
+
+async function onEmailSent() {
+  success.value = t('invoicing.send_email_success');
+  await reloadDocument();
+  await loadHistory();
+}
+
+async function persistPdfOptions() {
+  if (!documentId.value || isLocked.value) return;
+  try {
+    await api.patch(
+      `/invoicing/companies/${companyId.value}/documents/${documentId.value}`,
+      payload()
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+async function downloadPdf() {
+  if (!documentId.value) return;
+  await downloadWebFile(
+    businessDocumentPdfPath(companyId.value, documentId.value),
+    `invoice-${documentNumber.value || documentId.value}.pdf`
+  );
+}
+
+async function downloadIsdoc() {
+  if (!documentId.value) return;
+  await downloadWebFile(
+    businessDocumentIsdocPath(companyId.value, documentId.value),
+    `${documentNumber.value || documentId.value}.isdoc`
+  );
+}
+
+async function downloadUbl() {
+  if (!documentId.value) return;
+  await downloadWebFile(
+    businessDocumentUblPath(companyId.value, documentId.value),
+    `${documentNumber.value || documentId.value}.xml`
+  );
+}
+
+async function downloadWebFile(path: string, filename: string) {
+  saving.value = true;
+  try {
+    const blob = await getWebBlob(path);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e: any) {
+    error.value = extractError(e);
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function duplicateCurrent() {
+  if (!documentId.value) return;
+  const res = await api.post(
+    `/invoicing/companies/${companyId.value}/documents/${documentId.value}/duplicate`
+  );
+  const routes = invoicingDocumentRoutesForType(res.data.data.type);
+  router.push({
+    name: routes.edit,
+    params: { companyId: companyId.value, documentId: res.data.data.id },
+  });
+}
+
+async function issueDocument() {
+  if (!documentId.value) return;
+  saving.value = true;
+  error.value = '';
+  try {
+    await api.post(
+      `/invoicing/companies/${companyId.value}/documents/${documentId.value}/issue`
+    );
+    success.value = t('invoicing.issue_success');
+    await reloadDocument();
+    await loadHistory();
+  } catch (e: any) {
+    error.value = extractError(e);
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function createFinalInvoice() {
+  if (!documentId.value) return;
+  saving.value = true;
+  error.value = '';
+  try {
+    const res = await api.post(
+      `/invoicing/companies/${companyId.value}/documents/${documentId.value}/create-final-invoice`
+    );
+    router.push({
+      name: 'invoicing-invoice-edit',
+      params: { companyId: companyId.value, documentId: res.data.data.id },
+    });
+  } catch (e: any) {
+    error.value = extractError(e);
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function approveQuote() {
+  if (!documentId.value) return;
+  saving.value = true;
+  error.value = '';
+  try {
+    await api.post(
+      `/invoicing/companies/${companyId.value}/documents/${documentId.value}/approve-quote`
+    );
+    success.value = t('invoicing.quote_approved_success');
+    await reloadDocument();
+    await loadHistory();
+  } catch (e: any) {
+    error.value = extractError(e);
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function rejectQuote() {
+  if (!documentId.value) return;
+  saving.value = true;
+  error.value = '';
+  try {
+    await api.post(
+      `/invoicing/companies/${companyId.value}/documents/${documentId.value}/reject-quote`
+    );
+    success.value = t('invoicing.quote_rejected_success');
+    await reloadDocument();
+    await loadHistory();
+  } catch (e: any) {
+    error.value = extractError(e);
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function createInvoiceFromQuote() {
+  if (!documentId.value) return;
+  saving.value = true;
+  error.value = '';
+  try {
+    const res = await api.post(
+      `/invoicing/companies/${companyId.value}/documents/${documentId.value}/create-invoice-from-quote`
+    );
+    router.push({
+      name: 'invoicing-invoice-edit',
+      params: { companyId: companyId.value, documentId: res.data.data.id },
+    });
+  } catch (e: any) {
+    error.value = extractError(e);
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function deleteDoc() {
+  if (!documentId.value || !window.confirm(t('invoicing.confirm_delete'))) return;
+  await api.delete(`/invoicing/companies/${companyId.value}/documents/${documentId.value}`);
+  router.push({ name: documentRoutes.value.list, params: { companyId: companyId.value } });
+}
+
+async function cancelDoc() {
+  if (!documentId.value || !window.confirm(t('invoicing.confirm_cancel'))) return;
+  await api.post(`/invoicing/companies/${companyId.value}/documents/${documentId.value}/cancel`);
+  await reloadDocument();
+  await loadHistory();
+}
+
+async function markPaid() {
+  if (!documentId.value) return;
+  saving.value = true;
+  try {
+    await api.post(`/invoicing/companies/${companyId.value}/documents/${documentId.value}/mark-paid`);
+    await reloadDocument();
+    await loadHistory();
+  } catch (e: any) {
+    error.value = extractError(e);
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function unmarkPaid() {
+  if (!documentId.value) return;
+  saving.value = true;
+  try {
+    await api.post(`/invoicing/companies/${companyId.value}/documents/${documentId.value}/unmark-paid`);
+    await reloadDocument();
+    await loadHistory();
+  } catch (e: any) {
+    error.value = extractError(e);
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function copyPdfUrl() {
+  try {
+    await navigator.clipboard.writeText(pdfUrl.value);
+    success.value = t('common.copied');
+  } catch {
+    error.value = t('common.copy_failed');
+  }
+}
+
+function historyLabel(action: string) {
+  const key = `invoicing.history_${action.replace(/\./g, '_')}`;
+  const translated = t(key);
+  return translated !== key ? translated : action;
+}
+
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString(locale.value);
+}
+
+watch(documentId, async () => {
+  if (documentId.value) {
+    await reloadDocument();
+    await loadHistory();
+  }
+});
+
+const { rememberCompany } = useInvoicingLayout();
+
+onMounted(async () => {
+  rememberCompany(companyId.value);
+  await loadCompanyAndContacts();
+  await loadNeighbors();
+  await reloadDocument();
+  await loadHistory();
+});
+</script>

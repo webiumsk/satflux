@@ -35,6 +35,8 @@ return [
             'advanced_stats',
             'custom_branding',
             'priority_support',
+            'business_invoicing',
+            'companies_2',
 
         ],
     ],
@@ -48,6 +50,8 @@ return [
             'custom_reporting_formats',
             'integration_support',
             'pos_cash_card',
+            'business_invoicing',
+            'companies_unlimited',
         ],
     ],
 

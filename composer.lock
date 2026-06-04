@@ -4,8 +4,70 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "af4e13168c1512f47a4fb62397866ec2",
+    "content-hash": "e620f80ad77d34d40b650d58a8382ebe",
     "packages": [
+        {
+            "name": "adawolfa/isdoc",
+            "version": "1.5.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/adawolfa/isdoc.git",
+                "reference": "4d6aaa6f866466bce2d148bb231401c6d96a8aa6"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/adawolfa/isdoc/zipball/4d6aaa6f866466bce2d148bb231401c6d96a8aa6",
+                "reference": "4d6aaa6f866466bce2d148bb231401c6d96a8aa6",
+                "shasum": ""
+            },
+            "require": {
+                "ext-bcmath": "*",
+                "ext-simplexml": "*",
+                "ext-zip": "*",
+                "nette/utils": "^3.2|^4.0",
+                "php": ">=8.3",
+                "symfony/serializer": "^6.0|^7.0|^8.0"
+            },
+            "require-dev": {
+                "goetas-webservices/xsd-reader": "^0.3|^0.4",
+                "nette/php-generator": "^3.6|^4.0",
+                "phpstan/phpstan": "^1.12|^2.0",
+                "phpunit/phpunit": "^10.0|^11.0|^12.0",
+                "smalot/pdfparser": "^2.12",
+                "symfony/console": "^6.0|^7.0|^8.0"
+            },
+            "suggest": {
+                "smalot/pdfparser": "Support for reading PDF with embedded ISDOC"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "1.5.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Adawolfa\\ISDOC\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Adam Klvač",
+                    "email": "adam@klva.cz",
+                    "homepage": "https://klva.cz"
+                }
+            ],
+            "description": "ISDOC parser and generator.",
+            "support": {
+                "issues": "https://github.com/adawolfa/isdoc/issues",
+                "source": "https://github.com/adawolfa/isdoc/tree/1.5.0"
+            },
+            "time": "2026-01-16T03:26:37+00:00"
+        },
         {
             "name": "brick/math",
             "version": "0.14.7",
@@ -7566,6 +7628,110 @@
             "time": "2026-05-24T11:20:33+00:00"
         },
         {
+            "name": "symfony/serializer",
+            "version": "v7.4.10",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/serializer.git",
+                "reference": "268c5aa6c4bd675eddd89348e7ecac292a843ddd"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/serializer/zipball/268c5aa6c4bd675eddd89348e7ecac292a843ddd",
+                "reference": "268c5aa6c4bd675eddd89348e7ecac292a843ddd",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.2",
+                "symfony/deprecation-contracts": "^2.5|^3",
+                "symfony/polyfill-ctype": "~1.8",
+                "symfony/polyfill-php84": "^1.30"
+            },
+            "conflict": {
+                "phpdocumentor/reflection-docblock": "<5.2|>=7",
+                "phpdocumentor/type-resolver": "<1.5.1",
+                "symfony/dependency-injection": "<6.4",
+                "symfony/property-access": "<6.4.31|>=7.0,<7.4.2|>=8.0,<8.0.2",
+                "symfony/property-info": "<6.4",
+                "symfony/type-info": "<7.2.5",
+                "symfony/uid": "<6.4",
+                "symfony/validator": "<6.4",
+                "symfony/yaml": "<6.4"
+            },
+            "require-dev": {
+                "phpdocumentor/reflection-docblock": "^5.2|^6.0",
+                "phpstan/phpdoc-parser": "^1.0|^2.0",
+                "seld/jsonlint": "^1.10",
+                "symfony/cache": "^6.4|^7.0|^8.0",
+                "symfony/config": "^6.4|^7.0|^8.0",
+                "symfony/console": "^6.4|^7.0|^8.0",
+                "symfony/dependency-injection": "^7.2|^8.0",
+                "symfony/error-handler": "^6.4|^7.0|^8.0",
+                "symfony/filesystem": "^6.4|^7.0|^8.0",
+                "symfony/form": "^6.4|^7.0|^8.0",
+                "symfony/http-foundation": "^6.4|^7.0|^8.0",
+                "symfony/http-kernel": "^6.4|^7.0|^8.0",
+                "symfony/messenger": "^6.4|^7.0|^8.0",
+                "symfony/mime": "^6.4|^7.0|^8.0",
+                "symfony/property-access": "^6.4.31|^7.4.2|^8.0.2",
+                "symfony/property-info": "^6.4|^7.0|^8.0",
+                "symfony/translation-contracts": "^2.5|^3",
+                "symfony/type-info": "^7.2.5|^8.0",
+                "symfony/uid": "^6.4|^7.0|^8.0",
+                "symfony/validator": "^6.4|^7.0|^8.0",
+                "symfony/var-dumper": "^6.4|^7.0|^8.0",
+                "symfony/var-exporter": "^6.4|^7.0|^8.0",
+                "symfony/yaml": "^6.4|^7.0|^8.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\Component\\Serializer\\": ""
+                },
+                "exclude-from-classmap": [
+                    "/Tests/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Fabien Potencier",
+                    "email": "fabien@symfony.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Handles serializing and deserializing data structures, including object graphs, into array structures or other formats like XML and JSON.",
+            "homepage": "https://symfony.com",
+            "support": {
+                "source": "https://github.com/symfony/serializer/tree/v7.4.10"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-05-03T13:03:28+00:00"
+        },
+        {
             "name": "symfony/service-contracts",
             "version": "v3.7.0",
             "source": {
@@ -8283,6 +8449,52 @@
                 "source": "https://github.com/tijsverkoyen/CssToInlineStyles/tree/v2.4.0"
             },
             "time": "2025-12-02T11:56:42+00:00"
+        },
+        {
+            "name": "trinetus/pay-by-square-generator",
+            "version": "1.0.0",
+            "source": {
+                "type": "git",
+                "url": "git@gitlab.com:trinetus/pay-by-square-generator.git",
+                "reference": "802b41c9f37fe0d014459b01cb19fafd8021fc4f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://gitlab.com/api/v4/projects/trinetus%2Fpay-by-square-generator/repository/archive.zip?sha=802b41c9f37fe0d014459b01cb19fafd8021fc4f",
+                "reference": "802b41c9f37fe0d014459b01cb19fafd8021fc4f",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.4|^8.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Trinetus\\PayBySquareGenerator\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Ján Fečík",
+                    "email": "jan@fecik.sk"
+                },
+                {
+                    "name": "Ján Šmatlík",
+                    "email": "jan@trinetus.com"
+                }
+            ],
+            "description": "PHP implementation of Pay By Square generator based on code of Jan Fecik.",
+            "keywords": [
+                "generator",
+                "pay by square",
+                "qrcode",
+                "slovak"
+            ],
+            "time": "2022-10-24T17:55:04+00:00"
         },
         {
             "name": "vlucas/phpdotenv",

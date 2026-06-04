@@ -21,6 +21,18 @@ use App\Http\Controllers\EshopIntegrationController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FaqController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\Invoicing\BusinessDocumentController;
+use App\Http\Controllers\Invoicing\CompanyContactController;
+use App\Http\Controllers\Invoicing\CompanyBrandingController;
+use App\Http\Controllers\Invoicing\CompanyController;
+use App\Http\Controllers\Invoicing\CompanyDocumentSequenceController;
+use App\Http\Controllers\Invoicing\CompanyEmailSettingsController;
+use App\Http\Controllers\Invoicing\CompanyRegistryController;
+use App\Http\Controllers\Invoicing\UsSalesTaxController;
+use App\Http\Controllers\Invoicing\ViesValidationController;
+use App\Http\Middleware\EnsureCompanyLimit;
+use App\Http\Middleware\EnsureCompanyOwnership;
+use App\Http\Middleware\EnsurePlanAllowsBusinessInvoicing;
 use App\Http\Controllers\LightningAddressController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MessageController;
@@ -277,6 +289,134 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
     Route::get('/messages/count', [MessageController::class, 'count']);
     Route::patch('/messages/{id}/read', [MessageController::class, 'markAsRead'])->where('id', '[a-zA-Z0-9_-]+');
     Route::post('/messages/mark-all-read', [MessageController::class, 'markAllAsRead']);
+
+    // Business invoicing (Pro+)
+    Route::middleware([EnsurePlanAllowsBusinessInvoicing::class, 'guest.restrict'])
+        ->prefix('invoicing')
+        ->group(function () {
+            Route::middleware(['throttle:30,1'])->group(function () {
+                Route::get('/company-registry/coverage', [CompanyRegistryController::class, 'coverage']);
+                Route::get('/company-registry/search', [CompanyRegistryController::class, 'search']);
+                Route::get('/company-registry/entities/{entityId}', [CompanyRegistryController::class, 'show'])
+                    ->where('entityId', '[A-Za-z0-9._-]{4,64}');
+                Route::post('/vies/validate', [ViesValidationController::class, 'validateVat']);
+            });
+
+            Route::get('/companies', [CompanyController::class, 'index']);
+            Route::post('/companies', [CompanyController::class, 'store'])
+                ->middleware(EnsureCompanyLimit::class);
+            Route::get('/companies/{company}', [CompanyController::class, 'show'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/us-sales-tax/preview', [UsSalesTaxController::class, 'preview'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::patch('/companies/{company}', [CompanyController::class, 'update'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::patch('/companies/{company}/app-settings', [CompanyController::class, 'updateAppSettings'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::patch('/companies/{company}/email-settings', [CompanyEmailSettingsController::class, 'update'])
+                ->middleware(EnsureCompanyOwnership::class);
+
+            Route::get('/companies/{company}/number-series/preview', [CompanyDocumentSequenceController::class, 'preview'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/number-series', [CompanyDocumentSequenceController::class, 'index'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/number-series', [CompanyDocumentSequenceController::class, 'store'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::patch('/companies/{company}/number-series/{sequence}', [CompanyDocumentSequenceController::class, 'update'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::delete('/companies/{company}/number-series/{sequence}', [CompanyDocumentSequenceController::class, 'destroy'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/email-settings/test-smtp', [CompanyEmailSettingsController::class, 'testSmtp'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::delete('/companies/{company}', [CompanyController::class, 'destroy'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::patch('/companies/{company}/stores', [CompanyController::class, 'updateStores'])
+                ->middleware(EnsureCompanyOwnership::class);
+
+            Route::post('/companies/{company}/branding/logo', [CompanyBrandingController::class, 'uploadLogo'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::delete('/companies/{company}/branding/logo', [CompanyBrandingController::class, 'deleteLogo'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/branding/logo', [CompanyBrandingController::class, 'showLogo'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/branding/signature-stamp', [CompanyBrandingController::class, 'uploadSignatureStamp'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::delete('/companies/{company}/branding/signature-stamp', [CompanyBrandingController::class, 'deleteSignatureStamp'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/branding/signature-stamp', [CompanyBrandingController::class, 'showSignatureStamp'])
+                ->middleware(EnsureCompanyOwnership::class);
+
+            Route::get('/companies/{company}/contacts', [CompanyContactController::class, 'index'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/contacts', [CompanyContactController::class, 'store'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/contacts/{contact}', [CompanyContactController::class, 'show'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::patch('/companies/{company}/contacts/{contact}', [CompanyContactController::class, 'update'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::delete('/companies/{company}/contacts/{contact}', [CompanyContactController::class, 'destroy'])
+                ->middleware(EnsureCompanyOwnership::class);
+
+            Route::get('/companies/{company}/recurring-profiles', [\App\Http\Controllers\Invoicing\BusinessRecurringProfileController::class, 'index'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/recurring-profiles', [\App\Http\Controllers\Invoicing\BusinessRecurringProfileController::class, 'store'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/recurring-profiles/from-document/{businessDocument}', [\App\Http\Controllers\Invoicing\BusinessRecurringProfileController::class, 'fromDocument'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/recurring-profiles/{recurringProfile}', [\App\Http\Controllers\Invoicing\BusinessRecurringProfileController::class, 'show'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::patch('/companies/{company}/recurring-profiles/{recurringProfile}', [\App\Http\Controllers\Invoicing\BusinessRecurringProfileController::class, 'update'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::delete('/companies/{company}/recurring-profiles/{recurringProfile}', [\App\Http\Controllers\Invoicing\BusinessRecurringProfileController::class, 'destroy'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/recurring-profiles/{recurringProfile}/generate', [\App\Http\Controllers\Invoicing\BusinessRecurringProfileController::class, 'generateNow'])
+                ->middleware(EnsureCompanyOwnership::class);
+
+            Route::get('/companies/{company}/documents', [BusinessDocumentController::class, 'index'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/bulk', [BusinessDocumentController::class, 'bulk'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents', [BusinessDocumentController::class, 'store'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/credit-note-from-invoice', [BusinessDocumentController::class, 'createCreditNoteFromInvoice'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/documents/{businessDocument}', [BusinessDocumentController::class, 'show'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::patch('/companies/{company}/documents/{businessDocument}', [BusinessDocumentController::class, 'update'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/{businessDocument}/issue', [BusinessDocumentController::class, 'issue'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/{businessDocument}/cancel', [BusinessDocumentController::class, 'cancel'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/documents/{businessDocument}/pdf', [BusinessDocumentController::class, 'pdf'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/documents/{businessDocument}/isdoc', [BusinessDocumentController::class, 'isdoc'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/documents/{businessDocument}/ubl', [BusinessDocumentController::class, 'ubl'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/{businessDocument}/mark-paid', [BusinessDocumentController::class, 'markPaid'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/{businessDocument}/unmark-paid', [BusinessDocumentController::class, 'unmarkPaid'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/documents/{businessDocument}/email-preview', [BusinessDocumentController::class, 'emailPreview'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/{businessDocument}/send-email', [BusinessDocumentController::class, 'sendEmail'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/documents/{businessDocument}/history', [BusinessDocumentController::class, 'history'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/{businessDocument}/create-final-invoice', [BusinessDocumentController::class, 'createFinalInvoice'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/{businessDocument}/approve-quote', [BusinessDocumentController::class, 'approveQuote'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/{businessDocument}/reject-quote', [BusinessDocumentController::class, 'rejectQuote'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/{businessDocument}/create-invoice-from-quote', [BusinessDocumentController::class, 'createInvoiceFromQuote'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/{businessDocument}/duplicate', [BusinessDocumentController::class, 'duplicate'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::delete('/companies/{company}/documents/{businessDocument}', [BusinessDocumentController::class, 'destroy'])
+                ->middleware(EnsureCompanyOwnership::class);
+        });
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index']);

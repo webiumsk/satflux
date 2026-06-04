@@ -19,6 +19,28 @@ function getCsrfToken(): string | null {
     return null;
 }
 
+/** Session-authenticated GET for file downloads (PDF, etc.) - not under /api. */
+export async function getWebBlob(path: string): Promise<Blob> {
+    const { data } = await axios.get(path, {
+        baseURL: '',
+        responseType: 'blob',
+        withCredentials: true,
+    });
+    return data;
+}
+
+export function businessDocumentPdfPath(companyId: string, documentId: string): string {
+    return `/invoicing/companies/${companyId}/documents/${documentId}/pdf`;
+}
+
+export function businessDocumentIsdocPath(companyId: string, documentId: string): string {
+    return `/invoicing/companies/${companyId}/documents/${documentId}/isdoc`;
+}
+
+export function businessDocumentUblPath(companyId: string, documentId: string): string {
+    return `/invoicing/companies/${companyId}/documents/${documentId}/ubl`;
+}
+
 // Post to a web route (no /api prefix) - for password reset etc., avoids Sanctum auth
 export async function postWeb<T = unknown>(path: string, data: object): Promise<T> {
     const csrf = getCsrfToken();

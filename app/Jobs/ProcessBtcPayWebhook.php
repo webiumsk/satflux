@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Store;
 use App\Models\User;
 use App\Models\WebhookEvent;
+use App\Services\Invoicing\BusinessDocumentPaymentWebhookService;
 use App\Services\StoreEmailRuleDispatcher;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -58,12 +59,21 @@ class ProcessBtcPayWebhook implements ShouldQueue
                     'error' => $e->getMessage(),
                 ]);
             }
+
+            try {
+                app(BusinessDocumentPaymentWebhookService::class)
+                    ->handleInvoicePayment($eventType, $payload, $store);
+            } catch (\Throwable $e) {
+                Log::error('Business document payment webhook failed', [
+                    'webhook_event_id' => $this->webhookEvent->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         // Check if this is a subscription store
         $subscriptionStoreId = config('services.btcpay.subscription_store_id');
         if ($storeId !== $subscriptionStoreId) {
-            // Not a subscription-related webhook, skip
             $this->webhookEvent->markAsProcessed();
 
             return;

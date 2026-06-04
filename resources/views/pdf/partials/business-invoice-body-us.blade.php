@@ -1,0 +1,92 @@
+@php
+    $amountDue = max(0, (float) $document->total - (float) ($document->amount_paid ?? 0));
+    $showPaidInfo = $document->pdf_show_payment_info
+        && ($document->status->value === 'paid' || $amountDue < 0.005);
+@endphp
+
+<div class="row">
+    <div class="col">
+        <strong>{{ $company->displayName() }}</strong><br>
+        @if($company->street){{ $company->street }}<br>@endif
+        @if($company->city){{ $company->city }}, {{ $company->state_region }} {{ $company->postal_code }}<br>@endif
+        @if($company->registration_number)EIN: {{ $company->registration_number }}<br>@endif
+        @if($company->tax_id)Tax ID: {{ $company->tax_id }}<br>@endif
+        @if($company->iban)Account: {{ $company->iban }}<br>@endif
+    </div>
+    <div class="col">
+        @if($contact)
+            <strong>Bill to: {{ $contact->name }}</strong><br>
+            @if($contact->street){{ $contact->street }}<br>@endif
+            @if($contact->city){{ $contact->city }}@if($contact->state_region), {{ $contact->state_region }}@endif {{ $contact->postal_code }}<br>@endif
+            @if($contact->email){{ $contact->email }}<br>@endif
+        @endif
+        <br>
+        Issue date: {{ $document->issue_date?->format('m/d/Y') }}<br>
+        Due date: {{ $document->due_date?->format('m/d/Y') }}<br>
+    </div>
+</div>
+
+@if($document->note_above_lines)
+    <p>{{ $document->note_above_lines }}</p>
+@endif
+
+<table>
+    <thead>
+        <tr>
+            <th>Description</th>
+            <th>Qty</th>
+            <th>Unit</th>
+            <th>Rate</th>
+            @if(!empty($showSalesTaxColumn))
+                <th>Tax %</th>
+            @endif
+            <th>Amount</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach($lines as $line)
+            <tr>
+                <td>
+                    {{ $line->name }}
+                    @if($line->description)<br><span class="muted">{{ $line->description }}</span>@endif
+                </td>
+                <td>{{ $line->quantity }}</td>
+                <td>{{ $line->unit }}</td>
+                <td>{{ number_format((float) $line->unit_price, 2) }} {{ $document->currency }}</td>
+                @if(!empty($showSalesTaxColumn))
+                    <td>{{ number_format((float) $line->tax_rate, 2) }}%</td>
+                @endif
+                <td>{{ number_format((float) $line->line_total, 2) }} {{ $document->currency }}</td>
+            </tr>
+        @endforeach
+    </tbody>
+</table>
+
+<div class="totals">
+    @if((float) $document->discount_percent > 0)
+        <div>Discount {{ $document->discount_percent }}%</div>
+    @endif
+    <div>Subtotal: {{ number_format((float) $document->subtotal, 2) }} {{ $document->currency }}</div>
+    @if(!empty($taxBreakdown))
+        @foreach($taxBreakdown as $row)
+            <div>{{ $row->label ?? ('Sales tax '.$row->ratePercent.'%') }}: {{ number_format((float) $row->taxAmount, 2) }} {{ $document->currency }}</div>
+        @endforeach
+    @elseif((float) $document->tax_total > 0)
+        <div>Sales tax: {{ number_format((float) $document->tax_total, 2) }} {{ $document->currency }}</div>
+    @endif
+    <div><strong>Total due: {{ number_format($showPaidInfo ? 0 : $amountDue, 2) }} {{ $document->currency }}</strong></div>
+    @if($showPaidInfo)
+        <div class="muted">Paid {{ $document->paid_at?->format('m/d/Y') }}</div>
+    @endif
+</div>
+
+@if($document->note_footer)
+    <p class="muted" style="margin-top:16px;">{{ $document->note_footer }}</p>
+@endif
+
+@if($btcPayQr)
+    <div class="qr-block">
+        <div class="muted">Pay with Bitcoin / Lightning</div>
+        <img src="{{ $btcPayQr }}" alt="BTCPay">
+    </div>
+@endif

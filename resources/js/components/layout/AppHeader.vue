@@ -76,6 +76,23 @@
               {{ t("header.stores") }}
             </component>
             <component
+              :is="isInertia ? Link : RouterLink"
+              :href="isInertia ? '/invoicing' : undefined"
+              :to="!isInertia ? '/invoicing' : undefined"
+              class="px-3 py-2 rounded-lg text-sm font-medium transition-all inline-flex items-center gap-1"
+              :class="
+                isActive('/invoicing')
+                  ? 'text-white bg-indigo-600/20 text-indigo-300'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              "
+            >
+              {{ t("header.invoicing") }}
+              <span
+                v-if="!canBusinessInvoicing"
+                class="text-[10px] uppercase tracking-wide text-amber-400/90"
+              >Pro</span>
+            </component>
+            <component
               v-if="
                 authStore.user?.role === 'support' ||
                 authStore.user?.role === 'admin'
@@ -437,6 +454,20 @@
           </component>
           <component
             :is="isInertia ? Link : RouterLink"
+            :href="isInertia ? '/invoicing' : undefined"
+            :to="!isInertia ? '/invoicing' : undefined"
+            @click="closeMobileMenu"
+            class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors"
+            :class="
+              isActive('/invoicing')
+                ? 'bg-indigo-600/20 text-indigo-300'
+                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+            "
+          >
+            {{ t("header.invoicing") }}
+          </component>
+          <component
+            :is="isInertia ? Link : RouterLink"
             :href="isInertia ? '/support' : undefined"
             :to="!isInertia ? '/support' : undefined"
             @click="closeMobileMenu"
@@ -617,6 +648,7 @@ import { useRouter, useRoute, RouterLink } from "vue-router";
 import { Link, router as inertiaRouter, usePage } from "@inertiajs/vue3";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
+import { useBusinessInvoicing } from "../../composables/useBusinessInvoicing";
 import LanguageSwitcher from "../LanguageSwitcher.vue";
 import api from "../../services/api";
 import { getEcho } from "../../echo";
@@ -628,6 +660,7 @@ const route = !isInertia ? useRoute() : null;
 const page = isInertia ? usePage() : null;
 
 const authStore = useAuthStore();
+const { canUse: canBusinessInvoicing } = useBusinessInvoicing();
 const showUserMenu = ref(false);
 const showMobileMenu = ref(false);
 const supportCount = ref(0);
