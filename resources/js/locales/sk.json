@@ -640,7 +640,7 @@
     "send_coming_soon": "Odoslanie e-mailom bude v ďalšej fáze",
     "send_email_title": "Odoslať emailom",
     "send_email_to": "Komu",
-    "send_email_to_placeholder": "email@firma.sk alebo viac adries oddelených čiarkou",
+    "send_email_to_placeholder": "email{'@'}firma.sk alebo viac adries oddelených čiarkou",
     "send_email_cc": "Kópia (CC)",
     "send_email_bcc": "Skrytá kópia (BCC)",
     "send_email_subject": "Predmet",

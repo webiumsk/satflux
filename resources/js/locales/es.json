@@ -2584,7 +2584,7 @@
     "send_coming_soon": "El envío por correo llegará en una fase posterior",
     "send_email_title": "Enviar por correo",
     "send_email_to": "Para",
-    "send_email_to_placeholder": "cliente@ejemplo.com o varias direcciones separadas por comas",
+    "send_email_to_placeholder": "cliente{'@'}ejemplo.com o varias direcciones separadas por comas",
     "send_email_cc": "CC",
     "send_email_bcc": "BCC",
     "send_email_subject": "Asunto",

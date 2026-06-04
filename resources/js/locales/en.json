@@ -640,7 +640,7 @@
     "send_coming_soon": "Email sending is planned for a later phase",
     "send_email_title": "Send by email",
     "send_email_to": "To",
-    "send_email_to_placeholder": "client@example.com or comma-separated addresses",
+    "send_email_to_placeholder": "client{'@'}example.com or comma-separated addresses",
     "send_email_cc": "CC",
     "send_email_bcc": "BCC",
     "send_email_subject": "Subject",
