@@ -112,6 +112,7 @@ class BusinessDocumentPayTest extends TestCase
             'btcpay_store_id' => 'btcpay-store-99',
         ]);
 
+        $token = Str::random(64);
         $document = BusinessDocument::create([
             'company_id' => $company->id,
             'store_id' => $store->id,
@@ -121,6 +122,7 @@ class BusinessDocumentPayTest extends TestCase
             'total' => 99,
             'currency' => 'EUR',
             'payment_btc_enabled' => true,
+            'payment_token' => $token,
             'issue_date' => now(),
         ]);
 
@@ -142,5 +144,6 @@ class BusinessDocumentPayTest extends TestCase
         $document->refresh();
         $this->assertSame(BusinessDocumentStatus::Paid, $document->status);
         $this->assertNotNull($document->paid_at);
+        $this->assertNull($document->payment_token);
     }
 }

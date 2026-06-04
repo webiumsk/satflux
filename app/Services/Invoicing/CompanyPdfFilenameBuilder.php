@@ -38,7 +38,7 @@ class CompanyPdfFilenameBuilder
             '#TYP#' => $this->typeCode($document->type),
             '#FIRMA#' => $this->sanitizeSegment($company->displayName(), 50),
             '#CISLO#' => $this->sanitizeSegment($document->number ?? $document->id),
-            '#KLIENT#' => $this->sanitizeSegment($document->contact?->name ?? '', 50),
+            '#KLIENT#' => $this->sanitizeSegment($document->resolvedBuyer()?->name ?? '', 50),
             '#VYSTAVENE#' => $document->issue_date?->format('Y-m-d') ?? '',
             '#SUMA#' => number_format((float) $document->total, 2, '.', ''),
             '#MENA#' => $document->currency ?? $company->default_currency ?? 'EUR',

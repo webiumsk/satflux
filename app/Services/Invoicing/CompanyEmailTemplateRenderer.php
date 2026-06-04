@@ -35,7 +35,7 @@ class CompanyEmailTemplateRenderer
      */
     protected function replacements(Company $company, BusinessDocument $document, ?User $sender): array
     {
-        $contact = $document->contact;
+        $contact = $document->resolvedBuyer();
         $payUrl = app(BusinessDocumentPaymentTokenService::class);
         $payUrl->ensureForDocument($document);
         $onlinePay = $payUrl->payUrl($document) ?? '';

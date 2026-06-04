@@ -9,6 +9,7 @@ use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\Company;
 use App\Models\User;
+use App\Support\PiiRedaction;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
@@ -37,7 +38,7 @@ class BusinessDocumentEmailService
             'subject' => $rendered['subject'],
             'body' => $rendered['body'],
             'body_html' => $this->bodyToHtml($rendered['body']),
-            'to' => $document->contact?->email,
+            'to' => $document->resolvedBuyer()?->email,
             'template_key' => $templateKey,
             'attachment_filename' => $this->pdfFilenameBuilder->build($document),
         ];
@@ -110,9 +111,8 @@ class BusinessDocumentEmailService
         AuditLog::log('business_document.email_sent', 'business_document', $document->id, [
             'company_id' => $company->id,
             'number' => $document->number,
-            'to' => $to,
-            'cc' => $cc,
-            'subject' => $subject,
+            'to_hashes' => PiiRedaction::emailListHashes($to),
+            'cc_hashes' => PiiRedaction::emailListHashes($cc),
         ]);
 
         return [

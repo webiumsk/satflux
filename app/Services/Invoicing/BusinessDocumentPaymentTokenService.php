@@ -41,6 +41,23 @@ class BusinessDocumentPaymentTokenService
         return rtrim(config('app.url'), '/').'/pay/i/'.$document->payment_token;
     }
 
+    /**
+     * Revoke public pay link after settlement (configurable).
+     */
+    public function revokeAfterPaid(BusinessDocument $document): void
+    {
+        if (! config('data_retention.clear_payment_token_when_paid', true)) {
+            return;
+        }
+
+        $document->update([
+            'payment_token' => null,
+            'btcpay_checkout_link' => null,
+            'btcpay_invoice_id' => null,
+            'btcpay_checkout_created_at' => null,
+        ]);
+    }
+
     protected function generateUniqueToken(): string
     {
         do {

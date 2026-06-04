@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Invoicing\StoreCompanyContactRequest;
 use App\Models\Company;
 use App\Models\CompanyContact;
+use App\Services\Invoicing\CompanyContactAnonymizationService;
 use App\Services\Invoicing\CompanyContactStatsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -98,8 +99,15 @@ class CompanyContactController extends Controller
         return response()->json(['data' => $this->contactWithStats($company, $contact->fresh())]);
     }
 
-    public function destroy(Company $company, CompanyContact $contact): JsonResponse
-    {
+    public function destroy(
+        Company $company,
+        CompanyContact $contact,
+        CompanyContactAnonymizationService $anonymization,
+    ): JsonResponse {
+        if ($anonymization->anonymize($company, $contact)) {
+            return response()->json(['message' => 'Contact anonymized (issued documents retain buyer snapshot).']);
+        }
+
         $contact->delete();
 
         return response()->json(['message' => 'Contact deleted']);

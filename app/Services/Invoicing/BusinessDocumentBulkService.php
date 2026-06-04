@@ -23,6 +23,7 @@ class BusinessDocumentBulkService
 {
     public function __construct(
         protected BusinessDocumentPdfService $pdfService,
+        protected BusinessDocumentPaymentTokenService $paymentTokenService,
     ) {}
 
     /**
@@ -206,7 +207,12 @@ class BusinessDocumentBulkService
 
                 continue;
             }
-            $document->update(['status' => BusinessDocumentStatus::Paid]);
+            $document->update([
+                'status' => BusinessDocumentStatus::Paid,
+                'paid_at' => now(),
+                'amount_paid' => $document->total,
+            ]);
+            $this->paymentTokenService->revokeAfterPaid($document->fresh());
             $processed++;
         }
 
@@ -324,7 +330,7 @@ class BusinessDocumentBulkService
                 [
                     $document->number,
                     $document->status->value,
-                    $document->contact?->name,
+                    $document->resolvedBuyer()?->name,
                     $document->total,
                     $document->currency,
                     $document->issue_date?->format('Y-m-d'),

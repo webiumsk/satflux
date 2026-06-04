@@ -10,6 +10,10 @@ use Illuminate\Support\Facades\Log;
 
 class BusinessDocumentPaymentWebhookService
 {
+    public function __construct(
+        protected BusinessDocumentPaymentTokenService $paymentTokenService,
+    ) {}
+
     /**
      * @param  array<string, mixed>  $payload
      */
@@ -72,6 +76,8 @@ class BusinessDocumentPaymentWebhookService
             'paid_at' => now(),
             'amount_paid' => $document->total,
         ]);
+
+        $this->paymentTokenService->revokeAfterPaid($document->fresh());
 
         AuditLog::log('business_document.marked_paid', 'business_document', $document->id, [
             'company_id' => $document->company_id,

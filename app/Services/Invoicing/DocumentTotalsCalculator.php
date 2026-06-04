@@ -28,13 +28,13 @@ class DocumentTotalsCalculator
 
     public function applyToDocument(BusinessDocument $document, array $linePayloads, float $documentDiscountPercent = 0): void
     {
-        $document->loadMissing('company');
+        $document->loadMissing('company', 'contact');
         $canonical = $this->canonicalBuilder->fromLinePayloads(
             $document->company,
             $linePayloads,
             $documentDiscountPercent,
             $document,
-            $document->contact,
+            $document->resolvedBuyer(),
         );
 
         $document->subtotal = $canonical->subtotal;

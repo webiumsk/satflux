@@ -19,12 +19,16 @@ User-scoped module for company profiles, customer contacts, and accounting invoi
 
 Existing companies above the Free limit (0) are **not** removed; the user simply cannot open the module until Pro is active again. Creating new companies is blocked when at plan limit (Pro: 2, or beta: 5).
 
+## Data retention
+
+Buyer PII on issued documents is frozen in `buyer_snapshot` at issue. Contact delete anonymizes the row when issued documents exist. Scheduled cleanup: see [DATA_RETENTION.md](DATA_RETENTION.md) (`data:retention-run`, `DATA_RETENTION_ENABLED`).
+
 ## Data model
 
 - `companies` - merchant legal profile (jurisdiction drives validation and PDF template).
 - `stores.company_id` - optional link for BTCPay crypto payments on invoices.
 - `company_contacts` - customers / recipients.
-- `business_documents` + `business_document_lines` - local accounting documents.
+- `business_documents` + `business_document_lines` - local accounting documents (`buyer_snapshot` JSON at issue).
 - `business_recurring_profiles` + `business_recurring_profile_lines` - recurring invoice schedules (templates with placeholders).
 - `company_document_sequences` - configurable number series per document type (name, format pattern, reset period, default flag). Formats use tokens `R`/`M`/`C` (year/month/counter) plus literal prefixes (e.g. `RRRRCCCC`, `DODRRCCC`). Seeded on company create; issuing uses the default series for the document type.
 

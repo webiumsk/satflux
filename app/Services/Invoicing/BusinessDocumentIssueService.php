@@ -7,6 +7,7 @@ use App\Enums\BusinessDocumentStatus;
 use App\Enums\BusinessDocumentType;
 use App\Models\AuditLog;
 use App\Models\BusinessDocument;
+use App\Support\Invoicing\BuyerSnapshot;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -26,7 +27,7 @@ class BusinessDocumentIssueService
             ]);
         }
 
-        $document->load(['company', 'lines', 'store']);
+        $document->load(['company', 'lines', 'store', 'contact']);
 
         return DB::transaction(function () use ($document) {
             $number = $this->sequenceService->nextNumber(
@@ -38,6 +39,10 @@ class BusinessDocumentIssueService
             $document->variable_symbol = $document->variable_symbol ?: preg_replace('/\D/', '', $number);
             $document->issue_date = $document->issue_date ?? now()->toDateString();
             $document->status = BusinessDocumentStatus::Issued;
+
+            if ($document->contact) {
+                $document->buyer_snapshot = BuyerSnapshot::fromContact($document->contact);
+            }
 
             if ($document->type === BusinessDocumentType::Quote) {
                 $document->quote_status = BusinessDocumentQuoteStatus::Pending;

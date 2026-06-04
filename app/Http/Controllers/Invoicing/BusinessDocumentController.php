@@ -367,6 +367,7 @@ class BusinessDocumentController extends Controller
                 'paid_at' => now(),
                 'amount_paid' => $businessDocument->total,
             ]);
+            $this->paymentTokenService->revokeAfterPaid($businessDocument->fresh());
             AuditLog::log('business_document.marked_paid', 'business_document', $businessDocument->id, [
                 'company_id' => $company->id,
                 'number' => $businessDocument->number,

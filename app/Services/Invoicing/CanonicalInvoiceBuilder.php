@@ -56,6 +56,8 @@ class CanonicalInvoiceBuilder
     {
         $document->loadMissing(['company', 'contact', 'lines']);
 
+        $buyer = $document->resolvedBuyer();
+
         $company = $document->company;
         $settings = CompanyAppSettings::from($company->app_settings);
         $roundingMethod = (string) $settings->get('rounding_method', 'per_line');
@@ -66,11 +68,11 @@ class CanonicalInvoiceBuilder
         }
 
         $currency = $document->currency ?: $company->default_currency ?? 'EUR';
-        $usResult = $this->usSalesTax->applyIfNeeded($company, $document->contact, $computedLines, $currency);
+        $usResult = $this->usSalesTax->applyIfNeeded($company, $buyer, $computedLines, $currency);
 
         return $this->assemble(
             $company,
-            $document->contact,
+            $buyer,
             $document,
             $usResult->lines,
             (float) $document->discount_percent,

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\BusinessDocumentQuoteStatus;
 use App\Enums\BusinessDocumentStatus;
 use App\Enums\BusinessDocumentType;
+use App\Support\Invoicing\BuyerSnapshot;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -19,6 +20,7 @@ class BusinessDocument extends Model
     protected $fillable = [
         'company_id',
         'company_contact_id',
+        'buyer_snapshot',
         'store_id',
         'source_document_id',
         'type',
@@ -65,6 +67,7 @@ class BusinessDocument extends Model
             'delivery_date' => 'date',
             'due_date' => 'date',
             'tags' => 'array',
+            'buyer_snapshot' => 'array',
             'payment_btc_enabled' => 'boolean',
             'payment_bank_enabled' => 'boolean',
             'pdf_show_signature' => 'boolean',
@@ -88,6 +91,27 @@ class BusinessDocument extends Model
     public function contact(): BelongsTo
     {
         return $this->belongsTo(CompanyContact::class, 'company_contact_id');
+    }
+
+    /**
+     * Buyer for PDF/exports: frozen snapshot when present, else live contact.
+     */
+    public function resolvedBuyer(): ?CompanyContact
+    {
+        $snapshot = $this->buyer_snapshot;
+        if (is_array($snapshot) && $snapshot !== []) {
+            return BuyerSnapshot::asContact($snapshot);
+        }
+
+        if ($this->relationLoaded('contact')) {
+            return $this->contact;
+        }
+
+        if ($this->company_contact_id) {
+            return $this->contact()->first();
+        }
+
+        return null;
     }
 
     public function store(): BelongsTo

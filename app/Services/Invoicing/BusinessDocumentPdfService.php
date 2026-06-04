@@ -125,7 +125,7 @@ class BusinessDocumentPdfService
 
         $canonical = $this->canonicalBuilder->fromDocument($document);
         $settings = CompanyAppSettings::from($company->app_settings);
-        $contact = $document->contact;
+        $contact = $document->resolvedBuyer();
         $reverseChargeNote = null;
         if ($settings->bool('reverse_charge') && $contact && trim((string) $contact->vat_id) !== '') {
             $reverseChargeNote = (string) ($settings->get('reverse_charge_note')
