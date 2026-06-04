@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Enums\BusinessDocumentStatus;
 use App\Enums\CompanyJurisdiction;
-use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\Company;
 use App\Models\User;
