@@ -105,7 +105,9 @@ return [
     // Business invoice Bitcoin pay
     'business_invoice_pay_title' => 'Pago Bitcoin / Lightning',
     'business_invoice_pay_redirecting' => 'Redirigiendo al pago con el tipo de cambio actual…',
-    'business_invoice_pay_continue' => 'Continuar al pago',
+    'business_invoice_pay_link_notice' => 'El código QR de la factura es un enlace a esta página, no una factura Lightning. No lo escanee con una billetera Lightning; abra el enlace en el navegador (cámara o lector QR).',
+    'business_invoice_pay_checkout_hint' => 'En la siguiente página se creará el pago con el tipo de cambio actual (Bitcoin o Lightning).',
+    'business_invoice_pay_continue' => 'Pagar con Bitcoin / Lightning',
     'business_invoice_pay_already_paid' => 'Esta factura ya está pagada.',
     'business_invoice_pay_error_title' => 'No se pudo preparar el pago',
     'business_invoice_pay_checkout_failed' => 'No se pudo crear el enlace de pago. Inténtelo de nuevo en un momento.',

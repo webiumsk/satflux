@@ -107,15 +107,21 @@
       </form>
 
       <ExpenseAttachmentPanel
+        allow-multiple
         :file-name="pendingAttachmentName"
-        :has-file="Boolean(pendingAttachmentName)"
+        :has-file="pendingFiles.length > 0"
+        :has-pending="pendingFiles.length > 0"
+        :pending-files="pendingFileSummaries"
+        :selected-pending-id="selectedPendingId"
         :preview-url="previewUrl"
         :preview-kind="previewKind"
         :detecting="detecting"
         :detect-error="detectErrorMessage"
         :has-isdoc="lastDetectHasIsdoc"
         @file-selected="onFileSelected"
-        @clear="clearPendingAttachment"
+        @files-selected="onFilesSelected"
+        @select-pending="selectPendingFile"
+        @remove-pending="removePendingFile"
       />
     </div>
   </InvoicingPageShell>
@@ -145,6 +151,9 @@ const isNew = computed(() => route.name === 'invoicing-expense-new');
 
 const {
   quota,
+  pendingFiles,
+  pendingFileSummaries,
+  selectedPendingId,
   pendingAttachmentName,
   previewUrl,
   previewKind,
@@ -157,10 +166,12 @@ const {
   loadQuota,
   purchasePack,
   onDocumentSelected,
+  onDocumentsSelected,
+  selectPendingFile,
+  removePendingFile,
   confirmExtract,
   skipExtract,
-  clearPendingAttachment,
-  uploadPendingAttachment,
+  uploadAllPendingAttachments,
 } = useExpenseIsdocAttachment(companyId);
 
 const detectErrorMessage = computed(() => {
@@ -211,6 +222,11 @@ function applyImportDraft(draft: ExpenseImportDraft) {
 async function onFileSelected(file: File) {
   error.value = '';
   await onDocumentSelected(file);
+}
+
+async function onFilesSelected(files: File[]) {
+  error.value = '';
+  await onDocumentsSelected(files);
 }
 
 async function onConfirmExtract() {
@@ -290,7 +306,7 @@ async function save() {
       await api.patch(`/invoicing/companies/${companyId.value}/expenses/${expenseId.value}`, payload);
       savedId = expenseId.value!;
     }
-    await uploadPendingAttachment(savedId);
+    await uploadAllPendingAttachments(savedId);
     await router.push(expenseShowTo(savedId));
   } catch (e: unknown) {
     const err = e as { response?: { data?: { message?: string } } };

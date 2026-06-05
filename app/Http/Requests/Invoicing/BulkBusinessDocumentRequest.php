@@ -7,8 +7,6 @@ use Illuminate\Validation\Rule;
 
 class BulkBusinessDocumentRequest extends FormRequest
 {
-    public const MAX_DOCUMENTS = 100;
-
     public function authorize(): bool
     {
         return true;
@@ -21,7 +19,7 @@ class BulkBusinessDocumentRequest extends FormRequest
                 'required',
                 Rule::in(['mark_paid', 'delete', 'cancel', 'pdf_zip', 'pdf_merge', 'export_xlsx']),
             ],
-            'document_ids' => ['nullable', 'array', 'max:'.self::MAX_DOCUMENTS],
+            'document_ids' => ['nullable', 'array'],
             'document_ids.*' => ['uuid'],
             'select_all' => ['sometimes', 'boolean'],
             'filter' => ['nullable', Rule::in(['all', 'paid', 'unpaid', 'overdue'])],

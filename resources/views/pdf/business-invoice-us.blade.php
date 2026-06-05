@@ -14,6 +14,7 @@
         .totals { margin-top: 12px; text-align: right; }
         .qr-block { margin-top: 20px; }
         .qr-block img { width: 160px; height: 160px; }
+        .qr-hint { font-size: 9px; color: #6b7280; margin-top: 4px; max-width: 160px; line-height: 1.25; }
         .muted { color: #555; font-size: 11px; }
     </style>
 </head>

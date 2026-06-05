@@ -105,7 +105,9 @@ return [
     // Business invoice Bitcoin pay
     'business_invoice_pay_title' => 'Platba Bitcoin / Lightning',
     'business_invoice_pay_redirecting' => 'Presmerovanie na platbu s aktuálnym kurzom…',
-    'business_invoice_pay_continue' => 'Pokračovať na platbu',
+    'business_invoice_pay_link_notice' => 'QR kód na faktúre je odkaz na túto stránku, nie Lightning faktúra. Nepoužívajte na skenovanie Lightning peňaženku - otvorte odkaz v prehliadači (fotoaparát alebo QR čítačka).',
+    'business_invoice_pay_checkout_hint' => 'Na ďalšej stránke sa vytvorí platba s aktuálnym kurzom (Bitcoin alebo Lightning).',
+    'business_invoice_pay_continue' => 'Zaplatiť Bitcoin / Lightning',
     'business_invoice_pay_already_paid' => 'Táto faktúra je už uhradená.',
     'business_invoice_pay_error_title' => 'Platbu sa nepodarilo pripraviť',
     'business_invoice_pay_checkout_failed' => 'Nepodarilo sa vytvoriť platobný odkaz. Skúste to znova o chvíľu.',

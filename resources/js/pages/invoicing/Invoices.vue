@@ -91,16 +91,10 @@
         <table class="invoice-table w-full min-w-[900px] text-sm text-left">
           <thead class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide border-b border-gray-200">
             <tr>
-              <th class="w-12 px-2 py-3 relative">
-                <input
-                  type="checkbox"
-                  class="rounded border-gray-300"
-                  :checked="allPageSelected"
-                  @change="toggleSelectPage"
-                />
+              <th class="w-12 px-2 py-3 relative text-center">
                 <button
                   type="button"
-                  class="ml-0.5 text-gray-500 hover:text-white text-[10px] align-middle"
+                  class="text-gray-500 hover:text-gray-800 text-base leading-none"
                   :title="t('invoicing.select_menu')"
                   @click.stop="showSelectMenu = !showSelectMenu"
                 >
@@ -111,7 +105,7 @@
                     {{ t('invoicing.select_page', { count: documents.length }) }}
                   </button>
                   <button type="button" class="invoicing-dropdown-item" @click="selectAllFiltered">
-                    {{ t('invoicing.select_all_filtered', { count: Math.min(totalCount, 100) }) }}
+                    {{ t('invoicing.select_all_filtered', { count: totalCount }) }}
                   </button>
                   <button
                     v-if="selectionCount > 0"
@@ -707,11 +701,7 @@ const legendItems = computed(() => {
 });
 
 const selectionCount = computed(() =>
-  selectAllMode.value ? Math.min(totalCount.value, 100) : selectedIds.value.size
-);
-
-const allPageSelected = computed(
-  () => documents.value.length > 0 && documents.value.every((d) => rowSelected(d.id))
+  selectAllMode.value ? totalCount.value : selectedIds.value.size
 );
 
 const pageTotal = computed(() =>
@@ -959,16 +949,6 @@ function toggleRow(id: string) {
   if (next.has(id)) next.delete(id);
   else next.add(id);
   selectedIds.value = next;
-}
-
-function toggleSelectPage() {
-  if (allPageSelected.value) {
-    documents.value.forEach((d) => selectedIds.value.delete(d.id));
-    selectedIds.value = new Set(selectedIds.value);
-    selectAllMode.value = false;
-  } else {
-    selectPage();
-  }
 }
 
 function selectPage() {

@@ -4,10 +4,11 @@
       <InvoicingAppHeader
         :company-label="company.trade_name || company.legal_name"
         :show-filter-bar="false"
+        :show-tools-sub-nav="true"
       />
     </template>
 
-    <CompanySettingsSectionNav :company-id="companyId" :section="settingsSection" class="mt-4" />
+    <CompanySettingsSectionNav :company-id="companyId" class="mt-4" />
 
     <h1 class="invoicing-title mb-4 mt-4">
       {{

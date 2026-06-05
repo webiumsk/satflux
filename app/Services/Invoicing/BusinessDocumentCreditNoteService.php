@@ -104,7 +104,10 @@ class BusinessDocumentCreditNoteService
             $lineDiscount = (float) ($line['line_discount_percent'] ?? 0);
             $taxRate = (float) ($line['tax_rate'] ?? 0);
             $lineNet = $qty * $unitPrice * (1 - $lineDiscount / 100);
-            $lineTax = $company->vat_payer ? $lineNet * ($taxRate / 100) : 0;
+            $buyer = $document->resolvedBuyer();
+            $vatPolicy = app(\App\Support\Invoicing\CompanyVatPolicy::class);
+            $taxRate = $vatPolicy->resolveLineTaxRate($company, $buyer, $taxRate);
+            $lineTax = $vatPolicy->calculatesVatAmounts($company, $buyer) ? $lineNet * ($taxRate / 100) : 0;
 
             BusinessDocumentLine::create([
                 'business_document_id' => $document->id,

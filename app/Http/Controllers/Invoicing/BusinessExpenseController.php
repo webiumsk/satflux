@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Invoicing;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Invoicing\BulkBusinessExpenseRequest;
 use App\Http\Requests\Invoicing\StoreBusinessExpenseRequest;
 use App\Models\AuditLog;
 use App\Models\BusinessExpense;
+use App\Models\BusinessExpenseAttachment;
 use App\Models\Company;
+use App\Services\Invoicing\BusinessExpenseBulkService;
 use App\Services\Invoicing\BusinessExpenseIsdocImportService;
 use App\Services\Invoicing\BusinessExpenseIsdocPackService;
 use App\Services\Invoicing\BusinessExpenseIsdocQuotaService;
@@ -21,6 +24,7 @@ class BusinessExpenseController extends Controller
 {
     public function __construct(
         protected BusinessExpenseService $expenseService,
+        protected BusinessExpenseBulkService $bulkService,
         protected BusinessExpenseIsdocImportService $isdocImportService,
         protected BusinessExpenseIsdocQuotaService $isdocQuotaService,
         protected BusinessExpenseIsdocPackService $isdocPackService,
@@ -34,6 +38,36 @@ class BusinessExpenseController extends Controller
             ->paginate($request->integer('per_page', 25));
 
         return response()->json($expenses);
+    }
+
+    public function bulk(BulkBusinessExpenseRequest $request, Company $company): JsonResponse|Response
+    {
+        $expenses = $this->bulkService->resolveExpenses($company, $request);
+
+        if ($expenses->isEmpty()) {
+            throw ValidationException::withMessages([
+                'expense_ids' => ['No expenses matched the selection.'],
+            ]);
+        }
+
+        $action = $request->input('action');
+
+        AuditLog::log('business_expense.bulk_action', 'company', $company->id, [
+            'action' => $action,
+            'count' => $expenses->count(),
+        ]);
+
+        return match ($action) {
+            'mark_paid' => response()->json([
+                'data' => $this->bulkService->markPaid($expenses),
+            ]),
+            'cancel' => response()->json([
+                'data' => $this->bulkService->cancel($expenses),
+            ]),
+            'export_xlsx' => $this->bulkService->downloadXlsx($company, $expenses),
+            'attachments_zip' => $this->bulkService->downloadAttachmentsZip($company, $expenses),
+            default => abort(400),
+        };
     }
 
     public function store(StoreBusinessExpenseRequest $request, Company $company): JsonResponse
@@ -143,6 +177,8 @@ class BusinessExpenseController extends Controller
             'internal_number' => $expense->internal_number,
         ]);
 
+        $expense->load('attachments');
+
         return response()->json([
             'data' => $expense,
             'quota' => $this->isdocQuotaService->snapshot($user),
@@ -152,6 +188,7 @@ class BusinessExpenseController extends Controller
     public function show(Company $company, BusinessExpense $businessExpense): JsonResponse
     {
         $this->assertExpenseCompany($businessExpense, $company);
+        $businessExpense->load('attachments');
 
         return response()->json(['data' => $businessExpense]);
     }
@@ -247,7 +284,14 @@ class BusinessExpenseController extends Controller
     {
         $this->assertExpenseCompany($businessExpense, $company);
 
-        if (! $businessExpense->hasAttachment()) {
+        $businessExpense->load('attachments');
+        $record = $businessExpense->attachments->first();
+
+        if ($record) {
+            return $this->attachmentResponse($record);
+        }
+
+        if (! $businessExpense->attachment_path) {
             abort(404);
         }
 
@@ -264,6 +308,35 @@ class BusinessExpenseController extends Controller
                 'Content-Disposition' => 'inline; filename="'.addslashes($businessExpense->original_filename ?? 'attachment').'"',
             ],
         );
+    }
+
+    public function downloadStoredAttachment(
+        Company $company,
+        BusinessExpense $businessExpense,
+        BusinessExpenseAttachment $businessExpenseAttachment,
+    ): Response {
+        $this->assertExpenseCompany($businessExpense, $company);
+        $this->assertAttachmentBelongsToExpense($businessExpenseAttachment, $businessExpense);
+
+        return $this->attachmentResponse($businessExpenseAttachment);
+    }
+
+    public function destroyStoredAttachment(
+        Company $company,
+        BusinessExpense $businessExpense,
+        BusinessExpenseAttachment $businessExpenseAttachment,
+    ): JsonResponse {
+        $this->assertExpenseCompany($businessExpense, $company);
+        $this->assertAttachmentBelongsToExpense($businessExpenseAttachment, $businessExpense);
+
+        $expense = $this->expenseService->removeAttachment($businessExpenseAttachment);
+
+        AuditLog::log('business_expense.attachment_removed', 'business_expense', $expense->id, [
+            'company_id' => $company->id,
+            'filename' => $businessExpenseAttachment->original_filename,
+        ]);
+
+        return response()->json(['data' => $expense]);
     }
 
     public function history(Company $company, BusinessExpense $businessExpense): JsonResponse
@@ -298,5 +371,31 @@ class BusinessExpenseController extends Controller
                 'company' => ['Expense does not belong to this company.'],
             ]);
         }
+    }
+
+    protected function assertAttachmentBelongsToExpense(
+        BusinessExpenseAttachment $attachment,
+        BusinessExpense $expense,
+    ): void {
+        if ($attachment->business_expense_id !== $expense->id) {
+            abort(404);
+        }
+    }
+
+    protected function attachmentResponse(BusinessExpenseAttachment $attachment): Response
+    {
+        $disk = Storage::disk($attachment->disk);
+        if (! $disk->exists($attachment->path)) {
+            abort(404);
+        }
+
+        return response(
+            $disk->get($attachment->path),
+            200,
+            [
+                'Content-Type' => $attachment->mime ?? 'application/octet-stream',
+                'Content-Disposition' => 'inline; filename="'.addslashes($attachment->original_filename ?? 'attachment').'"',
+            ],
+        );
     }
 }

@@ -20,9 +20,26 @@
         $btcPayQr = $page['btcPayQr'] ?? null;
         $logoDataUri = $page['logoDataUri'] ?? null;
         $signatureStampDataUri = $page['signatureStampDataUri'] ?? null;
+        $taxBreakdown = $page['taxBreakdown'] ?? [];
+        $showVatColumn = $page['showVatColumn'] ?? false;
+        $showVatBreakdown = $page['showVatBreakdown'] ?? false;
+        $reverseChargeNote = $page['reverseChargeNote'] ?? null;
     @endphp
     <div class="invoice-page">
-        @include('pdf.partials.business-invoice-body-eu', compact('document', 'company', 'contact', 'lines', 'bankQr', 'btcPayQr', 'logoDataUri', 'signatureStampDataUri'))
+        @include('pdf.partials.business-invoice-body-eu', compact(
+            'document',
+            'company',
+            'contact',
+            'lines',
+            'taxBreakdown',
+            'showVatColumn',
+            'showVatBreakdown',
+            'reverseChargeNote',
+            'bankQr',
+            'btcPayQr',
+            'logoDataUri',
+            'signatureStampDataUri',
+        ))
     </div>
 @endforeach
 </body>

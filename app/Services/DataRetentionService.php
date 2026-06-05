@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\Export;
 use App\Services\Invoicing\BankStatementImportService;
+use App\Services\Invoicing\BusinessExpenseService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -17,6 +18,7 @@ class DataRetentionService
     public function __construct(
         protected CompanyPermanentDeleteService $companyPermanentDelete,
         protected BankStatementImportService $bankImports,
+        protected BusinessExpenseService $expenseService,
     ) {}
 
     /**
@@ -31,6 +33,7 @@ class DataRetentionService
             'draft_documents_deleted' => 0,
             'companies_force_deleted' => 0,
             'bank_import_files_deleted' => 0,
+            'cancelled_expenses_deleted' => 0,
         ];
 
         $stats['webhook_events_deleted'] = $this->purgeWebhookEvents($dryRun);
@@ -41,6 +44,7 @@ class DataRetentionService
         $stats['bank_import_files_deleted'] = $dryRun
             ? 0
             : $this->bankImports->purgeOldImportFiles();
+        $stats['cancelled_expenses_deleted'] = $this->expenseService->purgeCancelled($dryRun);
 
         return $stats;
     }

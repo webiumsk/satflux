@@ -6,7 +6,7 @@
       <slot name="subheader" />
     </div>
     <div v-if="$slots.toolbar" class="invoicing-toolbar">
-      <div :class="[INVOICING_CONTAINER_CLASS, 'py-3']">
+      <div :class="[INVOICING_CONTAINER_CLASS, 'py-4']">
         <slot name="toolbar" />
       </div>
     </div>

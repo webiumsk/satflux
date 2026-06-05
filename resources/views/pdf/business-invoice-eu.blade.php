@@ -6,6 +6,19 @@
     @include('pdf.partials.business-invoice-styles-eu')
 </head>
 <body>
-    @include('pdf.partials.business-invoice-body-eu', compact('document', 'company', 'contact', 'lines', 'bankQr', 'btcPayQr', 'logoDataUri', 'signatureStampDataUri'))
+    @include('pdf.partials.business-invoice-body-eu', compact(
+        'document',
+        'company',
+        'contact',
+        'lines',
+        'taxBreakdown',
+        'showVatColumn',
+        'showVatBreakdown',
+        'reverseChargeNote',
+        'bankQr',
+        'btcPayQr',
+        'logoDataUri',
+        'signatureStampDataUri',
+    ))
 </body>
 </html>

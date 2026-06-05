@@ -208,6 +208,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useCompanyVatPolicy } from '../../composables/useCompanyVatPolicy';
 
 export type InvoiceLineForm = {
   name: string;
@@ -261,10 +262,14 @@ const companyDisplayName = computed(
   () => props.company?.trade_name || props.company?.legal_name || ''
 );
 
+const vatPolicy = useCompanyVatPolicy();
 const isUsCompany = computed(() => props.company?.jurisdiction === 'us');
-const showTaxSummary = computed(
-  () => Boolean(props.company?.vat_payer || isUsCompany.value)
-);
+const showTaxSummary = computed(() => {
+  if (isUsCompany.value) {
+    return true;
+  }
+  return vatPolicy.calculatesVatAmounts(props.company, props.selectedContact);
+});
 
 const invoiceHeading = computed(() => {
   if (props.form.title) return props.form.title;

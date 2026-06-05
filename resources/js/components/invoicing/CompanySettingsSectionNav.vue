@@ -1,36 +1,25 @@
-<template>
-  <nav class="invoicing-settings-section-nav" aria-label="Company settings sections">
-    <RouterLink
-      :to="{ name: 'invoicing-company', params: { companyId } }"
-      class="invoicing-settings-section-nav__item"
-      :class="{ 'invoicing-settings-section-nav__item--active': section === 'profile' }"
-    >
-      {{ t('invoicing.settings_nav_profile') }}
-    </RouterLink>
-    <RouterLink
-      :to="{ name: 'invoicing-company-app', params: { companyId } }"
-      class="invoicing-settings-section-nav__item"
-      :class="{ 'invoicing-settings-section-nav__item--active': section === 'app' }"
-    >
-      {{ t('invoicing.settings_nav_application') }}
-    </RouterLink>
-    <RouterLink
-      :to="{ name: 'account' }"
-      class="invoicing-settings-section-nav__item"
-      :class="{ 'invoicing-settings-section-nav__item--active': section === 'subscription' }"
-    >
-      {{ t('invoicing.settings_nav_subscription') }}
-    </RouterLink>
-  </nav>
-</template>
-
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
+import {
+  useInvoicingLayout,
+  type InvoicingToolsNavItem,
+} from '../../composables/useInvoicingLayout';
 
-defineProps<{
-  companyId: string;
-  section: 'profile' | 'app' | 'subscription';
+const props = defineProps<{
+  companyId?: string;
 }>();
 
 const { t } = useI18n();
+const { toolsNavItems, activeToolsSection, companyId: routeCompanyId } = useInvoicingLayout();
+
+function linkTo(tool: InvoicingToolsNavItem) {
+  if (tool.section === 'subscription') {
+    return { name: tool.routeName };
+  }
+  const cid = routeCompanyId.value || props.companyId;
+  if (!cid) {
+    return { name: 'invoicing' };
+  }
+  return { name: tool.routeName, params: { companyId: cid } };
+}
 </script>

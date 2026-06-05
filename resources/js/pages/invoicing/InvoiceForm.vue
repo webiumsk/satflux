@@ -95,9 +95,14 @@
                 {{ formatContactAddress(selectedContact) }}
               </p>
               <div class="flex flex-wrap gap-3 text-sm">
-                <RouterLink :to="contactNewTo()" class="text-indigo-600 hover:underline">
+                <button
+                  v-if="!isLocked"
+                  type="button"
+                  class="text-indigo-600 hover:underline"
+                  @click="showContactCreateModal = true"
+                >
                   + {{ t('invoicing.create_client') }}
-                </RouterLink>
+                </button>
                 <RouterLink
                   v-if="selectedContact"
                   :to="contactShowTo(selectedContact.id)"
@@ -194,19 +199,19 @@
                       :disabled="isLocked"
                     />
                   </td>
-                  <td class="px-2 py-2">
+                  <td class="px-2 py-2 align-middle">
                     <input v-model.number="line.quantity" type="number" min="0.0001" step="any" class="invoicing-sf-input-table text-center" :disabled="isLocked" />
                   </td>
-                  <td class="px-2 py-2 align-top">
+                  <td class="px-2 py-2 align-middle">
                     <InvoiceLineUnitSelect v-model="line.unit" :disabled="isLocked" />
                   </td>
-                  <td class="px-2 py-2">
+                  <td class="px-2 py-2 align-middle">
                     <input v-model.number="line.unit_price" type="number" min="0" step="0.01" class="invoicing-sf-input-table text-right" :disabled="isLocked" />
                   </td>
-                  <td v-if="showLineTaxColumn" class="px-2 py-2">
+                  <td v-if="showLineTaxColumn" class="px-2 py-2 align-middle">
                     <input v-model.number="line.tax_rate" type="number" min="0" max="100" class="invoicing-sf-input-table text-right" :disabled="isLocked" />
                   </td>
-                  <td class="px-2 py-2 text-right font-medium text-gray-800 whitespace-nowrap">
+                  <td class="px-2 py-2 align-middle text-right font-medium text-gray-800 whitespace-nowrap">
                     {{ lineTotalDisplay(line).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                   </td>
                   <td class="px-1 py-2 text-center">
@@ -312,11 +317,19 @@
           </RouterLink>
         </div>
       </form>
+
+    <ContactCreateModal
+      :open="showContactCreateModal"
+      :company-id="companyId"
+      @close="showContactCreateModal = false"
+      @saved="onContactCreated"
+    />
   </InvoicingPageShell>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import ContactCreateModal from '../../components/invoicing/ContactCreateModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoiceLineUnitSelect from '../../components/invoicing/InvoiceLineUnitSelect.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
@@ -351,7 +364,6 @@ const {
   loadCompanyAndContacts,
   reloadDocument,
   contactShowTo,
-  contactNewTo,
   formatContactAddress,
   route,
   calcTotals,
@@ -364,19 +376,18 @@ const {
   isCreditNote,
   sourceDocument,
   applyDocument,
+  showLineTaxColumn,
 } = useInvoiceDocument();
 
 const { rememberCompany } = useInvoicingLayout();
 
 const isNew = computed(() => !documentId.value);
+const showContactCreateModal = ref(false);
 
 const documentCurrencyOptions = computed(() =>
   companyCurrencyOptions(form.currency || company.value?.default_currency)
 );
 
-const showLineTaxColumn = computed(
-  () => Boolean(company.value?.vat_payer || isUsCompany.value)
-);
 const lineTaxColumnLabel = computed(() =>
   isUsCompany.value ? t('invoicing.sales_tax') : t('invoicing.vat')
 );
@@ -428,6 +439,14 @@ function onContactChange() {
   const base = form.issue_date ? new Date(`${form.issue_date}T12:00:00`) : new Date();
   base.setDate(base.getDate() + days);
   form.due_date = base.toISOString().slice(0, 10);
+}
+
+function onContactCreated(contact: Record<string, unknown>) {
+  const id = contact.id as string;
+  if (!id) return;
+  contacts.value = [...contacts.value, contact];
+  form.company_contact_id = id;
+  onContactChange();
 }
 
 function addLine() {

@@ -25,7 +25,7 @@ export interface InvoicingDocumentNavItem {
   mvpEnabled: boolean;
 }
 
-export type InvoicingToolsSection = 'profile' | 'app' | 'subscription';
+export type InvoicingToolsSection = 'profile' | 'app' | 'subscription' | 'import';
 
 export interface InvoicingToolsNavItem {
   section: InvoicingToolsSection;
@@ -81,7 +81,9 @@ export function useInvoicingLayout() {
       || name === 'invoicing-company-app'
       || name === 'invoicing-company-app-emails'
       || name === 'invoicing-company-app-series'
+      || name === 'invoicing-company-import'
       || name === 'invoicing-company-new'
+      || path.includes('/import')
       || /\/invoicing\/companies\/[^/]+$/.test(path)
       || /\/app(\/|$)/.test(path)
     ) {
@@ -118,6 +120,7 @@ export function useInvoicingLayout() {
   const toolsNavItems = computed<InvoicingToolsNavItem[]>(() => [
     { section: 'profile', routeName: 'invoicing-company', labelKey: 'invoicing.settings_nav_profile' },
     { section: 'app', routeName: 'invoicing-company-app', labelKey: 'invoicing.settings_nav_application' },
+    { section: 'import', routeName: 'invoicing-company-import', labelKey: 'invoicing.settings_nav_import' },
     { section: 'subscription', routeName: 'account', labelKey: 'invoicing.settings_nav_subscription' },
   ]);
 
@@ -129,6 +132,9 @@ export function useInvoicingLayout() {
       || name === 'invoicing-company-app-series'
     ) {
       return 'app';
+    }
+    if (name === 'invoicing-company-import') {
+      return 'import';
     }
     if (name === 'account') {
       return 'subscription';

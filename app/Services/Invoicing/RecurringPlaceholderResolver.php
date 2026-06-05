@@ -2,6 +2,7 @@
 
 namespace App\Services\Invoicing;
 
+use App\Support\Invoicing\PlaceholderLegacyAliases;
 use Carbon\CarbonInterface;
 
 /**
@@ -15,15 +16,15 @@ final class RecurringPlaceholderResolver
     public static function knownTokens(): array
     {
         return [
-            '#CISLOFAKTURY#',
-            '#VAR#',
-            '#DEN#',
-            '#TYZDEN#',
-            '#MESIAC#',
-            '#MESIAC_SLOVOM#',
-            '#PREDOSLY_MESIAC#',
-            '#ROK#',
-            '#NASLEDOVNY_ROK#',
+            '#INVOICE_NUMBER#',
+            '#VARIABLE_SYMBOL#',
+            '#DAY#',
+            '#WEEK#',
+            '#MONTH#',
+            '#MONTH_NAME#',
+            '#PREVIOUS_MONTH#',
+            '#YEAR#',
+            '#NEXT_YEAR#',
         ];
     }
 
@@ -44,17 +45,17 @@ final class RecurringPlaceholderResolver
         $number = $documentNumber ?? '';
         $vs = $variableSymbol ?? $number;
 
-        $map = [
-            '#CISLOFAKTURY#' => $number,
-            '#VAR#' => $vs,
-            '#DEN#' => $issueDate->format('d'),
-            '#TYZDEN#' => $issueDate->format('W'),
-            '#MESIAC#' => $issueDate->format('m'),
-            '#MESIAC_SLOVOM#' => $monthNames[(int) $issueDate->format('n')] ?? $issueDate->format('m'),
-            '#PREDOSLY_MESIAC#' => $prevMonth->format('m'),
-            '#ROK#' => $issueDate->format('Y'),
-            '#NASLEDOVNY_ROK#' => $issueDate->copy()->addYear()->format('Y'),
-        ];
+        $map = PlaceholderLegacyAliases::merge([
+            '#INVOICE_NUMBER#' => $number,
+            '#VARIABLE_SYMBOL#' => $vs,
+            '#DAY#' => $issueDate->format('d'),
+            '#WEEK#' => $issueDate->format('W'),
+            '#MONTH#' => $issueDate->format('m'),
+            '#MONTH_NAME#' => $monthNames[(int) $issueDate->format('n')] ?? $issueDate->format('m'),
+            '#PREVIOUS_MONTH#' => $prevMonth->format('m'),
+            '#YEAR#' => $issueDate->format('Y'),
+            '#NEXT_YEAR#' => $issueDate->copy()->addYear()->format('Y'),
+        ]);
 
         return str_replace(array_keys($map), array_values($map), $text);
     }

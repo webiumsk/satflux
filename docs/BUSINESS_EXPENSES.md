@@ -16,7 +16,7 @@ Table `business_expenses` (per company):
 | `total`, `currency` | Amount |
 | `internal_note` | Private note |
 | `status` | `recorded`, `paid`, `cancelled` |
-| Attachment | PDF/image/XML stored under `companies/{id}/expenses/{id}/` |
+| Attachments | One or more PDF/image/XML files in `business_expense_attachments` (stored under `companies/{id}/expenses/{id}/`). Legacy columns on `business_expenses` mirror the first file for backward compatibility. |
 
 ## API (auth + `business_invoicing` + company ownership)
 
@@ -24,7 +24,9 @@ Table `business_expenses` (per company):
 - `GET/PATCH/DELETE .../expenses/{expense}`
 - `POST .../duplicate` - copies title, symbols, currency, note; new internal number; today dates; `total` = 0; no attachment
 - `POST .../mark-paid`, `POST .../unmark-paid`
-- `POST/GET .../attachment`
+- `POST .../attachment` - add file (does not replace existing)
+- `GET .../attachment` - download first attachment
+- `GET/DELETE .../attachments/{attachment}` - download or remove a specific file
 - `GET .../history` - audit log
 
 Query params: `filter` (`paid`|`unpaid`|`overdue`), `year`, `issue_from`, `issue_to`.
@@ -34,6 +36,8 @@ Query params: `filter` (`paid`|`unpaid`|`overdue`), `year`, `issue_from`, `issue
 Routes under `/invoicing/companies/:companyId/expenses` - list, new, show, edit.
 
 Workflow: duplicate recurring expense, fill total and external number, upload attachment, mark paid.
+
+**Delete:** UI cancel sets `status = cancelled` and `cancelled_at`. The expense disappears from the list; attachments stay until the retention job hard-deletes the row and files (see [DATA_RETENTION.md](DATA_RETENTION.md), `DATA_RETENTION_CANCELLED_EXPENSES_DAYS`, default 90 days).
 
 ## ISDOC import (0.2, SuperFaktúra-style)
 

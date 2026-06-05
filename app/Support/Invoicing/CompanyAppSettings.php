@@ -14,7 +14,7 @@ final class CompanyAppSettings
         'default_delivery_method' => null,
         'default_delivery_date_mode' => 'empty',
         'default_payment_method' => null,
-        'pdf_filename_pattern' => '#TYP#_#FIRMA#_#CISLO#',
+        'pdf_filename_pattern' => '#TYPE#_#COMPANY#_#NUMBER#',
         'expense_attachment_name_pattern' => null,
         'sort_lists_by' => 'issue_date',
         'number_documents_by' => 'issue_date',

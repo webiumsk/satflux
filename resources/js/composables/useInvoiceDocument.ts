@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import type { InvoiceLineForm } from '../components/invoicing/InvoiceLivePreview.vue';
 import api from '../services/api';
 import { appSettingsFromCompany } from './useCompanyAppSettings';
+import { useCompanyVatPolicy } from './useCompanyVatPolicy';
 import { DEFAULT_INVOICE_LINE_UNIT } from './useInvoiceLineUnits';
 import { invoicingDocumentRoutes, type InvoicingDocumentRoutes } from './useInvoicingDocumentRoutes';
 import type { InvoicingDocumentKind } from './useInvoicingLayout';
@@ -89,6 +90,7 @@ export function useInvoiceDocument() {
   const canUpdate = computed(() => ['draft', 'issued'].includes(documentStatus.value));
   const defaultVat = computed(() => Number(company.value?.vat_rate_default ?? 23));
   const isUsCompany = computed(() => company.value?.jurisdiction === 'us');
+  const vatPolicy = useCompanyVatPolicy();
   const usesStripeUsTax = computed(
     () =>
       isUsCompany.value
@@ -163,8 +165,23 @@ export function useInvoiceDocument() {
     lines: form.lines,
   }));
 
+  const showLineTaxColumn = computed(() =>
+    vatPolicy.showsVatRateColumn(company.value, selectedContact.value),
+  );
+
   function lineTaxApplies() {
-    return Boolean(company.value?.vat_payer || isUsCompany.value);
+    if (isUsCompany.value) {
+      return true;
+    }
+    return vatPolicy.calculatesVatAmounts(company.value, selectedContact.value);
+  }
+
+  function lineTaxRate(line: InvoiceLineForm) {
+    return vatPolicy.resolveLineTaxRate(
+      company.value,
+      selectedContact.value,
+      line.tax_rate ?? defaultVat.value,
+    );
   }
 
   function calcTotals() {
@@ -173,9 +190,7 @@ export function useInvoiceDocument() {
     for (const line of form.lines) {
       const net =
         (line.quantity || 0) * (line.unit_price || 0) * (1 - (line.line_discount_percent || 0) / 100);
-      const lineTax = lineTaxApplies()
-        ? net * ((line.tax_rate ?? defaultVat.value) / 100)
-        : 0;
+      const lineTax = lineTaxApplies() ? net * (lineTaxRate(line) / 100) : 0;
       subtotal += net;
       tax += lineTax;
     }
@@ -204,7 +219,7 @@ export function useInvoiceDocument() {
   function lineTotalDisplay(line: InvoiceLineForm) {
     const net =
       (line.quantity || 0) * (line.unit_price || 0) * (1 - (line.line_discount_percent || 0) / 100);
-    const lineTax = lineTaxApplies() ? net * ((line.tax_rate ?? defaultVat.value) / 100) : 0;
+    const lineTax = lineTaxApplies() ? net * (lineTaxRate(line) / 100) : 0;
     return net + lineTax;
   }
 
@@ -271,9 +286,16 @@ export function useInvoiceDocument() {
       unit: DEFAULT_INVOICE_LINE_UNIT,
       unit_price: 0,
       line_discount_percent: 0,
-      tax_rate: defaultVat.value,
+      tax_rate: vatPolicy.resolveLineTaxRate(company.value, selectedContact.value, defaultVat.value),
     };
   }
+
+  watch([selectedContact, () => company.value?.vat_status], () => {
+    const rate = vatPolicy.resolveLineTaxRate(company.value, selectedContact.value, defaultVat.value);
+    for (const line of form.lines) {
+      line.tax_rate = rate;
+    }
+  });
 
   function parseTags(): string[] {
     return tagsInput.value
@@ -546,6 +568,7 @@ export function useInvoiceDocument() {
     finalInvoice,
     previewForm,
     previewTotals,
+    showLineTaxColumn,
     calcTotals,
     lineTotalDisplay,
     newLine,

@@ -31,6 +31,9 @@ return [
     /** Soft-deleted companies force-deleted after this many days. */
     'soft_deleted_companies_days' => (int) env('DATA_RETENTION_SOFT_DELETED_COMPANIES_DAYS', 30),
 
+    /** Cancelled business expenses (and attachment files) hard-deleted after this many days. */
+    'cancelled_expenses_days' => (int) env('DATA_RETENTION_CANCELLED_EXPENSES_DAYS', 90),
+
     /** Remove public BTC pay token after document is marked paid. */
     'clear_payment_token_when_paid' => (bool) env('DATA_RETENTION_CLEAR_PAYMENT_TOKEN_WHEN_PAID', true),
 

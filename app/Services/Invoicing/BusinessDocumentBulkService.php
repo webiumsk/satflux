@@ -5,7 +5,6 @@ namespace App\Services\Invoicing;
 use App\Enums\BusinessDocumentQuoteStatus;
 use App\Enums\BusinessDocumentStatus;
 use App\Enums\BusinessDocumentType;
-use App\Http\Requests\Invoicing\BulkBusinessDocumentRequest;
 use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\Company;
@@ -182,7 +181,6 @@ class BusinessDocumentBulkService
             return $query
                 ->orderByDesc('issue_date')
                 ->orderByDesc('created_at')
-                ->limit(BulkBusinessDocumentRequest::MAX_DOCUMENTS)
                 ->get();
         }
 

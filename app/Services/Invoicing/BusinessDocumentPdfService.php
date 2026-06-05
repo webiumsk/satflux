@@ -6,6 +6,7 @@ use App\Enums\CompanyJurisdiction;
 use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Support\Invoicing\CompanyAppSettings;
+use App\Support\Invoicing\CompanyVatPolicy;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Spatie\LaravelPdf\Facades\Pdf;
@@ -21,6 +22,7 @@ class BusinessDocumentPdfService
         protected CompanyPdfFilenameBuilder $pdfFilenameBuilder,
         protected BusinessDocumentIsdocService $isdocService,
         protected CanonicalInvoiceBuilder $canonicalBuilder,
+        protected CompanyVatPolicy $vatPolicy,
     ) {}
 
     public function download(BusinessDocument $document): Response
@@ -110,11 +112,9 @@ class BusinessDocumentPdfService
                 }
             }
 
-            $qrTarget = $document->btcpay_checkout_link;
-            if (! $qrTarget) {
-                $this->paymentTokenService->ensureForDocument($document);
-                $qrTarget = $this->paymentTokenService->payUrl($document);
-            }
+            // QR always encodes the lazy pay link (/pay/i/…), not a Lightning invoice or BTCPay checkout URL.
+            $this->paymentTokenService->ensureForDocument($document);
+            $qrTarget = $this->paymentTokenService->payUrl($document);
 
             if ($qrTarget) {
                 $btcPayQr = $this->qrPngDataUri($qrTarget);
@@ -126,11 +126,7 @@ class BusinessDocumentPdfService
         $canonical = $this->canonicalBuilder->fromDocument($document);
         $settings = CompanyAppSettings::from($company->app_settings);
         $contact = $document->resolvedBuyer();
-        $reverseChargeNote = null;
-        if ($settings->bool('reverse_charge') && $contact && trim((string) $contact->vat_id) !== '') {
-            $reverseChargeNote = (string) ($settings->get('reverse_charge_note')
-                ?: __('Reverse charge - VAT to be accounted for by the recipient.'));
-        }
+        $reverseChargeNote = $this->vatPolicy->reverseChargeNote($company, $contact, $settings);
 
         $isUs = $company->jurisdiction === CompanyJurisdiction::Us;
 
@@ -140,6 +136,8 @@ class BusinessDocumentPdfService
             'contact' => $contact,
             'lines' => $document->lines,
             'taxBreakdown' => $canonical->taxBreakdown,
+            'showVatColumn' => $this->vatPolicy->showsVatRateColumn($company, $contact),
+            'showVatBreakdown' => $this->vatPolicy->showsVatBreakdown($company, $contact),
             'showSalesTaxColumn' => $isUs && (float) $canonical->taxTotal > 0,
             'reverseChargeNote' => $reverseChargeNote,
             'bankQr' => $bankQr,

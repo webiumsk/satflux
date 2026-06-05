@@ -74,16 +74,16 @@ class BusinessRecurringProfileTest extends TestCase
                 'recurrence_interval' => 'yearly',
                 'first_issue_date' => '2026-07-15',
                 'next_issue_date' => '2026-07-15',
-                'title' => 'Zálohová faktúra #CISLOFAKTURY#',
-                'variable_symbol' => '#CISLOFAKTURY#',
+                'title' => 'Zálohová faktúra #INVOICE_NUMBER#',
+                'variable_symbol' => '#INVOICE_NUMBER#',
                 'lines' => [
-                    ['name' => 'Hosting', 'description' => 'Do #NASLEDOVNY_ROK#', 'quantity' => 1, 'unit_price' => 50],
+                    ['name' => 'Hosting', 'description' => 'Do #NEXT_YEAR#', 'quantity' => 1, 'unit_price' => 50],
                 ],
             ]);
 
         $create->assertCreated();
         $create->assertJsonPath('data.document_type', 'proforma');
-        $create->assertJsonPath('data.title', 'Zálohová faktúra #CISLOFAKTURY#');
+        $create->assertJsonPath('data.title', 'Zálohová faktúra #INVOICE_NUMBER#');
 
         $list = $this->actingAs($this->proUser)
             ->getJson("/api/invoicing/companies/{$this->company->id}/recurring-profiles");
@@ -103,8 +103,8 @@ class BusinessRecurringProfileTest extends TestCase
             'first_issue_date' => now()->toDateString(),
             'next_issue_date' => now()->toDateString(),
             'repeat_indefinitely' => true,
-            'title' => 'Faktúra #CISLOFAKTURY#',
-            'variable_symbol' => '#VAR#',
+            'title' => 'Faktúra #INVOICE_NUMBER#',
+            'variable_symbol' => '#VARIABLE_SYMBOL#',
             'currency' => 'EUR',
             'total' => 100,
             'payment_terms_days' => 14,
@@ -112,7 +112,7 @@ class BusinessRecurringProfileTest extends TestCase
 
         $profile->lines()->create([
             'sort_order' => 0,
-            'name' => 'Služba #ROK#',
+            'name' => 'Služba #YEAR#',
             'description' => null,
             'quantity' => 1,
             'unit' => 'ks',

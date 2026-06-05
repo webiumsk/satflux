@@ -56,7 +56,7 @@ class RecurringDocumentGeneratorService
             : BusinessDocumentType::Invoice;
 
         $previewNumber = $this->sequenceService->previewNextNumber($profile->company, $docType->value);
-        $vsTemplate = $profile->variable_symbol ?: '#CISLOFAKTURY#';
+        $vsTemplate = $profile->variable_symbol ?: '#INVOICE_NUMBER#';
 
         $issueDateStr = $issueDate->toDateString();
         $dueDate = $issueDate->copy()->addDays($profile->payment_terms_days)->toDateString();
@@ -116,7 +116,10 @@ class RecurringDocumentGeneratorService
             $lineDiscount = (float) ($line['line_discount_percent'] ?? 0);
             $taxRate = (float) ($line['tax_rate'] ?? 0);
             $lineNet = $qty * $unitPrice * (1 - $lineDiscount / 100);
-            $lineTax = $profile->company->vat_payer ? $lineNet * ($taxRate / 100) : 0;
+            $buyer = $profile->contact;
+            $vatPolicy = app(\App\Support\Invoicing\CompanyVatPolicy::class);
+            $taxRate = $vatPolicy->resolveLineTaxRate($profile->company, $buyer, $taxRate);
+            $lineTax = $vatPolicy->calculatesVatAmounts($profile->company, $buyer) ? $lineNet * ($taxRate / 100) : 0;
 
             BusinessDocumentLine::create([
                 'business_document_id' => $document->id,

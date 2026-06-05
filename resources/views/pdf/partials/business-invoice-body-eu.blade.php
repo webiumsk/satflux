@@ -123,7 +123,7 @@
             <th class="col-qty">{{ __('Qty') }}</th>
             <th class="col-unit">{{ __('Unit') }}</th>
             <th class="col-price">{{ __('Unit price') }}</th>
-            @if($company->vat_payer)
+            @if(!empty($showVatColumn))
                 <th class="col-vat">{{ __('VAT') }} %</th>
             @endif
             <th class="col-total">{{ __('Line total') }}</th>
@@ -139,7 +139,7 @@
                 <td class="col-qty">{{ $formatQty($line->quantity) }}</td>
                 <td class="col-unit">{{ $line->unit }}</td>
                 <td class="col-price">{{ number_format((float) $line->unit_price, 2, ',', ' ') }} {{ $document->currency }}</td>
-                @if($company->vat_payer)
+                @if(!empty($showVatColumn))
                     <td class="col-vat">{{ number_format((float) $line->tax_rate, 0, ',', ' ') }} %</td>
                 @endif
                 <td class="col-total"><strong>{{ number_format((float) $line->line_total, 2, ',', ' ') }} {{ $document->currency }}</strong></td>
@@ -164,7 +164,7 @@
                         <td class="value"></td>
                     </tr>
                 @endif
-                @if($company->vat_payer)
+                @if(!empty($showVatBreakdown))
                     <tr>
                         <td class="label">{{ __('Subtotal') }}</td>
                         <td class="value">{{ number_format((float) $document->subtotal, 2, ',', ' ') }} {{ $document->currency }}</td>
@@ -271,8 +271,9 @@
         @endif
         @if($btcPayQr)
             <div class="qr-item">
-                <div class="qr-caption">{{ __('Pay with Bitcoin / Lightning') }}</div>
+                <div class="qr-caption">{{ __('Bitcoin / Lightning (payment link)') }}</div>
                 <img src="{{ $btcPayQr }}" alt="">
+                <div class="qr-hint">{{ __('BTC payment QR is a web link. Open in your browser - do not scan with a Lightning wallet.') }}</div>
             </div>
         @endif
     </div>

@@ -134,8 +134,8 @@ function intervalLabel(interval: string) {
 function profileLabel(p: { title?: string; document_type?: string }) {
   if (p.title) return p.title;
   return p.document_type === 'proforma'
-    ? t('invoicing.proforma_title_prefix') + ' #CISLOFAKTURY#'
-    : t('invoicing.invoice_title_prefix') + ' #CISLOFAKTURY#';
+    ? t('invoicing.proforma_title_prefix') + ' #INVOICE_NUMBER#'
+    : t('invoicing.invoice_title_prefix') + ' #INVOICE_NUMBER#';
 }
 
 function setFilter(id: string) {

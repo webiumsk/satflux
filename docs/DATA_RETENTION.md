@@ -48,6 +48,7 @@ Requires `DATA_RETENTION_ENABLED=true` in `.env` (or `--force` for manual runs).
 | `DATA_RETENTION_EXPORT_FILES_DAYS` | 30 | Delete export files + clear paths |
 | `DATA_RETENTION_DRAFT_DOCUMENTS_DAYS` | 365 | Delete stale draft invoices |
 | `DATA_RETENTION_SOFT_DELETED_COMPANIES_DAYS` | 30 | `forceDelete` companies in trash |
+| `DATA_RETENTION_CANCELLED_EXPENSES_DAYS` | 90 | Hard-delete cancelled `business_expenses` and attachment files |
 | `DATA_RETENTION_CLEAR_PAYMENT_TOKEN_WHEN_PAID` | true | Revoke `/pay/i/{token}` after paid |
 
 Use `--dry-run` to preview counts.

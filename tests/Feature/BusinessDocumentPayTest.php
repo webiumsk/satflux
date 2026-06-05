@@ -61,6 +61,9 @@ class BusinessDocumentPayTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('https://btcpay.example/i/fresh', false);
+        $response->assertSee(__('messages.business_invoice_pay_link_notice'), false);
+        $response->assertSee(__('messages.business_invoice_pay_continue'), false);
+        $response->assertDontSee('http-equiv="refresh"', false);
 
         $doc = BusinessDocument::where('payment_token', $token)->first();
         $this->assertSame('btcpay-inv-fresh', $doc->btcpay_invoice_id);

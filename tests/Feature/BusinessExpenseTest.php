@@ -149,14 +149,82 @@ class BusinessExpenseTest extends TestCase
         $this->actingAs($this->user)->postJson(
             "/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}/attachment",
             ['file' => $file],
-        )->assertOk();
+        )->assertOk()
+            ->assertJsonCount(1, 'data.attachments');
 
         $expense->refresh();
         $this->assertTrue($expense->hasAttachment());
+        $this->assertCount(1, $expense->attachments);
 
         $this->actingAs($this->user)->get(
             "/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}/attachment",
         )->assertOk();
+    }
+
+    #[Test]
+    public function expense_can_have_multiple_attachments(): void
+    {
+        $expense = BusinessExpense::create([
+            'company_id' => $this->company->id,
+            'status' => BusinessExpenseStatus::Recorded,
+            'internal_number' => 'N20260004',
+            'issue_date' => now(),
+            'total' => 10,
+            'currency' => 'EUR',
+        ]);
+
+        $first = UploadedFile::fake()->create('invoice-a.pdf', 100, 'application/pdf');
+        $second = UploadedFile::fake()->create('invoice-b.pdf', 100, 'application/pdf');
+
+        $this->actingAs($this->user)->postJson(
+            "/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}/attachment",
+            ['file' => $first],
+        )->assertOk();
+
+        $this->actingAs($this->user)->postJson(
+            "/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}/attachment",
+            ['file' => $second],
+        )->assertOk()
+            ->assertJsonCount(2, 'data.attachments');
+
+        $expense->refresh()->load('attachments');
+        $this->assertCount(2, $expense->attachments);
+        $this->assertSame('invoice-a.pdf', $expense->original_filename);
+
+        $attachmentId = $expense->attachments->last()->id;
+
+        $this->actingAs($this->user)->get(
+            "/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}/attachments/{$attachmentId}",
+        )->assertOk();
+
+        $this->actingAs($this->user)->deleteJson(
+            "/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}/attachments/{$attachmentId}",
+        )->assertOk()
+            ->assertJsonCount(1, 'data.attachments');
+
+        $expense->refresh()->load('attachments');
+        $this->assertCount(1, $expense->attachments);
+        $this->assertSame('invoice-a.pdf', $expense->original_filename);
+    }
+
+    #[Test]
+    public function cancel_sets_cancelled_at(): void
+    {
+        $expense = BusinessExpense::create([
+            'company_id' => $this->company->id,
+            'status' => BusinessExpenseStatus::Recorded,
+            'internal_number' => 'N20260005',
+            'issue_date' => now(),
+            'total' => 10,
+            'currency' => 'EUR',
+        ]);
+
+        $this->actingAs($this->user)->deleteJson(
+            "/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}",
+        )->assertOk()->assertJsonPath('data.status', 'cancelled');
+
+        $expense->refresh();
+        $this->assertNotNull($expense->cancelled_at);
     }
 
     #[Test]

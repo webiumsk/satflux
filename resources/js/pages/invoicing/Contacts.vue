@@ -12,6 +12,9 @@
           />
         </template>
         <template #actions>
+          <button type="button" class="invoicing-btn-secondary" @click="showImportModal = true">
+            {{ t('invoicing.import_contacts') }}
+          </button>
           <RouterLink :to="contactNewTo()" class="invoicing-btn-primary">
             + {{ t('invoicing.new_contact') }}
           </RouterLink>
@@ -40,6 +43,31 @@
       </button>
     </div>
 
+    <p v-if="success" class="text-sm text-green-700 mb-4">{{ success }}</p>
+
+    <div v-if="selectionCount > 0" class="invoicing-bulk-bar">
+      <span class="text-sm text-indigo-800 font-medium">
+        {{ t('invoicing.bulk_selected', { count: selectionCount }) }}
+      </span>
+      <div class="relative">
+        <button type="button" class="invoicing-btn-secondary text-sm py-1.5" @click="showBulkMenu = !showBulkMenu">
+          {{ t('invoicing.bulk_actions') }} ▾
+        </button>
+        <div v-if="showBulkMenu" class="invoicing-dropdown">
+          <button type="button" class="invoicing-dropdown-item" @click="runBulk('export_xlsx')">
+            {{ t('invoicing.bulk_export_xlsx') }}
+          </button>
+          <button type="button" class="invoicing-dropdown-item text-red-600" @click="runBulk('delete')">
+            {{ t('invoicing.bulk_delete_contacts') }}
+          </button>
+          <div class="border-t border-gray-200 my-1"></div>
+          <button type="button" class="invoicing-dropdown-item text-gray-500" @click="clearSelection">
+            {{ t('invoicing.bulk_clear') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="loading" class="invoicing-muted py-8">{{ t('common.loading') }}</div>
 
     <div v-else-if="contacts.length === 0" class="invoicing-card-pad text-center text-gray-600">
@@ -49,15 +77,36 @@
     <div v-else class="invoicing-card overflow-hidden">
       <div class="overflow-x-auto">
         <table class="contact-table w-full min-w-[800px] text-sm">
-          <thead class="bg-gray-50 border-b border-gray-200">
+          <thead class="bg-gray-50 border-b border-gray-200 text-gray-600 text-xs uppercase tracking-wide">
             <tr>
-              <th class="w-10">
-                <input
-                  type="checkbox"
-                  class="rounded border-gray-300"
-                  :checked="allSelected"
-                  @change="toggleSelectAll"
-                />
+              <th class="w-12 px-2 py-3 relative text-center">
+                <button
+                  type="button"
+                  class="text-gray-500 hover:text-gray-800 text-base leading-none"
+                  :title="t('invoicing.select_menu')"
+                  @click.stop="showSelectMenu = !showSelectMenu"
+                >
+                  ☰
+                </button>
+                <div
+                  v-if="showSelectMenu"
+                  class="invoicing-dropdown min-w-[240px] text-xs normal-case tracking-normal font-normal"
+                >
+                  <button type="button" class="invoicing-dropdown-item" @click="selectPage">
+                    {{ t('invoicing.select_page', { count: contacts.length }) }}
+                  </button>
+                  <button type="button" class="invoicing-dropdown-item" @click="selectAllFiltered">
+                    {{ t('invoicing.select_all_filtered', { count: contacts.length }) }}
+                  </button>
+                  <button
+                    v-if="selectionCount > 0"
+                    type="button"
+                    class="invoicing-dropdown-item text-gray-500"
+                    @click="clearSelection"
+                  >
+                    {{ t('invoicing.bulk_clear') }}
+                  </button>
+                </div>
               </th>
               <th class="min-w-[220px] text-left">{{ t('invoicing.col_contact_name') }}</th>
               <th class="min-w-[160px] text-right">
@@ -72,13 +121,13 @@
               v-for="c in contacts"
               :key="c.id"
               class="bg-white hover:bg-gray-50"
-              :class="selectedIds.has(c.id) ? 'bg-indigo-50' : ''"
+              :class="rowSelected(c.id) ? 'bg-indigo-50' : ''"
             >
-              <td>
+              <td class="px-2 py-3">
                 <input
                   type="checkbox"
                   class="rounded border-gray-300"
-                  :checked="selectedIds.has(c.id)"
+                  :checked="rowSelected(c.id)"
                   @change="toggleRow(c.id)"
                 />
               </td>
@@ -109,6 +158,13 @@
         </table>
       </div>
     </div>
+
+    <ContactImportModal
+      :open="showImportModal"
+      :company-id="companyId"
+      @close="showImportModal = false"
+      @imported="onContactsImported"
+    />
   </InvoicingPageShell>
 </template>
 
@@ -116,6 +172,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
+import ContactImportModal from '../../components/invoicing/ContactImportModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
@@ -139,11 +196,27 @@ const loading = ref(true);
 const searchQuery = ref('');
 const activeLetter = ref('all');
 const selectedIds = ref(new Set<string>());
+const selectAllMode = ref(false);
+const showSelectMenu = ref(false);
+const showBulkMenu = ref(false);
+const showImportModal = ref(false);
+const success = ref('');
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
-const allSelected = computed(
-  () => contacts.value.length > 0 && contacts.value.every((c) => selectedIds.value.has(c.id))
+const selectionCount = computed(() =>
+  selectAllMode.value ? contacts.value.length : selectedIds.value.size
 );
+
+function onContactsImported() {
+  load();
+}
+
+function listFilterParams(): Record<string, string | undefined> {
+  return {
+    q: searchQuery.value.trim() || undefined,
+    letter: activeLetter.value === 'all' ? undefined : activeLetter.value,
+  };
+}
 
 async function load() {
   loading.value = true;
@@ -152,10 +225,7 @@ async function load() {
     companyName.value = companyRes.data.data?.trade_name || companyRes.data.data?.legal_name || '';
 
     const res = await api.get(`/invoicing/companies/${companyId.value}/contacts`, {
-      params: {
-        q: searchQuery.value.trim() || undefined,
-        letter: activeLetter.value === 'all' ? undefined : activeLetter.value,
-      },
+      params: listFilterParams(),
     });
     contacts.value = res.data.data ?? [];
     availableLetters.value = res.data.meta?.letters ?? [];
@@ -166,12 +236,16 @@ async function load() {
 
 function onSearchInput() {
   if (searchTimer) clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => load(), 300);
+  searchTimer = setTimeout(() => {
+    clearSelection();
+    load();
+  }, 300);
 }
 
 function setLetter(letter: string) {
   if (letter !== 'all' && !availableLetters.value.includes(letter)) return;
   activeLetter.value = letter;
+  clearSelection();
   load();
 }
 
@@ -192,18 +266,102 @@ function statLine(c: CompanyContactRow) {
   );
 }
 
+function rowSelected(id: string) {
+  if (selectAllMode.value) return true;
+  return selectedIds.value.has(id);
+}
+
 function toggleRow(id: string) {
+  selectAllMode.value = false;
   const next = new Set(selectedIds.value);
   if (next.has(id)) next.delete(id);
   else next.add(id);
   selectedIds.value = next;
 }
 
-function toggleSelectAll() {
-  if (allSelected.value) {
-    selectedIds.value = new Set();
+function selectPage() {
+  selectAllMode.value = false;
+  const next = new Set(selectedIds.value);
+  contacts.value.forEach((c) => next.add(c.id));
+  selectedIds.value = next;
+  showSelectMenu.value = false;
+}
+
+function selectAllFiltered() {
+  selectAllMode.value = true;
+  selectedIds.value = new Set();
+  showSelectMenu.value = false;
+}
+
+function clearSelection() {
+  selectAllMode.value = false;
+  selectedIds.value = new Set();
+  showBulkMenu.value = false;
+  showSelectMenu.value = false;
+}
+
+function bulkPayload(action: string) {
+  const base: Record<string, unknown> = {
+    action,
+    ...listFilterParams(),
+  };
+  if (selectAllMode.value) {
+    base.select_all = true;
   } else {
-    selectedIds.value = new Set(contacts.value.map((c) => c.id));
+    base.contact_ids = Array.from(selectedIds.value);
+  }
+  return base;
+}
+
+async function runBulk(action: 'export_xlsx' | 'delete') {
+  if (selectionCount.value === 0) return;
+  showBulkMenu.value = false;
+
+  if (action === 'delete' && !window.confirm(t('invoicing.confirm_bulk_delete_contacts'))) {
+    return;
+  }
+
+  success.value = '';
+  loading.value = true;
+  try {
+    const isFile = action === 'export_xlsx';
+    const res = await api.post(
+      `/invoicing/companies/${companyId.value}/contacts/bulk`,
+      bulkPayload(action),
+      isFile ? { responseType: 'blob' } : {}
+    );
+
+    if (isFile) {
+      const url = URL.createObjectURL(res.data as Blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'contacts.xlsx';
+      a.click();
+      URL.revokeObjectURL(url);
+      clearSelection();
+    } else {
+      const data = res.data.data;
+      success.value = t('invoicing.bulk_contact_delete_result', {
+        deleted: data.deleted ?? 0,
+        anonymized: data.anonymized ?? 0,
+      });
+      await load();
+      clearSelection();
+    }
+  } catch (e: any) {
+    if (e?.response?.data instanceof Blob) {
+      const text = await e.response.data.text();
+      try {
+        const json = JSON.parse(text);
+        alert(json.message || t('common.error'));
+      } catch {
+        alert(t('common.error'));
+      }
+    } else {
+      alert(e?.response?.data?.message || t('common.error'));
+    }
+  } finally {
+    loading.value = false;
   }
 }
 
@@ -212,6 +370,7 @@ watch(
   () => {
     activeLetter.value = 'all';
     searchQuery.value = '';
+    clearSelection();
     load();
   }
 );

@@ -80,7 +80,7 @@
         </summary>
         <p class="mt-2 text-xs">{{ t('invoicing.recurring_placeholders_hint') }}</p>
         <p class="mt-2 font-mono text-xs leading-relaxed">
-          #CISLOFAKTURY# #VAR# #DEN# #TYZDEN# #MESIAC# #MESIAC_SLOVOM# #PREDOSLY_MESIAC# #ROK# #NASLEDOVNY_ROK#
+          {{ recurringPlaceholderTokens }}
         </p>
       </details>
 
@@ -124,9 +124,13 @@
               <option value="">{{ t('invoicing.select_customer') }}</option>
               <option v-for="c in contacts" :key="c.id" :value="c.id">{{ c.name }}</option>
             </select>
-            <RouterLink :to="contactNewTo()" class="mt-1 inline-block text-sm text-indigo-600 hover:underline">
+            <button
+              type="button"
+              class="mt-1 inline-block text-sm text-indigo-600 hover:underline"
+              @click="showContactCreateModal = true"
+            >
               + {{ t('invoicing.create_client') }}
-            </RouterLink>
+            </button>
           </div>
           <div>
             <label class="invoicing-sf-label">{{ t('invoicing.btcpay_store') }}</label>
@@ -181,19 +185,19 @@
                     :placeholder="t('invoicing.item_description')"
                   />
                 </td>
-                <td class="px-2 py-2">
+                <td class="px-2 py-2 align-middle">
                   <input v-model.number="line.quantity" type="number" min="0.0001" step="any" class="invoicing-sf-input-table text-center" />
                 </td>
-                <td class="px-2 py-2 align-top">
+                <td class="px-2 py-2 align-middle">
                   <InvoiceLineUnitSelect v-model="line.unit" />
                 </td>
-                <td class="px-2 py-2">
+                <td class="px-2 py-2 align-middle">
                   <input v-model.number="line.unit_price" type="number" min="0" step="0.01" class="invoicing-sf-input-table text-right" />
                 </td>
-                <td v-if="company?.vat_payer" class="px-2 py-2">
+                <td v-if="company?.vat_payer" class="px-2 py-2 align-middle">
                   <input v-model.number="line.tax_rate" type="number" min="0" max="100" class="invoicing-sf-input-table text-right" />
                 </td>
-                <td class="px-2 py-2 text-right font-medium whitespace-nowrap">
+                <td class="px-2 py-2 align-middle text-right font-medium whitespace-nowrap">
                   {{ lineTotal(line).toLocaleString(locale, { minimumFractionDigits: 2 }) }}
                 </td>
                 <td class="px-1 py-2 text-center">
@@ -259,6 +263,13 @@
         </button>
       </div>
     </form>
+
+    <ContactCreateModal
+      :open="showContactCreateModal"
+      :company-id="companyId"
+      @close="showContactCreateModal = false"
+      @saved="onContactCreated"
+    />
   </InvoicingPageShell>
 </template>
 
@@ -266,6 +277,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
+import ContactCreateModal from '../../components/invoicing/ContactCreateModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoiceLineUnitSelect from '../../components/invoicing/InvoiceLineUnitSelect.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
@@ -274,6 +286,10 @@ import api from '../../services/api';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import { appSettingsFromCompany } from '../../composables/useCompanyAppSettings';
 import { companyCurrencyOptions } from '../../config/companyCurrencies';
+import {
+  RECURRING_INVOICE_NUMBER_TOKEN,
+  RECURRING_PLACEHOLDER_TOKENS,
+} from '../../composables/useInvoicingPlaceholders';
 
 const { t, locale } = useI18n();
 const route = useRoute();
@@ -303,8 +319,8 @@ const form = reactive({
   next_issue_date: new Date().toISOString().slice(0, 10),
   repeat_indefinitely: true,
   issue_last_day_of_month: false,
-  title: 'Faktúra #CISLOFAKTURY#',
-  variable_symbol: '#CISLOFAKTURY#',
+  title: `Faktúra ${RECURRING_INVOICE_NUMBER_TOKEN}`,
+  variable_symbol: RECURRING_INVOICE_NUMBER_TOKEN,
   constant_symbol: '',
   payment_terms_days: 14,
   delivery_date_mode: 'on_issue',
@@ -332,8 +348,13 @@ const form = reactive({
   ],
 });
 
-function contactNewTo() {
-  return { name: 'invoicing-contact-new', params: { companyId: companyId.value } };
+const showContactCreateModal = ref(false);
+
+function onContactCreated(contact: Record<string, unknown>) {
+  const id = contact.id as string;
+  if (!id) return;
+  contacts.value = [...contacts.value, contact];
+  form.company_contact_id = id;
 }
 
 const defaultVat = computed(() => Number(company.value?.vat_rate_default ?? 23));
@@ -344,11 +365,13 @@ const saveLabel = computed(() =>
     : t('invoicing.recurring_save_invoice')
 );
 
+const recurringPlaceholderTokens = RECURRING_PLACEHOLDER_TOKENS.join(' ');
+
 function onDocumentTypeChange() {
   if (form.document_type === 'proforma') {
-    form.title = 'Zálohová faktúra #CISLOFAKTURY#';
+    form.title = `Zálohová faktúra ${RECURRING_INVOICE_NUMBER_TOKEN}`;
   } else {
-    form.title = 'Faktúra #CISLOFAKTURY#';
+    form.title = `Faktúra ${RECURRING_INVOICE_NUMBER_TOKEN}`;
   }
 }
 

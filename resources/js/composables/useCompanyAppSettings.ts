@@ -30,14 +30,14 @@ export type CompanyAppSettingsState = {
 };
 
 export const PDF_FILENAME_SHORTCUTS = [
-  { token: '#NAZOV#', key: 'invoicing.pdf_token_name' },
-  { token: '#TYP#', key: 'invoicing.pdf_token_type' },
-  { token: '#FIRMA#', key: 'invoicing.pdf_token_company' },
-  { token: '#CISLO#', key: 'invoicing.pdf_token_number' },
-  { token: '#KLIENT#', key: 'invoicing.pdf_token_client' },
-  { token: '#VYSTAVENE#', key: 'invoicing.pdf_token_issue_date' },
-  { token: '#SUMA#', key: 'invoicing.pdf_token_total' },
-  { token: '#MENA#', key: 'invoicing.pdf_token_currency' },
+  { token: '#TITLE#', key: 'invoicing.pdf_token_name' },
+  { token: '#TYPE#', key: 'invoicing.pdf_token_type' },
+  { token: '#COMPANY#', key: 'invoicing.pdf_token_company' },
+  { token: '#NUMBER#', key: 'invoicing.pdf_token_number' },
+  { token: '#CLIENT#', key: 'invoicing.pdf_token_client' },
+  { token: '#ISSUE_DATE#', key: 'invoicing.pdf_token_issue_date' },
+  { token: '#AMOUNT#', key: 'invoicing.pdf_token_total' },
+  { token: '#CURRENCY#', key: 'invoicing.pdf_token_currency' },
 ] as const;
 
 export function defaultAppSettings(): CompanyAppSettingsState {
@@ -48,7 +48,7 @@ export function defaultAppSettings(): CompanyAppSettingsState {
     default_delivery_method: '',
     default_delivery_date_mode: 'empty',
     default_payment_method: '',
-    pdf_filename_pattern: '#TYP#_#FIRMA#_#CISLO#',
+    pdf_filename_pattern: '#TYPE#_#COMPANY#_#NUMBER#',
     expense_attachment_name_pattern: '',
     sort_lists_by: 'issue_date',
     number_documents_by: 'issue_date',

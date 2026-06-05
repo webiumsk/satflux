@@ -68,7 +68,7 @@ class CompanyEmailSettingsTest extends TestCase
             ->getJson("/api/invoicing/companies/{$this->company->id}")
             ->assertOk()
             ->assertJsonPath('data.email_settings.delivery_method', 'system')
-            ->assertJsonPath('data.email_settings.templates.invoice.subject', '#MOJA_FIRMA# - Faktúra #CISLO#');
+            ->assertJsonPath('data.email_settings.templates.invoice.subject', '#MY_COMPANY# - Faktúra #NUMBER#');
     }
 
     #[Test]
@@ -87,8 +87,8 @@ class CompanyEmailSettingsTest extends TestCase
                 ],
                 'templates' => [
                     'invoice' => [
-                        'subject' => 'FA #CISLO#',
-                        'body' => 'Hello #NAZOV_ODBERATELA#',
+                        'subject' => 'FA #NUMBER#',
+                        'body' => 'Hello #CLIENT_NAME#',
                     ],
                 ],
             ]);
@@ -96,7 +96,7 @@ class CompanyEmailSettingsTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.email_settings.delivery_method', 'smtp');
         $response->assertJsonPath('data.email_settings.smtp.password_set', true);
-        $response->assertJsonPath('data.email_settings.templates.invoice.subject', 'FA #CISLO#');
+        $response->assertJsonPath('data.email_settings.templates.invoice.subject', 'FA #NUMBER#');
 
         $this->company->refresh();
         $this->assertSame('billing@acme.sk', $this->company->email_settings['smtp']['username']);
@@ -121,8 +121,8 @@ class CompanyEmailSettingsTest extends TestCase
             'email_settings' => [
                 'templates' => [
                     'invoice' => [
-                        'subject' => 'Faktúra #CISLO# pre #NAZOV_ODBERATELA#',
-                        'body' => 'Suma #SUMA#',
+                        'subject' => 'Faktúra #NUMBER# pre #CLIENT_NAME#',
+                        'body' => 'Suma #AMOUNT#',
                     ],
                 ],
             ],

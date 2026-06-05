@@ -129,7 +129,8 @@
     .qr-block { margin-top: 18px; }
     .qr-item { display: inline-block; margin-right: 28px; vertical-align: top; text-align: center; }
     .qr-item img { width: 130px; height: 130px; }
-    .qr-caption { font-size: 8px; color: #6b7280; margin-bottom: 4px; }
+    .qr-caption { font-size: 8px; color: #6b7280; margin-bottom: 4px; font-weight: 600; }
+    .qr-hint { font-size: 7px; color: #6b7280; margin-top: 4px; max-width: 130px; line-height: 1.25; }
     .muted { color: #6b7280; }
     .note-above { margin: 10px 0 4px; font-size: 10px; color: #374151; white-space: pre-wrap; }
 </style>

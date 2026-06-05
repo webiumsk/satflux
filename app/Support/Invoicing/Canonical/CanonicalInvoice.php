@@ -32,6 +32,7 @@ final class CanonicalInvoice
 
     public function vatApplicable(): bool
     {
-        return (bool) $this->company->vat_payer;
+        return app(\App\Support\Invoicing\CompanyVatPolicy::class)
+            ->vatApplicableForIsdoc($this->company, $this->contact);
     }
 }

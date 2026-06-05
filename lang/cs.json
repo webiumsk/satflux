@@ -37,5 +37,8 @@
     "Issued by": "Vystavil",
     "Pay by bank (QR)": "Platba bankou (QR)",
     "Pay with Bitcoin / Lightning": "Platba Bitcoin / Lightning",
-    "Reverse charge - VAT to be accounted for by the recipient.": "Přenesení daňové povinnosti - DPH vyúčtuje odběratel."
+    "Bitcoin / Lightning (payment link)": "Bitcoin / Lightning (platební odkaz)",
+    "BTC payment QR is a web link. Open in your browser - do not scan with a Lightning wallet.": "QR je odkaz - otevřete v prohlížeči, ne skenem LN peněženky.",
+    "Reverse charge - VAT to be accounted for by the recipient.": "Přenesení daňové povinnosti - DPH vyúčtuje odběratel.",
+    "The supply of goods is exempt. The supply of services is subject to the reverse charge procedure.": "Dodání zboží je osvobozeno. Dodání služby podléhá přenesení daňové povinnosti."
 }

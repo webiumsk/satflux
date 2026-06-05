@@ -23,6 +23,7 @@ use App\Http\Controllers\FaqController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\Invoicing\BusinessDocumentController;
 use App\Http\Controllers\Invoicing\BusinessExpenseController;
+use App\Http\Controllers\Invoicing\BusinessExpenseImportController;
 use App\Http\Controllers\Invoicing\CompanyBrandingController;
 use App\Http\Controllers\Invoicing\CompanyContactController;
 use App\Http\Controllers\Invoicing\CompanyController;
@@ -330,6 +331,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/email-settings/test-smtp', [CompanyEmailSettingsController::class, 'testSmtp'])
                 ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/reset-data', [CompanyController::class, 'resetData'])
+                ->middleware(EnsureCompanyOwnership::class);
             Route::delete('/companies/{company}', [CompanyController::class, 'destroy'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::patch('/companies/{company}/stores', [CompanyController::class, 'updateStores'])
@@ -352,6 +355,14 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/contacts', [CompanyContactController::class, 'store'])
                 ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/contacts/import/example', [CompanyContactController::class, 'importExample'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/contacts/import/preview', [CompanyContactController::class, 'importPreview'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/contacts/import', [CompanyContactController::class, 'import'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/contacts/bulk', [CompanyContactController::class, 'bulk'])
+                ->middleware(EnsureCompanyOwnership::class);
             Route::get('/companies/{company}/contacts/{contact}', [CompanyContactController::class, 'show'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::patch('/companies/{company}/contacts/{contact}', [CompanyContactController::class, 'update'])
@@ -372,6 +383,15 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::delete('/companies/{company}/recurring-profiles/{recurringProfile}', [\App\Http\Controllers\Invoicing\BusinessRecurringProfileController::class, 'destroy'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/recurring-profiles/{recurringProfile}/generate', [\App\Http\Controllers\Invoicing\BusinessRecurringProfileController::class, 'generateNow'])
+                ->middleware(EnsureCompanyOwnership::class);
+
+            Route::get('/companies/{company}/documents/import/fields', [\App\Http\Controllers\Invoicing\BusinessDocumentImportController::class, 'fields'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/documents/import/example', [\App\Http\Controllers\Invoicing\BusinessDocumentImportController::class, 'example'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/import/preview', [\App\Http\Controllers\Invoicing\BusinessDocumentImportController::class, 'preview'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/import', [\App\Http\Controllers\Invoicing\BusinessDocumentImportController::class, 'import'])
                 ->middleware(EnsureCompanyOwnership::class);
 
             Route::get('/companies/{company}/documents', [BusinessDocumentController::class, 'index'])
@@ -423,6 +443,18 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/expenses', [BusinessExpenseController::class, 'store'])
                 ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/expenses/import/excel/example', [BusinessExpenseImportController::class, 'example'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/expenses/import/excel/fields', [BusinessExpenseImportController::class, 'fields'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/expenses/import/excel/preview', [BusinessExpenseImportController::class, 'preview'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/expenses/import/excel', [BusinessExpenseImportController::class, 'import'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/expenses/import/attachments/preview', [BusinessExpenseImportController::class, 'attachmentsPreview'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/expenses/import/attachments', [BusinessExpenseImportController::class, 'attachmentsImport'])
+                ->middleware(EnsureCompanyOwnership::class);
             Route::get('/companies/{company}/expenses/isdoc-extract-quota', [BusinessExpenseController::class, 'isdocExtractQuota'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/expenses/isdoc-packs/purchase', [BusinessExpenseController::class, 'purchaseIsdocPack'])
@@ -432,6 +464,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::post('/companies/{company}/expenses/extract', [BusinessExpenseController::class, 'extract'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/expenses/import', [BusinessExpenseController::class, 'importFromDocument'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/expenses/bulk', [BusinessExpenseController::class, 'bulk'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::get('/companies/{company}/expenses/{businessExpense}', [BusinessExpenseController::class, 'show'])
                 ->middleware(EnsureCompanyOwnership::class);
@@ -448,6 +482,10 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::post('/companies/{company}/expenses/{businessExpense}/attachment', [BusinessExpenseController::class, 'uploadAttachment'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::get('/companies/{company}/expenses/{businessExpense}/attachment', [BusinessExpenseController::class, 'attachment'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/expenses/{businessExpense}/attachments/{businessExpenseAttachment}', [BusinessExpenseController::class, 'downloadStoredAttachment'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::delete('/companies/{company}/expenses/{businessExpense}/attachments/{businessExpenseAttachment}', [BusinessExpenseController::class, 'destroyStoredAttachment'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::get('/companies/{company}/expenses/{businessExpense}/history', [BusinessExpenseController::class, 'history'])
                 ->middleware(EnsureCompanyOwnership::class);

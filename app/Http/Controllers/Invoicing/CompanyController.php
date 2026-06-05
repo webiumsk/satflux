@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Invoicing;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Invoicing\ResetCompanyDataRequest;
 use App\Http\Requests\Invoicing\StoreCompanyRequest;
 use App\Http\Requests\Invoicing\UpdateCompanyAppSettingsRequest;
 use App\Http\Requests\Invoicing\UpdateCompanyRequest;
@@ -11,6 +12,7 @@ use App\Models\AuditLog;
 use App\Models\Company;
 use App\Models\Store;
 use App\Services\Invoicing\CompanyBrandingService;
+use App\Services\Invoicing\CompanyDataResetService;
 use App\Services\Invoicing\DocumentSequenceService;
 use App\Support\Invoicing\CompanyAppSettings;
 use Illuminate\Http\JsonResponse;
@@ -103,6 +105,19 @@ class CompanyController extends Controller
 
         return response()->json([
             'data' => $this->companyPayload($company->fresh(), $brandingService),
+        ]);
+    }
+
+    public function resetData(
+        ResetCompanyDataRequest $request,
+        Company $company,
+        CompanyDataResetService $resetService,
+    ): JsonResponse {
+        $stats = $resetService->reset($company);
+
+        return response()->json([
+            'message' => 'Company operational data reset.',
+            'data' => $stats,
         ]);
     }
 

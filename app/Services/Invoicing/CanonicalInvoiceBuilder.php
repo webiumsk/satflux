@@ -2,20 +2,22 @@
 
 namespace App\Services\Invoicing;
 
-use App\Enums\CompanyJurisdiction;
 use App\Models\BusinessDocument;
 use App\Models\BusinessDocumentLine;
 use App\Models\Company;
 use App\Services\Invoicing\UsSalesTax\UsSalesTaxCalculationService;
+use App\Models\CompanyContact;
 use App\Support\Invoicing\Canonical\CanonicalInvoice;
 use App\Support\Invoicing\Canonical\CanonicalInvoiceLine;
 use App\Support\Invoicing\Canonical\CanonicalTaxBreakdownRow;
 use App\Support\Invoicing\CompanyAppSettings;
+use App\Support\Invoicing\CompanyVatPolicy;
 
 class CanonicalInvoiceBuilder
 {
     public function __construct(
         protected UsSalesTaxCalculationService $usSalesTax,
+        protected CompanyVatPolicy $vatPolicy,
     ) {}
 
     /**
@@ -33,7 +35,7 @@ class CanonicalInvoiceBuilder
 
         $computedLines = [];
         foreach ($linePayloads as $index => $payload) {
-            $computedLines[] = $this->computeLineFromPayload($company, $payload, $index, $roundingMethod);
+            $computedLines[] = $this->computeLineFromPayload($company, $payload, $index, $roundingMethod, $contact);
         }
 
         $currency = $document?->currency ?? $company->default_currency ?? 'EUR';
@@ -64,7 +66,7 @@ class CanonicalInvoiceBuilder
 
         $computedLines = [];
         foreach ($document->lines as $line) {
-            $computedLines[] = $this->computeLineFromModel($company, $line, $roundingMethod);
+            $computedLines[] = $this->computeLineFromModel($company, $line, $roundingMethod, $buyer);
         }
 
         $currency = $document->currency ?: $company->default_currency ?? 'EUR';
@@ -87,11 +89,11 @@ class CanonicalInvoiceBuilder
      * @param  array<string, mixed>  $payload
      * @return array{net: float, tax: float, gross: float, tax_rate: float}
      */
-    public function computeLineAmounts(Company $company, array $payload): array
+    public function computeLineAmounts(Company $company, array $payload, ?CompanyContact $contact = null): array
     {
         $settings = CompanyAppSettings::from($company->app_settings);
         $roundingMethod = (string) $settings->get('rounding_method', 'per_line');
-        $line = $this->computeLineFromPayload($company, $payload, 0, $roundingMethod);
+        $line = $this->computeLineFromPayload($company, $payload, 0, $roundingMethod, $contact);
 
         return [
             'net' => (float) $line->netAmount,
@@ -109,13 +111,18 @@ class CanonicalInvoiceBuilder
         array $payload,
         int $sortOrder,
         string $roundingMethod,
+        ?CompanyContact $contact = null,
     ): CanonicalInvoiceLine {
         $qty = (float) ($payload['quantity'] ?? 1);
         $unitPrice = (float) ($payload['unit_price'] ?? 0);
         $lineDiscount = (float) ($payload['line_discount_percent'] ?? 0);
-        $taxRate = (float) ($payload['tax_rate'] ?? $this->defaultTaxRate($company));
+        $taxRate = $this->vatPolicy->resolveLineTaxRate(
+            $company,
+            $contact,
+            isset($payload['tax_rate']) ? (float) $payload['tax_rate'] : null,
+        );
 
-        [$net, $tax, $gross] = $this->rawLineAmounts($company, $qty, $unitPrice, $lineDiscount, $taxRate, $roundingMethod);
+        [$net, $tax, $gross] = $this->rawLineAmounts($company, $contact, $qty, $unitPrice, $lineDiscount, $taxRate, $roundingMethod);
 
         return new CanonicalInvoiceLine(
             name: (string) ($payload['name'] ?? ''),
@@ -136,13 +143,14 @@ class CanonicalInvoiceBuilder
         Company $company,
         BusinessDocumentLine $line,
         string $roundingMethod,
+        ?CompanyContact $contact = null,
     ): CanonicalInvoiceLine {
         $qty = (float) $line->quantity;
         $unitPrice = (float) $line->unit_price;
         $lineDiscount = (float) $line->line_discount_percent;
-        $taxRate = (float) $line->tax_rate;
+        $taxRate = $this->vatPolicy->resolveLineTaxRate($company, $contact, (float) $line->tax_rate);
 
-        [$net, $tax, $gross] = $this->rawLineAmounts($company, $qty, $unitPrice, $lineDiscount, $taxRate, $roundingMethod);
+        [$net, $tax, $gross] = $this->rawLineAmounts($company, $contact, $qty, $unitPrice, $lineDiscount, $taxRate, $roundingMethod);
 
         return new CanonicalInvoiceLine(
             name: $line->name,
@@ -164,6 +172,7 @@ class CanonicalInvoiceBuilder
      */
     protected function rawLineAmounts(
         Company $company,
+        ?CompanyContact $contact,
         float $qty,
         float $unitPrice,
         float $lineDiscountPercent,
@@ -171,7 +180,7 @@ class CanonicalInvoiceBuilder
         string $roundingMethod,
     ): array {
         $net = $qty * $unitPrice * (1 - $lineDiscountPercent / 100);
-        $tax = $this->shouldCalculateLineTax($company) ? $net * ($taxRate / 100) : 0.0;
+        $tax = $this->vatPolicy->calculatesVatAmounts($company, $contact) ? $net * ($taxRate / 100) : 0.0;
 
         if ($roundingMethod === 'per_line') {
             $net = round($net, 2);
@@ -211,7 +220,7 @@ class CanonicalInvoiceBuilder
             $subtotal += $net;
             $taxTotal += $tax;
 
-            if ($this->includeLineInTaxBuckets($company) && $tax > 0) {
+            if ($this->vatPolicy->calculatesVatAmounts($company, $contact) && $tax > 0) {
                 $key = $this->taxRateKey($line->taxRate);
                 if (! isset($breakdownBuckets[$key])) {
                     $breakdownBuckets[$key] = ['rate' => $line->taxRate, 'net' => 0.0, 'tax' => 0.0];
@@ -300,29 +309,6 @@ class CanonicalInvoiceBuilder
         }
 
         return $scaled;
-    }
-
-    protected function defaultTaxRate(Company $company): float
-    {
-        if ($company->jurisdiction === CompanyJurisdiction::Us) {
-            return (float) ($company->vat_rate_default ?? 0);
-        }
-
-        return $company->vat_payer ? (float) ($company->vat_rate_default ?? 0) : 0.0;
-    }
-
-    protected function shouldCalculateLineTax(Company $company): bool
-    {
-        if ($this->usSalesTax->usesPartnerTax($company)) {
-            return false;
-        }
-
-        return $company->jurisdiction === CompanyJurisdiction::Us || $company->vat_payer;
-    }
-
-    protected function includeLineInTaxBuckets(Company $company): bool
-    {
-        return $company->jurisdiction === CompanyJurisdiction::Us || $company->vat_payer;
     }
 
     protected function taxRateKey(float $rate): string

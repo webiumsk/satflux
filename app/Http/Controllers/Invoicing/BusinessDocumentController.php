@@ -538,7 +538,7 @@ class BusinessDocumentController extends Controller
         $company = $document->company;
 
         foreach ($lines as $index => $line) {
-            $amounts = $this->canonicalBuilder->computeLineAmounts($company, $line);
+            $amounts = $this->canonicalBuilder->computeLineAmounts($company, $line, $document->resolvedBuyer());
 
             BusinessDocumentLine::create([
                 'business_document_id' => $document->id,

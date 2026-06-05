@@ -75,60 +75,60 @@ final class CompanyEmailSettings
     {
         return [
             'invoice' => [
-                'subject' => '#MOJA_FIRMA# - Faktúra #CISLO#',
-                'body' => "Dobrý deň,\n\nv prílohe tohto mailu vám posielame faktúru číslo #CISLO# na sumu #SUMA# so splatnosťou dňa #SPLATNOST#.\n\nPlatbu prosím poukážte na číslo účtu #UCET# a uveďte variabilný symbol VS: #VAR#\n\nĎakujeme\n\nS pozdravom,",
+                'subject' => '#MY_COMPANY# - Faktúra #NUMBER#',
+                'body' => "Dobrý deň,\n\nv prílohe tohto mailu vám posielame faktúru číslo #NUMBER# na sumu #AMOUNT# so splatnosťou dňa #DUE_DATE#.\n\nPlatbu prosím poukážte na číslo účtu #ACCOUNT# a uveďte variabilný symbol VS: #VARIABLE_SYMBOL#\n\nĎakujeme\n\nS pozdravom,",
             ],
             'settlement_invoice' => [
-                'subject' => '#MOJA_FIRMA# - Vyúčtovacia faktúra #CISLO#',
-                'body' => "Dobrý deň,\n\nv prílohe zasielame vyúčtovaciu faktúru číslo #CISLO# na sumu #SUMA#.\n\nS pozdravom,",
+                'subject' => '#MY_COMPANY# - Vyúčtovacia faktúra #NUMBER#',
+                'body' => "Dobrý deň,\n\nv prílohe zasielame vyúčtovaciu faktúru číslo #NUMBER# na sumu #AMOUNT#.\n\nS pozdravom,",
             ],
             'invoice_from_proforma' => [
-                'subject' => '#MOJA_FIRMA# - Faktúra #CISLO#',
-                'body' => "Dobrý deň,\n\nv prílohe tohto mailu vám posielame ostrú faktúru číslo #CISLO# k zálohovej faktúre #CISLO_ZAL#.\n\nĎakujeme\n\nS pozdravom,",
+                'subject' => '#MY_COMPANY# - Faktúra #NUMBER#',
+                'body' => "Dobrý deň,\n\nv prílohe tohto mailu vám posielame ostrú faktúru číslo #NUMBER# k zálohovej faktúre #PROFORMA_NUMBER#.\n\nĎakujeme\n\nS pozdravom,",
             ],
             'credit_note' => [
-                'subject' => '#MOJA_FIRMA# - Dobropis #CISLO#',
-                'body' => "Dobrý deň,\n\nv prílohe zasielame dobropis číslo #CISLO#.\n\nS pozdravom,",
+                'subject' => '#MY_COMPANY# - Dobropis #NUMBER#',
+                'body' => "Dobrý deň,\n\nv prílohe zasielame dobropis číslo #NUMBER#.\n\nS pozdravom,",
             ],
             'proforma' => [
-                'subject' => '#MOJA_FIRMA# - Zálohová faktúra #CISLO#',
-                'body' => "Dobrý deň,\n\nv prílohe zasielame zálohovú faktúru číslo #CISLO# na sumu #SUMA#.\n\nS pozdravom,",
+                'subject' => '#MY_COMPANY# - Zálohová faktúra #NUMBER#',
+                'body' => "Dobrý deň,\n\nv prílohe zasielame zálohovú faktúru číslo #NUMBER# na sumu #AMOUNT#.\n\nS pozdravom,",
             ],
             'quote' => [
-                'subject' => '#MOJA_FIRMA# - Cenová ponuka #CISLO#',
-                'body' => "Dobrý deň,\n\nv prílohe zasielame cenovú ponuku číslo #CISLO# platnú do #PLATI_DO#.\n\nS pozdravom,",
+                'subject' => '#MY_COMPANY# - Cenová ponuka #NUMBER#',
+                'body' => "Dobrý deň,\n\nv prílohe zasielame cenovú ponuku číslo #NUMBER# platnú do #VALID_UNTIL#.\n\nS pozdravom,",
             ],
             'delivery_note' => [
-                'subject' => '#MOJA_FIRMA# - Dodací list #CISLO#',
-                'body' => "Dobrý deň,\n\nv prílohe zasielame dodací list číslo #CISLO#.\n\nS pozdravom,",
+                'subject' => '#MY_COMPANY# - Dodací list #NUMBER#',
+                'body' => "Dobrý deň,\n\nv prílohe zasielame dodací list číslo #NUMBER#.\n\nS pozdravom,",
             ],
             'order_received' => [
-                'subject' => '#MOJA_FIRMA# - Prijatá objednávka #CISLO#',
-                'body' => "Dobrý deň,\n\npotvrdzujeme prijatie objednávky číslo #CISLO#.\n\nS pozdravom,",
+                'subject' => '#MY_COMPANY# - Prijatá objednávka #NUMBER#',
+                'body' => "Dobrý deň,\n\npotvrdzujeme prijatie objednávky číslo #NUMBER#.\n\nS pozdravom,",
             ],
             'order_issued' => [
-                'subject' => '#MOJA_FIRMA# - Vydaná objednávka #CISLO#',
-                'body' => "Dobrý deň,\n\nv prílohe zasielame objednávku číslo #CISLO#.\n\nS pozdravom,",
+                'subject' => '#MY_COMPANY# - Vydaná objednávka #NUMBER#',
+                'body' => "Dobrý deň,\n\nv prílohe zasielame objednávku číslo #NUMBER#.\n\nS pozdravom,",
             ],
             'reminder_sms' => [
                 'subject' => '',
-                'body' => 'Pripomienka: faktúra #CISLO# na sumu #SUMA#, splatnosť #SPLATNOST#. #MOJA_FIRMA#',
+                'body' => 'Pripomienka: faktúra #NUMBER# na sumu #AMOUNT#, splatnosť #DUE_DATE#. #MY_COMPANY#',
             ],
             'reminder_email' => [
-                'subject' => 'Pripomienka - Faktúra #CISLO#',
-                'body' => "Dobrý deň,\n\npripomíname neuhradenú faktúru číslo #CISLO# na sumu #SUMA# so splatnosťou #SPLATNOST#.\n\nS pozdravom,",
+                'subject' => 'Pripomienka - Faktúra #NUMBER#',
+                'body' => "Dobrý deň,\n\npripomíname neuhradenú faktúru číslo #NUMBER# na sumu #AMOUNT# so splatnosťou #DUE_DATE#.\n\nS pozdravom,",
             ],
             'dunning_sms' => [
                 'subject' => '',
-                'body' => 'Upomienka: faktúra #CISLO# na sumu #SUMA#, splatnosť #SPLATNOST#. #MOJA_FIRMA#',
+                'body' => 'Upomienka: faktúra #NUMBER# na sumu #AMOUNT#, splatnosť #DUE_DATE#. #MY_COMPANY#',
             ],
             'dunning_email' => [
-                'subject' => 'Upomienka - Faktúra #CISLO#',
-                'body' => "Dobrý deň,\n\nv našom systéme evidujeme neuhradenú faktúru číslo #CISLO# na sumu #SUMA# so splatnosťou dňa #SPLATNOST#.\n\nPlatbu prosím poukážte na číslo účtu #UCET# a uveďte variabilný symbol VS: #VAR#\n\nĎakujeme\n\nS pozdravom,",
+                'subject' => 'Upomienka - Faktúra #NUMBER#',
+                'body' => "Dobrý deň,\n\nv našom systéme evidujeme neuhradenú faktúru číslo #NUMBER# na sumu #AMOUNT# so splatnosťou dňa #DUE_DATE#.\n\nPlatbu prosím poukážte na číslo účtu #ACCOUNT# a uveďte variabilný symbol VS: #VARIABLE_SYMBOL#\n\nĎakujeme\n\nS pozdravom,",
             ],
             'thank_you' => [
-                'subject' => 'Poďakovanie - Faktúra #CISLO#',
-                'body' => "Dobrý deň,\n\nďakujeme za úhradu faktúry číslo #CISLO#.\n\nS pozdravom,",
+                'subject' => 'Poďakovanie - Faktúra #NUMBER#',
+                'body' => "Dobrý deň,\n\nďakujeme za úhradu faktúry číslo #NUMBER#.\n\nS pozdravom,",
             ],
         ];
     }

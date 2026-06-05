@@ -301,12 +301,71 @@
     </div>
 
     <p v-if="saveError" class="mt-4 text-sm text-red-600">{{ saveError }}</p>
+
+    <div class="mt-8 rounded-lg border border-red-200 bg-red-50 overflow-hidden">
+      <div class="px-5 py-4 border-b border-red-200 bg-red-100/60">
+        <h2 class="text-base font-semibold text-red-800">{{ t('invoicing.company_reset_danger_zone') }}</h2>
+      </div>
+      <div class="px-5 py-5 space-y-4">
+        <div>
+          <h3 class="text-sm font-semibold text-red-900">{{ t('invoicing.company_reset_title') }}</h3>
+          <p class="text-sm text-red-800/90 mt-1 max-w-2xl">{{ t('invoicing.company_reset_desc') }}</p>
+        </div>
+        <button
+          type="button"
+          class="invoicing-btn-secondary border-red-300 text-red-700 hover:bg-red-100"
+          @click="showResetModal = true"
+        >
+          {{ t('invoicing.company_reset_action') }}
+        </button>
+      </div>
+    </div>
+
+    <div
+      v-if="showResetModal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      role="dialog"
+      aria-modal="true"
+      @click.self="showResetModal = false"
+    >
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5 space-y-4">
+        <h3 class="text-lg font-semibold text-gray-900">{{ t('invoicing.company_reset_confirm_title') }}</h3>
+        <p class="text-sm text-gray-700">{{ t('invoicing.company_reset_confirm_desc') }}</p>
+        <ul class="text-sm text-gray-600 list-disc pl-5 space-y-1">
+          <li>{{ t('invoicing.company_reset_item_documents') }}</li>
+          <li>{{ t('invoicing.company_reset_item_contacts') }}</li>
+          <li>{{ t('invoicing.company_reset_item_expenses') }}</li>
+          <li>{{ t('invoicing.company_reset_item_payments') }}</li>
+          <li>{{ t('invoicing.company_reset_item_recurring') }}</li>
+          <li>{{ t('invoicing.company_reset_item_sequences') }}</li>
+        </ul>
+        <div>
+          <label class="invoicing-sf-label">{{ t('invoicing.company_reset_confirm_label', { name: companyDisplayName }) }}</label>
+          <input v-model="resetConfirmName" type="text" class="invoicing-sf-input" />
+        </div>
+        <p v-if="resetError" class="text-sm text-red-600">{{ resetError }}</p>
+        <div class="flex justify-end gap-3">
+          <button type="button" class="invoicing-btn-secondary" :disabled="resetting" @click="showResetModal = false">
+            {{ t('common.cancel') }}
+          </button>
+          <button
+            type="button"
+            class="invoicing-btn-primary bg-red-600 hover:bg-red-700 border-red-600"
+            :disabled="resetting || !resetConfirmMatches"
+            @click="resetCompanyData"
+          >
+            {{ resetting ? t('common.loading') : t('invoicing.company_reset_action') }}
+          </button>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import api from '../../services/api';
 import InvoicingJurisdictionSelect from './InvoicingJurisdictionSelect.vue';
 import RegistryLookupField from './RegistryLookupField.vue';
@@ -340,6 +399,7 @@ const emit = defineEmits<{
 }>();
 
 const { t, te } = useI18n();
+const router = useRouter();
 const storesStore = useStoresStore();
 
 const activeTab = ref<'contact' | 'bank' | 'branding'>('contact');
@@ -352,6 +412,10 @@ const savingBank = ref(false);
 const uploadingLogo = ref(false);
 const uploadingSignature = ref(false);
 const saveError = ref('');
+const showResetModal = ref(false);
+const resetConfirmName = ref('');
+const resetting = ref(false);
+const resetError = ref('');
 const logoPreviewUrl = ref<string | null>(null);
 const signaturePreviewUrl = ref<string | null>(null);
 const vatStatus = ref<'none' | 'payer' | 'partial'>('none');
@@ -395,6 +459,17 @@ const bankForm = reactive({
   iban: '',
   bic: '',
   default_currency: 'EUR',
+});
+
+const companyDisplayName = computed(
+  () => props.company?.trade_name || props.company?.legal_name || ''
+);
+
+const resetConfirmMatches = computed(() => {
+  const confirm = resetConfirmName.value.trim();
+  const legal = String(props.company?.legal_name ?? '').trim();
+  const trade = String(props.company?.trade_name ?? '').trim();
+  return confirm !== '' && (confirm === legal || confirm === trade);
 });
 
 const isUs = computed(() => isUsJurisdiction(contactForm.jurisdiction));
@@ -716,6 +791,24 @@ async function removeSignature() {
     emit('updated', res.data.data);
   } finally {
     uploadingSignature.value = false;
+  }
+}
+
+async function resetCompanyData() {
+  if (!resetConfirmMatches.value) return;
+  resetting.value = true;
+  resetError.value = '';
+  try {
+    await api.post(`/invoicing/companies/${props.companyId}/reset-data`, {
+      confirm_name: resetConfirmName.value.trim(),
+    });
+    showResetModal.value = false;
+    resetConfirmName.value = '';
+    await router.push({ name: 'invoicing-invoices', params: { companyId: props.companyId } });
+  } catch (e: any) {
+    resetError.value = e?.response?.data?.message || t('errors.generic');
+  } finally {
+    resetting.value = false;
   }
 }
 </script>

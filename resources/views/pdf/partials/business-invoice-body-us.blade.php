@@ -86,7 +86,8 @@
 
 @if($btcPayQr)
     <div class="qr-block">
-        <div class="muted">Pay with Bitcoin / Lightning</div>
-        <img src="{{ $btcPayQr }}" alt="BTCPay">
+        <div class="muted">{{ __('Bitcoin / Lightning (payment link)') }}</div>
+        <img src="{{ $btcPayQr }}" alt="">
+        <div class="qr-hint">{{ __('BTC payment QR is a web link. Open in your browser - do not scan with a Lightning wallet.') }}</div>
     </div>
 @endif

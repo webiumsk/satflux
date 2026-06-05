@@ -6,6 +6,7 @@ use App\Enums\BusinessDocumentType;
 use App\Models\BusinessDocument;
 use App\Models\Company;
 use App\Support\Invoicing\CompanyAppSettings;
+use App\Support\Invoicing\PlaceholderLegacyAliases;
 use Illuminate\Support\Str;
 
 class CompanyPdfFilenameBuilder
@@ -33,16 +34,16 @@ class CompanyPdfFilenameBuilder
 
     protected function replaceTokens(string $pattern, BusinessDocument $document, Company $company): string
     {
-        $replacements = [
-            '#NAZOV#' => $this->sanitizeSegment($document->title ?: $this->typeLabel($document->type)),
-            '#TYP#' => $this->typeCode($document->type),
-            '#FIRMA#' => $this->sanitizeSegment($company->displayName(), 50),
-            '#CISLO#' => $this->sanitizeSegment($document->number ?? $document->id),
-            '#KLIENT#' => $this->sanitizeSegment($document->resolvedBuyer()?->name ?? '', 50),
-            '#VYSTAVENE#' => $document->issue_date?->format('Y-m-d') ?? '',
-            '#SUMA#' => number_format((float) $document->total, 2, '.', ''),
-            '#MENA#' => $document->currency ?? $company->default_currency ?? 'EUR',
-        ];
+        $replacements = PlaceholderLegacyAliases::merge([
+            '#TITLE#' => $this->sanitizeSegment($document->title ?: $this->typeLabel($document->type)),
+            '#TYPE#' => $this->typeCode($document->type),
+            '#COMPANY#' => $this->sanitizeSegment($company->displayName(), 50),
+            '#NUMBER#' => $this->sanitizeSegment($document->number ?? $document->id),
+            '#CLIENT#' => $this->sanitizeSegment($document->resolvedBuyer()?->name ?? '', 50),
+            '#ISSUE_DATE#' => $document->issue_date?->format('Y-m-d') ?? '',
+            '#AMOUNT#' => number_format((float) $document->total, 2, '.', ''),
+            '#CURRENCY#' => $document->currency ?? $company->default_currency ?? 'EUR',
+        ]);
 
         return str_replace(array_keys($replacements), array_values($replacements), $pattern);
     }

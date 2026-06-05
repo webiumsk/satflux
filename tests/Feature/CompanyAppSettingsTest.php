@@ -80,7 +80,7 @@ class CompanyAppSettingsTest extends TestCase
                 'default_constant_symbol' => '0558',
                 'show_pay_by_square' => false,
                 'default_invoice_payment_terms_days' => 21,
-                'pdf_filename_pattern' => '#TYP#_#CISLO#',
+                'pdf_filename_pattern' => '#TYPE#_#NUMBER#',
             ]);
 
         $response->assertOk();
@@ -119,7 +119,7 @@ class CompanyAppSettingsTest extends TestCase
     {
         $this->company->update([
             'trade_name' => 'Acme',
-            'app_settings' => ['pdf_filename_pattern' => '#TYP#_#FIRMA#_#CISLO#'],
+            'app_settings' => ['pdf_filename_pattern' => '#TYPE#_#COMPANY#_#NUMBER#'],
         ]);
 
         $document = BusinessDocument::create([

@@ -6,6 +6,7 @@ use App\Models\BusinessDocument;
 use App\Models\Company;
 use App\Models\User;
 use App\Support\Invoicing\CompanyEmailSettings;
+use App\Support\Invoicing\PlaceholderLegacyAliases;
 
 class CompanyEmailTemplateRenderer
 {
@@ -40,30 +41,30 @@ class CompanyEmailTemplateRenderer
         $payUrl->ensureForDocument($document);
         $onlinePay = $payUrl->payUrl($document) ?? '';
 
-        return [
-            '#MOJA_FIRMA#' => $company->displayName(),
-            '#MENO#' => $sender?->name ?? $company->issuer_name ?? '',
-            '#NAZOV_ODBERATELA#' => $contact?->name ?? '',
-            '#NAZOV#' => $document->title ?? '',
-            '#CISLO#' => $document->number ?? '',
-            '#CISLO_ZAL#' => $document->sourceDocument?->number ?? '',
-            '#OBJEDNAVKA#' => '',
-            '#DODANIE#' => $document->delivery_date?->format('d.m.Y') ?? '',
-            '#PLATI_DO#' => $document->due_date?->format('d.m.Y') ?? '',
-            '#POZNAMKA_NAD#' => $document->note_above_lines ?? '',
-            '#SUMA#' => number_format((float) $document->total, 2, ',', ' ').' '.($document->currency ?? 'EUR'),
-            '#UHRADENA_SUMA#' => number_format((float) ($document->amount_paid ?? 0), 2, ',', ' '),
-            '#POSLEDNA_UHRADA#' => '',
-            '#SPLATNOST#' => $document->due_date?->format('d.m.Y') ?? '',
-            '#FORMA_UHRADY#' => '',
+        return PlaceholderLegacyAliases::merge([
+            '#MY_COMPANY#' => $company->displayName(),
+            '#SENDER_NAME#' => $sender?->name ?? $company->issuer_name ?? '',
+            '#CLIENT_NAME#' => $contact?->name ?? '',
+            '#TITLE#' => $document->title ?? '',
+            '#NUMBER#' => $document->number ?? '',
+            '#PROFORMA_NUMBER#' => $document->sourceDocument?->number ?? '',
+            '#ORDER_NUMBER#' => '',
+            '#DELIVERY_DATE#' => $document->delivery_date?->format('d.m.Y') ?? '',
+            '#VALID_UNTIL#' => $document->due_date?->format('d.m.Y') ?? '',
+            '#NOTE_ABOVE#' => $document->note_above_lines ?? '',
+            '#AMOUNT#' => number_format((float) $document->total, 2, ',', ' ').' '.($document->currency ?? 'EUR'),
+            '#PAID_AMOUNT#' => number_format((float) ($document->amount_paid ?? 0), 2, ',', ' '),
+            '#LAST_PAYMENT#' => '',
+            '#DUE_DATE#' => $document->due_date?->format('d.m.Y') ?? '',
+            '#PAYMENT_METHOD#' => '',
             '#IBAN#' => $company->iban ?? '',
-            '#UCET#' => $company->bank_account ?? $company->iban ?? '',
-            '#VAR#' => $document->variable_symbol ?? '',
-            '#KONSTANTNY#' => $document->constant_symbol ?? '',
-            '#SPECIFICKY#' => $document->specific_symbol ?? '',
-            '#ONLINE_PLATBA#' => $onlinePay,
+            '#ACCOUNT#' => $company->bank_account ?? $company->iban ?? '',
+            '#VARIABLE_SYMBOL#' => $document->variable_symbol ?? '',
+            '#CONSTANT_SYMBOL#' => $document->constant_symbol ?? '',
+            '#SPECIFIC_SYMBOL#' => $document->specific_symbol ?? '',
+            '#ONLINE_PAYMENT#' => $onlinePay,
             '#QR#' => '',
-        ];
+        ]);
     }
 
     /**

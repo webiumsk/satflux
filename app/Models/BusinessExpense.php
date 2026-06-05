@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BusinessExpense extends Model
 {
@@ -42,6 +43,7 @@ class BusinessExpense extends Model
             'delivery_date' => 'date',
             'due_date' => 'date',
             'paid_at' => 'datetime',
+            'cancelled_at' => 'datetime',
             'total' => 'decimal:2',
         ];
     }
@@ -49,6 +51,11 @@ class BusinessExpense extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(BusinessExpenseAttachment::class)->orderBy('created_at');
     }
 
     public function isOverdue(): bool
@@ -66,6 +73,14 @@ class BusinessExpense extends Model
 
     public function hasAttachment(): bool
     {
+        if ($this->relationLoaded('attachments')) {
+            return $this->attachments->isNotEmpty();
+        }
+
+        if ($this->attachments()->exists()) {
+            return true;
+        }
+
         return $this->attachment_path !== null && $this->attachment_path !== '';
     }
 }

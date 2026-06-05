@@ -87,15 +87,15 @@ class BusinessRecurringProfileService
 
         $docType = $document->type === BusinessDocumentType::Proforma ? 'proforma' : 'invoice';
         $title = $document->title ?: ($docType === 'proforma'
-            ? 'Zálohová faktúra #CISLOFAKTURY#'
-            : 'Faktúra #CISLOFAKTURY#');
+            ? 'Zálohová faktúra #INVOICE_NUMBER#'
+            : 'Faktúra #INVOICE_NUMBER#');
 
         return $this->create($company, [
             'document_type' => $docType,
             'company_contact_id' => $document->company_contact_id,
             'store_id' => $document->store_id,
             'title' => $this->restorePlaceholders($title, $document->number),
-            'variable_symbol' => $document->variable_symbol ?: '#CISLOFAKTURY#',
+            'variable_symbol' => $document->variable_symbol ?: '#INVOICE_NUMBER#',
             'constant_symbol' => $document->constant_symbol,
             'specific_symbol' => $document->specific_symbol,
             'currency' => $document->currency,
@@ -131,7 +131,7 @@ class BusinessRecurringProfileService
             return $title;
         }
 
-        return str_replace($number, '#CISLOFAKTURY#', $title);
+        return str_replace($number, '#INVOICE_NUMBER#', $title);
     }
 
     /**
@@ -225,7 +225,12 @@ class BusinessRecurringProfileService
                 continue;
             }
 
-            $amounts = $this->canonicalBuilder->computeLineAmounts($company, $line);
+            $contact = $profile->relationLoaded('contact')
+                ? $profile->contact
+                : ($profile->company_contact_id
+                    ? \App\Models\CompanyContact::query()->find($profile->company_contact_id)
+                    : null);
+            $amounts = $this->canonicalBuilder->computeLineAmounts($company, $line, $contact);
 
             BusinessRecurringProfileLine::create([
                 'business_recurring_profile_id' => $profile->id,
