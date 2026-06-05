@@ -2079,7 +2079,7 @@
                         href="https://github.com/webiumsk/btcpay-greenfield-tickets/releases"
                         target="_blank"
                         rel="noopener noreferrer"
-                        title="BTCPay Satoshi Tickets for WooCommerce - GitHub Releases"
+                        title="SATFLUX WooCommerce - GitHub Releases"
                         class="group inline-flex flex-wrap items-center gap-2 rounded-xl border border-gray-600 bg-gray-800/80 px-4 py-2.5 transition-all hover:border-orange-500/50 hover:bg-gray-800"
                       >
                         <span

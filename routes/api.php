@@ -18,6 +18,8 @@ use App\Http\Controllers\CashuController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\EshopIntegrationController;
+use App\Http\Controllers\Integrations\WooCommerceIntegrationController;
+use App\Http\Middleware\AuthenticateWooCommerceIntegration;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FaqController;
 use App\Http\Controllers\InvoiceController;
@@ -223,6 +225,17 @@ Route::middleware(['throttle:10,1'])->group(function () {
     Route::post('/public/eshop/connect', [EshopIntegrationController::class, 'connect']);
     Route::get('/public/eshop/token/{token}', [EshopIntegrationController::class, 'getToken']);
 });
+
+// WooCommerce plugin integration API (Bearer integration token)
+Route::middleware(['throttle:60,1', AuthenticateWooCommerceIntegration::class])
+    ->prefix('integrations/woocommerce')
+    ->group(function () {
+        Route::get('/connection', [WooCommerceIntegrationController::class, 'connection']);
+        Route::post('/contacts/upsert', [WooCommerceIntegrationController::class, 'upsertContact']);
+        Route::post('/documents', [WooCommerceIntegrationController::class, 'createDocument']);
+        Route::get('/documents/{documentId}', [WooCommerceIntegrationController::class, 'showDocument']);
+        Route::post('/documents/{documentId}/issue', [WooCommerceIntegrationController::class, 'issueDocument']);
+    });
 
 // Authentication routes (rate limited)
 Route::middleware(['throttle:auth'])->group(function () {

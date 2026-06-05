@@ -57,6 +57,8 @@ class BusinessDocumentMarkPaidService
 
         if ($fullyPaid) {
             $this->paymentTokenService->revokeAfterPaid($document->fresh());
+            app(\App\Services\Integrations\WooCommerceWebhookNotifier::class)
+                ->notifyDocumentPaid($document->fresh());
         }
 
         $metadata = [

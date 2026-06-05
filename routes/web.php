@@ -6,7 +6,9 @@ use App\Http\Controllers\Invoicing\BusinessDocumentPayController;
 use App\Http\Controllers\OgImageController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StoreAppPageController;
-use App\Http\Controllers\WooCommerceSatoshiTicketsController;
+use App\Http\Controllers\Integrations\WooCommerceConnectController;
+use App\Http\Controllers\Integrations\WooCommerceIntegrationController;
+use App\Http\Middleware\AuthenticateWooCommerceIntegration;
 use App\Http\Middleware\EnsureCompanyOwnership;
 use App\Http\Middleware\EnsurePlanAllowsBusinessInvoicing;
 use App\Http\Middleware\EnsureStoreOwnership;
@@ -93,10 +95,12 @@ Route::get('/auth/verify-email/{id}/{hash}', function () {
     return view('app');
 })->where(['id' => '[0-9]+', 'hash' => '[a-f0-9]+']);
 
-// WooCommerce Satoshi Tickets - Connect flow for WP plugin
+// WooCommerce plugin - Connect flow
 Route::middleware(['auth'])->group(function () {
-    Route::get('/woocommerce/satoshi-tickets/connect', [WooCommerceSatoshiTicketsController::class, 'connect']);
-    Route::post('/woocommerce/satoshi-tickets/connect/select-store', [WooCommerceSatoshiTicketsController::class, 'selectStore']);
+    Route::get('/woocommerce/connect', [WooCommerceConnectController::class, 'connect']);
+    Route::post('/woocommerce/connect/select-store', [WooCommerceConnectController::class, 'selectStore']);
+    Route::get('/woocommerce/satoshi-tickets/connect', [WooCommerceConnectController::class, 'connect']);
+    Route::post('/woocommerce/satoshi-tickets/connect/select-store', [WooCommerceConnectController::class, 'selectStore']);
 });
 
 // Business invoice PDF: session auth (direct browser GET / copy link; API /api/... is stateless without SPA headers)
