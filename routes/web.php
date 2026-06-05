@@ -1,14 +1,12 @@
 <?php
 
 use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\Integrations\WooCommerceConnectController;
 use App\Http\Controllers\Invoicing\BusinessDocumentController;
 use App\Http\Controllers\Invoicing\BusinessDocumentPayController;
 use App\Http\Controllers\OgImageController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StoreAppPageController;
-use App\Http\Controllers\Integrations\WooCommerceConnectController;
-use App\Http\Controllers\Integrations\WooCommerceIntegrationController;
-use App\Http\Middleware\AuthenticateWooCommerceIntegration;
 use App\Http\Middleware\EnsureCompanyOwnership;
 use App\Http\Middleware\EnsurePlanAllowsBusinessInvoicing;
 use App\Http\Middleware\EnsureStoreOwnership;
