@@ -113,12 +113,12 @@ class AccountTest extends TestCase
         ]);
         Sanctum::actingAs($guest);
 
-        $upgradeResponse = $this->putJson('/api/user/guest/upgrade', [
+        $upgradeResponse = $this->putJson('/api/user/guest/upgrade', $this->guestUpgradePayload([
             'method' => 'email',
             'email' => 'upgraded@satflux.io',
             'password' => 'new-secure-password',
             'password_confirmation' => 'new-secure-password',
-        ]);
+        ]));
 
         $upgradeResponse->assertStatus(200);
         $upgradeResponse->assertJsonPath('user.email', 'upgraded@satflux.io');
@@ -152,12 +152,12 @@ class AccountTest extends TestCase
         ]);
         Sanctum::actingAs($guest);
 
-        $upgradeResponse = $this->putJson('/api/user/guest/upgrade', [
+        $upgradeResponse = $this->putJson('/api/user/guest/upgrade', $this->guestUpgradePayload([
             'method' => 'email',
             'email' => '  Trimmed-Case@Satflux.IO  ',
             'password' => 'new-secure-password',
             'password_confirmation' => 'new-secure-password',
-        ]);
+        ]));
 
         $upgradeResponse->assertStatus(200);
         $guest->refresh();
@@ -171,12 +171,12 @@ class AccountTest extends TestCase
         ]);
         Sanctum::actingAs($guest);
 
-        $response = $this->putJson('/api/user/guest/upgrade', [
+        $response = $this->putJson('/api/user/guest/upgrade', $this->guestUpgradePayload([
             'method' => 'lightning',
             'email' => 'real@example.com',
             'password' => 'new-secure-password',
             'password_confirmation' => 'new-secure-password',
-        ]);
+        ]));
 
         $response->assertStatus(422);
     }
@@ -192,12 +192,12 @@ class AccountTest extends TestCase
         ]);
         Sanctum::actingAs($guest);
 
-        $response = $this->putJson('/api/user/guest/upgrade', [
+        $response = $this->putJson('/api/user/guest/upgrade', $this->guestUpgradePayload([
             'method' => 'lightning',
             'email' => 'upgraded-ln@satflux.io',
             'password' => 'new-secure-password',
             'password_confirmation' => 'new-secure-password',
-        ]);
+        ]));
 
         $response->assertStatus(200);
         $response->assertJsonPath('user.email', 'upgraded-ln@satflux.io');
@@ -209,5 +209,17 @@ class AccountTest extends TestCase
         $this->assertFalse((bool) $guest->is_guest);
         $this->assertTrue((bool) $guest->allows_satflux_email_changes);
         $this->assertSame($pk, $guest->lightning_public_key);
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    private function guestUpgradePayload(array $overrides): array
+    {
+        return array_merge([
+            'privacy_consent' => true,
+            'terms_accepted' => true,
+        ], $overrides);
     }
 }
