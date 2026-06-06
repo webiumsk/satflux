@@ -118,10 +118,13 @@
       <button
         v-if="canUnmarkPaid"
         type="button"
-        class="mt-2 text-xs text-amber-800 hover:text-amber-950 underline"
+        class="mt-2 text-xs text-amber-800 hover:text-amber-950 inline-flex items-center gap-1"
         :disabled="busy"
         @click="$emit('unmark-paid')"
       >
+        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+        </svg>
         {{ t('invoicing.remove_payment') }}
       </button>
       <p v-if="canUnmarkPaid" class="text-xs text-gray-500 mt-1">
@@ -145,11 +148,15 @@
         :to="{ name: editRouteName, params: { companyId, documentId } }"
         class="sidebar-action"
       >
-        <span class="sidebar-action-icon">✎</span>
+        <svg class="sidebar-action-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+        </svg>
         {{ t('invoicing.action_edit') }}
       </RouterLink>
       <button type="button" class="sidebar-action" :disabled="busy" @click="$emit('duplicate')">
-        <span class="sidebar-action-icon">⧉</span>
+        <svg class="sidebar-action-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
         {{ t('invoicing.action_duplicate') }}
       </button>
       <button
@@ -159,7 +166,9 @@
         :disabled="busy"
         @click="$emit('delete')"
       >
-        <span class="sidebar-action-icon">🗑</span>
+        <svg class="sidebar-action-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
         {{ t('invoicing.action_delete') }}
       </button>
       <button
@@ -169,7 +178,9 @@
         :disabled="busy"
         @click="$emit('cancel')"
       >
-        <span class="sidebar-action-icon">×</span>
+        <svg class="sidebar-action-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
         {{ t('invoicing.action_cancel') }}
       </button>
     </div>

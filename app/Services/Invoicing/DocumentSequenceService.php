@@ -86,9 +86,25 @@ class DocumentSequenceService
                 $series->format,
             );
 
-        if ($fromDocuments > (int) $series->last_number) {
+        if ($fromDocuments !== (int) $series->last_number) {
             $series->last_number = $fromDocuments;
             $series->save();
+        }
+    }
+
+    /**
+     * Recalculate default series counter after a document is deleted.
+     */
+    public function syncSeriesAfterDocumentChange(Company $company, string $documentType): void
+    {
+        $series = CompanyDocumentSequence::query()
+            ->where('company_id', $company->id)
+            ->where('document_type', $documentType)
+            ->where('is_default', true)
+            ->first();
+
+        if ($series) {
+            $this->ensureCounterSynced($series);
         }
     }
 

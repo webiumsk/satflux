@@ -137,6 +137,8 @@ class CompanyDocumentSequenceTest extends TestCase
             ->where('document_type', 'invoice')
             ->update(['is_default' => false]);
 
+        $year = now()->format('Y');
+
         CompanyDocumentSequence::create([
             'company_id' => $this->company->id,
             'document_type' => 'invoice',
@@ -144,8 +146,17 @@ class CompanyDocumentSequenceTest extends TestCase
             'format' => 'XRRRRCC',
             'reset_period' => 'yearly',
             'is_default' => true,
-            'period_key' => now()->format('Y'),
+            'period_key' => $year,
             'last_number' => 5,
+        ]);
+
+        BusinessDocument::create([
+            'company_id' => $this->company->id,
+            'type' => BusinessDocumentType::Invoice,
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => "X{$year}05",
+            'total' => 50,
+            'currency' => 'EUR',
         ]);
 
         $document = BusinessDocument::create([
@@ -160,6 +171,6 @@ class CompanyDocumentSequenceTest extends TestCase
 
         app(BusinessDocumentIssueService::class)->issue($document);
 
-        $this->assertSame('X202606', $document->fresh()->number);
+        $this->assertSame("X{$year}06", $document->fresh()->number);
     }
 }

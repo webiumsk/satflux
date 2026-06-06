@@ -29,6 +29,7 @@ use App\Services\Invoicing\BusinessDocumentPdfService;
 use App\Services\Invoicing\BusinessDocumentQuoteService;
 use App\Services\Invoicing\BusinessDocumentUblService;
 use App\Services\Invoicing\CanonicalInvoiceBuilder;
+use App\Services\Invoicing\DocumentSequenceService;
 use App\Services\Invoicing\DocumentTotalsCalculator;
 use App\Support\Invoicing\CompanyAppSettings;
 use Illuminate\Http\JsonResponse;
@@ -47,6 +48,7 @@ class BusinessDocumentController extends Controller
         protected BusinessDocumentPdfService $pdfService,
         protected BusinessDocumentDuplicateService $duplicateService,
         protected BusinessDocumentBulkService $bulkService,
+        protected DocumentSequenceService $sequenceService,
         protected BusinessDocumentEmailService $emailService,
         protected BusinessDocumentFromProformaService $fromProformaService,
         protected BusinessDocumentFromQuoteService $fromQuoteService,
@@ -539,8 +541,11 @@ class BusinessDocumentController extends Controller
 
         $id = $businessDocument->id;
         $number = $businessDocument->number;
+        $documentType = $businessDocument->type->value;
         $businessDocument->lines()->delete();
         $businessDocument->delete();
+
+        $this->sequenceService->syncSeriesAfterDocumentChange($company, $documentType);
 
         AuditLog::log('business_document.deleted', 'business_document', $id, [
             'company_id' => $company->id,

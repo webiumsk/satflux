@@ -23,6 +23,7 @@ class BusinessDocumentBulkService
     public function __construct(
         protected BusinessDocumentPdfService $pdfService,
         protected BusinessDocumentMarkPaidService $markPaidService,
+        protected DocumentSequenceService $sequenceService,
     ) {}
 
     /**
@@ -219,6 +220,7 @@ class BusinessDocumentBulkService
     {
         $processed = 0;
         $skipped = 0;
+        $typesToSync = [];
 
         foreach ($documents as $document) {
             if (! $document->canDelete()) {
@@ -226,9 +228,14 @@ class BusinessDocumentBulkService
 
                 continue;
             }
+            $typesToSync[$document->type->value] = $document->company;
             $document->lines()->delete();
             $document->delete();
             $processed++;
+        }
+
+        foreach ($typesToSync as $documentType => $company) {
+            $this->sequenceService->syncSeriesAfterDocumentChange($company, $documentType);
         }
 
         return ['processed' => $processed, 'skipped' => $skipped];

@@ -6,9 +6,11 @@ use App\Enums\BusinessDocumentStatus;
 use App\Enums\CompanyJurisdiction;
 use App\Models\BusinessDocument;
 use App\Models\Company;
+use App\Models\CompanyDocumentSequence;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Services\Invoicing\DocumentSequenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -50,6 +52,8 @@ class BusinessDocumentActionsTest extends TestCase
             'jurisdiction' => CompanyJurisdiction::EuSk,
             'default_currency' => 'EUR',
         ]);
+
+        app(DocumentSequenceService::class)->seedDefaultsForCompany($this->company);
     }
 
     #[Test]
@@ -148,22 +152,91 @@ class BusinessDocumentActionsTest extends TestCase
     #[Test]
     public function can_delete_latest_paid_invoice(): void
     {
+        $year = now()->format('Y');
         $paid = BusinessDocument::create([
             'company_id' => $this->company->id,
             'type' => 'invoice',
             'status' => BusinessDocumentStatus::Paid,
-            'number' => '20260005',
+            'number' => "{$year}0005",
             'total' => 99,
             'currency' => 'EUR',
             'paid_at' => now(),
             'amount_paid' => 99,
         ]);
 
+        CompanyDocumentSequence::query()
+            ->where('company_id', $this->company->id)
+            ->where('document_type', 'invoice')
+            ->update(['last_number' => 5]);
+
         $this->actingAs($this->user)
             ->deleteJson("/api/invoicing/companies/{$this->company->id}/documents/{$paid->id}")
             ->assertOk();
 
         $this->assertDatabaseMissing('business_documents', ['id' => $paid->id]);
+
+        $series = CompanyDocumentSequence::query()
+            ->where('company_id', $this->company->id)
+            ->where('document_type', 'invoice')
+            ->where('is_default', true)
+            ->first();
+
+        $this->assertSame(0, (int) $series->last_number);
+
+        $preview = $this->actingAs($this->user)
+            ->getJson("/api/invoicing/companies/{$this->company->id}/number-series/preview?type=invoice");
+
+        $preview->assertOk()
+            ->assertJsonPath('data.next_number', "{$year}0001");
+    }
+
+    #[Test]
+    public function deleting_latest_invoice_reuses_its_number(): void
+    {
+        $year = now()->format('Y');
+
+        BusinessDocument::create([
+            'company_id' => $this->company->id,
+            'type' => 'invoice',
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => "{$year}0001",
+            'total' => 10,
+            'currency' => 'EUR',
+        ]);
+
+        $latest = BusinessDocument::create([
+            'company_id' => $this->company->id,
+            'type' => 'invoice',
+            'status' => BusinessDocumentStatus::Paid,
+            'number' => "{$year}0002",
+            'total' => 20,
+            'currency' => 'EUR',
+            'paid_at' => now(),
+            'amount_paid' => 20,
+        ]);
+
+        CompanyDocumentSequence::query()
+            ->where('company_id', $this->company->id)
+            ->where('document_type', 'invoice')
+            ->update(['last_number' => 2]);
+
+        $this->actingAs($this->user)
+            ->deleteJson("/api/invoicing/companies/{$this->company->id}/documents/{$latest->id}")
+            ->assertOk();
+
+        $series = CompanyDocumentSequence::query()
+            ->where('company_id', $this->company->id)
+            ->where('document_type', 'invoice')
+            ->where('is_default', true)
+            ->first();
+
+        $this->assertSame(1, (int) $series->last_number);
+
+        $preview = $this->actingAs($this->user)
+            ->getJson("/api/invoicing/companies/{$this->company->id}/number-series/preview?type=invoice");
+
+        $preview->assertOk()
+            ->assertJsonPath('data.next_number', "{$year}0002");
     }
 
     #[Test]
