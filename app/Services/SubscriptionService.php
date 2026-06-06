@@ -197,6 +197,10 @@ class SubscriptionService
             return true;
         }
 
+        if ($user->isPro() || $user->isEnterprise()) {
+            return true;
+        }
+
         return $user->planFeature('business_invoicing');
     }
 

@@ -30,7 +30,7 @@ const fallback: PricingData = {
   trial_days: 30,
   grace_days: 30,
   free: { sats_per_year: 0 },
-  pro: { sats_per_year: 240_000, sats_per_month_display: 21_000 },
+  pro: { sats_per_year: 210_000, sats_per_month_display: 21_000 },
 };
 
 const cached = ref<PricingData | null>(null);
@@ -64,7 +64,7 @@ export function usePricing() {
           grace_days: data.grace_days ?? 30,
           free: { sats_per_year: data.free?.sats_per_year ?? 0 },
           pro: {
-            sats_per_year: data.pro?.sats_per_year ?? 240_000,
+            sats_per_year: data.pro?.sats_per_year ?? 210_000,
             sats_per_month_display: data.pro?.sats_per_month_display ?? 21_000,
           },
         };

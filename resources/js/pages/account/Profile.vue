@@ -441,8 +441,14 @@
                   </div>
                 </div>
                 <div class="mt-4 md:mt-0 md:text-right">
-                  <div class="text-3xl font-bold text-white">
-                    {{ currentPlanPrice }}
+                  <div class="text-3xl font-bold text-white flex items-baseline justify-end flex-wrap gap-x-2">
+                    <span
+                      v-if="isProPlan && proHasMonthlyDiscount(pricing.pro)"
+                      class="text-lg font-normal text-gray-500 line-through"
+                    >
+                      {{ formatSats(pricing.pro.sats_per_month_display) }}
+                    </span>
+                    <span>{{ currentPlanPrice }}</span>
                   </div>
                   <div class="text-sm text-gray-400">
                     {{
@@ -451,6 +457,13 @@
                         : t("account.per_month")
                     }}
                   </div>
+                  <p v-if="isProPlan" class="text-xs text-gray-500 mt-1">
+                    {{
+                      t("account.pro_yearly_price", {
+                        amount: formatSats(pricing.pro.sats_per_year),
+                      })
+                    }}
+                  </p>
                 </div>
               </div>
 
@@ -1054,7 +1067,7 @@ const currentPlanPrice = computed(() => {
   const role = authStore.user?.role || "free";
   const p = pricing.value;
   if (role === "enterprise") return "-";
-  if (role === "pro") return formatSats(p.pro.sats_per_year);
+  if (role === "pro") return formatSats(proEffectiveMonthlySats(p.pro));
   return formatSats(p?.free?.sats_per_year ?? 0);
 });
 

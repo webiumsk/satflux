@@ -35,7 +35,7 @@ class SubscriptionPlanSeeder extends Seeder
             ]
         );
 
-        // PRO Plan (240,000 sats/year in BTCPay, paid yearly)
+        // PRO Plan (210,000 sats/year in BTCPay, paid yearly)
         SubscriptionPlan::updateOrCreate(
             ['code' => 'pro'],
             [

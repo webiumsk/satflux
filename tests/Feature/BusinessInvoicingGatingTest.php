@@ -46,7 +46,7 @@ class BusinessInvoicingGatingTest extends TestCase
         ]);
 
         $this->freeUser = User::factory()->create();
-        $this->proUser = User::factory()->create();
+        $this->proUser = User::factory()->create(['role' => 'pro']);
         Subscription::create([
             'user_id' => $this->freeUser->id,
             'plan_id' => $freePlan->id,
@@ -78,5 +78,35 @@ class BusinessInvoicingGatingTest extends TestCase
             ->getJson('/api/invoicing/companies')
             ->assertOk()
             ->assertJsonPath('data', []);
+    }
+
+    #[Test]
+    public function pro_role_user_can_use_invoicing_even_without_feature_flag_on_plan(): void
+    {
+        $legacyProPlan = SubscriptionPlan::create([
+            'code' => 'legacy_pro',
+            'name' => 'legacy_pro',
+            'display_name' => 'Legacy Pro',
+            'price_eur' => 99,
+            'billing_period' => 'year',
+            'max_stores' => 3,
+            'max_api_keys' => 3,
+            'max_ln_addresses' => null,
+            'features' => ['automatic_csv_exports'],
+            'is_active' => true,
+        ]);
+
+        $user = User::factory()->create(['role' => 'pro']);
+        Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $legacyProPlan->id,
+            'status' => 'active',
+            'starts_at' => now(),
+            'expires_at' => now()->addYear(),
+        ]);
+
+        $this->actingAs($user)
+            ->getJson('/api/invoicing/companies')
+            ->assertOk();
     }
 }
