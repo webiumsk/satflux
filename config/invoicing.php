@@ -37,4 +37,21 @@ return [
         ['credits' => 500, 'price_eur' => 92.25],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Subscription billing (paid plan invoices in Invoicing)
+    |--------------------------------------------------------------------------
+    | When a subscription payment settles on SUBSCRIPTION_STORE_ID, a paid
+    | business invoice is created in this company for the subscriber.
+    */
+
+    'subscription_billing' => [
+        'company_id' => env('SUBSCRIPTION_BILLING_COMPANY_ID'),
+        'eur_currency' => 'EUR',
+        'line_names' => [
+            'pro' => 'Satflux Pro - ročné predplatné',
+            'enterprise' => 'Satflux Enterprise - ročné predplatné',
+        ],
+    ],
+
 ];

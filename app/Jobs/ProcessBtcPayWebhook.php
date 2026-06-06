@@ -6,7 +6,9 @@ use App\Models\Store;
 use App\Models\User;
 use App\Models\WebhookEvent;
 use App\Services\Invoicing\BusinessDocumentPaymentWebhookService;
+use App\Services\Invoicing\SubscriptionBillingInvoiceService;
 use App\Services\StoreEmailRuleDispatcher;
+use App\Services\SubscriptionService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -225,16 +227,37 @@ class ProcessBtcPayWebhook implements ShouldQueue
                 return;
             }
 
-            // Update user role and subscription tracking
+            $subscription = app(SubscriptionService::class)->activateSubscription(
+                $user,
+                $planRole,
+                $subscriptionId,
+            );
+
+            // Update user role and subscription tracking (legacy field)
             $oldRole = $user->role;
             $user->role = $planRole;
 
-            // Store subscription ID if available from invoice
             if ($subscriptionId) {
                 $user->btcpay_subscription_id = $subscriptionId;
             }
 
             $user->save();
+
+            try {
+                app(SubscriptionBillingInvoiceService::class)->fulfillPaidInvoice(
+                    $user,
+                    $planRole,
+                    $invoiceId,
+                    $invoiceData,
+                );
+            } catch (\Throwable $e) {
+                Log::error('Subscription billing invoice failed', [
+                    'user_id' => $user->id,
+                    'invoice_id' => $invoiceId,
+                    'error' => $e->getMessage(),
+                ]);
+                report($e);
+            }
 
             Log::info('User role updated after subscription payment', [
                 'user_id' => $user->id,
@@ -243,6 +266,7 @@ class ProcessBtcPayWebhook implements ShouldQueue
                 'new_role' => $planRole,
                 'invoice_id' => $invoiceId,
                 'plan_id' => $planId,
+                'subscription_id' => $subscription->id,
             ]);
 
         } catch (\Exception $e) {

@@ -19,6 +19,17 @@ User-scoped module for company profiles, customer contacts, and accounting invoi
 
 Existing companies above the Free limit (0) are **not** removed; the user simply cannot open the module until Pro is active again. Creating new companies is blocked when at plan limit (Pro: 2, or beta: 5).
 
+## Subscription billing company
+
+Satflux can auto-issue **paid** invoices for annual plan payments (Pro / Enterprise) into one dedicated company profile:
+
+- Set `SUBSCRIPTION_BILLING_COMPANY_ID` in `.env` to that company's local UUID.
+- On `InvoiceSettled` for the subscription BTCPay store, `SubscriptionBillingInvoiceService` upserts a contact for the subscriber, issues an invoice, marks it paid, and emails the PDF.
+- EUR line total uses the payment-time rate when the BTCPay invoice is in sats; fiat subscription invoices use the invoice amount directly.
+- Each BTCPay payment invoice id maps to at most one business document (renewals create new invoices).
+
+See [SUBSCRIPTION_IMPLEMENTATION.md](SUBSCRIPTION_IMPLEMENTATION.md) for webhook flow and operational setup.
+
 ## Bank payment matching
 
 Import bank statements (CSV/CAMT.053), pair credits to issued invoices by variable symbol, and mark documents paid. Optional b-mail inbound for SK banks. See [BANK_PAYMENT_MATCHING.md](BANK_PAYMENT_MATCHING.md).
