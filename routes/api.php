@@ -88,6 +88,8 @@ Route::get('/pricing', function () {
     $pricing = config('pricing', []);
 
     return response()->json([
+        'trial_days' => (int) ($pricing['trial_days'] ?? 30),
+        'grace_days' => (int) ($pricing['grace_days'] ?? 30),
         'free' => [
             'sats_per_year' => (int) ($pricing['free']['sats_per_year'] ?? 0),
         ],
@@ -103,6 +105,7 @@ Route::get('/plan-features', function () {
     $plans = config('plans', []);
 
     return response()->json([
+        'invoicing_highlight_keys' => $plans['invoicing_highlight_keys'] ?? [],
         'free' => ['feature_keys' => $plans['free']['feature_keys'] ?? []],
         'pro' => ['feature_keys' => $plans['pro']['feature_keys'] ?? []],
         'enterprise' => ['feature_keys' => $plans['enterprise']['feature_keys'] ?? []],

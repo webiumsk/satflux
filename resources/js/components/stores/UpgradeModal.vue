@@ -50,14 +50,26 @@
               {{ t('upgrade_modal.unlock_more') }}
             </p>
             <ul class="text-sm text-indigo-700 space-y-1">
-              <li v-for="benefit in benefits" :key="benefit" class="flex items-start">
+              <li
+                v-for="item in benefitItems"
+                :key="item.key"
+                class="flex items-start"
+                :class="item.highlight ? 'font-medium text-indigo-900' : ''"
+              >
                 <svg class="w-4 h-4 text-indigo-600 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
-                {{ benefit }}
+                {{ item.label }}
               </li>
             </ul>
           </div>
+
+          <p
+            v-if="recommendedPlan === 'pro' && proTrialHint"
+            class="text-center text-sm text-gray-600 mb-4"
+          >
+            {{ proTrialHint }}
+          </p>
         </div>
 
         <!-- Actions -->
@@ -89,9 +101,11 @@ import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
 import { useFlashStore } from '../../store/flash';
 import { usePlanFeatures } from '../../composables/usePlanFeatures';
+import { usePricing } from '../../composables/usePricing';
 
 const { t } = useI18n();
-const { planFeatures, load: loadPlanFeatures } = usePlanFeatures();
+const { planFeatures, isInvoicingFeature, load: loadPlanFeatures } = usePlanFeatures();
+const { pricing, formatSats, load: loadPricing } = usePricing();
 
 interface LimitRow {
   feature: string;
@@ -123,6 +137,7 @@ const flashStore = useFlashStore();
 
 onMounted(() => {
   loadPlanFeatures();
+  loadPricing();
 });
 
 function limitLabel(limit: LimitRow): string {
@@ -131,11 +146,24 @@ function limitLabel(limit: LimitRow): string {
   return translated !== key ? translated : limit.feature;
 }
 
-const benefits = computed(() => {
+const benefitItems = computed(() => {
   const plan = props.recommendedPlan === 'enterprise'
     ? planFeatures.value.enterprise
     : planFeatures.value.pro;
-  return plan.feature_keys.map((key: string) => t('plans.features.' + key));
+  return plan.feature_keys.map((key: string) => ({
+    key,
+    label: t('plans.features.' + key),
+    highlight: props.recommendedPlan === 'pro' && isInvoicingFeature(key),
+  }));
+});
+
+const proTrialHint = computed(() => {
+  if (props.recommendedPlan !== 'pro') return '';
+  const p = pricing.value.pro;
+  return t('upgrade_modal.pro_trial_hint', {
+    days: pricing.value.trial_days,
+    yearly: formatSats(p.sats_per_year),
+  });
 });
 
 function close() {

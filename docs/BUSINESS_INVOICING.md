@@ -12,7 +12,7 @@ User-scoped module for company profiles, customer contacts, and accounting invoi
 ### When a client stops paying
 
 1. **Active subscription** - full Pro/Enterprise access including invoicing.
-2. **Grace period** (14 days after `expires_at`, status `active` or `grace`) - access continues; user can still view and edit invoicing data.
+2. **Grace period** (30 days after `expires_at`, status `active` or `grace`; see `config/pricing.php` `grace_days`) - access continues; user can still view and edit invoicing data.
 3. **After grace** (`expired`) - `currentSubscription()` is empty; plan falls back to Free / role. `business_invoicing` is off: all `/api/invoicing/*` and SPA invoicing routes return **403**. **Data is not deleted** (companies, contacts, issued documents remain in DB).
 4. **Customer-facing** - public Bitcoin pay links (`GET /pay/i/{payment_token}`) keep working for already-issued invoices; webhooks can still mark documents paid.
 5. **Re-subscribe** - access restored immediately; no need to recreate companies.

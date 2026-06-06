@@ -166,8 +166,6 @@ async function goToCheckout() {
 }
 
 onMounted(() => {
-  if (authStore.isAuthenticated && !(authStore.user as any)?.plan) {
-    authStore.fetchUser();
-  }
+  window.location.replace("/#pricing");
 });
 </script>

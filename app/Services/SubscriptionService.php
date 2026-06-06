@@ -96,7 +96,7 @@ class SubscriptionService
             // Create new subscription
             $startsAt = now();
             $expiresAt = $startsAt->copy()->addYear();
-            $graceEndsAt = $expiresAt->copy()->addDays(14);
+            $graceEndsAt = $expiresAt->copy()->addDays((int) config('pricing.grace_days', 30));
 
             $subscription = Subscription::create([
                 'user_id' => $lockedUser->id,

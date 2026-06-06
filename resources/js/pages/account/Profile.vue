@@ -626,30 +626,53 @@
                       <h6 class="text-lg font-bold text-white mb-2">
                         {{ t("account.pro_plan") }}
                       </h6>
-                      <div class="text-2xl font-bold text-indigo-400 mb-4">
+                      <p
+                        class="text-xs font-semibold uppercase tracking-wide text-emerald-400 mb-2"
+                      >
+                        {{
+                          t("account.pro_trial_badge", {
+                            days: pricing.trial_days,
+                          })
+                        }}
+                      </p>
+                      <div class="text-2xl font-bold text-indigo-400 mb-1">
                         <span
-                          v-if="
-                            pricing.pro.sats_per_month_display !==
-                            BETA_PRO_SATS_PER_MONTH
-                          "
+                          v-if="proHasMonthlyDiscount(pricing.pro)"
                           class="text-base font-normal text-gray-500 line-through mr-2"
                           >{{
                             formatSats(pricing.pro.sats_per_month_display)
                           }}</span
                         >
-                        {{ formatSats(BETA_PRO_SATS_PER_MONTH)
+                        {{ formatSats(proEffectiveMonthlySats(pricing.pro))
                         }}<span class="text-base font-normal text-gray-500">{{
                           t("account.pro_price_period")
                         }}</span>
                       </div>
+                      <p class="text-sm text-gray-400 mb-4">
+                        {{
+                          t("account.pro_yearly_price", {
+                            amount: formatSats(pricing.pro.sats_per_year),
+                          })
+                        }}
+                      </p>
                       <ul class="text-sm text-gray-400 space-y-2 mb-6">
                         <li
                           v-for="key in planFeatures.pro.feature_keys"
                           :key="key"
                           class="flex items-center"
+                          :class="
+                            isInvoicingFeature(key)
+                              ? 'text-indigo-200 font-medium'
+                              : ''
+                          "
                         >
                           <span
-                            class="w-1.5 h-1.5 rounded-full bg-indigo-500 mr-2"
+                            class="w-1.5 h-1.5 rounded-full mr-2"
+                            :class="
+                              isInvoicingFeature(key)
+                                ? 'bg-indigo-400'
+                                : 'bg-indigo-500'
+                            "
                           ></span
                           >{{ t("plans.features." + key) }}
                         </li>
@@ -949,7 +972,8 @@ import { useAuthStore } from "../../store/auth";
 import { useFlashStore } from "../../store/flash";
 import {
   usePricing,
-  BETA_PRO_SATS_PER_MONTH,
+  proEffectiveMonthlySats,
+  proHasMonthlyDiscount,
 } from "../../composables/usePricing";
 import { usePlanFeatures } from "../../composables/usePlanFeatures";
 import api from "../../services/api";
@@ -967,7 +991,8 @@ const { btcPayUrl, load: loadBtcpayConfig } = useBtcPayUrl();
 const authStore = useAuthStore();
 const flashStore = useFlashStore();
 const { pricing, formatSats, load: loadPricing } = usePricing();
-const { planFeatures, load: loadPlanFeatures } = usePlanFeatures();
+const { planFeatures, isInvoicingFeature, load: loadPlanFeatures } =
+  usePlanFeatures();
 
 const profileForm = ref({
   name: "",
@@ -1029,7 +1054,7 @@ const currentPlanPrice = computed(() => {
   const role = authStore.user?.role || "free";
   const p = pricing.value;
   if (role === "enterprise") return "-";
-  if (role === "pro") return formatSats(BETA_PRO_SATS_PER_MONTH);
+  if (role === "pro") return formatSats(p.pro.sats_per_year);
   return formatSats(p?.free?.sats_per_year ?? 0);
 });
 

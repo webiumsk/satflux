@@ -2801,7 +2801,11 @@
             {{ t("landing.pricing_hero_headline") }}
           </h2>
           <p class="text-xl text-gray-400 max-w-2xl mx-auto">
-            {{ t("landing.pricing_hero_subheadline") }}
+            {{
+              t("landing.pricing_hero_subheadline", {
+                days: pricing.trial_days,
+              })
+            }}
           </p>
         </div>
 
@@ -2874,9 +2878,13 @@
             class="bg-gray-800 rounded-2xl p-8 border-2 border-indigo-500 shadow-2xl relative transform md:scale-[1.02] z-10"
           >
             <div
-              class="absolute top-0 right-0 -mt-4 mr-4 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide"
+              class="absolute top-0 right-0 -mt-4 mr-4 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide"
             >
-              {{ t("landing.pricing_pro_badge") }}
+              {{
+                t("landing.pricing_pro_trial_badge", {
+                  days: pricing.trial_days,
+                })
+              }}
             </div>
             <h3
               class="mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 text-2xl font-bold"
@@ -2886,16 +2894,14 @@
             <p class="text-gray-400 text-sm mb-4">
               {{ t("landing.pricing_pro_tagline") }}
             </p>
-            <div class="flex items-baseline flex-wrap gap-x-1 mb-6">
+            <div class="flex items-baseline flex-wrap gap-x-1 mb-2">
               <span
-                v-if="
-                  pricing.pro.sats_per_month_display !== BETA_PRO_SATS_PER_MONTH
-                "
+                v-if="proHasMonthlyDiscount(pricing.pro)"
                 class="text-xl font-medium text-gray-500 line-through mr-2"
                 >{{ formatSats(pricing.pro.sats_per_month_display) }}</span
               >
               <span class="text-5xl font-extrabold text-white">{{
-                formatSats(BETA_PRO_SATS_PER_MONTH)
+                formatSats(proEffectiveMonthlySats(pricing.pro))
               }}</span>
               <span class="text-indigo-300">{{
                 t("landing.pricing_pro_price_period")
@@ -2904,12 +2910,50 @@
                 t("landing.pricing_pro_price_note")
               }}</span>
             </div>
+            <p class="text-indigo-200/90 text-sm mb-6">
+              {{
+                t("landing.pricing_pro_yearly_price", {
+                  amount: formatSats(pricing.pro.sats_per_year),
+                })
+              }}
+            </p>
             <p class="text-gray-400 text-sm mb-6">
               {{ t("landing.pricing_pro_description") }}
             </p>
+            <div
+              class="rounded-xl border border-indigo-500/40 bg-indigo-950/40 p-4 mb-6"
+            >
+              <p
+                class="text-xs font-semibold uppercase tracking-wide text-indigo-300 mb-3"
+              >
+                {{ t("landing.pricing_invoicing_highlight_title") }}
+              </p>
+              <ul class="space-y-2.5">
+                <li
+                  v-for="key in proInvoicingFeatures"
+                  :key="'inv-' + key"
+                  class="flex items-start text-indigo-100 text-sm font-medium"
+                >
+                  <svg
+                    class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M5 13l4 4L19 7"
+                    ></path>
+                  </svg>
+                  <span>{{ t("plans.features." + key) }}</span>
+                </li>
+              </ul>
+            </div>
             <ul class="space-y-3 mb-8">
               <li
-                v-for="key in planFeatures.pro.feature_keys"
+                v-for="key in proOtherFeatures"
                 :key="key"
                 class="flex items-start text-white font-medium text-sm"
               >
@@ -3065,10 +3109,28 @@
               <h4
                 class="mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 font-semibold"
               >
+                {{ t("landing.pricing_faq_trial_q") }}
+              </h4>
+              <p class="text-gray-400 text-sm">
+                {{
+                  t("landing.pricing_faq_trial_a", {
+                    days: pricing.trial_days,
+                  })
+                }}
+              </p>
+            </div>
+            <div class="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+              <h4
+                class="mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 font-semibold"
+              >
                 {{ t("landing.pricing_faq_expire_q") }}
               </h4>
               <p class="text-gray-400 text-sm">
-                {{ t("landing.pricing_faq_expire_a") }}
+                {{
+                  t("landing.pricing_faq_expire_a", {
+                    grace_days: pricing.grace_days,
+                  })
+                }}
               </p>
             </div>
           </div>
@@ -3083,7 +3145,11 @@
 
 <script setup lang="ts">
 import { useAuthStore } from "../store/auth";
-import { usePricing, BETA_PRO_SATS_PER_MONTH } from "../composables/usePricing";
+import {
+  usePricing,
+  proEffectiveMonthlySats,
+  proHasMonthlyDiscount,
+} from "../composables/usePricing";
 import { usePlanFeatures } from "../composables/usePlanFeatures";
 import { onMounted, ref, computed } from "vue";
 import { useI18n } from "vue-i18n";
@@ -3101,7 +3167,20 @@ const {
   displayLightningDomain,
 } = useBtcPayUrl();
 const { pricing, formatSats, load: loadPricing } = usePricing();
-const { planFeatures, load: loadPlanFeatures } = usePlanFeatures();
+const { planFeatures, invoicingHighlightKeys, load: loadPlanFeatures } =
+  usePlanFeatures();
+
+const proInvoicingFeatures = computed(() =>
+  planFeatures.value.pro.feature_keys.filter((key: string) =>
+    invoicingHighlightKeys.value.has(key),
+  ),
+);
+
+const proOtherFeatures = computed(() =>
+  planFeatures.value.pro.feature_keys.filter(
+    (key: string) => !invoicingHighlightKeys.value.has(key),
+  ),
+);
 
 //const router = useRouter();
 const authStore = useAuthStore();
