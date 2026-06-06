@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\BtcPay\SubscriptionService as BtcPaySubscriptionService;
+use App\Services\Invoicing\SubscriptionBillingInvoiceService;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -279,6 +280,35 @@ class SubscriptionController extends Controller
             }
             $user->save();
 
+            $subscriptionStoreId = config('services.btcpay.subscription_store_id');
+            $paidInvoice = $subscriptionStoreId
+                ? $this->btcpaySubscriptionService->resolvePaidInvoiceFromCheckout(
+                    $subscriptionStoreId,
+                    $checkoutDetails,
+                    $checkoutPlanId,
+                    $customerEmail,
+                )
+                : null;
+
+            if ($paidInvoice) {
+                try {
+                    app(SubscriptionBillingInvoiceService::class)->fulfillPaidInvoice(
+                        $user,
+                        $planName,
+                        $paidInvoice['id'],
+                        $paidInvoice['payload'],
+                    );
+                } catch (\Throwable $e) {
+                    Log::error('Subscription billing invoice failed on success redirect', [
+                        'user_id' => $user->id,
+                        'checkout_id' => $checkoutPlanId,
+                        'invoice_id' => $paidInvoice['id'],
+                        'error' => $e->getMessage(),
+                    ]);
+                    report($e);
+                }
+            }
+
             Log::info('Subscription activated after checkout success', [
                 'user_id' => $user->id,
                 'user_email' => $user->email,
@@ -288,6 +318,7 @@ class SubscriptionController extends Controller
                 'plan_id' => $planId,
                 'subscription_id' => $subscription->id,
                 'expires_at' => $subscription->expires_at,
+                'billing_invoice_id' => $paidInvoice['id'] ?? null,
             ]);
 
             return response()->json([

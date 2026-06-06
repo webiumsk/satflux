@@ -351,4 +351,68 @@ class SubscriptionService
             throw $e;
         }
     }
+
+    /**
+     * Resolve the settled BTCPay invoice for a completed plan checkout (success redirect fallback).
+     *
+     * @param  array<string, mixed>  $checkoutDetails
+     * @return array{id: string, payload: array<string, mixed>}|null
+     */
+    public function resolvePaidInvoiceFromCheckout(
+        string $storeId,
+        array $checkoutDetails,
+        string $checkoutPlanId,
+        ?string $customerEmail,
+    ): ?array {
+        $invoiceId = $checkoutDetails['invoiceId']
+            ?? ($checkoutDetails['invoice']['id'] ?? null)
+            ?? ($checkoutDetails['payment']['invoiceId'] ?? null);
+
+        $invoiceService = app(InvoiceService::class);
+
+        if (! $invoiceId) {
+            foreach (array_filter([$checkoutPlanId, $customerEmail]) as $search) {
+                try {
+                    $result = $invoiceService->listInvoices($storeId, [
+                        'textSearch' => $search,
+                        'status' => 'Settled',
+                    ], 0, 1);
+
+                    $list = $result['data'] ?? $result;
+                    if (is_array($list) && isset($list[0]['id'])) {
+                        $invoiceId = $list[0]['id'];
+                        break;
+                    }
+                } catch (BtcPayException $e) {
+                    Log::debug('Subscription checkout invoice lookup failed', [
+                        'checkout_id' => $checkoutPlanId,
+                        'search' => $search,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        if (! $invoiceId) {
+            return null;
+        }
+
+        try {
+            return [
+                'id' => $invoiceId,
+                'payload' => $invoiceService->getInvoice($storeId, $invoiceId),
+            ];
+        } catch (BtcPayException $e) {
+            Log::warning('Subscription checkout invoice fetch failed', [
+                'checkout_id' => $checkoutPlanId,
+                'invoice_id' => $invoiceId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'id' => $invoiceId,
+                'payload' => [],
+            ];
+        }
+    }
 }

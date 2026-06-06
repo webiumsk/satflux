@@ -42,6 +42,8 @@ return [
         // Seconds; BTCPay Greenfield user-by-email (per current API key hash).
         'user_by_email_cache_ttl' => (int) env('BTCPAY_USER_BY_EMAIL_CACHE_TTL', 300),
         'webhook_secret' => env('BTCPAY_WEBHOOK_SECRET'),
+        // Subscription store webhooks often use a different secret than merchant stores.
+        'subscription_webhook_secret' => env('SUBSCRIPTION_WEBHOOK_SECRET') ?: env('BTCPAY_WEBHOOK_SECRET'),
         'subscription_success_url' => env('SUBSCRIPTION_SUCCESS_URL'),
         'subscription_cancel_url' => env('SUBSCRIPTION_CANCEL_URL'),
         'allow_guest_subscriptions' => env('ALLOW_GUEST_SUBSCRIPTIONS', false),
