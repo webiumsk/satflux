@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Store;
 use App\Services\BtcPay\CashuService;
+use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\LightningService;
 use App\Services\StoreChecklistService;
 use Illuminate\Http\Request;
@@ -114,18 +115,32 @@ class CashuController extends Controller
 
         $payload = $this->buildCashuMeltSettingsPayloadFromRequest($request);
 
-        $updated = DB::transaction(function () use ($store, $payload, $userApiKey, $switchingFromLightning) {
-            if ($switchingFromLightning) {
-                $store->walletConnection()?->delete();
+        try {
+            $updated = DB::transaction(function () use ($store, $payload, $userApiKey, $switchingFromLightning) {
+                if ($switchingFromLightning) {
+                    $store->walletConnection()?->delete();
+                }
+
+                if (($store->wallet_type ?? null) === null || $switchingFromLightning) {
+                    $store->update(['wallet_type' => 'cashu']);
+                    $store->refresh();
+                }
+
+                return $this->cashuService->saveSettings($store->btcpay_store_id, $payload, $userApiKey);
+            });
+        } catch (BtcPayException $e) {
+            if ($e->getStatusCode() === 400
+                && str_contains($e->getMessage(), 'Request body must be a JSON object')) {
+                throw ValidationException::withMessages([
+                    'cashu' => [
+                        'CashuMelt plugin on BTCPay Server must be updated to version 1.2.0.5 or later '
+                        .'(BTCPay Server → Settings → Plugins). Saving Cashu settings via API is broken on older 1.1.x–1.2.0.4 builds.',
+                    ],
+                ]);
             }
 
-            if (($store->wallet_type ?? null) === null || $switchingFromLightning) {
-                $store->update(['wallet_type' => 'cashu']);
-                $store->refresh();
-            }
-
-            return $this->cashuService->saveSettings($store->btcpay_store_id, $payload, $userApiKey);
-        });
+            throw $e;
+        }
 
         $store->refresh();
 

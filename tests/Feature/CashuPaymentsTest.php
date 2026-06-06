@@ -342,4 +342,35 @@ class CashuPaymentsTest extends TestCase
         sort($deletedMethods);
         $this->assertSame(['BTC-LN', 'BTC-LNURL'], $deletedMethods);
     }
+
+    public function test_cashu_settings_put_maps_broken_plugin_json_binding_error(): void
+    {
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+        $btcpaySid = 'store-cashu-plugin-bind-bug';
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($btcpaySid) {
+            $url = $request->url();
+            if (! str_contains($url, "/api/v1/stores/{$btcpaySid}/plugins/cashumelt/settings") || $request->method() !== 'PUT') {
+                return Http::response(['error' => 'unexpected URL'], 500);
+            }
+
+            return Http::response(['error' => 'Request body must be a JSON object'], 400);
+        });
+
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'cashu',
+            'btcpay_store_id' => $btcpaySid,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->putJson("/api/stores/{$store->id}/cashu/settings", [
+            'mint_url' => 'https://mint.example/m',
+            'lightning_address' => 'z@example.com',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['cashu']);
+    }
 }

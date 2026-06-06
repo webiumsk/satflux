@@ -349,6 +349,28 @@ class StoreController extends Controller
                     }
                 } catch (\Illuminate\Validation\ValidationException $e) {
                     throw $e;
+                } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+                    Log::error('Failed to save Cashu settings during store creation', [
+                        'store_id' => $store->id,
+                        'btcpay_store_id' => $btcpayStoreId,
+                        'wallet_type' => $request->wallet_type,
+                        'error' => $e->getMessage(),
+                        'error_class' => get_class($e),
+                    ]);
+
+                    if ($e->getStatusCode() === 400
+                        && str_contains($e->getMessage(), 'Request body must be a JSON object')) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'cashu' => [
+                                'CashuMelt plugin on BTCPay Server must be updated to version 1.2.0.5 or later '
+                                .'(BTCPay Server → Settings → Plugins).',
+                            ],
+                        ]);
+                    }
+
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'cashu' => ['Failed to configure BTCPay Cashu plugin: '.$e->getMessage()],
+                    ]);
                 } catch (\Exception $e) {
                     Log::error('Failed to save Cashu settings during store creation', [
                         'store_id' => $store->id,
