@@ -2572,6 +2572,8 @@
       "positioning_bullet_2": "US LLC: americký firemný profil a položky v štýle sales tax.",
       "positioning_bullet_3": "Voliteľný Bitcoin checkout na každej vystavenej faktúre.",
       "cta": "Pozrieť Pro cenník",
+      "cta_active": "Otvoriť fakturáciu",
+      "cta_account": "Zobraziť váš plán",
       "compare": {
         "title": "Porovnanie",
         "subtitle": "Satflux Pro vs Zaprite vs typická európska fakturačná SaaS (napr. SuperFaktúra, Fakturoid). Dostupnosť funkcií závisí od plánu a krajiny.",
@@ -2643,6 +2645,7 @@
     "pricing_pro_badge": "Najlepšia hodnota",
     "pricing_pro_cta": "Prejsť na Pro",
     "pricing_pro_cta_guest": "Začať",
+    "pricing_pro_current_plan": "Váš aktuálny plán",
     "pricing_need_more_headline": "Potrebujete viac?",
     "pricing_need_more_text": "Pre väčšie tímy a špecifické požiadavky ponúkame prispôsobené plány s vyhradenou podporou.",
     "pricing_need_more_cta": "Kontaktujte nás",

@@ -999,6 +999,7 @@ import {
   proHasMonthlyDiscount,
 } from "../../composables/usePricing";
 import { usePlanFeatures } from "../../composables/usePlanFeatures";
+import { useCurrentPlan } from "../../composables/useCurrentPlan";
 import api from "../../services/api";
 import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
 import NostrAuthModal from "../../components/auth/NostrAuthModal.vue";
@@ -1007,11 +1008,8 @@ import {
   clearStoredGuestMnemonic,
   getStoredGuestMnemonic,
 } from "../../services/guestRecovery";
-import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
-
 const { t, locale } = useI18n();
 const router = useRouter();
-const { btcPayUrl, load: loadBtcpayConfig } = useBtcPayUrl();
 const authStore = useAuthStore();
 const flashStore = useFlashStore();
 const { pricing, formatSats, load: loadPricing } = usePricing();
@@ -1071,46 +1069,48 @@ const hasBothLinkedLogins = computed(
     !!authStore.user?.has_nostr_login,
 );
 
+const { planCode: effectivePlanCode } = useCurrentPlan();
+
 // Plan information
 const currentPlanName = computed(() => {
-  const role = authStore.user?.role || "free";
-  if (role === "enterprise") return t("account.plan_enterprise");
-  if (role === "pro") return t("account.plan_pro");
+  const code = effectivePlanCode.value;
+  if (code === "enterprise") return t("account.plan_enterprise");
+  if (code === "pro") return t("account.plan_pro");
   return t("account.plan_free");
 });
 
 const currentPlanPrice = computed(() => {
-  const role = authStore.user?.role || "free";
+  const code = effectivePlanCode.value;
   const p = pricing.value;
-  if (role === "enterprise") return "-";
-  if (role === "pro") return formatSats(proEffectiveMonthlySats(p.pro));
+  if (code === "enterprise") return "-";
+  if (code === "pro") return formatSats(proEffectiveMonthlySats(p.pro));
   return formatSats(p?.free?.sats_per_year ?? 0);
 });
 
 const currentPlanDescription = computed(() => {
-  const role = authStore.user?.role || "free";
-  if (role === "enterprise") return t("account.plan_desc_enterprise");
-  if (role === "pro") return t("account.plan_desc_pro");
+  const code = effectivePlanCode.value;
+  if (code === "enterprise") return t("account.plan_desc_enterprise");
+  if (code === "pro") return t("account.plan_desc_pro");
   return t("account.plan_desc_free");
 });
 
 const currentPlanFeatures = computed(() => {
-  const role = authStore.user?.role || "free";
+  const code = effectivePlanCode.value;
   const keys =
-    role === "enterprise"
+    code === "enterprise"
       ? planFeatures.value.enterprise.feature_keys
-      : role === "pro"
+      : code === "pro"
         ? planFeatures.value.pro.feature_keys
         : planFeatures.value.free.feature_keys;
   return keys.map((key: string) => t("plans.features." + key));
 });
 
 const isPaidPlan = computed(() => {
-  const role = authStore.user?.role || "free";
-  return role === "pro" || role === "enterprise";
+  const code = effectivePlanCode.value;
+  return code === "pro" || code === "enterprise";
 });
 
-const isProPlan = computed(() => authStore.user?.role === "pro");
+const isProPlan = computed(() => effectivePlanCode.value === "pro");
 
 // Upgrade options logic
 const showUpgradeOptions = computed(() => {
@@ -1118,19 +1118,17 @@ const showUpgradeOptions = computed(() => {
   if (authStore.user?.is_guest) {
     return false;
   }
-  // Show upgrades if user is free or pro (can upgrade to enterprise)
-  // Don't show for enterprise (top tier) or admin/support (not applicable)
-  return role === "free" || role === "pro";
+  if (role === "admin" || role === "support") {
+    return false;
+  }
+  return effectivePlanCode.value !== "enterprise";
 });
 
-const showProUpgrade = computed(() => {
-  const role = authStore.user?.role || "free";
-  return role === "free";
-});
+const showProUpgrade = computed(() => effectivePlanCode.value === "free");
 
 const showEnterpriseUpgrade = computed(() => {
-  const role = authStore.user?.role || "free";
-  return role === "free" || role === "pro";
+  const code = effectivePlanCode.value;
+  return code === "free" || code === "pro";
 });
 
 onMounted(async () => {
@@ -1180,38 +1178,24 @@ async function handleAddCredit() {
 
   addingCredit.value = true;
   try {
-    await loadBtcpayConfig();
     const response = await api.post("/subscriptions/credits", {
       amount: creditAmount.value,
       currency: "SATS",
     });
 
-    // Credit addition creates an invoice - redirect to payment
-    if (response.data.invoiceUrl) {
-      window.location.href = response.data.invoiceUrl;
-    } else if (response.data.invoiceId) {
-      const baseUrl =
-        response.data.baseUrl ||
-        btcPayUrl.value ||
-        (import.meta.env.VITE_BTCPAY_BASE_URL as string) ||
-        "";
-      if (!baseUrl) {
-        alert(t("account.credit_invoice_created"));
-        showAddCreditModal.value = false;
-        creditAmount.value = null;
-        return;
-      }
-      window.location.href = `${baseUrl.replace(/\/$/, "")}/i/${response.data.invoiceId}`;
-    } else {
-      // No invoice URL - this shouldn't happen, but handle gracefully
-      alert(t("account.credit_invoice_created"));
-      showAddCreditModal.value = false;
-      creditAmount.value = null;
+    const redirectUrl =
+      response.data.checkoutUrl || response.data.invoiceUrl || null;
+
+    if (redirectUrl) {
+      window.location.href = redirectUrl;
+      return;
     }
+
+    alert(t("account.checkout_failed"));
+    addingCredit.value = false;
   } catch (error: any) {
     console.error("Failed to add credit:", error);
     alert(error.response?.data?.message || t("account.add_credit_failed"));
-  } finally {
     addingCredit.value = false;
   }
 }

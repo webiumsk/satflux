@@ -2880,6 +2880,7 @@
             class="bg-gray-800 rounded-2xl p-8 border-2 border-indigo-500 shadow-2xl relative transform md:scale-[1.02] z-10"
           >
             <div
+              v-if="canUpgradeToPro"
               class="absolute top-0 right-0 -mt-4 mr-4 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide"
             >
               {{
@@ -2976,7 +2977,7 @@
               </li>
             </ul>
             <button
-              v-if="authStore.isAuthenticated"
+              v-if="canUpgradeToPro"
               @click="handleUpgrade('pro')"
               :disabled="subscribing"
               class="block w-full text-center px-6 py-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -2988,11 +2989,18 @@
               }}
             </button>
             <router-link
-              v-else
+              v-else-if="!authStore.isAuthenticated"
               to="/register"
               class="block w-full text-center px-6 py-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition-all"
             >
               {{ t("landing.pricing_pro_cta_guest") }}
+            </router-link>
+            <router-link
+              v-else
+              to="/account"
+              class="block w-full text-center px-6 py-4 rounded-xl border border-indigo-500/50 text-indigo-200 font-bold hover:bg-indigo-950/40 transition-all"
+            >
+              {{ t("landing.pricing_pro_current_plan") }}
             </router-link>
           </div>
         </div>
@@ -3167,6 +3175,7 @@ import {
   proHasMonthlyDiscount,
 } from "../composables/usePricing";
 import { usePlanFeatures } from "../composables/usePlanFeatures";
+import { useCurrentPlan } from "../composables/useCurrentPlan";
 import { onMounted, ref, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import PublicHeader from "../components/layout/PublicHeader.vue";
@@ -3202,6 +3211,7 @@ const proOtherFeatures = computed(() =>
 
 //const router = useRouter();
 const authStore = useAuthStore();
+const { canUpgradeToPro } = useCurrentPlan();
 const subscribing = ref(false);
 const subscribeError = ref("");
 const showEnterpriseContact = ref(false);
@@ -3279,12 +3289,10 @@ const posDemoUrl = computed(() => {
 // Ensure user, pricing and plan features are fetched on mount; anchor smooth-scroll
 onMounted(async () => {
   await Promise.all([loadPricing(), loadPlanFeatures(), loadBtcpayConfig()]);
-  if (!authStore.user) {
-    try {
-      await authStore.fetchUser();
-    } catch {
-      // User not authenticated, which is fine
-    }
+  try {
+    await authStore.fetchUser();
+  } catch {
+    // User not authenticated, which is fine
   }
 
   if (window.location.hash) {

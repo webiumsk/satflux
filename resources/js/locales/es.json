@@ -1820,6 +1820,8 @@
       "positioning_bullet_2": "LLC estadounidense: perfil US y líneas estilo sales tax.",
       "positioning_bullet_3": "Checkout Bitcoin opcional en cada factura emitida.",
       "cta": "Ver precios Pro",
+      "cta_active": "Abrir facturación",
+      "cta_account": "Ver tu plan",
       "compare": {
         "title": "Comparativa",
         "subtitle": "Satflux Pro vs Zaprite vs SaaS de facturación UE típica (p. ej. SuperFaktúra, Fakturoid). La disponibilidad varía según plan y país.",
@@ -1891,6 +1893,7 @@
     "pricing_pro_badge": "Mejor valor",
     "pricing_pro_cta": "Pasar a Pro",
     "pricing_pro_cta_guest": "Empezar",
+    "pricing_pro_current_plan": "Tu plan actual",
     "pricing_need_more_headline": "¿Necesitas más?",
     "pricing_need_more_text": "Para equipos grandes y requisitos a medida, ofrecemos planes personalizados con soporte dedicado.",
     "pricing_need_more_cta": "Contáctanos",

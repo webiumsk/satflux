@@ -259,4 +259,89 @@ class SubscriptionTest extends TestCase
 
         $response->assertStatus(422);
     }
+
+    #[Test]
+    public function authenticated_user_can_create_credit_purchase_checkout(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'subscriber@example.com',
+        ]);
+
+        config(['services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store']);
+        config(['services.btcpay.subscription_offering_id' => 'offering_test']);
+        config(['services.btcpay.subscription_plans.pro' => 'plan_pro_test']);
+
+        Http::fake(function ($request) {
+            $url = (string) $request->url();
+            if (str_contains($url, '/subscribers/subscriber%40example.com') && $request->method() === 'GET') {
+                return Http::response([
+                    'plan' => ['id' => 'plan_pro_test', 'name' => 'Pro Plan'],
+                    'isActive' => true,
+                ]);
+            }
+            if (str_contains($url, '/api/v1/plan-checkout') && $request->method() === 'POST') {
+                return Http::response([
+                    'id' => 'checkout_credit123',
+                    'url' => 'https://btcpay.example.test/plan-checkout/checkout_credit123',
+                    'invoiceId' => 'inv_credit123',
+                    'expiration' => now()->addHours(24)->timestamp,
+                ]);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $response = $this->actingAs($user)->postJson('/api/subscriptions/credits', [
+            'amount' => 5000,
+            'currency' => 'SATS',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'checkoutUrl' => 'https://btcpay.example.test/plan-checkout/checkout_credit123',
+                'checkoutId' => 'checkout_credit123',
+                'invoiceId' => 'inv_credit123',
+                'invoiceUrl' => 'https://btcpay.example.test/i/inv_credit123',
+            ]);
+
+        Http::assertSent(function ($request) {
+            if ($request->method() !== 'POST' || ! str_contains((string) $request->url(), '/api/v1/plan-checkout')) {
+                return false;
+            }
+
+            $body = $request->data();
+
+            return ($body['creditPurchase'] ?? null) === '5000'
+                && ($body['customerSelector'] ?? null) === 'subscriber@example.com'
+                && ($body['planId'] ?? null) === 'plan_pro_test'
+                && ($body['isTrial'] ?? null) === false;
+        });
+    }
+
+    #[Test]
+    public function credit_purchase_requires_active_subscription(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'nosub@example.com',
+        ]);
+
+        config(['services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store']);
+        config(['services.btcpay.subscription_offering_id' => 'offering_test']);
+
+        Http::fake([
+            '*' => Http::response([], 404),
+        ]);
+
+        $response = $this->actingAs($user)->postJson('/api/subscriptions/credits', [
+            'amount' => 1000,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('message', 'Active subscription required before purchasing credits.');
+
+        Http::assertNotSent(function ($request) {
+            return $request->method() === 'POST'
+                && str_contains((string) $request->url(), '/api/v1/plan-checkout');
+        });
+    }
 }

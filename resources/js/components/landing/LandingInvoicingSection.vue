@@ -84,10 +84,10 @@
             <li>{{ t('landing.invoicing_section.positioning_bullet_3') }}</li>
           </ul>
           <router-link
-            to="/#pricing"
+            :to="invoicingCtaTo"
             class="mt-6 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-500 transition-colors"
           >
-            {{ t('landing.invoicing_section.cta') }}
+            {{ invoicingCtaLabel }}
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>
@@ -177,7 +177,10 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useBusinessInvoicing } from '../../composables/useBusinessInvoicing';
+import { useCurrentPlan } from '../../composables/useCurrentPlan';
 import {
   INVOICING_COMPARE_ROWS,
   INVOICING_FEATURE_BULLETS,
@@ -185,6 +188,24 @@ import {
 import InvoicingCompareCell from './InvoicingCompareCell.vue';
 
 const { t } = useI18n();
+const { canUse: canUseInvoicing } = useBusinessInvoicing();
+const { canUpgradeToPro } = useCurrentPlan();
+
+const invoicingCtaTo = computed(() => {
+  if (canUseInvoicing.value) return '/invoicing';
+  if (canUpgradeToPro.value) return '/#pricing';
+  return '/account';
+});
+
+const invoicingCtaLabel = computed(() => {
+  if (canUseInvoicing.value) {
+    return t('landing.invoicing_section.cta_active');
+  }
+  if (canUpgradeToPro.value) {
+    return t('landing.invoicing_section.cta');
+  }
+  return t('landing.invoicing_section.cta_account');
+});
 
 const featureBullets = INVOICING_FEATURE_BULLETS;
 const compareRows = INVOICING_COMPARE_ROWS;

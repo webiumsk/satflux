@@ -2567,6 +2567,8 @@
       "positioning_bullet_2": "US LLC merchants: US company profile and sales-tax style line items.",
       "positioning_bullet_3": "Optional Bitcoin checkout on every issued invoice.",
       "cta": "See Pro pricing",
+      "cta_active": "Open invoicing",
+      "cta_account": "View your plan",
       "compare": {
         "title": "How Satflux compares",
         "subtitle": "Satflux Pro vs Zaprite vs typical EU invoicing SaaS (e.g. SuperFaktúra, Fakturoid). Feature availability varies by plan and country.",
@@ -2638,6 +2640,7 @@
     "pricing_pro_badge": "Best value",
     "pricing_pro_cta": "Upgrade to Pro",
     "pricing_pro_cta_guest": "Get started",
+    "pricing_pro_current_plan": "Your current plan",
     "pricing_need_more_headline": "Need more?",
     "pricing_need_more_text": "For larger teams and custom requirements, we offer tailored plans with dedicated support.",
     "pricing_need_more_cta": "Contact us",

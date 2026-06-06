@@ -129,36 +129,10 @@ class SubscriptionService
             ]);
 
             $response = $this->client->post('/api/v1/plan-checkout', $payload);
-
-            // Extract checkout URL and ID from response
-            // BTCPay returns: { id: "...", url: "...", expiration?: timestamp }
-            // Note: BTCPay uses 'id' and 'url' fields, not 'checkoutId' and 'checkoutUrl'
-            $checkoutId = $response['id'] ?? $response['checkoutId'] ?? null;
-            $checkoutUrl = $response['url'] ?? $response['checkoutUrl'] ?? null;
-
-            if (! $checkoutId || ! $checkoutUrl) {
-                Log::error('Invalid checkout response from BTCPay', [
-                    'response' => $response,
-                ]);
-                throw new BtcPayException('Invalid response from BTCPay: missing id/checkoutId or url/checkoutUrl', 500);
-            }
-
-            $result = [
-                'checkoutId' => $checkoutId,
-                'checkoutUrl' => $checkoutUrl,
-            ];
-
-            // Handle expiration - BTCPay may return 'expiration' as Unix timestamp
-            if (isset($response['expiration'])) {
-                $result['expiresAt'] = is_numeric($response['expiration'])
-                    ? date('c', $response['expiration']) // Convert Unix timestamp to ISO 8601
-                    : $response['expiration'];
-            } elseif (isset($response['expiresAt'])) {
-                $result['expiresAt'] = $response['expiresAt'];
-            }
+            $result = $this->resolvePlanCheckoutResponse($response);
 
             Log::info('Plan checkout created successfully', [
-                'checkout_id' => $checkoutId,
+                'checkout_id' => $result['checkoutId'],
                 'store_id' => $storeId,
                 'plan_id' => $planId,
             ]);
@@ -315,7 +289,78 @@ class SubscriptionService
     }
 
     /**
-     * Add credit to subscriber account.
+     * Create a plan checkout for purchasing subscriber credits (issues a BTCPay invoice).
+     *
+     * @param  string  $storeId  BTCPay store ID
+     * @param  string  $offeringId  BTCPay offering ID
+     * @param  string  $planId  Subscriber's current plan ID
+     * @param  string  $customerSelector  Existing subscriber selector (email or customer ID)
+     * @param  float|int|string  $amount  Credit amount to purchase (plan currency, e.g. SATS)
+     * @param  array  $options  Optional:
+     *                          - successRedirectUrl (string)
+     *                          - cancelRedirectUrl (string|null)
+     * @return array{checkoutId: string, checkoutUrl: string, invoiceId: ?string, invoiceUrl: ?string, expiresAt?: string}
+     *
+     * @throws BtcPayException
+     */
+    public function createCreditPurchaseCheckout(
+        string $storeId,
+        string $offeringId,
+        string $planId,
+        string $customerSelector,
+        $amount,
+        array $options = []
+    ): array {
+        $payload = [
+            'storeId' => $storeId,
+            'offeringId' => $offeringId,
+            'planId' => $planId,
+            'customerSelector' => $customerSelector,
+            'creditPurchase' => (string) $amount,
+            'isTrial' => false,
+        ];
+
+        if (isset($options['successRedirectUrl'])) {
+            $payload['successRedirectUrl'] = $options['successRedirectUrl'];
+        } else {
+            $baseUrl = config('app.url');
+            $payload['successRedirectUrl'] = config('services.btcpay.subscription_success_url', "{$baseUrl}/billing/success");
+        }
+
+        if (isset($options['cancelRedirectUrl'])) {
+            $payload['cancelRedirectUrl'] = $options['cancelRedirectUrl'];
+        } elseif (config('services.btcpay.subscription_cancel_url')) {
+            $payload['cancelRedirectUrl'] = config('services.btcpay.subscription_cancel_url');
+        }
+
+        try {
+            Log::info('Creating credit purchase checkout', [
+                'store_id' => $storeId,
+                'offering_id' => $offeringId,
+                'plan_id' => $planId,
+                'customer_selector' => $customerSelector,
+                'amount' => $amount,
+            ]);
+
+            $response = $this->client->post('/api/v1/plan-checkout', $payload);
+
+            return $this->resolvePlanCheckoutResponse($response);
+        } catch (BtcPayException $e) {
+            Log::error('Failed to create credit purchase checkout', [
+                'store_id' => $storeId,
+                'offering_id' => $offeringId,
+                'plan_id' => $planId,
+                'customer_selector' => $customerSelector,
+                'amount' => $amount,
+                'error' => $e->getMessage(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Merchant-side credit adjustment (no customer payment invoice).
      *
      * @param  string  $storeId  BTCPay store ID
      * @param  string  $offeringId  BTCPay offering ID
@@ -332,8 +377,6 @@ class SubscriptionService
             $encodedSelector = rawurlencode($customerSelector);
             $encodedCurrency = rawurlencode($currency);
 
-            // BTCPay API expects 'credit' as a string numeric value
-            // This will create an invoice for the credit amount
             $payload = [
                 'credit' => (string) $amount,
             ];
@@ -357,6 +400,51 @@ class SubscriptionService
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $response
+     * @return array{checkoutId: string, checkoutUrl: string, invoiceId: ?string, invoiceUrl: ?string, expiresAt?: string}
+     */
+    protected function resolvePlanCheckoutResponse(array $response): array
+    {
+        $checkoutId = $response['id'] ?? $response['checkoutId'] ?? null;
+        $checkoutUrl = $response['url'] ?? $response['checkoutUrl'] ?? $response['redirectUrl'] ?? null;
+        $invoiceId = $response['invoiceId'] ?? ($response['invoice']['id'] ?? null);
+        $baseUrl = $response['baseUrl'] ?? config('services.btcpay.base_url');
+
+        $invoiceUrl = null;
+        if ($invoiceId && $baseUrl) {
+            $invoiceUrl = rtrim((string) $baseUrl, '/').'/i/'.$invoiceId;
+        }
+
+        if (! $checkoutUrl && $invoiceUrl) {
+            $checkoutUrl = $invoiceUrl;
+        }
+
+        if (! $checkoutId || ! $checkoutUrl) {
+            Log::error('Invalid plan checkout response from BTCPay', [
+                'response' => $response,
+            ]);
+            throw new BtcPayException('Invalid response from BTCPay: missing checkout URL', 500);
+        }
+
+        $result = [
+            'checkoutId' => $checkoutId,
+            'checkoutUrl' => $checkoutUrl,
+            'invoiceId' => $invoiceId,
+            'invoiceUrl' => $invoiceUrl,
+        ];
+
+        if (isset($response['expiration'])) {
+            $result['expiresAt'] = is_numeric($response['expiration'])
+                ? date('c', (int) $response['expiration'])
+                : $response['expiration'];
+        } elseif (isset($response['expiresAt'])) {
+            $result['expiresAt'] = $response['expiresAt'];
+        }
+
+        return $result;
     }
 
     /**

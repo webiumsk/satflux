@@ -474,7 +474,7 @@ class SubscriptionController extends Controller
     }
 
     /**
-     * Add credit to subscriber account.
+     * Create a BTCPay invoice for purchasing subscriber credits.
      *
      * POST /api/subscriptions/credits
      * Body: { amount: number, currency?: string }
@@ -500,42 +500,68 @@ class SubscriptionController extends Controller
 
         $storeId = config('services.btcpay.subscription_store_id');
         $offeringId = config('services.btcpay.subscription_offering_id');
-        $currency = $this->normalizeSubscriptionCreditsCurrency((string) $request->input('currency', 'SATS'));
         $amount = $request->input('amount');
 
+        if (! $storeId || ! $offeringId) {
+            return response()->json([
+                'message' => 'Subscription configuration is incomplete. Please contact support.',
+            ], 500);
+        }
+
         try {
-            // Add credit via BTCPay API (this will create an invoice for the credit)
-            $description = $request->input('description', 'Credit purchase');
-            $result = $this->btcpaySubscriptionService->addSubscriberCredits($storeId, $offeringId, $user->email, $currency, $amount, $description);
+            $subscriber = $this->btcpaySubscriptionService->getSubscriber($storeId, $offeringId, $user->email);
+            $planId = $subscriber['plan']['id'] ?? null;
 
-            // BTCPay returns invoice information in the response
-            $invoiceId = $result['invoiceId'] ?? null;
-            $invoiceUrl = $result['invoiceUrl'] ?? $result['url'] ?? null;
-
-            // If invoice URL is not in response, construct it from base URL and invoice ID
-            if (! $invoiceUrl && $invoiceId) {
-                $baseUrl = config('services.btcpay.base_url');
-                $invoiceUrl = "{$baseUrl}/i/{$invoiceId}";
+            if (! $planId) {
+                return response()->json([
+                    'message' => 'Active subscription required before purchasing credits.',
+                ], 422);
             }
 
+            $baseUrl = config('app.url');
+            $successUrl = config('services.btcpay.subscription_success_url', "{$baseUrl}/billing/success");
+
+            $checkout = $this->btcpaySubscriptionService->createCreditPurchaseCheckout(
+                $storeId,
+                $offeringId,
+                $planId,
+                $user->email,
+                $amount,
+                ['successRedirectUrl' => $successUrl]
+            );
+
+            Log::info('Credit purchase checkout created via API', [
+                'checkout_id' => $checkout['checkoutId'],
+                'invoice_id' => $checkout['invoiceId'] ?? null,
+                'user_id' => $user->id,
+                'amount' => $amount,
+            ]);
+
             return response()->json([
-                'message' => 'Credit invoice created successfully',
-                'invoiceId' => $invoiceId,
-                'invoiceUrl' => $invoiceUrl,
-                'details' => $result,
+                'message' => 'Credit checkout created successfully',
+                'checkoutUrl' => $checkout['checkoutUrl'],
+                'checkoutId' => $checkout['checkoutId'],
+                'invoiceId' => $checkout['invoiceId'],
+                'invoiceUrl' => $checkout['invoiceUrl'] ?? $checkout['checkoutUrl'],
+                'expiresAt' => $checkout['expiresAt'] ?? null,
             ]);
 
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
-            Log::error('Failed to add credit', [
+            if ($e->getStatusCode() === 404) {
+                return response()->json([
+                    'message' => 'Active subscription required before purchasing credits.',
+                ], 422);
+            }
+
+            Log::error('Failed to create credit purchase checkout', [
                 'user_id' => $user->id,
                 'amount' => $amount,
-                'currency' => $currency,
                 'error' => $e->getMessage(),
                 'status_code' => $e->getStatusCode(),
             ]);
 
             return response()->json([
-                'message' => $e->getMessage() ?: 'Failed to add credit',
+                'message' => $e->getMessage() ?: 'Failed to create credit checkout',
             ], $e->getStatusCode() ?: 500);
         }
     }
