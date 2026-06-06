@@ -981,9 +981,13 @@
     "footer_open_source": "Open source pod licenciou ",
     "footer_license_link": "MIT",
     "footer_period": ".",
-    "footer_support_me": "Podporte ma",
+    "footer_support_me": "Podporte nás",
     "footer_ln_copy_aria": "Skopírovať Lightning adresu",
-    "footer_ln_copied": "Skopírované!"
+    "footer_ln_copied": "Skopírované!",
+    "footer_legal_terms": "Podmienky",
+    "footer_legal_privacy": "Súkromie",
+    "footer_legal_imprint": "Impressum",
+    "footer_legal_dpa": "DPA"
   },
   "auth": {
     "welcome_back": "Vitajte späť",
@@ -2003,6 +2007,8 @@
     "feature_raffle": "Tombola",
     "feature_pay_button": "Pay Button",
     "feature_exports": "Exporty",
+    "feature_invoicing": "Firemná fakturácia",
+    "landing_invoicing": "Fakturácia",
     "how_it_works": "Ako to funguje",
     "what_satflux_is": "Čo je SATFLUX",
     "my_stores": "Moje obchody"
@@ -2546,6 +2552,59 @@
     "point_of_sale_description": "Prispôsobiteľné PoS klávesnice pre maloobchod alebo mobilný predaj.",
     "invoicing": "Fakturácia",
     "invoicing_description": "Vytvárajte, sledujte a exportujte faktúry bezpečne.",
+    "invoicing_section": {
+      "kicker": "Pro funkcia",
+      "title": "Firemná fakturácia pre obchodníkov",
+      "subtitle": "Vystavujte faktúry, párujte bankové platby a umožnite platbu bankou alebo Bitcoinom - v jednej aplikácii s vašimi obchodmi.",
+      "features_title": "Čo dostanete v Pro",
+      "bullets": {
+        "companies": "Firemné profily pre EÚ (SK/CZ) a US jurisdikcie",
+        "pay_by_square": "Pay by Square QR na PDF faktúrach (SK/CZ)",
+        "btc_pay_link": "Stabilný Bitcoin pay link a QR na každej vystavenej faktúre",
+        "bank_matching": "Import bankových výpisov a párovanie podľa variabilného symbolu",
+        "expenses": "Náklady dodávateľov s prílohami a duplikátmi",
+        "recurring": "Pravidelné faktúry s plánovaným generovaním"
+      },
+      "pro_note": "Súčasť Pro (30-dňová skúšobná doba). Prijímanie platieb cez BTCPay funguje aj po expirácii Pro.",
+      "positioning_title": "Jeden stack, nie tri nástroje",
+      "positioning_text": "Satflux spája BTCPay merchant nástroje s účtovnou fakturáciou. Nepotrebujete samostatnú platobnú appku, lokálnu e-fakturáciu a exportné skripty.",
+      "positioning_bullet_1": "EÚ obchodníci: SK/CZ polia, variabilný symbol, Pay by Square.",
+      "positioning_bullet_2": "US LLC: americký firemný profil a položky v štýle sales tax.",
+      "positioning_bullet_3": "Voliteľný Bitcoin checkout na každej vystavenej faktúre.",
+      "cta": "Pozrieť Pro cenník",
+      "compare": {
+        "title": "Porovnanie",
+        "subtitle": "Satflux Pro vs Zaprite vs typická európska fakturačná SaaS (napr. SuperFaktúra, Fakturoid). Dostupnosť funkcií závisí od plánu a krajiny.",
+        "col_feature": "Schopnosť",
+        "col_satflux": "Satflux Pro",
+        "col_zaprite": "Zaprite",
+        "col_eu": "EÚ fakturačná SaaS",
+        "disclaimer": "Porovnanie podľa verejne dostupných informácií k 2026. Požiadavky na compliance overte s účtovníkom pre vašu jurisdikciu.",
+        "values": {
+          "yes": "Áno",
+          "partial": "Čiastočne",
+          "no": "Nie",
+          "pro": "Pro plán"
+        },
+        "rows": {
+          "btc_ln_checkout": "Bitcoin / Lightning checkout",
+          "pay_by_square": "Pay by Square na PDF faktúre",
+          "sk_cz_compliance": "SK/CZ polia faktúry a VS",
+          "isdoc_efaktura": "ISDOC / e-fakturácia",
+          "bank_matching": "Párovanie bankových platieb",
+          "expenses": "Modul nákladov",
+          "recurring": "Pravidelné faktúry",
+          "btcpay_stores": "Multi-store BTCPay panel",
+          "us_llc_profile": "US LLC firemný profil",
+          "self_custody": "Non-custodial Bitcoin platby"
+        },
+        "notes": {
+          "pay_by_square": "SK/CZ štandard bankového QR",
+          "sk_cz_compliance": "Satflux: silné SK/CZ PDF; plná e-fakturácia v pláne",
+          "isdoc_efaktura": "V pláne; EÚ SaaS často natívne"
+        }
+      }
+    },
     "feature_lightning_ecash_title": "Lightning a ecash na jednom mieste",
     "feature_lightning_ecash_description": "Prijímajte Lightning platby a voliteľné Cashu vyrovnania cez váš BTCPay obchod-rýchla pokladňa bez toho, aby ste nám zverili kľúče.",
     "feature_lightning_ecash_bullet_ln": "Jedno Lightning prepojenie na obchod: Blink (connection string), alebo Aqua/Bull (Boltz) cez watch-only deskriptor alebo SamRock QR (Aqua).",
@@ -2915,6 +2974,41 @@
       }
     }
   },
+  "legal": {
+    "nav": {
+      "terms": "Obchodné podmienky",
+      "privacy": "Ochrana údajov",
+      "imprint": "Impressum",
+      "dpa": "DPA"
+    },
+    "last_updated": "Posledná aktualizácia",
+    "questions": "Otázky k týmto dokumentom?",
+    "consent": {
+      "terms": "Súhlasím s {termsLink}.",
+      "privacy": "Súhlasím so spracovaním osobných údajov podľa {privacyLink}.",
+      "required": "Pred pokračovaním prosím potvrďte požadované súhlasy."
+    },
+    "cookies": {
+      "title": "Cookies na satflux.io",
+      "description": "Používame nevyhnutné cookies pre prihlásenie, bezpečnosť (CSRF) a jazyk. Voliteľná analytika sa načíta až po súhlase. Viac v ",
+      "accept": "Prijať všetko",
+      "essential_only": "Len nevyhnutné"
+    },
+    "contact": {
+      "name": "Meno",
+      "email": "E-mail",
+      "subject": "Predmet",
+      "message": "Správa",
+      "submit": "Odoslať správu",
+      "sending": "Odosielam...",
+      "success": "Ďakujeme. Vašu správu sme prijali.",
+      "error": "Správu sa nepodarilo odoslať. Skúste znova alebo napíšte na hello@satflux.io.",
+      "enterprise_title": "Kontakt pre Enterprise",
+      "enterprise_subject": "Dopyt na Enterprise plán",
+      "support_title": "Kontaktovať podporu",
+      "support_description": "Pošlite nám správu. Zvyčajne odpovedáme e-mailom do niekoľkých pracovných dní."
+    }
+  },
   "seo": {
     "landing_title": "Prijímajte Bitcoin bez limitov",
     "landing_description": "Prijímajte platby Bitcoinom a cez Lightning bez limitov. Non-custodial merchant ovládací panel s multi-store správou, PoS terminálmi a pokročilými analytikami.",
@@ -2933,6 +3027,14 @@
     "dashboard_title": "Dashboard",
     "stores_title": "Obchody",
     "account_check_email_title": "Overenie e-mailu",
-    "account_check_email_description": "Potvrď svoju e-mailovú adresu na dokončenie upgradu účtu satflux.io."
+    "account_check_email_description": "Potvrď svoju e-mailovú adresu na dokončenie upgradu účtu satflux.io.",
+    "legal_terms_title": "Obchodné podmienky",
+    "legal_terms_description": "Obchodné podmienky služby satflux.io prevádzkovanej spoločnosťou Webium LLC.",
+    "legal_privacy_title": "Ochrana osobných údajov",
+    "legal_privacy_description": "Zásady ochrany osobných údajov a GDPR pre satflux.io.",
+    "legal_imprint_title": "Impressum",
+    "legal_imprint_description": "Právne informácie a údaje prevádzkovateľa satflux.io.",
+    "legal_dpa_title": "Zmluva o spracúvaní údajov",
+    "legal_dpa_description": "Šablóna DPA podľa GDPR pre Enterprise zákazníkov satflux.io."
   }
 }

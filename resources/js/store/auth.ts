@@ -124,7 +124,12 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    async function register(email: string, password: string, password_confirmation: string) {
+    async function register(
+        email: string,
+        password: string,
+        password_confirmation: string,
+        consents?: { privacy_consent: boolean; terms_accepted: boolean },
+    ) {
         loading.value = true;
         try {
             // Ensure CSRF cookie is set before register
@@ -134,6 +139,8 @@ export const useAuthStore = defineStore('auth', () => {
                 email,
                 password,
                 password_confirmation,
+                privacy_consent: consents?.privacy_consent ?? false,
+                terms_accepted: consents?.terms_accepted ?? false,
             });
             // Session is not created until email is verified; do not treat as logged in.
             clearLocalAuthAndTenantState();

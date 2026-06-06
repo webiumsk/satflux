@@ -981,9 +981,13 @@
     "footer_open_source": "Open source under the ",
     "footer_license_link": "MIT License",
     "footer_period": ".",
-    "footer_support_me": "Support me",
+    "footer_support_me": "Support us",
     "footer_ln_copy_aria": "Copy Lightning address",
-    "footer_ln_copied": "Copied!"
+    "footer_ln_copied": "Copied!",
+    "footer_legal_terms": "Terms",
+    "footer_legal_privacy": "Privacy",
+    "footer_legal_imprint": "Imprint",
+    "footer_legal_dpa": "DPA"
   },
   "auth": {
     "welcome_back": "Welcome back",
@@ -2002,6 +2006,8 @@
     "feature_raffle": "Raffle",
     "feature_pay_button": "Pay Button",
     "feature_exports": "Exports",
+    "feature_invoicing": "Business invoicing",
+    "landing_invoicing": "Invoicing",
     "how_it_works": "How it works",
     "what_satflux_is": "What SATFLUX is",
     "my_stores": "My Stores"
@@ -2541,6 +2547,59 @@
     "point_of_sale_description": "Customizable PoS keypads for retail or mobile usage.",
     "invoicing": "Invoicing",
     "invoicing_description": "Create, track, and export invoices securely.",
+    "invoicing_section": {
+      "kicker": "Pro feature",
+      "title": "Business invoicing for merchants",
+      "subtitle": "Issue compliant invoices, match bank payments, and let customers pay by bank or Bitcoin - in the same app as your stores.",
+      "features_title": "What you get on Pro",
+      "bullets": {
+        "companies": "Company profiles for EU (SK/CZ) and US jurisdictions",
+        "pay_by_square": "Pay by Square QR on PDF invoices (SK/CZ)",
+        "btc_pay_link": "Stable Bitcoin pay link and QR on each issued invoice",
+        "bank_matching": "Bank statement import and payment matching by variable symbol",
+        "expenses": "Supplier expenses with attachments and duplicates",
+        "recurring": "Recurring invoice profiles with scheduled generation"
+      },
+      "pro_note": "Included in Pro (30-day trial). Your BTCPay payment acceptance keeps working even if Pro expires.",
+      "positioning_title": "One stack, not three tools",
+      "positioning_text": "Satflux combines BTCPay merchant tooling with accounting-grade invoicing. You do not need a separate payment app plus a local e-fakturácia tool plus export scripts.",
+      "positioning_bullet_1": "EU merchants: SK/CZ fields, variable symbol, Pay by Square.",
+      "positioning_bullet_2": "US LLC merchants: US company profile and sales-tax style line items.",
+      "positioning_bullet_3": "Optional Bitcoin checkout on every issued invoice.",
+      "cta": "See Pro pricing",
+      "compare": {
+        "title": "How Satflux compares",
+        "subtitle": "Satflux Pro vs Zaprite vs typical EU invoicing SaaS (e.g. SuperFaktúra, Fakturoid). Feature availability varies by plan and country.",
+        "col_feature": "Capability",
+        "col_satflux": "Satflux Pro",
+        "col_zaprite": "Zaprite",
+        "col_eu": "EU invoicing SaaS",
+        "disclaimer": "Comparison based on publicly documented features as of 2026. Verify compliance requirements with your accountant for your jurisdiction.",
+        "values": {
+          "yes": "Yes",
+          "partial": "Partial",
+          "no": "No",
+          "pro": "Pro plan"
+        },
+        "rows": {
+          "btc_ln_checkout": "Bitcoin / Lightning checkout",
+          "pay_by_square": "Pay by Square on invoice PDF",
+          "sk_cz_compliance": "SK/CZ invoice fields and VS",
+          "isdoc_efaktura": "ISDOC / e-fakturácia ready",
+          "bank_matching": "Bank payment matching",
+          "expenses": "Business expenses module",
+          "recurring": "Recurring invoices",
+          "btcpay_stores": "Multi-store BTCPay control panel",
+          "us_llc_profile": "US LLC company profile",
+          "self_custody": "Non-custodial Bitcoin payments"
+        },
+        "notes": {
+          "pay_by_square": "SK/CZ bank QR standard",
+          "sk_cz_compliance": "Satflux: strong SK/CZ PDF; full e-fakturácia on roadmap",
+          "isdoc_efaktura": "Roadmap; EU SaaS often native"
+        }
+      }
+    },
     "feature_lightning_ecash_title": "Lightning & Ecash in One Place",
     "feature_lightning_ecash_description": "Take Lightning payments and optional Cashu settlements through your BTCPay store-fast checkout without giving us your keys.",
     "feature_lightning_ecash_bullet_ln": "One Lightning setup per store: Blink (connection string), or Aqua/Bull (Boltz) via watch-only descriptor or SamRock QR (Aqua).",
@@ -2911,6 +2970,41 @@
       }
     }
   },
+  "legal": {
+    "nav": {
+      "terms": "Terms of Service",
+      "privacy": "Privacy Policy",
+      "imprint": "Imprint",
+      "dpa": "DPA"
+    },
+    "last_updated": "Last updated",
+    "questions": "Questions about these documents?",
+    "consent": {
+      "terms": "I agree to the {termsLink}.",
+      "privacy": "I agree to the processing of my personal data according to the {privacyLink}.",
+      "required": "Please accept the required consents before continuing."
+    },
+    "cookies": {
+      "title": "Cookies on satflux.io",
+      "description": "We use essential cookies for login, security (CSRF), and language preference. Optional analytics cookies are not loaded until you accept. See our ",
+      "accept": "Accept all",
+      "essential_only": "Essential only"
+    },
+    "contact": {
+      "name": "Name",
+      "email": "Email",
+      "subject": "Subject",
+      "message": "Message",
+      "submit": "Send message",
+      "sending": "Sending...",
+      "success": "Thank you. We received your message.",
+      "error": "Could not send your message. Please try again or email hello@satflux.io.",
+      "enterprise_title": "Contact us about Enterprise",
+      "enterprise_subject": "Enterprise plan inquiry",
+      "support_title": "Contact support",
+      "support_description": "Send us a message. We usually reply by email within a few business days."
+    }
+  },
   "seo": {
     "landing_title": "Accept Bitcoin Without Limits",
     "landing_description": "Accept Bitcoin & Lightning payments without limits. Non-custodial merchant control panel with multi-store management, PoS terminals, and advanced analytics.",
@@ -2929,6 +3023,14 @@
     "dashboard_title": "Dashboard",
     "stores_title": "Stores",
     "account_check_email_title": "Verify your email",
-    "account_check_email_description": "Confirm your satflux.io email address to finish upgrading your account."
+    "account_check_email_description": "Confirm your satflux.io email address to finish upgrading your account.",
+    "legal_terms_title": "Terms of Service",
+    "legal_terms_description": "Terms of Service for satflux.io operated by Webium LLC.",
+    "legal_privacy_title": "Privacy Policy",
+    "legal_privacy_description": "Privacy Policy and GDPR information for satflux.io.",
+    "legal_imprint_title": "Imprint",
+    "legal_imprint_description": "Legal notice and operator details for satflux.io.",
+    "legal_dpa_title": "Data Processing Agreement",
+    "legal_dpa_description": "GDPR DPA template for satflux.io Enterprise customers."
   }
 }

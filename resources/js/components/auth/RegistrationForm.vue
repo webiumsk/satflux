@@ -119,10 +119,16 @@
       </div>
     </div>
 
+    <LegalConsentFields
+      v-model:privacy-consent="privacyConsent"
+      v-model:terms-accepted="termsAccepted"
+      id-prefix="register"
+    />
+
     <div class="space-y-4">
       <button
         type="submit"
-        :disabled="loading"
+        :disabled="loading || !canSubmit"
         class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20"
       >
         {{ loading ? t("auth.creating_account") : t("auth.create_account") }}
@@ -323,6 +329,11 @@
                           {{ emailError }}
                         </div>
                       </div>
+                      <LegalConsentFields
+                        v-model:privacy-consent="privacyConsent"
+                        v-model:terms-accepted="termsAccepted"
+                        id-prefix="lnurl-register"
+                      />
                       <div class="flex justify-end gap-3">
                         <button
                           type="button"
@@ -333,7 +344,7 @@
                         </button>
                         <button
                           type="submit"
-                          :disabled="emailLoading"
+                          :disabled="emailLoading || !canSubmit"
                           class="inline-flex justify-center rounded-lg border border-transparent px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 sm:text-sm transition-colors"
                         >
                           {{
@@ -357,6 +368,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import LegalConsentFields from "../legal/LegalConsentFields.vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { usePage } from "@inertiajs/vue3";
@@ -407,6 +419,10 @@ const form = ref({
 });
 
 const loading = ref(false);
+const privacyConsent = ref(false);
+const termsAccepted = ref(false);
+
+const canSubmit = computed(() => privacyConsent.value && termsAccepted.value);
 
 const showLnurlModal = ref(false);
 const showNostrModal = ref(false);
@@ -528,6 +544,7 @@ async function handleResendVerification() {
 }
 
 async function handleRegister() {
+  if (!canSubmit.value) return;
   loading.value = true;
 
   try {
@@ -535,6 +552,7 @@ async function handleRegister() {
       form.value.email,
       form.value.password,
       form.value.password_confirmation,
+      { privacy_consent: privacyConsent.value, terms_accepted: termsAccepted.value },
     );
     registeredEmail.value = form.value.email;
     registrationSuccess.value = true;
@@ -659,6 +677,10 @@ async function handleCompleteRegistration() {
     emailError.value = t("auth.invalid_session");
     return;
   }
+  if (!canSubmit.value) {
+    emailError.value = t("legal.consent.required");
+    return;
+  }
 
   emailLoading.value = true;
   emailError.value = "";
@@ -667,6 +689,8 @@ async function handleCompleteRegistration() {
     await api.post("/lnurl-auth/complete-registration", {
       ...(hasUserId ? { user_id: emailForm.value.user_id } : { k1: lnurlK1.value }),
       email: emailForm.value.email,
+      privacy_consent: privacyConsent.value,
+      terms_accepted: termsAccepted.value,
     });
 
     lnurlRegistrationSuccess.value = true;

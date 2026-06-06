@@ -240,6 +240,8 @@ Route::middleware(['throttle:60,1', AuthenticateWooCommerceIntegration::class])
         Route::post('/documents/{documentId}/issue', [WooCommerceIntegrationController::class, 'issueDocument']);
     });
 
+Route::middleware(['throttle:10,1'])->post('/contact', [\App\Http\Controllers\ContactInquiryController::class, 'store']);
+
 // Authentication routes (rate limited)
 Route::middleware(['throttle:auth'])->group(function () {
     Route::post('/auth/register', [RegisterController::class, 'register']);

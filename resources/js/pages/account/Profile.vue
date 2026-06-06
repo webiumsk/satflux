@@ -111,9 +111,14 @@
                 >
                   {{ t("account.guest_upgrade_email_verify_notice") }}
                 </p>
+                <LegalConsentFields
+                  v-model:privacy-consent="guestPrivacyConsent"
+                  v-model:terms-accepted="guestTermsAccepted"
+                  id-prefix="guest-upgrade-email"
+                />
                 <button
                   type="submit"
-                  :disabled="guestUpgradeLoading"
+                  :disabled="guestUpgradeLoading || !guestUpgradeCanSubmit"
                   class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-50"
                 >
                   {{ guestUpgradeLoading ? t("auth.saving") : t("account.guest_upgrade_email_submit") }}
@@ -181,9 +186,14 @@
                   >
                     {{ t("account.guest_upgrade_email_verify_notice") }}
                   </p>
+                  <LegalConsentFields
+                    v-model:privacy-consent="guestPrivacyConsent"
+                    v-model:terms-accepted="guestTermsAccepted"
+                    id-prefix="guest-upgrade-linked"
+                  />
                   <button
                     type="submit"
-                    :disabled="guestUpgradeLoading"
+                    :disabled="guestUpgradeLoading || !guestUpgradeCanSubmit"
                     class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-50"
                   >
                     {{
@@ -992,6 +1002,7 @@ import { usePlanFeatures } from "../../composables/usePlanFeatures";
 import api from "../../services/api";
 import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
 import NostrAuthModal from "../../components/auth/NostrAuthModal.vue";
+import LegalConsentFields from "../../components/legal/LegalConsentFields.vue";
 import {
   clearStoredGuestMnemonic,
   getStoredGuestMnemonic,
@@ -1035,6 +1046,11 @@ const showGuestSeedModal = ref(false);
 const storedGuestMnemonic = ref<string | null>(null);
 const copiedSeed = ref(false);
 const guestUpgradeLoading = ref(false);
+const guestPrivacyConsent = ref(false);
+const guestTermsAccepted = ref(false);
+const guestUpgradeCanSubmit = computed(
+  () => guestPrivacyConsent.value && guestTermsAccepted.value,
+);
 const guestUpgradeMode = ref<"email" | "linked">("email");
 const guestUpgradeForm = ref({
   email: "",
@@ -1357,6 +1373,7 @@ async function copyStoredSeed() {
 }
 
 async function handleGuestUpgradeEmail() {
+  if (!guestUpgradeCanSubmit.value) return;
   guestUpgradeLoading.value = true;
   try {
     const response = await api.put("/user/guest/upgrade", {
@@ -1364,6 +1381,8 @@ async function handleGuestUpgradeEmail() {
       email: guestUpgradeForm.value.email,
       password: guestUpgradeForm.value.password,
       password_confirmation: guestUpgradeForm.value.password_confirmation,
+      privacy_consent: guestPrivacyConsent.value,
+      terms_accepted: guestTermsAccepted.value,
     });
     if (response?.data?.user) {
       authStore.user = response.data.user;
@@ -1400,6 +1419,7 @@ function resolveLinkedUpgradeMethod(): "lightning" | "nostr" {
 }
 
 async function handleGuestUpgradeLinkedSubmit() {
+  if (!guestUpgradeCanSubmit.value) return;
   guestUpgradeLoading.value = true;
   try {
     const method = resolveLinkedUpgradeMethod();
@@ -1408,6 +1428,8 @@ async function handleGuestUpgradeLinkedSubmit() {
       email: guestUpgradeForm.value.email,
       password: guestUpgradeForm.value.password,
       password_confirmation: guestUpgradeForm.value.password_confirmation,
+      privacy_consent: guestPrivacyConsent.value,
+      terms_accepted: guestTermsAccepted.value,
     });
     if (response?.data?.user) {
       authStore.user = response.data.user;

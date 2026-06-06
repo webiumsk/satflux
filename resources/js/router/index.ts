@@ -501,6 +501,30 @@ const router = createRouter({
             }
         },
         {
+            path: '/legal/terms',
+            name: 'legal-terms',
+            component: () => import('../pages/legal/TermsOfService.vue'),
+            meta: { public: true, titleKey: 'seo.legal_terms_title', descriptionKey: 'seo.legal_terms_description' },
+        },
+        {
+            path: '/legal/privacy',
+            name: 'legal-privacy',
+            component: () => import('../pages/legal/PrivacyPolicy.vue'),
+            meta: { public: true, titleKey: 'seo.legal_privacy_title', descriptionKey: 'seo.legal_privacy_description' },
+        },
+        {
+            path: '/legal/imprint',
+            name: 'legal-imprint',
+            component: () => import('../pages/legal/Imprint.vue'),
+            meta: { public: true, titleKey: 'seo.legal_imprint_title', descriptionKey: 'seo.legal_imprint_description' },
+        },
+        {
+            path: '/legal/dpa',
+            name: 'legal-dpa',
+            component: () => import('../pages/legal/DataProcessingAgreement.vue'),
+            meta: { public: true, titleKey: 'seo.legal_dpa_title', descriptionKey: 'seo.legal_dpa_description' },
+        },
+        {
             path: '/support',
             name: 'support',
             component: () => import('../pages/Support.vue'),

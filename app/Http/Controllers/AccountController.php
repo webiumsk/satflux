@@ -8,6 +8,7 @@ use App\Services\BtcPay\RaffleService;
 use App\Services\BtcPay\TicketService;
 use App\Services\GuestUpgradeService;
 use App\Services\SubscriptionService;
+use App\Support\Legal\LegalConsent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
@@ -277,7 +278,7 @@ class AccountController extends Controller
             $request->merge(['email' => strtolower(trim($request->input('email')))]);
         }
 
-        $validated = $request->validate([
+        $validated = $request->validate(array_merge([
             'method' => ['required', 'in:email,lightning,nostr'],
             'email' => [
                 'required',
@@ -287,10 +288,11 @@ class AccountController extends Controller
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
             'password' => ['required', 'confirmed', Password::defaults()],
-        ]);
+        ], LegalConsent::registrationRules()));
 
         try {
             $upgradedUser = $this->guestUpgradeService->upgrade($user, $validated);
+            LegalConsent::recordRegistration($upgradedUser);
         } catch (ValidationException $e) {
             throw $e;
         } catch (\RuntimeException $e) {

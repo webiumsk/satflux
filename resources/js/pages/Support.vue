@@ -244,6 +244,14 @@
           </div>
         </div>
       </div>
+
+      <div class="mt-12 max-w-2xl mx-auto">
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6 sm:p-8">
+          <h2 class="text-2xl font-bold text-white mb-2">{{ t('legal.contact.support_title') }}</h2>
+          <p class="text-gray-400 text-sm mb-6">{{ t('legal.contact.support_description') }}</p>
+          <ContactForm type="support" id-prefix="support-contact" />
+        </div>
+      </div>
     </div>
 
     <AppFooter />
@@ -257,6 +265,7 @@ import { useAuthStore } from '../store/auth';
 import { faqApi } from '../services/api';
 import PublicHeader from "../components/layout/PublicHeader.vue";
 import AppFooter from "../components/layout/AppFooter.vue";
+import ContactForm from '../components/legal/ContactForm.vue';
 import FaqAccordion from '../components/faq/FaqAccordion.vue';
 import FaqSearch from '../components/faq/FaqSearch.vue';
 

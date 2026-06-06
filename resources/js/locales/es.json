@@ -37,9 +37,13 @@
     "footer_open_source": "Código abierto bajo la licencia ",
     "footer_license_link": "MIT",
     "footer_period": ".",
-    "footer_support_me": "Apóyame",
+    "footer_support_me": "Apóyanos",
     "footer_ln_copy_aria": "Copiar dirección Lightning",
-    "footer_ln_copied": "¡Copiado!"
+    "footer_ln_copied": "¡Copiado!",
+    "footer_legal_terms": "Términos",
+    "footer_legal_privacy": "Privacidad",
+    "footer_legal_imprint": "Aviso legal",
+    "footer_legal_dpa": "DPA"
   },
   "auth": {
     "welcome_back": "Bienvenido de nuevo",
@@ -1423,6 +1427,8 @@
     "feature_raffle": "Rifa",
     "feature_pay_button": "Botón de pago",
     "feature_exports": "Exportes",
+    "feature_invoicing": "Facturación empresarial",
+    "landing_invoicing": "Facturación",
     "how_it_works": "Cómo funciona",
     "what_satflux_is": "Qué es SATFLUX",
     "start_for_free": "Empezar gratis",
@@ -1794,6 +1800,59 @@
     "point_of_sale_description": "Teclados PoS personalizables para retail o uso móvil.",
     "invoicing": "Facturación",
     "invoicing_description": "Crea, sigue y exporta facturas de forma segura.",
+    "invoicing_section": {
+      "kicker": "Función Pro",
+      "title": "Facturación empresarial para comerciantes",
+      "subtitle": "Emite facturas conformes, concilia pagos bancarios y permite pagar por banco o Bitcoin - en la misma app que tus tiendas.",
+      "features_title": "Qué incluye Pro",
+      "bullets": {
+        "companies": "Perfiles de empresa para jurisdicciones UE (SK/CZ) y EE. UU.",
+        "pay_by_square": "QR Pay by Square en PDF de facturas (SK/CZ)",
+        "btc_pay_link": "Enlace de pago Bitcoin estable y QR en cada factura emitida",
+        "bank_matching": "Importación de extractos y conciliación por símbolo variable",
+        "expenses": "Gastos de proveedores con adjuntos y duplicados",
+        "recurring": "Perfiles de facturas recurrentes con generación programada"
+      },
+      "pro_note": "Incluido en Pro (prueba de 30 días). La aceptación de pagos BTCPay sigue funcionando aunque Pro expire.",
+      "positioning_title": "Un solo stack, no tres herramientas",
+      "positioning_text": "Satflux combina herramientas merchant BTCPay con facturación de nivel contable. No necesitas una app de pagos, una herramienta local de e-factura y scripts de exportación por separado.",
+      "positioning_bullet_1": "Comerciantes UE: campos SK/CZ, símbolo variable, Pay by Square.",
+      "positioning_bullet_2": "LLC estadounidense: perfil US y líneas estilo sales tax.",
+      "positioning_bullet_3": "Checkout Bitcoin opcional en cada factura emitida.",
+      "cta": "Ver precios Pro",
+      "compare": {
+        "title": "Comparativa",
+        "subtitle": "Satflux Pro vs Zaprite vs SaaS de facturación UE típica (p. ej. SuperFaktúra, Fakturoid). La disponibilidad varía según plan y país.",
+        "col_feature": "Capacidad",
+        "col_satflux": "Satflux Pro",
+        "col_zaprite": "Zaprite",
+        "col_eu": "SaaS facturación UE",
+        "disclaimer": "Comparación según documentación pública a 2026. Verifique requisitos de cumplimiento con su asesor para su jurisdicción.",
+        "values": {
+          "yes": "Sí",
+          "partial": "Parcial",
+          "no": "No",
+          "pro": "Plan Pro"
+        },
+        "rows": {
+          "btc_ln_checkout": "Checkout Bitcoin / Lightning",
+          "pay_by_square": "Pay by Square en PDF",
+          "sk_cz_compliance": "Campos factura SK/CZ y VS",
+          "isdoc_efaktura": "ISDOC / e-factura",
+          "bank_matching": "Conciliación bancaria",
+          "expenses": "Módulo de gastos",
+          "recurring": "Facturas recurrentes",
+          "btcpay_stores": "Panel multi-tienda BTCPay",
+          "us_llc_profile": "Perfil empresa LLC EE. UU.",
+          "self_custody": "Pagos Bitcoin no custodiales"
+        },
+        "notes": {
+          "pay_by_square": "Estándar QR bancario SK/CZ",
+          "sk_cz_compliance": "Satflux: PDF SK/CZ sólido; e-factura completa en roadmap",
+          "isdoc_efaktura": "En roadmap; SaaS UE a menudo nativo"
+        }
+      }
+    },
     "feature_lightning_ecash_title": "Lightning y ecash en un solo lugar",
     "feature_lightning_ecash_description": "Cobra con Lightning y liquidaciones Cashu opcionales en tu tienda BTCPay-checkout rápido sin darnos tus claves.",
     "feature_lightning_ecash_bullet_ln": "Una configuración Lightning por tienda: Blink (cadena de conexión), o Aqua/Bull (Boltz) con descriptor solo lectura o SamRock QR (Aqua).",
@@ -1930,6 +1989,41 @@
     "restart_tour": "Mostrar de nuevo los consejos de configuración del TPV",
     "start_tour": "Iniciar guía de consejos TPV"
   },
+  "legal": {
+    "nav": {
+      "terms": "Términos del servicio",
+      "privacy": "Política de privacidad",
+      "imprint": "Aviso legal",
+      "dpa": "DPA"
+    },
+    "last_updated": "Última actualización",
+    "questions": "¿Preguntas sobre estos documentos?",
+    "consent": {
+      "terms": "Acepto los {termsLink}.",
+      "privacy": "Acepto el tratamiento de mis datos personales según la {privacyLink}.",
+      "required": "Acepte los consentimientos requeridos antes de continuar."
+    },
+    "cookies": {
+      "title": "Cookies en satflux.io",
+      "description": "Usamos cookies esenciales para inicio de sesión, seguridad (CSRF) e idioma. La analítica opcional solo se carga tras su consentimiento. Ver ",
+      "accept": "Aceptar todas",
+      "essential_only": "Solo esenciales"
+    },
+    "contact": {
+      "name": "Nombre",
+      "email": "Correo",
+      "subject": "Asunto",
+      "message": "Mensaje",
+      "submit": "Enviar mensaje",
+      "sending": "Enviando...",
+      "success": "Gracias. Hemos recibido su mensaje.",
+      "error": "No se pudo enviar el mensaje. Inténtelo de nuevo o escriba a hello@satflux.io.",
+      "enterprise_title": "Contacto Enterprise",
+      "enterprise_subject": "Consulta plan Enterprise",
+      "support_title": "Contactar soporte",
+      "support_description": "Envíenos un mensaje. Solemos responder por correo en unos días laborables."
+    }
+  },
   "seo": {
     "landing_title": "Acepta Bitcoin sin límites",
     "landing_description": "Acepta pagos en Bitcoin y Lightning sin límites. Panel de control no custodial de BTCPay Server con gestión multi-tienda, terminales PoS y análisis avanzados.",
@@ -1948,7 +2042,15 @@
     "dashboard_title": "Panel de control",
     "stores_title": "Tiendas",
     "account_check_email_title": "Verifica tu correo",
-    "account_check_email_description": "Confirma tu dirección de correo para terminar de actualizar tu cuenta satflux.io."
+    "account_check_email_description": "Confirma tu dirección de correo para terminar de actualizar tu cuenta satflux.io.",
+    "legal_terms_title": "Términos del servicio",
+    "legal_terms_description": "Términos del servicio de satflux.io operado por Webium LLC.",
+    "legal_privacy_title": "Política de privacidad",
+    "legal_privacy_description": "Política de privacidad e información GDPR para satflux.io.",
+    "legal_imprint_title": "Aviso legal",
+    "legal_imprint_description": "Aviso legal y datos del operador de satflux.io.",
+    "legal_dpa_title": "Acuerdo de tratamiento de datos",
+    "legal_dpa_description": "Plantilla DPA GDPR para clientes Enterprise de satflux.io."
   },
   "upgrade_modal": {
     "title": "Se requiere upgrade",

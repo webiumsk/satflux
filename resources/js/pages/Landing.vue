@@ -2779,6 +2779,8 @@
       </transition>
     </Teleport>
 
+    <LandingInvoicingSection />
+
     <!-- Pricing Section -->
     <section
       id="pricing"
@@ -3028,12 +3030,26 @@
                 <span>{{ t("plans.features." + key) }}</span>
               </li>
             </ul>
-            <a
-              href="mailto:hello@satflux.io"
+            <button
+              type="button"
               class="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700 font-medium text-sm transition-colors"
+              @click="showEnterpriseContact = true"
             >
               {{ t("landing.pricing_need_more_cta") }}
-            </a>
+            </button>
+            <div
+              v-if="showEnterpriseContact"
+              class="mt-6 rounded-xl border border-gray-600 bg-gray-900/80 p-5 text-left"
+            >
+              <h4 class="text-base font-semibold text-white mb-3">
+                {{ t("legal.contact.enterprise_title") }}
+              </h4>
+              <ContactForm
+                type="enterprise"
+                id-prefix="landing-enterprise"
+                :default-subject="t('legal.contact.enterprise_subject')"
+              />
+            </div>
           </div>
         </div>
 
@@ -3156,6 +3172,8 @@ import { useI18n } from "vue-i18n";
 import PublicHeader from "../components/layout/PublicHeader.vue";
 import AppFooter from "../components/layout/AppFooter.vue";
 import LandingPayButtonEmbed from "../components/landing/LandingPayButtonEmbed.vue";
+import LandingInvoicingSection from "../components/landing/LandingInvoicingSection.vue";
+import ContactForm from "../components/legal/ContactForm.vue";
 import LandingRafflePresenterPreview from "../components/landing/LandingRafflePresenterPreview.vue";
 import api from "../services/api";
 import { useBtcPayUrl } from "../composables/useBtcPayUrl";
@@ -3186,6 +3204,7 @@ const proOtherFeatures = computed(() =>
 const authStore = useAuthStore();
 const subscribing = ref(false);
 const subscribeError = ref("");
+const showEnterpriseContact = ref(false);
 const showPosModal = ref(false);
 
 const HERO_SLIDE_COUNT = 3;

@@ -7,6 +7,7 @@ use App\Models\NostrAuthChallenge;
 use App\Models\User;
 use App\Services\BtcPay\UserService;
 use App\Services\Nostr\NostrEventVerifier;
+use App\Support\Legal\LegalConsent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -251,11 +252,11 @@ class NostrAuthController extends Controller
             return response()->json(['error' => 'Nostr auth is not enabled'], 403);
         }
 
-        $request->validate([
+        $request->validate(array_merge([
             'user_id' => ['nullable', 'integer', 'exists:users,id'],
             'challenge_id' => ['nullable', 'string', 'size:64'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255'],
-        ]);
+        ], LegalConsent::registrationRules()));
 
         $userId = $request->input('user_id');
         $challengeId = $request->input('challenge_id');
@@ -342,6 +343,8 @@ class NostrAuthController extends Controller
                 }
             }
         }
+
+        LegalConsent::recordRegistration($user);
 
         try {
             $user->sendEmailVerificationNotification();
