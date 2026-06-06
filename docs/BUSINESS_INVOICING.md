@@ -70,7 +70,10 @@ Buyer PII on issued documents is frozen in `buyer_snapshot` at issue. Contact de
 - `PATCH /api/invoicing/companies/{company}/app-settings`, `email-settings` - application settings tabs
 - `PATCH /api/invoicing/companies/{company}/stores` - assign `store_ids`
 - Contacts and documents CRUD under `/companies/{company}/...`
-- Draft and **issued** invoices can be updated; paid/cancelled are locked
+- Draft and **issued** invoices can be updated; paid/cancelled are locked for editing until payment is removed
+- `POST .../documents/{id}/unmark-paid` - paid → issued (enables edit/cancel)
+- `POST .../documents/{id}/cancel` - issued or paid → cancelled (clears payment fields)
+- `DELETE .../documents/{id}` - draft/cancelled always (if no bank match); issued/paid only when newest document for the company and no linked child documents
 - `POST .../documents/{id}/issue` - assign number and `payment_token` when BTC enabled (no BTCPay call at issue)
 - `POST .../documents/{id}/create-final-invoice` - draft invoice from paid proforma (linked via `source_document_id`)
 - `GET/POST/PATCH/DELETE /api/invoicing/companies/{company}/recurring-profiles` - pravidelné faktúry (filters: `all`|`active`|`inactive`)

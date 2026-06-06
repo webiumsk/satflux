@@ -25,6 +25,7 @@ class SubscriptionService
      *                          - cancelRedirectUrl (string|null): URL to redirect if checkout cancelled
      *                          - newSubscriberEmail (string|null): Email for new subscriber (creates new subscriber)
      *                          - customerSelector (string|null): Email to find existing customer (customer must exist)
+     *                          - isTrial (bool|null): Force trial checkout on/off; when omitted, enabled if plan trialDays > 0
      * @return array Checkout data with checkoutUrl, checkoutId, and optional expiresAt
      *
      * @throws BtcPayException
@@ -38,6 +39,7 @@ class SubscriptionService
         // Validate that plan and offering belong to the store
         // This is important for security - we don't want users to subscribe to plans from other stores
         // However, if API key lacks permissions, we'll skip validation and trust the config values
+        $plan = null;
         try {
             // Verify offering belongs to store
             $offering = $this->client->get("/api/v1/stores/{$storeId}/offerings/{$offeringId}");
@@ -113,12 +115,17 @@ class SubscriptionService
             $payload['newSubscriberEmail'] = $options['newSubscriberEmail'];
         }
 
+        if ($this->shouldEnableTrialForCheckout($plan, $options)) {
+            $payload['isTrial'] = true;
+        }
+
         try {
             Log::info('Creating plan checkout', [
                 'store_id' => $storeId,
                 'offering_id' => $offeringId,
                 'plan_id' => $planId,
                 'has_email' => isset($payload['newSubscriberEmail']),
+                'is_trial' => $payload['isTrial'] ?? false,
             ]);
 
             $response = $this->client->post('/api/v1/plan-checkout', $payload);
@@ -414,5 +421,26 @@ class SubscriptionService
                 'payload' => [],
             ];
         }
+    }
+
+    /**
+     * BTCPay only shows "Proceed to free trial" when plan trialDays > 0 AND isTrial is true on checkout.
+     */
+    private function shouldEnableTrialForCheckout(?array $plan, array $options): bool
+    {
+        if (array_key_exists('isTrial', $options)) {
+            return (bool) $options['isTrial'];
+        }
+
+        if (is_array($plan)) {
+            return $this->planTrialDays($plan) > 0;
+        }
+
+        return (int) config('pricing.trial_days', 0) > 0;
+    }
+
+    private function planTrialDays(array $plan): int
+    {
+        return (int) ($plan['trialDays'] ?? $plan['trial_days'] ?? 0);
     }
 }

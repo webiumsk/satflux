@@ -163,6 +163,9 @@
         :document-status="documentStatus"
         :is-locked="isLocked"
         :can-update="canUpdate"
+        :can-delete="canDelete"
+        :can-cancel="canCancel"
+        :can-unmark-paid="canUnmarkPaid"
         :can-pdf="documentStatus !== 'draft'"
         :can-eu-export="supportsEuExport && documentStatus !== 'draft'"
         :can-send-email="documentStatus !== 'draft' && documentStatus !== 'cancelled'"
@@ -235,6 +238,9 @@ const {
   tagsInput,
   isLocked,
   canUpdate,
+  canDelete,
+  canCancel,
+  canUnmarkPaid,
   form,
   selectedContact,
   neighborIndex,
@@ -478,7 +484,12 @@ async function createInvoiceFromQuote() {
 }
 
 async function deleteDoc() {
-  if (!documentId.value || !window.confirm(t('invoicing.confirm_delete'))) return;
+  if (!documentId.value) return;
+  const msg =
+    documentStatus.value === 'paid' || documentStatus.value === 'issued'
+      ? t('invoicing.confirm_delete_last')
+      : t('invoicing.confirm_delete');
+  if (!window.confirm(msg)) return;
   await api.delete(`/invoicing/companies/${companyId.value}/documents/${documentId.value}`);
   router.push({ name: documentRoutes.value.list, params: { companyId: companyId.value } });
 }
@@ -506,6 +517,7 @@ async function markPaid() {
 
 async function unmarkPaid() {
   if (!documentId.value) return;
+  if (!window.confirm(t('invoicing.confirm_unmark_paid'))) return;
   saving.value = true;
   try {
     await api.post(`/invoicing/companies/${companyId.value}/documents/${documentId.value}/unmark-paid`);

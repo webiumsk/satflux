@@ -105,7 +105,7 @@ class BusinessDocumentController extends Controller
                 'data' => $this->bulkService->markPaid($documents),
             ]),
             'delete' => response()->json([
-                'data' => $this->bulkService->deleteDrafts($documents),
+                'data' => $this->bulkService->deleteDocuments($documents),
             ]),
             'cancel' => response()->json([
                 'data' => $this->bulkService->cancelIssued($documents),
@@ -291,7 +291,22 @@ class BusinessDocumentController extends Controller
             return response()->json(['data' => $businessDocument]);
         }
 
-        $businessDocument->update(['status' => BusinessDocumentStatus::Cancelled]);
+        if (! $businessDocument->canCancel()) {
+            throw ValidationException::withMessages([
+                'status' => ['This document cannot be cancelled in its current status.'],
+            ]);
+        }
+
+        $businessDocument->update([
+            'status' => BusinessDocumentStatus::Cancelled,
+            'paid_at' => null,
+            'amount_paid' => null,
+        ]);
+
+        AuditLog::log('business_document.cancelled', 'business_document', $businessDocument->id, [
+            'company_id' => $company->id,
+            'number' => $businessDocument->number,
+        ], request()->user()?->id);
 
         return response()->json(['data' => $businessDocument->fresh()]);
     }
@@ -516,19 +531,21 @@ class BusinessDocumentController extends Controller
     {
         $this->assertDocumentCompany($businessDocument, $company);
 
-        if ($businessDocument->status !== BusinessDocumentStatus::Draft) {
+        if (! $businessDocument->canDelete()) {
             throw ValidationException::withMessages([
-                'status' => ['Only draft invoices can be deleted. Cancel issued invoices instead.'],
+                'status' => ['This document cannot be deleted. Cancel it first, or delete only the latest invoice without bank matches or linked documents.'],
             ]);
         }
 
         $id = $businessDocument->id;
+        $number = $businessDocument->number;
         $businessDocument->lines()->delete();
         $businessDocument->delete();
 
         AuditLog::log('business_document.deleted', 'business_document', $id, [
             'company_id' => $company->id,
-        ]);
+            'number' => $number,
+        ], request()->user()?->id);
 
         return response()->json(['message' => 'Invoice deleted']);
     }

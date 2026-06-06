@@ -215,13 +215,13 @@ class BusinessDocumentBulkService
     /**
      * @return array{processed: int, skipped: int}
      */
-    public function deleteDrafts(Collection $documents): array
+    public function deleteDocuments(Collection $documents): array
     {
         $processed = 0;
         $skipped = 0;
 
         foreach ($documents as $document) {
-            if ($document->status !== BusinessDocumentStatus::Draft) {
+            if (! $document->canDelete()) {
                 $skipped++;
 
                 continue;
@@ -243,12 +243,16 @@ class BusinessDocumentBulkService
         $skipped = 0;
 
         foreach ($documents as $document) {
-            if ($document->status !== BusinessDocumentStatus::Issued) {
+            if (! $document->canCancel()) {
                 $skipped++;
 
                 continue;
             }
-            $document->update(['status' => BusinessDocumentStatus::Cancelled]);
+            $document->update([
+                'status' => BusinessDocumentStatus::Cancelled,
+                'paid_at' => null,
+                'amount_paid' => null,
+            ]);
             $processed++;
         }
 

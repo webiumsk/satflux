@@ -119,19 +119,126 @@ class BusinessDocumentActionsTest extends TestCase
     }
 
     #[Test]
-    public function cannot_delete_issued_invoice(): void
+    public function cannot_delete_older_issued_invoice(): void
     {
-        $issued = BusinessDocument::create([
+        $older = BusinessDocument::create([
             'company_id' => $this->company->id,
             'type' => 'invoice',
             'status' => BusinessDocumentStatus::Issued,
             'number' => '20260003',
             'total' => 10,
             'currency' => 'EUR',
+            'created_at' => now()->subDay(),
+        ]);
+
+        BusinessDocument::create([
+            'company_id' => $this->company->id,
+            'type' => 'invoice',
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => '20260004',
+            'total' => 20,
+            'currency' => 'EUR',
         ]);
 
         $this->actingAs($this->user)
-            ->deleteJson("/api/invoicing/companies/{$this->company->id}/documents/{$issued->id}")
+            ->deleteJson("/api/invoicing/companies/{$this->company->id}/documents/{$older->id}")
             ->assertStatus(422);
+    }
+
+    #[Test]
+    public function can_delete_latest_paid_invoice(): void
+    {
+        $paid = BusinessDocument::create([
+            'company_id' => $this->company->id,
+            'type' => 'invoice',
+            'status' => BusinessDocumentStatus::Paid,
+            'number' => '20260005',
+            'total' => 99,
+            'currency' => 'EUR',
+            'paid_at' => now(),
+            'amount_paid' => 99,
+        ]);
+
+        $this->actingAs($this->user)
+            ->deleteJson("/api/invoicing/companies/{$this->company->id}/documents/{$paid->id}")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('business_documents', ['id' => $paid->id]);
+    }
+
+    #[Test]
+    public function can_unmark_paid_invoice_and_then_update(): void
+    {
+        $paid = BusinessDocument::create([
+            'company_id' => $this->company->id,
+            'type' => 'invoice',
+            'status' => BusinessDocumentStatus::Paid,
+            'number' => '20260006',
+            'total' => 50,
+            'currency' => 'EUR',
+            'paid_at' => now(),
+            'amount_paid' => 50,
+            'issue_date' => now(),
+        ]);
+        $paid->lines()->create([
+            'sort_order' => 0,
+            'name' => 'Line',
+            'quantity' => 1,
+            'unit_price' => 50,
+            'line_total' => 50,
+        ]);
+
+        $this->actingAs($this->user)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents/{$paid->id}/unmark-paid")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'issued');
+
+        $this->actingAs($this->user)
+            ->patchJson("/api/invoicing/companies/{$this->company->id}/documents/{$paid->id}", [
+                'title' => 'Updated title',
+                'lines' => [
+                    ['name' => 'Line', 'quantity' => 1, 'unit_price' => 50, 'tax_rate' => 0],
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.title', 'Updated title');
+    }
+
+    #[Test]
+    public function can_cancel_paid_invoice(): void
+    {
+        $paid = BusinessDocument::create([
+            'company_id' => $this->company->id,
+            'type' => 'invoice',
+            'status' => BusinessDocumentStatus::Paid,
+            'number' => '20260007',
+            'total' => 30,
+            'currency' => 'EUR',
+            'paid_at' => now(),
+            'amount_paid' => 30,
+        ]);
+
+        $this->actingAs($this->user)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents/{$paid->id}/cancel")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'cancelled')
+            ->assertJsonPath('data.amount_paid', null);
+    }
+
+    #[Test]
+    public function can_delete_cancelled_invoice(): void
+    {
+        $cancelled = BusinessDocument::create([
+            'company_id' => $this->company->id,
+            'type' => 'invoice',
+            'status' => BusinessDocumentStatus::Cancelled,
+            'number' => '20260008',
+            'total' => 15,
+            'currency' => 'EUR',
+        ]);
+
+        $this->actingAs($this->user)
+            ->deleteJson("/api/invoicing/companies/{$this->company->id}/documents/{$cancelled->id}")
+            ->assertOk();
     }
 }

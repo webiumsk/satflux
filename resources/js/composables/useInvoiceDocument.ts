@@ -21,6 +21,9 @@ export function useInvoiceDocument() {
   const error = ref('');
   const success = ref('');
   const documentStatus = ref('draft');
+  const canDelete = ref(false);
+  const canCancel = ref(false);
+  const canUnmarkPaid = ref(false);
   const documentNumber = ref('');
   const nextNumberPreview = ref('');
   const paidAt = ref<string | null>(null);
@@ -344,6 +347,9 @@ export function useInvoiceDocument() {
     sourceDocument.value = d.source_document ?? null;
     finalInvoice.value = d.final_invoice ?? null;
     documentStatus.value = d.status;
+    canDelete.value = Boolean(d.can_delete);
+    canCancel.value = Boolean(d.can_cancel);
+    canUnmarkPaid.value = Boolean(d.can_unmark_paid);
     documentNumber.value = d.number || '';
     nextNumberPreview.value = '';
     paymentToken.value = d.payment_token ?? null;
@@ -547,6 +553,9 @@ export function useInvoiceDocument() {
     isIssued,
     isLocked,
     canUpdate,
+    canDelete,
+    canCancel,
+    canUnmarkPaid,
     defaultVat,
     isUsCompany,
     usesStripeUsTax,

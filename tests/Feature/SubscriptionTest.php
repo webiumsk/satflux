@@ -21,12 +21,16 @@ class SubscriptionTest extends TestCase
     }
 
     /** BTCPay fake: success for offering, plan, and plan-checkout. Use in tests that expect 200. */
-    protected function fakeBtcPayCheckoutSuccess(): void
+    protected function fakeBtcPayCheckoutSuccess(int $trialDays = 30): void
     {
-        Http::fake(function ($request) {
+        Http::fake(function ($request) use ($trialDays) {
             $url = (string) $request->url();
             if (str_contains($url, '/api/v1/stores/') && str_contains($url, '/offerings/') && str_contains($url, '/plans/')) {
-                return Http::response(['id' => 'plan_pro_test', 'name' => 'Pro Plan']);
+                return Http::response([
+                    'id' => 'plan_pro_test',
+                    'name' => 'Pro Plan',
+                    'trialDays' => $trialDays,
+                ]);
             }
             if (str_contains($url, '/api/v1/stores/') && str_contains($url, '/offerings/')) {
                 return Http::response(['id' => 'offering_test', 'name' => 'Test Offering']);
@@ -163,6 +167,62 @@ class SubscriptionTest extends TestCase
         ]);
 
         $response->assertStatus(200);
+    }
+
+    #[Test]
+    public function checkout_requests_btcpay_trial_when_plan_has_trial_days(): void
+    {
+        $user = User::factory()->create();
+
+        config(['services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store']);
+        config(['services.btcpay.subscription_offering_id' => 'offering_test']);
+        config(['services.btcpay.subscription_plans.pro' => 'plan_pro_test']);
+
+        $this->fakeBtcPayCheckoutSuccess(trialDays: 30);
+
+        $response = $this->actingAs($user)->postJson('/api/subscriptions/checkout', [
+            'plan' => 'pro',
+        ]);
+
+        $response->assertStatus(200);
+
+        Http::assertSent(function ($request) {
+            if ($request->method() !== 'POST' || ! str_contains((string) $request->url(), '/api/v1/plan-checkout')) {
+                return false;
+            }
+
+            $body = $request->data();
+
+            return ($body['isTrial'] ?? false) === true;
+        });
+    }
+
+    #[Test]
+    public function checkout_does_not_request_btcpay_trial_when_plan_has_no_trial_days(): void
+    {
+        $user = User::factory()->create();
+
+        config(['services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store']);
+        config(['services.btcpay.subscription_offering_id' => 'offering_test']);
+        config(['services.btcpay.subscription_plans.pro' => 'plan_pro_test']);
+
+        $this->fakeBtcPayCheckoutSuccess(trialDays: 0);
+
+        $response = $this->actingAs($user)->postJson('/api/subscriptions/checkout', [
+            'plan' => 'pro',
+        ]);
+
+        $response->assertStatus(200);
+
+        Http::assertSent(function ($request) {
+            if ($request->method() !== 'POST' || ! str_contains((string) $request->url(), '/api/v1/plan-checkout')) {
+                return false;
+            }
+
+            $body = $request->data();
+
+            return ! array_key_exists('isTrial', $body);
+        });
     }
 
     #[Test]

@@ -116,14 +116,17 @@
         {{ t('invoicing.view_bank_payments') }}
       </RouterLink>
       <button
-        v-if="!isLocked"
+        v-if="canUnmarkPaid"
         type="button"
-        class="mt-2 text-xs text-gray-500 hover:text-gray-800"
+        class="mt-2 text-xs text-amber-800 hover:text-amber-950 underline"
         :disabled="busy"
         @click="$emit('unmark-paid')"
       >
-        {{ t('invoicing.remove_payment') }} ×
+        {{ t('invoicing.remove_payment') }}
       </button>
+      <p v-if="canUnmarkPaid" class="text-xs text-gray-500 mt-1">
+        {{ t('invoicing.unmark_paid_edit_hint') }}
+      </p>
     </div>
 
     <button
@@ -150,7 +153,7 @@
         {{ t('invoicing.action_duplicate') }}
       </button>
       <button
-        v-if="documentStatus === 'draft'"
+        v-if="canDelete"
         type="button"
         class="sidebar-action sidebar-action--danger"
         :disabled="busy"
@@ -160,7 +163,7 @@
         {{ t('invoicing.action_delete') }}
       </button>
       <button
-        v-if="documentStatus === 'issued'"
+        v-if="canCancel"
         type="button"
         class="sidebar-action sidebar-action--danger"
         :disabled="busy"
@@ -185,6 +188,9 @@ const props = withDefaults(
     documentStatus: string;
     isLocked: boolean;
     canUpdate: boolean;
+    canDelete?: boolean;
+    canCancel?: boolean;
+    canUnmarkPaid?: boolean;
     canPdf: boolean;
     canEuExport?: boolean;
     canMarkPaid: boolean;
@@ -216,6 +222,9 @@ const props = withDefaults(
     editRouteName: 'invoicing-invoice-edit',
     bankMatch: null,
     paidViaBtcpay: false,
+    canDelete: false,
+    canCancel: false,
+    canUnmarkPaid: false,
   }
 );
 

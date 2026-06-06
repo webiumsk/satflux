@@ -293,8 +293,18 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
                   </button>
+                  <button
+                    v-if="d.can_unmark_paid"
+                    type="button"
+                    class="row-action-btn"
+                    :title="t('invoicing.remove_payment')"
+                    :disabled="actionId === d.id"
+                    @click="unmarkPaid(d)"
+                  >
+                    <span class="text-sm font-bold">↩</span>
+                  </button>
                   <RouterLink
-                    v-if="d.status === 'draft' || d.status === 'issued'"
+                    v-if="d.can_update"
                     :to="documentEditTo(d)"
                     class="row-action-btn"
                     :title="t('common.edit')"
@@ -304,7 +314,7 @@
                     </svg>
                   </RouterLink>
                   <button
-                    v-if="d.status === 'draft'"
+                    v-if="d.can_delete"
                     type="button"
                     class="row-action-btn row-action-btn--danger"
                     :title="t('invoicing.action_delete')"
@@ -316,7 +326,7 @@
                     </svg>
                   </button>
                   <button
-                    v-if="d.status === 'issued'"
+                    v-if="d.can_cancel"
                     type="button"
                     class="row-action-btn"
                     :title="t('invoicing.action_cancel')"
@@ -427,8 +437,18 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
                   </button>
+                  <button
+                    v-if="d.can_unmark_paid"
+                    type="button"
+                    class="row-action-btn"
+                    :title="t('invoicing.remove_payment')"
+                    :disabled="actionId === d.id"
+                    @click="unmarkPaid(d)"
+                  >
+                    <span class="text-sm font-bold">↩</span>
+                  </button>
                   <RouterLink
-                    v-if="d.status === 'draft' || d.status === 'issued'"
+                    v-if="d.can_update"
                     :to="documentEditTo(d)"
                     class="row-action-btn"
                     :title="t('common.edit')"
@@ -438,7 +458,7 @@
                     </svg>
                   </RouterLink>
                   <button
-                    v-if="d.status === 'draft'"
+                    v-if="d.can_delete"
                     type="button"
                     class="row-action-btn row-action-btn--danger"
                     :title="t('invoicing.action_delete')"
@@ -450,7 +470,7 @@
                     </svg>
                   </button>
                   <button
-                    v-if="d.status === 'issued'"
+                    v-if="d.can_cancel"
                     type="button"
                     class="row-action-btn"
                     :title="t('invoicing.action_cancel')"
@@ -1198,6 +1218,19 @@ async function markPaid(d: { id: string }) {
   }
 }
 
+async function unmarkPaid(d: { id: string }) {
+  if (!window.confirm(t('invoicing.confirm_unmark_paid'))) return;
+  actionId.value = d.id;
+  try {
+    await api.post(`/invoicing/companies/${companyId.value}/documents/${d.id}/unmark-paid`);
+    await load();
+  } catch (e: any) {
+    error.value = e?.response?.data?.message || t('common.error');
+  } finally {
+    actionId.value = null;
+  }
+}
+
 async function downloadPdf(d: { id: string; number?: string }) {
   actionId.value = d.id;
   try {
@@ -1233,8 +1266,12 @@ async function duplicateDoc(d: { id: string }) {
   }
 }
 
-async function deleteDoc(d: { id: string }) {
-  if (!window.confirm(t('invoicing.confirm_delete'))) return;
+async function deleteDoc(d: { id: string; status?: string; can_delete?: boolean }) {
+  const msg =
+    d.status === 'paid' || d.status === 'issued'
+      ? t('invoicing.confirm_delete_last')
+      : t('invoicing.confirm_delete');
+  if (!window.confirm(msg)) return;
   actionId.value = d.id;
   try {
     await api.delete(`/invoicing/companies/${companyId.value}/documents/${d.id}`);

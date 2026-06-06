@@ -57,6 +57,13 @@ class BusinessDocument extends Model
         'email_sent_at',
     ];
 
+    protected $appends = [
+        'can_update',
+        'can_delete',
+        'can_cancel',
+        'can_unmark_paid',
+    ];
+
     protected function casts(): array
     {
         return [
@@ -131,6 +138,12 @@ class BusinessDocument extends Model
             ->where('status', '!=', BusinessDocumentStatus::Cancelled);
     }
 
+    public function derivedDocuments(): HasMany
+    {
+        return $this->hasMany(self::class, 'source_document_id')
+            ->where('status', '!=', BusinessDocumentStatus::Cancelled);
+    }
+
     public function lines(): HasMany
     {
         return $this->hasMany(BusinessDocumentLine::class)->orderBy('sort_order');
@@ -154,9 +167,85 @@ class BusinessDocument extends Model
         ], true);
     }
 
+    public function canCancel(): bool
+    {
+        return in_array($this->status, [
+            BusinessDocumentStatus::Issued,
+            BusinessDocumentStatus::Paid,
+        ], true);
+    }
+
+    public function canUnmarkPaid(): bool
+    {
+        return $this->status === BusinessDocumentStatus::Paid;
+    }
+
+    /**
+     * Draft and cancelled documents are always deletable.
+     * Issued/paid only when this is the newest document for the company and has no active derivatives.
+     */
+    public function canDelete(): bool
+    {
+        if (in_array($this->status, [
+            BusinessDocumentStatus::Draft,
+            BusinessDocumentStatus::Cancelled,
+        ], true)) {
+            return ! $this->hasBlockingRelations();
+        }
+
+        if (! in_array($this->status, [
+            BusinessDocumentStatus::Issued,
+            BusinessDocumentStatus::Paid,
+        ], true)) {
+            return false;
+        }
+
+        return $this->isLatestForCompany() && ! $this->hasBlockingRelations();
+    }
+
+    public function isLatestForCompany(): bool
+    {
+        $latestId = self::query()
+            ->where('company_id', $this->company_id)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->value('id');
+
+        return $latestId === $this->id;
+    }
+
+    protected function hasBlockingRelations(): bool
+    {
+        if ($this->bankMatch()->exists()) {
+            return true;
+        }
+
+        return $this->derivedDocuments()->exists();
+    }
+
     public function canIssue(): bool
     {
         return $this->status === BusinessDocumentStatus::Draft;
+    }
+
+    public function getCanUpdateAttribute(): bool
+    {
+        return $this->canUpdate();
+    }
+
+    public function getCanDeleteAttribute(): bool
+    {
+        return $this->canDelete();
+    }
+
+    public function getCanCancelAttribute(): bool
+    {
+        return $this->canCancel();
+    }
+
+    public function getCanUnmarkPaidAttribute(): bool
+    {
+        return $this->canUnmarkPaid();
     }
 
     public function resolvedQuoteStatus(): ?BusinessDocumentQuoteStatus
