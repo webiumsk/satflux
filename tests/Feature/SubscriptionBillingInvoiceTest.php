@@ -250,6 +250,125 @@ class SubscriptionBillingInvoiceTest extends TestCase
     }
 
     #[Test]
+    public function fulfill_prefers_received_sats_over_misleading_eur_invoice_amount(): void
+    {
+        $operator = User::factory()->create();
+        $billingCompany = Company::create([
+            'user_id' => $operator->id,
+            'legal_name' => 'Satflux s.r.o.',
+            'jurisdiction' => CompanyJurisdiction::EuSk,
+            'default_currency' => 'EUR',
+            'vat_payer' => false,
+        ]);
+        app(DocumentSequenceService::class)->seedDefaultsForCompany($billingCompany);
+
+        config([
+            'services.btcpay.subscription_store_id' => 'sub-store-123',
+            'invoicing.subscription_billing.company_id' => $billingCompany->id,
+        ]);
+
+        $subscriber = User::factory()->create(['email' => 'customer@example.com']);
+
+        Http::fake(function ($request) {
+            $url = (string) $request->url();
+
+            if (str_contains($url, '/invoices/inv-eur-mismatch/payment-methods')) {
+                return Http::response([
+                    [
+                        'paymentMethodId' => 'BTC-LN',
+                        'currency' => 'BTC',
+                        'rate' => '60000',
+                        'paymentMethodPaid' => '0.00000240',
+                        'totalPaid' => '0.00000240',
+                    ],
+                ]);
+            }
+
+            if (str_contains($url, '/invoices/inv-eur-mismatch')) {
+                return Http::response([
+                    'id' => 'inv-eur-mismatch',
+                    'currency' => 'EUR',
+                    'amount' => 240,
+                ]);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $doc = app(SubscriptionBillingInvoiceService::class)->fulfillPaidInvoice(
+            $subscriber,
+            'pro',
+            'inv-eur-mismatch',
+            ['id' => 'inv-eur-mismatch', 'currency' => 'EUR', 'amount' => 240],
+        );
+
+        $this->assertNotNull($doc);
+        $this->assertStringContainsString('eur_source=sats_rate', (string) $doc->internal_note);
+        $this->assertStringContainsString('paid_sats=240', (string) $doc->internal_note);
+        $this->assertSame('0.14', $doc->total);
+    }
+
+    #[Test]
+    public function us_billing_company_uses_default_sales_tax_rate_not_vat_payer_flag(): void
+    {
+        $operator = User::factory()->create();
+        $billingCompany = Company::create([
+            'user_id' => $operator->id,
+            'legal_name' => 'WY Seller LLC',
+            'jurisdiction' => CompanyJurisdiction::Us,
+            'default_currency' => 'USD',
+            'country' => 'US',
+            'state_region' => 'WY',
+            'vat_payer' => true,
+            'vat_rate_default' => 8.25,
+            'app_settings' => ['us_sales_tax_provider' => 'manual'],
+        ]);
+        app(DocumentSequenceService::class)->seedDefaultsForCompany($billingCompany);
+
+        config([
+            'services.btcpay.subscription_store_id' => 'sub-store-123',
+            'invoicing.subscription_billing.company_id' => $billingCompany->id,
+        ]);
+
+        $subscriber = User::factory()->create(['email' => 'customer@example.com']);
+
+        Http::fake(function ($request) {
+            $url = (string) $request->url();
+
+            if (str_contains($url, '/invoices/inv-us-tax/payment-methods')) {
+                return Http::response([
+                    [
+                        'paymentMethodId' => 'BTC-LN',
+                        'rate' => '60000',
+                        'paymentMethodPaid' => '0.0024',
+                        'totalPaid' => '0.0024',
+                    ],
+                ]);
+            }
+
+            if (str_contains($url, '/invoices/inv-us-tax')) {
+                return Http::response([
+                    'id' => 'inv-us-tax',
+                    'currency' => 'SATS',
+                    'amount' => 240_000,
+                ]);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $doc = app(SubscriptionBillingInvoiceService::class)->fulfillPaidInvoice(
+            $subscriber,
+            'pro',
+            'inv-us-tax',
+            ['id' => 'inv-us-tax', 'currency' => 'SATS', 'amount' => 240_000],
+        );
+
+        $this->assertNotNull($doc);
+        $this->assertSame('155.88', $doc->total);
+    }
+
+    #[Test]
     public function duplicate_webhook_does_not_create_second_invoice(): void
     {
         $this->seedProPlan();

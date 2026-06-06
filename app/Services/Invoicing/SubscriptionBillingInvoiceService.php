@@ -10,6 +10,7 @@ use App\Models\Company;
 use App\Models\CompanyContact;
 use App\Models\User;
 use App\Services\BtcPay\InvoiceService;
+use App\Support\Invoicing\CompanyVatPolicy;
 use Illuminate\Support\Facades\Log;
 
 class SubscriptionBillingInvoiceService
@@ -82,7 +83,7 @@ class SubscriptionBillingInvoiceService
 
         $contact = $this->upsertSubscriberContact($company, $subscriber);
         $lineName = $this->lineNameForPlan($planRole);
-        $taxRate = $company->vat_payer ? (float) ($company->vat_rate_default ?? 0) : 0.0;
+        $taxRate = app(CompanyVatPolicy::class)->resolveLineTaxRate($company, $contact, null);
         $currency = (string) config('invoicing.subscription_billing.eur_currency', 'EUR');
 
         $subscriptionId = $invoicePayload['metadata']['subscriptionId']
@@ -120,9 +121,11 @@ class SubscriptionBillingInvoiceService
         $document->save();
         $this->syncLines($document, $lines);
 
+        $document = $document->fresh(['lines', 'contact', 'company']);
+
         $paid = $this->markPaidService->markPaid(
-            $document->fresh(['lines', 'contact', 'company']),
-            $amounts['eur'],
+            $document,
+            (float) $document->total,
             null,
             'subscription_webhook',
         );
@@ -170,6 +173,26 @@ class SubscriptionBillingInvoiceService
         $amount = (float) ($invoice['amount'] ?? 0);
         $fiatCurrencies = ['EUR', 'USD', 'CZK', 'PLN', 'GBP', 'CHF'];
 
+        // Prefer actual BTC/LN received over invoice list price (plan checkout may mis-state fiat).
+        $receivedSats = $this->invoiceService->getReceivedSatsForInvoice($storeId, $invoice);
+        $rate = $this->invoiceService->getPaymentRateForInvoice($storeId, $invoiceId);
+
+        if ($receivedSats !== null && $receivedSats > 0 && $rate !== null && (float) $rate > 0) {
+            $eur = round(($receivedSats / 100_000_000) * (float) $rate, 2);
+            if ($eur > 0) {
+                return [
+                    'eur' => $eur,
+                    'sats' => $receivedSats,
+                    'rate' => (string) $rate,
+                    'source' => 'sats_rate',
+                ];
+            }
+        }
+
+        if ($currency === 'SATS' && $amount > 0) {
+            return null;
+        }
+
         if (in_array($currency, $fiatCurrencies, true) && $amount > 0) {
             return [
                 'eur' => round($amount, 2),
@@ -179,24 +202,7 @@ class SubscriptionBillingInvoiceService
             ];
         }
 
-        $receivedSats = $this->invoiceService->getReceivedSatsForInvoice($storeId, $invoice);
-        $rate = $this->invoiceService->getPaymentRateForInvoice($storeId, $invoiceId);
-
-        if ($receivedSats === null || $receivedSats <= 0 || $rate === null || (float) $rate <= 0) {
-            return null;
-        }
-
-        $eur = round(($receivedSats / 100_000_000) * (float) $rate, 2);
-        if ($eur <= 0) {
-            return null;
-        }
-
-        return [
-            'eur' => $eur,
-            'sats' => $receivedSats,
-            'rate' => (string) $rate,
-            'source' => 'sats_rate',
-        ];
+        return null;
     }
 
     protected function upsertSubscriberContact(Company $company, User $subscriber): CompanyContact

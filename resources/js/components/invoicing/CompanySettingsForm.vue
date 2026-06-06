@@ -144,6 +144,18 @@
                 :placeholder="t('invoicing.us_state_file_number_ph')"
               />
             </div>
+            <div>
+              <label class="invoicing-sf-label">{{ t('invoicing.us_default_sales_tax_rate') }}</label>
+              <input
+                v-model.number="contactForm.vat_rate_default"
+                type="number"
+                min="0"
+                max="100"
+                step="0.001"
+                class="invoicing-sf-input w-32"
+              />
+              <p class="text-xs text-gray-500 mt-1">{{ t('invoicing.us_default_sales_tax_rate_hint') }}</p>
+            </div>
             <p class="text-xs text-indigo-800 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
               {{ t('invoicing.company_settings_us_tax_hint') }}
             </p>
@@ -450,6 +462,7 @@ const contactForm = reactive({
   issuer_email: '',
   website: '',
   legal_footer_note: '',
+  vat_rate_default: 0,
 });
 
 const bankForm = reactive({
@@ -642,6 +655,8 @@ function applyCompany(c: Record<string, any>) {
   bankForm.bic = c.bic ?? '';
   bankForm.default_currency = c.default_currency ?? 'EUR';
 
+  contactForm.vat_rate_default = Number(c.vat_rate_default ?? 0);
+
   if (isUsJurisdiction(contactForm.jurisdiction)) {
     vatStatus.value = 'none';
   } else {
@@ -664,7 +679,12 @@ watch(
 
 function vatPayload() {
   if (isUs.value) {
-    return { vat_status: 'none', vat_payer: false, vat_number: null };
+    return {
+      vat_status: 'none',
+      vat_payer: false,
+      vat_number: null,
+      vat_rate_default: Number(contactForm.vat_rate_default) || 0,
+    };
   }
   return {
     vat_status: vatStatus.value,
