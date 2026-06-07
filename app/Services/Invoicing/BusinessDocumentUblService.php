@@ -3,7 +3,6 @@
 namespace App\Services\Invoicing;
 
 use App\Enums\BusinessDocumentType;
-use App\Enums\CompanyJurisdiction;
 use App\Models\BusinessDocument;
 use App\Models\Company;
 use App\Models\CompanyContact;
@@ -11,6 +10,7 @@ use App\Support\Invoicing\Canonical\CanonicalInvoice;
 use App\Support\Invoicing\Canonical\CanonicalInvoiceLine;
 use App\Support\Invoicing\Canonical\CanonicalTaxBreakdownRow;
 use App\Support\Invoicing\EuStructuredDocumentExport;
+use App\Support\Invoicing\SkUblProfile;
 use XMLWriter;
 
 /**
@@ -67,6 +67,10 @@ class BusinessDocumentUblService
         $this->party($writer, 'AccountingSupplierParty', $canonical->company);
         if ($canonical->contact) {
             $this->party($writer, 'AccountingCustomerParty', $canonical->contact, isCustomer: true);
+        }
+
+        if (! $isCreditNote) {
+            $this->paymentMeans($writer, $document, $canonical->company);
         }
 
         $this->taxTotal($writer, $canonical);
@@ -182,21 +186,44 @@ class BusinessDocumentUblService
         $writer->endElement();
     }
 
+    protected function paymentMeans(XMLWriter $writer, BusinessDocument $document, Company $company): void
+    {
+        $iban = preg_replace('/\s+/', '', (string) ($company->iban ?? ''));
+        if ($iban === '') {
+            return;
+        }
+
+        $writer->startElementNs('cac', 'PaymentMeans', null);
+        $this->element($writer, 'cbc', 'PaymentMeansCode', '30');
+        if ($document->variable_symbol) {
+            $this->element($writer, 'cbc', 'PaymentID', $document->variable_symbol);
+        }
+        $writer->startElementNs('cac', 'PayeeFinancialAccount', null);
+        $this->element($writer, 'cbc', 'ID', $iban);
+        if ($company->bic) {
+            $writer->startElementNs('cac', 'FinancialInstitutionBranch', null);
+            $this->element($writer, 'cbc', 'ID', $company->bic);
+            $writer->endElement();
+        }
+        $writer->endElement();
+        $writer->endElement();
+    }
+
     protected function party(XMLWriter $writer, string $wrapper, Company|CompanyContact $entity, bool $isCustomer = false): void
     {
         $writer->startElementNs('cac', $wrapper, null);
         $writer->startElementNs('cac', 'Party', null);
 
-        $endpointId = $entity->registration_number ?? $entity->tax_id ?? null;
-        if ($endpointId) {
+        $endpoint = SkUblProfile::resolveEndpoint($entity);
+        if ($endpoint !== null) {
             $writer->startElementNs('cbc', 'EndpointID', null);
-            $writer->writeAttribute('schemeID', '9938');
-            $writer->text($endpointId);
+            $writer->writeAttribute('schemeID', $endpoint['scheme']);
+            $writer->text($endpoint['id']);
             $writer->endElement();
         }
 
         $writer->startElementNs('cac', 'PartyName', null);
-        $this->element($writer, 'cbc', 'Name', $entity->name ?? ($isCustomer ? 'Customer' : 'Supplier'));
+        $this->element($writer, 'cbc', 'Name', SkUblProfile::partyDisplayName($entity));
         $writer->endElement();
 
         $writer->startElementNs('cac', 'PostalAddress', null);
@@ -204,9 +231,20 @@ class BusinessDocumentUblService
         $this->element($writer, 'cbc', 'CityName', $entity->city);
         $this->element($writer, 'cbc', 'PostalZone', $entity->postal_code);
         $writer->startElementNs('cac', 'Country', null);
-        $this->element($writer, 'cbc', 'IdentificationCode', $this->countryCode($entity, $isCustomer));
+        $this->element($writer, 'cbc', 'IdentificationCode', SkUblProfile::countryCode($entity));
         $writer->endElement();
         $writer->endElement();
+
+        $legalEntity = SkUblProfile::resolveLegalEntityId($entity);
+        if ($legalEntity !== null) {
+            $writer->startElementNs('cac', 'PartyLegalEntity', null);
+            $this->element($writer, 'cbc', 'RegistrationName', SkUblProfile::partyDisplayName($entity));
+            $writer->startElementNs('cbc', 'CompanyID', null);
+            $writer->writeAttribute('schemeID', $legalEntity['scheme']);
+            $writer->text($legalEntity['id']);
+            $writer->endElement();
+            $writer->endElement();
+        }
 
         $vat = $entity instanceof Company ? $entity->vat_number : $entity->vat_id;
         if ($vat) {
@@ -222,30 +260,13 @@ class BusinessDocumentUblService
         $writer->endElement();
     }
 
-    protected function countryCode(Company|CompanyContact $entity, bool $isCustomer): string
-    {
-        $raw = strtoupper(trim((string) ($entity->country ?? '')));
-        if (strlen($raw) === 2) {
-            return $raw;
-        }
-
-        if ($entity instanceof Company) {
-            return match ($entity->jurisdiction) {
-                CompanyJurisdiction::EuSk => 'SK',
-                CompanyJurisdiction::EuCz => 'CZ',
-                default => 'EU',
-            };
-        }
-
-        return 'SK';
-    }
-
     protected function quantityElement(XMLWriter $writer, CanonicalInvoiceLine $line, bool $isCreditNote = false): void
     {
         $tag = $isCreditNote ? 'CreditedQuantity' : 'InvoicedQuantity';
         $writer->startElementNs('cbc', $tag, null);
-        if ($line->unit) {
-            $writer->writeAttribute('unitCode', $line->unit);
+        $unitCode = SkUblProfile::resolveUnitCode($line->unit);
+        if ($unitCode !== null) {
+            $writer->writeAttribute('unitCode', $unitCode);
         }
         $writer->text($this->formatQty($line->quantity));
         $writer->endElement();

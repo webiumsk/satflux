@@ -97,8 +97,13 @@ class CompanyController extends Controller
     ): JsonResponse {
         $incoming = $request->validatedSettings();
         $current = CompanyAppSettings::from($company->app_settings)->toArray();
+        $merged = \App\Support\Invoicing\CompanyEfakturaSettings::mergeIncoming(
+            array_merge($current, $incoming),
+            $incoming,
+        );
+        unset($merged['efaktura_sapi_client_secret']);
         $company->update([
-            'app_settings' => array_merge($current, $incoming),
+            'app_settings' => $merged,
         ]);
 
         AuditLog::log('company.app_settings_updated', 'company', $company->id);

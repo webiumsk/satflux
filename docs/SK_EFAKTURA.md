@@ -1,0 +1,79 @@
+# Slovak e-faktura (digitálny poštár) - príprava do 1.1.2027
+
+Od **1. januára 2027** platí pre tuzemské B2B transakcie na Slovensku povinná štruktúrovaná elektronická fakturácia (zákon č. 385/2025 Z. z.). Dokumenty idú cez sieť **Peppol** a certifikovaného **digitálneho poštára** (CPDS). Finančná správa SR spravuje výber poskytovateľa a národné pravidlá (SK CIUS).
+
+Satflux **nie je** digitálny poštár. Modul Business Invoicing generuje Peppol BIS Billing 3.0 UBL a voliteľne odosiela dokumenty cez **SAPI-SK** API, ak si merchant nastaví vlastné credentials u svojho CPDS.
+
+## Kto čo rieši
+
+| Úloha | Zodpovednosť |
+|-------|----------------|
+| Výber CPDS na portáli FS SR (eFaktúra) | Merchant |
+| Generovanie UBL / ISDOC | Satflux |
+| Peppol doručenie a reporting na FS SR | Certifikovaný digitálny poštár |
+| Automatické odoslanie po vystavení faktúry | Satflux (voliteľné, per firma) |
+| Pro predplatné Webium LLC (WY) | Mimo SK tuzemskej e-faktúry |
+
+## Čo Satflux už podporuje
+
+- **UBL** export (Peppol BIS 3.0) - `GET .../documents/{id}/ubl`
+- **ISDOC** export a embed do EU PDF
+- **SK CIUS** polia v UBL: Peppol scheme `0208` (IČO), `0245` (DIČ), `PartyLegalEntity`, `PaymentMeans`/IBAN, UN/ECE unit codes
+- Per-company nastavenia v `app_settings` (credentials merchanta)
+- Async odoslanie cez `SubmitBusinessDocumentCompliance` job (za `EFAKTURA_ENABLED=true`)
+
+## Nastavenie (merchant)
+
+1. Na [portáli Finančnej správy](https://www.financnasprava.sk) vyberte digitálneho poštára pre firmu.
+2. U poskytovateľa získajte **SAPI-SK** `client_id`, `client_secret` a **Peppol participant ID** (napr. `0245:2023980035`).
+3. V profile firmy (`eu_sk`) v Satflux nastavte (API `PATCH .../app-settings`):
+   - `efaktura_enabled: true`
+   - `efaktura_peppol_participant_id`
+   - `efaktura_sapi_client_id`
+   - `efaktura_sapi_client_secret` (uložené encrypted)
+   - `efaktura_auto_send: true` (voliteľné)
+4. U odberateľov SK doplňte `peppol_participant_id` na kontakte (ak nie je IČO/DIČ).
+
+## Globálna konfigurácia (ops)
+
+```env
+EFAKTURA_ENABLED=false
+EFAKTURA_SAPI_BASE_URL=https://dev.example/sapi
+EFAKTURA_PROVIDER=sapi_sk
+```
+
+`EFAKTURA_ENABLED=false` je default - bez globálneho zapnutia sa gateway nebinduje na SAPI (ostáva noop).
+
+Po zmene `.env`: `php artisan optimize:clear`
+
+## Architektúra
+
+```
+BusinessDocumentIssueService::issue()
+  -> ComplianceSubmissionService::queueIfEligible()  [ak auto_send]
+       -> SubmitBusinessDocumentCompliance (queue)
+            -> SapiSkComplianceGateway::submit()
+                 -> BusinessDocumentUblService::xml()
+                 -> SapiSkClient::sendDocument()
+                 -> business_document_compliance row
+```
+
+Provider-agnostic vrstva: [`SapiSkClient`](../app/Services/Invoicing/Efaktura/SapiSkClient.php) implementuje štandard SAPI-SK; base URL smeruje na konkrétneho CPDS (ePošťák, Flowis, …).
+
+## Fallback bez API
+
+Merchant môže stiahnuť UBL/XML z detailu faktúry a nahrať do webového rozhrania poštára. PDF e-mailom **nie je** e-faktúra pre B2B od 2027.
+
+## Roadmap (mimo tohto branchu)
+
+- Sandbox integrácia proti reálnemu dev endpointu CPDS
+- Inbound `document/receive` + import do nákladov
+- UI záložka e-faktúra v nastaveniach firmy
+- Stav odoslania na `InvoiceShow`
+- Peppol directory lookup pred odoslaním
+
+## Referencie
+
+- [BUSINESS_INVOICING.md](BUSINESS_INVOICING.md)
+- [OpenPeppol Slovakia](https://peppol.org/learn-more/country-profiles/slovakia/)
+- SAPI-SK špecifikácia: sapi-sk.sk (dobrovoľný štandard pre CPDS)

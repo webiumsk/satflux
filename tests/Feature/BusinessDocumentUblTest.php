@@ -51,6 +51,7 @@ class BusinessDocumentUblTest extends TestCase
             'registration_number' => '47615681',
             'tax_id' => '2023980035',
             'vat_number' => 'SK2023980035',
+            'iban' => 'SK3112000000198742637541',
             'street' => 'Bohunice 47',
             'city' => 'Bohunice',
             'postal_code' => '93505',
@@ -99,6 +100,53 @@ class BusinessDocumentUblTest extends TestCase
         $this->assertStringContainsString('<cbc:ID>20260210</cbc:ID>', $xml);
         $this->assertStringContainsString('<cbc:TaxAmount currencyID="EUR">'.$canonical->taxTotal.'</cbc:TaxAmount>', $xml);
         $this->assertStringContainsString('<cbc:PayableAmount currencyID="EUR">'.$canonical->amountDue.'</cbc:PayableAmount>', $xml);
+    }
+
+    #[Test]
+    public function sk_ubl_contains_cius_fields(): void
+    {
+        [, $company] = $this->proUserWithCompany();
+
+        $contact = \App\Models\CompanyContact::create([
+            'company_id' => $company->id,
+            'name' => 'Odberateľ s.r.o.',
+            'registration_number' => '87654321',
+            'tax_id' => '2123456789',
+            'country' => 'SK',
+        ]);
+
+        $doc = BusinessDocument::create([
+            'company_id' => $company->id,
+            'company_contact_id' => $contact->id,
+            'type' => 'invoice',
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => '20261203',
+            'subtotal' => 100,
+            'tax_total' => 23,
+            'total' => 123,
+            'currency' => 'EUR',
+            'issue_date' => now(),
+            'variable_symbol' => '20261203',
+        ]);
+
+        BusinessDocumentLine::create([
+            'business_document_id' => $doc->id,
+            'sort_order' => 0,
+            'name' => 'Služba',
+            'quantity' => 1,
+            'unit' => 'ks.',
+            'unit_price' => 100,
+            'tax_rate' => 23,
+            'line_total' => 123,
+        ]);
+
+        $xml = app(BusinessDocumentUblService::class)->xml($doc->fresh(['company', 'contact', 'lines']));
+
+        $this->assertStringContainsString('schemeID="0245"', $xml);
+        $this->assertStringContainsString('PartyLegalEntity', $xml);
+        $this->assertStringContainsString('PayeeFinancialAccount', $xml);
+        $this->assertStringContainsString('SK3112000000198742637541', $xml);
+        $this->assertStringContainsString('unitCode="C62"', $xml);
     }
 
     #[Test]
