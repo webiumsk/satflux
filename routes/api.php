@@ -434,6 +434,12 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyOwnership::class);
             Route::get('/companies/{company}/documents/{businessDocument}/ubl', [BusinessDocumentController::class, 'ubl'])
                 ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/documents/{businessDocument}/efaktura/compliance', [\App\Http\Controllers\Invoicing\EfakturaController::class, 'compliance'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/{businessDocument}/efaktura/send', [\App\Http\Controllers\Invoicing\EfakturaController::class, 'send'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/efaktura/poll-inbound', [\App\Http\Controllers\Invoicing\EfakturaController::class, 'pollInbound'])
+                ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/documents/{businessDocument}/mark-paid', [BusinessDocumentController::class, 'markPaid'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/documents/{businessDocument}/unmark-paid', [BusinessDocumentController::class, 'unmarkPaid'])

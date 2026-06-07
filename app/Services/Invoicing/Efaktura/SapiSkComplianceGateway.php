@@ -11,8 +11,11 @@ use App\Enums\ComplianceSubmissionStatus;
 use App\Models\BusinessDocument;
 use App\Services\Invoicing\BusinessDocumentUblService;
 use App\Support\Invoicing\CompanyEfakturaSettings;
+use App\Support\Invoicing\Efaktura\PeppolParticipantId;
+use App\Support\Invoicing\Efaktura\SapiSkSendPayload;
 use App\Support\Invoicing\EuStructuredDocumentExport;
 use App\Support\Invoicing\SkUblProfile;
+use Illuminate\Http\Client\RequestException;
 
 class SapiSkComplianceGateway implements ComplianceSubmissionGateway
 {
@@ -79,27 +82,60 @@ class SapiSkComplianceGateway implements ComplianceSubmissionGateway
 
         $document->loadMissing(['company', 'contact', 'lines']);
         $settings = CompanyEfakturaSettings::fromCompany($document->company);
+        $senderParticipantId = (string) $settings->peppolParticipantId();
+        $receiverParticipantId = PeppolParticipantId::fromContact($document->contact);
+
+        if ($receiverParticipantId === null) {
+            return new \App\Support\Invoicing\ComplianceSubmissionResult(
+                status: ComplianceSubmissionStatus::Failed,
+                message: 'Recipient Peppol participant ID is missing (IČO, DIČ, or peppol_participant_id on contact).',
+            );
+        }
 
         try {
             $ubl = $this->ublService->xml($document, auditDownload: false);
+            $baseUrl = (string) $settings->sapiBaseUrl();
             $token = $this->client->accessToken(
                 (string) $settings->sapiClientId(),
                 (string) $settings->sapiClientSecret(),
+                $baseUrl,
             );
 
             $response = $this->client->sendDocument(
                 $token,
-                (string) $settings->peppolParticipantId(),
-                $ubl,
+                $senderParticipantId,
+                SapiSkSendPayload::build($document, $senderParticipantId, $receiverParticipantId, $ubl),
                 $document->id,
+                $baseUrl,
             );
 
-            $externalId = (string) ($response['id'] ?? $response['document_id'] ?? $response['message_id'] ?? '');
+            $externalId = (string) (
+                $response['id']
+                ?? $response['document_id']
+                ?? $response['message_id']
+                ?? $response['providerDocumentId']
+                ?? ''
+            );
 
             return new \App\Support\Invoicing\ComplianceSubmissionResult(
                 status: ComplianceSubmissionStatus::Submitted,
                 externalId: $externalId !== '' ? $externalId : null,
                 responsePayload: $response,
+            );
+        } catch (RequestException $exception) {
+            if ($this->client->isRecipientNotFoundError($exception)) {
+                return new \App\Support\Invoicing\ComplianceSubmissionResult(
+                    status: ComplianceSubmissionStatus::Failed,
+                    message: 'Recipient is not registered in the Peppol network.',
+                    responsePayload: $exception->response?->json(),
+                );
+            }
+
+            report($exception);
+
+            return new \App\Support\Invoicing\ComplianceSubmissionResult(
+                status: ComplianceSubmissionStatus::Failed,
+                message: $exception->getMessage(),
             );
         } catch (\Throwable $e) {
             report($e);

@@ -1,0 +1,143 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Enums\CompanyJurisdiction;
+use App\Models\Company;
+use App\Models\EfakturaInboundReceipt;
+use App\Models\Subscription;
+use App\Models\SubscriptionPlan;
+use App\Models\User;
+use App\Services\Invoicing\Efaktura\EfakturaInboundService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
+
+class EfakturaInboundServiceTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function inboundCompany(): Company
+    {
+        $proPlan = SubscriptionPlan::create([
+            'code' => 'pro',
+            'name' => 'pro',
+            'display_name' => 'Pro',
+            'price_eur' => 99,
+            'billing_period' => 'year',
+            'max_stores' => 3,
+            'max_api_keys' => 3,
+            'max_ln_addresses' => null,
+            'features' => ['business_invoicing'],
+            'is_active' => true,
+        ]);
+        $user = User::factory()->create();
+        Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $proPlan->id,
+            'status' => 'active',
+            'starts_at' => now(),
+            'expires_at' => now()->addYear(),
+        ]);
+
+        return Company::create([
+            'user_id' => $user->id,
+            'legal_name' => 'Webium s.r.o.',
+            'jurisdiction' => CompanyJurisdiction::EuSk,
+            'default_currency' => 'EUR',
+            'registration_number' => '47615681',
+            'tax_id' => '2023980035',
+            'country' => 'SK',
+            'app_settings' => [
+                'efaktura_enabled' => true,
+                'efaktura_inbound_enabled' => true,
+                'efaktura_sapi_base_url' => 'https://sapi.test',
+                'efaktura_peppol_participant_id' => '0245:2023980035',
+                'efaktura_sapi_client_id' => 'client-test',
+                'efaktura_sapi_client_secret_encrypted' => Crypt::encryptString('secret-test'),
+            ],
+        ]);
+    }
+
+    private function sampleInboundUbl(): string
+    {
+        return <<<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+ xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+ xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+  <cbc:ID>IN-7788</cbc:ID>
+  <cbc:IssueDate>2026-06-02</cbc:IssueDate>
+  <cbc:DueDate>2026-06-16</cbc:DueDate>
+  <cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
+  <cac:AccountingSupplierParty>
+    <cac:Party><cac:PartyName><cbc:Name>Supplier s.r.o.</cbc:Name></cac:PartyName></cac:Party>
+  </cac:AccountingSupplierParty>
+  <cac:LegalMonetaryTotal>
+    <cbc:PayableAmount currencyID="EUR">88.50</cbc:PayableAmount>
+  </cac:LegalMonetaryTotal>
+</Invoice>
+XML;
+    }
+
+    #[Test]
+    public function poll_company_imports_inbound_document_as_expense(): void
+    {
+        config(['efaktura.enabled' => true]);
+
+        $ubl = $this->sampleInboundUbl();
+
+        Http::fake(function ($request) use ($ubl) {
+            $url = $request->url();
+
+            if (str_contains($url, '/sapi/v1/auth/token')) {
+                return Http::response(['access_token' => 'token-abc', 'expires_in' => 900]);
+            }
+
+            if ($request->method() === 'GET' && str_contains($url, '/sapi/v1/document/receive/inbound-42') && ! str_contains($url, '/acknowledge')) {
+                return Http::response([
+                    'providerDocumentId' => 'inbound-42',
+                    'payload' => $ubl,
+                ]);
+            }
+
+            if ($request->method() === 'GET' && (str_ends_with($url, '/sapi/v1/document/receive') || str_contains($url, '/document/receive?'))) {
+                return Http::response([
+                    'documents' => [
+                        ['providerDocumentId' => 'inbound-42'],
+                    ],
+                ]);
+            }
+
+            if (str_contains($url, '/acknowledge')) {
+                return Http::response(['status' => 'ACKNOWLEDGED']);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $company = $this->inboundCompany();
+        $stats = app(EfakturaInboundService::class)->pollCompany($company);
+
+        $this->assertSame(1, $stats['imported']);
+        $this->assertSame(1, $stats['acknowledged']);
+
+        $this->assertDatabaseHas('business_expenses', [
+            'company_id' => $company->id,
+            'external_number' => 'IN-7788',
+            'title' => 'Supplier s.r.o.',
+            'total' => 88.50,
+        ]);
+
+        $this->assertDatabaseHas('efaktura_inbound_receipts', [
+            'company_id' => $company->id,
+            'external_document_id' => 'inbound-42',
+            'status' => 'acknowledged',
+        ]);
+
+        $receipt = EfakturaInboundReceipt::query()->first();
+        $this->assertNotNull($receipt?->business_expense_id);
+    }
+}

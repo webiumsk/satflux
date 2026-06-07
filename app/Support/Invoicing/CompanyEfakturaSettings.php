@@ -30,6 +30,11 @@ final class CompanyEfakturaSettings
         return (bool) ($this->values['efaktura_auto_send'] ?? false);
     }
 
+    public function inboundEnabled(): bool
+    {
+        return (bool) ($this->values['efaktura_inbound_enabled'] ?? false);
+    }
+
     public function provider(): string
     {
         return (string) ($this->values['efaktura_provider'] ?? 'sapi_sk');
@@ -40,6 +45,18 @@ final class CompanyEfakturaSettings
         $id = trim((string) ($this->values['efaktura_peppol_participant_id'] ?? ''));
 
         return $id !== '' ? $id : null;
+    }
+
+    public function sapiBaseUrl(): ?string
+    {
+        $url = trim((string) ($this->values['efaktura_sapi_base_url'] ?? ''));
+        if ($url !== '') {
+            return rtrim($url, '/');
+        }
+
+        $fallback = rtrim((string) config('efaktura.providers.sapi_sk.base_url'), '/');
+
+        return $fallback !== '' ? $fallback : null;
     }
 
     public function sapiClientId(): ?string
@@ -67,6 +84,7 @@ final class CompanyEfakturaSettings
     {
         return $this->enabled()
             && $this->peppolParticipantId() !== null
+            && $this->sapiBaseUrl() !== null
             && $this->sapiClientId() !== null
             && $this->sapiClientSecret() !== null;
     }
@@ -79,7 +97,9 @@ final class CompanyEfakturaSettings
         return [
             'efaktura_enabled' => $this->enabled(),
             'efaktura_auto_send' => $this->autoSend(),
+            'efaktura_inbound_enabled' => $this->inboundEnabled(),
             'efaktura_provider' => $this->provider(),
+            'efaktura_sapi_base_url' => $this->sapiBaseUrl(),
             'efaktura_peppol_participant_id' => $this->peppolParticipantId(),
             'efaktura_sapi_client_id' => $this->sapiClientId(),
             'efaktura_sapi_client_secret_set' => $this->sapiClientSecret() !== null,
@@ -97,6 +117,7 @@ final class CompanyEfakturaSettings
         foreach ([
             'efaktura_enabled',
             'efaktura_auto_send',
+            'efaktura_inbound_enabled',
             'efaktura_provider',
             'efaktura_peppol_participant_id',
             'efaktura_sapi_client_id',
@@ -104,6 +125,11 @@ final class CompanyEfakturaSettings
             if (array_key_exists($key, $incoming)) {
                 $merged[$key] = $incoming[$key];
             }
+        }
+
+        if (array_key_exists('efaktura_sapi_base_url', $incoming)) {
+            $url = trim((string) $incoming['efaktura_sapi_base_url']);
+            $merged['efaktura_sapi_base_url'] = $url !== '' ? rtrim($url, '/') : null;
         }
 
         if (array_key_exists('efaktura_sapi_client_secret', $incoming)) {

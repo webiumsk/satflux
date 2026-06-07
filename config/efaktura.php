@@ -18,12 +18,16 @@ return [
 
     'queue' => env('EFAKTURA_QUEUE', 'default'),
 
+    'inbound_poll_limit' => (int) env('EFAKTURA_INBOUND_POLL_LIMIT', 20),
+
     'providers' => [
         'sapi_sk' => [
+            // Optional global fallback for local dev; merchants set efaktura_sapi_base_url per company.
             'base_url' => rtrim((string) env('EFAKTURA_SAPI_BASE_URL', ''), '/'),
             'token_path' => '/sapi/v1/auth/token',
             'send_path' => '/sapi/v1/document/send',
             'receive_path' => '/sapi/v1/document/receive',
+            'receive_detail_path' => '/sapi/v1/document/receive/{id}',
             'acknowledge_path' => '/sapi/v1/document/receive/{id}/acknowledge',
             'timeout_seconds' => (int) env('EFAKTURA_SAPI_TIMEOUT', 30),
         ],

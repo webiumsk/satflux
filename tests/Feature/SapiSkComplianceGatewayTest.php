@@ -66,6 +66,7 @@ class SapiSkComplianceGatewayTest extends TestCase
             'app_settings' => [
                 'efaktura_enabled' => true,
                 'efaktura_auto_send' => true,
+                'efaktura_sapi_base_url' => 'https://sapi.test',
                 'efaktura_peppol_participant_id' => '0245:2023980035',
                 'efaktura_sapi_client_id' => 'client-test',
                 'efaktura_sapi_client_secret_encrypted' => Crypt::encryptString('secret-test'),
@@ -86,10 +87,7 @@ class SapiSkComplianceGatewayTest extends TestCase
     #[Test]
     public function gateway_supports_configured_sk_b2b_invoice(): void
     {
-        config([
-            'efaktura.enabled' => true,
-            'efaktura.providers.sapi_sk.base_url' => 'https://sapi.test',
-        ]);
+        config(['efaktura.enabled' => true]);
 
         [$company, $contact] = $this->skCompanyWithEfaktura();
 
@@ -123,10 +121,7 @@ class SapiSkComplianceGatewayTest extends TestCase
     #[Test]
     public function submit_persists_compliance_row_with_http_fake(): void
     {
-        config([
-            'efaktura.enabled' => true,
-            'efaktura.providers.sapi_sk.base_url' => 'https://sapi.test',
-        ]);
+        config(['efaktura.enabled' => true]);
 
         Http::fake([
             'https://sapi.test/sapi/v1/auth/token' => Http::response([
@@ -134,9 +129,9 @@ class SapiSkComplianceGatewayTest extends TestCase
                 'expires_in' => 3600,
             ]),
             'https://sapi.test/sapi/v1/document/send' => Http::response([
-                'id' => 'doc-remote-99',
-                'status' => 'submitted',
-            ]),
+                'providerDocumentId' => 'doc-remote-99',
+                'status' => 'ACCEPTED',
+            ], 202),
         ]);
 
         [$company, $contact] = $this->skCompanyWithEfaktura();
@@ -182,8 +177,49 @@ class SapiSkComplianceGatewayTest extends TestCase
         ]);
 
         Http::assertSent(function ($request) {
-            return $request->url() === 'https://sapi.test/sapi/v1/document/send'
-                && $request->hasHeader('X-Peppol-Participant-Id', '0245:2023980035');
+            if ($request->url() !== 'https://sapi.test/sapi/v1/document/send') {
+                return false;
+            }
+
+            $body = $request->data();
+
+            return $request->hasHeader('X-Peppol-Participant-Id', '0245:2023980035')
+                && ($body['payloadFormat'] ?? null) === 'XML'
+                && ($body['metadata']['receiverParticipantId'] ?? null) === '0245:2123456789'
+                && str_contains((string) ($body['payload'] ?? ''), 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2');
         });
+    }
+
+    #[Test]
+    public function submit_fails_when_recipient_peppol_id_missing(): void
+    {
+        config(['efaktura.enabled' => true]);
+
+        [$company] = $this->skCompanyWithEfaktura();
+
+        $contact = CompanyContact::create([
+            'company_id' => $company->id,
+            'name' => 'Bez ID',
+            'country' => 'SK',
+        ]);
+
+        $doc = BusinessDocument::create([
+            'company_id' => $company->id,
+            'company_contact_id' => $contact->id,
+            'type' => BusinessDocumentType::Invoice,
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => '20261203',
+            'total' => 10,
+            'subtotal' => 10,
+            'tax_total' => 0,
+            'currency' => 'EUR',
+            'issue_date' => now(),
+        ]);
+
+        $result = app(ComplianceSubmissionService::class)->submitNow($doc->fresh(['company', 'contact', 'lines']));
+
+        $this->assertSame(ComplianceSubmissionStatus::Failed, $result->status);
+        $this->assertStringContainsString('Recipient Peppol', (string) $result->message);
+        Http::assertNothingSent();
     }
 }

@@ -21,6 +21,9 @@ Satflux **nie je** digitálny poštár. Modul Business Invoicing generuje Peppol
 - **SK CIUS** polia v UBL: Peppol scheme `0208` (IČO), `0245` (DIČ), `PartyLegalEntity`, `PaymentMeans`/IBAN, UN/ECE unit codes
 - Per-company nastavenia v `app_settings` (credentials merchanta)
 - Async odoslanie cez `SubmitBusinessDocumentCompliance` job (za `EFAKTURA_ENABLED=true`)
+- SAPI-SK JSON `document/send` (metadata + UBL payload) podľa špecifikácie CPDS
+- Inbound polling `efaktura:poll-inbound` - import UBL do **nákladov** + acknowledge
+- API: `POST .../efaktura/send`, `POST .../efaktura/poll-inbound`, `GET .../efaktura/compliance`
 
 ## Nastavenie (merchant)
 
@@ -28,18 +31,22 @@ Satflux **nie je** digitálny poštár. Modul Business Invoicing generuje Peppol
 2. U poskytovateľa získajte **SAPI-SK** `client_id`, `client_secret` a **Peppol participant ID** (napr. `0245:2023980035`).
 3. V profile firmy (`eu_sk`) v Satflux nastavte (API `PATCH .../app-settings`):
    - `efaktura_enabled: true`
+   - `efaktura_sapi_base_url` - API endpoint vášho CPDS (napr. `https://dev.epostak.sk`)
    - `efaktura_peppol_participant_id`
    - `efaktura_sapi_client_id`
    - `efaktura_sapi_client_secret` (uložené encrypted)
    - `efaktura_auto_send: true` (voliteľné)
+   - `efaktura_inbound_enabled: true` (prijímanie cez poll)
 4. U odberateľov SK doplňte `peppol_participant_id` na kontakte (ak nie je IČO/DIČ).
+
+Každý merchant si vyberá iného digitálneho poštára - **base URL musí byť per firma**, nie globálne.
 
 ## Globálna konfigurácia (ops)
 
 ```env
 EFAKTURA_ENABLED=false
-EFAKTURA_SAPI_BASE_URL=https://dev.example/sapi
 EFAKTURA_PROVIDER=sapi_sk
+# EFAKTURA_SAPI_BASE_URL=  # voliteľný fallback pre lokálny dev; v produkcii nastavte per firma
 ```
 
 `EFAKTURA_ENABLED=false` je default - bez globálneho zapnutia sa gateway nebinduje na SAPI (ostáva noop).
@@ -64,13 +71,22 @@ Provider-agnostic vrstva: [`SapiSkClient`](../app/Services/Invoicing/Efaktura/Sa
 
 Merchant môže stiahnuť UBL/XML z detailu faktúry a nahrať do webového rozhrania poštára. PDF e-mailom **nie je** e-faktúra pre B2B od 2027.
 
-## Roadmap (mimo tohto branchu)
+## Inbound (Fáza B)
 
-- Sandbox integrácia proti reálnemu dev endpointu CPDS
-- Inbound `document/receive` + import do nákladov
+```text
+efaktura:poll-inbound (scheduler každých 15 min, ak EFAKTURA_ENABLED)
+  -> SapiSkClient list/detail/acknowledge
+  -> UblExpenseDraftParser
+  -> BusinessExpense + UBL príloha
+  -> efaktura_inbound_receipts (dedup podľa providerDocumentId)
+```
+
+Peppol SMP lookup pred odoslaním rieši CPDS pri `POST /document/send` (422 ak príjemca nie je v sieti). Lokálna preflight kontrola overí, že kontakt má Peppol ID (IČO/DIČ/`peppol_participant_id`).
+
+## Roadmap (Fáza C)
+
 - UI záložka e-faktúra v nastaveniach firmy
 - Stav odoslania na `InvoiceShow`
-- Peppol directory lookup pred odoslaním
 
 ## Referencie
 
