@@ -41,3 +41,15 @@ Schedule::command('data:retention-run')
     ->dailyAt('04:00')
     ->withoutOverlapping()
     ->runInBackground();
+
+// MaxMind GeoLite2 refresh for compliance geo-blocking (monthly)
+Schedule::command('compliance:update-geoip')
+    ->monthlyOn(1, '04:15')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// OFAC SDN + EU consolidated sanctions lists (daily)
+Schedule::command('compliance:sync-sanctions-lists')
+    ->dailyAt('04:30')
+    ->withoutOverlapping()
+    ->runInBackground();

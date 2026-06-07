@@ -15,6 +15,7 @@ return [
     'login_successful' => 'Login successful',
     'logout_successful' => 'Logout successful',
     'registration_successful' => 'Registration successful! Please check your email to verify your account.',
+    'compliance_registration_unavailable' => 'El registro no está disponible desde su ubicación o no pudo completarse. Contacte con soporte si cree que se trata de un error.',
     'verification_email_failed' => 'No se pudo enviar el correo de verificación. Verifique que su dirección de correo electrónico sea válida e intente de nuevo.',
     'email_verified' => 'Your email has been verified successfully. Please login to continue.',
     'password_reset_sent' => 'Si existe una cuenta con ese correo, hemos enviado un enlace para restablecer la contraseña.',

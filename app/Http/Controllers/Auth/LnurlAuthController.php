@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\LnurlAuthChallenge;
 use App\Models\User;
 use App\Services\BtcPay\UserService;
+use App\Services\Compliance\ComplianceGate;
 use App\Support\Legal\LegalConsent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,12 +21,10 @@ use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class LnurlAuthController extends Controller
 {
-    protected UserService $userService;
-
-    public function __construct(UserService $userService)
-    {
-        $this->userService = $userService;
-    }
+    public function __construct(
+        protected UserService $userService,
+        protected ComplianceGate $complianceGate,
+    ) {}
 
     /**
      * Generate a LNURL-auth challenge.
@@ -315,6 +314,8 @@ class LnurlAuthController extends Controller
             return response()->json(['error' => 'Provide user_id or k1.'], 422);
         }
 
+        $this->complianceGate->assertRegistrationAllowed($request, $request->input('email'));
+
         $user = null;
         $publicKey = null;
 
@@ -395,6 +396,8 @@ class LnurlAuthController extends Controller
                 }
             }
         }
+
+        $this->complianceGate->linkLatestRegistrationScreening($request->input('email'), $user);
 
         LegalConsent::recordRegistration($user);
 

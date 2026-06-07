@@ -6,6 +6,7 @@ use App\Models\Store;
 use App\Services\BtcPay\LightningAddressService;
 use App\Services\BtcPay\RaffleService;
 use App\Services\BtcPay\TicketService;
+use App\Services\Compliance\ComplianceGate;
 use App\Services\GuestUpgradeService;
 use App\Services\SubscriptionService;
 use App\Support\Legal\LegalConsent;
@@ -22,7 +23,8 @@ class AccountController extends Controller
         protected LightningAddressService $lightningAddressService,
         protected TicketService $ticketService,
         protected RaffleService $raffleService,
-        protected GuestUpgradeService $guestUpgradeService
+        protected GuestUpgradeService $guestUpgradeService,
+        protected ComplianceGate $complianceGate,
     ) {}
 
     /**
@@ -292,8 +294,15 @@ class AccountController extends Controller
             'password' => ['required', 'confirmed', Password::defaults()],
         ], LegalConsent::registrationRules()));
 
+        $this->complianceGate->assertRegistrationAllowed(
+            $request,
+            $validated['email'],
+            is_string($user->name) ? $user->name : null,
+        );
+
         try {
             $upgradedUser = $this->guestUpgradeService->upgrade($user, $validated);
+            $this->complianceGate->linkLatestRegistrationScreening($validated['email'], $upgradedUser);
             LegalConsent::recordRegistration($upgradedUser);
         } catch (ValidationException $e) {
             throw $e;
