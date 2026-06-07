@@ -11,11 +11,16 @@ User-scoped module for company profiles, customer contacts, and accounting invoi
 
 ### When a client stops paying
 
-1. **Active subscription** - full Pro/Enterprise access including invoicing.
-2. **Grace period** (30 days after `expires_at`, status `active` or `grace`; see `config/pricing.php` `grace_days`) - access continues; user can still view and edit invoicing data.
-3. **After grace** (`expired`) - `currentSubscription()` is empty; plan falls back to Free / role. `business_invoicing` is off: all `/api/invoicing/*` and SPA invoicing routes return **403**. **Data is not deleted** (companies, contacts, issued documents remain in DB).
-4. **Customer-facing** - public Bitcoin pay links (`GET /pay/i/{payment_token}`) keep working for already-issued invoices; webhooks can still mark documents paid.
-5. **Re-subscribe** - access restored immediately; no need to recreate companies.
+Entitlement is enforced from the local `subscriptions` row (`billing_phase`, `expires_at`, `grace_ends_at`), not from `users.role` alone. See `User::hasActiveProEntitlement()` and `SubscriptionService::canUseBusinessInvoicing()`.
+
+1. **Active paid subscription** (`billing_phase = paid`) - full Pro/Enterprise access including invoicing.
+2. **Free trial** (`billing_phase = trial`, `expires_at = trial_ends_at` from BTCPay) - full Pro demo including invoicing until trial end. **No grace period** after trial if payment does not settle.
+3. **Paid grace period** (30 days after `expires_at`; `config/pricing.php` `grace_days`) - access continues; user can still view and edit invoicing data.
+4. **After trial end without payment, or after paid grace** (`status = expired`, `billing_phase = expired`) - `business_invoicing` is off: all `/api/invoicing/*` and SPA invoicing routes return **403**. **Data is not deleted** (companies, contacts, issued documents remain in DB).
+5. **Customer-facing** - public Bitcoin pay links (`GET /pay/i/{payment_token}`) keep working for already-issued invoices; webhooks can still mark documents paid. BTCPay store payments, PoS, and Lightning addresses are **not** disabled (non-custodial promise).
+6. **Re-subscribe** - access restored immediately; no need to recreate companies.
+
+**Trial anti-reuse:** `users.trial_consumed_at` is set on first trial activation. Subsequent checkouts send `isTrial: false` to BTCPay (paid checkout only).
 
 Existing companies above the Free limit (0) are **not** removed; the user simply cannot open the module until Pro is active again. Creating new companies is blocked when at plan limit (Pro: 2, or beta: 5).
 

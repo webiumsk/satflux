@@ -1,4 +1,9 @@
-import { LEGAL_OPERATOR, operatorAddressBlock } from './operator';
+import {
+  LEGAL_OPERATOR,
+  gdprRepresentativeBlockEu,
+  gdprRepresentativeBlockUk,
+  operatorAddressBlock,
+} from './operator';
 import type { LegalDocumentContent } from './types';
 
 const LAST_UPDATED = '2026-06-02';
@@ -20,6 +25,14 @@ export const imprintEn: LegalDocumentContent = {
       ],
     },
     {
+      heading: 'EU / UK representative (GDPR Art. 27)',
+      paragraphs: [
+        gdprRepresentativeBlockEu(),
+        gdprRepresentativeBlockUk(),
+        'Appointed pursuant to Article 27 of the EU GDPR and the UK GDPR for matters relating to the processing of personal data of EU/EEA and UK data subjects.',
+      ],
+    },
+    {
       heading: 'Contact',
       paragraphs: [
         `General: ${contactEmail}`,
@@ -36,8 +49,8 @@ export const imprintEn: LegalDocumentContent = {
     {
       heading: 'Dispute resolution',
       paragraphs: [
-        'The European Commission provides an OS platform for online dispute resolution (ODR): https://ec.europa.eu/consumers/odr/',
-        'We are not obliged to participate in consumer arbitration boards unless required by mandatory law.',
+        `If you have a complaint, please contact us first at ${contactEmail} so we can try to resolve it directly.`,
+        'We are not obliged to participate in proceedings before a consumer arbitration board and, as a general rule, do not do so, unless required by mandatory law.',
       ],
     },
     {
@@ -64,6 +77,14 @@ export const imprintSk: LegalDocumentContent = {
       ],
     },
     {
+      heading: 'Zástupca pre EÚ/UK (čl. 27 GDPR)',
+      paragraphs: [
+        gdprRepresentativeBlockEu(),
+        gdprRepresentativeBlockUk(),
+        'Určený podľa článku 27 nariadenia GDPR EÚ a GDPR Spojeného kráľovstva pre záležitosti týkajúce sa spracúvania osobných údajov dotknutých osôb z EÚ/EHP a Spojeného kráľovstva.',
+      ],
+    },
+    {
       heading: 'Kontakt',
       paragraphs: [
         `Všeobecné: ${contactEmail}`,
@@ -80,8 +101,8 @@ export const imprintSk: LegalDocumentContent = {
     {
       heading: 'Riešenie sporov',
       paragraphs: [
-        'Európska komisia poskytuje platformu ODR: https://ec.europa.eu/consumers/odr/',
-        'Nie sme povinní sa zúčastňovať spotrebiteľského arbitráže, pokiaľ to nevyžaduje kogentný zákon.',
+        `Ak máte sťažnosť, kontaktujte nás najprv na ${contactEmail}, aby sme sa ju pokúsili vyriešiť priamo.`,
+        'Nie sme povinní sa zúčastňovať konaní pred spotrebiteľskou arbitrážnou komisiou a ako pravidlo sa na nich nezúčastňujeme, pokiaľ to nevyžaduje kogentný zákon.',
       ],
     },
     {
@@ -227,5 +248,30 @@ export const dpaSk: LegalDocumentContent = {
   ],
 };
 
-export const imprintEs: LegalDocumentContent = { ...imprintEn, title: 'Aviso legal' };
+export const imprintEs: LegalDocumentContent = {
+  ...imprintEn,
+  title: 'Aviso legal',
+  sections: imprintEn.sections.map((section, index) => {
+    if (index === 1) {
+      return {
+        heading: 'Representante UE/Reino Unido (art. 27 GDPR)',
+        paragraphs: [
+          gdprRepresentativeBlockEu(),
+          gdprRepresentativeBlockUk(),
+          'Designado conforme al artículo 27 del GDPR de la UE y del Reino Unido para asuntos relacionados con el tratamiento de datos personales de interesados de la UE/EEE y del Reino Unido.',
+        ],
+      };
+    }
+    if (index === 4) {
+      return {
+        heading: 'Resolución de disputas',
+        paragraphs: [
+          `Si tiene una reclamación, contáctenos primero en ${contactEmail} para intentar resolverla directamente.`,
+          'No estamos obligados a participar en procedimientos ante un tribunal de arbitraje de consumo y, por regla general, no lo hacemos, salvo que la ley imperativa lo exija.',
+        ],
+      };
+    }
+    return section;
+  }),
+};
 export const dpaEs: LegalDocumentContent = { ...dpaEn, title: 'Acuerdo de tratamiento de datos (DPA)' };

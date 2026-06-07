@@ -96,6 +96,10 @@ class SubscriptionController extends Controller
                 $options['cancelRedirectUrl'] = config('services.btcpay.subscription_cancel_url');
             }
 
+            if ($request->user()?->hasConsumedTrial()) {
+                $options['isTrial'] = false;
+            }
+
             // Create checkout via BTCPay
             // Use BTCPay Store ID directly from config (no local Store record needed)
             $checkout = $this->btcpaySubscriptionService->createPlanCheckout(
@@ -282,11 +286,20 @@ class SubscriptionController extends Controller
                 ]);
             }
 
-            $subscription = $this->subscriptionService->activateSubscription(
-                $user,
-                $planName,
-                $subscriptionId
-            );
+            if ($paidInvoice) {
+                $subscription = $this->subscriptionService->activateSubscription(
+                    $user,
+                    $planName,
+                    $subscriptionId
+                );
+            } else {
+                $subscription = $this->subscriptionService->activateTrialSubscription(
+                    $user,
+                    $planName,
+                    $this->btcpaySubscriptionService->resolveTrialEndsAt($checkoutDetails),
+                    $subscriptionId
+                );
+            }
 
             $oldRole = $user->role;
             $user->role = $planName;

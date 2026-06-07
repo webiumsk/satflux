@@ -1,5 +1,10 @@
 import type { LegalDocId, LegalDocumentContent, LegalLocale } from './types';
-import { LEGAL_OPERATOR, operatorAddressBlock } from './operator';
+import {
+  LEGAL_OPERATOR,
+  gdprRepresentativeBlockEu,
+  gdprRepresentativeBlockUk,
+  operatorAddressBlock,
+} from './operator';
 import { dpaEn, dpaEs, dpaSk, imprintEn, imprintEs, imprintSk } from './imprintDpa';
 
 const OPERATOR = LEGAL_OPERATOR.name;
@@ -30,8 +35,11 @@ const termsEn: LegalDocumentContent = {
     {
       heading: '2. Service description',
       paragraphs: [
-        `${SERVICE_NAME} provides tools to manage BTCPay Server stores, accept Bitcoin and Lightning payments, and (on paid plans) issue business invoices and related accounting features. We orchestrate BTCPay and connected wallets; we do not custody your funds unless you choose a custodial wallet integration.`,
-        'Features may change. Beta or preview features are provided as-is and may be modified or withdrawn.',
+        `2.1 What we provide. ${SERVICE_NAME} provides software tools to deploy and manage BTCPay Server stores, generate Bitcoin and Lightning payment requests, monitor settlement status, and (on paid plans) issue business invoices and related accounting features. We host the BTCPay Server software infrastructure on your behalf and orchestrate connections to wallets you choose. Features may change. Beta or preview features are provided as-is and may be modified or withdrawn.`,
+        '2.2 Non-custodial by design. SatFlux is a non-custodial software service. We never hold, take possession of, pool, or have the ability to spend, transfer, or withdraw your funds, and we never hold or have access to your private keys or wallet seed. Bitcoin and Lightning payments flow directly to the wallet you connect; they never pass through us as value.',
+        '2.3 Wallet connections. Where you connect a third-party wallet provider (for example, Blink via a receive/read-scoped API credential), any custody of funds is solely a relationship between you and that provider. We are not a party to that relationship and assume no responsibility for it, including for that provider\'s availability, security, or solvency. Any API credential you supply is used only to generate payment requests and read settlement status; our systems have no technical capability to withdraw or move your funds. Where you use a self-custodial wallet (for example, Aqua), you retain full control of your keys and funds at all times.',
+        '2.4 Software only; not a financial service. We provide software tools only. We are not a money services business, money transmitter, payment processor, payment institution, exchange, broker, or virtual asset service provider, and we do not provide custody, exchange, fiat on-ramp or off-ramp, or stablecoin services. We do not transmit, convert, or take possession of funds or virtual assets on your behalf.',
+        '2.5 Your responsibilities. You are solely responsible for your own legal, regulatory, tax, accounting, and anti-money-laundering obligations arising from your acceptance of Bitcoin or Lightning payments, including any licensing, reporting, or record-keeping required in your jurisdiction. Nothing in the service constitutes financial, legal, or tax advice.',
       ],
     },
     {
@@ -54,6 +62,15 @@ const termsEn: LegalDocumentContent = {
       paragraphs: [
         'You may not use the service for unlawful activity, sanctions evasion, fraud, malware distribution, or to infringe third-party rights.',
         'You may not attempt to bypass security, access other tenants\' data, or overload our infrastructure. We may suspend or terminate accounts that violate these rules.',
+      ],
+    },
+    {
+      heading: '5a. Sanctions, export controls, and prohibited jurisdictions',
+      paragraphs: [
+        '5a.1 Compliance. You must comply with all applicable economic sanctions and export-control laws, including those administered by the US Office of Foreign Assets Control (OFAC), the US Department of Commerce, the European Union, and the United Nations.',
+        '5a.2 Your representations. You represent and warrant that you, and any person on whose behalf you use the service, are not: (a) located in, organized under the laws of, or ordinarily resident in any country or territory subject to comprehensive sanctions (including, without limitation, Cuba, Iran, North Korea, Syria, and the Crimea, Donetsk, and Luhansk regions of Ukraine); (b) identified on any sanctions or restricted-party list, including the OFAC Specially Designated Nationals (SDN) List, the EU Consolidated Sanctions List, or any equivalent list; or (c) owned or controlled by, or acting on behalf of, any such person.',
+        '5a.3 No prohibited use. You will not use the service to facilitate any transaction involving a sanctioned person, sanctioned jurisdiction, or otherwise prohibited activity, and you will not use the service to evade or circumvent any sanctions or export-control law.',
+        '5a.4 Screening and enforcement. We may screen accounts, registration data, and connection metadata against sanctions and restricted-party lists, and may use third-party screening providers for this purpose. We may refuse, restrict, suspend, or terminate access at any time, without liability, where we reasonably believe such action is necessary to comply with sanctions or export-control laws.',
       ],
     },
     {
@@ -113,6 +130,15 @@ const privacyEn: LegalDocumentContent = {
       ],
     },
     {
+      heading: '1a. EU/UK representative (GDPR Article 27)',
+      paragraphs: [
+        'As we are established outside the European Union and the United Kingdom but offer services to data subjects in those regions, we have appointed representatives under Article 27 of the EU GDPR and the UK GDPR.',
+        gdprRepresentativeBlockEu(),
+        gdprRepresentativeBlockUk(),
+        'You may contact our representative(s) on any matter relating to our processing of your personal data, in addition to or instead of contacting us directly.',
+      ],
+    },
+    {
       heading: '2. Data we collect',
       paragraphs: [
         'Account data: email, name (if provided), password hash, language preference, subscription status.',
@@ -134,8 +160,9 @@ const privacyEn: LegalDocumentContent = {
     {
       heading: '4. Processors and subprocessors',
       paragraphs: [
-        'We use infrastructure and service providers (hosting, email delivery, monitoring) that process data on our instructions.',
-        'BTCPay Server (self-hosted or managed instance you connect to) processes payment data under your configuration.',
+        'We use infrastructure and service providers that process data on our instructions.',
+        'Infrastructure providers include hosting (Hetzner, EU), email delivery, and monitoring.',
+        'BTCPay Server: we host and operate the BTCPay Server software infrastructure on your behalf. It processes payment metadata (such as invoice identifiers and settlement status) under your store configuration. We never receive, hold, or have access to your private keys, wallet seed, or funds.',
         'A current list of categories of processors is available on request at the privacy contact above.',
       ],
     },
@@ -204,8 +231,11 @@ const termsSk: LegalDocumentContent = {
     {
       heading: '2. Popis služby',
       paragraphs: [
-        `${SERVICE_NAME} poskytuje nástroje na správu BTCPay Server obchodov, prijímanie platieb Bitcoinom a Lightning a (v platených plánoch) vystavovanie faktúr a súvisiacich účtovných funkcií. Orchestrujeme BTCPay a pripojené peňaženky; vaše prostriedky nekustódijujeme, pokiaľ si nezvolíte kustódialnu integráciu peňaženky.`,
-        'Funkcie sa môžu meniť. Beta alebo náhľadové funkcie sú poskytované tak, ako sú, a môžu byť upravené alebo stiahnuté.',
+        `2.1 Čo poskytujeme. ${SERVICE_NAME} poskytuje softvérové nástroje na nasadenie a správu obchodov BTCPay Server, generovanie platobných požiadaviek Bitcoin a Lightning, sledovanie stavu vyrovnania a (v platených plánoch) vystavovanie obchodných faktúr a súvisiacich účtovných funkcií. Softvérovú infraštruktúru BTCPay Server hostujeme vo vašom mene a orchestrujeme pripojenia k peňaženkám, ktoré si zvolíte. Funkcie sa môžu meniť. Beta alebo náhľadové funkcie sú poskytované tak, ako sú, a môžu byť upravené alebo stiahnuté.`,
+        '2.2 Nekustódialny dizajn. SatFlux je nekustódialna softvérová služba. Nikdy nedržíme, nepreberáme, nepoolujeme ani nemáme možnosť míňať, prevádzať alebo vyberať vaše prostriedky a nikdy nedržíme ani nemáme prístup k vašim súkromným kľúčom alebo seedu peňaženky. Platby Bitcoinom a Lightning smerujú priamo do peňaženky, ktorú pripojíte; ako hodnota cez nás nikdy neprechádzajú.',
+        '2.3 Pripojenia peňaženiek. Ak pripojíte poskytovateľa peňaženky tretej strany (napríklad Blink cez API credential s rozsahom receive/read), akákoľvek úschova prostriedkov je výhradne vzťahom medzi vami a týmto poskytovateľom. Nie sme stranou tohto vzťahu a nepreberáme zaň zodpovednosť, vrátane dostupnosti, bezpečnosti alebo solventnosti tohto poskytovateľa. Akýkoľvek API credential, ktorý poskytnete, používame len na generovanie platobných požiadaviek a čítanie stavu vyrovnania; naše systémy nemajú technickú možnosť vyberať ani presúvať vaše prostriedky. Pri samosprávnej (self-custodial) peňaženke (napríklad Aqua) máte vždy plnú kontrolu nad kľúčmi a prostriedkami.',
+        '2.4 Iba softvér; nie finančná služba. Poskytujeme výhradne softvérové nástroje. Nie sme money services business, prevodca peňazí, payment processor, platobná inštitúcia, burza, broker ani poskytovateľ služieb s virtuálnymi aktívami a neposkytujeme úschovu, zmenáreň, fiat on-ramp ani off-ramp ani služby so stablecoinmi. Vo vašom mene neprenášame, nekonvertujeme ani nepreberáme prostriedky alebo virtuálne aktíva.',
+        '2.5 Vaše povinnosti. Sami zodpovedáte za svoje právne, regulačné, daňové, účtovné a povinnosti v oblasti boja proti praniu špinavých peňazí vyplývajúce z prijímania platieb Bitcoinom alebo Lightning, vrátane licencií, výkazníctva alebo vedenia záznamov požadovaných vo vašej jurisdikcii. Nič v službe nepredstavuje finančné, právne ani daňové poradenstvo.',
       ],
     },
     {
@@ -228,6 +258,15 @@ const termsSk: LegalDocumentContent = {
       paragraphs: [
         'Službu nesmiete používať na nezákonnú činnosť, obchádzanie sankcií, podvod, šírenie malvéru ani na porušovanie práv tretích strán.',
         'Nesmiete obchádzať zabezpečenie, pristupovať k údajom iných tenantov ani preťažovať infraštruktúru. Účty porušujúce pravidlá môžeme pozastaviť alebo ukončiť.',
+      ],
+    },
+    {
+      heading: '5a. Sankcie, kontrola vývozu a zakázané jurisdikcie',
+      paragraphs: [
+        '5a.1 Súlad. Musíte dodržiavať všetky platné zákony o ekonomických sankciách a kontrole vývozu, vrátane predpisov spravovaných Úradom pre kontrolu zahraničných aktív USA (OFAC), Ministerstvom obchodu USA, Európskou úniou a Organizáciou Spojených národov.',
+        '5a.2 Vaše vyhlásenia. Vyhlasujete a zaručujete, že vy a každá osoba, v mene ktorej službu používate, nie ste: (a) so sídlom, založený podľa právnych predpisov alebo obvykle pobývajúci v krajine alebo na území podliehajúcom komplexným sankciám (vrátane bez obmedzenia Kuby, Iránu, Severnej Kórey, Sýrie a regiónov Krym, Doneck a Luhansk na Ukrajine); (b) uvedení na žiadnom sankčnom alebo zozname obmedzených subjektov, vrátane zoznamu OFAC Specially Designated Nationals (SDN), konsolidovaného zoznamu sankcií EÚ alebo ekvivalentného zoznamu; alebo (c) vlastnení alebo kontrolovaní takou osobou, alebo konajúci v jej mene.',
+        '5a.3 Zakázané použitie. Službu nebudete používať na uľahčovanie transakcií so sankcionovanou osobou, sankcionovanou jurisdikciou alebo inak zakázanej činnosti a nebudete ju používať na obchádzanie sankčných alebo vývozných predpisov.',
+        '5a.4 Kontrola a vymáhanie. Môžeme kontrolovať účty, registračné údaje a metadáta pripojenia voči sankčným a zoznamom obmedzených subjektov a na tento účel môžeme využívať poskytovateľov kontroly tretích strán. Prístup môžeme kedykoľvek odmietnuť, obmedziť, pozastaviť alebo ukončiť bez zodpovednosti, ak máme dôvodne za to, že je to potrebné na dodržanie sankčných alebo vývozných predpisov.',
       ],
     },
     {
@@ -287,6 +326,15 @@ const privacySk: LegalDocumentContent = {
       ],
     },
     {
+      heading: '1a. Zástupca pre EÚ/UK (čl. 27 GDPR)',
+      paragraphs: [
+        'Keďže sme založení mimo Európskej únie a Spojeného kráľovstva, ale ponúkame služby dotknutým osobám v týchto regiónoch, určili sme zástupcov podľa článku 27 nariadenia GDPR EÚ a GDPR Spojeného kráľovstva.',
+        gdprRepresentativeBlockEu(),
+        gdprRepresentativeBlockUk(),
+        'V záležitostiach týkajúcich sa spracúvania vašich osobných údajov môžete kontaktovať našich zástupcov navyše alebo namiesto priameho kontaktu s nami.',
+      ],
+    },
+    {
       heading: '2. Aké údaje spracúvame',
       paragraphs: [
         'Údaje účtu: e-mail, meno (ak je uvedené), hash hesla, jazyková preferencia, stav predplatného.',
@@ -308,8 +356,9 @@ const privacySk: LegalDocumentContent = {
     {
       heading: '4. Sprostredkovatelia',
       paragraphs: [
-        'Používame poskytovateľov infraštruktúry (hosting, e-mail, monitoring), ktorí spracúvajú údaje podľa našich pokynov.',
-        'BTCPay Server (vlastná alebo spravovaná inštancia) spracúva platobné údaje podľa vašej konfigurácie.',
+        'Používame poskytovateľov infraštruktúry a služieb, ktorí spracúvajú údaje podľa našich pokynov.',
+        'Medzi infraštruktúrnych poskytovateľov patrí hosting (Hetzner, EÚ), doručovanie e-mailov a monitoring.',
+        'BTCPay Server: softvérovú infraštruktúru BTCPay Server hostujeme a prevádzkujeme vo vašom mene. Spracúva metadáta platieb (napríklad identifikátory faktúr a stav vyrovnania) podľa konfigurácie vášho obchodu. Nikdy neprijímame, nedržíme ani nemáme prístup k vašim súkromným kľúčom, seedu peňaženky ani prostriedkom.',
         'Aktuálny zoznam kategórií sprostredkovateľov poskytneme na požiadanie na kontakte vyššie.',
       ],
     },
@@ -376,6 +425,29 @@ const termsEs: LegalDocumentContent = {
         ],
       };
     }
+    if (index === 1) {
+      return {
+        heading: '2. Descripción del servicio',
+        paragraphs: [
+          `2.1 Qué proporcionamos. ${SERVICE_NAME} ofrece herramientas de software para desplegar y gestionar tiendas BTCPay Server, generar solicitudes de pago Bitcoin y Lightning, supervisar el estado de liquidación y (en planes de pago) emitir facturas comerciales y funciones contables relacionadas. Alojamos la infraestructura de software BTCPay Server en su nombre y orquestamos las conexiones a las carteras que elija. Las funciones pueden cambiar. Las funciones beta o de vista previa se proporcionan tal cual y pueden modificarse o retirarse.`,
+          '2.2 No custodial por diseño. SatFlux es un servicio de software no custodial. Nunca retenemos, tomamos posesión, agrupamos ni tenemos la capacidad de gastar, transferir o retirar sus fondos, y nunca retenemos ni tenemos acceso a sus claves privadas o semilla de cartera. Los pagos Bitcoin y Lightning fluyen directamente a la cartera que conecte; nunca pasan por nosotros como valor.',
+          '2.3 Conexiones de cartera. Cuando conecta un proveedor de cartera de terceros (por ejemplo, Blink mediante una credencial API de alcance receive/read), cualquier custodia de fondos es exclusivamente una relación entre usted y ese proveedor. No somos parte de esa relación ni asumimos responsabilidad por ella, incluida la disponibilidad, seguridad o solvencia de dicho proveedor. Cualquier credencial API que proporcione se usa solo para generar solicitudes de pago y leer el estado de liquidación; nuestros sistemas no tienen capacidad técnica para retirar o mover sus fondos. Si usa una cartera de autocustodia (por ejemplo, Aqua), conserva el control total de sus claves y fondos en todo momento.',
+          '2.4 Solo software; no es un servicio financiero. Proporcionamos únicamente herramientas de software. No somos una empresa de servicios monetarios, transmisor de dinero, procesador de pagos, institución de pago, exchange, bróker ni proveedor de servicios de activos virtuales, y no ofrecemos custodia, cambio, rampas fiat de entrada o salida ni servicios de stablecoin. No transmitimos, convertimos ni tomamos posesión de fondos o activos virtuales en su nombre.',
+          '2.5 Sus responsabilidades. Usted es el único responsable de sus obligaciones legales, regulatorias, fiscales, contables y de prevención del blanqueo de capitales derivadas de aceptar pagos Bitcoin o Lightning, incluidas licencias, informes o registros exigidos en su jurisdicción. Nada en el servicio constituye asesoramiento financiero, legal o fiscal.',
+        ],
+      };
+    }
+    if (index === 5) {
+      return {
+        heading: '5a. Sanciones, controles de exportación y jurisdicciones prohibidas',
+        paragraphs: [
+          '5a.1 Cumplimiento. Debe cumplir todas las leyes aplicables de sanciones económicas y control de exportaciones, incluidas las administradas por la Oficina de Control de Activos Extranjeros de EE. UU. (OFAC), el Departamento de Comercio de EE. UU., la Unión Europea y las Naciones Unidas.',
+          '5a.2 Sus declaraciones. Usted declara y garantiza que usted y cualquier persona en cuyo nombre use el servicio no están: (a) ubicados, constituidos conforme a las leyes de, o con residencia habitual en, ningún país o territorio sujeto a sanciones integrales (incluidos, sin limitación, Cuba, Irán, Corea del Norte, Siria y las regiones de Crimea, Donetsk y Luhansk de Ucrania); (b) identificados en ninguna lista de sanciones o partes restringidas, incluida la lista SDN de OFAC, la lista consolidada de sanciones de la UE o cualquier lista equivalente; o (c) propiedad o controlados por, o actuando en nombre de, tal persona.',
+          '5a.3 Uso prohibido. No usará el servicio para facilitar ninguna transacción que implique a una persona sancionada, jurisdicción sancionada u otra actividad prohibida, ni para eludir o sortear ninguna ley de sanciones o control de exportaciones.',
+          '5a.4 Control y aplicación. Podemos revisar cuentas, datos de registro y metadatos de conexión frente a listas de sanciones y partes restringidas, y podemos usar proveedores de control de terceros para ello. Podemos rechazar, restringir, suspender o terminar el acceso en cualquier momento, sin responsabilidad, cuando razonablemente creamos que dicha acción es necesaria para cumplir las leyes de sanciones o control de exportaciones.',
+        ],
+      };
+    }
     return section;
   }),
 };
@@ -387,6 +459,31 @@ const privacyEs: LegalDocumentContent = {
     'Política de privacidad e información GDPR para satflux.io operado por Webium LLC.',
   draftNotice:
     'Borrador para revisión por asesoría legal y, si aplica, delegado de protección de datos.',
+  sections: privacyEn.sections.map((section, index) => {
+    if (index === 1) {
+      return {
+        heading: '1a. Representante UE/Reino Unido (artículo 27 GDPR)',
+        paragraphs: [
+          'Como estamos establecidos fuera de la Unión Europea y del Reino Unido pero ofrecemos servicios a interesados en esas regiones, hemos designado representantes conforme al artículo 27 del GDPR de la UE y del Reino Unido.',
+          gdprRepresentativeBlockEu(),
+          gdprRepresentativeBlockUk(),
+          'Puede contactar a nuestro(s) representante(s) sobre cualquier asunto relacionado con el tratamiento de sus datos personales, además de o en lugar de contactarnos directamente.',
+        ],
+      };
+    }
+    if (index === 4) {
+      return {
+        heading: '4. Encargados y subencargados del tratamiento',
+        paragraphs: [
+          'Utilizamos proveedores de infraestructura y servicios que tratan datos siguiendo nuestras instrucciones.',
+          'Los proveedores de infraestructura incluyen hosting (Hetzner, UE), entrega de correo electrónico y monitorización.',
+          'BTCPay Server: alojamos y operamos la infraestructura de software BTCPay Server en su nombre. Procesa metadatos de pago (como identificadores de factura y estado de liquidación) según la configuración de su tienda. Nunca recibimos, retenemos ni tenemos acceso a sus claves privadas, semilla de cartera ni fondos.',
+          'Una lista actualizada de categorías de encargados está disponible previa solicitud en el contacto de privacidad indicado arriba.',
+        ],
+      };
+    }
+    return section;
+  }),
 };
 
 const catalog: Record<LegalLocale, Record<LegalDocId, LegalDocumentContent>> = {

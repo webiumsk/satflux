@@ -789,6 +789,32 @@ class SubscriptionService
     }
 
     /**
+     * @param  array<string, mixed>  $payload
+     */
+    public function resolveTrialEndsAt(array $payload): \Illuminate\Support\Carbon
+    {
+        $subscriber = $payload['subscriber'] ?? $payload;
+        $trialEnd = $this->normalizeUnixTimestamp($subscriber['trialEnd'] ?? null);
+
+        if ($trialEnd !== null) {
+            return \Illuminate\Support\Carbon::createFromTimestamp($trialEnd);
+        }
+
+        return now()->addDays((int) config('pricing.trial_days', 30));
+    }
+
+    public function subscriberIsInTrial(array $subscriber): bool
+    {
+        if (($subscriber['phase'] ?? null) === 'Trial') {
+            return true;
+        }
+
+        $trialEnd = $this->normalizeUnixTimestamp($subscriber['trialEnd'] ?? null);
+
+        return $trialEnd !== null && $trialEnd > time();
+    }
+
+    /**
      * True when the subscriber completed a trial checkout on BTCPay (active trial phase).
      *
      * @param  array<string, mixed>  $checkoutDetails

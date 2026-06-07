@@ -33,6 +33,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
         'btcpay_subscription_id',
         'subscription_expires_at',
         'subscription_grace_period_ends_at',
+        'trial_consumed_at',
         'is_guest',
         'allows_satflux_email_changes',
         'guest_recovery_public_key',
@@ -67,6 +68,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
             'btcpay_api_key' => 'encrypted', // Encrypt API key in database
             'subscription_expires_at' => 'datetime',
             'subscription_grace_period_ends_at' => 'datetime',
+            'trial_consumed_at' => 'datetime',
             'is_guest' => 'boolean',
             'allows_satflux_email_changes' => 'boolean',
             'guest_recovery_enrolled_at' => 'datetime',
@@ -204,12 +206,24 @@ class User extends Authenticatable implements MustVerifyEmailContract
     }
 
     /**
-     * True when the user has an active (or grace) subscription on a paid plan (Pro / Enterprise).
+     * True when the user has an active (or paid grace) Pro / Enterprise entitlement.
      */
     public function hasActivePaidSubscription(): bool
     {
+        return $this->hasActiveProEntitlement();
+    }
+
+    /**
+     * Active Pro / Enterprise entitlement (trial, paid, or paid grace). Not expired.
+     */
+    public function hasActiveProEntitlement(): bool
+    {
+        if ($this->hasUnlimitedAccess()) {
+            return true;
+        }
+
         $subscription = $this->currentSubscription();
-        if (! $subscription) {
+        if (! $subscription || $subscription->isExpired()) {
             return false;
         }
 
@@ -217,14 +231,14 @@ class User extends Authenticatable implements MustVerifyEmailContract
             return false;
         }
 
-        $plan = $subscription->plan;
-        if (! $plan) {
-            return false;
-        }
-
-        $code = strtolower((string) ($plan->code ?? ''));
+        $code = strtolower((string) ($subscription->plan->code ?? ''));
 
         return in_array($code, ['pro', 'enterprise'], true);
+    }
+
+    public function hasConsumedTrial(): bool
+    {
+        return $this->trial_consumed_at !== null;
     }
 
     /**
@@ -288,10 +302,23 @@ class User extends Authenticatable implements MustVerifyEmailContract
             return $subscription->plan;
         }
 
-        // When no active subscription exists, resolve plan from the user's role.
-        // This covers admin-assigned roles (e.g. pro, enterprise) without a subscription record.
+        if ($this->hasUnlimitedAccess()) {
+            return SubscriptionPlan::where('code', 'enterprise')->first()
+                ?? SubscriptionPlan::where('code', 'free')->first();
+        }
+
+        $latestPaid = $this->subscriptions()
+            ->whereHas('plan', fn ($query) => $query->whereIn('code', ['pro', 'enterprise']))
+            ->orderByDesc('expires_at')
+            ->first();
+
+        if ($latestPaid && $latestPaid->status === 'expired') {
+            return SubscriptionPlan::where('code', 'free')->first();
+        }
+
+        // Legacy admin-assigned role without a subscription row.
         $role = $this->role ?? 'free';
-        if (in_array($role, ['pro', 'enterprise'])) {
+        if (in_array($role, ['pro', 'enterprise'], true)) {
             $plan = SubscriptionPlan::where('code', $role)->first();
             if ($plan) {
                 return $plan;

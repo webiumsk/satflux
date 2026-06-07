@@ -3,7 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
-use App\Services\BtcPay\SubscriptionService;
+use App\Services\BtcPay\SubscriptionService as BtcPaySubscriptionService;
+use App\Services\SubscriptionService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -23,12 +24,11 @@ class CheckSubscriptionStatuses extends Command
      */
     protected $description = 'Check subscription statuses from BTCPay API and sync user roles. Also upgrades users with active subscriptions who still have "free" role.';
 
-    protected SubscriptionService $subscriptionService;
-
-    public function __construct(SubscriptionService $subscriptionService)
-    {
+    public function __construct(
+        protected BtcPaySubscriptionService $btcpaySubscriptionService,
+        protected SubscriptionService $subscriptionService,
+    ) {
         parent::__construct();
-        $this->subscriptionService = $subscriptionService;
     }
 
     /**
@@ -37,6 +37,8 @@ class CheckSubscriptionStatuses extends Command
     public function handle(): int
     {
         $this->info('Checking subscription statuses from BTCPay API...');
+
+        $this->subscriptionService->updateAllSubscriptionStatuses();
 
         $storeId = config('services.btcpay.subscription_store_id');
 
@@ -66,7 +68,7 @@ class CheckSubscriptionStatuses extends Command
 
                 try {
                     // Fetch current subscription status from BTCPay
-                    $subscription = $this->subscriptionService->getSubscription(
+                    $subscription = $this->btcpaySubscriptionService->getSubscription(
                         $storeId,
                         $user->btcpay_subscription_id
                     );
@@ -193,21 +195,7 @@ class CheckSubscriptionStatuses extends Command
     protected function downgradeUser(User $user, string $reason): void
     {
         $oldRole = $user->role;
-
-        $user->update([
-            'role' => 'free',
-            'btcpay_subscription_id' => null,
-            'subscription_expires_at' => null,
-            'subscription_grace_period_ends_at' => null, // Clear any old grace period tracking
-        ]);
-
-        Log::info('User downgraded after subscription check', [
-            'user_id' => $user->id,
-            'user_email' => $user->email,
-            'old_role' => $oldRole,
-            'new_role' => 'free',
-            'reason' => $reason,
-        ]);
+        $this->subscriptionService->expireSubscription($user, $reason);
 
         $this->line("Downgraded {$user->email} from {$oldRole} to free: {$reason}");
     }

@@ -342,11 +342,23 @@ class ProcessBtcPayWebhook implements ShouldQueue
                 ?? $subscriber['subscriptionId']
                 ?? null;
 
-            $subscription = app(SubscriptionService::class)->activateSubscription(
-                $user,
-                $planRole,
-                $subscriptionId,
-            );
+            $btcpaySubscriptionService = app(\App\Services\BtcPay\SubscriptionService::class);
+            $subscriptionService = app(SubscriptionService::class);
+
+            if ($btcpaySubscriptionService->subscriberIsInTrial($subscriber)) {
+                $subscription = $subscriptionService->activateTrialSubscription(
+                    $user,
+                    $planRole,
+                    $btcpaySubscriptionService->resolveTrialEndsAt($subscriber),
+                    $subscriptionId,
+                );
+            } else {
+                $subscription = $subscriptionService->activateSubscription(
+                    $user,
+                    $planRole,
+                    $subscriptionId,
+                );
+            }
 
             $oldRole = $user->role;
             $user->role = $planRole;
@@ -665,26 +677,7 @@ class ProcessBtcPayWebhook implements ShouldQueue
      */
     protected function downgradeUserRole(User $user, string $reason): void
     {
-        if (! in_array($user->role, ['pro', 'enterprise'])) {
-            // User is already on free tier, nothing to downgrade
-            return;
-        }
-
-        $oldRole = $user->role;
-        $user->update([
-            'role' => 'free',
-            'btcpay_subscription_id' => null,
-            'subscription_expires_at' => null,
-            'subscription_grace_period_ends_at' => null, // Clear any old grace period tracking
-        ]);
-
-        Log::info('User role downgraded after subscription ended', [
-            'user_id' => $user->id,
-            'user_email' => $user->email,
-            'old_role' => $oldRole,
-            'new_role' => 'free',
-            'reason' => $reason,
-        ]);
+        app(SubscriptionService::class)->expireSubscription($user, $reason);
     }
 
     protected function handleSubscriberCreditLedgerEvent(array $payload, string $eventType): void

@@ -51,10 +51,7 @@ class SubscriptionService
     }
 
     /**
-     * Activate or extend subscription for a user.
-     * Called when payment is successful.
-     * Uses a transaction and pessimistic lock to prevent race conditions when
-     * multiple webhooks or callbacks arrive simultaneously.
+     * Activate or extend a paid subscription after BTCPay payment settles.
      */
     public function activateSubscription(User $user, string $planName, ?string $btcpaySubscriptionId = null): Subscription
     {
@@ -64,13 +61,11 @@ class SubscriptionService
         }
 
         return DB::transaction(function () use ($user, $plan, $planName, $btcpaySubscriptionId) {
-            // Lock user row to serialize concurrent webhooks for the same user
             $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
             if (! $lockedUser) {
                 throw new \Exception('User not found.');
             }
 
-            // Get existing active subscription under lock (same user, so lock is held)
             $existingSubscription = Subscription::where('user_id', $lockedUser->id)
                 ->whereIn('status', ['active', 'grace'])
                 ->orderBy('expires_at', 'desc')
@@ -78,22 +73,26 @@ class SubscriptionService
                 ->first();
 
             if ($existingSubscription && $existingSubscription->plan->name === $planName) {
-                $existingSubscription->extendOneYear();
+                if ($existingSubscription->isTrial()) {
+                    $existingSubscription->convertToPaidYear();
+                } else {
+                    $existingSubscription->extendOneYear();
+                }
+
                 if ($btcpaySubscriptionId) {
                     $existingSubscription->btcpay_subscription_id = $btcpaySubscriptionId;
                     $existingSubscription->save();
                 }
 
-                Log::info('Extended subscription', [
+                Log::info('Extended paid subscription', [
                     'user_id' => $lockedUser->id,
                     'plan' => $planName,
                     'expires_at' => $existingSubscription->expires_at,
                 ]);
 
-                return $existingSubscription;
+                return $existingSubscription->fresh();
             }
 
-            // Create new subscription
             $startsAt = now();
             $expiresAt = $startsAt->copy()->addYear();
             $graceEndsAt = $expiresAt->copy()->addDays((int) config('pricing.grace_days', 30));
@@ -102,13 +101,14 @@ class SubscriptionService
                 'user_id' => $lockedUser->id,
                 'plan_id' => $plan->id,
                 'status' => 'active',
+                'billing_phase' => Subscription::BILLING_PAID,
                 'starts_at' => $startsAt,
                 'expires_at' => $expiresAt,
                 'grace_ends_at' => $graceEndsAt,
                 'btcpay_subscription_id' => $btcpaySubscriptionId,
             ]);
 
-            Log::info('Created new subscription', [
+            Log::info('Created new paid subscription', [
                 'user_id' => $lockedUser->id,
                 'plan' => $planName,
                 'expires_at' => $expiresAt,
@@ -119,6 +119,133 @@ class SubscriptionService
     }
 
     /**
+     * Activate a BTCPay trial. Expires at trial end with no grace period.
+     */
+    public function activateTrialSubscription(
+        User $user,
+        string $planName,
+        \DateTimeInterface $trialEndsAt,
+        ?string $btcpaySubscriptionId = null,
+    ): Subscription {
+        $plan = SubscriptionPlan::where('code', $planName)->orWhere('name', $planName)->first();
+        if (! $plan) {
+            throw new \Exception("Subscription plan '{$planName}' not found.");
+        }
+
+        return DB::transaction(function () use ($user, $plan, $planName, $trialEndsAt, $btcpaySubscriptionId) {
+            $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
+            if (! $lockedUser) {
+                throw new \Exception('User not found.');
+            }
+
+            $existingSubscription = Subscription::where('user_id', $lockedUser->id)
+                ->whereIn('status', ['active', 'grace'])
+                ->orderBy('expires_at', 'desc')
+                ->lockForUpdate()
+                ->first();
+
+            if ($existingSubscription && $existingSubscription->plan->name === $planName) {
+                $existingSubscription->fill([
+                    'status' => 'active',
+                    'billing_phase' => Subscription::BILLING_TRIAL,
+                    'starts_at' => now(),
+                    'expires_at' => $trialEndsAt,
+                    'trial_ends_at' => $trialEndsAt,
+                    'grace_ends_at' => null,
+                    'btcpay_subscription_id' => $btcpaySubscriptionId ?? $existingSubscription->btcpay_subscription_id,
+                ]);
+                $existingSubscription->save();
+                $subscription = $existingSubscription;
+            } else {
+                $subscription = Subscription::create([
+                    'user_id' => $lockedUser->id,
+                    'plan_id' => $plan->id,
+                    'status' => 'active',
+                    'billing_phase' => Subscription::BILLING_TRIAL,
+                    'starts_at' => now(),
+                    'expires_at' => $trialEndsAt,
+                    'trial_ends_at' => $trialEndsAt,
+                    'grace_ends_at' => null,
+                    'btcpay_subscription_id' => $btcpaySubscriptionId,
+                ]);
+            }
+
+            if (! $lockedUser->trial_consumed_at) {
+                $lockedUser->trial_consumed_at = now();
+                $lockedUser->save();
+            }
+
+            Log::info('Activated trial subscription', [
+                'user_id' => $lockedUser->id,
+                'plan' => $planName,
+                'trial_ends_at' => $trialEndsAt,
+            ]);
+
+            return $subscription;
+        });
+    }
+
+    /**
+     * Expire active subscriptions and downgrade paid role to free.
+     */
+    public function expireSubscription(User $user, string $reason = ''): void
+    {
+        DB::transaction(function () use ($user, $reason) {
+            $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
+            if (! $lockedUser) {
+                return;
+            }
+
+            $subscriptions = Subscription::where('user_id', $lockedUser->id)
+                ->whereIn('status', ['active', 'grace'])
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($subscriptions as $subscription) {
+                $subscription->status = 'expired';
+                $subscription->billing_phase = Subscription::BILLING_EXPIRED;
+                $subscription->save();
+            }
+
+            if (in_array($lockedUser->role, ['pro', 'enterprise'], true)) {
+                $oldRole = $lockedUser->role;
+                $lockedUser->role = 'free';
+                $lockedUser->btcpay_subscription_id = null;
+                $lockedUser->subscription_expires_at = null;
+                $lockedUser->subscription_grace_period_ends_at = null;
+                $lockedUser->save();
+
+                Log::info('User subscription expired and role downgraded', [
+                    'user_id' => $lockedUser->id,
+                    'old_role' => $oldRole,
+                    'reason' => $reason,
+                ]);
+            }
+        });
+    }
+
+    public function hasActiveProEntitlement(User $user): bool
+    {
+        return $user->hasActiveProEntitlement();
+    }
+
+    protected function entitledPlan(User $user): ?SubscriptionPlan
+    {
+        if (! $this->hasActiveProEntitlement($user)) {
+            return null;
+        }
+
+        return $user->currentSubscription()?->plan ?? $user->currentSubscriptionPlan();
+    }
+
+    protected function entitledPlanHasFeature(User $user, string $feature): bool
+    {
+        $plan = $this->entitledPlan($user);
+
+        return $plan ? $plan->hasFeature($feature) : false;
+    }
+
+    /**
      * Check if user can use XLSX export (Pro+ or admin/support).
      */
     public function canUseXlsxExport(User $user): bool
@@ -126,9 +253,8 @@ class SubscriptionService
         if ($user->hasUnlimitedAccess()) {
             return true;
         }
-        $plan = $user->currentSubscriptionPlan();
 
-        return in_array($plan?->code ?? '', ['pro', 'enterprise'], true);
+        return $this->hasActiveProEntitlement($user);
     }
 
     /**
@@ -140,9 +266,8 @@ class SubscriptionService
         if ($user->hasUnlimitedAccess()) {
             return true;
         }
-        $plan = $user->currentSubscriptionPlan();
 
-        return $plan?->hasFeature('automatic_csv_exports') ?? false;
+        return $this->entitledPlanHasFeature($user, 'automatic_csv_exports');
     }
 
     /**
@@ -154,9 +279,7 @@ class SubscriptionService
             return true;
         }
 
-        $plan = $user->currentSubscriptionPlan();
-
-        return $plan?->hasFeature('automatic_csv_exports') ?? false;
+        return $this->entitledPlanHasFeature($user, 'automatic_csv_exports');
     }
 
     /**
@@ -164,9 +287,11 @@ class SubscriptionService
      */
     public function canUseOfflinePaymentMethods(User $user): bool
     {
-        $plan = $user->currentSubscriptionPlan();
+        if ($user->hasUnlimitedAccess()) {
+            return true;
+        }
 
-        return $plan?->hasFeature('offline_payment_methods') ?? false;
+        return $this->entitledPlanHasFeature($user, 'offline_payment_methods');
     }
 
     /**
@@ -174,9 +299,11 @@ class SubscriptionService
      */
     public function canViewAdvancedStats(User $user): bool
     {
-        $plan = $user->currentSubscriptionPlan();
+        if ($user->hasUnlimitedAccess()) {
+            return true;
+        }
 
-        return $plan?->hasFeature('advanced_statistics') ?? false;
+        return $this->entitledPlanHasFeature($user, 'advanced_statistics');
     }
 
     /**
@@ -188,7 +315,7 @@ class SubscriptionService
             return true;
         }
 
-        return $user->planFeature('stripe');
+        return $this->entitledPlanHasFeature($user, 'stripe');
     }
 
     public function canUseBusinessInvoicing(User $user): bool
@@ -197,11 +324,7 @@ class SubscriptionService
             return true;
         }
 
-        if ($user->isPro() || $user->isEnterprise()) {
-            return true;
-        }
-
-        return $user->planFeature('business_invoicing');
+        return $this->entitledPlanHasFeature($user, 'business_invoicing');
     }
 
     /**
@@ -256,9 +379,11 @@ class SubscriptionService
      */
     public function canManageStoreUsers(User $user): bool
     {
-        $plan = $user->currentSubscriptionPlan();
+        if ($user->hasUnlimitedAccess()) {
+            return true;
+        }
 
-        return $plan?->hasFeature('per_store_user_management') ?? false;
+        return $this->entitledPlanHasFeature($user, 'per_store_user_management');
     }
 
     /**
@@ -271,12 +396,30 @@ class SubscriptionService
             ->where('expires_at', '<=', now())
             ->get();
 
+        $expiredUsers = [];
+
         foreach ($subscriptions as $subscription) {
+            $wasTrial = $subscription->isTrial();
             $subscription->updateStatus();
+            $subscription->refresh();
+
+            if ($subscription->status === 'expired' && $wasTrial) {
+                $expiredUsers[$subscription->user_id] = 'Trial ended without payment';
+            } elseif ($subscription->status === 'expired') {
+                $expiredUsers[$subscription->user_id] = 'Paid subscription grace period ended';
+            }
+        }
+
+        foreach ($expiredUsers as $userId => $reason) {
+            $user = User::find($userId);
+            if ($user) {
+                $this->expireSubscription($user, $reason);
+            }
         }
 
         Log::info('Updated subscription statuses', [
             'count' => $subscriptions->count(),
+            'expired_users' => count($expiredUsers),
         ]);
     }
 }
