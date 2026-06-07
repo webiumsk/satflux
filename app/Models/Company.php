@@ -65,7 +65,10 @@ class Company extends Model
      */
     public function resolvedAppSettings(): array
     {
-        return \App\Support\Invoicing\CompanyAppSettings::from($this->app_settings)->toArray();
+        $settings = \App\Support\Invoicing\CompanyAppSettings::from($this->app_settings)->toArray();
+        unset($settings['efaktura_sapi_client_secret_encrypted']);
+
+        return array_merge($settings, \App\Support\Invoicing\CompanyEfakturaSettings::fromCompany($this)->publicPayload());
     }
 
     /**

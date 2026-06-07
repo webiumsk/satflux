@@ -28,6 +28,16 @@
       >
         {{ t('invoicing.tab_logo_signature') }}
       </button>
+      <button
+        v-if="isSkCompany"
+        type="button"
+        role="tab"
+        class="invoicing-tab"
+        :class="{ 'invoicing-tab--active': activeTab === 'efaktura' }"
+        @click="activeTab = 'efaktura'"
+      >
+        {{ t('invoicing.tab_efaktura') }}
+      </button>
     </nav>
 
     <!-- Kontaktné a fakturačné údaje -->
@@ -263,6 +273,14 @@
       </div>
     </form>
 
+    <CompanyEfakturaSettingsForm
+      v-if="isSkCompany"
+      v-show="activeTab === 'efaktura'"
+      :company-id="companyId"
+      :company="company"
+      @updated="(c) => emit('updated', c)"
+    />
+
     <!-- Logo a podpis -->
     <div v-show="activeTab === 'branding'" class="grid grid-cols-1 md:grid-cols-2 gap-8">
       <div>
@@ -379,6 +397,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import api from '../../services/api';
+import CompanyEfakturaSettingsForm from './CompanyEfakturaSettingsForm.vue';
 import InvoicingJurisdictionSelect from './InvoicingJurisdictionSelect.vue';
 import RegistryLookupField from './RegistryLookupField.vue';
 import {
@@ -414,7 +433,7 @@ const { t, te } = useI18n();
 const router = useRouter();
 const storesStore = useStoresStore();
 
-const activeTab = ref<'contact' | 'bank' | 'branding'>('contact');
+const activeTab = ref<'contact' | 'bank' | 'branding' | 'efaktura'>('contact');
 const linkedStoreId = ref('');
 const savedLinkedStoreId = ref('');
 const userStores = computed(() => storesStore.stores);
@@ -486,6 +505,7 @@ const resetConfirmMatches = computed(() => {
 });
 
 const isUs = computed(() => isUsJurisdiction(contactForm.jurisdiction));
+const isSkCompany = computed(() => props.company?.jurisdiction === 'eu_sk');
 const countryOptions = computed(() => countriesForJurisdiction(contactForm.jurisdiction));
 
 function countryLabel(code: string): string {
