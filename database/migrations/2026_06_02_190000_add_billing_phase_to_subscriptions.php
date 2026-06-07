@@ -56,22 +56,26 @@ return new class extends Migration
                 ->whereIn('plan_id', $proPlanIds)
                 ->where('status', 'active')
                 ->where('starts_at', '>=', now()->subDays($trialDays + 1))
-                ->each(function (Subscription $subscription) use ($trialDays) {
-                    if ($subscription->expires_at->lte($subscription->starts_at->copy()->addDays($trialDays + 7))) {
-                        return;
-                    }
+                ->chunkById(100, function ($subscriptions) use ($trialDays) {
+                    $subscriptions->each(function (Subscription $subscription) use ($trialDays) {
+                        if ($subscription->expires_at->lte($subscription->starts_at->copy()->addDays($trialDays + 7))) {
+                            return;
+                        }
 
-                    $trialEnd = $subscription->starts_at->copy()->addDays($trialDays);
-                    $subscription->trial_ends_at = $trialEnd;
-                    $subscription->expires_at = $trialEnd;
-                    $subscription->billing_phase = Subscription::BILLING_TRIAL;
-                    $subscription->grace_ends_at = null;
-                    $subscription->save();
+                        $trialEnd = $subscription->starts_at->copy()->addDays($trialDays);
+                        $subscription->trial_ends_at = $trialEnd;
+                        $subscription->expires_at = $trialEnd;
+                        $subscription->billing_phase = Subscription::BILLING_TRIAL;
+                        $subscription->grace_ends_at = null;
+                        $subscription->save();
+                    });
                 });
         }
 
         Subscription::query()
             ->whereIn('status', ['active', 'grace'])
-            ->each(fn (Subscription $subscription) => $subscription->updateStatus());
+            ->chunkById(100, function ($subscriptions) {
+                $subscriptions->each(fn (Subscription $subscription) => $subscription->updateStatus());
+            });
     }
 };
