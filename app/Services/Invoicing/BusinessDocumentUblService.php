@@ -3,6 +3,7 @@
 namespace App\Services\Invoicing;
 
 use App\Enums\BusinessDocumentType;
+use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\Company;
 use App\Models\CompanyContact;
@@ -27,8 +28,16 @@ class BusinessDocumentUblService
         return EuStructuredDocumentExport::supports($document);
     }
 
-    public function xml(BusinessDocument $document): string
+    public function xml(BusinessDocument $document, bool $auditDownload = true): string
     {
+        if ($auditDownload) {
+            AuditLog::log('business_document.ubl_downloaded', 'business_document', $document->id, [
+                'company_id' => $document->company_id,
+                'number' => $document->number,
+                'format' => 'ubl',
+            ]);
+        }
+
         $canonical = $this->canonicalBuilder->fromDocument($document);
         $document = $canonical->document ?? $document;
 
@@ -66,7 +75,7 @@ class BusinessDocumentUblService
 
         $this->party($writer, 'AccountingSupplierParty', $canonical->company);
         if ($canonical->contact) {
-            $this->party($writer, 'AccountingCustomerParty', $canonical->contact, isCustomer: true);
+            $this->party($writer, 'AccountingCustomerParty', $canonical->contact);
         }
 
         if (! $isCreditNote) {
@@ -209,7 +218,7 @@ class BusinessDocumentUblService
         $writer->endElement();
     }
 
-    protected function party(XMLWriter $writer, string $wrapper, Company|CompanyContact $entity, bool $isCustomer = false): void
+    protected function party(XMLWriter $writer, string $wrapper, Company|CompanyContact $entity): void
     {
         $writer->startElementNs('cac', $wrapper, null);
         $writer->startElementNs('cac', 'Party', null);

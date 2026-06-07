@@ -31,7 +31,7 @@ class BusinessDocumentIssueService
 
         $document->load(['company', 'lines', 'store', 'contact']);
 
-        return DB::transaction(function () use ($document) {
+        $issued = DB::transaction(function () use ($document) {
             $number = $this->sequenceService->nextNumber(
                 $document->company,
                 $document->type->value
@@ -70,11 +70,11 @@ class BusinessDocumentIssueService
                 'number' => $document->number,
             ]);
 
-            $issued = $document->fresh(['lines', 'contact', 'store', 'company']);
-
-            $this->complianceSubmissionService->queueIfEligible($issued);
-
-            return $issued;
+            return $document->fresh(['lines', 'contact', 'store', 'company']);
         });
+
+        $this->complianceSubmissionService->queueIfEligible($issued);
+
+        return $issued;
     }
 }

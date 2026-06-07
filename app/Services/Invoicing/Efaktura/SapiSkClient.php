@@ -31,16 +31,31 @@ class SapiSkClient
     {
         $cacheKey = 'efaktura.sapi_sk.token.'.sha1($clientId);
 
-        return Cache::remember($cacheKey, now()->addMinutes(50), function () use ($clientId, $clientSecret) {
-            $payload = $this->authenticate($clientId, $clientSecret);
-            $token = (string) ($payload['access_token'] ?? '');
+        $cached = Cache::get($cacheKey);
+        if (is_string($cached) && $cached !== '') {
+            return $cached;
+        }
 
-            if ($token === '') {
-                throw new \RuntimeException('SAPI-SK token response missing access_token.');
-            }
+        $payload = $this->authenticate($clientId, $clientSecret);
+        $token = (string) ($payload['access_token'] ?? '');
 
-            return $token;
-        });
+        if ($token === '') {
+            throw new \RuntimeException('SAPI-SK token response missing access_token.');
+        }
+
+        Cache::put($cacheKey, $token, $this->tokenTtlSeconds($payload));
+
+        return $token;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function tokenTtlSeconds(array $payload): int
+    {
+        $expiresIn = (int) ($payload['expires_in'] ?? 3600);
+
+        return max(60, $expiresIn - 60);
     }
 
     /**

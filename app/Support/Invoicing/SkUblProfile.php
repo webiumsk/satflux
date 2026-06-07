@@ -77,7 +77,10 @@ final class SkUblProfile
         }
 
         if (! self::appliesTo($entity)) {
-            $id = self::digitsOnly($entity->registration_number ?? $entity->tax_id);
+            $id = self::digitsOnly($entity->registration_number);
+            if ($id === null) {
+                $id = self::digitsOnly($entity->tax_id);
+            }
 
             return $id !== null ? ['scheme' => self::SCHEME_ICO, 'id' => $id] : null;
         }
@@ -119,8 +122,9 @@ final class SkUblProfile
             return self::UNIT_ALIASES[$normalized];
         }
 
-        if (preg_match('/^[A-Z0-9]{2,3}$/', $unit)) {
-            return strtoupper($unit);
+        $canonical = strtoupper($normalized);
+        if (preg_match('/^[A-Z0-9]{2,3}$/', $canonical)) {
+            return $canonical;
         }
 
         return null;

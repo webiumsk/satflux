@@ -175,6 +175,12 @@ class SapiSkComplianceGatewayTest extends TestCase
             'external_id' => 'doc-remote-99',
         ]);
 
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'business_document.efaktura_submitted',
+            'target_type' => 'business_document',
+            'target_id' => $doc->id,
+        ]);
+
         Http::assertSent(function ($request) {
             return $request->url() === 'https://sapi.test/sapi/v1/document/send'
                 && $request->hasHeader('X-Peppol-Participant-Id', '0245:2023980035');

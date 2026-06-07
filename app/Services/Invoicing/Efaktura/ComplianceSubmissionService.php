@@ -6,6 +6,7 @@ use App\Contracts\Invoicing\ComplianceSubmissionGateway;
 use App\Enums\ComplianceProvider;
 use App\Enums\ComplianceSubmissionStatus;
 use App\Jobs\SubmitBusinessDocumentCompliance;
+use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\BusinessDocumentCompliance;
 use App\Support\Invoicing\CompanyEfakturaSettings;
@@ -40,7 +41,8 @@ class ComplianceSubmissionService
     public function submitNow(BusinessDocument $document): ComplianceSubmissionResult
     {
         $result = $this->gateway->submit($document);
-        $this->persist($document, $result);
+        $row = $this->persist($document, $result);
+        $this->auditSubmission($document, $result, $row);
 
         return $result;
     }
@@ -48,11 +50,12 @@ class ComplianceSubmissionService
     protected function persist(BusinessDocument $document, ComplianceSubmissionResult $result): BusinessDocumentCompliance
     {
         $now = now();
+        $provider = ComplianceProvider::tryFrom($this->gateway->provider()) ?? ComplianceProvider::Peppol;
 
         return BusinessDocumentCompliance::query()->updateOrCreate(
             [
                 'business_document_id' => $document->id,
-                'provider' => ComplianceProvider::Peppol,
+                'provider' => $provider,
             ],
             [
                 'status' => $result->status,
@@ -73,5 +76,21 @@ class ComplianceSubmissionService
                 ], true) ? $now : null,
             ],
         );
+    }
+
+    protected function auditSubmission(
+        BusinessDocument $document,
+        ComplianceSubmissionResult $result,
+        BusinessDocumentCompliance $row,
+    ): void {
+        AuditLog::log('business_document.efaktura_submitted', 'business_document', $document->id, [
+            'company_id' => $document->company_id,
+            'number' => $document->number,
+            'provider' => $this->gateway->provider(),
+            'status' => $result->status->value,
+            'external_id' => $result->externalId,
+            'compliance_id' => $row->id,
+            'message' => $result->message,
+        ]);
     }
 }

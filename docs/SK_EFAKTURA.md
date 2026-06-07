@@ -12,7 +12,7 @@ Satflux **nie je** digitálny poštár. Modul Business Invoicing generuje Peppol
 | Generovanie UBL / ISDOC | Satflux |
 | Peppol doručenie a reporting na FS SR | Certifikovaný digitálny poštár |
 | Automatické odoslanie po vystavení faktúry | Satflux (voliteľné, per firma) |
-| Pro predplatné Webium LLC (WY) | Mimo SK tuzemskej e-faktúry |
+| Pre predplatné Webium LLC (WY) | Mimo SK tuzemskej e-faktúry |
 
 ## Čo Satflux už podporuje
 
@@ -48,7 +48,7 @@ Po zmene `.env`: `php artisan optimize:clear`
 
 ## Architektúra
 
-```
+```text
 BusinessDocumentIssueService::issue()
   -> ComplianceSubmissionService::queueIfEligible()  [ak auto_send]
        -> SubmitBusinessDocumentCompliance (queue)

@@ -106,10 +106,13 @@ final class CompanyEfakturaSettings
             }
         }
 
-        if (! empty($incoming['efaktura_sapi_client_secret'])) {
-            $merged['efaktura_sapi_client_secret_encrypted'] = Crypt::encryptString(
-                (string) $incoming['efaktura_sapi_client_secret'],
-            );
+        if (array_key_exists('efaktura_sapi_client_secret', $incoming)) {
+            $secret = $incoming['efaktura_sapi_client_secret'];
+            if ($secret === null || $secret === '') {
+                $merged['efaktura_sapi_client_secret_encrypted'] = null;
+            } else {
+                $merged['efaktura_sapi_client_secret_encrypted'] = Crypt::encryptString((string) $secret);
+            }
         }
 
         return $merged;

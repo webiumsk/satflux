@@ -60,6 +60,11 @@ class SapiSkComplianceGateway implements ComplianceSubmissionGateway
             return false;
         }
 
+        $contactCountry = trim((string) ($document->contact->country ?? ''));
+        if ($contactCountry === '') {
+            return false;
+        }
+
         return SkUblProfile::countryCode($document->contact) === 'SK';
     }
 
@@ -76,7 +81,7 @@ class SapiSkComplianceGateway implements ComplianceSubmissionGateway
         $settings = CompanyEfakturaSettings::fromCompany($document->company);
 
         try {
-            $ubl = $this->ublService->xml($document);
+            $ubl = $this->ublService->xml($document, auditDownload: false);
             $token = $this->client->accessToken(
                 (string) $settings->sapiClientId(),
                 (string) $settings->sapiClientSecret(),

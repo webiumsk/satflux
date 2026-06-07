@@ -42,5 +42,9 @@ class SkUblProfileTest extends TestCase
     {
         $this->assertSame('C62', SkUblProfile::resolveUnitCode('ks.'));
         $this->assertSame('HUR', SkUblProfile::resolveUnitCode('hod.'));
+        $this->assertSame('C62', SkUblProfile::resolveUnitCode(' c62 '));
+        $this->assertSame('C62', SkUblProfile::resolveUnitCode('c62'));
+        $this->assertSame('HUR', SkUblProfile::resolveUnitCode(' hur '));
+        $this->assertSame('HUR', SkUblProfile::resolveUnitCode('hur'));
     }
 }
