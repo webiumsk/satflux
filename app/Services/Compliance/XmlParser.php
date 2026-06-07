@@ -22,9 +22,9 @@ class XmlParser
                 );
                 libxml_clear_errors();
 
-                throw new \RuntimeException(
-                    $contextLabel.' parse failed: '.implode('; ', array_filter($messages)) ?: 'unknown error',
-                );
+                $detail = implode('; ', array_filter($messages)) ?: 'unknown error';
+
+                throw new \RuntimeException($contextLabel.' parse failed: '.$detail);
             }
 
             return $element;

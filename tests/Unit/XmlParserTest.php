@@ -16,9 +16,15 @@ class XmlParserTest extends TestCase
 
     public function test_throws_on_invalid_xml_with_diagnostics(): void
     {
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('test XML parse failed');
-
-        XmlParser::loadString('<root><unclosed>', 'test XML');
+        try {
+            XmlParser::loadString('<root><unclosed>', 'test XML');
+            $this->fail('Expected RuntimeException was not thrown.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('test XML parse failed', $e->getMessage());
+            $this->assertMatchesRegularExpression(
+                '/Opening and ending tag mismatch|unexpected end of file|Premature end of data/i',
+                $e->getMessage(),
+            );
+        }
     }
 }
