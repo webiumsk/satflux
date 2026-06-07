@@ -287,6 +287,12 @@ class SubscriptionTest extends TestCase
                     'expiration' => now()->addHours(24)->timestamp,
                 ]);
             }
+            if (str_contains($url, '/api/v1/stores/test_subscription_btcpay_store/invoices/inv_credit123') && $request->method() === 'GET') {
+                return Http::response([
+                    'id' => 'inv_credit123',
+                    'checkoutLink' => 'https://btcpay.example.test/i/inv_credit123',
+                ]);
+            }
 
             return Http::response([], 404);
         });
@@ -298,6 +304,7 @@ class SubscriptionTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJson([
+                'paymentUrl' => 'https://btcpay.example.test/i/inv_credit123',
                 'checkoutUrl' => 'https://btcpay.example.test/plan-checkout/checkout_credit123',
                 'checkoutId' => 'checkout_credit123',
                 'invoiceId' => 'inv_credit123',
@@ -343,5 +350,60 @@ class SubscriptionTest extends TestCase
             return $request->method() === 'POST'
                 && str_contains((string) $request->url(), '/api/v1/plan-checkout');
         });
+    }
+
+    #[Test]
+    public function subscription_details_include_trial_billing_and_credit_history(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'trial@example.com',
+        ]);
+
+        config(['services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store']);
+        config(['services.btcpay.subscription_offering_id' => 'offering_test']);
+
+        Http::fake(function ($request) {
+            $url = (string) $request->url();
+            if (str_contains($url, '/subscribers/trial%40example.com') && $request->method() === 'GET' && ! str_contains($url, '/credits/')) {
+                return Http::response([
+                    'plan' => ['id' => 'plan_pro_test', 'price' => '210000'],
+                    'phase' => 'Trial',
+                    'trialEnd' => now()->addDays(30)->timestamp,
+                    'periodEnd' => now()->addDays(30)->timestamp,
+                    'isActive' => true,
+                    'autoRenew' => true,
+                ]);
+            }
+            if (str_contains($url, '/credits/SATS/history')) {
+                return Http::response([
+                    [
+                        'createdAt' => now()->subDay()->timestamp,
+                        'description' => 'Credit purchase',
+                        'credit' => '2000',
+                        'balance' => '4000',
+                    ],
+                ]);
+            }
+            if (str_contains($url, '/credits/SATS') && $request->method() === 'GET') {
+                return Http::response([
+                    'currency' => 'SATS',
+                    'value' => '4000',
+                ]);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $response = $this->actingAs($user)->getJson('/api/subscriptions/details');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('creditBalance', 4000)
+            ->assertJsonPath('billing.isTrial', true)
+            ->assertJsonPath('billing.planPriceSats', 210000)
+            ->assertJsonPath('billing.creditAppliedSats', 4000)
+            ->assertJsonPath('billing.nextChargeSats', 206000)
+            ->assertJsonPath('creditHistory.0.description', 'Credit purchase')
+            ->assertJsonPath('creditHistory.0.amount', 2000)
+            ->assertJsonPath('creditHistory.0.balance', 4000);
     }
 }

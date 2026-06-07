@@ -289,6 +289,185 @@ class SubscriptionService
     }
 
     /**
+     * Parse subscriber credit balance from BTCPay credits response.
+     */
+    public function parseSubscriberCreditBalance(array $credits): int
+    {
+        $raw = $credits['balance']
+            ?? $credits['amount']
+            ?? $credits['value']
+            ?? 0;
+
+        return (int) round((float) $raw);
+    }
+
+    /**
+     * Fetch credit transaction history when BTCPay exposes it.
+     *
+     * @return array<int, array{date: string, description: string, amount: int, balance: int|null}>
+     */
+    public function getSubscriberCreditHistory(
+        string $storeId,
+        string $offeringId,
+        string $customerSelector,
+        string $currency = 'SATS'
+    ): array {
+        $encodedSelector = rawurlencode($customerSelector);
+        $encodedCurrency = rawurlencode($currency);
+        $historyPath = "/api/v1/stores/{$storeId}/offerings/{$offeringId}/subscribers/{$encodedSelector}/credits/{$encodedCurrency}/history";
+
+        try {
+            $response = $this->client->get($historyPath);
+
+            return $this->normalizeCreditHistoryPayload($response);
+        } catch (BtcPayException $e) {
+            if ($e->getStatusCode() !== 404) {
+                Log::debug('Could not fetch subscriber credit history from BTCPay', [
+                    'customer_selector' => $customerSelector,
+                    'error' => $e->getMessage(),
+                    'status_code' => $e->getStatusCode(),
+                ]);
+            }
+        }
+
+        try {
+            $credits = $this->getSubscriberCredits($storeId, $offeringId, $customerSelector, $currency);
+            foreach (['history', 'transactions', 'entries'] as $key) {
+                if (! empty($credits[$key]) && is_array($credits[$key])) {
+                    return $this->normalizeCreditHistoryPayload($credits[$key]);
+                }
+            }
+        } catch (BtcPayException $e) {
+            Log::debug('Could not parse subscriber credit history from credits response', [
+                'customer_selector' => $customerSelector,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return [];
+    }
+
+    /**
+     * @param  array<string, mixed>|array<int, array<string, mixed>>  $payload
+     * @return array<int, array{date: string, description: string, amount: int, balance: int|null}>
+     */
+    public function normalizeCreditHistoryPayload(array $payload): array
+    {
+        $rows = array_is_list($payload)
+            ? $payload
+            : ($payload['history'] ?? $payload['transactions'] ?? $payload['entries'] ?? $payload['data'] ?? []);
+
+        if (! is_array($rows)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $credit = (float) ($row['credit'] ?? 0);
+            $debit = (float) ($row['debit'] ?? 0);
+            $amount = isset($row['amount'])
+                ? (float) $row['amount']
+                : ($credit - $debit);
+
+            if ($amount === 0.0 && ! isset($row['amount'])) {
+                continue;
+            }
+
+            $timestamp = $row['createdAt']
+                ?? $row['created_at']
+                ?? $row['date']
+                ?? $row['timestamp']
+                ?? null;
+
+            $normalized[] = [
+                'date' => $this->normalizeCreditHistoryDate($timestamp),
+                'description' => (string) ($row['description'] ?? 'Credit adjustment'),
+                'amount' => (int) round($amount),
+                'balance' => isset($row['balance']) || isset($row['totalBalance'])
+                    ? (int) round((float) ($row['balance'] ?? $row['totalBalance']))
+                    : null,
+            ];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<string, mixed>  $subscriber
+     * @return array{
+     *     phase: ?string,
+     *     isTrial: bool,
+     *     trialEndsAt: ?int,
+     *     trialDaysRemaining: ?int,
+     *     planPriceSats: int,
+     *     creditAppliedSats: int,
+     *     nextChargeSats: int,
+     *     renewalDate: ?int,
+     *     paymentReminderDays: int
+     * }
+     */
+    public function buildSubscriptionBillingSummary(array $subscriber, int $creditBalance): array
+    {
+        $planPriceSats = (int) round((float) ($subscriber['plan']['price'] ?? 0));
+        $creditAppliedSats = min(max(0, $creditBalance), max(0, $planPriceSats));
+        $nextChargeSats = max(0, $planPriceSats - $creditAppliedSats);
+
+        $phase = isset($subscriber['phase']) ? (string) $subscriber['phase'] : null;
+        $trialEndsAt = $this->normalizeUnixTimestamp($subscriber['trialEnd'] ?? null);
+        $renewalDate = $this->normalizeUnixTimestamp($subscriber['periodEnd'] ?? null);
+        $isTrial = $phase === 'Trial' || ($trialEndsAt !== null && $trialEndsAt > time());
+
+        $trialDaysRemaining = null;
+        if ($isTrial && $trialEndsAt !== null) {
+            $trialDaysRemaining = max(0, (int) ceil(($trialEndsAt - time()) / 86400));
+        }
+
+        return [
+            'phase' => $phase,
+            'isTrial' => $isTrial,
+            'trialEndsAt' => $trialEndsAt,
+            'trialDaysRemaining' => $trialDaysRemaining,
+            'planPriceSats' => $planPriceSats,
+            'creditAppliedSats' => $creditAppliedSats,
+            'nextChargeSats' => $nextChargeSats,
+            'renewalDate' => $renewalDate ?? $trialEndsAt,
+            'paymentReminderDays' => (int) config('services.btcpay.subscription_payment_reminder_days', 3),
+        ];
+    }
+
+    protected function normalizeCreditHistoryDate(mixed $timestamp): string
+    {
+        if (is_numeric($timestamp)) {
+            return date('c', (int) $timestamp);
+        }
+
+        if (is_string($timestamp) && $timestamp !== '') {
+            return date('c', strtotime($timestamp) ?: time());
+        }
+
+        return now()->toIso8601String();
+    }
+
+    protected function normalizeUnixTimestamp(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+
+        $parsed = strtotime((string) $value);
+
+        return $parsed !== false ? $parsed : null;
+    }
+
+    /**
      * Create a plan checkout for purchasing subscriber credits (issues a BTCPay invoice).
      *
      * @param  string  $storeId  BTCPay store ID
@@ -343,8 +522,9 @@ class SubscriptionService
             ]);
 
             $response = $this->client->post('/api/v1/plan-checkout', $payload);
+            $result = $this->resolvePlanCheckoutResponse($response);
 
-            return $this->resolvePlanCheckoutResponse($response);
+            return $this->enrichCheckoutWithInvoicePaymentUrl($storeId, $result);
         } catch (BtcPayException $e) {
             Log::error('Failed to create credit purchase checkout', [
                 'store_id' => $storeId,
@@ -443,6 +623,65 @@ class SubscriptionService
         } elseif (isset($response['expiresAt'])) {
             $result['expiresAt'] = $response['expiresAt'];
         }
+
+        return $result;
+    }
+
+    /**
+     * Resolve a direct BTCPay invoice payment URL for a plan checkout (credit purchase).
+     *
+     * @param  array{checkoutId: string, checkoutUrl: string, invoiceId: ?string, invoiceUrl: ?string, expiresAt?: string}  $result
+     * @return array{checkoutId: string, checkoutUrl: string, invoiceId: ?string, invoiceUrl: ?string, paymentUrl: ?string, expiresAt?: string}
+     */
+    protected function enrichCheckoutWithInvoicePaymentUrl(string $storeId, array $result): array
+    {
+        $invoiceId = $result['invoiceId'] ?? null;
+
+        if (! $invoiceId && ! empty($result['checkoutId'])) {
+            try {
+                $details = $this->getPlanCheckout($result['checkoutId']);
+                $invoiceId = $details['invoiceId']
+                    ?? ($details['invoice']['id'] ?? null)
+                    ?? ($details['payment']['invoiceId'] ?? null);
+            } catch (BtcPayException $e) {
+                Log::debug('Could not load plan checkout for invoice URL', [
+                    'checkout_id' => $result['checkoutId'],
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if (! $invoiceId) {
+            throw new BtcPayException('Credit purchase invoice was not created by BTCPay', 500);
+        }
+
+        $paymentUrl = null;
+        $invoiceService = app(InvoiceService::class);
+
+        try {
+            $invoice = $invoiceService->getInvoice($storeId, $invoiceId);
+            $paymentUrl = $invoice['checkoutLink'] ?? null;
+        } catch (BtcPayException $e) {
+            Log::debug('Could not load BTCPay invoice for checkout link', [
+                'invoice_id' => $invoiceId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        if (! $paymentUrl) {
+            $baseUrl = config('services.btcpay.base_url');
+            if ($baseUrl) {
+                $paymentUrl = rtrim((string) $baseUrl, '/').'/i/'.$invoiceId;
+            }
+        }
+
+        if (! $paymentUrl) {
+            throw new BtcPayException('Could not resolve invoice payment URL', 500);
+        }
+
+        $result['invoiceId'] = $invoiceId;
+        $result['invoiceUrl'] = $paymentUrl;
+        $result['paymentUrl'] = $paymentUrl;
 
         return $result;
     }

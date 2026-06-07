@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Services\BtcPay\SubscriptionService as BtcPaySubscriptionService;
 use App\Services\Invoicing\SubscriptionBillingInvoiceService;
+use App\Services\SubscriptionCreditLedgerService;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -374,6 +375,8 @@ class SubscriptionController extends Controller
             return response()->json([
                 'subscriber' => null,
                 'creditBalance' => 0,
+                'billing' => null,
+                'creditHistory' => [],
             ]);
         }
 
@@ -384,22 +387,33 @@ class SubscriptionController extends Controller
             // Get subscriber details using email as selector
             $subscriber = $this->btcpaySubscriptionService->getSubscriber($storeId, $offeringId, $user->email);
 
-            // Get credit balance
             $creditBalance = 0;
             try {
                 $credits = $this->btcpaySubscriptionService->getSubscriberCredits($storeId, $offeringId, $user->email, 'SATS');
-                $creditBalance = $credits['balance'] ?? $credits['amount'] ?? 0;
+                $creditBalance = $this->btcpaySubscriptionService->parseSubscriberCreditBalance($credits);
             } catch (\Exception $e) {
-                // Credit endpoint might not be available or user might not have credits yet
                 Log::debug('Could not fetch credit balance', [
                     'user_id' => $user->id,
                     'error' => $e->getMessage(),
                 ]);
             }
 
+            $creditHistory = $this->btcpaySubscriptionService->getSubscriberCreditHistory(
+                $storeId,
+                $offeringId,
+                $user->email,
+                'SATS'
+            );
+
+            if ($creditHistory === []) {
+                $creditHistory = app(SubscriptionCreditLedgerService::class)->listForUser($user);
+            }
+
             return response()->json([
                 'subscriber' => $subscriber,
                 'creditBalance' => $creditBalance,
+                'billing' => $this->btcpaySubscriptionService->buildSubscriptionBillingSummary($subscriber, $creditBalance),
+                'creditHistory' => $creditHistory,
             ]);
 
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
@@ -408,6 +422,8 @@ class SubscriptionController extends Controller
                 return response()->json([
                     'subscriber' => null,
                     'creditBalance' => 0,
+                    'billing' => null,
+                    'creditHistory' => [],
                 ]);
             }
 
@@ -455,7 +471,7 @@ class SubscriptionController extends Controller
             $credits = $this->btcpaySubscriptionService->getSubscriberCredits($storeId, $offeringId, $user->email, $currency);
 
             return response()->json([
-                'balance' => $credits['balance'] ?? $credits['amount'] ?? 0,
+                'balance' => $this->btcpaySubscriptionService->parseSubscriberCreditBalance($credits),
                 'currency' => $currency,
                 'details' => $credits,
             ]);
@@ -539,10 +555,11 @@ class SubscriptionController extends Controller
 
             return response()->json([
                 'message' => 'Credit checkout created successfully',
+                'paymentUrl' => $checkout['paymentUrl'] ?? $checkout['invoiceUrl'],
                 'checkoutUrl' => $checkout['checkoutUrl'],
                 'checkoutId' => $checkout['checkoutId'],
                 'invoiceId' => $checkout['invoiceId'],
-                'invoiceUrl' => $checkout['invoiceUrl'] ?? $checkout['checkoutUrl'],
+                'invoiceUrl' => $checkout['invoiceUrl'],
                 'expiresAt' => $checkout['expiresAt'] ?? null,
             ]);
 

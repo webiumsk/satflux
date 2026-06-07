@@ -46,6 +46,7 @@ return [
         'subscription_webhook_secret' => env('SUBSCRIPTION_WEBHOOK_SECRET') ?: env('BTCPAY_WEBHOOK_SECRET'),
         'subscription_success_url' => env('SUBSCRIPTION_SUCCESS_URL'),
         'subscription_cancel_url' => env('SUBSCRIPTION_CANCEL_URL'),
+        'subscription_payment_reminder_days' => (int) env('SUBSCRIPTION_PAYMENT_REMINDER_DAYS', 3),
         'allow_guest_subscriptions' => env('ALLOW_GUEST_SUBSCRIPTIONS', false),
         'subscription_store_id' => env('SUBSCRIPTION_STORE_ID'),
         'subscription_offering_id' => env('SUBSCRIPTION_OFFERING_ID'),

@@ -426,6 +426,12 @@
                       {{ t("account.plan_badge_standard") }}
                     </span>
                     <span
+                      v-if="subscriptionBilling?.isTrial"
+                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-600/80 text-white"
+                    >
+                      {{ t("account.plan_badge_trial") }}
+                    </span>
+                    <span
                       v-else-if="subscriber?.isActive"
                       class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-emerald-600 text-white"
                     >
@@ -440,7 +446,17 @@
                   </h5>
                   <p class="text-gray-400 mt-2">{{ currentPlanDescription }}</p>
                   <div
-                    v-if="subscriber && subscriber.periodEnd"
+                    v-if="subscriptionBilling?.isTrial && subscriptionBilling?.trialEndsAt"
+                    class="text-sm text-gray-400 mt-2"
+                  >
+                    {{
+                      t("account.trial_expires", {
+                        date: formatDate(subscriptionBilling.trialEndsAt),
+                      })
+                    }}
+                  </div>
+                  <div
+                    v-else-if="subscriber && subscriber.periodEnd"
                     class="text-sm text-gray-400 mt-2"
                   >
                     {{
@@ -475,6 +491,43 @@
                     }}
                   </p>
                 </div>
+              </div>
+
+              <div
+                v-if="subscriptionBilling?.isTrial"
+                class="mb-6 rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+              >
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-cyan-300 mt-0.5 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 9v2m0 4h.01M10.29 3.86l-8.5 14.74A1 1 0 002.62 20h18.76a1 1 0 00.86-1.5l-8.5-14.74a1 1 0 00-1.72 0z"
+                    />
+                  </svg>
+                  <p class="text-sm text-cyan-100">
+                    {{
+                      t("account.trial_warning", {
+                        days: subscriptionBilling.trialDaysRemaining ?? 0,
+                      })
+                    }}
+                  </p>
+                </div>
+                <button
+                  v-if="subscriptionBilling.nextChargeSats > 0"
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-400 transition-colors disabled:opacity-50"
+                  :disabled="payingNow"
+                  @click="handlePayNow"
+                >
+                  {{ payingNow ? t("account.processing") : t("account.pay_now") }}
+                </button>
               </div>
 
               <!-- Plan Features -->
@@ -556,6 +609,46 @@
                       </button>
                     </div>
                   </div>
+                  <div
+                    v-if="subscriptionBilling && subscriptionBilling.planPriceSats > 0"
+                    class="rounded-lg border border-gray-600/80 bg-gray-900/40 p-4 space-y-2"
+                  >
+                    <div class="flex items-center justify-between text-sm">
+                      <span class="text-gray-400">{{
+                        t("account.plan_price")
+                      }}</span>
+                      <span class="text-gray-200">{{
+                        formatSats(subscriptionBilling.planPriceSats)
+                      }}</span>
+                    </div>
+                    <div
+                      v-if="subscriptionBilling.creditAppliedSats > 0"
+                      class="flex items-center justify-between text-sm"
+                    >
+                      <span class="text-gray-400">{{
+                        t("account.credit_applied")
+                      }}</span>
+                      <span class="text-emerald-400"
+                        >-
+                        {{
+                          formatSats(subscriptionBilling.creditAppliedSats)
+                        }}</span
+                      >
+                    </div>
+                    <div
+                      v-if="subscriptionBilling.renewalDate"
+                      class="flex items-center justify-between text-sm font-medium"
+                    >
+                      <span class="text-gray-300">{{
+                        t("account.next_charge_total", {
+                          date: formatDate(subscriptionBilling.renewalDate),
+                        })
+                      }}</span>
+                      <span class="text-white">{{
+                        formatSats(subscriptionBilling.nextChargeSats)
+                      }}</span>
+                    </div>
+                  </div>
                   <div class="flex items-center justify-between">
                     <span class="text-sm text-gray-400">{{
                       t("account.notification_email")
@@ -577,19 +670,16 @@
                       {{ authStore.user?.email }}
                     </span>
                   </div>
-                  <div
-                    v-if="isPaidPlan && subscriber && subscriber.periodEnd"
-                    class="flex items-center justify-between"
+                  <p
+                    v-if="subscriptionBilling?.paymentReminderDays"
+                    class="text-xs text-gray-500"
                   >
-                    <span class="text-sm text-gray-400">{{
-                      t("account.next_charge_on", {
-                        date: formatDate(subscriber.periodEnd),
+                    {{
+                      t("account.payment_reminder_notice", {
+                        days: subscriptionBilling.paymentReminderDays,
                       })
-                    }}</span>
-                    <span class="text-sm font-medium text-white">{{
-                      currentPlanPrice
-                    }}</span>
-                  </div>
+                    }}
+                  </p>
                   <div class="flex items-center justify-between">
                     <span class="text-sm text-gray-400">{{
                       t("account.auto_renewal")
@@ -619,6 +709,68 @@
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <div
+                v-if="creditHistory.length > 0"
+                class="border-t border-gray-600 pt-6 mb-6"
+              >
+                <h6
+                  class="text-sm font-medium text-gray-300 mb-4 uppercase tracking-wider"
+                >
+                  {{ t("account.credit_history") }}
+                </h6>
+                <div class="overflow-x-auto rounded-lg border border-gray-600/80">
+                  <table class="min-w-full text-sm">
+                    <thead class="bg-gray-900/60 text-gray-400">
+                      <tr>
+                        <th class="px-4 py-3 text-left font-medium">
+                          {{ t("account.credit_history_date") }}
+                        </th>
+                        <th class="px-4 py-3 text-left font-medium">
+                          {{ t("account.credit_history_description") }}
+                        </th>
+                        <th class="px-4 py-3 text-right font-medium">
+                          {{ t("account.credit_history_amount") }}
+                        </th>
+                        <th class="px-4 py-3 text-right font-medium">
+                          {{ t("account.credit_history_balance") }}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-700/80">
+                      <tr
+                        v-for="(entry, index) in creditHistory"
+                        :key="`${entry.date}-${index}`"
+                        class="text-gray-300"
+                      >
+                        <td class="px-4 py-3 whitespace-nowrap">
+                          {{ formatCreditHistoryDate(entry.date) }}
+                        </td>
+                        <td class="px-4 py-3">
+                          {{ entry.description }}
+                        </td>
+                        <td
+                          class="px-4 py-3 text-right font-medium"
+                          :class="
+                            entry.amount >= 0
+                              ? 'text-emerald-400'
+                              : 'text-red-400'
+                          "
+                        >
+                          {{ formatSignedSats(entry.amount) }}
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                          {{
+                            entry.balance != null
+                              ? formatSats(entry.balance)
+                              : "-"
+                          }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
@@ -1029,11 +1181,33 @@ const passwordForm = ref({
 const profileLoading = ref(false);
 const passwordLoading = ref(false);
 const upgrading = ref(false);
+type SubscriptionBilling = {
+  phase?: string | null;
+  isTrial?: boolean;
+  trialEndsAt?: number | null;
+  trialDaysRemaining?: number | null;
+  planPriceSats?: number;
+  creditAppliedSats?: number;
+  nextChargeSats?: number;
+  renewalDate?: number | null;
+  paymentReminderDays?: number;
+};
+
+type CreditHistoryEntry = {
+  date: string;
+  description: string;
+  amount: number;
+  balance: number | null;
+};
+
 const subscriber = ref<any>(null);
+const subscriptionBilling = ref<SubscriptionBilling | null>(null);
 const creditBalance = ref(0);
+const creditHistory = ref<CreditHistoryEntry[]>([]);
 const showAddCreditModal = ref(false);
 const creditAmount = ref<number | null>(null);
 const addingCredit = ref(false);
+const payingNow = ref(false);
 const loadingSubscription = ref(false);
 
 const lnurlAuthEnabled = ref(false);
@@ -1159,7 +1333,9 @@ async function loadSubscriptionDetails() {
   try {
     const response = await api.get("/subscriptions/details");
     subscriber.value = response.data.subscriber;
+    subscriptionBilling.value = response.data.billing || null;
     creditBalance.value = response.data.creditBalance || 0;
+    creditHistory.value = response.data.creditHistory || [];
   } catch (error: any) {
     // If 404, user doesn't have subscription yet - that's ok
     if (error.response?.status !== 404) {
@@ -1167,9 +1343,49 @@ async function loadSubscriptionDetails() {
     }
     // Reset values on error
     subscriber.value = null;
+    subscriptionBilling.value = null;
     creditBalance.value = 0;
+    creditHistory.value = [];
   } finally {
     loadingSubscription.value = false;
+  }
+}
+
+async function startCreditCheckout(amount: number) {
+  const response = await api.post("/subscriptions/credits", {
+    amount,
+    currency: "SATS",
+  });
+
+  const redirectUrl =
+    response.data.paymentUrl ||
+    response.data.invoiceUrl ||
+    response.data.checkoutUrl ||
+    null;
+
+  if (redirectUrl) {
+    window.location.href = redirectUrl;
+    return true;
+  }
+
+  alert(t("account.checkout_failed"));
+  return false;
+}
+
+async function handlePayNow() {
+  const amount = subscriptionBilling.value?.nextChargeSats ?? 0;
+  if (amount < 1) return;
+
+  payingNow.value = true;
+  try {
+    const redirected = await startCreditCheckout(amount);
+    if (!redirected) {
+      payingNow.value = false;
+    }
+  } catch (error: any) {
+    console.error("Failed to start subscription payment:", error);
+    alert(error.response?.data?.message || t("account.checkout_failed"));
+    payingNow.value = false;
   }
 }
 
@@ -1178,26 +1394,35 @@ async function handleAddCredit() {
 
   addingCredit.value = true;
   try {
-    const response = await api.post("/subscriptions/credits", {
-      amount: creditAmount.value,
-      currency: "SATS",
-    });
-
-    const redirectUrl =
-      response.data.checkoutUrl || response.data.invoiceUrl || null;
-
-    if (redirectUrl) {
-      window.location.href = redirectUrl;
-      return;
+    const redirected = await startCreditCheckout(creditAmount.value);
+    if (!redirected) {
+      addingCredit.value = false;
     }
-
-    alert(t("account.checkout_failed"));
-    addingCredit.value = false;
   } catch (error: any) {
     console.error("Failed to add credit:", error);
     alert(error.response?.data?.message || t("account.add_credit_failed"));
     addingCredit.value = false;
   }
+}
+
+function formatCreditHistoryDate(value: string): string {
+  if (!value) return "";
+  const date = new Date(value);
+  const localeTag =
+    locale.value === "sk" ? "sk-SK" : locale.value === "es" ? "es-ES" : "en-US";
+  return date.toLocaleDateString(localeTag, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function formatSignedSats(amount: number): string {
+  const formatted = formatSats(Math.abs(amount));
+  if (amount > 0) return `+${formatted}`;
+  if (amount < 0) return `-${formatted}`;
+  return formatted;
 }
 
 function formatDate(timestamp: number | string): string {

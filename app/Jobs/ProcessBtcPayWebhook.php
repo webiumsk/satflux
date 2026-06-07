@@ -8,6 +8,7 @@ use App\Models\WebhookEvent;
 use App\Services\Invoicing\BusinessDocumentPaymentWebhookService;
 use App\Services\Invoicing\SubscriptionBillingInvoiceService;
 use App\Services\StoreEmailRuleDispatcher;
+use App\Services\SubscriptionCreditLedgerService;
 use App\Services\SubscriptionService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -102,6 +103,10 @@ class ProcessBtcPayWebhook implements ShouldQueue
             ])
         ) {
             $this->handleSubscriptionLifecycleEvent($payload, $eventType);
+        }
+
+        if (in_array($eventType, ['SubscriberCredited', 'SubscriberCharged'], true)) {
+            $this->handleSubscriberCreditLedgerEvent($payload, $eventType);
         }
 
         $this->webhookEvent->markAsProcessed();
@@ -591,5 +596,69 @@ class ProcessBtcPayWebhook implements ShouldQueue
             'new_role' => 'free',
             'reason' => $reason,
         ]);
+    }
+
+    protected function handleSubscriberCreditLedgerEvent(array $payload, string $eventType): void
+    {
+        try {
+            $subscriber = $payload['subscriber'] ?? [];
+            $customer = is_array($subscriber['customer'] ?? null) ? $subscriber['customer'] : [];
+            $identities = is_array($customer['identities'] ?? null) ? $customer['identities'] : [];
+            $email = $identities['Email']
+                ?? $customer['email']
+                ?? $payload['customerEmail']
+                ?? null;
+
+            if (! $email) {
+                return;
+            }
+
+            $user = User::where('email', $email)->first();
+            if (! $user) {
+                return;
+            }
+
+            $rawAmount = (float) ($payload['amount'] ?? 0);
+            $amount = $eventType === 'SubscriberCharged'
+                ? -1 * (int) round(abs($rawAmount))
+                : (int) round(abs($rawAmount));
+
+            if ($amount === 0) {
+                return;
+            }
+
+            $balanceAfter = isset($payload['total'])
+                ? (int) round((float) $payload['total'])
+                : null;
+
+            $description = $eventType === 'SubscriberCredited'
+                ? 'Credit purchase'
+                : 'Charge';
+
+            $sourceKey = null;
+            if (! empty($payload['deliveryId'])) {
+                $sourceKey = 'webhook:'.$payload['deliveryId'];
+            } elseif ($this->webhookEvent->id) {
+                $sourceKey = 'webhook-event:'.$this->webhookEvent->id;
+            }
+
+            app(SubscriptionCreditLedgerService::class)->record(
+                $user,
+                $amount,
+                $balanceAfter,
+                (string) ($payload['currency'] ?? 'SATS'),
+                $description,
+                $sourceKey,
+                isset($payload['timestamp']) && is_numeric($payload['timestamp'])
+                    ? now()->setTimestamp((int) $payload['timestamp'])
+                    : null,
+            );
+        } catch (\Throwable $e) {
+            Log::error('Failed to record subscriber credit ledger entry', [
+                'webhook_event_id' => $this->webhookEvent->id,
+                'event_type' => $eventType,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }
