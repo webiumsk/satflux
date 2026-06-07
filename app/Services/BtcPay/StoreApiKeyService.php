@@ -133,13 +133,13 @@ class StoreApiKeyService
     /**
      * Revoke (deactivate) an API key.
      */
-    public function revokeApiKey(string $apiKeyId): void
+    public function revokeApiKey(StoreApiKey|string $apiKey): void
     {
-        $storeApiKey = StoreApiKey::findOrFail($apiKeyId);
+        $storeApiKey = $apiKey instanceof StoreApiKey ? $apiKey : StoreApiKey::findOrFail($apiKey);
         $storeApiKey->update(['is_active' => false]);
 
         Log::info('Store API key revoked', [
-            'api_key_id' => $apiKeyId,
+            'api_key_id' => $storeApiKey->id,
             'store_id' => $storeApiKey->store_id,
         ]);
     }
@@ -182,9 +182,9 @@ class StoreApiKeyService
     /**
      * Regenerate an API key (create new, deactivate old).
      */
-    public function regenerateApiKey(string $apiKeyId, array $permissions = [], ?string $label = null, ?string $callbackUrl = null): StoreApiKey
+    public function regenerateApiKey(StoreApiKey|string $apiKey, array $permissions = [], ?string $label = null, ?string $callbackUrl = null): StoreApiKey
     {
-        $oldApiKey = StoreApiKey::findOrFail($apiKeyId);
+        $oldApiKey = $apiKey instanceof StoreApiKey ? $apiKey : StoreApiKey::findOrFail($apiKey);
 
         // Deactivate old key
         $oldApiKey->update(['is_active' => false]);

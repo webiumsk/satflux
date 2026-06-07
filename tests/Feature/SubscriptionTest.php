@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Services\SubscriptionCheckoutRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
@@ -279,11 +281,18 @@ class SubscriptionTest extends TestCase
                     'isActive' => true,
                 ]);
             }
-            if (str_contains($url, '/api/v1/plan-checkout') && $request->method() === 'POST') {
+            if (str_contains($url, '/api/v1/plan-checkout/checkout_credit123') && $request->method() === 'POST') {
+                return Http::response([
+                    'id' => 'checkout_credit123',
+                    'invoiceId' => 'inv_credit123',
+                    'redirectUrl' => 'https://btcpay.example.test/i/inv_credit123',
+                    'expiration' => now()->addHours(24)->timestamp,
+                ]);
+            }
+            if (preg_match('#/api/v1/plan-checkout$#', (string) parse_url($url, PHP_URL_PATH)) && $request->method() === 'POST') {
                 return Http::response([
                     'id' => 'checkout_credit123',
                     'url' => 'https://btcpay.example.test/plan-checkout/checkout_credit123',
-                    'invoiceId' => 'inv_credit123',
                     'expiration' => now()->addHours(24)->timestamp,
                 ]);
             }
@@ -305,14 +314,14 @@ class SubscriptionTest extends TestCase
         $response->assertStatus(200)
             ->assertJson([
                 'paymentUrl' => 'https://btcpay.example.test/i/inv_credit123',
-                'checkoutUrl' => 'https://btcpay.example.test/plan-checkout/checkout_credit123',
+                'checkoutUrl' => 'https://btcpay.example.test/i/inv_credit123',
                 'checkoutId' => 'checkout_credit123',
                 'invoiceId' => 'inv_credit123',
                 'invoiceUrl' => 'https://btcpay.example.test/i/inv_credit123',
             ]);
 
         Http::assertSent(function ($request) {
-            if ($request->method() !== 'POST' || ! str_contains((string) $request->url(), '/api/v1/plan-checkout')) {
+            if ($request->method() !== 'POST' || ! preg_match('#/api/v1/plan-checkout$#', (string) parse_url($request->url(), PHP_URL_PATH))) {
                 return false;
             }
 
@@ -322,6 +331,11 @@ class SubscriptionTest extends TestCase
                 && ($body['customerSelector'] ?? null) === 'subscriber@example.com'
                 && ($body['planId'] ?? null) === 'plan_pro_test'
                 && ($body['isTrial'] ?? null) === false;
+        });
+
+        Http::assertSent(function ($request) {
+            return $request->method() === 'POST'
+                && str_contains((string) $request->url(), '/api/v1/plan-checkout/checkout_credit123');
         });
     }
 
@@ -405,5 +419,255 @@ class SubscriptionTest extends TestCase
             ->assertJsonPath('creditHistory.0.description', 'Credit purchase')
             ->assertJsonPath('creditHistory.0.amount', 2000)
             ->assertJsonPath('creditHistory.0.balance', 4000);
+    }
+
+    protected function seedSubscriptionPlans(): void
+    {
+        SubscriptionPlan::create([
+            'code' => 'free',
+            'name' => 'free',
+            'display_name' => 'Free',
+            'price_eur' => 0,
+            'billing_period' => 'year',
+            'max_stores' => 1,
+            'max_api_keys' => 1,
+            'max_ln_addresses' => 2,
+            'features' => [],
+            'is_active' => true,
+        ]);
+
+        SubscriptionPlan::create([
+            'code' => 'pro',
+            'name' => 'pro',
+            'display_name' => 'Pro',
+            'price_eur' => 99,
+            'billing_period' => 'year',
+            'max_stores' => 3,
+            'max_api_keys' => 3,
+            'max_ln_addresses' => null,
+            'features' => ['business_invoicing'],
+            'is_active' => true,
+        ]);
+
+        SubscriptionPlan::create([
+            'code' => 'enterprise',
+            'name' => 'enterprise',
+            'display_name' => 'Enterprise',
+            'price_eur' => 299,
+            'billing_period' => 'year',
+            'max_stores' => null,
+            'max_api_keys' => null,
+            'max_ln_addresses' => null,
+            'features' => ['business_invoicing'],
+            'is_active' => true,
+        ]);
+    }
+
+    #[Test]
+    public function subscription_success_requires_authentication(): void
+    {
+        $response = $this->getJson('/api/subscriptions/success?checkoutPlanId=checkout_attack');
+
+        $response->assertStatus(401);
+    }
+
+    #[Test]
+    public function subscription_success_does_not_activate_unpaid_checkout(): void
+    {
+        $this->seedSubscriptionPlans();
+
+        $user = User::factory()->create([
+            'role' => 'free',
+            'email' => 'attacker@example.com',
+        ]);
+
+        config([
+            'services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store',
+            'services.btcpay.subscription_plans.enterprise' => 'plan_enterprise_test',
+        ]);
+
+        app(SubscriptionCheckoutRegistry::class)->bind('checkout_attack123', $user->id, 'enterprise');
+
+        Http::fake(function ($request) {
+            $url = (string) $request->url();
+            if (str_contains($url, '/api/v1/plan-checkout/checkout_attack123') && $request->method() === 'GET') {
+                return Http::response([
+                    'id' => 'checkout_attack123',
+                    'plan' => ['id' => 'plan_enterprise_test'],
+                    'subscriber' => [
+                        'isActive' => false,
+                    ],
+                ]);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $response = $this->actingAs($user)->getJson('/api/subscriptions/success?checkoutPlanId=checkout_attack123');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('activated', false)
+            ->assertJsonPath('plan', 'enterprise');
+
+        $user->refresh();
+        $this->assertSame('free', $user->role);
+    }
+
+    #[Test]
+    public function subscription_success_rejects_checkout_not_bound_to_user(): void
+    {
+        $this->seedSubscriptionPlans();
+
+        $attacker = User::factory()->create(['role' => 'free']);
+        $victim = User::factory()->create(['role' => 'free']);
+
+        config([
+            'services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store',
+            'services.btcpay.subscription_plans.enterprise' => 'plan_enterprise_test',
+        ]);
+
+        app(SubscriptionCheckoutRegistry::class)->bind('checkout_victim', $victim->id, 'enterprise');
+
+        Http::fake(function ($request) {
+            if (str_contains((string) $request->url(), '/api/v1/plan-checkout/checkout_victim')) {
+                return Http::response([
+                    'id' => 'checkout_victim',
+                    'plan' => ['id' => 'plan_enterprise_test'],
+                ]);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $response = $this->actingAs($attacker)->getJson('/api/subscriptions/success?checkoutPlanId=checkout_victim');
+
+        $response->assertStatus(403);
+
+        $attacker->refresh();
+        $this->assertSame('free', $attacker->role);
+    }
+
+    #[Test]
+    public function subscription_success_activates_when_invoice_is_settled(): void
+    {
+        $this->seedSubscriptionPlans();
+
+        $user = User::factory()->create([
+            'role' => 'free',
+            'email' => 'buyer@example.com',
+        ]);
+
+        config([
+            'services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store',
+            'services.btcpay.subscription_plans.pro' => 'plan_pro_test',
+        ]);
+
+        app(SubscriptionCheckoutRegistry::class)->bind('checkout_paid123', $user->id, 'pro');
+
+        Http::fake(function ($request) {
+            $url = (string) $request->url();
+            if (str_contains($url, '/api/v1/plan-checkout/checkout_paid123') && $request->method() === 'GET') {
+                return Http::response([
+                    'id' => 'checkout_paid123',
+                    'invoiceId' => 'inv_settled123',
+                    'plan' => ['id' => 'plan_pro_test'],
+                    'subscriber' => [
+                        'customer' => [
+                            'id' => 'sub-customer-1',
+                            'identities' => ['Email' => 'buyer@example.com'],
+                        ],
+                    ],
+                ]);
+            }
+            if (str_contains($url, '/invoices/inv_settled123') && $request->method() === 'GET') {
+                return Http::response([
+                    'id' => 'inv_settled123',
+                    'status' => 'Settled',
+                    'currency' => 'EUR',
+                    'amount' => 99,
+                ]);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $response = $this->actingAs($user)->getJson('/api/subscriptions/success?checkoutPlanId=checkout_paid123');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('activated', true)
+            ->assertJsonPath('plan', 'pro');
+
+        $user->refresh();
+        $this->assertSame('pro', $user->role);
+    }
+
+    #[Test]
+    public function subscription_success_does_not_activate_when_invoice_is_not_settled(): void
+    {
+        $this->seedSubscriptionPlans();
+
+        $user = User::factory()->create([
+            'role' => 'free',
+            'email' => 'buyer@example.com',
+        ]);
+
+        config([
+            'services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store',
+            'services.btcpay.subscription_plans.pro' => 'plan_pro_test',
+        ]);
+
+        app(SubscriptionCheckoutRegistry::class)->bind('checkout_pending123', $user->id, 'pro');
+
+        Http::fake(function ($request) {
+            $url = (string) $request->url();
+            if (str_contains($url, '/api/v1/plan-checkout/checkout_pending123') && $request->method() === 'GET') {
+                return Http::response([
+                    'id' => 'checkout_pending123',
+                    'invoiceId' => 'inv_pending123',
+                    'plan' => ['id' => 'plan_pro_test'],
+                ]);
+            }
+            if (str_contains($url, '/invoices/inv_pending123') && $request->method() === 'GET') {
+                return Http::response([
+                    'id' => 'inv_pending123',
+                    'status' => 'Processing',
+                ]);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $response = $this->actingAs($user)->getJson('/api/subscriptions/success?checkoutPlanId=checkout_pending123');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('activated', false);
+
+        $user->refresh();
+        $this->assertSame('free', $user->role);
+    }
+
+    #[Test]
+    public function checkout_binds_session_to_authenticated_user(): void
+    {
+        $user = User::factory()->create();
+
+        config([
+            'services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store',
+            'services.btcpay.subscription_offering_id' => 'offering_test',
+            'services.btcpay.subscription_plans.pro' => 'plan_pro_test',
+        ]);
+
+        $this->fakeBtcPayCheckoutSuccess();
+
+        $response = $this->actingAs($user)->postJson('/api/subscriptions/checkout', [
+            'plan' => 'pro',
+        ]);
+
+        $response->assertStatus(200);
+
+        $binding = app(SubscriptionCheckoutRegistry::class)->resolve('checkout_test123');
+        $this->assertNotNull($binding);
+        $this->assertSame($user->id, $binding['user_id']);
+        $this->assertSame('pro', $binding['plan']);
     }
 }

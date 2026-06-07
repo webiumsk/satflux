@@ -87,6 +87,10 @@ class ProcessBtcPayWebhook implements ShouldQueue
             $this->handleSubscriptionInvoicePaid($payload);
         }
 
+        if (in_array($eventType, ['PlanStarted', 'SubscriberActivated', 'plan.started', 'subscriber.activated'], true)) {
+            $this->handleSubscriptionPlanStarted($payload);
+        }
+
         // Handle subscription lifecycle events
         if (
             in_array($eventType, [
@@ -276,6 +280,91 @@ class ProcessBtcPayWebhook implements ShouldQueue
 
         } catch (\Exception $e) {
             Log::error('Error processing subscription invoice payment webhook', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'payload' => $payload,
+            ]);
+        }
+    }
+
+    /**
+     * Handle trial or plan-start events from the subscription store.
+     */
+    protected function handleSubscriptionPlanStarted(array $payload): void
+    {
+        try {
+            $subscriber = $payload['subscriber']
+                ?? $payload['subscriptionData']
+                ?? $payload['subscription']
+                ?? $payload;
+
+            $customerEmail = $subscriber['customer']['identities']['Email']
+                ?? $subscriber['customer']['email']
+                ?? $subscriber['customerEmail']
+                ?? $subscriber['subscriberEmail']
+                ?? $subscriber['email']
+                ?? ($payload['metadata']['customerEmail'] ?? null)
+                ?? ($payload['metadata']['buyerEmail'] ?? null);
+
+            if (! $customerEmail) {
+                Log::warning('Subscription plan started webhook missing customer email', [
+                    'payload_keys' => array_keys($payload),
+                ]);
+
+                return;
+            }
+
+            $user = User::where('email', $customerEmail)->first();
+            if (! $user) {
+                Log::warning('Subscription plan started webhook - user not found', [
+                    'customer_email' => $customerEmail,
+                ]);
+
+                return;
+            }
+
+            $planId = $subscriber['plan']['id']
+                ?? $subscriber['planId']
+                ?? ($payload['metadata']['planId'] ?? null);
+
+            $planRole = app(\App\Services\BtcPay\SubscriptionService::class)->resolvePlanNameFromId($planId);
+            if (! $planRole) {
+                Log::warning('Subscription plan started webhook - unknown plan', [
+                    'customer_email' => $customerEmail,
+                    'plan_id' => $planId,
+                ]);
+
+                return;
+            }
+
+            $subscriptionId = $subscriber['customer']['id']
+                ?? $subscriber['id']
+                ?? $subscriber['subscriptionId']
+                ?? null;
+
+            $subscription = app(SubscriptionService::class)->activateSubscription(
+                $user,
+                $planRole,
+                $subscriptionId,
+            );
+
+            $oldRole = $user->role;
+            $user->role = $planRole;
+            if ($subscriptionId) {
+                $user->btcpay_subscription_id = $subscriptionId;
+            }
+            $user->save();
+
+            Log::info('User role updated after subscription plan started', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'old_role' => $oldRole,
+                'new_role' => $planRole,
+                'plan_id' => $planId,
+                'subscription_id' => $subscription->id,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error processing subscription plan started webhook', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'payload' => $payload,

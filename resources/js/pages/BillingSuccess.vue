@@ -101,8 +101,7 @@ onMounted(async () => {
         params: { checkoutPlanId },
       });
 
-      const activated = response.data.plan || response.data.user?.role;
-      if (activated) {
+      if (response.data.activated === true) {
         success.value = true;
         if (authStore.isAuthenticated) {
           await authStore.fetchUser();

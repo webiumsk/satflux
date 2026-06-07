@@ -175,6 +175,35 @@ class SubscriptionService
     }
 
     /**
+     * Proceed with a plan checkout session and create the BTCPay invoice when payment is due.
+     *
+     * @throws BtcPayException
+     */
+    public function processPlanCheckout(string $checkoutId, ?string $email = null): array
+    {
+        $endpoint = "/api/v1/plan-checkout/{$checkoutId}";
+        if ($email) {
+            $endpoint .= '?email='.rawurlencode($email);
+        }
+
+        try {
+            Log::info('Processing plan checkout', [
+                'checkout_id' => $checkoutId,
+                'has_email' => $email !== null && $email !== '',
+            ]);
+
+            return $this->client->post($endpoint);
+        } catch (BtcPayException $e) {
+            Log::error('Failed to process plan checkout', [
+                'checkout_id' => $checkoutId,
+                'error' => $e->getMessage(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
      * Get subscription details by subscription ID.
      *
      * @param  string  $storeId  BTCPay store ID
@@ -524,6 +553,11 @@ class SubscriptionService
             $response = $this->client->post('/api/v1/plan-checkout', $payload);
             $result = $this->resolvePlanCheckoutResponse($response);
 
+            if (! $result['invoiceId']) {
+                $processed = $this->processPlanCheckout($result['checkoutId'], $customerSelector);
+                $result = $this->applyCheckoutDetailsToResult($result, $processed);
+            }
+
             return $this->enrichCheckoutWithInvoicePaymentUrl($storeId, $result);
         } catch (BtcPayException $e) {
             Log::error('Failed to create credit purchase checkout', [
@@ -633,6 +667,50 @@ class SubscriptionService
      * @param  array{checkoutId: string, checkoutUrl: string, invoiceId: ?string, invoiceUrl: ?string, expiresAt?: string}  $result
      * @return array{checkoutId: string, checkoutUrl: string, invoiceId: ?string, invoiceUrl: ?string, paymentUrl: ?string, expiresAt?: string}
      */
+    /**
+     * @param  array{checkoutId: string, checkoutUrl: string, invoiceId: ?string, invoiceUrl: ?string, expiresAt?: string}  $result
+     * @param  array<string, mixed>  $details
+     * @return array{checkoutId: string, checkoutUrl: string, invoiceId: ?string, invoiceUrl: ?string, expiresAt?: string}
+     */
+    protected function applyCheckoutDetailsToResult(array $result, array $details): array
+    {
+        $invoiceId = $this->extractInvoiceIdFromCheckoutDetails($details);
+        if ($invoiceId) {
+            $result['invoiceId'] = $invoiceId;
+        }
+
+        $redirectUrl = $details['redirectUrl'] ?? null;
+        if (is_string($redirectUrl) && $redirectUrl !== '') {
+            $result['checkoutUrl'] = $redirectUrl;
+        }
+
+        $checkoutUrl = $details['url'] ?? $details['checkoutUrl'] ?? null;
+        if (is_string($checkoutUrl) && $checkoutUrl !== '') {
+            $result['checkoutUrl'] = $checkoutUrl;
+        }
+
+        if (isset($details['expiration'])) {
+            $result['expiresAt'] = is_numeric($details['expiration'])
+                ? date('c', (int) $details['expiration'])
+                : $details['expiration'];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  array<string, mixed>  $details
+     */
+    protected function extractInvoiceIdFromCheckoutDetails(array $details): ?string
+    {
+        $invoiceId = $details['invoiceId']
+            ?? ($details['invoice']['id'] ?? null)
+            ?? ($details['payment']['invoiceId'] ?? null)
+            ?? ($details['subscriber']['processingInvoiceId'] ?? null);
+
+        return is_string($invoiceId) && $invoiceId !== '' ? $invoiceId : null;
+    }
+
     protected function enrichCheckoutWithInvoicePaymentUrl(string $storeId, array $result): array
     {
         $invoiceId = $result['invoiceId'] ?? null;
@@ -640,9 +718,8 @@ class SubscriptionService
         if (! $invoiceId && ! empty($result['checkoutId'])) {
             try {
                 $details = $this->getPlanCheckout($result['checkoutId']);
-                $invoiceId = $details['invoiceId']
-                    ?? ($details['invoice']['id'] ?? null)
-                    ?? ($details['payment']['invoiceId'] ?? null);
+                $result = $this->applyCheckoutDetailsToResult($result, $details);
+                $invoiceId = $result['invoiceId'] ?? null;
             } catch (BtcPayException $e) {
                 Log::debug('Could not load plan checkout for invoice URL', [
                     'checkout_id' => $result['checkoutId'],
@@ -652,6 +729,9 @@ class SubscriptionService
         }
 
         if (! $invoiceId) {
+            Log::error('Credit purchase checkout completed without invoice', [
+                'checkout_id' => $result['checkoutId'] ?? null,
+            ]);
             throw new BtcPayException('Credit purchase invoice was not created by BTCPay', 500);
         }
 
@@ -684,6 +764,51 @@ class SubscriptionService
         $result['paymentUrl'] = $paymentUrl;
 
         return $result;
+    }
+
+    /**
+     * Map a BTCPay subscription plan ID to the local plan role name.
+     */
+    public function resolvePlanNameFromId(?string $planId): ?string
+    {
+        if (! $planId) {
+            return null;
+        }
+
+        $subscriptionPlans = config('services.btcpay.subscription_plans', []);
+
+        if ($planId === ($subscriptionPlans['pro'] ?? null)) {
+            return 'pro';
+        }
+
+        if ($planId === ($subscriptionPlans['enterprise'] ?? null)) {
+            return 'enterprise';
+        }
+
+        return null;
+    }
+
+    /**
+     * True when the subscriber completed a trial checkout on BTCPay (active trial phase).
+     *
+     * @param  array<string, mixed>  $checkoutDetails
+     */
+    public function checkoutTrialWasActivated(array $checkoutDetails): bool
+    {
+        $subscriber = $checkoutDetails['subscriber'] ?? [];
+
+        if (! ($subscriber['isActive'] ?? false)) {
+            return false;
+        }
+
+        $phase = isset($subscriber['phase']) ? (string) $subscriber['phase'] : null;
+        if ($phase === 'Trial') {
+            return true;
+        }
+
+        $trialEnd = $this->normalizeUnixTimestamp($subscriber['trialEnd'] ?? null);
+
+        return $trialEnd !== null && $trialEnd > time();
     }
 
     /**
@@ -732,10 +857,7 @@ class SubscriptionService
         }
 
         try {
-            return [
-                'id' => $invoiceId,
-                'payload' => $invoiceService->getInvoice($storeId, $invoiceId),
-            ];
+            $payload = $invoiceService->getInvoice($storeId, $invoiceId);
         } catch (BtcPayException $e) {
             Log::warning('Subscription checkout invoice fetch failed', [
                 'checkout_id' => $checkoutPlanId,
@@ -743,11 +865,24 @@ class SubscriptionService
                 'error' => $e->getMessage(),
             ]);
 
-            return [
-                'id' => $invoiceId,
-                'payload' => [],
-            ];
+            return null;
         }
+
+        $status = (string) ($payload['status'] ?? '');
+        if (strcasecmp($status, 'Settled') !== 0) {
+            Log::info('Subscription checkout invoice is not settled', [
+                'checkout_id' => $checkoutPlanId,
+                'invoice_id' => $invoiceId,
+                'status' => $status,
+            ]);
+
+            return null;
+        }
+
+        return [
+            'id' => $invoiceId,
+            'payload' => $payload,
+        ];
     }
 
     /**
