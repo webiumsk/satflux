@@ -3,6 +3,7 @@
 namespace App\Services\Compliance;
 
 use App\Models\ComplianceScreening;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -51,6 +52,17 @@ class ComplianceGate
                 'email' => [__('messages.compliance_registration_unavailable')],
             ]);
         }
+    }
+
+    public function linkLatestRegistrationScreening(string $email, User $user): void
+    {
+        ComplianceScreening::query()
+            ->where('subject_type', 'registration')
+            ->where('subject_email', Str::lower(trim($email)))
+            ->whereNull('user_id')
+            ->orderByDesc('created_at')
+            ->limit(1)
+            ->update(['user_id' => $user->id]);
     }
 
     protected function screenLists(string $email, ?string $name, ?string $countryCode): ScreeningResult

@@ -115,7 +115,7 @@ class OpenSanctionsEuSync
             return [];
         }
 
-        $parts = preg_split('/\s*;\s*/', strtolower($raw)) ?: [];
+        $parts = preg_split('/\s*;\s*/', $raw) ?: [];
 
         return array_values(array_unique(array_filter(array_map(
             fn (string $code) => strtoupper(trim($code)),

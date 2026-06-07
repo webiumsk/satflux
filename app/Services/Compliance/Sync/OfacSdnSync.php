@@ -2,6 +2,7 @@
 
 namespace App\Services\Compliance\Sync;
 
+use App\Services\Compliance\XmlParser;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
@@ -19,11 +20,7 @@ class OfacSdnSync
             throw new \RuntimeException('OFAC SDN download failed: HTTP '.$response->status());
         }
 
-        $xml = @simplexml_load_string($response->body());
-
-        if ($xml === false) {
-            throw new \RuntimeException('OFAC SDN XML parse failed.');
-        }
+        $xml = XmlParser::loadString($response->body(), 'OFAC SDN XML');
 
         $entries = [];
 

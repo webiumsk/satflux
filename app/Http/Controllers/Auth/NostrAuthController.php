@@ -348,6 +348,8 @@ class NostrAuthController extends Controller
             }
         }
 
+        $this->complianceGate->linkLatestRegistrationScreening($request->input('email'), $user);
+
         LegalConsent::recordRegistration($user);
 
         try {

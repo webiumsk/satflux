@@ -37,6 +37,8 @@ class RegisterController extends Controller
             $request->input('password')
         );
 
+        $this->complianceGate->linkLatestRegistrationScreening($request->input('email'), $user);
+
         LegalConsent::recordRegistration($user);
 
         return response()->json([

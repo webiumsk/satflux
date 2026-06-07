@@ -24,8 +24,9 @@ class MaxMindGeoCountryResolver implements GeoCountryResolver
             return null;
         }
 
+        $reader = new Reader($path);
+
         try {
-            $reader = new Reader($path);
             $record = $reader->country($ip);
             $code = $record->country->isoCode;
 
@@ -41,6 +42,8 @@ class MaxMindGeoCountryResolver implements GeoCountryResolver
             ]);
 
             return null;
+        } finally {
+            $reader->close();
         }
     }
 }

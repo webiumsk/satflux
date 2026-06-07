@@ -1,5 +1,15 @@
 <?php
 
+$coerceHttpsUrl = static function (?string $url, string $default): string {
+    $value = is_string($url) && $url !== '' ? $url : $default;
+
+    if (str_starts_with($value, 'http://')) {
+        $value = 'https://'.substr($value, 8);
+    }
+
+    return $value;
+};
+
 return [
 
     /*
@@ -43,8 +53,8 @@ return [
 
     'retention_years' => (int) env('COMPLIANCE_RETENTION_YEARS', 7),
 
-    'ofac_sdn_url' => env(
-        'COMPLIANCE_OFAC_SDN_URL',
+    'ofac_sdn_url' => $coerceHttpsUrl(
+        env('COMPLIANCE_OFAC_SDN_URL'),
         'https://www.treasury.gov/ofac/downloads/sdn.xml',
     ),
 

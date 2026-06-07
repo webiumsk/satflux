@@ -44,6 +44,7 @@ class ComplianceGateTest extends TestCase
         $this->assertDatabaseMissing('users', ['email' => 'blocked@example.com']);
         $this->assertDatabaseHas('compliance_screenings', [
             'subject_email' => 'blocked@example.com',
+            'user_id' => null,
             'country_code' => 'IR',
             'geo_blocked' => true,
             'decision' => 'blocked',
@@ -64,9 +65,11 @@ class ComplianceGateTest extends TestCase
         ]);
 
         $response->assertStatus(201);
-        $this->assertDatabaseHas('users', ['email' => 'allowed@example.com']);
+        $user = User::where('email', 'allowed@example.com')->first();
+        $this->assertNotNull($user);
         $this->assertDatabaseHas('compliance_screenings', [
             'subject_email' => 'allowed@example.com',
+            'user_id' => $user->id,
             'country_code' => 'SK',
             'geo_blocked' => false,
             'decision' => 'allowed',

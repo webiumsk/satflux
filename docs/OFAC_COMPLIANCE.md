@@ -134,7 +134,7 @@ Add locale keys: `messages.compliance_registration_unavailable` (en/sk/es).
 - **Artisan**: `compliance:rescreen {email}` for manual re-check.
 - **Admin UI** (phase 2): list `pending_review`, approve/deny with audit log.
 - **Alerting**: Slack/email on `hit` or `error` rate spike.
-- **Retention**: keep `compliance_screenings` minimum 7 years (align with `docs/DATA_RETENTION.md`).
+- **Retention**: keep `compliance_screenings` minimum 7 years (`COMPLIANCE_RETENTION_YEARS`, align with `docs/DATA_RETENTION.md`). Rows store `subject_email`, optional `subject_name`, and `ip_address` for audit defense; scheduled purge/anonymization is Phase 3.
 
 ### 6. Testing
 
@@ -163,14 +163,13 @@ Use `COMPLIANCE_SCREENING_ENABLED=false` in CI by default; dedicated test enable
 - [x] `compliance:update-geoip` + monthly schedule
 - [x] `tests/Feature/ComplianceGateTest.php`
 - [ ] Enable in prod: `COMPLIANCE_SCREENING_ENABLED=true` after MaxMind DB download
-- [ ] Extend gate to LNURL-auth, Nostr, guest upgrade (Phase 1b)
+- [x] Extend gate to LNURL-auth, Nostr, guest upgrade (Phase 1b) - `RegisterController`, `LnurlAuthController.completeRegistration`, `NostrAuthController.completeRegistration`, `AccountController.upgradeGuest`
 
 **Phase 2 - Local list screening (implemented on `feature/ofac-compliance`)**
 
 - [x] `sanctions_entries` table + daily `compliance:sync-sanctions-lists` (OFAC SDN XML + EU via OpenSanctions CSV; direct EU XML returns 403 from many hosts)
 - [x] `LocalSanctionsScreeningProvider` (exact match on normalized name / email local-part)
 - [x] `COMPLIANCE_LIST_SCREENING_ENABLED` flag
-- [x] Gate extended to LNURL-auth, Nostr, guest upgrade
 - [ ] Paid API provider (ComplyAdvantage) when budget allows
 
 **Phase 3 - Operations (2-3 days)**

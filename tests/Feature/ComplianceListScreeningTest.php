@@ -80,6 +80,8 @@ class ComplianceListScreeningTest extends TestCase
         $this->assertDatabaseHas('compliance_screenings', [
             'subject_email' => 'unique-user@example.com',
             'screening_status' => 'hit',
+            'decision' => 'blocked',
+            'decision_reason' => 'sanctions_list_match',
         ]);
     }
 

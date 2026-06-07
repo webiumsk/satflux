@@ -302,6 +302,7 @@ class AccountController extends Controller
 
         try {
             $upgradedUser = $this->guestUpgradeService->upgrade($user, $validated);
+            $this->complianceGate->linkLatestRegistrationScreening($validated['email'], $upgradedUser);
             LegalConsent::recordRegistration($upgradedUser);
         } catch (ValidationException $e) {
             throw $e;

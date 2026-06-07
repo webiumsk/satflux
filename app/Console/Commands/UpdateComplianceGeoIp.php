@@ -52,34 +52,39 @@ class UpdateComplianceGeoIp extends Command
         $archivePath = $tmpDir.'/GeoLite2-Country.tar.gz';
         File::put($archivePath, $response->body());
 
-        $phar = new \PharData($archivePath);
-        $phar->decompress();
+        try {
+            $phar = new \PharData($archivePath);
+            $phar->decompress();
 
-        $tarPath = str_replace('.gz', '', $archivePath);
-        $tar = new \PharData($tarPath);
-        $tar->extractTo($tmpDir, null, true);
+            $tarPath = str_replace('.gz', '', $archivePath);
+            $tar = new \PharData($tarPath);
+            $tar->extractTo($tmpDir, null, true);
 
-        $mmdbPath = null;
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($tmpDir, \FilesystemIterator::SKIP_DOTS)
-        );
+            $mmdbPath = null;
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($tmpDir, \FilesystemIterator::SKIP_DOTS)
+            );
 
-        foreach ($iterator as $file) {
-            if ($file->isFile() && str_ends_with($file->getFilename(), '.mmdb')) {
-                $mmdbPath = $file->getPathname();
-                break;
+            foreach ($iterator as $file) {
+                if ($file->isFile() && str_ends_with($file->getFilename(), '.mmdb')) {
+                    $mmdbPath = $file->getPathname();
+                    break;
+                }
+            }
+
+            if ($mmdbPath === null) {
+                $this->error('Could not find .mmdb file in MaxMind archive.');
+
+                return self::FAILURE;
+            }
+
+            File::ensureDirectoryExists(dirname($targetPath));
+            File::copy($mmdbPath, $targetPath);
+        } finally {
+            if (File::isDirectory($tmpDir)) {
+                File::deleteDirectory($tmpDir);
             }
         }
-
-        if ($mmdbPath === null) {
-            $this->error('Could not find .mmdb file in MaxMind archive.');
-
-            return self::FAILURE;
-        }
-
-        File::ensureDirectoryExists(dirname($targetPath));
-        File::copy($mmdbPath, $targetPath);
-        File::deleteDirectory($tmpDir);
 
         $this->info('GeoLite2 database saved to: '.$targetPath);
 
