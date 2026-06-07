@@ -244,6 +244,27 @@ class StoreApiKeyTest extends TestCase
     }
 
     #[Test]
+    public function user_cannot_revoke_other_stores_api_key_through_own_store_route(): void
+    {
+        $owner = User::factory()->create();
+        $attacker = User::factory()->create();
+        $victimStore = Store::factory()->create(['user_id' => $owner->id]);
+        $attackerStore = Store::factory()->create(['user_id' => $attacker->id]);
+        $victimApiKey = StoreApiKey::create([
+            'store_id' => $victimStore->id,
+            'label' => 'Victim Key',
+            'btcpay_api_key' => 'victim-secret',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($attacker)
+            ->deleteJson("/api/stores/{$attackerStore->id}/api-keys/{$victimApiKey->id}");
+
+        $response->assertStatus(404);
+        $this->assertTrue($victimApiKey->fresh()->is_active);
+    }
+
+    #[Test]
     public function user_can_regenerate_api_key(): void
     {
         $user = User::factory()->create(['btcpay_user_id' => 'btcpay-user-123']);
@@ -287,6 +308,34 @@ class StoreApiKeyTest extends TestCase
         $response = $this->actingAs($other)->postJson("/api/stores/{$store->id}/api-keys/{$apiKey->id}/regenerate");
 
         $response->assertStatus(403);
+    }
+
+    #[Test]
+    public function user_cannot_regenerate_other_stores_api_key_through_own_store_route(): void
+    {
+        $owner = User::factory()->create(['btcpay_user_id' => 'btcpay-user-123']);
+        $attacker = User::factory()->create(['btcpay_user_id' => 'attacker-btcpay-user']);
+        $victimStore = Store::factory()->create(['user_id' => $owner->id]);
+        $attackerStore = Store::factory()->create(['user_id' => $attacker->id]);
+        $victimApiKey = StoreApiKey::create([
+            'store_id' => $victimStore->id,
+            'label' => 'Victim Key',
+            'btcpay_api_key' => 'victim-secret',
+            'permissions' => ['btcpay.store.cancreateinvoice'],
+            'is_active' => true,
+        ]);
+
+        $this->fakeBtcPayApiKeyCreation();
+
+        $response = $this->actingAs($attacker)
+            ->postJson("/api/stores/{$attackerStore->id}/api-keys/{$victimApiKey->id}/regenerate", [
+                'label' => 'Stolen Key',
+            ]);
+
+        $response->assertStatus(404);
+        $this->assertTrue($victimApiKey->fresh()->is_active);
+        $this->assertSame(1, StoreApiKey::where('store_id', $victimStore->id)->count());
+        $this->assertSame(0, StoreApiKey::where('store_id', $attackerStore->id)->count());
     }
 
     #[Test]
