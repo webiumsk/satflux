@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\SubscriptionCreditLedgerEntry;
 use App\Models\User;
+
 class SubscriptionCreditLedgerService
 {
     public function record(
