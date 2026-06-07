@@ -90,7 +90,11 @@
               <span
                 v-if="!canBusinessInvoicing"
                 class="text-[10px] uppercase tracking-wide text-amber-400/90"
-              >Pro</span>
+              >Pro /</span>
+              <span
+                
+                class="text-[10px] uppercase tracking-wide text-green-400/90"
+              >BETA</span>
             </component>
             <component
               v-if="
