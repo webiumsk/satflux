@@ -155,19 +155,23 @@ Use `COMPLIANCE_SCREENING_ENABLED=false` in CI by default; dedicated test enable
 - [x] ToS section 5a (EN/SK/ES)
 - [ ] Replace GDPR Art. 27 placeholders in `operator.ts` with appointed representative details
 
-**Phase 1 - Geo block only (1-2 days)**
+**Phase 1 - Geo block only (implemented on `feature/ofac-compliance`)**
 
-- `config/compliance.php` + env flags
-- `GeoJurisdictionGuard` + `compliance_screenings` migration
-- Hook `ComplianceGate` into `RegistrationService` only
-- Feature flag off in production until tested
+- [x] `config/compliance.php` + env flags
+- [x] `GeoJurisdictionGuard` (config override, CF-IPCountry, MaxMind GeoLite2) + `compliance_screenings` migration
+- [x] `ComplianceGate` hooked into `RegisterController` (email/password path)
+- [x] `compliance:update-geoip` + monthly schedule
+- [x] `tests/Feature/ComplianceGateTest.php`
+- [ ] Enable in prod: `COMPLIANCE_SCREENING_ENABLED=true` after MaxMind DB download
+- [ ] Extend gate to LNURL-auth, Nostr, guest upgrade (Phase 1b)
 
-**Phase 2 - List screening (3-5 days)**
+**Phase 2 - Local list screening (implemented on `feature/ofac-compliance`)**
 
-- Select provider (ComplyAdvantage trial or OpenSanctions eval)
-- `SanctionsScreeningService` + provider adapter
-- Extend gate to LNURL + Nostr registration paths
-- Generic error messages + i18n
+- [x] `sanctions_entries` table + daily `compliance:sync-sanctions-lists` (OFAC SDN XML + EU via OpenSanctions CSV; direct EU XML returns 403 from many hosts)
+- [x] `LocalSanctionsScreeningProvider` (exact match on normalized name / email local-part)
+- [x] `COMPLIANCE_LIST_SCREENING_ENABLED` flag
+- [x] Gate extended to LNURL-auth, Nostr, guest upgrade
+- [ ] Paid API provider (ComplyAdvantage) when budget allows
 
 **Phase 3 - Operations (2-3 days)**
 

@@ -32,6 +32,7 @@ yarn-error.log
 
 # Runtime-only app storage (Docker often uses www-data; ESLint skips via --ignore-path)
 /storage/app/private
+/storage/app/compliance/*.mmdb
 
 # Generated exports (CSV/XLSX from jobs; mkdir in GenerateCsvExport / GenerateXlsxExport)
 /storage/app/exports/*.csv

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\NostrAuthChallenge;
 use App\Models\User;
 use App\Services\BtcPay\UserService;
+use App\Services\Compliance\ComplianceGate;
 use App\Services\Nostr\NostrEventVerifier;
 use App\Support\Legal\LegalConsent;
 use Illuminate\Http\Request;
@@ -21,7 +22,8 @@ class NostrAuthController extends Controller
 {
     public function __construct(
         protected UserService $userService,
-        protected NostrEventVerifier $verifier
+        protected NostrEventVerifier $verifier,
+        protected ComplianceGate $complianceGate,
     ) {}
 
     public function challenge(Request $request)
@@ -266,6 +268,8 @@ class NostrAuthController extends Controller
         if (! $userId && ! $challengeId) {
             return response()->json(['error' => 'Provide user_id or challenge_id.'], 422);
         }
+
+        $this->complianceGate->assertRegistrationAllowed($request, $request->input('email'));
 
         $user = null;
         $publicKey = null;
