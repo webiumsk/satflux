@@ -1,5 +1,6 @@
 /** Anchor ids in #how-it-works and i18n keys for the Features submenu. */
 export const LANDING_FEATURE_NAV = [
+  { id: 'invoicing', labelKey: 'header.feature_invoicing' },
   { id: 'how-it-works-pos', labelKey: 'header.feature_pos' },
   { id: 'how-it-works-eshop', labelKey: 'header.feature_eshop' },
   { id: 'how-it-works-crowdfund', labelKey: 'header.feature_crowdfund' },

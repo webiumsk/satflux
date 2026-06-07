@@ -101,9 +101,8 @@ onMounted(async () => {
         params: { checkoutPlanId },
       });
 
-      if (response.data.role) {
+      if (response.data.activated === true) {
         success.value = true;
-        // Refresh user data to get updated role
         if (authStore.isAuthenticated) {
           await authStore.fetchUser();
         }

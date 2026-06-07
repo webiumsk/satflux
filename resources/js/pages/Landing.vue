@@ -2079,7 +2079,7 @@
                         href="https://github.com/webiumsk/btcpay-greenfield-tickets/releases"
                         target="_blank"
                         rel="noopener noreferrer"
-                        title="BTCPay Satoshi Tickets for WooCommerce - GitHub Releases"
+                        title="SATFLUX WooCommerce - GitHub Releases"
                         class="group inline-flex flex-wrap items-center gap-2 rounded-xl border border-gray-600 bg-gray-800/80 px-4 py-2.5 transition-all hover:border-orange-500/50 hover:bg-gray-800"
                       >
                         <span
@@ -2779,6 +2779,8 @@
       </transition>
     </Teleport>
 
+    <LandingInvoicingSection />
+
     <!-- Pricing Section -->
     <section
       id="pricing"
@@ -2801,7 +2803,11 @@
             {{ t("landing.pricing_hero_headline") }}
           </h2>
           <p class="text-xl text-gray-400 max-w-2xl mx-auto">
-            {{ t("landing.pricing_hero_subheadline") }}
+            {{
+              t("landing.pricing_hero_subheadline", {
+                days: pricing.trial_days,
+              })
+            }}
           </p>
         </div>
 
@@ -2874,9 +2880,14 @@
             class="bg-gray-800 rounded-2xl p-8 border-2 border-indigo-500 shadow-2xl relative transform md:scale-[1.02] z-10"
           >
             <div
-              class="absolute top-0 right-0 -mt-4 mr-4 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide"
+              v-if="canUpgradeToPro"
+              class="absolute top-0 right-0 -mt-4 mr-4 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide"
             >
-              {{ t("landing.pricing_pro_badge") }}
+              {{
+                t("landing.pricing_pro_trial_badge", {
+                  days: pricing.trial_days,
+                })
+              }}
             </div>
             <h3
               class="mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 text-2xl font-bold"
@@ -2886,16 +2897,14 @@
             <p class="text-gray-400 text-sm mb-4">
               {{ t("landing.pricing_pro_tagline") }}
             </p>
-            <div class="flex items-baseline flex-wrap gap-x-1 mb-6">
+            <div class="flex items-baseline flex-wrap gap-x-1 mb-2">
               <span
-                v-if="
-                  pricing.pro.sats_per_month_display !== BETA_PRO_SATS_PER_MONTH
-                "
+                v-if="proHasMonthlyDiscount(pricing.pro)"
                 class="text-xl font-medium text-gray-500 line-through mr-2"
                 >{{ formatSats(pricing.pro.sats_per_month_display) }}</span
               >
               <span class="text-5xl font-extrabold text-white">{{
-                formatSats(BETA_PRO_SATS_PER_MONTH)
+                formatSats(proEffectiveMonthlySats(pricing.pro))
               }}</span>
               <span class="text-indigo-300">{{
                 t("landing.pricing_pro_price_period")
@@ -2904,12 +2913,50 @@
                 t("landing.pricing_pro_price_note")
               }}</span>
             </div>
+            <p class="text-indigo-200/90 text-sm mb-6">
+              {{
+                t("landing.pricing_pro_yearly_price", {
+                  amount: formatSats(pricing.pro.sats_per_year),
+                })
+              }}
+            </p>
             <p class="text-gray-400 text-sm mb-6">
               {{ t("landing.pricing_pro_description") }}
             </p>
+            <div
+              class="rounded-xl border border-indigo-500/40 bg-indigo-950/40 p-4 mb-6"
+            >
+              <p
+                class="text-xs font-semibold uppercase tracking-wide text-indigo-300 mb-3"
+              >
+                {{ t("landing.pricing_invoicing_highlight_title") }}
+              </p>
+              <ul class="space-y-2.5">
+                <li
+                  v-for="key in proInvoicingFeatures"
+                  :key="'inv-' + key"
+                  class="flex items-start text-indigo-100 text-sm font-medium"
+                >
+                  <svg
+                    class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M5 13l4 4L19 7"
+                    ></path>
+                  </svg>
+                  <span>{{ t("plans.features." + key) }}</span>
+                </li>
+              </ul>
+            </div>
             <ul class="space-y-3 mb-8">
               <li
-                v-for="key in planFeatures.pro.feature_keys"
+                v-for="key in proOtherFeatures"
                 :key="key"
                 class="flex items-start text-white font-medium text-sm"
               >
@@ -2930,7 +2977,7 @@
               </li>
             </ul>
             <button
-              v-if="authStore.isAuthenticated"
+              v-if="canUpgradeToPro"
               @click="handleUpgrade('pro')"
               :disabled="subscribing"
               class="block w-full text-center px-6 py-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -2942,11 +2989,18 @@
               }}
             </button>
             <router-link
-              v-else
+              v-else-if="!authStore.isAuthenticated"
               to="/register"
               class="block w-full text-center px-6 py-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition-all"
             >
               {{ t("landing.pricing_pro_cta_guest") }}
+            </router-link>
+            <router-link
+              v-else
+              to="/account"
+              class="block w-full text-center px-6 py-4 rounded-xl border border-indigo-500/50 text-indigo-200 font-bold hover:bg-indigo-950/40 transition-all"
+            >
+              {{ t("landing.pricing_pro_current_plan") }}
             </router-link>
           </div>
         </div>
@@ -2984,12 +3038,26 @@
                 <span>{{ t("plans.features." + key) }}</span>
               </li>
             </ul>
-            <a
-              href="mailto:hello@satflux.io"
+            <button
+              type="button"
               class="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700 font-medium text-sm transition-colors"
+              @click="showEnterpriseContact = true"
             >
               {{ t("landing.pricing_need_more_cta") }}
-            </a>
+            </button>
+            <div
+              v-if="showEnterpriseContact"
+              class="mt-6 rounded-xl border border-gray-600 bg-gray-900/80 p-5 text-left"
+            >
+              <h4 class="text-base font-semibold text-white mb-3">
+                {{ t("legal.contact.enterprise_title") }}
+              </h4>
+              <ContactForm
+                type="enterprise"
+                id-prefix="landing-enterprise"
+                :default-subject="t('legal.contact.enterprise_subject')"
+              />
+            </div>
           </div>
         </div>
 
@@ -3065,10 +3133,28 @@
               <h4
                 class="mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 font-semibold"
               >
+                {{ t("landing.pricing_faq_trial_q") }}
+              </h4>
+              <p class="text-gray-400 text-sm">
+                {{
+                  t("landing.pricing_faq_trial_a", {
+                    days: pricing.trial_days,
+                  })
+                }}
+              </p>
+            </div>
+            <div class="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+              <h4
+                class="mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 font-semibold"
+              >
                 {{ t("landing.pricing_faq_expire_q") }}
               </h4>
               <p class="text-gray-400 text-sm">
-                {{ t("landing.pricing_faq_expire_a") }}
+                {{
+                  t("landing.pricing_faq_expire_a", {
+                    grace_days: pricing.grace_days,
+                  })
+                }}
               </p>
             </div>
           </div>
@@ -3083,13 +3169,20 @@
 
 <script setup lang="ts">
 import { useAuthStore } from "../store/auth";
-import { usePricing, BETA_PRO_SATS_PER_MONTH } from "../composables/usePricing";
+import {
+  usePricing,
+  proEffectiveMonthlySats,
+  proHasMonthlyDiscount,
+} from "../composables/usePricing";
 import { usePlanFeatures } from "../composables/usePlanFeatures";
+import { useCurrentPlan } from "../composables/useCurrentPlan";
 import { onMounted, ref, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import PublicHeader from "../components/layout/PublicHeader.vue";
 import AppFooter from "../components/layout/AppFooter.vue";
 import LandingPayButtonEmbed from "../components/landing/LandingPayButtonEmbed.vue";
+import LandingInvoicingSection from "../components/landing/LandingInvoicingSection.vue";
+import ContactForm from "../components/legal/ContactForm.vue";
 import LandingRafflePresenterPreview from "../components/landing/LandingRafflePresenterPreview.vue";
 import api from "../services/api";
 import { useBtcPayUrl } from "../composables/useBtcPayUrl";
@@ -3101,12 +3194,27 @@ const {
   displayLightningDomain,
 } = useBtcPayUrl();
 const { pricing, formatSats, load: loadPricing } = usePricing();
-const { planFeatures, load: loadPlanFeatures } = usePlanFeatures();
+const { planFeatures, invoicingHighlightKeys, load: loadPlanFeatures } =
+  usePlanFeatures();
+
+const proInvoicingFeatures = computed(() =>
+  planFeatures.value.pro.feature_keys.filter((key: string) =>
+    invoicingHighlightKeys.value.has(key),
+  ),
+);
+
+const proOtherFeatures = computed(() =>
+  planFeatures.value.pro.feature_keys.filter(
+    (key: string) => !invoicingHighlightKeys.value.has(key),
+  ),
+);
 
 //const router = useRouter();
 const authStore = useAuthStore();
+const { canUpgradeToPro } = useCurrentPlan();
 const subscribing = ref(false);
 const subscribeError = ref("");
+const showEnterpriseContact = ref(false);
 const showPosModal = ref(false);
 
 const HERO_SLIDE_COUNT = 3;
@@ -3181,12 +3289,10 @@ const posDemoUrl = computed(() => {
 // Ensure user, pricing and plan features are fetched on mount; anchor smooth-scroll
 onMounted(async () => {
   await Promise.all([loadPricing(), loadPlanFeatures(), loadBtcpayConfig()]);
-  if (!authStore.user) {
-    try {
-      await authStore.fetchUser();
-    } catch {
-      // User not authenticated, which is fine
-    }
+  try {
+    await authStore.fetchUser();
+  } catch {
+    // User not authenticated, which is fine
   }
 
   if (window.location.hash) {

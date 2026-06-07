@@ -26,6 +26,18 @@ class AuthTest extends TestCase
         $this->withSession([]);
     }
 
+    public function test_register_requires_legal_consent(): void
+    {
+        $response = $this->postJson('/api/auth/register', [
+            'email' => 'noconsent@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['privacy_consent', 'terms_accepted']);
+    }
+
     public function test_user_can_register(): void
     {
         $response = $this->postJson('/api/auth/register', [
@@ -33,12 +45,17 @@ class AuthTest extends TestCase
             'email' => 'test@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
+            'privacy_consent' => true,
+            'terms_accepted' => true,
         ]);
 
         $response->assertStatus(201);
         $this->assertDatabaseHas('users', [
             'email' => 'test@example.com',
         ]);
+        $user = User::where('email', 'test@example.com')->first();
+        $this->assertNotNull($user->privacy_consent_at);
+        $this->assertNotNull($user->terms_accepted_at);
     }
 
     public function test_register_sends_single_verification_notification(): void
@@ -49,6 +66,8 @@ class AuthTest extends TestCase
             'email' => 'once@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
+            'privacy_consent' => true,
+            'terms_accepted' => true,
         ])->assertStatus(201);
 
         $user = User::where('email', 'once@example.com')->first();

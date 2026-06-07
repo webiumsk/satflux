@@ -5,7 +5,11 @@ namespace App\Jobs;
 use App\Models\Store;
 use App\Models\User;
 use App\Models\WebhookEvent;
+use App\Services\Invoicing\BusinessDocumentPaymentWebhookService;
+use App\Services\Invoicing\SubscriptionBillingInvoiceService;
 use App\Services\StoreEmailRuleDispatcher;
+use App\Services\SubscriptionCreditLedgerService;
+use App\Services\SubscriptionService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -58,12 +62,21 @@ class ProcessBtcPayWebhook implements ShouldQueue
                     'error' => $e->getMessage(),
                 ]);
             }
+
+            try {
+                app(BusinessDocumentPaymentWebhookService::class)
+                    ->handleInvoicePayment($eventType, $payload, $store);
+            } catch (\Throwable $e) {
+                Log::error('Business document payment webhook failed', [
+                    'webhook_event_id' => $this->webhookEvent->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         // Check if this is a subscription store
         $subscriptionStoreId = config('services.btcpay.subscription_store_id');
         if ($storeId !== $subscriptionStoreId) {
-            // Not a subscription-related webhook, skip
             $this->webhookEvent->markAsProcessed();
 
             return;
@@ -72,6 +85,10 @@ class ProcessBtcPayWebhook implements ShouldQueue
         // Handle invoice.paid event for subscription invoices
         if ($eventType === 'InvoiceReceivedPayment' || $eventType === 'InvoiceSettled' || $eventType === 'invoice.paid') {
             $this->handleSubscriptionInvoicePaid($payload);
+        }
+
+        if (in_array($eventType, ['PlanStarted', 'SubscriberActivated', 'plan.started', 'subscriber.activated'], true)) {
+            $this->handleSubscriptionPlanStarted($payload);
         }
 
         // Handle subscription lifecycle events
@@ -92,6 +109,10 @@ class ProcessBtcPayWebhook implements ShouldQueue
             $this->handleSubscriptionLifecycleEvent($payload, $eventType);
         }
 
+        if (in_array($eventType, ['SubscriberCredited', 'SubscriberCharged'], true)) {
+            $this->handleSubscriberCreditLedgerEvent($payload, $eventType);
+        }
+
         $this->webhookEvent->markAsProcessed();
     }
 
@@ -103,6 +124,26 @@ class ProcessBtcPayWebhook implements ShouldQueue
         try {
             $invoiceData = $payload['invoiceData'] ?? $payload['invoice'] ?? $payload;
             $invoiceId = $invoiceData['id'] ?? $invoiceData['invoiceId'] ?? null;
+            $metadata = $invoiceData['metadata'] ?? [];
+
+            if (($metadata['purpose'] ?? null) === 'expense_isdoc_pack' && $invoiceId) {
+                $fulfilled = app(\App\Services\Invoicing\BusinessExpenseIsdocPackService::class)
+                    ->fulfillPaidInvoice(
+                        $invoiceId,
+                        isset($metadata['userId']) ? (string) $metadata['userId'] : null,
+                        isset($metadata['purchaseId']) ? (string) $metadata['purchaseId'] : null,
+                    );
+
+                if ($fulfilled) {
+                    Log::info('ISDOC pack purchase fulfilled', [
+                        'invoice_id' => $invoiceId,
+                        'user_id' => $metadata['userId'] ?? null,
+                        'credits' => $metadata['packCredits'] ?? null,
+                    ]);
+                }
+
+                return;
+            }
 
             if (! $invoiceId) {
                 Log::warning('Subscription invoice payment webhook missing invoice ID', [
@@ -195,16 +236,37 @@ class ProcessBtcPayWebhook implements ShouldQueue
                 return;
             }
 
-            // Update user role and subscription tracking
+            $subscription = app(SubscriptionService::class)->activateSubscription(
+                $user,
+                $planRole,
+                $subscriptionId,
+            );
+
+            // Update user role and subscription tracking (legacy field)
             $oldRole = $user->role;
             $user->role = $planRole;
 
-            // Store subscription ID if available from invoice
             if ($subscriptionId) {
                 $user->btcpay_subscription_id = $subscriptionId;
             }
 
             $user->save();
+
+            try {
+                app(SubscriptionBillingInvoiceService::class)->fulfillPaidInvoice(
+                    $user,
+                    $planRole,
+                    $invoiceId,
+                    $invoiceData,
+                );
+            } catch (\Throwable $e) {
+                Log::error('Subscription billing invoice failed', [
+                    'user_id' => $user->id,
+                    'invoice_id' => $invoiceId,
+                    'error' => $e->getMessage(),
+                ]);
+                report($e);
+            }
 
             Log::info('User role updated after subscription payment', [
                 'user_id' => $user->id,
@@ -213,10 +275,96 @@ class ProcessBtcPayWebhook implements ShouldQueue
                 'new_role' => $planRole,
                 'invoice_id' => $invoiceId,
                 'plan_id' => $planId,
+                'subscription_id' => $subscription->id,
             ]);
 
         } catch (\Exception $e) {
             Log::error('Error processing subscription invoice payment webhook', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'payload' => $payload,
+            ]);
+        }
+    }
+
+    /**
+     * Handle trial or plan-start events from the subscription store.
+     */
+    protected function handleSubscriptionPlanStarted(array $payload): void
+    {
+        try {
+            $subscriber = $payload['subscriber']
+                ?? $payload['subscriptionData']
+                ?? $payload['subscription']
+                ?? $payload;
+
+            $customerEmail = $subscriber['customer']['identities']['Email']
+                ?? $subscriber['customer']['email']
+                ?? $subscriber['customerEmail']
+                ?? $subscriber['subscriberEmail']
+                ?? $subscriber['email']
+                ?? ($payload['metadata']['customerEmail'] ?? null)
+                ?? ($payload['metadata']['buyerEmail'] ?? null);
+
+            if (! $customerEmail) {
+                Log::warning('Subscription plan started webhook missing customer email', [
+                    'payload_keys' => array_keys($payload),
+                ]);
+
+                return;
+            }
+
+            $user = User::where('email', $customerEmail)->first();
+            if (! $user) {
+                Log::warning('Subscription plan started webhook - user not found', [
+                    'customer_email' => $customerEmail,
+                ]);
+
+                return;
+            }
+
+            $planId = $subscriber['plan']['id']
+                ?? $subscriber['planId']
+                ?? ($payload['metadata']['planId'] ?? null);
+
+            $planRole = app(\App\Services\BtcPay\SubscriptionService::class)->resolvePlanNameFromId($planId);
+            if (! $planRole) {
+                Log::warning('Subscription plan started webhook - unknown plan', [
+                    'customer_email' => $customerEmail,
+                    'plan_id' => $planId,
+                ]);
+
+                return;
+            }
+
+            $subscriptionId = $subscriber['customer']['id']
+                ?? $subscriber['id']
+                ?? $subscriber['subscriptionId']
+                ?? null;
+
+            $subscription = app(SubscriptionService::class)->activateSubscription(
+                $user,
+                $planRole,
+                $subscriptionId,
+            );
+
+            $oldRole = $user->role;
+            $user->role = $planRole;
+            if ($subscriptionId) {
+                $user->btcpay_subscription_id = $subscriptionId;
+            }
+            $user->save();
+
+            Log::info('User role updated after subscription plan started', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'old_role' => $oldRole,
+                'new_role' => $planRole,
+                'plan_id' => $planId,
+                'subscription_id' => $subscription->id,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error processing subscription plan started webhook', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'payload' => $payload,
@@ -537,5 +685,69 @@ class ProcessBtcPayWebhook implements ShouldQueue
             'new_role' => 'free',
             'reason' => $reason,
         ]);
+    }
+
+    protected function handleSubscriberCreditLedgerEvent(array $payload, string $eventType): void
+    {
+        try {
+            $subscriber = $payload['subscriber'] ?? [];
+            $customer = is_array($subscriber['customer'] ?? null) ? $subscriber['customer'] : [];
+            $identities = is_array($customer['identities'] ?? null) ? $customer['identities'] : [];
+            $email = $identities['Email']
+                ?? $customer['email']
+                ?? $payload['customerEmail']
+                ?? null;
+
+            if (! $email) {
+                return;
+            }
+
+            $user = User::where('email', $email)->first();
+            if (! $user) {
+                return;
+            }
+
+            $rawAmount = (float) ($payload['amount'] ?? 0);
+            $amount = $eventType === 'SubscriberCharged'
+                ? -1 * (int) round(abs($rawAmount))
+                : (int) round(abs($rawAmount));
+
+            if ($amount === 0) {
+                return;
+            }
+
+            $balanceAfter = isset($payload['total'])
+                ? (int) round((float) $payload['total'])
+                : null;
+
+            $description = $eventType === 'SubscriberCredited'
+                ? 'Credit purchase'
+                : 'Charge';
+
+            $sourceKey = null;
+            if (! empty($payload['deliveryId'])) {
+                $sourceKey = 'webhook:'.$payload['deliveryId'];
+            } elseif ($this->webhookEvent->id) {
+                $sourceKey = 'webhook-event:'.$this->webhookEvent->id;
+            }
+
+            app(SubscriptionCreditLedgerService::class)->record(
+                $user,
+                $amount,
+                $balanceAfter,
+                (string) ($payload['currency'] ?? 'SATS'),
+                $description,
+                $sourceKey,
+                isset($payload['timestamp']) && is_numeric($payload['timestamp'])
+                    ? now()->setTimestamp((int) $payload['timestamp'])
+                    : null,
+            );
+        } catch (\Throwable $e) {
+            Log::error('Failed to record subscriber credit ledger entry', [
+                'webhook_event_id' => $this->webhookEvent->id,
+                'event_type' => $eventType,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

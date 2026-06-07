@@ -1,0 +1,138 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Enums\BusinessDocumentStatus;
+use App\Enums\CompanyJurisdiction;
+use App\Models\BusinessDocument;
+use App\Models\BusinessDocumentLine;
+use App\Models\Company;
+use App\Models\Subscription;
+use App\Models\SubscriptionPlan;
+use App\Models\User;
+use App\Services\Invoicing\BusinessDocumentUblService;
+use App\Services\Invoicing\CanonicalInvoiceBuilder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
+
+class BusinessDocumentUblTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function proUserWithCompany(): array
+    {
+        $proPlan = SubscriptionPlan::create([
+            'code' => 'pro',
+            'name' => 'pro',
+            'display_name' => 'Pro',
+            'price_eur' => 99,
+            'billing_period' => 'year',
+            'max_stores' => 3,
+            'max_api_keys' => 3,
+            'max_ln_addresses' => null,
+            'features' => ['business_invoicing'],
+            'is_active' => true,
+        ]);
+        $user = User::factory()->create();
+        Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $proPlan->id,
+            'status' => 'active',
+            'starts_at' => now(),
+            'expires_at' => now()->addYear(),
+        ]);
+
+        $company = Company::create([
+            'user_id' => $user->id,
+            'legal_name' => 'Webium s.r.o.',
+            'jurisdiction' => CompanyJurisdiction::EuSk,
+            'default_currency' => 'EUR',
+            'registration_number' => '47615681',
+            'tax_id' => '2023980035',
+            'vat_number' => 'SK2023980035',
+            'street' => 'Bohunice 47',
+            'city' => 'Bohunice',
+            'postal_code' => '93505',
+            'country' => 'SK',
+            'vat_payer' => true,
+            'vat_rate_default' => 23,
+        ]);
+
+        return [$user, $company];
+    }
+
+    #[Test]
+    public function ubl_xml_contains_invoice_root_and_canonical_totals(): void
+    {
+        [, $company] = $this->proUserWithCompany();
+
+        $doc = BusinessDocument::create([
+            'company_id' => $company->id,
+            'type' => 'invoice',
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => '20260210',
+            'subtotal' => 100,
+            'tax_total' => 23,
+            'total' => 123,
+            'currency' => 'EUR',
+            'issue_date' => now(),
+            'due_date' => now()->addDays(14),
+        ]);
+
+        BusinessDocumentLine::create([
+            'business_document_id' => $doc->id,
+            'sort_order' => 0,
+            'name' => 'Služba',
+            'quantity' => 1,
+            'unit' => 'ks.',
+            'unit_price' => 100,
+            'tax_rate' => 23,
+            'line_total' => 123,
+        ]);
+
+        $doc = $doc->fresh(['company', 'contact', 'lines']);
+        $canonical = app(CanonicalInvoiceBuilder::class)->fromDocument($doc);
+        $xml = app(BusinessDocumentUblService::class)->xml($doc);
+
+        $this->assertStringContainsString('urn:oasis:names:specification:ubl:schema:xsd:Invoice-2', $xml);
+        $this->assertStringContainsString('<cbc:ID>20260210</cbc:ID>', $xml);
+        $this->assertStringContainsString('<cbc:TaxAmount currencyID="EUR">'.$canonical->taxTotal.'</cbc:TaxAmount>', $xml);
+        $this->assertStringContainsString('<cbc:PayableAmount currencyID="EUR">'.$canonical->amountDue.'</cbc:PayableAmount>', $xml);
+    }
+
+    #[Test]
+    public function authenticated_user_can_download_ubl_via_web_route(): void
+    {
+        [$user, $company] = $this->proUserWithCompany();
+
+        $doc = BusinessDocument::create([
+            'company_id' => $company->id,
+            'type' => 'invoice',
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => '20260211',
+            'total' => 50,
+            'subtotal' => 50,
+            'tax_total' => 0,
+            'currency' => 'EUR',
+            'issue_date' => now(),
+        ]);
+
+        BusinessDocumentLine::create([
+            'business_document_id' => $doc->id,
+            'sort_order' => 0,
+            'name' => 'Položka',
+            'quantity' => 1,
+            'unit_price' => 50,
+            'line_total' => 50,
+        ]);
+
+        $response = $this->actingAs($user)->get(
+            "/invoicing/companies/{$company->id}/documents/{$doc->id}/ubl"
+        );
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/xml; charset=utf-8');
+        $this->assertStringContainsString('CustomizationID', $response->getContent());
+    }
+}

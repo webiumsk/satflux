@@ -37,6 +37,8 @@ class User extends Authenticatable implements MustVerifyEmailContract
         'allows_satflux_email_changes',
         'guest_recovery_public_key',
         'guest_recovery_enrolled_at',
+        'privacy_consent_at',
+        'terms_accepted_at',
     ];
 
     /**
@@ -68,6 +70,8 @@ class User extends Authenticatable implements MustVerifyEmailContract
             'is_guest' => 'boolean',
             'allows_satflux_email_changes' => 'boolean',
             'guest_recovery_enrolled_at' => 'datetime',
+            'privacy_consent_at' => 'datetime',
+            'terms_accepted_at' => 'datetime',
         ];
     }
 
@@ -229,6 +233,11 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function stores(): HasMany
     {
         return $this->hasMany(Store::class);
+    }
+
+    public function companies(): HasMany
+    {
+        return $this->hasMany(Company::class);
     }
 
     /**

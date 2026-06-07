@@ -8,6 +8,7 @@ use App\Models\StoreEmailRule;
 use App\Models\StoreEmailRuleDispatch;
 use App\Models\WebhookEvent;
 use App\Services\BtcPay\InvoiceService;
+use App\Support\BtcPay\BtcPayWebhookEventType;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -145,21 +146,7 @@ class StoreEmailRuleDispatcher
 
     protected function normalizeEventType(string $eventType): string
     {
-        $eventType = trim($eventType);
-        $legacy = [
-            'invoice.created' => 'InvoiceCreated',
-            'invoice.receivedPayment' => 'InvoiceReceivedPayment',
-            'invoice.processing' => 'InvoiceProcessing',
-            'invoice.expired' => 'InvoiceExpired',
-            'invoice.settled' => 'InvoiceSettled',
-            'invoice.invalid' => 'InvoiceInvalid',
-            'invoice.paymentSettled' => 'InvoicePaymentSettled',
-            'invoice.expiredPaidPartial' => 'InvoiceExpiredPaidPartial',
-            'invoice.paidAfterExpiration' => 'InvoicePaidAfterExpiration',
-            'invoice.paid' => 'InvoiceReceivedPayment',
-        ];
-
-        return $legacy[$eventType] ?? $eventType;
+        return BtcPayWebhookEventType::normalize($eventType);
     }
 
     protected function extractInvoiceId(array $payload): ?string

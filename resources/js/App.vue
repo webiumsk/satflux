@@ -7,6 +7,7 @@
   </AppLayout>
   <router-view v-else />
   <FlashMessage />
+  <CookieConsentBanner />
 </template>
 
 <script setup lang="ts">
@@ -14,6 +15,7 @@ import { computed } from "vue";
 import { useRoute } from "vue-router";
 import AppLayout from "./components/layout/AppLayout.vue";
 import FlashMessage from "./components/ui/FlashMessage.vue";
+import CookieConsentBanner from "./components/legal/CookieConsentBanner.vue";
 
 const route = useRoute();
 

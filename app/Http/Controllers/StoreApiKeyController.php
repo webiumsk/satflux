@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Store;
+use App\Models\StoreApiKey;
 use App\Services\BtcPay\StoreApiKeyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -118,7 +119,7 @@ class StoreApiKeyController extends Controller
      */
     public function show(Request $request, Store $store, string $apiKeyId)
     {
-        $apiKey = \App\Models\StoreApiKey::where('store_id', $store->id)
+        $apiKey = StoreApiKey::where('store_id', $store->id)
             ->findOrFail($apiKeyId);
 
         return response()->json([
@@ -141,8 +142,10 @@ class StoreApiKeyController extends Controller
      */
     public function destroy(Request $request, Store $store, string $apiKeyId)
     {
+        $apiKey = StoreApiKey::where('store_id', $store->id)->findOrFail($apiKeyId);
+
         try {
-            $this->storeApiKeyService->revokeApiKey($apiKeyId);
+            $this->storeApiKeyService->revokeApiKey($apiKey);
 
             Log::info('Store API key revoked via controller', [
                 'store_id' => $store->id,
@@ -172,6 +175,8 @@ class StoreApiKeyController extends Controller
      */
     public function regenerate(Request $request, Store $store, string $apiKeyId)
     {
+        $apiKey = StoreApiKey::where('store_id', $store->id)->findOrFail($apiKeyId);
+
         $validated = $request->validate([
             'permissions' => ['sometimes', 'array'],
             'permissions.*' => ['string'],
@@ -181,7 +186,7 @@ class StoreApiKeyController extends Controller
 
         try {
             $newApiKey = $this->storeApiKeyService->regenerateApiKey(
-                $apiKeyId,
+                $apiKey,
                 $validated['permissions'] ?? [],
                 $validated['label'] ?? null,
                 $validated['callback_url'] ?? null

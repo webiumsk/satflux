@@ -88,7 +88,27 @@
               class="underline hover:text-gray-400 focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-500 rounded leading-none"
             >{{ t('common.footer_license_link') }}</a>
           </span>
-        <span class="text-gray-600 leading-none" aria-hidden="true">|</span>
+          <span class="text-gray-600 leading-none" aria-hidden="true">|</span>
+            <router-link
+              to="/legal/terms"
+              class="text-gray-500 hover:text-gray-300 underline leading-none"
+            >{{ t('common.footer_legal_terms') }}</router-link>
+            <span class="text-gray-600 leading-none" aria-hidden="true">|</span>
+            <router-link
+              to="/legal/privacy"
+              class="text-gray-500 hover:text-gray-300 underline leading-none"
+            >{{ t('common.footer_legal_privacy') }}</router-link>
+            <span class="text-gray-600 leading-none" aria-hidden="true">|</span>
+            <router-link
+              to="/legal/imprint"
+              class="text-gray-500 hover:text-gray-300 underline leading-none"
+            >{{ t('common.footer_legal_imprint') }}</router-link>
+            <span class="text-gray-600 leading-none" aria-hidden="true">|</span>
+            <router-link
+              to="/legal/dpa"
+              class="text-gray-500 hover:text-gray-300 underline leading-none"
+            >{{ t('common.footer_legal_dpa') }}</router-link>
+            <span class="text-gray-600 leading-none" aria-hidden="true">|</span>
             <span
               class="inline-flex h-5 items-center leading-none text-gray-500"
             >{{ t('common.footer_support_me') }}</span>

@@ -67,7 +67,7 @@ class Subscription extends Model
 
     /**
      * Check if the subscription is in grace period.
-     * Uses grace_ends_at if set, otherwise 14 days after expiration.
+     * Uses grace_ends_at if set, otherwise config pricing.grace_days after expiration.
      */
     public function isInGracePeriod(): bool
     {
@@ -79,7 +79,7 @@ class Subscription extends Model
             return false;
         }
 
-        $graceEnds = $this->grace_ends_at ?? $this->expires_at->copy()->addDays(14);
+        $graceEnds = $this->grace_ends_at ?? $this->expires_at->copy()->addDays((int) config('pricing.grace_days', 30));
 
         return $this->expires_at->isPast() && now()->isBefore($graceEnds);
     }

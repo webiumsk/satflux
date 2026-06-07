@@ -1,11 +1,16 @@
 <?php
 
 use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\Integrations\WooCommerceConnectController;
+use App\Http\Controllers\Invoicing\BusinessDocumentController;
+use App\Http\Controllers\Invoicing\BusinessDocumentPayController;
 use App\Http\Controllers\OgImageController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StoreAppPageController;
-use App\Http\Controllers\WooCommerceSatoshiTicketsController;
+use App\Http\Middleware\EnsureCompanyOwnership;
+use App\Http\Middleware\EnsurePlanAllowsBusinessInvoicing;
 use App\Http\Middleware\EnsureStoreOwnership;
+use App\Http\Middleware\RequireVerifiedEmail;
 use Illuminate\Filesystem\ServeFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -57,6 +62,12 @@ Route::get('/robots.txt', function () {
 // SEO: sitemap.xml
 Route::get('/sitemap.xml', [SitemapController::class, 'index']);
 
+// Public business invoice Bitcoin pay (lazy BTCPay checkout)
+Route::middleware(['throttle:30,1'])->group(function () {
+    Route::get('/pay/i/{payment_token}', [BusinessDocumentPayController::class, 'show'])
+        ->where('payment_token', '[A-Za-z0-9]{64}');
+});
+
 // Password reset: same URL as API so SPA can POST /api/auth/password/reset-link
 // Web route is registered first → no Sanctum, no 401
 Route::middleware(['throttle:password-reset'])->group(function () {
@@ -82,11 +93,24 @@ Route::get('/auth/verify-email/{id}/{hash}', function () {
     return view('app');
 })->where(['id' => '[0-9]+', 'hash' => '[a-f0-9]+']);
 
-// WooCommerce Satoshi Tickets - Connect flow for WP plugin
+// WooCommerce plugin - Connect flow
 Route::middleware(['auth'])->group(function () {
-    Route::get('/woocommerce/satoshi-tickets/connect', [WooCommerceSatoshiTicketsController::class, 'connect']);
-    Route::post('/woocommerce/satoshi-tickets/connect/select-store', [WooCommerceSatoshiTicketsController::class, 'selectStore']);
+    Route::get('/woocommerce/connect', [WooCommerceConnectController::class, 'connect']);
+    Route::post('/woocommerce/connect/select-store', [WooCommerceConnectController::class, 'selectStore']);
+    Route::get('/woocommerce/satoshi-tickets/connect', [WooCommerceConnectController::class, 'connect']);
+    Route::post('/woocommerce/satoshi-tickets/connect/select-store', [WooCommerceConnectController::class, 'selectStore']);
 });
+
+// Business invoice PDF: session auth (direct browser GET / copy link; API /api/... is stateless without SPA headers)
+Route::middleware(['auth', RequireVerifiedEmail::class, EnsurePlanAllowsBusinessInvoicing::class, 'guest.restrict'])
+    ->get('/invoicing/companies/{company}/documents/{businessDocument}/pdf', [BusinessDocumentController::class, 'pdf'])
+    ->middleware(EnsureCompanyOwnership::class);
+Route::middleware(['auth', RequireVerifiedEmail::class, EnsurePlanAllowsBusinessInvoicing::class, 'guest.restrict'])
+    ->get('/invoicing/companies/{company}/documents/{businessDocument}/isdoc', [BusinessDocumentController::class, 'isdoc'])
+    ->middleware(EnsureCompanyOwnership::class);
+Route::middleware(['auth', RequireVerifiedEmail::class, EnsurePlanAllowsBusinessInvoicing::class, 'guest.restrict'])
+    ->get('/invoicing/companies/{company}/documents/{businessDocument}/ubl', [BusinessDocumentController::class, 'ubl'])
+    ->middleware(EnsureCompanyOwnership::class);
 
 // Inertia routes: store apps (must be before SPA catch-all)
 Route::middleware(['auth'])->group(function () {

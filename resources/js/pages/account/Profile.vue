@@ -111,9 +111,14 @@
                 >
                   {{ t("account.guest_upgrade_email_verify_notice") }}
                 </p>
+                <LegalConsentFields
+                  v-model:privacy-consent="guestPrivacyConsent"
+                  v-model:terms-accepted="guestTermsAccepted"
+                  id-prefix="guest-upgrade-email"
+                />
                 <button
                   type="submit"
-                  :disabled="guestUpgradeLoading"
+                  :disabled="guestUpgradeLoading || !guestUpgradeCanSubmit"
                   class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-50"
                 >
                   {{ guestUpgradeLoading ? t("auth.saving") : t("account.guest_upgrade_email_submit") }}
@@ -181,9 +186,14 @@
                   >
                     {{ t("account.guest_upgrade_email_verify_notice") }}
                   </p>
+                  <LegalConsentFields
+                    v-model:privacy-consent="guestPrivacyConsent"
+                    v-model:terms-accepted="guestTermsAccepted"
+                    id-prefix="guest-upgrade-linked"
+                  />
                   <button
                     type="submit"
-                    :disabled="guestUpgradeLoading"
+                    :disabled="guestUpgradeLoading || !guestUpgradeCanSubmit"
                     class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-50"
                   >
                     {{
@@ -416,6 +426,12 @@
                       {{ t("account.plan_badge_standard") }}
                     </span>
                     <span
+                      v-if="subscriptionBilling?.isTrial"
+                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-600/80 text-white"
+                    >
+                      {{ t("account.plan_badge_trial") }}
+                    </span>
+                    <span
                       v-else-if="subscriber?.isActive"
                       class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-emerald-600 text-white"
                     >
@@ -430,7 +446,17 @@
                   </h5>
                   <p class="text-gray-400 mt-2">{{ currentPlanDescription }}</p>
                   <div
-                    v-if="subscriber && subscriber.periodEnd"
+                    v-if="subscriptionBilling?.isTrial && subscriptionBilling?.trialEndsAt"
+                    class="text-sm text-gray-400 mt-2"
+                  >
+                    {{
+                      t("account.trial_expires", {
+                        date: formatDate(subscriptionBilling.trialEndsAt),
+                      })
+                    }}
+                  </div>
+                  <div
+                    v-else-if="subscriber && subscriber.periodEnd"
                     class="text-sm text-gray-400 mt-2"
                   >
                     {{
@@ -441,8 +467,14 @@
                   </div>
                 </div>
                 <div class="mt-4 md:mt-0 md:text-right">
-                  <div class="text-3xl font-bold text-white">
-                    {{ currentPlanPrice }}
+                  <div class="text-3xl font-bold text-white flex items-baseline justify-end flex-wrap gap-x-2">
+                    <span
+                      v-if="isProPlan && proHasMonthlyDiscount(pricing.pro)"
+                      class="text-lg font-normal text-gray-500 line-through"
+                    >
+                      {{ formatSats(pricing.pro.sats_per_month_display) }}
+                    </span>
+                    <span>{{ currentPlanPrice }}</span>
                   </div>
                   <div class="text-sm text-gray-400">
                     {{
@@ -451,7 +483,51 @@
                         : t("account.per_month")
                     }}
                   </div>
+                  <p v-if="isProPlan" class="text-xs text-gray-500 mt-1">
+                    {{
+                      t("account.pro_yearly_price", {
+                        amount: formatSats(pricing.pro.sats_per_year),
+                      })
+                    }}
+                  </p>
                 </div>
+              </div>
+
+              <div
+                v-if="subscriptionBilling?.isTrial"
+                class="mb-6 rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+              >
+                <div class="flex items-start gap-3">
+                  <svg
+                    class="w-5 h-5 text-cyan-300 mt-0.5 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 9v2m0 4h.01M10.29 3.86l-8.5 14.74A1 1 0 002.62 20h18.76a1 1 0 00.86-1.5l-8.5-14.74a1 1 0 00-1.72 0z"
+                    />
+                  </svg>
+                  <p class="text-sm text-cyan-100">
+                    {{
+                      t("account.trial_warning", {
+                        days: subscriptionBilling.trialDaysRemaining ?? 0,
+                      })
+                    }}
+                  </p>
+                </div>
+                <button
+                  v-if="subscriptionBilling.nextChargeSats > 0"
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-400 transition-colors disabled:opacity-50"
+                  :disabled="payingNow"
+                  @click="handlePayNow"
+                >
+                  {{ payingNow ? t("account.processing") : t("account.pay_now") }}
+                </button>
               </div>
 
               <!-- Plan Features -->
@@ -533,6 +609,46 @@
                       </button>
                     </div>
                   </div>
+                  <div
+                    v-if="subscriptionBilling && subscriptionBilling.planPriceSats > 0"
+                    class="rounded-lg border border-gray-600/80 bg-gray-900/40 p-4 space-y-2"
+                  >
+                    <div class="flex items-center justify-between text-sm">
+                      <span class="text-gray-400">{{
+                        t("account.plan_price")
+                      }}</span>
+                      <span class="text-gray-200">{{
+                        formatSats(subscriptionBilling.planPriceSats)
+                      }}</span>
+                    </div>
+                    <div
+                      v-if="subscriptionBilling.creditAppliedSats > 0"
+                      class="flex items-center justify-between text-sm"
+                    >
+                      <span class="text-gray-400">{{
+                        t("account.credit_applied")
+                      }}</span>
+                      <span class="text-emerald-400"
+                        >-
+                        {{
+                          formatSats(subscriptionBilling.creditAppliedSats)
+                        }}</span
+                      >
+                    </div>
+                    <div
+                      v-if="subscriptionBilling.renewalDate"
+                      class="flex items-center justify-between text-sm font-medium"
+                    >
+                      <span class="text-gray-300">{{
+                        t("account.next_charge_total", {
+                          date: formatDate(subscriptionBilling.renewalDate),
+                        })
+                      }}</span>
+                      <span class="text-white">{{
+                        formatSats(subscriptionBilling.nextChargeSats)
+                      }}</span>
+                    </div>
+                  </div>
                   <div class="flex items-center justify-between">
                     <span class="text-sm text-gray-400">{{
                       t("account.notification_email")
@@ -554,19 +670,16 @@
                       {{ authStore.user?.email }}
                     </span>
                   </div>
-                  <div
-                    v-if="isPaidPlan && subscriber && subscriber.periodEnd"
-                    class="flex items-center justify-between"
+                  <p
+                    v-if="subscriptionBilling?.paymentReminderDays"
+                    class="text-xs text-gray-500"
                   >
-                    <span class="text-sm text-gray-400">{{
-                      t("account.next_charge_on", {
-                        date: formatDate(subscriber.periodEnd),
+                    {{
+                      t("account.payment_reminder_notice", {
+                        days: subscriptionBilling.paymentReminderDays,
                       })
-                    }}</span>
-                    <span class="text-sm font-medium text-white">{{
-                      currentPlanPrice
-                    }}</span>
-                  </div>
+                    }}
+                  </p>
                   <div class="flex items-center justify-between">
                     <span class="text-sm text-gray-400">{{
                       t("account.auto_renewal")
@@ -599,6 +712,68 @@
                 </div>
               </div>
 
+              <div
+                v-if="creditHistory.length > 0"
+                class="border-t border-gray-600 pt-6 mb-6"
+              >
+                <h6
+                  class="text-sm font-medium text-gray-300 mb-4 uppercase tracking-wider"
+                >
+                  {{ t("account.credit_history") }}
+                </h6>
+                <div class="overflow-x-auto rounded-lg border border-gray-600/80">
+                  <table class="min-w-full text-sm">
+                    <thead class="bg-gray-900/60 text-gray-400">
+                      <tr>
+                        <th class="px-4 py-3 text-left font-medium">
+                          {{ t("account.credit_history_date") }}
+                        </th>
+                        <th class="px-4 py-3 text-left font-medium">
+                          {{ t("account.credit_history_description") }}
+                        </th>
+                        <th class="px-4 py-3 text-right font-medium">
+                          {{ t("account.credit_history_amount") }}
+                        </th>
+                        <th class="px-4 py-3 text-right font-medium">
+                          {{ t("account.credit_history_balance") }}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-700/80">
+                      <tr
+                        v-for="(entry, index) in creditHistory"
+                        :key="`${entry.date}-${index}`"
+                        class="text-gray-300"
+                      >
+                        <td class="px-4 py-3 whitespace-nowrap">
+                          {{ formatCreditHistoryDate(entry.date) }}
+                        </td>
+                        <td class="px-4 py-3">
+                          {{ entry.description }}
+                        </td>
+                        <td
+                          class="px-4 py-3 text-right font-medium"
+                          :class="
+                            entry.amount >= 0
+                              ? 'text-emerald-400'
+                              : 'text-red-400'
+                          "
+                        >
+                          {{ formatSignedSats(entry.amount) }}
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                          {{
+                            entry.balance != null
+                              ? formatSats(entry.balance)
+                              : "-"
+                          }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
               <!-- Upgrade Options -->
               <div
                 v-if="showUpgradeOptions"
@@ -626,30 +801,53 @@
                       <h6 class="text-lg font-bold text-white mb-2">
                         {{ t("account.pro_plan") }}
                       </h6>
-                      <div class="text-2xl font-bold text-indigo-400 mb-4">
+                      <p
+                        class="text-xs font-semibold uppercase tracking-wide text-emerald-400 mb-2"
+                      >
+                        {{
+                          t("account.pro_trial_badge", {
+                            days: pricing.trial_days,
+                          })
+                        }}
+                      </p>
+                      <div class="text-2xl font-bold text-indigo-400 mb-1">
                         <span
-                          v-if="
-                            pricing.pro.sats_per_month_display !==
-                            BETA_PRO_SATS_PER_MONTH
-                          "
+                          v-if="proHasMonthlyDiscount(pricing.pro)"
                           class="text-base font-normal text-gray-500 line-through mr-2"
                           >{{
                             formatSats(pricing.pro.sats_per_month_display)
                           }}</span
                         >
-                        {{ formatSats(BETA_PRO_SATS_PER_MONTH)
+                        {{ formatSats(proEffectiveMonthlySats(pricing.pro))
                         }}<span class="text-base font-normal text-gray-500">{{
                           t("account.pro_price_period")
                         }}</span>
                       </div>
+                      <p class="text-sm text-gray-400 mb-4">
+                        {{
+                          t("account.pro_yearly_price", {
+                            amount: formatSats(pricing.pro.sats_per_year),
+                          })
+                        }}
+                      </p>
                       <ul class="text-sm text-gray-400 space-y-2 mb-6">
                         <li
                           v-for="key in planFeatures.pro.feature_keys"
                           :key="key"
                           class="flex items-center"
+                          :class="
+                            isInvoicingFeature(key)
+                              ? 'text-indigo-200 font-medium'
+                              : ''
+                          "
                         >
                           <span
-                            class="w-1.5 h-1.5 rounded-full bg-indigo-500 mr-2"
+                            class="w-1.5 h-1.5 rounded-full mr-2"
+                            :class="
+                              isInvoicingFeature(key)
+                                ? 'bg-indigo-400'
+                                : 'bg-indigo-500'
+                            "
                           ></span
                           >{{ t("plans.features." + key) }}
                         </li>
@@ -949,25 +1147,26 @@ import { useAuthStore } from "../../store/auth";
 import { useFlashStore } from "../../store/flash";
 import {
   usePricing,
-  BETA_PRO_SATS_PER_MONTH,
+  proEffectiveMonthlySats,
+  proHasMonthlyDiscount,
 } from "../../composables/usePricing";
 import { usePlanFeatures } from "../../composables/usePlanFeatures";
+import { useCurrentPlan } from "../../composables/useCurrentPlan";
 import api from "../../services/api";
 import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
 import NostrAuthModal from "../../components/auth/NostrAuthModal.vue";
+import LegalConsentFields from "../../components/legal/LegalConsentFields.vue";
 import {
   clearStoredGuestMnemonic,
   getStoredGuestMnemonic,
 } from "../../services/guestRecovery";
-import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
-
 const { t, locale } = useI18n();
 const router = useRouter();
-const { btcPayUrl, load: loadBtcpayConfig } = useBtcPayUrl();
 const authStore = useAuthStore();
 const flashStore = useFlashStore();
 const { pricing, formatSats, load: loadPricing } = usePricing();
-const { planFeatures, load: loadPlanFeatures } = usePlanFeatures();
+const { planFeatures, isInvoicingFeature, load: loadPlanFeatures } =
+  usePlanFeatures();
 
 const profileForm = ref({
   name: "",
@@ -982,11 +1181,33 @@ const passwordForm = ref({
 const profileLoading = ref(false);
 const passwordLoading = ref(false);
 const upgrading = ref(false);
+type SubscriptionBilling = {
+  phase?: string | null;
+  isTrial?: boolean;
+  trialEndsAt?: number | null;
+  trialDaysRemaining?: number | null;
+  planPriceSats?: number;
+  creditAppliedSats?: number;
+  nextChargeSats?: number;
+  renewalDate?: number | null;
+  paymentReminderDays?: number;
+};
+
+type CreditHistoryEntry = {
+  date: string;
+  description: string;
+  amount: number;
+  balance: number | null;
+};
+
 const subscriber = ref<any>(null);
+const subscriptionBilling = ref<SubscriptionBilling | null>(null);
 const creditBalance = ref(0);
+const creditHistory = ref<CreditHistoryEntry[]>([]);
 const showAddCreditModal = ref(false);
 const creditAmount = ref<number | null>(null);
 const addingCredit = ref(false);
+const payingNow = ref(false);
 const loadingSubscription = ref(false);
 
 const lnurlAuthEnabled = ref(false);
@@ -997,6 +1218,11 @@ const showGuestSeedModal = ref(false);
 const storedGuestMnemonic = ref<string | null>(null);
 const copiedSeed = ref(false);
 const guestUpgradeLoading = ref(false);
+const guestPrivacyConsent = ref(false);
+const guestTermsAccepted = ref(false);
+const guestUpgradeCanSubmit = computed(
+  () => guestPrivacyConsent.value && guestTermsAccepted.value,
+);
 const guestUpgradeMode = ref<"email" | "linked">("email");
 const guestUpgradeForm = ref({
   email: "",
@@ -1017,46 +1243,48 @@ const hasBothLinkedLogins = computed(
     !!authStore.user?.has_nostr_login,
 );
 
+const { planCode: effectivePlanCode } = useCurrentPlan();
+
 // Plan information
 const currentPlanName = computed(() => {
-  const role = authStore.user?.role || "free";
-  if (role === "enterprise") return t("account.plan_enterprise");
-  if (role === "pro") return t("account.plan_pro");
+  const code = effectivePlanCode.value;
+  if (code === "enterprise") return t("account.plan_enterprise");
+  if (code === "pro") return t("account.plan_pro");
   return t("account.plan_free");
 });
 
 const currentPlanPrice = computed(() => {
-  const role = authStore.user?.role || "free";
+  const code = effectivePlanCode.value;
   const p = pricing.value;
-  if (role === "enterprise") return "-";
-  if (role === "pro") return formatSats(BETA_PRO_SATS_PER_MONTH);
+  if (code === "enterprise") return "-";
+  if (code === "pro") return formatSats(proEffectiveMonthlySats(p.pro));
   return formatSats(p?.free?.sats_per_year ?? 0);
 });
 
 const currentPlanDescription = computed(() => {
-  const role = authStore.user?.role || "free";
-  if (role === "enterprise") return t("account.plan_desc_enterprise");
-  if (role === "pro") return t("account.plan_desc_pro");
+  const code = effectivePlanCode.value;
+  if (code === "enterprise") return t("account.plan_desc_enterprise");
+  if (code === "pro") return t("account.plan_desc_pro");
   return t("account.plan_desc_free");
 });
 
 const currentPlanFeatures = computed(() => {
-  const role = authStore.user?.role || "free";
+  const code = effectivePlanCode.value;
   const keys =
-    role === "enterprise"
+    code === "enterprise"
       ? planFeatures.value.enterprise.feature_keys
-      : role === "pro"
+      : code === "pro"
         ? planFeatures.value.pro.feature_keys
         : planFeatures.value.free.feature_keys;
   return keys.map((key: string) => t("plans.features." + key));
 });
 
 const isPaidPlan = computed(() => {
-  const role = authStore.user?.role || "free";
-  return role === "pro" || role === "enterprise";
+  const code = effectivePlanCode.value;
+  return code === "pro" || code === "enterprise";
 });
 
-const isProPlan = computed(() => authStore.user?.role === "pro");
+const isProPlan = computed(() => effectivePlanCode.value === "pro");
 
 // Upgrade options logic
 const showUpgradeOptions = computed(() => {
@@ -1064,19 +1292,17 @@ const showUpgradeOptions = computed(() => {
   if (authStore.user?.is_guest) {
     return false;
   }
-  // Show upgrades if user is free or pro (can upgrade to enterprise)
-  // Don't show for enterprise (top tier) or admin/support (not applicable)
-  return role === "free" || role === "pro";
+  if (role === "admin" || role === "support") {
+    return false;
+  }
+  return effectivePlanCode.value !== "enterprise";
 });
 
-const showProUpgrade = computed(() => {
-  const role = authStore.user?.role || "free";
-  return role === "free";
-});
+const showProUpgrade = computed(() => effectivePlanCode.value === "free");
 
 const showEnterpriseUpgrade = computed(() => {
-  const role = authStore.user?.role || "free";
-  return role === "free" || role === "pro";
+  const code = effectivePlanCode.value;
+  return code === "free" || code === "pro";
 });
 
 onMounted(async () => {
@@ -1107,7 +1333,9 @@ async function loadSubscriptionDetails() {
   try {
     const response = await api.get("/subscriptions/details");
     subscriber.value = response.data.subscriber;
+    subscriptionBilling.value = response.data.billing || null;
     creditBalance.value = response.data.creditBalance || 0;
+    creditHistory.value = response.data.creditHistory || [];
   } catch (error: any) {
     // If 404, user doesn't have subscription yet - that's ok
     if (error.response?.status !== 404) {
@@ -1115,9 +1343,49 @@ async function loadSubscriptionDetails() {
     }
     // Reset values on error
     subscriber.value = null;
+    subscriptionBilling.value = null;
     creditBalance.value = 0;
+    creditHistory.value = [];
   } finally {
     loadingSubscription.value = false;
+  }
+}
+
+async function startCreditCheckout(amount: number) {
+  const response = await api.post("/subscriptions/credits", {
+    amount,
+    currency: "SATS",
+  });
+
+  const redirectUrl =
+    response.data.paymentUrl ||
+    response.data.invoiceUrl ||
+    response.data.checkoutUrl ||
+    null;
+
+  if (redirectUrl) {
+    window.location.href = redirectUrl;
+    return true;
+  }
+
+  alert(t("account.checkout_failed"));
+  return false;
+}
+
+async function handlePayNow() {
+  const amount = subscriptionBilling.value?.nextChargeSats ?? 0;
+  if (amount < 1) return;
+
+  payingNow.value = true;
+  try {
+    const redirected = await startCreditCheckout(amount);
+    if (!redirected) {
+      payingNow.value = false;
+    }
+  } catch (error: any) {
+    console.error("Failed to start subscription payment:", error);
+    alert(error.response?.data?.message || t("account.checkout_failed"));
+    payingNow.value = false;
   }
 }
 
@@ -1126,40 +1394,35 @@ async function handleAddCredit() {
 
   addingCredit.value = true;
   try {
-    await loadBtcpayConfig();
-    const response = await api.post("/subscriptions/credits", {
-      amount: creditAmount.value,
-      currency: "SATS",
-    });
-
-    // Credit addition creates an invoice - redirect to payment
-    if (response.data.invoiceUrl) {
-      window.location.href = response.data.invoiceUrl;
-    } else if (response.data.invoiceId) {
-      const baseUrl =
-        response.data.baseUrl ||
-        btcPayUrl.value ||
-        (import.meta.env.VITE_BTCPAY_BASE_URL as string) ||
-        "";
-      if (!baseUrl) {
-        alert(t("account.credit_invoice_created"));
-        showAddCreditModal.value = false;
-        creditAmount.value = null;
-        return;
-      }
-      window.location.href = `${baseUrl.replace(/\/$/, "")}/i/${response.data.invoiceId}`;
-    } else {
-      // No invoice URL - this shouldn't happen, but handle gracefully
-      alert(t("account.credit_invoice_created"));
-      showAddCreditModal.value = false;
-      creditAmount.value = null;
+    const redirected = await startCreditCheckout(creditAmount.value);
+    if (!redirected) {
+      addingCredit.value = false;
     }
   } catch (error: any) {
     console.error("Failed to add credit:", error);
     alert(error.response?.data?.message || t("account.add_credit_failed"));
-  } finally {
     addingCredit.value = false;
   }
+}
+
+function formatCreditHistoryDate(value: string): string {
+  if (!value) return "";
+  const date = new Date(value);
+  const localeTag =
+    locale.value === "sk" ? "sk-SK" : locale.value === "es" ? "es-ES" : "en-US";
+  return date.toLocaleDateString(localeTag, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function formatSignedSats(amount: number): string {
+  const formatted = formatSats(Math.abs(amount));
+  if (amount > 0) return `+${formatted}`;
+  if (amount < 0) return `-${formatted}`;
+  return formatted;
 }
 
 function formatDate(timestamp: number | string): string {
@@ -1319,6 +1582,7 @@ async function copyStoredSeed() {
 }
 
 async function handleGuestUpgradeEmail() {
+  if (!guestUpgradeCanSubmit.value) return;
   guestUpgradeLoading.value = true;
   try {
     const response = await api.put("/user/guest/upgrade", {
@@ -1326,6 +1590,8 @@ async function handleGuestUpgradeEmail() {
       email: guestUpgradeForm.value.email,
       password: guestUpgradeForm.value.password,
       password_confirmation: guestUpgradeForm.value.password_confirmation,
+      privacy_consent: guestPrivacyConsent.value,
+      terms_accepted: guestTermsAccepted.value,
     });
     if (response?.data?.user) {
       authStore.user = response.data.user;
@@ -1362,6 +1628,7 @@ function resolveLinkedUpgradeMethod(): "lightning" | "nostr" {
 }
 
 async function handleGuestUpgradeLinkedSubmit() {
+  if (!guestUpgradeCanSubmit.value) return;
   guestUpgradeLoading.value = true;
   try {
     const method = resolveLinkedUpgradeMethod();
@@ -1370,6 +1637,8 @@ async function handleGuestUpgradeLinkedSubmit() {
       email: guestUpgradeForm.value.email,
       password: guestUpgradeForm.value.password,
       password_confirmation: guestUpgradeForm.value.password_confirmation,
+      privacy_consent: guestPrivacyConsent.value,
+      terms_accepted: guestTermsAccepted.value,
     });
     if (response?.data?.user) {
       authStore.user = response.data.user;

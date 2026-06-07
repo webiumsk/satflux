@@ -1,5 +1,5 @@
 <template>
-  <header class="bg-gray-900 border-b border-gray-800 relative z-30">
+  <header class="bg-gray-900 border-b border-gray-800 relative z-40">
     <!-- Push notification toast for support/admin (new wallet connection needs support) -->
     <div
       v-if="supportToastVisible && supportToastMessage"
@@ -76,6 +76,23 @@
               {{ t("header.stores") }}
             </component>
             <component
+              :is="isInertia ? Link : RouterLink"
+              :href="isInertia ? '/invoicing' : undefined"
+              :to="!isInertia ? '/invoicing' : undefined"
+              class="px-3 py-2 rounded-lg text-sm font-medium transition-all inline-flex items-center gap-1"
+              :class="
+                isActive('/invoicing')
+                  ? 'text-white bg-indigo-600/20 text-indigo-300'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              "
+            >
+              {{ t("header.invoicing") }}
+              <span
+                v-if="!canBusinessInvoicing"
+                class="text-[10px] uppercase tracking-wide text-amber-400/90"
+              >Pro</span>
+            </component>
+            <component
               v-if="
                 authStore.user?.role === 'support' ||
                 authStore.user?.role === 'admin'
@@ -131,7 +148,7 @@
 
         <!-- Right side: Mobile menu button (mobile) / User button (desktop) -->
         <div class="flex items-center ml-auto md:ml-0 gap-4">
-          <div class="hidden md:block">
+          <div class="hidden md:block relative z-50">
             <!-- Language Switcher -->
             <LanguageSwitcher />
           </div>
@@ -201,7 +218,7 @@
           </button>
 
           <!-- Desktop: User button with dropdown -->
-          <div class="hidden md:block relative" v-click-outside="closeUserMenu">
+          <div class="hidden md:block relative z-50" v-click-outside="closeUserMenu">
             <button
               @click="handleUserButtonClick"
               class="flex items-center space-x-3 p-1.5 pl-3 rounded-full hover:bg-gray-800 border border-transparent hover:border-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900"
@@ -228,7 +245,7 @@
             >
               <div
                 v-if="showUserMenu"
-                class="absolute right-0 mt-2 w-56 rounded-xl shadow-2xl bg-gray-800 border border-gray-700 ring-1 ring-black ring-opacity-5 z-50 overflow-hidden"
+                class="absolute right-0 mt-2 w-56 rounded-xl shadow-2xl bg-gray-800 border border-gray-700 ring-1 ring-black ring-opacity-5 z-[60] overflow-hidden"
               >
                 <div class="px-4 py-3 border-b border-gray-700 bg-gray-800/50">
                   <p
@@ -437,6 +454,20 @@
           </component>
           <component
             :is="isInertia ? Link : RouterLink"
+            :href="isInertia ? '/invoicing' : undefined"
+            :to="!isInertia ? '/invoicing' : undefined"
+            @click="closeMobileMenu"
+            class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors"
+            :class="
+              isActive('/invoicing')
+                ? 'bg-indigo-600/20 text-indigo-300'
+                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+            "
+          >
+            {{ t("header.invoicing") }}
+          </component>
+          <component
+            :is="isInertia ? Link : RouterLink"
             :href="isInertia ? '/support' : undefined"
             :to="!isInertia ? '/support' : undefined"
             @click="closeMobileMenu"
@@ -617,6 +648,7 @@ import { useRouter, useRoute, RouterLink } from "vue-router";
 import { Link, router as inertiaRouter, usePage } from "@inertiajs/vue3";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
+import { useBusinessInvoicing } from "../../composables/useBusinessInvoicing";
 import LanguageSwitcher from "../LanguageSwitcher.vue";
 import api from "../../services/api";
 import { getEcho } from "../../echo";
@@ -628,6 +660,7 @@ const route = !isInertia ? useRoute() : null;
 const page = isInertia ? usePage() : null;
 
 const authStore = useAuthStore();
+const { canUse: canBusinessInvoicing } = useBusinessInvoicing();
 const showUserMenu = ref(false);
 const showMobileMenu = ref(false);
 const supportCount = ref(0);

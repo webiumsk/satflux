@@ -116,6 +116,11 @@
               class="w-full px-4 py-2 rounded-lg border border-gray-600 bg-gray-700/50 text-white placeholder-gray-500"
               :placeholder="t('auth.email_placeholder')"
             />
+            <LegalConsentFields
+              v-model:privacy-consent="privacyConsent"
+              v-model:terms-accepted="termsAccepted"
+              id-prefix="nostr-register"
+            />
             <p v-if="emailError" class="text-sm text-red-400">{{ emailError }}</p>
             <div class="flex gap-2">
               <button
@@ -127,7 +132,7 @@
               </button>
               <button
                 type="button"
-                :disabled="emailLoading"
+                :disabled="emailLoading || !canSubmitRegistration"
                 @click="submitEmail"
                 class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50"
               >
@@ -159,6 +164,7 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../store/auth';
 import api from '../../services/api';
+import LegalConsentFields from '../legal/LegalConsentFields.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -191,6 +197,9 @@ const challengeId = ref('');
 const emailForm = ref({ email: '', user_id: null as number | null });
 const emailError = ref('');
 const emailLoading = ref(false);
+const privacyConsent = ref(false);
+const termsAccepted = ref(false);
+const canSubmitRegistration = computed(() => privacyConsent.value && termsAccepted.value);
 let pollingInterval: ReturnType<typeof setInterval> | null = null;
 
 const modalTitle = computed(() => {
@@ -364,12 +373,18 @@ function stopPolling() {
 }
 
 async function submitEmail() {
+  if (!canSubmitRegistration.value) {
+    emailError.value = t('legal.consent.required');
+    return;
+  }
   emailError.value = '';
   emailLoading.value = true;
   try {
     await api.post('/nostr-auth/complete-registration', {
       ...(emailForm.value.user_id ? { user_id: emailForm.value.user_id } : { challenge_id: challengeId.value }),
       email: emailForm.value.email,
+      privacy_consent: privacyConsent.value,
+      terms_accepted: termsAccepted.value,
     });
     handleClose();
     if (props.mode === 'register' || props.mode === 'login') router.push('/login?email_verified=1');

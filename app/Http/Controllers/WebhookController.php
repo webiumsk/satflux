@@ -23,7 +23,7 @@ class WebhookController extends Controller
             ? Store::where('btcpay_store_id', $storeId)->first()
             : null;
 
-        $secret = $store?->webhook_secret ?? config('services.btcpay.webhook_secret');
+        $secret = $this->resolveWebhookSecret($storeId, $store);
         $verified = false;
 
         if ($secret) {
@@ -72,5 +72,24 @@ class WebhookController extends Controller
         ProcessBtcPayWebhook::dispatch($webhookEvent);
 
         return response()->json(['status' => 'received']);
+    }
+
+    /**
+     * Resolve HMAC secret for BTCPay webhook signature verification.
+     */
+    protected function resolveWebhookSecret(?string $btcpayStoreId, ?Store $store): ?string
+    {
+        $subscriptionStoreId = config('services.btcpay.subscription_store_id');
+
+        if (
+            $btcpayStoreId
+            && $subscriptionStoreId
+            && $btcpayStoreId === $subscriptionStoreId
+        ) {
+            return config('services.btcpay.subscription_webhook_secret')
+                ?: config('services.btcpay.webhook_secret');
+        }
+
+        return $store?->webhook_secret ?? config('services.btcpay.webhook_secret');
     }
 }

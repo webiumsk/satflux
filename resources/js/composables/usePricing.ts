@@ -12,16 +12,25 @@ export interface PricingPro {
 }
 
 export interface PricingData {
+  trial_days: number;
+  grace_days: number;
   free: PricingFree;
   pro: PricingPro;
 }
 
-/** Beta pricing: Pro plan during Beta period (sats/month). */
-export const BETA_PRO_SATS_PER_MONTH = 5000;
+export function proEffectiveMonthlySats(pro: PricingPro): number {
+  return Math.round(pro.sats_per_year / 12);
+}
+
+export function proHasMonthlyDiscount(pro: PricingPro): boolean {
+  return pro.sats_per_month_display > proEffectiveMonthlySats(pro);
+}
 
 const fallback: PricingData = {
+  trial_days: 30,
+  grace_days: 30,
   free: { sats_per_year: 0 },
-  pro: { sats_per_year: 99_000, sats_per_month_display: 16_500 },
+  pro: { sats_per_year: 210_000, sats_per_month_display: 21_000 },
 };
 
 const cached = ref<PricingData | null>(null);
@@ -45,14 +54,18 @@ export function usePricing() {
     fetchPromise = (async () => {
       try {
         const { data } = await api.get<{
+          trial_days?: number;
+          grace_days?: number;
           free: PricingFree;
           pro: PricingPro;
         }>('/pricing');
         cached.value = {
+          trial_days: data.trial_days ?? 30,
+          grace_days: data.grace_days ?? 30,
           free: { sats_per_year: data.free?.sats_per_year ?? 0 },
           pro: {
-            sats_per_year: data.pro?.sats_per_year ?? 99_000,
-            sats_per_month_display: data.pro?.sats_per_month_display ?? 16_500,
+            sats_per_year: data.pro?.sats_per_year ?? 210_000,
+            sats_per_month_display: data.pro?.sats_per_month_display ?? 21_000,
           },
         };
         return cached.value!;
@@ -69,5 +82,7 @@ export function usePricing() {
     loaded,
     formatSats,
     load,
+    proEffectiveMonthlySats,
+    proHasMonthlyDiscount,
   };
 }

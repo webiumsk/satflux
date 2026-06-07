@@ -20,6 +20,7 @@ class Store extends Model
      */
     protected $fillable = [
         'user_id',
+        'company_id',
         'name',
         'default_currency',
         'timezone',
@@ -52,6 +53,11 @@ class Store extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
     }
 
     /**

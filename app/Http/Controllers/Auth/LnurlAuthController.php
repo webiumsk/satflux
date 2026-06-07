@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\LnurlAuthChallenge;
 use App\Models\User;
 use App\Services\BtcPay\UserService;
+use App\Support\Legal\LegalConsent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -298,11 +299,11 @@ class LnurlAuthController extends Controller
             return response()->json(['error' => 'LNURL-auth is not enabled'], 403);
         }
 
-        $request->validate([
+        $request->validate(array_merge([
             'user_id' => ['nullable', 'integer', 'exists:users,id'],
             'k1' => ['nullable', 'string', 'size:64'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255'],
-        ]);
+        ], LegalConsent::registrationRules()));
 
         $userId = $request->input('user_id');
         $k1 = $request->input('k1');
@@ -394,6 +395,8 @@ class LnurlAuthController extends Controller
                 }
             }
         }
+
+        LegalConsent::recordRegistration($user);
 
         try {
             $user->sendEmailVerificationNotification();

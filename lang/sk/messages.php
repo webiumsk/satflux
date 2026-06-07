@@ -102,6 +102,16 @@ return [
     'subscription_credit_created' => 'Credit invoice created successfully',
     'subscription_credit_failed' => 'Failed to add credit',
 
+    // Business invoice Bitcoin pay
+    'business_invoice_pay_title' => 'Platba Bitcoin / Lightning',
+    'business_invoice_pay_redirecting' => 'Presmerovanie na platbu s aktuálnym kurzom…',
+    'business_invoice_pay_link_notice' => 'QR kód na faktúre je odkaz na túto stránku, nie Lightning faktúra. Nepoužívajte na skenovanie Lightning peňaženku - otvorte odkaz v prehliadači (fotoaparát alebo QR čítačka).',
+    'business_invoice_pay_checkout_hint' => 'Na ďalšej stránke sa vytvorí platba s aktuálnym kurzom (Bitcoin alebo Lightning).',
+    'business_invoice_pay_continue' => 'Zaplatiť Bitcoin / Lightning',
+    'business_invoice_pay_already_paid' => 'Táto faktúra je už uhradená.',
+    'business_invoice_pay_error_title' => 'Platbu sa nepodarilo pripraviť',
+    'business_invoice_pay_checkout_failed' => 'Nepodarilo sa vytvoriť platobný odkaz. Skúste to znova o chvíľu.',
+
     // Locale
     'locale_set' => 'Language changed to :locale',
 
@@ -112,4 +122,7 @@ return [
     'server_error' => 'Server error',
     'try_again_later' => 'Please try again later',
     'contact_support' => 'Please contact support',
+
+    'business_invoicing_available_in_pro' => 'Firemná fakturácia je dostupná v pláne Pro. Pre vytváranie faktúr si prosím aktivujte Pro.',
+    'company_limit_reached' => 'Dosiahli ste maximálny počet firiem (:max) pre váš plán.',
 ];

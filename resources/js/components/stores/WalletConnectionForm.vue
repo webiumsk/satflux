@@ -2224,7 +2224,12 @@ async function handleSaveCashu() {
       const validationErrors = err.response.data.errors || {};
       Object.keys(validationErrors).forEach((key) => {
         const v = validationErrors[key];
-        cashuErrors[key] = Array.isArray(v) ? v[0] : v;
+        const msg = Array.isArray(v) ? v[0] : v;
+        if (key === "cashu") {
+          cashuErrorMessage.value = msg;
+        } else {
+          cashuErrors[key] = msg;
+        }
       });
     } else {
       cashuErrorMessage.value =

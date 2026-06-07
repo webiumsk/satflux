@@ -30,3 +30,14 @@ Schedule::command('guests:purge-inactive')
 Schedule::command('jobs:monitor-failed --hours=1 --threshold=5')
     ->hourly()
     ->withoutOverlapping();
+
+Schedule::command('invoicing:process-recurring')
+    ->dailyAt('06:00')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Data minimization retention (opt-in via DATA_RETENTION_ENABLED)
+Schedule::command('data:retention-run')
+    ->dailyAt('04:00')
+    ->withoutOverlapping()
+    ->runInBackground();

@@ -96,7 +96,7 @@ class SubscriptionService
             // Create new subscription
             $startsAt = now();
             $expiresAt = $startsAt->copy()->addYear();
-            $graceEndsAt = $expiresAt->copy()->addDays(14);
+            $graceEndsAt = $expiresAt->copy()->addDays((int) config('pricing.grace_days', 30));
 
             $subscription = Subscription::create([
                 'user_id' => $lockedUser->id,
@@ -189,6 +189,66 @@ class SubscriptionService
         }
 
         return $user->planFeature('stripe');
+    }
+
+    public function canUseBusinessInvoicing(User $user): bool
+    {
+        if ($user->hasUnlimitedAccess()) {
+            return true;
+        }
+
+        if ($user->isPro() || $user->isEnterprise()) {
+            return true;
+        }
+
+        return $user->planFeature('business_invoicing');
+    }
+
+    /**
+     * Max invoicing companies for the user (null = unlimited). 0 = module not available.
+     */
+    public function maxCompaniesForUser(User $user): ?int
+    {
+        if ($user->hasUnlimitedAccess()) {
+            return null;
+        }
+
+        if (! $this->canUseBusinessInvoicing($user)) {
+            return 0;
+        }
+
+        $plan = $user->currentSubscriptionPlan();
+        if (! $plan) {
+            return 0;
+        }
+
+        if ($plan->hasUnlimitedCompanies()) {
+            return null;
+        }
+
+        if ($plan->code === 'pro') {
+            $betaMax = config('invoicing.beta_pro_max_companies');
+            if ($betaMax !== null && $betaMax > 0) {
+                return $betaMax;
+            }
+        }
+
+        return $plan->max_companies ?? 0;
+    }
+
+    public function canCreateCompany(User $user): bool
+    {
+        $max = $this->maxCompaniesForUser($user);
+
+        if ($max === null) {
+            return $this->canUseBusinessInvoicing($user);
+        }
+
+        if ($max <= 0) {
+            return false;
+        }
+
+        return $user->companies()->count() < $max;
     }
 
     /**

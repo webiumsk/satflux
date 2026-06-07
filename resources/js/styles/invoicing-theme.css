@@ -1,0 +1,263 @@
+/* Light Superfaktúra-style theme for /invoicing/* */
+
+.invoicing-page {
+  @apply min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-gray-100 text-gray-900;
+}
+
+/* Legacy aliases - prefer INVOICING_CONTAINER_CLASS in composable */
+.invoicing-page__inner {
+  @apply max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8;
+}
+
+.invoicing-page__inner--sm,
+.invoicing-page__inner--md,
+.invoicing-page__inner--lg,
+.invoicing-page__inner--xl {
+  @apply max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8;
+}
+
+.invoicing-app-header {
+  @apply bg-gray-100;
+}
+
+.invoicing-main-nav {
+  @apply flex flex-wrap items-center gap-0 bg-gray-100 border-b border-gray-200 min-h-[44px];
+}
+
+.invoicing-main-nav__item {
+  @apply px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-600 hover:text-gray-900 hover:bg-gray-200/80 transition-colors;
+}
+
+.invoicing-main-nav__item--active {
+  @apply bg-slate-800 text-white hover:bg-slate-800 hover:text-white;
+}
+
+.invoicing-main-nav__company {
+  @apply text-xs text-gray-500 truncate max-w-[200px] py-2 pr-2;
+}
+
+.invoicing-sub-nav {
+  @apply block w-full min-h-[42px] bg-slate-800 border-b border-slate-900;
+}
+
+.invoicing-sub-nav__item {
+  @apply inline-flex items-center px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-slate-700/80 transition-colors border-b-2 border-transparent no-underline;
+}
+
+.invoicing-sub-nav__item--active {
+  @apply text-white bg-slate-900 border-indigo-400 font-medium;
+}
+
+.invoicing-sub-nav__item--disabled {
+  @apply opacity-40 cursor-not-allowed hover:bg-transparent hover:text-slate-300;
+}
+
+.invoicing-filter-bar {
+  @apply bg-white border-b border-gray-200;
+}
+
+.invoicing-title {
+  @apply text-2xl font-bold text-gray-900;
+}
+
+.invoicing-subtitle {
+  @apply text-sm text-gray-600 mt-1;
+}
+
+.invoicing-back {
+  @apply text-sm text-gray-600 hover:text-indigo-700 mb-1 inline-block;
+}
+
+.invoicing-card {
+  @apply bg-white rounded-lg border border-gray-200 shadow-sm;
+}
+
+.invoicing-card-pad {
+  @apply bg-white rounded-lg border border-gray-200 shadow-sm p-5 sm:p-6;
+}
+
+.invoicing-btn-primary {
+  @apply inline-flex items-center justify-center px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold disabled:opacity-50;
+}
+
+.invoicing-btn-secondary {
+  @apply inline-flex items-center justify-center px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium;
+}
+
+.invoicing-link {
+  @apply text-indigo-600 hover:text-indigo-800 hover:underline text-sm;
+}
+
+.invoicing-nav {
+  @apply flex flex-wrap gap-2 mb-6;
+}
+
+.invoicing-nav-link {
+  @apply px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm hover:border-indigo-300 hover:text-indigo-700;
+}
+
+.invoicing-nav-link--active {
+  @apply bg-indigo-50 border-indigo-300 text-indigo-800 font-medium;
+}
+
+.invoicing-filter {
+  @apply px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors;
+}
+
+.invoicing-filter--active {
+  @apply bg-indigo-100 text-indigo-800 border-indigo-300;
+}
+
+.invoicing-filter--idle {
+  @apply bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:text-gray-900;
+}
+
+.invoicing-alert-info {
+  @apply rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900;
+}
+
+.invoicing-alert-warn {
+  @apply rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900;
+}
+
+.invoicing-list-item {
+  @apply p-4 rounded-lg border border-gray-200 bg-white flex items-center justify-between gap-4 hover:border-indigo-300 hover:shadow-sm cursor-pointer transition-all;
+}
+
+.invoicing-muted {
+  @apply text-gray-500 text-sm;
+}
+
+.invoicing-sf-label {
+  @apply block text-xs text-gray-600 mb-1;
+}
+
+.invoicing-sf-input {
+  @apply w-full px-2 py-1.5 border border-gray-300 rounded text-gray-900 text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100;
+}
+
+.invoicing-sf-input-table {
+  @apply w-full px-2 py-1 border border-gray-200 rounded text-sm text-gray-900 disabled:bg-gray-50;
+}
+
+.invoicing-modal-backdrop {
+  @apply fixed inset-0 bg-gray-900/40 flex items-center justify-center z-50 p-4;
+}
+
+.invoicing-modal {
+  @apply bg-white border border-gray-200 rounded-xl shadow-xl p-6 w-full max-w-md space-y-3;
+}
+
+.invoicing-toolbar {
+  @apply border-b border-gray-200 bg-white/95 backdrop-blur sticky top-0 z-20 shadow-sm;
+}
+
+.invoicing-bulk-bar {
+  @apply mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3;
+}
+
+.invoicing-dropdown {
+  @apply absolute left-0 top-full mt-1 z-30 min-w-[220px] rounded-lg border border-gray-200 bg-white shadow-lg py-1 text-sm;
+}
+
+.invoicing-dropdown-item {
+  @apply block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50;
+}
+
+.invoicing-tabs {
+  @apply flex flex-wrap items-end gap-1 border-b border-gray-200 mb-6;
+}
+
+.invoicing-tab {
+  @apply px-4 py-2.5 text-sm font-medium text-indigo-600 hover:text-indigo-800 border-b-2 border-transparent -mb-px;
+}
+
+.invoicing-tab--active {
+  @apply text-gray-900 border-indigo-600;
+}
+
+.invoicing-tab--disabled {
+  @apply text-gray-400 cursor-not-allowed hover:text-gray-400;
+}
+
+.invoicing-settings-section-nav {
+  @apply flex flex-wrap gap-0 rounded-t-lg overflow-hidden border border-gray-200 bg-slate-800;
+}
+
+.invoicing-settings-section-nav__item {
+  @apply px-5 py-3 text-sm font-medium text-slate-200 hover:text-white hover:bg-slate-700 transition-colors;
+}
+
+.invoicing-settings-section-nav__item--active {
+  @apply text-white bg-slate-900;
+}
+
+.invoicing-section-divider {
+  @apply flex items-center gap-4 my-8 text-sm text-gray-500;
+}
+
+.invoicing-section-divider::before,
+.invoicing-section-divider::after {
+  content: '';
+  @apply flex-1 border-t border-dashed border-gray-300;
+}
+
+.invoicing-stat-main {
+  @apply font-semibold text-gray-900 block;
+}
+
+.invoicing-stat-sub {
+  @apply text-xs text-gray-400 block mt-0.5;
+}
+
+.invoicing-stat-sub--alert {
+  @apply text-red-600 font-medium;
+}
+
+.invoicing-letter-filter {
+  @apply flex flex-wrap gap-0.5 text-sm my-4;
+}
+
+.invoicing-letter {
+  @apply min-w-[1.75rem] px-1 py-0.5 text-center rounded transition-colors;
+}
+
+.invoicing-letter--active {
+  @apply bg-indigo-100 text-indigo-800 font-semibold;
+}
+
+.invoicing-letter--idle {
+  @apply text-gray-700 hover:bg-gray-100;
+}
+
+.invoicing-letter--disabled {
+  @apply text-gray-300 cursor-default pointer-events-none;
+}
+
+.contact-table th {
+  @apply px-3 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide;
+}
+
+.contact-table td {
+  @apply px-3 py-3 align-top border-t border-gray-100;
+}
+
+.contact-readonly-value {
+  @apply text-sm text-gray-900 min-h-[1.25rem];
+}
+
+.invoice-email-indicator {
+  @apply inline-flex items-center justify-center w-7 h-7 rounded border text-sm font-bold leading-none transition-colors cursor-pointer;
+}
+
+.invoice-email-indicator--sent {
+  @apply border-emerald-500 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-600;
+}
+
+.invoice-email-indicator--unsent {
+  @apply border-gray-300 text-gray-400 bg-white hover:border-gray-600 hover:text-gray-700;
+}
+
+.invoice-email-indicator--disabled {
+  @apply border-gray-200 text-gray-300 bg-gray-50 cursor-not-allowed opacity-60;
+}

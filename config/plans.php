@@ -10,6 +10,14 @@ return [
     | Limits (max_stores, max_ln_addresses, max_api_keys) are in DB / SubscriptionPlanSeeder.
     */
 
+    'invoicing_highlight_keys' => [
+        'business_invoicing',
+        'invoicing_expenses',
+        'invoicing_bank_payments',
+        'invoicing_contacts_import',
+        'companies_2',
+    ],
+
     'free' => [
         'feature_keys' => [
             'store_1',
@@ -25,6 +33,11 @@ return [
 
     'pro' => [
         'feature_keys' => [
+            'business_invoicing',
+            'invoicing_expenses',
+            'invoicing_bank_payments',
+            'invoicing_contacts_import',
+            'companies_2',
             'stores_3',
             'pos_unlimited',
             'ln_unlimited',
@@ -35,7 +48,6 @@ return [
             'advanced_stats',
             'custom_branding',
             'priority_support',
-
         ],
     ],
 
@@ -48,6 +60,8 @@ return [
             'custom_reporting_formats',
             'integration_support',
             'pos_cash_card',
+            'business_invoicing',
+            'companies_unlimited',
         ],
     ],
 

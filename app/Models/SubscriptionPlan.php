@@ -25,6 +25,7 @@ class SubscriptionPlan extends Model
         'max_api_keys',
         'max_ln_addresses',
         'max_events',
+        'max_companies',
         'features',
         'is_active',
     ];
@@ -42,6 +43,7 @@ class SubscriptionPlan extends Model
             'max_api_keys' => 'integer',
             'max_ln_addresses' => 'integer',
             'max_events' => 'integer',
+            'max_companies' => 'integer',
             'features' => 'array',
             'is_active' => 'boolean',
         ];
@@ -95,6 +97,11 @@ class SubscriptionPlan extends Model
     public function hasUnlimitedEvents(): bool
     {
         return $this->max_events === null;
+    }
+
+    public function hasUnlimitedCompanies(): bool
+    {
+        return $this->max_companies === null;
     }
 
     /**

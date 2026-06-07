@@ -24,6 +24,28 @@ class InvoiceService
      * @param  string|null  $userApiKey  User-level API key (optional)
      * @return array Invoice list with pagination metadata
      */
+    /**
+     * Create a BTCPay store invoice (Greenfield).
+     *
+     * @param  array{amount: string, currency: string, metadata?: array<string, mixed>}  $payload
+     */
+    public function createInvoice(string $storeId, array $payload, ?string $userApiKey = null): array
+    {
+        $originalApiKey = null;
+        if ($userApiKey) {
+            $originalApiKey = $this->client->getApiKey();
+            $this->client->setApiKey($userApiKey);
+        }
+
+        try {
+            return $this->client->post("/api/v1/stores/{$storeId}/invoices", $payload);
+        } finally {
+            if ($userApiKey && $originalApiKey) {
+                $this->client->setApiKey($originalApiKey);
+            }
+        }
+    }
+
     public function listInvoices(string $storeId, array $filters = [], ?int $skip = null, ?int $take = null, ?string $userApiKey = null): array
     {
         $query = $filters;

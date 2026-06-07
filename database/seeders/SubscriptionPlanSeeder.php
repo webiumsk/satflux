@@ -26,6 +26,7 @@ class SubscriptionPlanSeeder extends Seeder
                 'max_api_keys' => 1,
                 'max_ln_addresses' => 2,
                 'max_events' => 1,
+                'max_companies' => 0,
                 'features' => [
                     'manual_csv_exports',
                     'basic_payment_overview',
@@ -34,7 +35,7 @@ class SubscriptionPlanSeeder extends Seeder
             ]
         );
 
-        // PRO Plan (€99/year, paid yearly)
+        // PRO Plan (210,000 sats/year in BTCPay, paid yearly)
         SubscriptionPlan::updateOrCreate(
             ['code' => 'pro'],
             [
@@ -46,6 +47,7 @@ class SubscriptionPlanSeeder extends Seeder
                 'max_api_keys' => 3,
                 'max_ln_addresses' => null, // unlimited
                 'max_events' => 3,
+                'max_companies' => 2,
                 'features' => [
                     'manual_csv_exports',
                     'automatic_csv_exports',
@@ -54,6 +56,7 @@ class SubscriptionPlanSeeder extends Seeder
                     'offline_payment_methods',
                     'priority_support',
                     'stripe',
+                    'business_invoicing',
                 ],
                 'is_active' => true,
             ]
@@ -71,6 +74,7 @@ class SubscriptionPlanSeeder extends Seeder
                 'max_api_keys' => null,
                 'max_ln_addresses' => null,
                 'max_events' => null, // unlimited
+                'max_companies' => null, // unlimited
                 'features' => [
                     'manual_csv_exports',
                     'automatic_csv_exports',
@@ -80,6 +84,8 @@ class SubscriptionPlanSeeder extends Seeder
                     'per_store_user_management',
                     'priority_support',
                     'stripe',
+                    'business_invoicing',
+                    'expense_isdoc_extract_unlimited',
                 ],
                 'is_active' => true,
             ]

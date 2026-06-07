@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\BtcPay\SubscriptionService as BtcPaySubscriptionService;
+use App\Services\Invoicing\SubscriptionBillingInvoiceService;
+use App\Services\SubscriptionCheckoutRegistry;
+use App\Services\SubscriptionCreditLedgerService;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -114,6 +117,14 @@ class SubscriptionController extends Controller
                 'user_id' => $request->user()?->id,
             ]);
 
+            if ($request->user() && $request->filled('plan')) {
+                app(SubscriptionCheckoutRegistry::class)->bind(
+                    $checkout['checkoutId'],
+                    $request->user()->id,
+                    (string) $request->input('plan'),
+                );
+            }
+
             // Return only safe data - never expose btcpay_store_id
             return response()->json([
                 'checkoutUrl' => $checkout['checkoutUrl'],
@@ -167,11 +178,18 @@ class SubscriptionController extends Controller
      *
      * GET /api/subscriptions/success?checkoutPlanId=...
      *
-     * This endpoint processes the redirect after successful subscription checkout
-     * and updates the user's role based on the plan they subscribed to.
+     * Syncs subscription state after redirect only when payment is settled on BTCPay
+     * or a trial was started. Primary activation remains the HMAC-verified webhook.
      */
     public function success(Request $request)
     {
+        $user = $request->user();
+        if (! $user) {
+            return response()->json([
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+
         $checkoutPlanId = $request->query('checkoutPlanId');
 
         if (! $checkoutPlanId) {
@@ -180,58 +198,33 @@ class SubscriptionController extends Controller
             ], 400);
         }
 
+        $binding = app(SubscriptionCheckoutRegistry::class)->resolve($checkoutPlanId);
+        if (! $binding || $binding['user_id'] !== $user->id) {
+            Log::warning('Subscription success - checkout binding mismatch', [
+                'checkout_id' => $checkoutPlanId,
+                'user_id' => $user->id,
+                'bound_user_id' => $binding['user_id'] ?? null,
+            ]);
+
+            return response()->json([
+                'message' => 'Checkout session not found or does not belong to your account.',
+            ], 403);
+        }
+
         try {
-            // Get checkout details from BTCPay
             $checkoutDetails = $this->btcpaySubscriptionService->getPlanCheckout($checkoutPlanId);
 
-            // Extract plan ID from nested structure
-            // BTCPay returns plan ID in checkoutDetails['plan']['id'] or checkoutDetails['subscriber']['plan']['id']
             $planId = $checkoutDetails['plan']['id']
                 ?? $checkoutDetails['subscriber']['plan']['id']
                 ?? $checkoutDetails['planId']
                 ?? null;
 
-            // Extract subscription/customer ID
-            $subscriptionId = $checkoutDetails['subscriber']['customer']['id']
-                ?? $checkoutDetails['subscriptionId']
-                ?? null;
-
-            // Extract customer email from nested structure
-            // BTCPay returns email in checkoutDetails['subscriber']['customer']['identities']['Email']
-            $customerEmail = $checkoutDetails['subscriber']['customer']['identities']['Email']
-                ?? $checkoutDetails['subscriber']['customer']['email']
-                ?? $checkoutDetails['customerEmail']
-                ?? $checkoutDetails['subscriberEmail']
-                ?? $checkoutDetails['email']
-                ?? null;
-
-            if (! $planId) {
-                Log::warning('Subscription success - plan ID not found in checkout details', [
-                    'checkout_id' => $checkoutPlanId,
-                    'checkout_details' => $checkoutDetails,
-                    'checkout_keys' => array_keys($checkoutDetails),
-                ]);
-
-                return response()->json([
-                    'message' => 'Plan information not found in checkout',
-                ], 400);
-            }
-
-            // Map plan ID to plan name
-            $subscriptionPlans = config('services.btcpay.subscription_plans', []);
-            $planName = null;
-
-            if ($planId === ($subscriptionPlans['pro'] ?? null)) {
-                $planName = 'pro';
-            } elseif ($planId === ($subscriptionPlans['enterprise'] ?? null)) {
-                $planName = 'enterprise';
-            }
+            $planName = $this->btcpaySubscriptionService->resolvePlanNameFromId($planId);
 
             if (! $planName) {
                 Log::warning('Subscription success - unknown plan ID', [
                     'checkout_id' => $checkoutPlanId,
                     'plan_id' => $planId,
-                    'subscription_plans' => $subscriptionPlans,
                 ]);
 
                 return response()->json([
@@ -239,45 +232,87 @@ class SubscriptionController extends Controller
                 ], 400);
             }
 
-            // Find user by email or session
-            $user = null;
-            if ($customerEmail) {
-                $user = User::where('email', $customerEmail)->first();
-            }
-
-            // Fallback: if user not found by email, try to get from session
-            if (! $user && $request->user()) {
-                $user = $request->user();
-            }
-
-            if (! $user) {
-                Log::warning('Subscription success - user not found', [
+            if ($planName !== $binding['plan']) {
+                Log::warning('Subscription success - plan mismatch with checkout binding', [
                     'checkout_id' => $checkoutPlanId,
-                    'customer_email' => $customerEmail,
-                    'has_session' => $request->user() !== null,
+                    'bound_plan' => $binding['plan'],
+                    'resolved_plan' => $planName,
+                    'plan_id' => $planId,
                 ]);
 
-                // Don't return error - just log, user might need to login
                 return response()->json([
-                    'message' => 'User not found. Please login to activate your subscription.',
-                ], 200);
+                    'message' => 'Checkout plan does not match your subscription request.',
+                ], 403);
             }
 
-            // Activate or extend subscription using SubscriptionService
-            // This creates/updates subscription record and handles 1-year extension
+            $subscriptionId = $checkoutDetails['subscriber']['customer']['id']
+                ?? $checkoutDetails['subscriptionId']
+                ?? null;
+
+            $customerEmail = $checkoutDetails['subscriber']['customer']['identities']['Email']
+                ?? $checkoutDetails['subscriber']['customer']['email']
+                ?? $checkoutDetails['customerEmail']
+                ?? $checkoutDetails['subscriberEmail']
+                ?? $checkoutDetails['email']
+                ?? null;
+
+            $subscriptionStoreId = config('services.btcpay.subscription_store_id');
+            $paidInvoice = $subscriptionStoreId
+                ? $this->btcpaySubscriptionService->resolvePaidInvoiceFromCheckout(
+                    $subscriptionStoreId,
+                    $checkoutDetails,
+                    $checkoutPlanId,
+                    $customerEmail,
+                )
+                : null;
+
+            $trialActivated = $this->btcpaySubscriptionService->checkoutTrialWasActivated($checkoutDetails);
+
+            if (! $paidInvoice && ! $trialActivated) {
+                Log::info('Subscription success redirect pending payment confirmation', [
+                    'checkout_id' => $checkoutPlanId,
+                    'user_id' => $user->id,
+                    'plan' => $planName,
+                ]);
+
+                return response()->json([
+                    'message' => 'Payment confirmation pending. Your subscription will activate once BTCPay confirms payment.',
+                    'activated' => false,
+                    'plan' => $planName,
+                ]);
+            }
+
             $subscription = $this->subscriptionService->activateSubscription(
                 $user,
                 $planName,
                 $subscriptionId
             );
 
-            // Update user role for backward compatibility (legacy field)
             $oldRole = $user->role;
             $user->role = $planName;
             if ($subscriptionId) {
                 $user->btcpay_subscription_id = $subscriptionId;
             }
             $user->save();
+
+            if ($paidInvoice) {
+                try {
+                    app(SubscriptionBillingInvoiceService::class)->fulfillPaidInvoice(
+                        $user,
+                        $planName,
+                        $paidInvoice['id'],
+                        $paidInvoice['payload'],
+                    );
+                } catch (\Throwable $e) {
+                    Log::error('Subscription billing invoice failed on success redirect', [
+                        'user_id' => $user->id,
+                        'checkout_id' => $checkoutPlanId,
+                        'invoice_id' => $paidInvoice['id'],
+                        'error' => $e->getMessage(),
+                    ]);
+                    report($e);
+                }
+            }
 
             Log::info('Subscription activated after checkout success', [
                 'user_id' => $user->id,
@@ -288,10 +323,13 @@ class SubscriptionController extends Controller
                 'plan_id' => $planId,
                 'subscription_id' => $subscription->id,
                 'expires_at' => $subscription->expires_at,
+                'billing_invoice_id' => $paidInvoice['id'] ?? null,
+                'trial_activation' => $trialActivated && ! $paidInvoice,
             ]);
 
             return response()->json([
                 'message' => 'Subscription activated successfully',
+                'activated' => true,
                 'plan' => $planName,
                 'subscription' => [
                     'id' => $subscription->id,
@@ -343,6 +381,8 @@ class SubscriptionController extends Controller
             return response()->json([
                 'subscriber' => null,
                 'creditBalance' => 0,
+                'billing' => null,
+                'creditHistory' => [],
             ]);
         }
 
@@ -353,22 +393,33 @@ class SubscriptionController extends Controller
             // Get subscriber details using email as selector
             $subscriber = $this->btcpaySubscriptionService->getSubscriber($storeId, $offeringId, $user->email);
 
-            // Get credit balance
             $creditBalance = 0;
             try {
                 $credits = $this->btcpaySubscriptionService->getSubscriberCredits($storeId, $offeringId, $user->email, 'SATS');
-                $creditBalance = $credits['balance'] ?? $credits['amount'] ?? 0;
+                $creditBalance = $this->btcpaySubscriptionService->parseSubscriberCreditBalance($credits);
             } catch (\Exception $e) {
-                // Credit endpoint might not be available or user might not have credits yet
                 Log::debug('Could not fetch credit balance', [
                     'user_id' => $user->id,
                     'error' => $e->getMessage(),
                 ]);
             }
 
+            $creditHistory = $this->btcpaySubscriptionService->getSubscriberCreditHistory(
+                $storeId,
+                $offeringId,
+                $user->email,
+                'SATS'
+            );
+
+            if ($creditHistory === []) {
+                $creditHistory = app(SubscriptionCreditLedgerService::class)->listForUser($user);
+            }
+
             return response()->json([
                 'subscriber' => $subscriber,
                 'creditBalance' => $creditBalance,
+                'billing' => $this->btcpaySubscriptionService->buildSubscriptionBillingSummary($subscriber, $creditBalance),
+                'creditHistory' => $creditHistory,
             ]);
 
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
@@ -377,6 +428,8 @@ class SubscriptionController extends Controller
                 return response()->json([
                     'subscriber' => null,
                     'creditBalance' => 0,
+                    'billing' => null,
+                    'creditHistory' => [],
                 ]);
             }
 
@@ -424,7 +477,7 @@ class SubscriptionController extends Controller
             $credits = $this->btcpaySubscriptionService->getSubscriberCredits($storeId, $offeringId, $user->email, $currency);
 
             return response()->json([
-                'balance' => $credits['balance'] ?? $credits['amount'] ?? 0,
+                'balance' => $this->btcpaySubscriptionService->parseSubscriberCreditBalance($credits),
                 'currency' => $currency,
                 'details' => $credits,
             ]);
@@ -443,7 +496,7 @@ class SubscriptionController extends Controller
     }
 
     /**
-     * Add credit to subscriber account.
+     * Create a BTCPay invoice for purchasing subscriber credits.
      *
      * POST /api/subscriptions/credits
      * Body: { amount: number, currency?: string }
@@ -469,42 +522,69 @@ class SubscriptionController extends Controller
 
         $storeId = config('services.btcpay.subscription_store_id');
         $offeringId = config('services.btcpay.subscription_offering_id');
-        $currency = $this->normalizeSubscriptionCreditsCurrency((string) $request->input('currency', 'SATS'));
         $amount = $request->input('amount');
 
+        if (! $storeId || ! $offeringId) {
+            return response()->json([
+                'message' => 'Subscription configuration is incomplete. Please contact support.',
+            ], 500);
+        }
+
         try {
-            // Add credit via BTCPay API (this will create an invoice for the credit)
-            $description = $request->input('description', 'Credit purchase');
-            $result = $this->btcpaySubscriptionService->addSubscriberCredits($storeId, $offeringId, $user->email, $currency, $amount, $description);
+            $subscriber = $this->btcpaySubscriptionService->getSubscriber($storeId, $offeringId, $user->email);
+            $planId = $subscriber['plan']['id'] ?? null;
 
-            // BTCPay returns invoice information in the response
-            $invoiceId = $result['invoiceId'] ?? null;
-            $invoiceUrl = $result['invoiceUrl'] ?? $result['url'] ?? null;
-
-            // If invoice URL is not in response, construct it from base URL and invoice ID
-            if (! $invoiceUrl && $invoiceId) {
-                $baseUrl = config('services.btcpay.base_url');
-                $invoiceUrl = "{$baseUrl}/i/{$invoiceId}";
+            if (! $planId) {
+                return response()->json([
+                    'message' => 'Active subscription required before purchasing credits.',
+                ], 422);
             }
 
+            $baseUrl = config('app.url');
+            $successUrl = config('services.btcpay.subscription_success_url', "{$baseUrl}/billing/success");
+
+            $checkout = $this->btcpaySubscriptionService->createCreditPurchaseCheckout(
+                $storeId,
+                $offeringId,
+                $planId,
+                $user->email,
+                $amount,
+                ['successRedirectUrl' => $successUrl]
+            );
+
+            Log::info('Credit purchase checkout created via API', [
+                'checkout_id' => $checkout['checkoutId'],
+                'invoice_id' => $checkout['invoiceId'] ?? null,
+                'user_id' => $user->id,
+                'amount' => $amount,
+            ]);
+
             return response()->json([
-                'message' => 'Credit invoice created successfully',
-                'invoiceId' => $invoiceId,
-                'invoiceUrl' => $invoiceUrl,
-                'details' => $result,
+                'message' => 'Credit checkout created successfully',
+                'paymentUrl' => $checkout['paymentUrl'] ?? $checkout['invoiceUrl'],
+                'checkoutUrl' => $checkout['checkoutUrl'],
+                'checkoutId' => $checkout['checkoutId'],
+                'invoiceId' => $checkout['invoiceId'],
+                'invoiceUrl' => $checkout['invoiceUrl'],
+                'expiresAt' => $checkout['expiresAt'] ?? null,
             ]);
 
         } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
-            Log::error('Failed to add credit', [
+            if ($e->getStatusCode() === 404) {
+                return response()->json([
+                    'message' => 'Active subscription required before purchasing credits.',
+                ], 422);
+            }
+
+            Log::error('Failed to create credit purchase checkout', [
                 'user_id' => $user->id,
                 'amount' => $amount,
-                'currency' => $currency,
                 'error' => $e->getMessage(),
                 'status_code' => $e->getStatusCode(),
             ]);
 
             return response()->json([
-                'message' => $e->getMessage() ?: 'Failed to add credit',
+                'message' => $e->getMessage() ?: 'Failed to create credit checkout',
             ], $e->getStatusCode() ?: 500);
         }
     }

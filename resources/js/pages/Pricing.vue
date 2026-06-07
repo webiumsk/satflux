@@ -109,7 +109,7 @@
             </li>
           </ul>
           <button
-            v-if="authStore.isAuthenticated && currentPlanCode !== 'pro'"
+            v-if="canUpgradeToPro"
             type="button"
             @click="goToCheckout"
             :disabled="checkoutLoading"
@@ -141,17 +141,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, onMounted } from "vue";
 import { useAuthStore } from "../store/auth";
+import { useCurrentPlan } from "../composables/useCurrentPlan";
 import api from "../services/api";
 
 const authStore = useAuthStore();
+const { canUpgradeToPro, planCode: currentPlanCode } = useCurrentPlan();
 const checkoutLoading = ref(false);
-
-const currentPlanCode = computed(() => {
-  const u = authStore.user as any;
-  return u?.plan?.code ?? "free";
-});
 
 async function goToCheckout() {
   checkoutLoading.value = true;
@@ -166,8 +163,6 @@ async function goToCheckout() {
 }
 
 onMounted(() => {
-  if (authStore.isAuthenticated && !(authStore.user as any)?.plan) {
-    authStore.fetchUser();
-  }
+  window.location.replace("/#pricing");
 });
 </script>
