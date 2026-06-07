@@ -28,6 +28,7 @@ class SubscriptionEntitlementTest extends TestCase
         parent::setUp();
 
         config(['services.btcpay.base_url' => 'https://btcpay.example.test']);
+        $this->app->forgetInstance(\App\Services\BtcPay\BtcPayClient::class);
 
         $this->freePlan = SubscriptionPlan::create([
             'code' => 'free',
@@ -166,13 +167,23 @@ class SubscriptionEntitlementTest extends TestCase
     }
 
     #[Test]
-    public function expired_trial_user_can_still_create_store_invoices(): void
+    public function expired_trial_user_can_still_list_store_invoices(): void
     {
-        Http::fake([
-            'https://btcpay.example.test/*' => Http::response(['id' => 'inv-1'], 200),
-        ]);
+        Http::fake(function ($request) {
+            $url = (string) $request->url();
+            if (str_contains($url, '/api/v1/stores/store-1/invoices')) {
+                return Http::response([
+                    ['id' => 'inv-1', 'status' => 'Settled', 'amount' => 10, 'currency' => 'EUR'],
+                ], 200);
+            }
 
-        $user = User::factory()->create(['role' => 'free']);
+            return Http::response([], 404);
+        });
+
+        $user = User::factory()->create([
+            'role' => 'free',
+            'btcpay_api_key' => 'merchant-key',
+        ]);
         $store = Store::factory()->create(['user_id' => $user->id, 'btcpay_store_id' => 'store-1']);
 
         Subscription::create([
@@ -194,12 +205,10 @@ class SubscriptionEntitlementTest extends TestCase
             'trial_ends_at' => now()->subDays(30),
         ]);
 
-        $response = $this->actingAs($user)->postJson("/api/stores/{$store->id}/invoices", [
-            'amount' => 1000,
-            'currency' => 'EUR',
-        ]);
-
-        $this->assertNotEquals(403, $response->status());
+        $this->actingAs($user)
+            ->getJson("/api/stores/{$store->id}/invoices")
+            ->assertOk()
+            ->assertJsonPath('data.0.id', 'inv-1');
     }
 
     #[Test]

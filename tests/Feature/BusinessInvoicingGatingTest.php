@@ -51,6 +51,7 @@ class BusinessInvoicingGatingTest extends TestCase
             'user_id' => $this->freeUser->id,
             'plan_id' => $freePlan->id,
             'status' => 'active',
+            'billing_phase' => Subscription::BILLING_PAID,
             'starts_at' => now(),
             'expires_at' => now()->addYear(),
         ]);

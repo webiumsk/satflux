@@ -202,14 +202,21 @@ class Subscription extends Model
      */
     public function scopeInGrace($query)
     {
-        return $query->where(function ($q) {
-            $q->where('status', 'grace')
-                ->orWhere(function ($q2) {
-                    $q2->where('status', 'active')
-                        ->where('expires_at', '<=', now())
-                        ->where('expires_at', '>', now()->subDays(14));
-                });
-        });
+        $graceDays = (int) config('pricing.grace_days', 30);
+
+        return $query->where('billing_phase', '!=', self::BILLING_TRIAL)
+            ->where(function ($q) use ($graceDays) {
+                $q->where('billing_phase', self::BILLING_GRACE)
+                    ->orWhere('status', 'grace')
+                    ->orWhere(function ($q2) use ($graceDays) {
+                        $q2->whereIn('billing_phase', [self::BILLING_PAID, self::BILLING_GRACE])
+                            ->where('expires_at', '<=', now())
+                            ->where(function ($q3) use ($graceDays) {
+                                $q3->where('grace_ends_at', '>', now())
+                                    ->orWhere('expires_at', '>', now()->subDays($graceDays));
+                            });
+                    });
+            });
     }
 
     /**
@@ -217,10 +224,27 @@ class Subscription extends Model
      */
     public function scopeExpired($query)
     {
-        return $query->where(function ($q) {
-            $q->where('status', 'expired')
+        $graceDays = (int) config('pricing.grace_days', 30);
+
+        return $query->where(function ($q) use ($graceDays) {
+            $q->where('billing_phase', self::BILLING_EXPIRED)
+                ->orWhere('status', 'expired')
                 ->orWhere(function ($q2) {
-                    $q2->where('expires_at', '<=', now()->subDays(14));
+                    $q2->where('billing_phase', self::BILLING_TRIAL)
+                        ->where('expires_at', '<=', now());
+                })
+                ->orWhere(function ($q2) use ($graceDays) {
+                    $q2->where('billing_phase', '!=', self::BILLING_TRIAL)
+                        ->where('expires_at', '<=', now())
+                        ->where(function ($q3) use ($graceDays) {
+                            $q3->where(function ($q4) {
+                                $q4->whereNotNull('grace_ends_at')
+                                    ->where('grace_ends_at', '<=', now());
+                            })->orWhere(function ($q4) use ($graceDays) {
+                                $q4->whereNull('grace_ends_at')
+                                    ->where('expires_at', '<=', now()->subDays($graceDays));
+                            });
+                        });
                 });
         });
     }

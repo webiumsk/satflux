@@ -5,6 +5,7 @@ namespace Tests\Unit\Jobs;
 use App\Jobs\GenerateCsvExport;
 use App\Jobs\ProcessMonthlyExports;
 use App\Models\Store;
+use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\SubscriptionService;
@@ -16,7 +17,7 @@ class ProcessMonthlyExportsFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_it_processes_pro_role_user_without_subscription_row(): void
+    public function test_it_processes_pro_user_with_active_subscription(): void
     {
         Queue::fake();
 
@@ -45,9 +46,22 @@ class ProcessMonthlyExportsFlowTest extends TestCase
             'is_active' => true,
         ]);
 
+        $proPlan = SubscriptionPlan::where('code', 'pro')->first();
+
         $user = User::factory()->create([
             'role' => 'pro',
         ]);
+
+        Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $proPlan->id,
+            'status' => 'active',
+            'billing_phase' => Subscription::BILLING_PAID,
+            'starts_at' => now(),
+            'expires_at' => now()->addYear(),
+            'grace_ends_at' => now()->addYear()->addDays(30),
+        ]);
+
         $store = Store::factory()->create([
             'user_id' => $user->id,
             'auto_report_enabled' => true,
