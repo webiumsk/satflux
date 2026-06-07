@@ -18,7 +18,12 @@ return [
 
     'queue' => env('EFAKTURA_QUEUE', 'default'),
 
-    'inbound_poll_limit' => (int) env('EFAKTURA_INBOUND_POLL_LIMIT', 20),
+    'inbound_poll_limit' => max(1, min(100, (int) env('EFAKTURA_INBOUND_POLL_LIMIT', 20))),
+
+    'allowed_sapi_hosts' => array_values(array_filter(array_map(
+        static fn (string $host): string => strtolower(trim($host)),
+        explode(',', (string) env('EFAKTURA_SAPI_ALLOWED_HOSTS', '')),
+    ))),
 
     'providers' => [
         'sapi_sk' => [

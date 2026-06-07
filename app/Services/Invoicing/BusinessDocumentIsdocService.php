@@ -141,13 +141,15 @@ class BusinessDocumentIsdocService
      */
     public function xml(BusinessDocument $document): string
     {
+        $xml = Manager::create()->getWriter()->xml($this->build($document));
+
         AuditLog::log('business_document.isdoc_downloaded', 'business_document', $document->id, [
             'company_id' => $document->company_id,
             'number' => $document->number,
             'format' => 'isdoc',
         ]);
 
-        return Manager::create()->getWriter()->xml($this->build($document));
+        return $xml;
     }
 
     protected function documentType(BusinessDocument $document, bool $vatApplicable): int

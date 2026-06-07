@@ -68,7 +68,10 @@ class UblExpenseDraftParser
     protected function parseAmount(string $value): string
     {
         $normalized = str_replace(',', '.', trim($value));
+        if ($normalized === '' || ! preg_match('/^-?\d+(\.\d+)?$/', $normalized)) {
+            return '0.00';
+        }
 
-        return number_format((float) $normalized, 2, '.', '');
+        return bcadd($normalized, '0', 2);
     }
 }

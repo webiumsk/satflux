@@ -508,6 +508,12 @@ const isUs = computed(() => isUsJurisdiction(contactForm.jurisdiction));
 const isSkCompany = computed(() => props.company?.jurisdiction === 'eu_sk');
 const countryOptions = computed(() => countriesForJurisdiction(contactForm.jurisdiction));
 
+watch(isSkCompany, (sk) => {
+  if (!sk && activeTab.value === 'efaktura') {
+    activeTab.value = 'contact';
+  }
+});
+
 function countryLabel(code: string): string {
   const key = `invoicing.country_${code.toLowerCase()}`;
   return te(key) ? t(key) : code;

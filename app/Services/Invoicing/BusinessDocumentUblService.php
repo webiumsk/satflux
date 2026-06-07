@@ -30,14 +30,6 @@ class BusinessDocumentUblService
 
     public function xml(BusinessDocument $document, bool $auditDownload = true): string
     {
-        if ($auditDownload) {
-            AuditLog::log('business_document.ubl_downloaded', 'business_document', $document->id, [
-                'company_id' => $document->company_id,
-                'number' => $document->number,
-                'format' => 'ubl',
-            ]);
-        }
-
         $canonical = $this->canonicalBuilder->fromDocument($document);
         $document = $canonical->document ?? $document;
 
@@ -92,7 +84,17 @@ class BusinessDocumentUblService
         $writer->endElement();
         $writer->endDocument();
 
-        return $writer->outputMemory();
+        $xml = $writer->outputMemory();
+
+        if ($auditDownload) {
+            AuditLog::log('business_document.ubl_downloaded', 'business_document', $document->id, [
+                'company_id' => $document->company_id,
+                'number' => $document->number,
+                'format' => 'ubl',
+            ]);
+        }
+
+        return $xml;
     }
 
     protected function invoiceTypeCode(BusinessDocumentType $type): string

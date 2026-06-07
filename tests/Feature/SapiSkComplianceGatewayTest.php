@@ -87,7 +87,10 @@ class SapiSkComplianceGatewayTest extends TestCase
     #[Test]
     public function gateway_supports_configured_sk_b2b_invoice(): void
     {
-        config(['efaktura.enabled' => true]);
+        config([
+            'efaktura.enabled' => true,
+            'efaktura.allowed_sapi_hosts' => ['sapi.test'],
+        ]);
 
         [$company, $contact] = $this->skCompanyWithEfaktura();
 
@@ -121,7 +124,10 @@ class SapiSkComplianceGatewayTest extends TestCase
     #[Test]
     public function submit_persists_compliance_row_with_http_fake(): void
     {
-        config(['efaktura.enabled' => true]);
+        config([
+            'efaktura.enabled' => true,
+            'efaktura.allowed_sapi_hosts' => ['sapi.test'],
+        ]);
 
         Http::fake([
             'https://sapi.test/sapi/v1/auth/token' => Http::response([
@@ -193,7 +199,12 @@ class SapiSkComplianceGatewayTest extends TestCase
     #[Test]
     public function submit_fails_when_recipient_peppol_id_missing(): void
     {
-        config(['efaktura.enabled' => true]);
+        Http::fake();
+
+        config([
+            'efaktura.enabled' => true,
+            'efaktura.allowed_sapi_hosts' => ['sapi.test'],
+        ]);
 
         [$company] = $this->skCompanyWithEfaktura();
 

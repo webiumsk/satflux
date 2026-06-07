@@ -19,8 +19,6 @@ final class SapiSkSendPayload
         string $receiverParticipantId,
         string $ublXml,
     ): array {
-        $document->loadMissing(['company', 'contact']);
-
         return [
             'metadata' => [
                 'documentId' => (string) $document->id,

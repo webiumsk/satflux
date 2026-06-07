@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\EfakturaInboundReceipt;
 use App\Services\Invoicing\BusinessExpenseService;
 use App\Support\Invoicing\CompanyEfakturaSettings;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -84,11 +85,34 @@ class EfakturaInboundService
                     continue;
                 }
 
-                if (EfakturaInboundReceipt::query()
+                $existingReceipt = EfakturaInboundReceipt::query()
                     ->where('company_id', $company->id)
                     ->where('external_document_id', $externalId)
-                    ->exists()) {
+                    ->first();
+
+                if ($existingReceipt !== null && $existingReceipt->acknowledged_at !== null) {
                     $stats['skipped']++;
+
+                    continue;
+                }
+
+                if ($existingReceipt !== null) {
+                    try {
+                        $this->client->acknowledgeReceived($token, $participantId, $externalId, $baseUrl);
+                        $existingReceipt->update([
+                            'status' => 'acknowledged',
+                            'acknowledged_at' => now(),
+                        ]);
+                        $stats['acknowledged']++;
+                    } catch (\Throwable $e) {
+                        report($e);
+                        $stats['failed']++;
+                        Log::warning('efaktura inbound acknowledge retry failed', [
+                            'company_id' => $company->id,
+                            'external_document_id' => $externalId,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
 
                     continue;
                 }
@@ -102,19 +126,7 @@ class EfakturaInboundService
                         continue;
                     }
 
-                    $draft = $this->parser->parse($ubl);
-                    $expense = $this->expenseService->create($company, $draft);
-                    $attachment = $this->storeUblAttachment($expense, $ubl, $externalId);
-
-                    $receipt = EfakturaInboundReceipt::query()->create([
-                        'company_id' => $company->id,
-                        'external_document_id' => $externalId,
-                        'business_expense_id' => $expense->id,
-                        'status' => 'imported',
-                        'attachment_disk' => $attachment['disk'],
-                        'attachment_path' => $attachment['path'],
-                        'response_payload' => $detail,
-                    ]);
+                    $receipt = $this->importInboundDocument($company, $externalId, $ubl, $detail);
 
                     $this->client->acknowledgeReceived($token, $participantId, $externalId, $baseUrl);
                     $receipt->update([
@@ -122,7 +134,7 @@ class EfakturaInboundService
                         'acknowledged_at' => now(),
                     ]);
 
-                    AuditLog::log('business_expense.efaktura_inbound_imported', 'business_expense', $expense->id, [
+                    AuditLog::log('business_expense.efaktura_inbound_imported', 'business_expense', $receipt->business_expense_id, [
                         'company_id' => $company->id,
                         'external_document_id' => $externalId,
                         'receipt_id' => $receipt->id,
@@ -149,6 +161,38 @@ class EfakturaInboundService
     }
 
     /**
+     * @param  array<string, mixed>  $detail
+     */
+    protected function importInboundDocument(Company $company, string $externalId, string $ubl, array $detail): EfakturaInboundReceipt
+    {
+        $attachment = null;
+
+        try {
+            return DB::transaction(function () use ($company, $externalId, $ubl, $detail, &$attachment) {
+                $draft = $this->parser->parse($ubl);
+                $expense = $this->expenseService->create($company, $draft);
+                $attachment = $this->storeUblAttachment($expense, $ubl, $externalId);
+
+                return EfakturaInboundReceipt::query()->create([
+                    'company_id' => $company->id,
+                    'external_document_id' => $externalId,
+                    'business_expense_id' => $expense->id,
+                    'status' => 'imported',
+                    'attachment_disk' => $attachment['disk'],
+                    'attachment_path' => $attachment['path'],
+                    'response_payload' => $detail,
+                ]);
+            });
+        } catch (\Throwable $e) {
+            if (is_array($attachment)) {
+                Storage::disk($attachment['disk'])->delete($attachment['path']);
+            }
+
+            throw $e;
+        }
+    }
+
+    /**
      * @return array{disk: string, path: string}
      */
     protected function storeUblAttachment(BusinessExpense $expense, string $ubl, string $externalId): array
@@ -157,7 +201,9 @@ class EfakturaInboundService
         $filename = 'efaktura-'.Str::slug($externalId).'.xml';
         $path = "companies/{$expense->company_id}/expenses/{$expense->id}/{$filename}";
 
-        Storage::disk($disk)->put($path, $ubl);
+        if (! Storage::disk($disk)->put($path, $ubl)) {
+            throw new \RuntimeException("Failed to store inbound UBL attachment at [{$path}].");
+        }
 
         $expense->attachments()->create([
             'disk' => $disk,

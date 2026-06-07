@@ -354,7 +354,7 @@
     "tab_bank_accounts": "Bankové účty",
     "tab_logo_signature": "Logo a podpis",
     "tab_efaktura": "E-faktúra",
-    "efaktura_intro": "Prepojenie s digitálnym poštárom (CPDS) pre odosielanie a prijímanie štruktúrovaných faktúr cez Peppol od 1. 1. 2027. Credentials získate u vášho poskytovateľa po výbere na portáli Finančnej správy.",
+    "efaktura_intro": "Prepojenie s digitálnym poštárom (CPDS) pre odosielanie a prijímanie štruktúrovaných faktúr cez Peppol od 1. 1. 2027. Prihlasovacie údaje získate u vášho poskytovateľa po výbere na portáli Finančnej správy.",
     "efaktura_cpds_note": "API endpoint (base URL) je iný pre každého poštára - nastavte URL od vášho CPDS, nie globálne v Satflux.",
     "efaktura_enabled": "Zapnúť e-faktúru (SAPI-SK)",
     "efaktura_sapi_base_url": "SAPI API endpoint (CPDS)",

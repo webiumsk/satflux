@@ -85,7 +85,10 @@ XML;
     #[Test]
     public function poll_company_imports_inbound_document_as_expense(): void
     {
-        config(['efaktura.enabled' => true]);
+        config([
+            'efaktura.enabled' => true,
+            'efaktura.allowed_sapi_hosts' => ['sapi.test'],
+        ]);
 
         $ubl = $this->sampleInboundUbl();
 
@@ -139,5 +142,76 @@ XML;
 
         $receipt = EfakturaInboundReceipt::query()->first();
         $this->assertNotNull($receipt?->business_expense_id);
+    }
+
+    #[Test]
+    public function poll_company_retries_acknowledge_after_transient_failure(): void
+    {
+        config([
+            'efaktura.enabled' => true,
+            'efaktura.allowed_sapi_hosts' => ['sapi.test'],
+        ]);
+
+        $ubl = $this->sampleInboundUbl();
+        $ackCalls = 0;
+
+        Http::fake(function ($request) use ($ubl, &$ackCalls) {
+            $url = $request->url();
+
+            if (str_contains($url, '/sapi/v1/auth/token')) {
+                return Http::response(['access_token' => 'token-abc', 'expires_in' => 900]);
+            }
+
+            if ($request->method() === 'GET' && str_contains($url, '/sapi/v1/document/receive/inbound-42') && ! str_contains($url, '/acknowledge')) {
+                return Http::response([
+                    'providerDocumentId' => 'inbound-42',
+                    'payload' => $ubl,
+                ]);
+            }
+
+            if ($request->method() === 'GET' && (str_ends_with($url, '/sapi/v1/document/receive') || str_contains($url, '/document/receive?'))) {
+                return Http::response([
+                    'documents' => [
+                        ['providerDocumentId' => 'inbound-42'],
+                    ],
+                ]);
+            }
+
+            if (str_contains($url, '/acknowledge')) {
+                $ackCalls++;
+
+                return $ackCalls === 1
+                    ? Http::response(['error' => 'temporary'], 500)
+                    : Http::response(['status' => 'ACKNOWLEDGED']);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $company = $this->inboundCompany();
+        $service = app(EfakturaInboundService::class);
+
+        $firstStats = $service->pollCompany($company);
+
+        $this->assertSame(0, $firstStats['imported']);
+        $this->assertSame(0, $firstStats['acknowledged']);
+        $this->assertSame(1, $firstStats['failed']);
+
+        $receipt = EfakturaInboundReceipt::query()->first();
+        $this->assertNotNull($receipt);
+        $this->assertSame('imported', $receipt->status);
+        $this->assertNull($receipt->acknowledged_at);
+        $expenseId = $receipt->business_expense_id;
+        $this->assertNotNull($expenseId);
+
+        $secondStats = $service->pollCompany($company);
+
+        $this->assertSame(0, $secondStats['imported']);
+        $this->assertSame(1, $secondStats['acknowledged']);
+
+        $receipt->refresh();
+        $this->assertSame('acknowledged', $receipt->status);
+        $this->assertNotNull($receipt->acknowledged_at);
+        $this->assertSame($expenseId, $receipt->business_expense_id);
     }
 }

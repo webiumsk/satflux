@@ -25,7 +25,15 @@ class SapiSkClient
 
         $response->throw();
 
-        return $response->json();
+        $json = $response->json();
+        if (! is_array($json)) {
+            throw new \RuntimeException(sprintf(
+                'SAPI-SK token response is not valid JSON (HTTP %d).',
+                $response->status(),
+            ));
+        }
+
+        return $json;
     }
 
     public function accessToken(string $clientId, string $clientSecret, ?string $baseUrl = null): string
@@ -189,11 +197,90 @@ class SapiSkClient
 
     protected function resolveBaseUrl(?string $baseUrl): string
     {
-        $base = rtrim((string) ($baseUrl ?? config('efaktura.providers.sapi_sk.base_url')), '/');
-        if ($base === '') {
+        $candidate = rtrim((string) ($baseUrl ?? config('efaktura.providers.sapi_sk.base_url')), '/');
+        if ($candidate === '') {
             throw new \RuntimeException('SAPI-SK base URL is not configured for this company.');
         }
 
-        return $base;
+        $parts = parse_url($candidate);
+        if (! is_array($parts) || ($parts['scheme'] ?? '') !== 'https' || empty($parts['host'])) {
+            throw new \RuntimeException('SAPI-SK base URL must be a valid HTTPS URL.');
+        }
+
+        $host = strtolower((string) $parts['host']);
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            throw new \RuntimeException('SAPI-SK base URL must not use an IP address.');
+        }
+
+        $this->assertResolvablePublicHost($host);
+        $this->assertAllowedSapiHost($host);
+
+        $port = isset($parts['port']) ? ':'.$parts['port'] : '';
+
+        return 'https://'.$host.$port;
+    }
+
+    protected function assertResolvablePublicHost(string $host): void
+    {
+        $allowedHosts = array_map('strtolower', (array) config('efaktura.allowed_sapi_hosts', []));
+        if (in_array($host, $allowedHosts, true)) {
+            return;
+        }
+
+        $ips = [];
+
+        if (function_exists('dns_get_record')) {
+            $records = @dns_get_record($host, DNS_A + DNS_AAAA);
+            if (is_array($records)) {
+                foreach ($records as $record) {
+                    if (isset($record['ip'])) {
+                        $ips[] = $record['ip'];
+                    }
+                    if (isset($record['ipv6'])) {
+                        $ips[] = $record['ipv6'];
+                    }
+                }
+            }
+        }
+
+        if ($ips === []) {
+            $fallback = @gethostbynamel($host);
+            if (is_array($fallback)) {
+                $ips = $fallback;
+            }
+        }
+
+        if ($ips === []) {
+            throw new \RuntimeException('SAPI-SK base URL host could not be resolved.');
+        }
+
+        foreach ($ips as $ip) {
+            if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                throw new \RuntimeException('SAPI-SK base URL must not resolve to a private or reserved address.');
+            }
+        }
+    }
+
+    protected function assertAllowedSapiHost(string $host): void
+    {
+        $allowedHosts = array_map('strtolower', (array) config('efaktura.allowed_sapi_hosts', []));
+        if ($allowedHosts !== [] && in_array($host, $allowedHosts, true)) {
+            return;
+        }
+
+        $globalBase = rtrim((string) config('efaktura.providers.sapi_sk.base_url'), '/');
+        $globalHost = is_string($globalBase) && $globalBase !== ''
+            ? strtolower((string) parse_url($globalBase, PHP_URL_HOST))
+            : '';
+
+        if ($globalHost !== '' && $host === $globalHost) {
+            return;
+        }
+
+        if ($allowedHosts === [] && $globalHost === '') {
+            return;
+        }
+
+        throw new \RuntimeException('SAPI-SK base URL host is not in the allowed provider list.');
     }
 }

@@ -133,7 +133,9 @@ final class CompanyEfakturaSettings
         }
 
         if (array_key_exists('efaktura_sapi_client_secret', $incoming)) {
-            $secret = $incoming['efaktura_sapi_client_secret'];
+            $secret = is_string($incoming['efaktura_sapi_client_secret'])
+                ? trim($incoming['efaktura_sapi_client_secret'])
+                : $incoming['efaktura_sapi_client_secret'];
             if ($secret === null || $secret === '') {
                 $merged['efaktura_sapi_client_secret_encrypted'] = null;
             } else {
