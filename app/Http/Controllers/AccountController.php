@@ -52,7 +52,9 @@ class AccountController extends Controller
         ] : null;
         $payload['subscription'] = $subscription ? [
             'status' => $subscription->status,
+            'billing_phase' => $subscription->billing_phase,
             'expires_at' => $subscription->expires_at?->toIso8601String(),
+            'trial_ends_at' => $subscription->trial_ends_at?->toIso8601String(),
             'grace_ends_at' => $subscription->grace_ends_at?->toIso8601String(),
         ] : null;
         $payload['plan_features'] = [

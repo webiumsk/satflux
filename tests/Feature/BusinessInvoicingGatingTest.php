@@ -58,8 +58,10 @@ class BusinessInvoicingGatingTest extends TestCase
             'user_id' => $this->proUser->id,
             'plan_id' => $proPlan->id,
             'status' => 'active',
+            'billing_phase' => 'paid',
             'starts_at' => now(),
             'expires_at' => now()->addYear(),
+            'grace_ends_at' => now()->addYear()->addDays(30),
         ]);
     }
 
@@ -81,7 +83,7 @@ class BusinessInvoicingGatingTest extends TestCase
     }
 
     #[Test]
-    public function pro_role_user_can_use_invoicing_even_without_feature_flag_on_plan(): void
+    public function pro_role_without_business_invoicing_feature_is_blocked(): void
     {
         $legacyProPlan = SubscriptionPlan::create([
             'code' => 'legacy_pro',
@@ -101,12 +103,14 @@ class BusinessInvoicingGatingTest extends TestCase
             'user_id' => $user->id,
             'plan_id' => $legacyProPlan->id,
             'status' => 'active',
+            'billing_phase' => 'paid',
             'starts_at' => now(),
             'expires_at' => now()->addYear(),
+            'grace_ends_at' => now()->addYear()->addDays(30),
         ]);
 
         $this->actingAs($user)
             ->getJson('/api/invoicing/companies')
-            ->assertOk();
+            ->assertForbidden();
     }
 }

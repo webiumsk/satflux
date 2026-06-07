@@ -3139,6 +3139,7 @@
                 {{
                   t("landing.pricing_faq_trial_a", {
                     days: pricing.trial_days,
+                    grace_days: pricing.grace_days,
                   })
                 }}
               </p>
