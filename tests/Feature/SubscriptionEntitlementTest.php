@@ -84,6 +84,65 @@ class SubscriptionEntitlementTest extends TestCase
     }
 
     #[Test]
+    public function trial_activation_does_not_downgrade_existing_paid_subscription(): void
+    {
+        $user = User::factory()->create(['role' => 'pro']);
+        $paidExpiresAt = now()->addYear();
+
+        $paidSubscription = Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $this->proPlan->id,
+            'status' => 'active',
+            'billing_phase' => Subscription::BILLING_PAID,
+            'starts_at' => now()->subMonth(),
+            'expires_at' => $paidExpiresAt,
+            'grace_ends_at' => $paidExpiresAt->copy()->addDays(30),
+            'btcpay_subscription_id' => 'btcpay-paid-sub',
+        ]);
+
+        $subscription = app(SubscriptionService::class)->activateTrialSubscription(
+            $user,
+            'pro',
+            now()->addDays(30),
+            'btcpay-delayed-trial-sub',
+        );
+
+        $this->assertSame($paidSubscription->id, $subscription->id);
+        $this->assertSame(Subscription::BILLING_PAID, $subscription->billing_phase);
+        $this->assertSame($paidExpiresAt->format('Y-m-d H:i:s'), $subscription->expires_at->format('Y-m-d H:i:s'));
+        $this->assertNull($subscription->trial_ends_at);
+        $this->assertSame('btcpay-paid-sub', $subscription->btcpay_subscription_id);
+    }
+
+    #[Test]
+    public function active_pro_entitlement_is_not_hidden_by_long_lived_free_subscription(): void
+    {
+        $user = User::factory()->create(['role' => 'pro']);
+
+        Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $this->freePlan->id,
+            'status' => 'active',
+            'billing_phase' => Subscription::BILLING_PAID,
+            'starts_at' => now(),
+            'expires_at' => now()->addYears(100),
+        ]);
+
+        $proSubscription = Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $this->proPlan->id,
+            'status' => 'active',
+            'billing_phase' => Subscription::BILLING_TRIAL,
+            'starts_at' => now(),
+            'expires_at' => now()->addDays(30),
+            'trial_ends_at' => now()->addDays(30),
+        ]);
+
+        $this->assertSame($proSubscription->id, $user->fresh()->currentSubscription()->id);
+        $this->assertTrue($user->fresh()->hasActiveProEntitlement());
+    }
+
+    #[Test]
     public function expired_trial_blocks_invoicing_even_when_role_still_pro(): void
     {
         $user = User::factory()->create([

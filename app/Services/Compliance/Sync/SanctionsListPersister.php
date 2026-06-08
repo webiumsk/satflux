@@ -55,6 +55,10 @@ class SanctionsListPersister
             ];
         }
 
+        if ($rows === []) {
+            throw new \UnexpectedValueException("Sanctions source [{$source}] produced no valid entries; keeping existing data.");
+        }
+
         DB::transaction(function () use ($source, $rows, $syncedAt) {
             SanctionsEntry::query()->where('source', $source)->delete();
 

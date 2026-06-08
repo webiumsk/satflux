@@ -55,10 +55,7 @@ class GuestProvisioningService
         return Store::where('user_id', $user->id)->value('id');
     }
 
-    /**
-     * @return array{0: User, 1: Store}
-     */
-    public function provisionGuest(?string $recoveryPkHex = null): array
+    public function generateGuestEmail(): string
     {
         $guestToken = strtolower((string) Str::ulid());
         $guestEmailDomain = config('services.auth.guest_email_domain');
@@ -68,7 +65,16 @@ class GuestProvisioningService
                 'Guest email domain is not configured (services.auth.guest_email_domain is empty). Set GUEST_EMAIL_DOMAIN or APP_URL so a valid synthetic domain is available.'
             );
         }
-        $guestEmail = "guest+{$guestToken}@{$guestEmailDomain}";
+
+        return "guest+{$guestToken}@{$guestEmailDomain}";
+    }
+
+    /**
+     * @return array{0: User, 1: Store}
+     */
+    public function provisionGuest(?string $recoveryPkHex = null, ?string $guestEmail = null): array
+    {
+        $guestEmail ??= $this->generateGuestEmail();
         $guestPassword = Str::random(48);
         $defaultStoreName = 'My Store';
 

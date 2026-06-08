@@ -285,8 +285,11 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function currentSubscription(): ?\App\Models\Subscription
     {
         return $this->subscriptions()
-            ->whereIn('status', ['active', 'grace'])
-            ->orderBy('expires_at', 'desc')
+            ->select('subscriptions.*')
+            ->join('subscription_plans', 'subscriptions.plan_id', '=', 'subscription_plans.id')
+            ->whereIn('subscriptions.status', ['active', 'grace'])
+            ->orderByRaw("CASE WHEN subscription_plans.code = 'enterprise' THEN 0 WHEN subscription_plans.code = 'pro' THEN 1 ELSE 2 END")
+            ->orderBy('subscriptions.expires_at', 'desc')
             ->first();
     }
 
