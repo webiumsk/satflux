@@ -45,3 +45,21 @@ export function efakturaSecretIsSet(company: Record<string, unknown> | null): bo
   const encrypted = raw.efaktura_sapi_client_secret_encrypted;
   return typeof encrypted === 'string' && encrypted !== '';
 }
+
+export function isEfakturaConfigured(company: Record<string, unknown> | null): boolean {
+  const settings = efakturaSettingsFromCompany(company);
+
+  return (
+    settings.efaktura_enabled
+    && settings.efaktura_sapi_base_url.trim() !== ''
+    && settings.efaktura_peppol_participant_id.trim() !== ''
+    && settings.efaktura_sapi_client_id.trim() !== ''
+    && efakturaSecretIsSet(company)
+  );
+}
+
+export function isSkDomesticContact(contact: Record<string, unknown> | null | undefined): boolean {
+  const country = String(contact?.country ?? '').trim().toUpperCase();
+
+  return country === 'SK' || country === 'SVK';
+}

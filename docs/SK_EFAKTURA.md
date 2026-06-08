@@ -83,10 +83,10 @@ efaktura:poll-inbound (scheduler každých 15 min, ak EFAKTURA_ENABLED)
 
 Peppol SMP lookup pred odoslaním rieši CPDS pri `POST /document/send` (422 ak príjemca nie je v sieti). Lokálna preflight kontrola overí, že kontakt má Peppol ID (IČO/DIČ/`peppol_participant_id`).
 
-## Roadmap (Fáza C)
+## UI (Fáza C)
 
-- UI záložka e-faktúra v nastaveniach firmy
-- Stav odoslania na `InvoiceShow`
+- Záložka **E-faktúra** v nastaveniach firmy (`CompanySettingsForm`)
+- Panel stavu a manuálne odoslanie na `InvoiceShow` (vystavené faktúry a dobropisy, `eu_sk`)
 
 ## Referencie
 

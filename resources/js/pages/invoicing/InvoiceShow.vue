@@ -155,8 +155,18 @@
         @sent="onEmailSent"
       />
 
-      <InvoiceFormSidebar
-        mode="show"
+      <div class="w-full lg:w-56 shrink-0 space-y-2">
+        <InvoiceEfakturaPanel
+          v-if="showEfakturaPanel && documentId"
+          :company-id="companyId"
+          :document-id="documentId"
+          :company="company"
+          :selected-contact="selectedContact"
+          @sent="onEfakturaSent"
+        />
+
+        <InvoiceFormSidebar
+          mode="show"
         :company-id="companyId"
         :document-id="documentId"
         :edit-route-name="documentRoutes.edit"
@@ -194,7 +204,8 @@
         @approve-quote="approveQuote"
         @reject-quote="rejectQuote"
         @create-invoice-from-quote="createInvoiceFromQuote"
-      />
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -204,6 +215,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import '../../styles/invoicing-theme.css';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingDocumentSubNav from '../../components/invoicing/InvoicingDocumentSubNav.vue';
+import InvoiceEfakturaPanel from '../../components/invoicing/InvoiceEfakturaPanel.vue';
 import InvoiceFormSidebar from '../../components/invoicing/InvoiceFormSidebar.vue';
 import SendDocumentEmailModal from '../../components/invoicing/SendDocumentEmailModal.vue';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
@@ -319,6 +331,21 @@ const supportsEuExport = computed(() => {
   const j = company.value?.jurisdiction;
   return j === 'eu_sk' || j === 'eu_cz' || j === 'eu_other';
 });
+
+const showEfakturaPanel = computed(() => {
+  if (company.value?.jurisdiction !== 'eu_sk') {
+    return false;
+  }
+  if (documentStatus.value !== 'issued') {
+    return false;
+  }
+
+  return documentType.value === 'invoice' || documentType.value === 'credit_note';
+});
+
+async function onEfakturaSent() {
+  await loadHistory();
+}
 
 async function onEmailSent() {
   success.value = t('invoicing.send_email_success');
