@@ -4,8 +4,11 @@ return [
 
     'enabled' => (bool) env('BANK_INBOUND_ENABLED', false),
 
-    /** Shared secret for POST /api/webhooks/bank-inbound */
+    /** Shared secret for manual/curl POST /api/webhooks/bank-inbound (JSON body). */
     'webhook_secret' => env('BANK_INBOUND_WEBHOOK_SECRET'),
+
+    /** Mailgun inbound route signing key (Domain settings → Webhooks). */
+    'mailgun_webhook_signing_key' => env('MAILGUN_WEBHOOK_SIGNING_KEY'),
 
     'domain' => env('BANK_INBOUND_DOMAIN', 'payments.satflux.io'),
 

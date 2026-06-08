@@ -166,4 +166,80 @@ class BankInboundEmailTest extends TestCase
             'body' => 'VS: 123',
         ])->assertForbidden();
     }
+
+    #[Test]
+    public function mailgun_webhook_imports_tatra_bank_notification_and_auto_matches_invoice(): void
+    {
+        config(['bank_inbound.mailgun_webhook_signing_key' => 'mailgun-test-signing-key']);
+
+        BusinessDocument::create([
+            'company_id' => $this->company->id,
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => '20260042',
+            'variable_symbol' => '20260042',
+            'currency' => 'EUR',
+            'total' => 150.50,
+            'issue_date' => now(),
+        ]);
+
+        $address = $this->addressService->buildAddress($this->company);
+        $body = 'Obrat na ucte. Suma: 150,50 EUR. VS: 20260042. Protistrana: Client s.r.o. 01.06.2026';
+        $timestamp = '1700000000';
+        $token = 'mailgun-test-token';
+        $signature = hash_hmac('sha256', $timestamp.$token, 'mailgun-test-signing-key');
+
+        $response = $this->post('/api/webhooks/bank-inbound', [
+            'recipient' => $address,
+            'sender' => 'notify@tatrabanka.sk',
+            'subject' => 'Obrat na ucte',
+            'stripped-text' => $body,
+            'timestamp' => $timestamp,
+            'token' => $token,
+            'signature' => $signature,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('accepted', true);
+
+        $doc = BusinessDocument::first();
+        $this->assertSame(BusinessDocumentStatus::Paid, $doc->status);
+        $this->assertDatabaseCount('bank_transactions', 1);
+    }
+
+    #[Test]
+    public function mailgun_webhook_rejects_invalid_signature(): void
+    {
+        config(['bank_inbound.mailgun_webhook_signing_key' => 'mailgun-test-signing-key']);
+
+        $address = $this->addressService->buildAddress($this->company);
+
+        $this->post('/api/webhooks/bank-inbound', [
+            'recipient' => $address,
+            'sender' => 'notify@tatrabanka.sk',
+            'subject' => 'Obrat',
+            'stripped-text' => 'VS: 123',
+            'timestamp' => '1700000000',
+            'token' => 'mailgun-test-token',
+            'signature' => 'invalid',
+        ])->assertForbidden();
+    }
+
+    #[Test]
+    public function mailgun_webhook_requires_signing_key_when_configured(): void
+    {
+        config(['bank_inbound.mailgun_webhook_signing_key' => null]);
+
+        $address = $this->addressService->buildAddress($this->company);
+        $timestamp = '1700000000';
+        $token = 'mailgun-test-token';
+
+        $this->post('/api/webhooks/bank-inbound', [
+            'recipient' => $address,
+            'sender' => 'notify@tatrabanka.sk',
+            'stripped-text' => 'VS: 123',
+            'timestamp' => $timestamp,
+            'token' => $token,
+            'signature' => hash_hmac('sha256', $timestamp.$token, 'unused'),
+        ])->assertStatus(503);
+    }
 }

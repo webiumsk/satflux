@@ -47,12 +47,16 @@ BANK_INBOUND_MAX_ADDRESS_LENGTH=50
 
 Then `php artisan optimize:clear` and ensure the queue worker processes the `webhooks` queue.
 
-### Production inbound mail
+### Production inbound mail (Mailgun)
 
-1. Point Postmark/Mailgun inbound to `POST /api/webhooks/bank-inbound` with JSON: `to`, `from`, `subject`, `body`, optional `headers`.
-2. Set header `X-Bank-Inbound-Secret: {BANK_INBOUND_WEBHOOK_SECRET}` on the provider webhook.
-3. Merchant copies address from UI (Invoicing → Bank payments → Import tab).
-4. Configure the bank to send **movement notifications** directly to that address (not forwarded).
+1. Add domain `payments.satflux.io` in Mailgun with MX records verified.
+2. Create an inbound route: recipient matches `.*@payments.satflux.io`, action **Forward** to `POST https://satflux.io/api/webhooks/bank-inbound`.
+3. Set `MAILGUN_WEBHOOK_SIGNING_KEY` from Mailgun domain settings (Webhooks signing key). Mailgun POSTs `recipient`, `sender`, `stripped-text`, `timestamp`, `token`, `signature` - satflux normalizes these automatically.
+4. Set `BANK_INBOUND_ENABLED=true` and `BANK_INBOUND_DOMAIN=payments.satflux.io`.
+5. Merchant copies address from UI (Invoicing → Bank payments → Import tab).
+6. Configure the bank to send **movement notifications** directly to that address (not forwarded).
+
+For manual/curl testing without Mailgun, POST JSON with `X-Bank-Inbound-Secret: {BANK_INBOUND_WEBHOOK_SECRET}` (see local smoke test below).
 
 Tatra banka: notification type „obrat na úcte“, **bez šifrovania** if the parser must read VS from the body.
 
