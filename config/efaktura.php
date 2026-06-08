@@ -31,6 +31,8 @@ return [
             'base_url' => rtrim((string) env('EFAKTURA_SAPI_BASE_URL', ''), '/'),
             'token_path' => '/sapi/v1/auth/token',
             'send_path' => '/sapi/v1/document/send',
+            // Optional; CPDS-specific. When set, stale submitted rows are refreshed via scheduler.
+            'send_detail_path' => env('EFAKTURA_SAPI_SEND_DETAIL_PATH', ''),
             'receive_path' => '/sapi/v1/document/receive',
             'receive_detail_path' => '/sapi/v1/document/receive/{id}',
             'acknowledge_path' => '/sapi/v1/document/receive/{id}/acknowledge',

@@ -89,6 +89,38 @@ class SapiSkClient
     /**
      * @return array<string, mixed>
      */
+    public function sentDocument(
+        string $accessToken,
+        string $senderParticipantId,
+        string $documentId,
+        ?string $baseUrl = null,
+    ): array {
+        $pathTemplate = (string) config('efaktura.providers.sapi_sk.send_detail_path', '');
+        if ($pathTemplate === '') {
+            throw new \RuntimeException('SAPI-SK sent document detail path is not configured.');
+        }
+
+        $path = str_replace(
+            '{id}',
+            rawurlencode($documentId),
+            $pathTemplate,
+        );
+
+        $response = $this->http()
+            ->withToken($accessToken)
+            ->withHeaders(['X-Peppol-Participant-Id' => $senderParticipantId])
+            ->get($this->url($path, $baseUrl));
+
+        $response->throw();
+
+        $json = $response->json();
+
+        return is_array($json) ? $json : ['payload' => $response->body()];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function listReceivedDocuments(
         string $accessToken,
         string $receiverParticipantId,

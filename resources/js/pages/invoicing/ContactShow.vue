@@ -78,7 +78,7 @@
         </div>
       </div>
 
-      <ContactFormFields v-model="form" readonly :active-tab="activeTab" />
+      <ContactFormFields v-model="form" readonly :active-tab="activeTab" :company="companyProfile" />
 
       <p class="text-center text-xs text-gray-500 mt-8">{{ t('invoicing.contact_changes_note') }}</p>
     </div>
@@ -111,6 +111,7 @@ const contactId = computed(() => route.params.contactId as string);
 const { contactListTo, contactEditTo, issueInvoiceTo } = useContactRoutes(companyId);
 
 const contact = ref<CompanyContactRow | null>(null);
+const companyProfile = ref<Record<string, unknown> | null>(null);
 const form = ref<ContactFormState>(emptyContactForm());
 const activeTab = ref<'billing' | 'defaults'>('billing');
 const loading = ref(true);
@@ -141,9 +142,14 @@ async function removeContact() {
   }
 }
 
+async function loadCompany() {
+  const res = await api.get(`/invoicing/companies/${companyId.value}`);
+  companyProfile.value = res.data.data;
+}
+
 watch(() => route.params.contactId, load);
-onMounted(() => {
+onMounted(async () => {
   rememberCompany(companyId.value);
-  load();
+  await Promise.all([loadCompany(), load()]);
 });
 </script>

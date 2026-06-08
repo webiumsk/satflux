@@ -1,3 +1,13 @@
+import type { VatPolicyCompany } from './useCompanyVatPolicy';
+import { isFullVatPayer } from './useCompanyVatPolicy';
+
+export type EfakturaInboundPollStats = {
+  imported: number;
+  acknowledged: number;
+  skipped: number;
+  failed: number;
+};
+
 export type CompanyEfakturaSettingsState = {
   efaktura_enabled: boolean;
   efaktura_auto_send: boolean;
@@ -6,7 +16,25 @@ export type CompanyEfakturaSettingsState = {
   efaktura_peppol_participant_id: string;
   efaktura_sapi_client_id: string;
   efaktura_sapi_client_secret: string;
+  efaktura_inbound_last_poll_at: string | null;
+  efaktura_inbound_last_poll_stats: EfakturaInboundPollStats | null;
 };
+
+function inboundPollStatsFromRaw(raw: Record<string, unknown>): EfakturaInboundPollStats | null {
+  const stats = raw.efaktura_inbound_last_poll_stats;
+  if (!stats || typeof stats !== 'object') {
+    return null;
+  }
+
+  const row = stats as Record<string, unknown>;
+
+  return {
+    imported: Number(row.imported ?? 0),
+    acknowledged: Number(row.acknowledged ?? 0),
+    skipped: Number(row.skipped ?? 0),
+    failed: Number(row.failed ?? 0),
+  };
+}
 
 export function defaultEfakturaSettings(): CompanyEfakturaSettingsState {
   return {
@@ -17,6 +45,8 @@ export function defaultEfakturaSettings(): CompanyEfakturaSettingsState {
     efaktura_peppol_participant_id: '',
     efaktura_sapi_client_id: '',
     efaktura_sapi_client_secret: '',
+    efaktura_inbound_last_poll_at: null,
+    efaktura_inbound_last_poll_stats: null,
   };
 }
 
@@ -33,6 +63,10 @@ export function efakturaSettingsFromCompany(company: Record<string, unknown> | n
     efaktura_peppol_participant_id: String(raw.efaktura_peppol_participant_id ?? ''),
     efaktura_sapi_client_id: String(raw.efaktura_sapi_client_id ?? ''),
     efaktura_sapi_client_secret: '',
+    efaktura_inbound_last_poll_at: raw.efaktura_inbound_last_poll_at
+      ? String(raw.efaktura_inbound_last_poll_at)
+      : null,
+    efaktura_inbound_last_poll_stats: inboundPollStatsFromRaw(raw),
   };
 }
 
@@ -62,4 +96,20 @@ export function isSkDomesticContact(contact: Record<string, unknown> | null | un
   const country = String(contact?.country ?? '').trim().toUpperCase();
 
   return country === 'SK' || country === 'SVK';
+}
+
+export function isCompanyEfakturaEligible(
+  company: VatPolicyCompany | Record<string, unknown> | null,
+  globallyEnabled = true,
+): boolean {
+  if (!globallyEnabled) {
+    return false;
+  }
+
+  const row = company as VatPolicyCompany;
+  if (row?.jurisdiction !== 'eu_sk') {
+    return false;
+  }
+
+  return isFullVatPayer(row);
 }

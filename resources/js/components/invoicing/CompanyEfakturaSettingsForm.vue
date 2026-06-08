@@ -82,6 +82,37 @@
           <span>{{ t('invoicing.efaktura_inbound_enabled') }}</span>
         </label>
         <p class="text-xs text-gray-500">{{ t('invoicing.efaktura_inbound_hint') }}</p>
+
+        <div v-if="form.efaktura_inbound_enabled" class="rounded-lg border border-gray-200 bg-white p-3 space-y-2">
+          <p v-if="form.efaktura_inbound_last_poll_at" class="text-xs text-gray-600">
+            {{ t('invoicing.efaktura_inbound_last_poll', { date: formatPollDate(form.efaktura_inbound_last_poll_at) }) }}
+          </p>
+          <p v-else class="text-xs text-gray-500">{{ t('invoicing.efaktura_inbound_never_polled') }}</p>
+          <p
+            v-if="form.efaktura_inbound_last_poll_stats"
+            class="text-xs text-gray-600"
+          >
+            {{
+              t('invoicing.efaktura_inbound_last_poll_stats', {
+                imported: form.efaktura_inbound_last_poll_stats.imported,
+                acknowledged: form.efaktura_inbound_last_poll_stats.acknowledged,
+                skipped: form.efaktura_inbound_last_poll_stats.skipped,
+                failed: form.efaktura_inbound_last_poll_stats.failed,
+              })
+            }}
+          </p>
+          <button
+            type="button"
+            class="invoicing-btn-secondary text-sm"
+            :disabled="pollingInbound || saving"
+            @click="pollInboundNow"
+          >
+            {{ pollingInbound ? t('invoicing.efaktura_inbound_polling') : t('invoicing.efaktura_inbound_poll_now') }}
+          </button>
+          <p v-if="pollMessage" class="text-xs" :class="pollError ? 'text-red-600' : 'text-emerald-700'">
+            {{ pollMessage }}
+          </p>
+        </div>
       </div>
     </fieldset>
 
@@ -98,6 +129,7 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import type { EfakturaInboundPollStats } from '../../composables/useCompanyEfakturaSettings';
 import api from '../../services/api';
 import {
   efakturaSecretIsSet,
@@ -114,10 +146,13 @@ const emit = defineEmits<{
   updated: [company: Record<string, any>];
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const saving = ref(false);
 const saveError = ref('');
 const secretSet = ref(false);
+const pollingInbound = ref(false);
+const pollMessage = ref('');
+const pollError = ref(false);
 const form = reactive<CompanyEfakturaSettingsState>(efakturaSettingsFromCompany(null));
 
 watch(
@@ -129,11 +164,56 @@ watch(
   { immediate: true, deep: true }
 );
 
+function formatPollDate(iso: string) {
+  const d = new Date(iso.includes('T') ? iso : `${iso}T12:00:00`);
+  return d.toLocaleString(locale.value);
+}
+
+function applyInboundPollMeta(polledAt: string | null, stats: EfakturaInboundPollStats | null) {
+  form.efaktura_inbound_last_poll_at = polledAt;
+  form.efaktura_inbound_last_poll_stats = stats;
+}
+
+async function pollInboundNow() {
+  pollingInbound.value = true;
+  pollMessage.value = '';
+  pollError.value = false;
+  try {
+    const res = await api.post(`/invoicing/companies/${props.companyId}/efaktura/poll-inbound`);
+    const data = res.data?.data ?? {};
+    const stats: EfakturaInboundPollStats = {
+      imported: Number(data.imported ?? 0),
+      acknowledged: Number(data.acknowledged ?? 0),
+      skipped: Number(data.skipped ?? 0),
+      failed: Number(data.failed ?? 0),
+    };
+    applyInboundPollMeta(data.polled_at ? String(data.polled_at) : new Date().toISOString(), stats);
+    pollMessage.value = t('invoicing.efaktura_inbound_poll_result', stats);
+    if (props.company) {
+      emit('updated', {
+        ...props.company,
+        app_settings: {
+          ...(props.company.app_settings as Record<string, unknown>),
+          efaktura_inbound_last_poll_at: form.efaktura_inbound_last_poll_at,
+          efaktura_inbound_last_poll_stats: stats,
+        },
+      });
+    }
+  } catch (e: any) {
+    pollError.value = true;
+    pollMessage.value = e?.response?.data?.message ?? t('common.error_generic');
+  } finally {
+    pollingInbound.value = false;
+  }
+}
+
 async function save() {
   saving.value = true;
   saveError.value = '';
   try {
     const payload: Record<string, unknown> = { ...form };
+    delete payload.efaktura_inbound_last_poll_at;
+    delete payload.efaktura_inbound_last_poll_stats;
     if (!payload.efaktura_sapi_client_secret) {
       delete payload.efaktura_sapi_client_secret;
     }

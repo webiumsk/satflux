@@ -59,4 +59,9 @@ if (config('efaktura.enabled')) {
         ->everyFifteenMinutes()
         ->withoutOverlapping()
         ->runInBackground();
+
+    Schedule::command('efaktura:sync-compliance-status')
+        ->everyThirtyMinutes()
+        ->withoutOverlapping()
+        ->runInBackground();
 }

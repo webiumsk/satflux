@@ -220,6 +220,8 @@ import InvoiceFormSidebar from '../../components/invoicing/InvoiceFormSidebar.vu
 import SendDocumentEmailModal from '../../components/invoicing/SendDocumentEmailModal.vue';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import InvoiceLivePreview from '../../components/invoicing/InvoiceLivePreview.vue';
+import { useEfakturaFeature } from '../../composables/useEfakturaFeature';
+import { isCompanyEfakturaEligible } from '../../composables/useCompanyEfakturaSettings';
 import { useInvoiceDocument } from '../../composables/useInvoiceDocument';
 import { invoicingDocumentRoutesForType } from '../../composables/useInvoicingDocumentRoutes';
 import api, {
@@ -326,6 +328,7 @@ const canCreateInvoiceFromQuote = computed(
 );
 
 const sendEmailOpen = ref(false);
+const { enabled: efakturaGloballyEnabled, load: loadEfakturaFeature } = useEfakturaFeature();
 
 const supportsEuExport = computed(() => {
   const j = company.value?.jurisdiction;
@@ -333,7 +336,7 @@ const supportsEuExport = computed(() => {
 });
 
 const showEfakturaPanel = computed(() => {
-  if (company.value?.jurisdiction !== 'eu_sk') {
+  if (!isCompanyEfakturaEligible(company.value, efakturaGloballyEnabled.value)) {
     return false;
   }
   if (documentStatus.value !== 'issued') {
@@ -586,6 +589,7 @@ watch(documentId, async () => {
 const { rememberCompany } = useInvoicingLayout();
 
 onMounted(async () => {
+  await loadEfakturaFeature();
   rememberCompany(companyId.value);
   await loadCompanyAndContacts();
   await loadNeighbors();

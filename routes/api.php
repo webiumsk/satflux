@@ -145,6 +145,7 @@ Route::get('/config', function () {
     return response()->json([
         'btcpay_base_url' => $publicBase,
         'btcpay_lightning_address_domain' => (string) (config('services.btcpay.lightning_address_domain') ?? ''),
+        'efaktura_enabled' => (bool) config('efaktura.enabled'),
     ]);
 });
 
@@ -437,6 +438,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::get('/companies/{company}/documents/{businessDocument}/efaktura/compliance', [\App\Http\Controllers\Invoicing\EfakturaController::class, 'compliance'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/documents/{businessDocument}/efaktura/send', [\App\Http\Controllers\Invoicing\EfakturaController::class, 'send'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/{businessDocument}/efaktura/compliance/refresh', [\App\Http\Controllers\Invoicing\EfakturaController::class, 'refreshCompliance'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/efaktura/poll-inbound', [\App\Http\Controllers\Invoicing\EfakturaController::class, 'pollInbound'])
                 ->middleware(EnsureCompanyOwnership::class);

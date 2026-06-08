@@ -28,6 +28,7 @@ class StoreCompanyContactRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:64'],
             'fax' => ['nullable', 'string', 'max:64'],
             'tax_id' => ['nullable', 'string', 'max:64'],
+            'peppol_participant_id' => ['nullable', 'string', 'max:64'],
             'vat_id' => ['nullable', 'string', 'max:32'],
             'street' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:128'],

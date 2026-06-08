@@ -103,6 +103,8 @@ final class CompanyEfakturaSettings
             'efaktura_peppol_participant_id' => $this->peppolParticipantId(),
             'efaktura_sapi_client_id' => $this->sapiClientId(),
             'efaktura_sapi_client_secret_set' => $this->sapiClientSecret() !== null,
+            'efaktura_inbound_last_poll_at' => $this->values['efaktura_inbound_last_poll_at'] ?? null,
+            'efaktura_inbound_last_poll_stats' => $this->values['efaktura_inbound_last_poll_stats'] ?? null,
         ];
     }
 

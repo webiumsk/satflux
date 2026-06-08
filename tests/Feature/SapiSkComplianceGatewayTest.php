@@ -62,6 +62,7 @@ class SapiSkComplianceGatewayTest extends TestCase
             'postal_code' => '93505',
             'country' => 'SK',
             'vat_payer' => true,
+            'vat_status' => 'payer',
             'vat_rate_default' => 23,
             'app_settings' => [
                 'efaktura_enabled' => true,
@@ -166,13 +167,13 @@ class SapiSkComplianceGatewayTest extends TestCase
 
         $result = app(ComplianceSubmissionService::class)->submitNow($doc->fresh(['company', 'contact', 'lines']));
 
-        $this->assertSame(ComplianceSubmissionStatus::Submitted, $result->status);
+        $this->assertSame(ComplianceSubmissionStatus::Approved, $result->status);
         $this->assertSame('doc-remote-99', $result->externalId);
 
         $this->assertDatabaseHas('business_document_compliance', [
             'business_document_id' => $doc->id,
             'provider' => 'peppol',
-            'status' => 'submitted',
+            'status' => 'approved',
             'external_id' => 'doc-remote-99',
         ]);
 
@@ -194,6 +195,54 @@ class SapiSkComplianceGatewayTest extends TestCase
                 && ($body['metadata']['receiverParticipantId'] ?? null) === '0245:2123456789'
                 && str_contains((string) ($body['payload'] ?? ''), 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2');
         });
+    }
+
+    #[Test]
+    public function gateway_does_not_support_non_vat_payer_company(): void
+    {
+        config(['efaktura.enabled' => true]);
+
+        [$company, $contact] = $this->skCompanyWithEfaktura();
+        $company->update(['vat_status' => 'none', 'vat_payer' => false]);
+
+        $doc = BusinessDocument::create([
+            'company_id' => $company->id,
+            'company_contact_id' => $contact->id,
+            'type' => BusinessDocumentType::Invoice,
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => '20261204',
+            'subtotal' => 50,
+            'tax_total' => 0,
+            'total' => 50,
+            'currency' => 'EUR',
+            'issue_date' => now(),
+        ]);
+
+        $this->assertFalse(app(SapiSkComplianceGateway::class)->supports($doc->fresh(['company', 'contact'])));
+    }
+
+    #[Test]
+    public function gateway_does_not_support_partial_vat_payer_company(): void
+    {
+        config(['efaktura.enabled' => true]);
+
+        [$company, $contact] = $this->skCompanyWithEfaktura();
+        $company->update(['vat_status' => 'partial', 'vat_payer' => true]);
+
+        $doc = BusinessDocument::create([
+            'company_id' => $company->id,
+            'company_contact_id' => $contact->id,
+            'type' => BusinessDocumentType::Invoice,
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => '20261205',
+            'subtotal' => 50,
+            'tax_total' => 0,
+            'total' => 50,
+            'currency' => 'EUR',
+            'issue_date' => now(),
+        ]);
+
+        $this->assertFalse(app(SapiSkComplianceGateway::class)->supports($doc->fresh(['company', 'contact'])));
     }
 
     #[Test]

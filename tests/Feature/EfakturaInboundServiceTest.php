@@ -50,6 +50,8 @@ class EfakturaInboundServiceTest extends TestCase
             'registration_number' => '47615681',
             'tax_id' => '2023980035',
             'country' => 'SK',
+            'vat_payer' => true,
+            'vat_status' => 'payer',
             'app_settings' => [
                 'efaktura_enabled' => true,
                 'efaktura_inbound_enabled' => true,
@@ -142,6 +144,10 @@ XML;
 
         $receipt = EfakturaInboundReceipt::query()->first();
         $this->assertNotNull($receipt?->business_expense_id);
+
+        $company->refresh();
+        $this->assertNotNull($company->app_settings['efaktura_inbound_last_poll_at'] ?? null);
+        $this->assertSame(1, $company->app_settings['efaktura_inbound_last_poll_stats']['imported'] ?? null);
     }
 
     #[Test]

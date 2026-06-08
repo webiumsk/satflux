@@ -29,7 +29,7 @@
         {{ t('invoicing.tab_logo_signature') }}
       </button>
       <button
-        v-if="isSkCompany"
+        v-if="showEfakturaTab"
         type="button"
         role="tab"
         class="invoicing-tab"
@@ -275,7 +275,7 @@
     </form>
 
     <CompanyEfakturaSettingsForm
-      v-if="isSkCompany"
+      v-if="showEfakturaTab"
       v-show="activeTab === 'efaktura'"
       :company-id="companyId"
       :company="company"
@@ -413,6 +413,8 @@ import {
   syncCompanyDefaultCurrency,
 } from '../../config/companyCurrencies';
 import { defaultRegistryForJurisdiction } from '../../config/registryCountries';
+import { useEfakturaFeature } from '../../composables/useEfakturaFeature';
+import { isCompanyEfakturaEligible } from '../../composables/useCompanyEfakturaSettings';
 import {
   useCompanyRegistryLookup,
   type CompanyRegistryFormState,
@@ -506,11 +508,14 @@ const resetConfirmMatches = computed(() => {
 });
 
 const isUs = computed(() => isUsJurisdiction(contactForm.jurisdiction));
-const isSkCompany = computed(() => props.company?.jurisdiction === 'eu_sk');
+const { enabled: efakturaGloballyEnabled, load: loadEfakturaFeature } = useEfakturaFeature();
+const showEfakturaTab = computed(() =>
+  isCompanyEfakturaEligible(props.company, efakturaGloballyEnabled.value)
+);
 const countryOptions = computed(() => countriesForJurisdiction(contactForm.jurisdiction));
 
-watch(isSkCompany, (sk) => {
-  if (!sk && activeTab.value === 'efaktura') {
+watch(showEfakturaTab, (visible) => {
+  if (!visible && activeTab.value === 'efaktura') {
     activeTab.value = 'contact';
   }
 });
@@ -752,6 +757,7 @@ async function saveContact() {
 }
 
 onMounted(async () => {
+  await loadEfakturaFeature();
   if (!storesStore.stores.length) {
     await storesStore.fetchStores();
   }

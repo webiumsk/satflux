@@ -107,6 +107,6 @@ Buyer PII on issued documents is frozen in `buyer_snapshot` at issue. Contact de
 | 3 | Proforma, quotes, orders received |
 | 4 | Delivery notes (recurring invoices: **implemented** as `recurring-profiles`) |
 | 5 | Public invoice link, logo branding, multi-language PDF |
-| 6 | ISDOC + UBL export (**shipped**); SK e-faktura SAPI-SK gateway + auto-send (**foundation** - see [SK_EFAKTURA.md](SK_EFAKTURA.md)); CZ hooks TBD |
+| 6 | ISDOC + UBL export (**shipped**); SK e-faktura SAPI-SK gateway, auto-send, inbound poll, merchant UI (**shipped** - see [SK_EFAKTURA.md](SK_EFAKTURA.md)); CZ hooks TBD |
 
 Document types exist in `BusinessDocumentType` enum; MVP UI enables `invoice`, `proforma` (zálohové faktúry), and `quote` (cenové ponuky). Paid proformas can spawn a draft final invoice via `POST .../documents/{id}/create-final-invoice` (`source_document_id` link). Approved quotes can spawn an issued invoice via `POST .../documents/{id}/create-invoice-from-quote`. Quote workflow uses `quote_status` (`pending`, `approved`, `rejected`, `expired`; expiry is also derived when `due_date` is past while still `pending`).

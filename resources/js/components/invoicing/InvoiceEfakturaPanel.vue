@@ -43,15 +43,26 @@
         </p>
       </div>
 
-      <button
-        v-if="canSend"
-        type="button"
-        class="w-full invoicing-btn-secondary text-sm"
-        :disabled="busy"
-        @click="send"
-      >
-        {{ sendButtonLabel }}
-      </button>
+      <div class="flex flex-col gap-2">
+        <button
+          v-if="canSend"
+          type="button"
+          class="w-full invoicing-btn-secondary text-sm"
+          :disabled="busy"
+          @click="send"
+        >
+          {{ sendButtonLabel }}
+        </button>
+        <button
+          v-if="canRefreshStatus"
+          type="button"
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-white bg-white/80"
+          :disabled="busy"
+          @click="refreshStatus"
+        >
+          {{ busy ? t('invoicing.efaktura_panel_refreshing') : t('invoicing.efaktura_panel_refresh_status') }}
+        </button>
+      </div>
 
       <p v-if="panelError" class="text-xs text-red-600">{{ panelError }}</p>
       <p v-if="panelSuccess" class="text-xs text-emerald-700">{{ panelSuccess }}</p>
@@ -129,6 +140,14 @@ const statusBadgeClass = computed(() => {
   }
 });
 
+const canRefreshStatus = computed(() => {
+  if (!configured.value || !eligibleContact.value || !peppolRow.value) {
+    return false;
+  }
+
+  return peppolRow.value.status === 'submitted';
+});
+
 const canSend = computed(() => {
   if (!configured.value || !eligibleContact.value) {
     return false;
@@ -180,6 +199,28 @@ async function loadCompliance() {
     rows.value = [];
   } finally {
     loading.value = false;
+  }
+}
+
+async function refreshStatus() {
+  if (!props.documentId || busy.value) {
+    return;
+  }
+
+  busy.value = true;
+  panelError.value = '';
+  panelSuccess.value = '';
+
+  try {
+    await api.post(
+      `/invoicing/companies/${props.companyId}/documents/${props.documentId}/efaktura/compliance/refresh`
+    );
+    await loadCompliance();
+    panelSuccess.value = t('invoicing.efaktura_panel_refresh_success');
+  } catch (e: any) {
+    panelError.value = extractError(e);
+  } finally {
+    busy.value = false;
   }
 }
 

@@ -5,13 +5,14 @@ namespace App\Services\Invoicing\Efaktura;
 use App\Contracts\Invoicing\ComplianceSubmissionGateway;
 use App\Enums\BusinessDocumentStatus;
 use App\Enums\BusinessDocumentType;
-use App\Enums\CompanyJurisdiction;
 use App\Enums\ComplianceProvider;
 use App\Enums\ComplianceSubmissionStatus;
 use App\Models\BusinessDocument;
 use App\Services\Invoicing\BusinessDocumentUblService;
+use App\Support\Invoicing\CompanyEfakturaEligibility;
 use App\Support\Invoicing\CompanyEfakturaSettings;
 use App\Support\Invoicing\Efaktura\PeppolParticipantId;
+use App\Support\Invoicing\Efaktura\SapiSkDocumentStatusMapper;
 use App\Support\Invoicing\Efaktura\SapiSkSendPayload;
 use App\Support\Invoicing\EuStructuredDocumentExport;
 use App\Support\Invoicing\SkUblProfile;
@@ -50,7 +51,7 @@ class SapiSkComplianceGateway implements ComplianceSubmissionGateway
         $document->loadMissing(['company', 'contact']);
         $company = $document->company;
 
-        if ($company->jurisdiction !== CompanyJurisdiction::EuSk) {
+        if (! app(CompanyEfakturaEligibility::class)->supportsCompany($company)) {
             return false;
         }
 
@@ -117,8 +118,11 @@ class SapiSkComplianceGateway implements ComplianceSubmissionGateway
                 ?? ''
             );
 
+            $status = SapiSkDocumentStatusMapper::fromProviderPayload($response)
+                ?? ComplianceSubmissionStatus::Submitted;
+
             return new \App\Support\Invoicing\ComplianceSubmissionResult(
-                status: ComplianceSubmissionStatus::Submitted,
+                status: $status,
                 externalId: $externalId !== '' ? $externalId : null,
                 responsePayload: $response,
             );

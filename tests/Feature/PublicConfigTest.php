@@ -12,6 +12,7 @@ class PublicConfigTest extends TestCase
             'services.btcpay.base_url' => 'http://btcpay-internal:49392/',
             'services.btcpay.public_url' => 'https://btcpay.example.com/',
             'services.btcpay.lightning_address_domain' => 'btcpay.example.com',
+            'efaktura.enabled' => false,
         ]);
 
         $this->getJson('/api/config')
@@ -19,6 +20,7 @@ class PublicConfigTest extends TestCase
             ->assertExactJson([
                 'btcpay_base_url' => 'https://btcpay.example.com',
                 'btcpay_lightning_address_domain' => 'btcpay.example.com',
+                'efaktura_enabled' => false,
             ]);
     }
 

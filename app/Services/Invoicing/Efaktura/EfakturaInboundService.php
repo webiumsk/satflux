@@ -8,6 +8,7 @@ use App\Models\BusinessExpense;
 use App\Models\Company;
 use App\Models\EfakturaInboundReceipt;
 use App\Services\Invoicing\BusinessExpenseService;
+use App\Support\Invoicing\CompanyEfakturaEligibility;
 use App\Support\Invoicing\CompanyEfakturaSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -33,11 +34,16 @@ class EfakturaInboundService
             return $stats;
         }
 
+        $eligibility = app(CompanyEfakturaEligibility::class);
+
         Company::query()
             ->where('jurisdiction', CompanyJurisdiction::EuSk)
             ->orderBy('id')
-            ->chunkById(50, function ($companies) use (&$stats) {
+            ->chunkById(50, function ($companies) use (&$stats, $eligibility) {
                 foreach ($companies as $company) {
+                    if (! $eligibility->supportsCompany($company)) {
+                        continue;
+                    }
                     $companyStats = $this->pollCompany($company);
                     foreach ($companyStats as $key => $value) {
                         $stats[$key] += $value;
@@ -54,6 +60,10 @@ class EfakturaInboundService
     public function pollCompany(Company $company): array
     {
         $stats = ['imported' => 0, 'acknowledged' => 0, 'skipped' => 0, 'failed' => 0];
+        if (! app(CompanyEfakturaEligibility::class)->supportsCompany($company)) {
+            return $stats;
+        }
+
         $settings = CompanyEfakturaSettings::fromCompany($company);
 
         if (! $settings->inboundEnabled() || ! $settings->configured()) {
@@ -157,7 +167,23 @@ class EfakturaInboundService
             $stats['failed']++;
         }
 
+        $this->persistInboundPollMeta($company, $stats);
+
         return $stats;
+    }
+
+    /**
+     * @param  array{imported: int, acknowledged: int, skipped: int, failed: int}  $stats
+     */
+    protected function persistInboundPollMeta(Company $company, array $stats): void
+    {
+        $current = is_array($company->app_settings) ? $company->app_settings : [];
+        $company->update([
+            'app_settings' => array_merge($current, [
+                'efaktura_inbound_last_poll_at' => now()->toIso8601String(),
+                'efaktura_inbound_last_poll_stats' => $stats,
+            ]),
+        ]);
     }
 
     /**
