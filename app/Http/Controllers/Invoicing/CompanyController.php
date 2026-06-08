@@ -36,8 +36,7 @@ class CompanyController extends Controller
         StoreCompanyRequest $request,
         DocumentSequenceService $sequenceService,
         BankInboundAddressService $inboundAddressService,
-    ): JsonResponse
-    {
+    ): JsonResponse {
         $validated = $request->validated();
         $storeId = $validated['store_id'] ?? null;
         unset($validated['store_id']);
