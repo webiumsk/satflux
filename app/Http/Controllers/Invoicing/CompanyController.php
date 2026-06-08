@@ -11,6 +11,7 @@ use App\Http\Requests\Invoicing\UpdateCompanyStoresRequest;
 use App\Models\AuditLog;
 use App\Models\Company;
 use App\Models\Store;
+use App\Services\Invoicing\BankInboundAddressService;
 use App\Services\Invoicing\CompanyBrandingService;
 use App\Services\Invoicing\CompanyDataResetService;
 use App\Services\Invoicing\DocumentSequenceService;
@@ -31,7 +32,11 @@ class CompanyController extends Controller
         return response()->json(['data' => $companies]);
     }
 
-    public function store(StoreCompanyRequest $request, DocumentSequenceService $sequenceService): JsonResponse
+    public function store(
+        StoreCompanyRequest $request,
+        DocumentSequenceService $sequenceService,
+        BankInboundAddressService $inboundAddressService,
+    ): JsonResponse
     {
         $validated = $request->validated();
         $storeId = $validated['store_id'] ?? null;
@@ -46,6 +51,7 @@ class CompanyController extends Controller
             'default_currency' => $request->input('default_currency', 'EUR'),
             'vat_status' => $vatStatus,
             'vat_payer' => in_array($vatStatus, ['payer', 'partial'], true),
+            'bank_inbound_token' => $inboundAddressService->generateUniqueToken(),
         ]);
 
         if ($storeId) {

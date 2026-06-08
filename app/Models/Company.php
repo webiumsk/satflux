@@ -43,6 +43,7 @@ class Company extends Model
         'issuer_email',
         'website',
         'invoice_number_prefix',
+        'bank_inbound_token',
         'app_settings',
         'email_settings',
         'logo_path',

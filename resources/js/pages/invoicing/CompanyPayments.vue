@@ -52,7 +52,15 @@
       <div v-if="inboundEmail" class="text-sm border-t pt-4">
         <p class="font-medium text-gray-800">{{ t('invoicing.bank_inbound_title') }}</p>
         <p class="text-gray-600 mt-1">{{ t('invoicing.bank_inbound_help') }}</p>
-        <code class="block mt-2 p-2 bg-gray-100 rounded text-xs break-all">{{ inboundEmail }}</code>
+        <div class="mt-2 flex flex-wrap items-center gap-2">
+          <code class="flex-1 min-w-0 p-2 bg-gray-100 rounded text-xs break-all">{{ inboundEmail }}</code>
+          <button type="button" class="invoicing-btn-secondary text-xs shrink-0" @click="copyInboundEmail">
+            {{ inboundCopied ? t('invoicing.bank_inbound_copied') : t('invoicing.bank_inbound_copy') }}
+          </button>
+        </div>
+        <p v-if="inboundMaxLength" class="text-gray-500 text-xs mt-1">
+          {{ t('invoicing.bank_inbound_length', { current: inboundLength, max: inboundMaxLength }) }}
+        </p>
         <p v-if="!inboundEnabled" class="text-amber-700 text-xs mt-1">{{ t('invoicing.bank_inbound_disabled') }}</p>
       </div>
       <ul v-if="batches.length" class="text-sm space-y-2 border-t pt-4">
@@ -205,6 +213,9 @@ const batches = ref<
 >([]);
 const inboundEmail = ref('');
 const inboundEnabled = ref(false);
+const inboundLength = ref(0);
+const inboundMaxLength = ref(0);
+const inboundCopied = ref(false);
 const matchModal = ref<BankTx | null>(null);
 const suggestions = ref<{ document: { id: string; number?: string; total: string; currency: string }; reason: string }[]>([]);
 const suggestionsLoading = ref(false);
@@ -251,8 +262,26 @@ async function loadInbound() {
     const { data } = await api.get(`/invoicing/companies/${companyId.value}/bank-transactions/inbound-email`);
     inboundEmail.value = data.data?.address || '';
     inboundEnabled.value = !!data.data?.enabled;
+    inboundLength.value = data.data?.length ?? inboundEmail.value.length;
+    inboundMaxLength.value = data.data?.max_length ?? 50;
+    inboundCopied.value = false;
   } catch {
     inboundEmail.value = '';
+    inboundLength.value = 0;
+    inboundMaxLength.value = 0;
+  }
+}
+
+async function copyInboundEmail() {
+  if (!inboundEmail.value) return;
+  try {
+    await navigator.clipboard.writeText(inboundEmail.value);
+    inboundCopied.value = true;
+    window.setTimeout(() => {
+      inboundCopied.value = false;
+    }, 2000);
+  } catch (err) {
+    console.error('Failed to copy b-mail address:', err);
   }
 }
 

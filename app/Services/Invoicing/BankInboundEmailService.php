@@ -18,6 +18,7 @@ class BankInboundEmailService
     public function __construct(
         protected BankStatementImportService $importService,
         protected BusinessDocumentPaymentMatcher $matcher,
+        protected BankInboundAddressService $addressService,
         ?array $parsers = null,
     ) {
         $this->parsers = $parsers ?? [
@@ -75,16 +76,7 @@ class BankInboundEmailService
 
     protected function resolveCompany(string $to): Company
     {
-        $prefix = config('bank_inbound.address_prefix', 'pay');
-        $domain = config('bank_inbound.domain', 'payments.satflux.io');
-
-        if (! preg_match('/'.preg_quote($prefix, '/').'\+([a-f0-9-]{36})@'.preg_quote($domain, '/').'/i', $to, $m)) {
-            throw ValidationException::withMessages([
-                'to' => ['Unknown inbound bank address.'],
-            ]);
-        }
-
-        return Company::query()->findOrFail($m[1]);
+        return $this->addressService->resolveCompany($to);
     }
 
     /**

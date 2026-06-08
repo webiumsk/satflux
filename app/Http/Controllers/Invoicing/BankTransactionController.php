@@ -8,6 +8,7 @@ use App\Models\BankImportBatch;
 use App\Models\BankTransaction;
 use App\Models\BusinessDocument;
 use App\Models\Company;
+use App\Services\Invoicing\BankInboundAddressService;
 use App\Services\Invoicing\BankStatementImportService;
 use App\Services\Invoicing\BusinessDocumentPaymentMatcher;
 use Illuminate\Http\JsonResponse;
@@ -20,6 +21,7 @@ class BankTransactionController extends Controller
     public function __construct(
         protected BankStatementImportService $importService,
         protected BusinessDocumentPaymentMatcher $matcher,
+        protected BankInboundAddressService $inboundAddressService,
     ) {}
 
     public function index(Request $request, Company $company): JsonResponse
@@ -198,13 +200,13 @@ class BankTransactionController extends Controller
 
     public function inboundEmailAddress(Company $company): JsonResponse
     {
-        $token = $company->id;
-        $domain = config('bank_inbound.domain', 'payments.satflux.io');
-        $prefix = config('bank_inbound.address_prefix', 'pay');
+        $address = $this->inboundAddressService->buildAddress($company);
 
         return response()->json([
             'data' => [
-                'address' => $prefix.'+'.$token.'@'.$domain,
+                'address' => $address,
+                'length' => strlen($address),
+                'max_length' => $this->inboundAddressService->maxAddressLength(),
                 'enabled' => (bool) config('bank_inbound.enabled', false),
             ],
         ]);
