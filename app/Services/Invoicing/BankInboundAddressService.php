@@ -3,6 +3,8 @@
 namespace App\Services\Invoicing;
 
 use App\Models\Company;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -15,10 +17,32 @@ class BankInboundAddressService
             return $company->bank_inbound_token;
         }
 
-        $token = $this->generateUniqueToken();
-        $company->update(['bank_inbound_token' => $token]);
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            try {
+                return DB::transaction(function () use ($company): string {
+                    $locked = Company::query()->whereKey($company->id)->lockForUpdate()->firstOrFail();
 
-        return $token;
+                    if ($locked->bank_inbound_token) {
+                        $company->bank_inbound_token = $locked->bank_inbound_token;
+
+                        return $locked->bank_inbound_token;
+                    }
+
+                    $token = $this->generateUniqueToken();
+                    $locked->update(['bank_inbound_token' => $token]);
+                    $company->bank_inbound_token = $token;
+
+                    return $token;
+                });
+            } catch (UniqueConstraintViolationException) {
+                $company->refresh();
+                if ($company->bank_inbound_token) {
+                    return $company->bank_inbound_token;
+                }
+            }
+        }
+
+        return $this->ensureToken($company->refresh());
     }
 
     public function buildAddress(Company $company): string

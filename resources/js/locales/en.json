@@ -757,6 +757,7 @@
     "bank_inbound_disabled": "Inbound email is not enabled on this server yet.",
     "bank_inbound_copy": "Copy address",
     "bank_inbound_copied": "Address copied",
+    "bank_inbound_copy_failed": "Could not copy address to clipboard",
     "bank_inbound_length": "{current} / {max} characters",
     "bank_auto_match_batch": "Match by VS",
     "bank_no_transactions": "No bank transactions for this filter.",

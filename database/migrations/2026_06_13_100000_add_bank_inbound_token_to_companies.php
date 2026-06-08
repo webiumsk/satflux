@@ -4,6 +4,7 @@ use App\Models\Company;
 use App\Services\Invoicing\BankInboundAddressService;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -16,14 +17,18 @@ return new class extends Migration
 
         $service = app(BankInboundAddressService::class);
 
-        Company::query()
-            ->whereNull('bank_inbound_token')
-            ->orderBy('id')
-            ->each(function (Company $company) use ($service): void {
-                $company->update([
-                    'bank_inbound_token' => $service->generateUniqueToken(),
-                ]);
-            });
+        DB::transaction(function () use ($service): void {
+            Company::query()
+                ->whereNull('bank_inbound_token')
+                ->orderBy('id')
+                ->chunkById(100, function ($companies) use ($service): void {
+                    foreach ($companies as $company) {
+                        $company->update([
+                            'bank_inbound_token' => $service->generateUniqueToken(),
+                        ]);
+                    }
+                });
+        });
     }
 
     public function down(): void

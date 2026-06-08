@@ -757,6 +757,7 @@
     "bank_inbound_disabled": "Príjem e-mailov z banky zatiaľ nie je na serveri zapnutý.",
     "bank_inbound_copy": "Kopírovať adresu",
     "bank_inbound_copied": "Adresa skopírovaná",
+    "bank_inbound_copy_failed": "Adresu sa nepodarilo skopírovať do schránky",
     "bank_inbound_length": "{current} / {max} znakov",
     "bank_auto_match_batch": "Spáruj podľa VS",
     "bank_no_transactions": "Žiadne bankové pohyby pre tento filter.",

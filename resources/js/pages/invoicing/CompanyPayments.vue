@@ -55,7 +55,9 @@
         <div class="mt-2 flex flex-wrap items-center gap-2">
           <code class="flex-1 min-w-0 p-2 bg-gray-100 rounded text-xs break-all">{{ inboundEmail }}</code>
           <button type="button" class="invoicing-btn-secondary text-xs shrink-0" @click="copyInboundEmail">
-            {{ inboundCopied ? t('invoicing.bank_inbound_copied') : t('invoicing.bank_inbound_copy') }}
+            <span aria-live="polite" aria-atomic="true">
+              {{ inboundCopied ? t('invoicing.bank_inbound_copied') : t('invoicing.bank_inbound_copy') }}
+            </span>
           </button>
         </div>
         <p v-if="inboundMaxLength" class="text-gray-500 text-xs mt-1">
@@ -179,6 +181,7 @@ import api from '../../services/api';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
+import { useFlashStore } from '../../store/flash';
 
 type BankTx = {
   id: string;
@@ -197,6 +200,7 @@ type BankTx = {
 const { t } = useI18n();
 const route = useRoute();
 const { rememberCompany } = useInvoicingLayout();
+const flashStore = useFlashStore();
 
 const companyId = computed(() => route.params.companyId as string);
 const companyName = ref('');
@@ -282,6 +286,7 @@ async function copyInboundEmail() {
     }, 2000);
   } catch (err) {
     console.error('Failed to copy b-mail address:', err);
+    flashStore.error(t('invoicing.bank_inbound_copy_failed'));
   }
 }
 
