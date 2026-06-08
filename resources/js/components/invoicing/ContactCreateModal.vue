@@ -34,7 +34,7 @@
       </nav>
 
       <form class="overflow-auto flex-1 p-5" @submit.prevent="save">
-        <ContactFormFields v-model="form" :active-tab="activeTab" />
+        <ContactFormFields v-model="form" :active-tab="activeTab" :company="company" />
 
         <p v-if="error" class="text-sm text-red-600 text-center mt-4">{{ error }}</p>
 
@@ -70,6 +70,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+const company = ref<Record<string, unknown> | null>(null);
 const form = ref<ContactFormState>(emptyContactForm());
 const activeTab = ref<'billing' | 'defaults'>('billing');
 const saving = ref(false);
@@ -92,10 +93,18 @@ function resetForm() {
   saving.value = false;
 }
 
+async function loadCompany() {
+  const res = await api.get(`/invoicing/companies/${props.companyId}`);
+  company.value = res.data.data;
+}
+
 watch(
   () => props.open,
   (isOpen) => {
-    if (isOpen) resetForm();
+    if (isOpen) {
+      resetForm();
+      void loadCompany();
+    }
   }
 );
 

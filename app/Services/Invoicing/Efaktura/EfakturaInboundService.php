@@ -1,0 +1,251 @@
+<?php
+
+namespace App\Services\Invoicing\Efaktura;
+
+use App\Enums\CompanyJurisdiction;
+use App\Models\AuditLog;
+use App\Models\BusinessExpense;
+use App\Models\Company;
+use App\Models\EfakturaInboundReceipt;
+use App\Services\Invoicing\BusinessExpenseService;
+use App\Support\Invoicing\CompanyEfakturaEligibility;
+use App\Support\Invoicing\CompanyEfakturaSettings;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
+class EfakturaInboundService
+{
+    public function __construct(
+        protected SapiSkClient $client,
+        protected UblExpenseDraftParser $parser,
+        protected BusinessExpenseService $expenseService,
+    ) {}
+
+    /**
+     * @return array{imported: int, acknowledged: int, skipped: int, failed: int}
+     */
+    public function pollAll(): array
+    {
+        $stats = ['imported' => 0, 'acknowledged' => 0, 'skipped' => 0, 'failed' => 0];
+
+        if (! config('efaktura.enabled')) {
+            return $stats;
+        }
+
+        $eligibility = app(CompanyEfakturaEligibility::class);
+
+        Company::query()
+            ->where('jurisdiction', CompanyJurisdiction::EuSk)
+            ->orderBy('id')
+            ->chunkById(50, function ($companies) use (&$stats, $eligibility) {
+                foreach ($companies as $company) {
+                    if (! $eligibility->supportsCompany($company)) {
+                        continue;
+                    }
+                    $companyStats = $this->pollCompany($company);
+                    foreach ($companyStats as $key => $value) {
+                        $stats[$key] += $value;
+                    }
+                }
+            });
+
+        return $stats;
+    }
+
+    /**
+     * @return array{imported: int, acknowledged: int, skipped: int, failed: int}
+     */
+    public function pollCompany(Company $company): array
+    {
+        $stats = ['imported' => 0, 'acknowledged' => 0, 'skipped' => 0, 'failed' => 0];
+        if (! app(CompanyEfakturaEligibility::class)->supportsCompany($company)) {
+            return $stats;
+        }
+
+        $settings = CompanyEfakturaSettings::fromCompany($company);
+
+        if (! $settings->inboundEnabled() || ! $settings->configured()) {
+            return $stats;
+        }
+
+        $participantId = (string) $settings->peppolParticipantId();
+
+        try {
+            $baseUrl = (string) $settings->sapiBaseUrl();
+            $token = $this->client->accessToken(
+                (string) $settings->sapiClientId(),
+                (string) $settings->sapiClientSecret(),
+                $baseUrl,
+            );
+
+            $listing = $this->client->listReceivedDocuments($token, $participantId, baseUrl: $baseUrl);
+            $documents = $listing['documents'] ?? $listing['items'] ?? [];
+
+            foreach ($documents as $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+
+                $externalId = (string) ($item['providerDocumentId'] ?? $item['documentId'] ?? $item['id'] ?? '');
+                if ($externalId === '') {
+                    $stats['failed']++;
+
+                    continue;
+                }
+
+                $existingReceipt = EfakturaInboundReceipt::query()
+                    ->where('company_id', $company->id)
+                    ->where('external_document_id', $externalId)
+                    ->first();
+
+                if ($existingReceipt !== null && $existingReceipt->acknowledged_at !== null) {
+                    $stats['skipped']++;
+
+                    continue;
+                }
+
+                if ($existingReceipt !== null) {
+                    try {
+                        $this->client->acknowledgeReceived($token, $participantId, $externalId, $baseUrl);
+                        $existingReceipt->update([
+                            'status' => 'acknowledged',
+                            'acknowledged_at' => now(),
+                        ]);
+                        $stats['acknowledged']++;
+                    } catch (\Throwable $e) {
+                        report($e);
+                        $stats['failed']++;
+                        Log::warning('efaktura inbound acknowledge retry failed', [
+                            'company_id' => $company->id,
+                            'external_document_id' => $externalId,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+
+                    continue;
+                }
+
+                try {
+                    $detail = $this->client->receivedDocument($token, $participantId, $externalId, $baseUrl);
+                    $ubl = (string) ($detail['payload'] ?? $detail['ubl'] ?? '');
+                    if ($ubl === '') {
+                        $stats['failed']++;
+
+                        continue;
+                    }
+
+                    $receipt = $this->importInboundDocument($company, $externalId, $ubl, $detail);
+
+                    $this->client->acknowledgeReceived($token, $participantId, $externalId, $baseUrl);
+                    $receipt->update([
+                        'status' => 'acknowledged',
+                        'acknowledged_at' => now(),
+                    ]);
+
+                    AuditLog::log('business_expense.efaktura_inbound_imported', 'business_expense', $receipt->business_expense_id, [
+                        'company_id' => $company->id,
+                        'external_document_id' => $externalId,
+                        'receipt_id' => $receipt->id,
+                    ]);
+
+                    $stats['imported']++;
+                    $stats['acknowledged']++;
+                } catch (\Throwable $e) {
+                    report($e);
+                    $stats['failed']++;
+                    Log::warning('efaktura inbound import failed', [
+                        'company_id' => $company->id,
+                        'external_document_id' => $externalId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        } catch (\Throwable $e) {
+            report($e);
+            $stats['failed']++;
+        }
+
+        $this->persistInboundPollMeta($company, $stats);
+
+        return $stats;
+    }
+
+    /**
+     * @param  array{imported: int, acknowledged: int, skipped: int, failed: int}  $stats
+     */
+    protected function persistInboundPollMeta(Company $company, array $stats): void
+    {
+        $current = is_array($company->app_settings) ? $company->app_settings : [];
+        $company->update([
+            'app_settings' => array_merge($current, [
+                'efaktura_inbound_last_poll_at' => now()->toIso8601String(),
+                'efaktura_inbound_last_poll_stats' => $stats,
+            ]),
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $detail
+     */
+    protected function importInboundDocument(Company $company, string $externalId, string $ubl, array $detail): EfakturaInboundReceipt
+    {
+        $attachment = null;
+
+        try {
+            return DB::transaction(function () use ($company, $externalId, $ubl, $detail, &$attachment) {
+                $draft = $this->parser->parse($ubl);
+                $expense = $this->expenseService->create($company, $draft);
+                $attachment = $this->storeUblAttachment($expense, $ubl, $externalId);
+
+                return EfakturaInboundReceipt::query()->create([
+                    'company_id' => $company->id,
+                    'external_document_id' => $externalId,
+                    'business_expense_id' => $expense->id,
+                    'status' => 'imported',
+                    'attachment_disk' => $attachment['disk'],
+                    'attachment_path' => $attachment['path'],
+                    'response_payload' => $detail,
+                ]);
+            });
+        } catch (\Throwable $e) {
+            if (is_array($attachment)) {
+                Storage::disk($attachment['disk'])->delete($attachment['path']);
+            }
+
+            throw $e;
+        }
+    }
+
+    /**
+     * @return array{disk: string, path: string}
+     */
+    protected function storeUblAttachment(BusinessExpense $expense, string $ubl, string $externalId): array
+    {
+        $disk = 'local';
+        $filename = 'efaktura-'.Str::slug($externalId).'.xml';
+        $path = "companies/{$expense->company_id}/expenses/{$expense->id}/{$filename}";
+
+        if (! Storage::disk($disk)->put($path, $ubl)) {
+            throw new \RuntimeException("Failed to store inbound UBL attachment at [{$path}].");
+        }
+
+        $expense->attachments()->create([
+            'disk' => $disk,
+            'path' => $path,
+            'original_filename' => $filename,
+            'mime' => 'application/xml',
+            'size_bytes' => strlen($ubl),
+        ]);
+
+        $expense->update([
+            'attachment_disk' => $disk,
+            'attachment_path' => $path,
+            'original_filename' => $filename,
+            'attachment_mime' => 'application/xml',
+        ]);
+
+        return ['disk' => $disk, 'path' => $path];
+    }
+}

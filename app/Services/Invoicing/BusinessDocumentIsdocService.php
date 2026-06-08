@@ -8,6 +8,7 @@ use Adawolfa\ISDOC\Manager;
 use Adawolfa\ISDOC\Schema\Invoice as IsdocInvoiceDocument;
 use App\Enums\BusinessDocumentType;
 use App\Enums\CompanyJurisdiction;
+use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\Company;
 use App\Models\CompanyContact;
@@ -140,7 +141,15 @@ class BusinessDocumentIsdocService
      */
     public function xml(BusinessDocument $document): string
     {
-        return Manager::create()->getWriter()->xml($this->build($document));
+        $xml = Manager::create()->getWriter()->xml($this->build($document));
+
+        AuditLog::log('business_document.isdoc_downloaded', 'business_document', $document->id, [
+            'company_id' => $document->company_id,
+            'number' => $document->number,
+            'format' => 'isdoc',
+        ]);
+
+        return $xml;
     }
 
     protected function documentType(BusinessDocument $document, bool $vatApplicable): int

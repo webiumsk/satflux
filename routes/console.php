@@ -53,3 +53,15 @@ Schedule::command('compliance:sync-sanctions-lists')
     ->dailyAt('04:30')
     ->withoutOverlapping()
     ->runInBackground();
+
+if (config('efaktura.enabled')) {
+    Schedule::command('efaktura:poll-inbound')
+        ->everyFifteenMinutes()
+        ->withoutOverlapping()
+        ->runInBackground();
+
+    Schedule::command('efaktura:sync-compliance-status')
+        ->everyThirtyMinutes()
+        ->withoutOverlapping()
+        ->runInBackground();
+}

@@ -96,9 +96,22 @@ class CompanyController extends Controller
         CompanyBrandingService $brandingService,
     ): JsonResponse {
         $incoming = $request->validatedSettings();
+        $eligibility = app(\App\Support\Invoicing\CompanyEfakturaEligibility::class);
+        if ($eligibility->efakturaSettingKeys($incoming) !== []) {
+            if (! $eligibility->supportsCompany($company)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'efaktura' => ['E-faktura settings are available only for full VAT payers.'],
+                ]);
+            }
+        }
         $current = CompanyAppSettings::from($company->app_settings)->toArray();
+        $merged = \App\Support\Invoicing\CompanyEfakturaSettings::mergeIncoming(
+            array_merge($current, $incoming),
+            $incoming,
+        );
+        unset($merged['efaktura_sapi_client_secret']);
         $company->update([
-            'app_settings' => array_merge($current, $incoming),
+            'app_settings' => $merged,
         ]);
 
         AuditLog::log('company.app_settings_updated', 'company', $company->id);

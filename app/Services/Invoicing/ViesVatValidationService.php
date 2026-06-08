@@ -39,7 +39,8 @@ class ViesVatValidationService
         try {
             $response = Http::timeout($this->timeout())
                 ->acceptJson()
-                ->get($this->endpoint(), [
+                ->asJson()
+                ->post($this->endpoint(), [
                     'countryCode' => $countryCode,
                     'vatNumber' => $number,
                 ]);

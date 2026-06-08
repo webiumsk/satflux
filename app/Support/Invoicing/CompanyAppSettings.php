@@ -36,6 +36,14 @@ final class CompanyAppSettings
         'show_line_suggester' => true,
         'show_summary_on_quotes' => true,
         'runs_eshop' => false,
+        'efaktura_enabled' => false,
+        'efaktura_auto_send' => false,
+        'efaktura_inbound_enabled' => false,
+        'efaktura_provider' => 'sapi_sk',
+        'efaktura_peppol_participant_id' => null,
+        'efaktura_sapi_base_url' => null,
+        'efaktura_sapi_client_id' => null,
+        'efaktura_sapi_client_secret_encrypted' => null,
     ];
 
     /**

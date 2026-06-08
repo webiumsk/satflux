@@ -19,6 +19,7 @@ export type CompanyContactRow = {
   phone?: string | null;
   fax?: string | null;
   tax_id?: string | null;
+  peppol_participant_id?: string | null;
   vat_id?: string | null;
   street?: string | null;
   city?: string | null;
@@ -47,6 +48,7 @@ export type ContactFormState = {
   phone: string;
   fax: string;
   tax_id: string;
+  peppol_participant_id: string;
   vat_id: string;
   street: string;
   city: string;
@@ -75,6 +77,7 @@ export function emptyContactForm(): ContactFormState {
     phone: '',
     fax: '',
     tax_id: '',
+    peppol_participant_id: '',
     vat_id: '',
     street: '',
     city: '',
@@ -113,6 +116,7 @@ export function contactToForm(c: CompanyContactRow): ContactFormState {
     phone: c.phone ?? '',
     fax: c.fax ?? '',
     tax_id: c.tax_id ?? '',
+    peppol_participant_id: c.peppol_participant_id ?? '',
     vat_id: c.vat_id ?? '',
     street: c.street ?? '',
     city: c.city ?? '',
@@ -150,6 +154,7 @@ export function formToPayload(form: ContactFormState, includeDelivery: boolean) 
     phone: form.phone || null,
     fax: form.fax || null,
     tax_id: form.tax_id || null,
+    peppol_participant_id: form.peppol_participant_id?.trim() || null,
     vat_id: form.vat_id || null,
     street: form.street || null,
     city: form.city || null,

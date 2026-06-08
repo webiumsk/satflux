@@ -15,6 +15,7 @@ class CompanyContact extends Model
         'company_id',
         'name',
         'registration_number',
+        'peppol_participant_id',
         'email',
         'phone',
         'fax',

@@ -45,7 +45,7 @@
     </nav>
 
     <form class="invoicing-card-pad" @submit.prevent="save">
-      <ContactFormFields v-model="form" :active-tab="activeTab" />
+      <ContactFormFields v-model="form" :active-tab="activeTab" :company="company" />
 
       <p class="text-center text-xs text-gray-500 mt-8">{{ t('invoicing.contact_changes_note') }}</p>
 
@@ -84,6 +84,7 @@ const contactId = computed(() => route.params.contactId as string | undefined);
 const isNew = computed(() => route.name === 'invoicing-contact-new');
 const { contactListTo, contactShowTo } = useContactRoutes(companyId);
 
+const company = ref<Record<string, unknown> | null>(null);
 const form = ref<ContactFormState>(emptyContactForm());
 const activeTab = ref<'billing' | 'defaults'>('billing');
 const saving = ref(false);
@@ -131,8 +132,13 @@ async function save() {
   }
 }
 
-onMounted(() => {
+async function loadCompany() {
+  const res = await api.get(`/invoicing/companies/${companyId.value}`);
+  company.value = res.data.data;
+}
+
+onMounted(async () => {
   rememberCompany(companyId.value);
-  loadContact();
+  await Promise.all([loadCompany(), loadContact()]);
 });
 </script>

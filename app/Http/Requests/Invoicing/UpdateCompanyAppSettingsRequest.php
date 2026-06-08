@@ -42,6 +42,14 @@ class UpdateCompanyAppSettingsRequest extends FormRequest
             'reverse_charge_note' => ['nullable', 'string', 'max:2000'],
             'us_sales_tax_provider' => ['sometimes', 'string', 'in:manual,stripe_tax,avalara'],
             'stripe_tax_secret_key' => ['nullable', 'string', 'max:255'],
+            'efaktura_enabled' => ['sometimes', 'boolean'],
+            'efaktura_auto_send' => ['sometimes', 'boolean'],
+            'efaktura_inbound_enabled' => ['sometimes', 'boolean'],
+            'efaktura_provider' => ['sometimes', 'string', 'in:sapi_sk'],
+            'efaktura_sapi_base_url' => ['nullable', 'string', 'url', 'max:255'],
+            'efaktura_peppol_participant_id' => ['nullable', 'string', 'max:64'],
+            'efaktura_sapi_client_id' => ['nullable', 'string', 'max:128'],
+            'efaktura_sapi_client_secret' => ['nullable', 'string', 'max:255'],
         ];
     }
 

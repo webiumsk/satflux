@@ -71,6 +71,18 @@
           <input v-if="!readonly" v-model="form.tax_id" type="text" class="invoicing-sf-input" />
           <p v-else class="contact-readonly-value">{{ form.tax_id || '—' }}</p>
         </div>
+        <div v-if="showSkEfakturaFields">
+          <label class="invoicing-sf-label">{{ t('invoicing.contact_peppol_participant_id') }}</label>
+          <input
+            v-if="!readonly"
+            v-model="form.peppol_participant_id"
+            type="text"
+            class="invoicing-sf-input font-mono text-sm"
+            :placeholder="t('invoicing.contact_peppol_participant_id_placeholder')"
+          />
+          <p v-else class="contact-readonly-value font-mono text-sm">{{ form.peppol_participant_id || '—' }}</p>
+          <p v-if="!readonly" class="text-xs text-gray-500 mt-1">{{ t('invoicing.contact_peppol_participant_id_hint') }}</p>
+        </div>
         <div>
           <label class="invoicing-sf-label">{{ t('invoicing.vat_id') }}</label>
           <div v-if="!readonly" class="flex gap-2 items-start">
@@ -85,6 +97,7 @@
             </button>
           </div>
           <p v-else class="contact-readonly-value">{{ form.vat_id || '—' }}</p>
+          <p v-if="!readonly" class="text-xs text-gray-500 mt-1">{{ t('invoicing.vat_number_hint') }}</p>
           <p v-if="!readonly && viesFeedback" class="text-xs mt-1" :class="viesFeedbackClass">{{ viesFeedback }}</p>
         </div>
       </div>
@@ -254,11 +267,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { ContactFormState } from '../../composables/useCompanyContact';
 import RegistryLookupField from './RegistryLookupField.vue';
 import { useCompanyRegistryLookup, type RegistrySummary } from '../../composables/useCompanyRegistryLookup';
+import { isCompanyEfakturaEligible } from '../../composables/useCompanyEfakturaSettings';
+import { useEfakturaFeature } from '../../composables/useEfakturaFeature';
+import type { VatPolicyCompany } from '../../composables/useCompanyVatPolicy';
 import { useViesValidation } from '../../composables/useViesValidation';
 
 const { t } = useI18n();
@@ -295,13 +311,28 @@ const props = withDefaults(
   defineProps<{
     readonly?: boolean;
     activeTab?: 'billing' | 'defaults';
+    company?: VatPolicyCompany | Record<string, unknown> | null;
   }>(),
-  { readonly: false, activeTab: 'billing' }
+  { readonly: false, activeTab: 'billing', company: null }
 );
 
 const showUsAddressFields = computed(() => {
   const c = (form.value.country || '').toUpperCase();
   return c === 'US' || c === 'USA' || c.includes('UNITED STATES') || registryCountry.value === 'us';
+});
+
+const { enabled: efakturaGloballyEnabled, load: loadEfakturaFeature } = useEfakturaFeature();
+
+const showSkEfakturaFields = computed(() => {
+  if (!isCompanyEfakturaEligible(props.company, efakturaGloballyEnabled.value)) {
+    return false;
+  }
+  const c = (form.value.country || '').trim().toUpperCase();
+  return c === 'SK' || c === 'SVK' || c.includes('SLOV') || registryCountry.value === 'sk';
+});
+
+onMounted(() => {
+  void loadEfakturaFeature();
 });
 
 const showDelivery = ref(

@@ -28,6 +28,16 @@
       >
         {{ t('invoicing.tab_logo_signature') }}
       </button>
+      <button
+        v-if="showEfakturaTab"
+        type="button"
+        role="tab"
+        class="invoicing-tab"
+        :class="{ 'invoicing-tab--active': activeTab === 'efaktura' }"
+        @click="activeTab = 'efaktura'"
+      >
+        {{ t('invoicing.tab_efaktura') }}
+      </button>
     </nav>
 
     <!-- Kontaktné a fakturačné údaje -->
@@ -186,6 +196,7 @@
                   {{ viesLoading ? t('invoicing.vies_checking') : t('invoicing.vies_validate') }}
                 </button>
               </div>
+              <p class="text-xs text-gray-500 mt-1">{{ t('invoicing.vat_number_hint') }}</p>
               <p v-if="viesFeedback" class="text-xs mt-1" :class="viesFeedbackClass">{{ viesFeedback }}</p>
             </div>
             <fieldset class="space-y-2">
@@ -262,6 +273,14 @@
         <p class="text-xs text-gray-500 mt-2">{{ t('invoicing.profile_save_note') }}</p>
       </div>
     </form>
+
+    <CompanyEfakturaSettingsForm
+      v-if="showEfakturaTab"
+      v-show="activeTab === 'efaktura'"
+      :company-id="companyId"
+      :company="company"
+      @updated="(c) => emit('updated', c)"
+    />
 
     <!-- Logo a podpis -->
     <div v-show="activeTab === 'branding'" class="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -379,6 +398,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import api from '../../services/api';
+import CompanyEfakturaSettingsForm from './CompanyEfakturaSettingsForm.vue';
 import InvoicingJurisdictionSelect from './InvoicingJurisdictionSelect.vue';
 import RegistryLookupField from './RegistryLookupField.vue';
 import {
@@ -393,6 +413,8 @@ import {
   syncCompanyDefaultCurrency,
 } from '../../config/companyCurrencies';
 import { defaultRegistryForJurisdiction } from '../../config/registryCountries';
+import { useEfakturaFeature } from '../../composables/useEfakturaFeature';
+import { isCompanyEfakturaEligible } from '../../composables/useCompanyEfakturaSettings';
 import {
   useCompanyRegistryLookup,
   type CompanyRegistryFormState,
@@ -414,7 +436,7 @@ const { t, te } = useI18n();
 const router = useRouter();
 const storesStore = useStoresStore();
 
-const activeTab = ref<'contact' | 'bank' | 'branding'>('contact');
+const activeTab = ref<'contact' | 'bank' | 'branding' | 'efaktura'>('contact');
 const linkedStoreId = ref('');
 const savedLinkedStoreId = ref('');
 const userStores = computed(() => storesStore.stores);
@@ -486,7 +508,17 @@ const resetConfirmMatches = computed(() => {
 });
 
 const isUs = computed(() => isUsJurisdiction(contactForm.jurisdiction));
+const { enabled: efakturaGloballyEnabled, load: loadEfakturaFeature } = useEfakturaFeature();
+const showEfakturaTab = computed(() =>
+  isCompanyEfakturaEligible(props.company, efakturaGloballyEnabled.value)
+);
 const countryOptions = computed(() => countriesForJurisdiction(contactForm.jurisdiction));
+
+watch(showEfakturaTab, (visible) => {
+  if (!visible && activeTab.value === 'efaktura') {
+    activeTab.value = 'contact';
+  }
+});
 
 function countryLabel(code: string): string {
   const key = `invoicing.country_${code.toLowerCase()}`;
@@ -725,6 +757,7 @@ async function saveContact() {
 }
 
 onMounted(async () => {
+  await loadEfakturaFeature();
   if (!storesStore.stores.length) {
     await storesStore.fetchStores();
   }

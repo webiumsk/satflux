@@ -14,7 +14,7 @@ function normalizeCountry(country: string | null | undefined): string {
   return (country || '').trim().slice(0, 2).toUpperCase();
 }
 
-function vatStatus(company: VatPolicyCompany): 'none' | 'payer' | 'partial' {
+export function resolveCompanyVatStatus(company: VatPolicyCompany): 'none' | 'payer' | 'partial' {
   const status = company?.vat_status;
   if (status === 'payer' || status === 'partial') {
     return status;
@@ -25,13 +25,17 @@ function vatStatus(company: VatPolicyCompany): 'none' | 'payer' | 'partial' {
   return company?.vat_payer ? 'payer' : 'none';
 }
 
+export function isFullVatPayer(company: VatPolicyCompany): boolean {
+  return resolveCompanyVatStatus(company) === 'payer';
+}
+
 export function useCompanyVatPolicy() {
   function isPartialPayer(company: VatPolicyCompany): boolean {
-    return vatStatus(company) === 'partial';
+    return resolveCompanyVatStatus(company) === 'partial';
   }
 
   function isFullPayer(company: VatPolicyCompany): boolean {
-    return vatStatus(company) === 'payer';
+    return isFullVatPayer(company);
   }
 
   function isDomesticSupply(company: VatPolicyCompany, contact: VatPolicyContact): boolean {

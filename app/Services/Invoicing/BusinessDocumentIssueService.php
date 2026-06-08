@@ -7,6 +7,7 @@ use App\Enums\BusinessDocumentStatus;
 use App\Enums\BusinessDocumentType;
 use App\Models\AuditLog;
 use App\Models\BusinessDocument;
+use App\Services\Invoicing\Efaktura\ComplianceSubmissionService;
 use App\Support\Invoicing\BuyerSnapshot;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -17,6 +18,7 @@ class BusinessDocumentIssueService
         protected DocumentSequenceService $sequenceService,
         protected BusinessDocumentPaymentTokenService $paymentTokenService,
         protected BusinessDocumentBtcPayService $btcPayService,
+        protected ComplianceSubmissionService $complianceSubmissionService,
     ) {}
 
     public function issue(BusinessDocument $document): BusinessDocument
@@ -29,7 +31,7 @@ class BusinessDocumentIssueService
 
         $document->load(['company', 'lines', 'store', 'contact']);
 
-        return DB::transaction(function () use ($document) {
+        $issued = DB::transaction(function () use ($document) {
             $number = $this->sequenceService->nextNumber(
                 $document->company,
                 $document->type->value
@@ -70,5 +72,9 @@ class BusinessDocumentIssueService
 
             return $document->fresh(['lines', 'contact', 'store', 'company']);
         });
+
+        $this->complianceSubmissionService->queueIfEligible($issued);
+
+        return $issued;
     }
 }
