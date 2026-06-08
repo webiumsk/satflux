@@ -196,6 +196,7 @@
                   {{ viesLoading ? t('invoicing.vies_checking') : t('invoicing.vies_validate') }}
                 </button>
               </div>
+              <p class="text-xs text-gray-500 mt-1">{{ t('invoicing.vat_number_hint') }}</p>
               <p v-if="viesFeedback" class="text-xs mt-1" :class="viesFeedbackClass">{{ viesFeedback }}</p>
             </div>
             <fieldset class="space-y-2">

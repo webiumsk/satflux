@@ -1813,7 +1813,7 @@
     "point_of_sale": "Punto de venta",
     "point_of_sale_description": "Teclados PoS personalizables para retail o uso móvil.",
     "invoicing": "Facturación",
-    "invoicing_description": "Crea, sigue y exporta facturas de forma segura.",
+    "invoicing_description": "Facturas, export ISDOC/UBL y preparación para e-factura SK - en una app con BTCPay.",
     "invoicing_section": {
       "kicker": "Función Pro",
       "title": "Facturación empresarial para comerciantes",
@@ -1822,6 +1822,7 @@
       "bullets": {
         "companies": "Perfiles de empresa para jurisdicciones UE (SK/CZ) y EE. UU.",
         "pay_by_square": "QR Pay by Square en PDF de facturas (SK/CZ)",
+        "structured_invoicing": "ISDOC, export UBL Peppol y e-factura SK vía su operador postal digital (SAPI-SK)",
         "btc_pay_link": "Enlace de pago Bitcoin estable y QR en cada factura emitida",
         "bank_matching": "Importación de extractos y conciliación por símbolo variable",
         "expenses": "Gastos de proveedores con adjuntos y duplicados",
@@ -1829,8 +1830,8 @@
       },
       "pro_note": "Incluido en Pro (prueba de 30 días). La aceptación de pagos BTCPay sigue funcionando aunque Pro expire.",
       "positioning_title": "Un solo stack, no tres herramientas",
-      "positioning_text": "Satflux combina herramientas merchant BTCPay con facturación de nivel contable. No necesitas una app de pagos, una herramienta local de e-factura y scripts de exportación por separado.",
-      "positioning_bullet_1": "Comerciantes UE: campos SK/CZ, símbolo variable, Pay by Square.",
+      "positioning_text": "Satflux combina herramientas merchant BTCPay con facturación de nivel contable. No necesita una app de pagos, otro SaaS de facturación y scripts de exportación - Satflux no es operador postal, pero prepara UBL y lo envía a través de su CPDS.",
+      "positioning_bullet_1": "Comerciantes UE: campos SK/CZ, símbolo variable, Pay by Square, comprobación VIES, e-factura desde 2027.",
       "positioning_bullet_2": "LLC estadounidense: perfil US y líneas estilo sales tax.",
       "positioning_bullet_3": "Checkout Bitcoin opcional en cada factura emitida.",
       "cta": "Ver precios Pro",
@@ -1854,7 +1855,7 @@
           "btc_ln_checkout": "Checkout Bitcoin / Lightning",
           "pay_by_square": "Pay by Square en PDF",
           "sk_cz_compliance": "Campos factura SK/CZ y VS",
-          "isdoc_efaktura": "ISDOC / e-factura",
+          "isdoc_efaktura": "ISDOC / UBL Peppol / e-factura SK",
           "bank_matching": "Conciliación bancaria",
           "expenses": "Módulo de gastos",
           "recurring": "Facturas recurrentes",
@@ -1864,8 +1865,8 @@
         },
         "notes": {
           "pay_by_square": "Estándar QR bancario SK/CZ",
-          "sk_cz_compliance": "Satflux: PDF SK/CZ sólido; e-factura completa en roadmap",
-          "isdoc_efaktura": "En roadmap; SaaS UE a menudo nativo"
+          "sk_cz_compliance": "Satflux: PDF SK/CZ, VS, VIES; SaaS UE a menudo más reporting local",
+          "isdoc_efaktura": "Satflux: export ISDOC + UBL, SAPI-SK con CPDS propio; SaaS UE a menudo con operador integrado"
         }
       }
     },
@@ -2114,7 +2115,7 @@
       "tickets_3": "3 eventos (Entradas)",
       "tickets_unlimited": "Eventos ilimitados (Entradas)",
       "stripe": "Pagos Stripe",
-      "business_invoicing": "Facturación empresarial (PDF, Pay by Square, Bitcoin)",
+      "business_invoicing": "Facturación empresarial (PDF, ISDOC/UBL, e-factura SK, Pay by Square, Bitcoin)",
       "invoicing_expenses": "Gastos, adjuntos e importación ISDOC masiva",
       "invoicing_bank_payments": "Conciliación de pagos bancarios con facturas",
       "invoicing_contacts_import": "Importación de contactos desde Excel",
@@ -2124,9 +2125,11 @@
   },
   "invoicing": {
     "title": "Facturación empresarial",
-    "subtitle": "Perfiles de empresa, contactos y facturas con QR bancario y pagos Bitcoin.",
+    "subtitle": "Perfiles de empresa, contactos y facturas con QR bancario, export ISDOC/UBL y e-factura SK opcional vía su CPDS.",
     "add_company": "Añadir empresa",
     "pro_required": "La facturación empresarial está disponible en el plan Pro.",
+    "pro_required_detail": "Pro incluye facturas SK/CZ, comprobación de IVA en VIES, export ISDOC y UBL Peppol, conciliación bancaria y conexión con su operador postal digital (SAPI-SK).",
+    "vat_number_hint": "Formato p. ej. SK2023980035. Verifique con un clic en VIES (registro UE de IVA).",
     "company_limit_reached": "Ha alcanzado el límite de {max} empresas en su plan. Contacte para Enterprise (ilimitado).",
     "upgrade_cta": "Ver planes Pro",
     "no_companies": "Aún no tiene un perfil de empresa.",

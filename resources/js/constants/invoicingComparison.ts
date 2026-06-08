@@ -89,6 +89,7 @@ export const INVOICING_COMPARE_ROWS: InvoicingCompareRow[] = [
 export const INVOICING_FEATURE_BULLETS = [
   'landing.invoicing_section.bullets.companies',
   'landing.invoicing_section.bullets.pay_by_square',
+  'landing.invoicing_section.bullets.structured_invoicing',
   'landing.invoicing_section.bullets.btc_pay_link',
   'landing.invoicing_section.bullets.bank_matching',
   'landing.invoicing_section.bullets.expenses',

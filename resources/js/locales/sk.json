@@ -44,7 +44,7 @@
       "tickets_3": "3 eventy (Lístky)",
       "tickets_unlimited": "Neobmedzené eventy (Lístky)",
       "stripe": "Stripe platby",
-      "business_invoicing": "Firemná fakturácia (PDF, Pay by Square, Bitcoin)",
+      "business_invoicing": "Firemná fakturácia (PDF, ISDOC/UBL, SK e-faktúra, Pay by Square, Bitcoin)",
       "invoicing_expenses": "Náklady, prílohy a hromadný ISDOC import",
       "invoicing_bank_payments": "Párovanie bankových platieb s faktúrami",
       "invoicing_contacts_import": "Import kontaktov z Excelu",
@@ -54,9 +54,11 @@
   },
   "invoicing": {
     "title": "Firemná fakturácia",
-    "subtitle": "Firemný profil, kontakty a faktúry s bankovým QR a platbou Bitcoin.",
+    "subtitle": "Firemný profil, kontakty a faktúry s bankovým QR, ISDOC/UBL exportom a voliteľnou SK e-faktúrou cez váš CPDS.",
     "add_company": "Pridať firmu",
     "pro_required": "Firemná fakturácia je dostupná v pláne Pro.",
+    "pro_required_detail": "V Pro získate SK/CZ faktúry, overenie IČ DPH vo VIES, ISDOC a Peppol UBL export, párovanie platieb a prepojenie s vlastným digitálnym poštárom (SAPI-SK).",
+    "vat_number_hint": "Formát napr. SK2023980035. Overte jedným klikom vo VIES (EÚ register platiteľov DPH).",
     "company_limit_reached": "Dosiahli ste limit {max} firiem v pláne Pro. Pre viac firiem kontaktujte nás (Enterprise).",
     "upgrade_cta": "Zobraziť plány Pro",
     "no_companies": "Zatiaľ nemáte firemný profil.",
@@ -2583,7 +2585,7 @@
     "point_of_sale": "Platobný terminál",
     "point_of_sale_description": "Prispôsobiteľné PoS klávesnice pre maloobchod alebo mobilný predaj.",
     "invoicing": "Fakturácia",
-    "invoicing_description": "Vytvárajte, sledujte a exportujte faktúry bezpečne.",
+    "invoicing_description": "Faktúry, ISDOC/UBL export a príprava na SK e-faktúru - v jednej aplikácii s BTCPay.",
     "invoicing_section": {
       "kicker": "Pro funkcia",
       "title": "Firemná fakturácia pre obchodníkov",
@@ -2592,6 +2594,7 @@
       "bullets": {
         "companies": "Firemné profily pre EÚ (SK/CZ) a US jurisdikcie",
         "pay_by_square": "Pay by Square QR na PDF faktúrach (SK/CZ)",
+        "structured_invoicing": "ISDOC, Peppol UBL export a SK e-faktúra cez váš digitálny poštár (SAPI-SK)",
         "btc_pay_link": "Stabilný Bitcoin pay link a QR na každej vystavenej faktúre",
         "bank_matching": "Import bankových výpisov a párovanie podľa variabilného symbolu",
         "expenses": "Náklady dodávateľov s prílohami a duplikátmi",
@@ -2599,8 +2602,8 @@
       },
       "pro_note": "Súčasť Pro (30-dňová skúšobná doba). Prijímanie platieb cez BTCPay funguje aj po expirácii Pro.",
       "positioning_title": "Jeden stack, nie tri nástroje",
-      "positioning_text": "Satflux spája BTCPay merchant nástroje s účtovnou fakturáciou. Nepotrebujete samostatnú platobnú appku, lokálnu e-fakturáciu a exportné skripty.",
-      "positioning_bullet_1": "EÚ obchodníci: SK/CZ polia, variabilný symbol, Pay by Square.",
+      "positioning_text": "Satflux spája BTCPay merchant nástroje s účtovnou fakturáciou. Nepotrebujete samostatnú platobnú appku, ďalší fakturačný SaaS a exportné skripty - Satflux nie je digitálny poštár, ale pripraví UBL a odošle ho cez váš CPDS.",
+      "positioning_bullet_1": "EÚ obchodníci: SK/CZ polia, VS, Pay by Square, overenie IČ DPH vo VIES, e-faktúra od 2027.",
       "positioning_bullet_2": "US LLC: americký firemný profil a položky v štýle sales tax.",
       "positioning_bullet_3": "Voliteľný Bitcoin checkout na každej vystavenej faktúre.",
       "cta": "Pozrieť Pro cenník",
@@ -2624,7 +2627,7 @@
           "btc_ln_checkout": "Bitcoin / Lightning checkout",
           "pay_by_square": "Pay by Square na PDF faktúre",
           "sk_cz_compliance": "SK/CZ polia faktúry a VS",
-          "isdoc_efaktura": "ISDOC / e-fakturácia",
+          "isdoc_efaktura": "ISDOC / Peppol UBL / SK e-faktúra",
           "bank_matching": "Párovanie bankových platieb",
           "expenses": "Modul nákladov",
           "recurring": "Pravidelné faktúry",
@@ -2634,8 +2637,8 @@
         },
         "notes": {
           "pay_by_square": "SK/CZ štandard bankového QR",
-          "sk_cz_compliance": "Satflux: silné SK/CZ PDF; plná e-fakturácia v pláne",
-          "isdoc_efaktura": "V pláne; EÚ SaaS často natívne"
+          "sk_cz_compliance": "Satflux: SK/CZ PDF, VS, VIES; EÚ SaaS často širšie lokálne reporty",
+          "isdoc_efaktura": "Satflux: ISDOC + UBL export, SAPI-SK s vlastným CPDS; EÚ SaaS často s integrovaným poštárom"
         }
       }
     },

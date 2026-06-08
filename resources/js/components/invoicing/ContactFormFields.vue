@@ -85,6 +85,7 @@
             </button>
           </div>
           <p v-else class="contact-readonly-value">{{ form.vat_id || '—' }}</p>
+          <p v-if="!readonly" class="text-xs text-gray-500 mt-1">{{ t('invoicing.vat_number_hint') }}</p>
           <p v-if="!readonly && viesFeedback" class="text-xs mt-1" :class="viesFeedbackClass">{{ viesFeedback }}</p>
         </div>
       </div>

@@ -19,6 +19,7 @@
 
     <div v-if="!canUse" class="invoicing-alert-warn">
       <p class="font-medium">{{ t('invoicing.pro_required') }}</p>
+      <p class="text-sm mt-2 opacity-90">{{ t('invoicing.pro_required_detail') }}</p>
       <button type="button" class="invoicing-link mt-3" @click="showUpgrade = true">
         {{ t('invoicing.upgrade_cta') }}
       </button>
