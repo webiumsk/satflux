@@ -67,12 +67,13 @@ class SubscriptionService
             }
 
             $existingSubscription = Subscription::where('user_id', $lockedUser->id)
+                ->where('plan_id', $plan->id)
                 ->whereIn('status', ['active', 'grace'])
                 ->orderBy('expires_at', 'desc')
                 ->lockForUpdate()
                 ->first();
 
-            if ($existingSubscription && $existingSubscription->plan->name === $planName) {
+            if ($existingSubscription) {
                 if ($existingSubscription->isTrial()) {
                     $existingSubscription->convertToPaidYear();
                 } else {
@@ -139,12 +140,22 @@ class SubscriptionService
             }
 
             $existingSubscription = Subscription::where('user_id', $lockedUser->id)
+                ->where('plan_id', $plan->id)
                 ->whereIn('status', ['active', 'grace'])
                 ->orderBy('expires_at', 'desc')
                 ->lockForUpdate()
                 ->first();
 
-            if ($existingSubscription && $existingSubscription->plan->name === $planName) {
+            if ($existingSubscription) {
+                if (! $existingSubscription->isTrial()) {
+                    if ($btcpaySubscriptionId && ! $existingSubscription->btcpay_subscription_id) {
+                        $existingSubscription->btcpay_subscription_id = $btcpaySubscriptionId;
+                        $existingSubscription->save();
+                    }
+
+                    return $existingSubscription->fresh();
+                }
+
                 $existingSubscription->fill([
                     'status' => 'active',
                     'billing_phase' => Subscription::BILLING_TRIAL,

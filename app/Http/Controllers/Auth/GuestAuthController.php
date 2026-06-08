@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Services\Compliance\ComplianceGate;
 use App\Services\GuestProvisioningService;
 use App\Services\GuestRecoveryService;
 use Illuminate\Http\Request;
@@ -15,7 +16,8 @@ class GuestAuthController extends Controller
 {
     public function __construct(
         protected GuestProvisioningService $guestProvisioningService,
-        protected GuestRecoveryService $guestRecoveryService
+        protected GuestRecoveryService $guestRecoveryService,
+        protected ComplianceGate $complianceGate,
     ) {}
 
     /**
@@ -49,7 +51,10 @@ class GuestAuthController extends Controller
         }
 
         try {
-            [$user, $store] = $this->guestProvisioningService->provisionGuest($recoveryPkHex);
+            $guestEmail = $this->guestProvisioningService->generateGuestEmail();
+            $this->complianceGate->assertRegistrationAllowed($request, $guestEmail, 'Guest');
+
+            [$user, $store] = $this->guestProvisioningService->provisionGuest($recoveryPkHex, $guestEmail);
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Throwable $e) {
@@ -73,6 +78,8 @@ class GuestAuthController extends Controller
         }
 
         Auth::login($user);
+        $this->complianceGate->linkLatestRegistrationScreening($user->email, $user);
+
         if ($request->hasSession()) {
             $request->session()->regenerate();
         }

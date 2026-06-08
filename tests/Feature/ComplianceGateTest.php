@@ -52,6 +52,28 @@ class ComplianceGateTest extends TestCase
         ]);
     }
 
+    public function test_guest_registration_blocked_for_sanctioned_country_before_user_creation(): void
+    {
+        config(['compliance.geo_country_override' => 'IR']);
+
+        $response = $this->postJson('/api/auth/guest');
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['email']);
+
+        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseHas('compliance_screenings', [
+            'user_id' => null,
+            'country_code' => 'IR',
+            'geo_blocked' => true,
+            'decision' => 'blocked',
+            'decision_reason' => 'geo_blocked_country',
+        ]);
+
+        $screening = ComplianceScreening::first();
+        $this->assertStringStartsWith('guest+', $screening->subject_email);
+    }
+
     public function test_register_allowed_for_permitted_country(): void
     {
         config(['compliance.geo_country_override' => 'SK']);
