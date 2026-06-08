@@ -4,12 +4,12 @@ namespace Tests\Feature;
 
 use App\Enums\BusinessDocumentStatus;
 use App\Enums\BusinessDocumentType;
+use App\Enums\CompanyJurisdiction;
 use App\Enums\ComplianceProvider;
 use App\Enums\ComplianceSubmissionStatus;
 use App\Models\BusinessDocument;
 use App\Models\BusinessDocumentCompliance;
 use App\Models\BusinessDocumentLine;
-use App\Enums\CompanyJurisdiction;
 use App\Models\Company;
 use App\Models\CompanyContact;
 use App\Models\Subscription;

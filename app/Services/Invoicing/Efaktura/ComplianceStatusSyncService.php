@@ -154,5 +154,4 @@ class ComplianceStatusSyncService
             return null;
         }
     }
-
 }
