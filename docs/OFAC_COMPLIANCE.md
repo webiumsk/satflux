@@ -27,6 +27,7 @@ All paths must call the same screening service before `User` creation or before 
 | Email + password | `RegisterController` -> `RegistrationService` |
 | LNURL-auth (new user) | `LnurlAuthController` |
 | Nostr (new user) | `NostrAuthController` |
+| Guest session (new user) | `GuestAuthController` -> `ComplianceGate` + `GuestProvisioningService` |
 | Guest upgrade to full account | `AccountController` (if applicable) |
 
 ## Architecture
