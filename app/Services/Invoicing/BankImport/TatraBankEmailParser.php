@@ -2,8 +2,8 @@
 
 namespace App\Services\Invoicing\BankImport;
 
-use App\Enums\BankTransactionDirection;
 use App\Support\Invoicing\BankSymbolNormalizer;
+use App\Support\Invoicing\BankTransactionDirectionGuesser;
 use App\Support\Invoicing\ParsedBankTransaction;
 use Carbon\Carbon;
 
@@ -31,9 +31,11 @@ class TatraBankEmailParser implements BankNotificationParser
             return [];
         }
 
-        $direction = $amount >= 0
-            ? BankTransactionDirection::Credit
-            : BankTransactionDirection::Debit;
+        $direction = app(BankTransactionDirectionGuesser::class)->fromAmountAndHints(
+            $amount,
+            $subject,
+            $text,
+        );
 
         $vs = null;
         if (preg_match('/(?:VS|variabiln[ýy]\s*symbol)[:\s]*(\d+)/iu', $text, $m)) {
@@ -58,9 +60,23 @@ class TatraBankEmailParser implements BankNotificationParser
                 direction: $direction,
                 variableSymbol: $vs,
                 counterpartyName: $counterparty,
-                reference: trim($subject) !== '' ? trim($subject) : null,
+                reference: $this->buildReference($subject, $text),
             ),
         ];
+    }
+
+    protected function buildReference(string $subject, string $text): ?string
+    {
+        $subject = trim($subject);
+        if ($subject !== '') {
+            return $subject;
+        }
+
+        if (preg_match('/((?:debet|obrat|kredit)[^.]{0,120})/iu', $text, $m)) {
+            return trim($m[1]);
+        }
+
+        return null;
     }
 
     protected function matchAmount(string $text): ?float

@@ -31,7 +31,7 @@ class BankTransactionExpenseService
             ]);
         }
 
-        if ($transaction->direction !== BankTransactionDirection::Debit) {
+        if ($transaction->resolvedDirection() !== BankTransactionDirection::Debit) {
             throw ValidationException::withMessages([
                 'direction' => ['Expenses can only be created from outgoing bank movements.'],
             ]);

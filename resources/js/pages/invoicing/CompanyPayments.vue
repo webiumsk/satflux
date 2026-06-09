@@ -4,6 +4,7 @@
       <InvoicingAppHeader :show-filter-bar="activeTab === 'transactions' && hasBankAccount">
         <template #filters>
           <select v-model="matchFilter" class="invoicing-sf-input max-w-[180px]" @change="load">
+            <option value="all">{{ t('invoicing.bank_filter_all') }}</option>
             <option value="unmatched">{{ t('invoicing.bank_filter_unmatched') }}</option>
             <option value="matched">{{ t('invoicing.bank_filter_matched') }}</option>
             <option value="ignored">{{ t('invoicing.bank_filter_ignored') }}</option>
@@ -101,12 +102,13 @@
 
       <div v-else>
         <div v-if="loading" class="invoicing-muted py-8">{{ t('common.loading') }}</div>
-        <div v-else-if="transactions.length === 0" class="invoicing-card-pad text-center text-gray-600">
-          {{ t('invoicing.bank_no_transactions') }}
-        </div>
-        <div v-else class="invoicing-card overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm bank-movements-table">
+        <template v-else>
+          <div v-if="transactions.length === 0" class="invoicing-card-pad text-center text-gray-600 mb-6">
+            {{ t('invoicing.bank_no_transactions') }}
+          </div>
+          <div v-else class="invoicing-card overflow-hidden mb-6">
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm bank-movements-table">
               <thead class="bg-gray-50 border-b text-gray-600 text-xs uppercase tracking-wide">
                 <tr>
                   <th class="w-3 p-0"></th>
@@ -126,8 +128,8 @@
                 >
                   <td class="relative w-3 p-0 align-stretch">
                     <span
-                      class="bank-movement-corner"
-                      :class="tx.direction === 'credit' ? 'bank-movement-corner--credit' : 'bank-movement-corner--debit'"
+                      class="status-corner"
+                      :class="pairingCornerClass(tx)"
                     ></span>
                   </td>
                   <td class="p-3 whitespace-nowrap">
@@ -202,6 +204,52 @@
             </table>
           </div>
         </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="invoicing-card-pad">
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              {{ t('invoicing.legend_title') }}
+            </h3>
+            <ul class="space-y-2 text-sm text-gray-700">
+              <li v-for="item in legendItems" :key="item.kind" class="flex items-center gap-3">
+                <span class="status-corner shrink-0 static" :class="`status-corner--${item.kind}`"></span>
+                <span>{{ item.label }}</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="invoicing-card-pad">
+            <h3 v-if="bankAccountLabel" class="text-sm font-semibold text-gray-800 mb-3">
+              {{ bankAccountLabel }}
+            </h3>
+            <dl class="space-y-2 text-sm">
+              <div class="flex justify-between gap-4">
+                <dt class="text-gray-600">{{ t('invoicing.bank_summary_credit') }}</dt>
+                <dd class="text-emerald-700 font-medium tabular-nums text-right">
+                  {{ summary.credit_count }}
+                  ({{ formatSummaryAmount(summary.credit_total) }})
+                </dd>
+              </div>
+              <div class="flex justify-between gap-4">
+                <dt class="text-gray-600">{{ t('invoicing.bank_summary_debit') }}</dt>
+                <dd class="text-red-600 font-medium tabular-nums text-right">
+                  {{ summary.debit_count }}
+                  ({{ formatSummaryAmount(summary.debit_total, true) }})
+                </dd>
+              </div>
+              <div class="flex justify-between gap-4 border-t pt-2">
+                <dt class="text-gray-800 font-medium">{{ t('invoicing.bank_summary_balance') }}</dt>
+                <dd
+                  class="font-semibold tabular-nums text-right"
+                  :class="parseFloat(summary.balance) >= 0 ? 'text-emerald-700' : 'text-red-600'"
+                >
+                  {{ formatSummaryAmount(summary.balance, parseFloat(summary.balance) < 0) }}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+        </template>
       </div>
     </template>
 
@@ -283,13 +331,13 @@ type BankTx = {
 const { t } = useI18n();
 const route = useRoute();
 const { rememberCompany } = useInvoicingLayout();
-const { hasBankAccount, summaryLoaded } = useInvoicingCompanySummary();
+const { hasBankAccount, summaryLoaded, bankAccountLabel, defaultCurrency } = useInvoicingCompanySummary();
 const flashStore = useFlashStore();
 
 const companyId = computed(() => route.params.companyId as string);
 const loading = ref(true);
 const transactions = ref<BankTx[]>([]);
-const matchFilter = ref('unmatched');
+const matchFilter = ref('all');
 const activeTab = ref<'transactions' | 'import'>('transactions');
 const importFile = ref<File | null>(null);
 const importFormat = ref('');
@@ -319,6 +367,33 @@ const expenseDraft = ref<BankExpenseDraft>({
   issue_date: '',
 });
 
+type BankSummary = {
+  credit_count: number;
+  credit_total: string;
+  debit_count: number;
+  debit_total: string;
+  balance: string;
+  currency: string;
+};
+
+const emptySummary = (): BankSummary => ({
+  credit_count: 0,
+  credit_total: '0.00',
+  debit_count: 0,
+  debit_total: '0.00',
+  balance: '0.00',
+  currency: defaultCurrency.value,
+});
+
+const summary = ref<BankSummary>(emptySummary());
+
+const legendItems = computed(() => [
+  { kind: 'matched', label: t('invoicing.bank_legend_with_document') },
+  { kind: 'unmatched', label: t('invoicing.bank_legend_without_document') },
+  { kind: 'ignored', label: t('invoicing.bank_legend_do_not_pair') },
+  { kind: 'duplicate', label: t('invoicing.bank_legend_duplicate') },
+]);
+
 onMounted(async () => {
   rememberCompany(companyId.value);
   await Promise.all([load(), loadBatches(), loadInbound()]);
@@ -347,6 +422,17 @@ function documentShowTo(doc: LinkedDocument) {
   return { name: routes.show, params: { companyId: companyId.value, documentId: doc.id } };
 }
 
+function pairingCornerClass(tx: BankTx): string {
+  if (tx.match_status === 'ignored') {
+    return 'status-corner--ignored';
+  }
+  if (tx.match_status === 'matched' || linkedDocument(tx) || linkedExpense(tx)) {
+    return 'status-corner--matched';
+  }
+
+  return 'status-corner--unmatched';
+}
+
 async function load() {
   if (!hasBankAccount.value) {
     loading.value = false;
@@ -355,10 +441,15 @@ async function load() {
 
   loading.value = true;
   try {
+    const params: Record<string, string | number> = { per_page: 50 };
+    if (matchFilter.value !== 'all') {
+      params.match_status = matchFilter.value;
+    }
     const { data } = await api.get(`/invoicing/companies/${companyId.value}/bank-transactions`, {
-      params: { match_status: matchFilter.value, per_page: 50 },
+      params,
     });
     transactions.value = data.data || [];
+    summary.value = data.meta?.summary || emptySummary();
   } finally {
     loading.value = false;
   }
@@ -546,25 +637,47 @@ function formatSignedAmount(tx: BankTx) {
   const sign = tx.direction === 'credit' ? '+' : '-';
   return `${sign}${formatted} ${tx.currency}`;
 }
+
+function formatSummaryAmount(amount: string, forceNegative = false) {
+  const n = Math.abs(parseFloat(amount));
+  const formatted = n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const currency = summary.value.currency || defaultCurrency.value;
+  const prefix = forceNegative ? '-' : '';
+
+  return `${prefix}${formatted} ${currency}`;
+}
 </script>
 
 <style scoped>
-.bank-movement-corner {
+.status-corner {
   position: absolute;
   top: 0;
   left: 0;
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 10px 10px 0 0;
+  width: 14px;
+  height: 14px;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
 }
 
-.bank-movement-corner--credit {
-  border-color: rgb(16 185 129) transparent transparent transparent;
+.status-corner.static {
+  position: static;
+  display: inline-block;
+  vertical-align: middle;
 }
 
-.bank-movement-corner--debit {
-  border-color: rgb(220 38 38) transparent transparent transparent;
+.status-corner--matched {
+  background-color: #22c55e;
+}
+
+.status-corner--unmatched {
+  background-color: #ef4444;
+}
+
+.status-corner--ignored {
+  background-color: #6b7280;
+}
+
+.status-corner--duplicate {
+  background-color: #eab308;
 }
 
 .bank-action-link {

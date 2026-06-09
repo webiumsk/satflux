@@ -1,0 +1,101 @@
+<?php
+
+namespace App\Support\Invoicing;
+
+use App\Enums\BankTransactionDirection;
+use App\Models\BankTransaction;
+
+final class BankTransactionDirectionGuesser
+{
+    /**
+     * @param  list<string|null>  $hints
+     */
+    public function fromAmountAndHints(float $amount, ?string ...$hints): BankTransactionDirection
+    {
+        $haystack = mb_strtolower(trim(implode(' ', array_filter($hints, fn (?string $h) => $h !== null && trim($h) !== ''))));
+
+        if ($haystack !== '' && $this->containsDebitHint($haystack)) {
+            return BankTransactionDirection::Debit;
+        }
+
+        if ($haystack !== '' && $this->containsCreditHint($haystack)) {
+            return BankTransactionDirection::Credit;
+        }
+
+        return $amount < 0
+            ? BankTransactionDirection::Debit
+            : BankTransactionDirection::Credit;
+    }
+
+    public function inferFromTransaction(BankTransaction $transaction): BankTransactionDirection
+    {
+        return $this->fromAmountAndHints(
+            (float) $transaction->amount,
+            $transaction->reference,
+            $transaction->counterparty_name,
+        );
+    }
+
+    protected function containsDebitHint(string $haystack): bool
+    {
+        foreach ([
+            'debet na',
+            'debetna',
+            'debet ',
+            'debet.',
+            'debit',
+            'dbit',
+            'odchod',
+            'odch.',
+            'odchodz',
+            'výdaj',
+            'vydaj',
+            'nákup pos',
+            'nakup pos',
+            'eur nákup',
+            'eur nakup',
+            'pos nákup',
+            'pos nakup',
+            'transakčná daň',
+            'transakcna dan',
+            'poplatok',
+            'výber',
+            'vyber',
+            'platba kartou',
+            'platba prevodom',
+            'smerom von',
+        ] as $needle) {
+            if (str_contains($haystack, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function containsCreditHint(string $haystack): bool
+    {
+        if (str_contains($haystack, 'obrat na') && ! str_contains($haystack, 'debet')) {
+            return true;
+        }
+
+        foreach ([
+            'kredit na',
+            'kredit ',
+            'credit',
+            'príjem',
+            'prijem',
+            'prijatie',
+            'vklad',
+            'pripis',
+            'pripísan',
+            'pripisan',
+        ] as $needle) {
+            if (str_contains($haystack, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}

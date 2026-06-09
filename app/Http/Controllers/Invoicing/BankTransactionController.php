@@ -12,6 +12,8 @@ use App\Services\Invoicing\BankInboundAddressService;
 use App\Services\Invoicing\BankStatementImportService;
 use App\Services\Invoicing\BankTransactionExpenseService;
 use App\Services\Invoicing\BusinessDocumentPaymentMatcher;
+use App\Support\Invoicing\BankTransactionDirectionGuesser;
+use App\Support\Invoicing\BankTransactionListSummary;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -57,6 +59,8 @@ class BankTransactionController extends Controller
             $query->where('variable_symbol', 'like', '%'.$validated['variable_symbol'].'%');
         }
 
+        $summary = app(BankTransactionListSummary::class)->forQuery($query);
+
         $paginated = $query->paginate((int) ($validated['per_page'] ?? 25));
 
         return response()->json([
@@ -66,6 +70,7 @@ class BankTransactionController extends Controller
                 'last_page' => $paginated->lastPage(),
                 'per_page' => $paginated->perPage(),
                 'total' => $paginated->total(),
+                'summary' => $summary,
             ],
         ]);
     }
@@ -289,6 +294,9 @@ class BankTransactionController extends Controller
     protected function transactionPayload(BankTransaction $tx): array
     {
         $payload = $tx->toArray();
+        $payload['direction'] = app(BankTransactionDirectionGuesser::class)
+            ->inferFromTransaction($tx)
+            ->value;
         if ($tx->relationLoaded('match') && $tx->match) {
             $payload['match'] = [
                 'id' => $tx->match->id,

@@ -5,6 +5,8 @@ import api from '../services/api';
 type CompanySummaryCache = {
   name: string;
   hasBankAccount: boolean;
+  bankAccountLabel: string;
+  defaultCurrency: string;
 };
 
 const summaryByCompany = new Map<string, CompanySummaryCache>();
@@ -14,6 +16,8 @@ export function useInvoicingCompanySummary() {
   const companyId = computed(() => (route.params.companyId as string) || '');
   const companyName = ref('');
   const hasBankAccount = ref(false);
+  const bankAccountLabel = ref('');
+  const defaultCurrency = ref('EUR');
   const summaryLoaded = ref(false);
 
   async function loadSummary(id?: string) {
@@ -21,6 +25,8 @@ export function useInvoicingCompanySummary() {
     if (!cid) {
       companyName.value = '';
       hasBankAccount.value = false;
+      bankAccountLabel.value = '';
+      defaultCurrency.value = 'EUR';
       summaryLoaded.value = false;
       return;
     }
@@ -29,6 +35,8 @@ export function useInvoicingCompanySummary() {
     if (cached) {
       companyName.value = cached.name;
       hasBankAccount.value = cached.hasBankAccount;
+      bankAccountLabel.value = cached.bankAccountLabel;
+      defaultCurrency.value = cached.defaultCurrency;
       summaryLoaded.value = true;
       return;
     }
@@ -36,9 +44,13 @@ export function useInvoicingCompanySummary() {
     const { data } = await api.get(`/invoicing/companies/${cid}/summary`);
     const name = data.data?.trade_name || data.data?.legal_name || '';
     const bank = !!data.data?.has_bank_account;
-    summaryByCompany.set(cid, { name, hasBankAccount: bank });
+    const label = data.data?.bank_account_label || '';
+    const currency = data.data?.default_currency || 'EUR';
+    summaryByCompany.set(cid, { name, hasBankAccount: bank, bankAccountLabel: label, defaultCurrency: currency });
     companyName.value = name;
     hasBankAccount.value = bank;
+    bankAccountLabel.value = label;
+    defaultCurrency.value = currency;
     summaryLoaded.value = true;
   }
 
@@ -58,6 +70,8 @@ export function useInvoicingCompanySummary() {
     companyId,
     companyName,
     hasBankAccount,
+    bankAccountLabel,
+    defaultCurrency,
     summaryLoaded,
     loadSummary,
     invalidateSummary,

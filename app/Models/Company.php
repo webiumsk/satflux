@@ -134,4 +134,22 @@ class Company extends Model
 
         return trim((string) ($this->bank_account ?? '')) !== '';
     }
+
+    public function maskedBankAccountLabel(): ?string
+    {
+        $bankName = trim((string) ($this->bank_name ?? ''));
+        $digits = preg_replace('/\D/', '', (string) ($this->iban ?? $this->bank_account ?? ''));
+
+        if ($bankName === '' && $digits === '') {
+            return null;
+        }
+
+        $suffix = strlen($digits) >= 4 ? ' ****'.substr($digits, -4) : '';
+
+        if ($bankName !== '') {
+            return $bankName.$suffix;
+        }
+
+        return $suffix !== '' ? ltrim($suffix) : null;
+    }
 }

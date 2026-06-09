@@ -86,6 +86,8 @@ class CompanyController extends Controller
                 'legal_name' => $company->legal_name,
                 'trade_name' => $company->trade_name,
                 'has_bank_account' => $company->hasBankAccount(),
+                'bank_account_label' => $company->maskedBankAccountLabel(),
+                'default_currency' => $company->default_currency,
             ],
         ]);
     }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\BankTransactionDirection;
 use App\Enums\BankTransactionMatchStatus;
+use App\Support\Invoicing\BankTransactionDirectionGuesser;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -65,6 +66,11 @@ class BankTransaction extends Model
 
     public function isCredit(): bool
     {
-        return $this->direction === BankTransactionDirection::Credit;
+        return $this->resolvedDirection() === BankTransactionDirection::Credit;
+    }
+
+    public function resolvedDirection(): BankTransactionDirection
+    {
+        return app(BankTransactionDirectionGuesser::class)->inferFromTransaction($this);
     }
 }

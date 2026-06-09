@@ -2,8 +2,8 @@
 
 namespace App\Services\Invoicing\BankImport;
 
-use App\Enums\BankTransactionDirection;
 use App\Support\Invoicing\BankSymbolNormalizer;
+use App\Support\Invoicing\BankTransactionDirectionGuesser;
 use App\Support\Invoicing\ParsedBankTransaction;
 use Carbon\Carbon;
 use Illuminate\Validation\ValidationException;
@@ -138,7 +138,14 @@ class CsvBankParser implements BankStatementParser
         }
 
         $directionRaw = $this->col($cols, $map, 'direction');
-        $direction = $this->resolveDirection($amount, $directionRaw);
+        $counterparty = $this->col($cols, $map, 'counterparty');
+        $reference = $this->col($cols, $map, 'reference');
+        $direction = app(BankTransactionDirectionGuesser::class)->fromAmountAndHints(
+            $amount,
+            $directionRaw,
+            $counterparty,
+            $reference,
+        );
 
         $dateRaw = $this->col($cols, $map, 'date');
         if ($dateRaw === null || $dateRaw === '') {
@@ -155,8 +162,8 @@ class CsvBankParser implements BankStatementParser
             variableSymbol: BankSymbolNormalizer::variableSymbol($this->col($cols, $map, 'variable_symbol')),
             constantSymbol: BankSymbolNormalizer::constantSymbol($this->col($cols, $map, 'constant_symbol')),
             specificSymbol: BankSymbolNormalizer::specificSymbol($this->col($cols, $map, 'specific_symbol')),
-            counterpartyName: $this->col($cols, $map, 'counterparty'),
-            reference: $this->col($cols, $map, 'reference'),
+            counterpartyName: $counterparty,
+            reference: $reference,
         );
     }
 
@@ -194,22 +201,5 @@ class CsvBankParser implements BankStatementParser
         }
 
         return Carbon::parse($raw);
-    }
-
-    protected function resolveDirection(float $amount, ?string $hint): BankTransactionDirection
-    {
-        if ($hint !== null && $hint !== '') {
-            $h = mb_strtolower($hint);
-            if (str_contains($h, 'debit') || str_contains($h, 'odch') || str_contains($h, 'výdaj') || str_contains($h, 'vydaj') || $h === 'd') {
-                return BankTransactionDirection::Debit;
-            }
-            if (str_contains($h, 'credit') || str_contains($h, 'príjem') || str_contains($h, 'prijem') || str_contains($h, 'vklad') || $h === 'c') {
-                return BankTransactionDirection::Credit;
-            }
-        }
-
-        return $amount < 0
-            ? BankTransactionDirection::Debit
-            : BankTransactionDirection::Credit;
     }
 }
