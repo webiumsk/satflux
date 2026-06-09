@@ -77,14 +77,29 @@ class BankTransaction extends Model
             return $this->resolvedDirectionCache;
         }
 
+        $guesser = app(BankTransactionDirectionGuesser::class);
+        $inferred = $guesser->inferFromTransaction($this);
+
+        if ($this->hasDirectionTextHints()) {
+            $this->resolvedDirectionCache = $inferred;
+
+            return $this->resolvedDirectionCache;
+        }
+
         if ($this->direction instanceof BankTransactionDirection) {
             $this->resolvedDirectionCache = $this->direction;
 
             return $this->resolvedDirectionCache;
         }
 
-        $this->resolvedDirectionCache = app(BankTransactionDirectionGuesser::class)->inferFromTransaction($this);
+        $this->resolvedDirectionCache = $inferred;
 
         return $this->resolvedDirectionCache;
+    }
+
+    protected function hasDirectionTextHints(): bool
+    {
+        return trim((string) ($this->reference ?? '')) !== ''
+            || trim((string) ($this->counterparty_name ?? '')) !== '';
     }
 }
