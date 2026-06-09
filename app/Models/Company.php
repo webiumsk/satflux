@@ -125,4 +125,13 @@ class Company extends Model
     {
         return $this->trade_name ?: $this->legal_name;
     }
+
+    public function hasBankAccount(): bool
+    {
+        if (trim((string) ($this->iban ?? '')) !== '') {
+            return true;
+        }
+
+        return trim((string) ($this->bank_account ?? '')) !== '';
+    }
 }

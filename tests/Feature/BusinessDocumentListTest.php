@@ -71,6 +71,7 @@ class BusinessDocumentListTest extends TestCase
             ->assertJsonPath('data.id', $this->company->id)
             ->assertJsonPath('data.legal_name', 'List Co')
             ->assertJsonPath('data.trade_name', 'List Trade')
+            ->assertJsonPath('data.has_bank_account', false)
             ->assertJsonMissingPath('data.app_settings')
             ->assertJsonMissingPath('data.contacts');
     }

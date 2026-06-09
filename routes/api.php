@@ -537,6 +537,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/bank-transactions/{bankTransaction}/unmatch', [\App\Http\Controllers\Invoicing\BankTransactionController::class, 'unmatch'])
                 ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/bank-transactions/{bankTransaction}/create-expense', [\App\Http\Controllers\Invoicing\BankTransactionController::class, 'createExpense'])
+                ->middleware(EnsureCompanyOwnership::class);
         });
 
     // Dashboard

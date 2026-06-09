@@ -3,7 +3,7 @@
     <div :class="INVOICING_CONTAINER_CLASS">
       <nav class="invoicing-main-nav" aria-label="Invoicing main">
         <button
-          v-for="item in mainNav"
+          v-for="item in visibleMainNav"
           :key="item.id"
           type="button"
           class="invoicing-main-nav__item"
@@ -12,8 +12,8 @@
         >
           {{ t(item.labelKey) }}
         </button>
-        <div v-if="companyId && companyLabel" class="invoicing-main-nav__company ml-auto hidden sm:block">
-          {{ companyLabel }}
+        <div v-if="companyId && displayCompanyLabel" class="invoicing-main-nav__company ml-auto hidden sm:block">
+          {{ displayCompanyLabel }}
         </div>
       </nav>
     </div>
@@ -53,6 +53,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import '../../styles/invoicing-theme.css';
+import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompanySummary';
 import {
   INVOICING_CONTAINER_CLASS,
   useInvoicingLayout,
@@ -79,20 +80,33 @@ const {
   activeToolsSection,
   navigateMain,
 } = useInvoicingLayout();
+const { hasBankAccount, companyName: summaryCompanyName } = useInvoicingCompanySummary();
+
+const displayCompanyLabel = computed(() => props.companyLabel || summaryCompanyName.value);
+
+const visibleMainNav = computed(() => {
+  const items: { id: InvoicingMainSection; labelKey: string }[] = [
+    { id: 'documents', labelKey: 'invoicing.main_nav_documents' },
+    { id: 'expenses', labelKey: 'invoicing.main_nav_expenses' },
+  ];
+
+  if (hasBankAccount.value) {
+    items.push({ id: 'payments', labelKey: 'invoicing.main_nav_payments' });
+  }
+
+  items.push(
+    { id: 'contacts', labelKey: 'invoicing.main_nav_contacts' },
+    { id: 'tools', labelKey: 'invoicing.main_nav_tools' },
+  );
+
+  return items;
+});
 
 const displayToolsSubNav = computed(() => {
   if (props.showToolsSubNav === false) return false;
   if (props.showToolsSubNav === true) return true;
   return activeMainSection.value === 'tools';
 });
-
-const mainNav: { id: InvoicingMainSection; labelKey: string }[] = [
-  { id: 'documents', labelKey: 'invoicing.main_nav_documents' },
-  { id: 'payments', labelKey: 'invoicing.main_nav_payments' },
-  { id: 'expenses', labelKey: 'invoicing.main_nav_expenses' },
-  { id: 'contacts', labelKey: 'invoicing.main_nav_contacts' },
-  { id: 'tools', labelKey: 'invoicing.main_nav_tools' },
-];
 
 function toolsLinkTo(tool: InvoicingToolsNavItem) {
   if (tool.section === 'subscription') {

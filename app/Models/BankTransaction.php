@@ -21,6 +21,7 @@ class BankTransaction extends Model
         'currency',
         'direction',
         'match_status',
+        'business_expense_id',
         'variable_symbol',
         'constant_symbol',
         'specific_symbol',
@@ -55,6 +56,11 @@ class BankTransaction extends Model
     public function match(): HasOne
     {
         return $this->hasOne(BankTransactionMatch::class);
+    }
+
+    public function expense(): BelongsTo
+    {
+        return $this->belongsTo(BusinessExpense::class, 'business_expense_id');
     }
 
     public function isCredit(): bool
