@@ -184,19 +184,13 @@ class BankInboundEmailTest extends TestCase
 
         $address = $this->addressService->buildAddress($this->company);
         $body = 'Obrat na ucte. Suma: 150,50 EUR. VS: 20260042. Protistrana: Client s.r.o. 01.06.2026';
-        $timestamp = '1700000000';
-        $token = 'mailgun-test-token';
-        $signature = hash_hmac('sha256', $timestamp.$token, 'mailgun-test-signing-key');
 
-        $response = $this->post('/api/webhooks/bank-inbound', [
+        $response = $this->post('/api/webhooks/bank-inbound', $this->mailgunSignedPayload([
             'recipient' => $address,
             'sender' => 'notify@tatrabanka.sk',
             'subject' => 'Obrat na ucte',
             'stripped-text' => $body,
-            'timestamp' => $timestamp,
-            'token' => $token,
-            'signature' => $signature,
-        ]);
+        ]));
 
         $response->assertOk();
         $response->assertJsonPath('accepted', true);
@@ -213,15 +207,48 @@ class BankInboundEmailTest extends TestCase
 
         $address = $this->addressService->buildAddress($this->company);
 
-        $this->post('/api/webhooks/bank-inbound', [
+        $this->post('/api/webhooks/bank-inbound', $this->mailgunSignedPayload([
             'recipient' => $address,
             'sender' => 'notify@tatrabanka.sk',
             'subject' => 'Obrat',
             'stripped-text' => 'VS: 123',
-            'timestamp' => '1700000000',
-            'token' => 'mailgun-test-token',
-            'signature' => 'invalid',
+        ], signature: 'invalid'))->assertForbidden();
+    }
+
+    #[Test]
+    public function mailgun_webhook_rejects_stale_timestamp(): void
+    {
+        config(['bank_inbound.mailgun_webhook_signing_key' => 'mailgun-test-signing-key']);
+
+        $address = $this->addressService->buildAddress($this->company);
+        $timestamp = (string) (time() - 600);
+        $token = 'mailgun-stale-token';
+        $signature = hash_hmac('sha256', $timestamp.$token, 'mailgun-test-signing-key');
+
+        $this->post('/api/webhooks/bank-inbound', [
+            'recipient' => $address,
+            'sender' => 'notify@tatrabanka.sk',
+            'stripped-text' => 'VS: 123',
+            'timestamp' => $timestamp,
+            'token' => $token,
+            'signature' => $signature,
         ])->assertForbidden();
+    }
+
+    #[Test]
+    public function mailgun_webhook_rejects_replayed_token(): void
+    {
+        config(['bank_inbound.mailgun_webhook_signing_key' => 'mailgun-test-signing-key']);
+
+        $address = $this->addressService->buildAddress($this->company);
+        $payload = $this->mailgunSignedPayload([
+            'recipient' => $address,
+            'sender' => 'notify@tatrabanka.sk',
+            'stripped-text' => 'VS: 123',
+        ], token: 'mailgun-replay-token');
+
+        $this->post('/api/webhooks/bank-inbound', $payload)->assertOk();
+        $this->post('/api/webhooks/bank-inbound', $payload)->assertForbidden();
     }
 
     #[Test]
@@ -230,16 +257,33 @@ class BankInboundEmailTest extends TestCase
         config(['bank_inbound.mailgun_webhook_signing_key' => null]);
 
         $address = $this->addressService->buildAddress($this->company);
-        $timestamp = '1700000000';
-        $token = 'mailgun-test-token';
 
-        $this->post('/api/webhooks/bank-inbound', [
+        $this->post('/api/webhooks/bank-inbound', $this->mailgunSignedPayload([
             'recipient' => $address,
             'sender' => 'notify@tatrabanka.sk',
             'stripped-text' => 'VS: 123',
+        ], signingKey: 'unused'))->assertStatus(503);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    protected function mailgunSignedPayload(
+        array $payload,
+        string $signingKey = 'mailgun-test-signing-key',
+        ?string $token = null,
+        int|string|null $timestamp = null,
+        ?string $signature = null,
+    ): array {
+        $timestamp = (string) ($timestamp ?? time());
+        $token ??= 'mailgun-test-token-'.uniqid('', true);
+        $signature ??= hash_hmac('sha256', $timestamp.$token, $signingKey);
+
+        return array_merge($payload, [
             'timestamp' => $timestamp,
             'token' => $token,
-            'signature' => hash_hmac('sha256', $timestamp.$token, 'unused'),
-        ])->assertStatus(503);
+            'signature' => $signature,
+        ]);
     }
 }

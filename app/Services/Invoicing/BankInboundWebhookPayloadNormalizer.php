@@ -3,6 +3,7 @@
 namespace App\Services\Invoicing;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class BankInboundWebhookPayloadNormalizer
 {
@@ -41,10 +42,27 @@ class BankInboundWebhookPayloadNormalizer
             return false;
         }
 
-        return hash_equals(
+        if (! ctype_digit($timestamp)) {
+            return false;
+        }
+
+        $maxAge = max(1, (int) config('bank_inbound.mailgun_webhook_max_age_seconds', 300));
+        $timestampInt = (int) $timestamp;
+
+        if (abs(time() - $timestampInt) > $maxAge) {
+            return false;
+        }
+
+        if (! hash_equals(
             hash_hmac('sha256', $timestamp.$token, $signingKey),
             $signature,
-        );
+        )) {
+            return false;
+        }
+
+        $cacheKey = 'bank_inbound:mailgun:token:'.hash('sha256', $token);
+
+        return Cache::add($cacheKey, 1, $maxAge);
     }
 
     /**

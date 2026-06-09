@@ -10,6 +10,9 @@ return [
     /** Mailgun inbound route signing key (Domain settings → Webhooks). */
     'mailgun_webhook_signing_key' => env('MAILGUN_WEBHOOK_SIGNING_KEY'),
 
+    /** Max age (seconds) for Mailgun webhook timestamp and replay token TTL. */
+    'mailgun_webhook_max_age_seconds' => (int) env('MAILGUN_WEBHOOK_MAX_AGE_SECONDS', 300),
+
     'domain' => env('BANK_INBOUND_DOMAIN', 'payments.satflux.io'),
 
     'address_prefix' => env('BANK_INBOUND_ADDRESS_PREFIX', 'pay'),
