@@ -68,7 +68,7 @@
         </form>
         <div v-if="inboundEmail" class="text-sm border-t pt-4">
           <p class="font-medium text-gray-800">{{ t('invoicing.bank_inbound_title') }}</p>
-          <p class="text-gray-600 mt-1">{{ t('invoicing.bank_inbound_help') }}</p>
+          <p class="text-gray-600 mt-1">{{ t('invoicing.bank_inbound_help', { max: inboundMaxLength || 50 }) }}</p>
           <div class="mt-2 flex flex-wrap items-center gap-2">
             <code class="flex-1 min-w-0 p-2 bg-gray-100 rounded text-xs break-all">{{ inboundEmail }}</code>
             <button type="button" class="invoicing-btn-secondary text-xs shrink-0" @click="copyInboundEmail">
@@ -114,6 +114,7 @@
                   <th class="w-3 p-0"></th>
                   <th class="text-left p-3">{{ t('invoicing.bank_col_amount_date') }}</th>
                   <th class="text-left p-3">{{ t('invoicing.bank_col_vs') }}</th>
+                  <th class="text-left p-3">{{ t('invoicing.bank_col_account') }}</th>
                   <th class="text-left p-3">{{ t('invoicing.bank_col_counterparty') }}</th>
                   <th class="text-left p-3">{{ t('invoicing.bank_col_document') }}</th>
                   <th class="p-3 text-right">{{ t('invoicing.bank_col_actions') }}</th>
@@ -142,6 +143,9 @@
                     <div class="text-xs text-gray-500 mt-0.5">{{ formatDate(tx.booked_at) }}</div>
                   </td>
                   <td class="p-3">{{ tx.variable_symbol || '—' }}</td>
+                  <td class="p-3 whitespace-nowrap text-gray-600">
+                    {{ bankAccountLabel || '—' }}
+                  </td>
                   <td class="p-3 max-w-[240px]">
                     <div class="truncate">{{ tx.counterparty_name || '—' }}</div>
                     <div v-if="tx.reference" class="text-xs text-gray-500 truncate mt-0.5">{{ tx.reference }}</div>
@@ -219,34 +223,39 @@
           </div>
 
           <div class="invoicing-card-pad">
-            <h3 v-if="bankAccountLabel" class="text-sm font-semibold text-gray-800 mb-3">
+            <h3 v-if="bankAccountLabel && summarySections.length <= 1" class="text-sm font-semibold text-gray-800 mb-3">
               {{ bankAccountLabel }}
             </h3>
-            <dl class="space-y-2 text-sm">
-              <div class="flex justify-between gap-4">
-                <dt class="text-gray-600">{{ t('invoicing.bank_summary_credit') }}</dt>
-                <dd class="text-emerald-700 font-medium tabular-nums text-right">
-                  {{ summary.credit_count }}
-                  ({{ formatSummaryAmount(summary.credit_total) }})
-                </dd>
-              </div>
-              <div class="flex justify-between gap-4">
-                <dt class="text-gray-600">{{ t('invoicing.bank_summary_debit') }}</dt>
-                <dd class="text-red-600 font-medium tabular-nums text-right">
-                  {{ summary.debit_count }}
-                  ({{ formatSummaryAmount(summary.debit_total, true) }})
-                </dd>
-              </div>
-              <div class="flex justify-between gap-4 border-t pt-2">
-                <dt class="text-gray-800 font-medium">{{ t('invoicing.bank_summary_balance') }}</dt>
-                <dd
-                  class="font-semibold tabular-nums text-right"
-                  :class="parseFloat(summary.balance) >= 0 ? 'text-emerald-700' : 'text-red-600'"
-                >
-                  {{ formatSummaryAmount(summary.balance, parseFloat(summary.balance) < 0) }}
-                </dd>
-              </div>
-            </dl>
+            <div v-for="(section, index) in summarySections" :key="section.currency" :class="{ 'mt-4 pt-4 border-t': index > 0 }">
+              <h4 v-if="summarySections.length > 1" class="text-sm font-semibold text-gray-800 mb-2">
+                {{ bankAccountLabel ? `${bankAccountLabel} · ${section.currency}` : section.currency }}
+              </h4>
+              <dl class="space-y-2 text-sm">
+                <div class="flex justify-between gap-4">
+                  <dt class="text-gray-600">{{ t('invoicing.bank_summary_credit') }}</dt>
+                  <dd class="text-emerald-700 font-medium tabular-nums text-right">
+                    {{ section.credit_count }}
+                    ({{ formatSummaryAmount(section.credit_total, section.currency) }})
+                  </dd>
+                </div>
+                <div class="flex justify-between gap-4">
+                  <dt class="text-gray-600">{{ t('invoicing.bank_summary_debit') }}</dt>
+                  <dd class="text-red-600 font-medium tabular-nums text-right">
+                    {{ section.debit_count }}
+                    ({{ formatSummaryAmount(section.debit_total, section.currency, true) }})
+                  </dd>
+                </div>
+                <div class="flex justify-between gap-4 border-t pt-2">
+                  <dt class="text-gray-800 font-medium">{{ t('invoicing.bank_summary_balance') }}</dt>
+                  <dd
+                    class="font-semibold tabular-nums text-right"
+                    :class="parseFloat(section.balance) >= 0 ? 'text-emerald-700' : 'text-red-600'"
+                  >
+                    {{ formatSummaryAmount(section.balance, section.currency, parseFloat(section.balance) < 0) }}
+                  </dd>
+                </div>
+              </dl>
+            </div>
           </div>
         </div>
         </template>
@@ -367,13 +376,23 @@ const expenseDraft = ref<BankExpenseDraft>({
   issue_date: '',
 });
 
-type BankSummary = {
+type BankSummarySection = {
+  currency: string;
   credit_count: number;
   credit_total: string;
   debit_count: number;
   debit_total: string;
   balance: string;
-  currency: string;
+};
+
+type BankSummary = {
+  credit_count: number;
+  credit_total: string | null;
+  debit_count: number;
+  debit_total: string | null;
+  balance: string | null;
+  currency: string | null;
+  by_currency: BankSummarySection[];
 };
 
 const emptySummary = (): BankSummary => ({
@@ -383,9 +402,25 @@ const emptySummary = (): BankSummary => ({
   debit_total: '0.00',
   balance: '0.00',
   currency: defaultCurrency.value,
+  by_currency: [],
 });
 
 const summary = ref<BankSummary>(emptySummary());
+
+const summarySections = computed((): BankSummarySection[] => {
+  if (summary.value.by_currency.length > 0) {
+    return summary.value.by_currency;
+  }
+
+  return [{
+    currency: summary.value.currency || defaultCurrency.value,
+    credit_count: summary.value.credit_count,
+    credit_total: summary.value.credit_total || '0.00',
+    debit_count: summary.value.debit_count,
+    debit_total: summary.value.debit_total || '0.00',
+    balance: summary.value.balance || '0.00',
+  }];
+});
 
 const legendItems = computed(() => [
   { kind: 'matched', label: t('invoicing.bank_legend_with_document') },
@@ -456,7 +491,11 @@ async function load() {
 }
 
 watch(hasBankAccount, (value) => {
-  if (value) load();
+  if (value) {
+    load();
+    loadBatches();
+    loadInbound();
+  }
 });
 
 async function loadBatches() {
@@ -638,10 +677,9 @@ function formatSignedAmount(tx: BankTx) {
   return `${sign}${formatted} ${tx.currency}`;
 }
 
-function formatSummaryAmount(amount: string, forceNegative = false) {
+function formatSummaryAmount(amount: string, currency: string, forceNegative = false) {
   const n = Math.abs(parseFloat(amount));
   const formatted = n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const currency = summary.value.currency || defaultCurrency.value;
   const prefix = forceNegative ? '-' : '';
 
   return `${prefix}${formatted} ${currency}`;

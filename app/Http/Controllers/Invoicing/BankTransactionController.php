@@ -12,7 +12,6 @@ use App\Services\Invoicing\BankInboundAddressService;
 use App\Services\Invoicing\BankStatementImportService;
 use App\Services\Invoicing\BankTransactionExpenseService;
 use App\Services\Invoicing\BusinessDocumentPaymentMatcher;
-use App\Support\Invoicing\BankTransactionDirectionGuesser;
 use App\Support\Invoicing\BankTransactionListSummary;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -294,9 +293,7 @@ class BankTransactionController extends Controller
     protected function transactionPayload(BankTransaction $tx): array
     {
         $payload = $tx->toArray();
-        $payload['direction'] = app(BankTransactionDirectionGuesser::class)
-            ->inferFromTransaction($tx)
-            ->value;
+        $payload['direction'] = $tx->resolvedDirection()->value;
         if ($tx->relationLoaded('match') && $tx->match) {
             $payload['match'] = [
                 'id' => $tx->match->id,

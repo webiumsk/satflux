@@ -9,7 +9,12 @@
     <div class="bg-white rounded-lg shadow-xl max-w-lg w-full overflow-hidden">
       <div class="px-5 py-3 bg-slate-800 text-white flex items-center justify-between">
         <h3 class="font-semibold">{{ t('invoicing.bank_create_expense_title') }}</h3>
-        <button type="button" class="text-white/80 hover:text-white text-2xl leading-none" @click="emit('close')">
+        <button
+          type="button"
+          class="text-white/80 hover:text-white text-2xl leading-none"
+          :aria-label="t('common.close')"
+          @click="emit('close')"
+        >
           ×
         </button>
       </div>

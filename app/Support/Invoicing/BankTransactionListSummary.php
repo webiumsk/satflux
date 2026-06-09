@@ -3,65 +3,93 @@
 namespace App\Support\Invoicing;
 
 use App\Enums\BankTransactionDirection;
-use App\Models\BankTransaction;
 use Illuminate\Database\Eloquent\Builder;
 
 final class BankTransactionListSummary
 {
-    public function __construct(
-        protected BankTransactionDirectionGuesser $guesser,
-    ) {}
-
     /**
      * @return array{
      *     credit_count: int,
-     *     credit_total: string,
+     *     credit_total: string|null,
      *     debit_count: int,
-     *     debit_total: string,
-     *     balance: string,
-     *     currency: string
+     *     debit_total: string|null,
+     *     balance: string|null,
+     *     currency: string|null,
+     *     by_currency: list<array{
+     *         currency: string,
+     *         credit_count: int,
+     *         credit_total: string,
+     *         debit_count: int,
+     *         debit_total: string,
+     *         balance: string
+     *     }>
      * }
      */
     public function forQuery(Builder $query): array
     {
-        $rows = (clone $query)->get([
-            'amount',
-            'currency',
-            'direction',
-            'reference',
-            'counterparty_name',
-        ]);
+        $rows = (clone $query)
+            ->reorder()
+            ->selectRaw('direction, currency, COUNT(*) as cnt, SUM(ABS(amount)) as total')
+            ->groupBy('direction', 'currency')
+            ->get();
 
         $creditCount = 0;
         $creditTotal = 0.0;
         $debitCount = 0;
         $debitTotal = 0.0;
-        $currency = 'EUR';
+        /** @var array<string, array{currency: string, credit_count: int, credit_total: float, debit_count: int, debit_total: float}> $byCurrency */
+        $byCurrency = [];
 
-        foreach ($rows as $tx) {
-            /** @var BankTransaction $tx */
-            $amount = abs((float) $tx->amount);
-            $dir = $this->guesser->inferFromTransaction($tx);
-            if ($tx->currency !== '') {
-                $currency = $tx->currency;
+        foreach ($rows as $row) {
+            $currency = $row->currency !== '' ? (string) $row->currency : 'EUR';
+            $cnt = (int) $row->cnt;
+            $total = (float) $row->total;
+            $direction = $row->direction instanceof BankTransactionDirection
+                ? $row->direction->value
+                : (string) $row->direction;
+
+            if (! isset($byCurrency[$currency])) {
+                $byCurrency[$currency] = [
+                    'currency' => $currency,
+                    'credit_count' => 0,
+                    'credit_total' => 0.0,
+                    'debit_count' => 0,
+                    'debit_total' => 0.0,
+                ];
             }
 
-            if ($dir === BankTransactionDirection::Credit) {
-                $creditCount++;
-                $creditTotal += $amount;
+            if ($direction === BankTransactionDirection::Credit->value) {
+                $creditCount += $cnt;
+                $creditTotal += $total;
+                $byCurrency[$currency]['credit_count'] += $cnt;
+                $byCurrency[$currency]['credit_total'] += $total;
             } else {
-                $debitCount++;
-                $debitTotal += $amount;
+                $debitCount += $cnt;
+                $debitTotal += $total;
+                $byCurrency[$currency]['debit_count'] += $cnt;
+                $byCurrency[$currency]['debit_total'] += $total;
             }
         }
 
+        $singleCurrency = count($byCurrency) === 1 ? array_key_first($byCurrency) : null;
+
+        $byCurrencyFormatted = array_map(fn (array $entry) => [
+            'currency' => $entry['currency'],
+            'credit_count' => $entry['credit_count'],
+            'credit_total' => $this->formatMoney($entry['credit_total']),
+            'debit_count' => $entry['debit_count'],
+            'debit_total' => $this->formatMoney($entry['debit_total']),
+            'balance' => $this->formatMoney($entry['credit_total'] - $entry['debit_total']),
+        ], array_values($byCurrency));
+
         return [
             'credit_count' => $creditCount,
-            'credit_total' => $this->formatMoney($creditTotal),
+            'credit_total' => $singleCurrency !== null ? $this->formatMoney($creditTotal) : null,
             'debit_count' => $debitCount,
-            'debit_total' => $this->formatMoney($debitTotal),
-            'balance' => $this->formatMoney($creditTotal - $debitTotal),
-            'currency' => $currency,
+            'debit_total' => $singleCurrency !== null ? $this->formatMoney($debitTotal) : null,
+            'balance' => $singleCurrency !== null ? $this->formatMoney($creditTotal - $debitTotal) : null,
+            'currency' => $singleCurrency,
+            'by_currency' => $byCurrencyFormatted,
         ];
     }
 

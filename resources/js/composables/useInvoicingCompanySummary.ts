@@ -10,6 +10,21 @@ type CompanySummaryCache = {
 };
 
 const summaryByCompany = new Map<string, CompanySummaryCache>();
+let summaryRequestSeq = 0;
+
+function resetSummaryState(
+  companyName: { value: string },
+  hasBankAccount: { value: boolean },
+  bankAccountLabel: { value: string },
+  defaultCurrency: { value: string },
+  summaryLoaded: { value: boolean },
+) {
+  companyName.value = '';
+  hasBankAccount.value = false;
+  bankAccountLabel.value = '';
+  defaultCurrency.value = 'EUR';
+  summaryLoaded.value = false;
+}
 
 export function useInvoicingCompanySummary() {
   const route = useRoute();
@@ -22,17 +37,18 @@ export function useInvoicingCompanySummary() {
 
   async function loadSummary(id?: string) {
     const cid = id || companyId.value;
+    const requestId = ++summaryRequestSeq;
+
     if (!cid) {
-      companyName.value = '';
-      hasBankAccount.value = false;
-      bankAccountLabel.value = '';
-      defaultCurrency.value = 'EUR';
-      summaryLoaded.value = false;
+      resetSummaryState(companyName, hasBankAccount, bankAccountLabel, defaultCurrency, summaryLoaded);
       return;
     }
 
     const cached = summaryByCompany.get(cid);
     if (cached) {
+      if (requestId !== summaryRequestSeq) {
+        return;
+      }
       companyName.value = cached.name;
       hasBankAccount.value = cached.hasBankAccount;
       bankAccountLabel.value = cached.bankAccountLabel;
@@ -41,17 +57,29 @@ export function useInvoicingCompanySummary() {
       return;
     }
 
-    const { data } = await api.get(`/invoicing/companies/${cid}/summary`);
-    const name = data.data?.trade_name || data.data?.legal_name || '';
-    const bank = !!data.data?.has_bank_account;
-    const label = data.data?.bank_account_label || '';
-    const currency = data.data?.default_currency || 'EUR';
-    summaryByCompany.set(cid, { name, hasBankAccount: bank, bankAccountLabel: label, defaultCurrency: currency });
-    companyName.value = name;
-    hasBankAccount.value = bank;
-    bankAccountLabel.value = label;
-    defaultCurrency.value = currency;
-    summaryLoaded.value = true;
+    try {
+      const { data } = await api.get(`/invoicing/companies/${cid}/summary`);
+      if (requestId !== summaryRequestSeq) {
+        return;
+      }
+
+      const name = data.data?.trade_name || data.data?.legal_name || '';
+      const bank = !!data.data?.has_bank_account;
+      const label = data.data?.bank_account_label || '';
+      const currency = data.data?.default_currency || 'EUR';
+      const entry = { name, hasBankAccount: bank, bankAccountLabel: label, defaultCurrency: currency };
+      summaryByCompany.set(cid, entry);
+      companyName.value = name;
+      hasBankAccount.value = bank;
+      bankAccountLabel.value = label;
+      defaultCurrency.value = currency;
+      summaryLoaded.value = true;
+    } catch {
+      if (requestId !== summaryRequestSeq) {
+        return;
+      }
+      resetSummaryState(companyName, hasBankAccount, bankAccountLabel, defaultCurrency, summaryLoaded);
+    }
   }
 
   function invalidateSummary(id?: string) {

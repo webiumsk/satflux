@@ -107,7 +107,7 @@ class BankTransactionExpenseService
 
         $reference = trim((string) ($transaction->reference ?? ''));
 
-        return $reference !== '' ? $reference : 'Bankový výdaj';
+        return $reference !== '' ? $reference : __('invoicing.bank_expense_fallback');
     }
 
     protected function defaultInternalNote(
@@ -118,10 +118,10 @@ class BankTransactionExpenseService
         $lines = [];
 
         if ($supplier !== '') {
-            $lines[] = 'Supplier: '.$supplier;
+            $lines[] = __('invoicing.bank_expense_note_supplier').': '.$supplier;
         }
         if ($category !== '') {
-            $lines[] = 'Category: '.$category;
+            $lines[] = __('invoicing.bank_expense_note_category').': '.$category;
         }
 
         $reference = trim((string) ($transaction->reference ?? ''));

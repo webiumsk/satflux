@@ -38,7 +38,56 @@ final class BankTransactionDirectionGuesser
 
     protected function containsDebitHint(string $haystack): bool
     {
-        foreach ([
+        foreach ($this->debitHints() as $needle) {
+            if (str_contains($haystack, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function containsCreditHint(string $haystack): bool
+    {
+        if (str_contains($haystack, 'obrat na') && ! str_contains($haystack, 'debet')) {
+            return true;
+        }
+
+        foreach ($this->creditHints() as $needle) {
+            if (str_contains($haystack, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function debitHints(): array
+    {
+        $hints = config('invoicing.bank_debit_hints');
+
+        return is_array($hints) && $hints !== [] ? array_values($hints) : $this->defaultDebitHints();
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function creditHints(): array
+    {
+        $hints = config('invoicing.bank_credit_hints');
+
+        return is_array($hints) && $hints !== [] ? array_values($hints) : $this->defaultCreditHints();
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function defaultDebitHints(): array
+    {
+        return [
             'debet na',
             'debetna',
             'debet ',
@@ -64,22 +113,15 @@ final class BankTransactionDirectionGuesser
             'platba kartou',
             'platba prevodom',
             'smerom von',
-        ] as $needle) {
-            if (str_contains($haystack, $needle)) {
-                return true;
-            }
-        }
-
-        return false;
+        ];
     }
 
-    protected function containsCreditHint(string $haystack): bool
+    /**
+     * @return list<string>
+     */
+    protected function defaultCreditHints(): array
     {
-        if (str_contains($haystack, 'obrat na') && ! str_contains($haystack, 'debet')) {
-            return true;
-        }
-
-        foreach ([
+        return [
             'kredit na',
             'kredit ',
             'credit',
@@ -90,12 +132,6 @@ final class BankTransactionDirectionGuesser
             'pripis',
             'pripísan',
             'pripisan',
-        ] as $needle) {
-            if (str_contains($haystack, $needle)) {
-                return true;
-            }
-        }
-
-        return false;
+        ];
     }
 }

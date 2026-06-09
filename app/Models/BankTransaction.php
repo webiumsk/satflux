@@ -14,6 +14,8 @@ class BankTransaction extends Model
 {
     use HasUuids;
 
+    private ?BankTransactionDirection $resolvedDirectionCache = null;
+
     protected $fillable = [
         'company_id',
         'bank_import_batch_id',
@@ -71,6 +73,18 @@ class BankTransaction extends Model
 
     public function resolvedDirection(): BankTransactionDirection
     {
-        return app(BankTransactionDirectionGuesser::class)->inferFromTransaction($this);
+        if ($this->resolvedDirectionCache !== null) {
+            return $this->resolvedDirectionCache;
+        }
+
+        if ($this->direction instanceof BankTransactionDirection) {
+            $this->resolvedDirectionCache = $this->direction;
+
+            return $this->resolvedDirectionCache;
+        }
+
+        $this->resolvedDirectionCache = app(BankTransactionDirectionGuesser::class)->inferFromTransaction($this);
+
+        return $this->resolvedDirectionCache;
     }
 }

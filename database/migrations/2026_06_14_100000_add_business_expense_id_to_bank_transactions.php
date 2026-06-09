@@ -14,8 +14,6 @@ return new class extends Migration
                 ->after('match_status')
                 ->constrained('business_expenses')
                 ->nullOnDelete();
-
-            $table->index('business_expense_id');
         });
     }
 
