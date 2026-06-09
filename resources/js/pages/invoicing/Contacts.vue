@@ -221,7 +221,7 @@ function listFilterParams(): Record<string, string | undefined> {
 async function load() {
   loading.value = true;
   try {
-    const companyRes = await api.get(`/invoicing/companies/${companyId.value}`);
+    const companyRes = await api.get(`/invoicing/companies/${companyId.value}/summary`);
     companyName.value = companyRes.data.data?.trade_name || companyRes.data.data?.legal_name || '';
 
     const res = await api.get(`/invoicing/companies/${companyId.value}/contacts`, {

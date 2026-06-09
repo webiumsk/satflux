@@ -329,6 +329,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyLimit::class);
             Route::get('/companies/{company}', [CompanyController::class, 'show'])
                 ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/summary', [CompanyController::class, 'summary'])
+                ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/us-sales-tax/preview', [UsSalesTaxController::class, 'preview'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::patch('/companies/{company}', [CompanyController::class, 'update'])

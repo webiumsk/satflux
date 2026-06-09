@@ -216,8 +216,16 @@ class BusinessDocument extends Model
 
     protected function hasBlockingRelations(): bool
     {
-        if ($this->bankMatch()->exists()) {
+        if ($this->relationLoaded('bankMatch')) {
+            if ($this->bankMatch !== null) {
+                return true;
+            }
+        } elseif ($this->bankMatch()->exists()) {
             return true;
+        }
+
+        if ($this->relationLoaded('derivedDocuments')) {
+            return $this->derivedDocuments->isNotEmpty();
         }
 
         return $this->derivedDocuments()->exists();

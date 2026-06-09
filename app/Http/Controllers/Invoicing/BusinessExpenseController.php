@@ -33,6 +33,23 @@ class BusinessExpenseController extends Controller
     public function index(Request $request, Company $company): JsonResponse
     {
         $expenses = $this->expenseService->filteredQuery($company, $request)
+            ->select([
+                'id',
+                'company_id',
+                'status',
+                'internal_number',
+                'external_number',
+                'title',
+                'variable_symbol',
+                'issue_date',
+                'delivery_date',
+                'due_date',
+                'paid_at',
+                'total',
+                'currency',
+                'internal_note',
+                'attachment_path',
+            ])
             ->orderByDesc('issue_date')
             ->orderByDesc('created_at')
             ->paginate($request->integer('per_page', 25));

@@ -78,6 +78,17 @@ class CompanyController extends Controller
         ]);
     }
 
+    public function summary(Company $company): JsonResponse
+    {
+        return response()->json([
+            'data' => [
+                'id' => $company->id,
+                'legal_name' => $company->legal_name,
+                'trade_name' => $company->trade_name,
+            ],
+        ]);
+    }
+
     public function update(UpdateCompanyRequest $request, Company $company, CompanyBrandingService $brandingService): JsonResponse
     {
         $validated = $request->validated();
