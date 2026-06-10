@@ -147,8 +147,10 @@
                     {{ bankAccountLabel || '—' }}
                   </td>
                   <td class="p-3 max-w-[240px]">
-                    <div class="truncate">{{ tx.counterparty_name || '—' }}</div>
-                    <div v-if="tx.reference" class="text-xs text-gray-500 truncate mt-0.5">{{ tx.reference }}</div>
+                    <div class="truncate">{{ counterpartyDisplay(tx) }}</div>
+                    <div v-if="counterpartySubtext(tx)" class="text-xs text-gray-500 truncate mt-0.5">
+                      {{ counterpartySubtext(tx) }}
+                    </div>
                   </td>
                   <td class="p-3">
                     <RouterLink
@@ -466,6 +468,24 @@ function pairingCornerClass(tx: BankTx): string {
   }
 
   return 'status-corner--unmatched';
+}
+
+function counterpartyDisplay(tx: BankTx): string {
+  const name = tx.counterparty_name?.trim();
+  if (name) return name;
+
+  const reference = tx.reference?.trim();
+  if (reference) return reference.replace(/\s*\(ID=[^)]+\)\s*/gi, '').trim() || reference;
+
+  return '—';
+}
+
+function counterpartySubtext(tx: BankTx): string {
+  const name = tx.counterparty_name?.trim();
+  const reference = tx.reference?.trim();
+  if (!name || !reference || reference === name) return '';
+
+  return reference;
 }
 
 async function load() {
