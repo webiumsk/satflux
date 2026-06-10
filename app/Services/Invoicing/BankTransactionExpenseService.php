@@ -25,64 +25,70 @@ class BankTransactionExpenseService
         BankTransaction $transaction,
         array $data,
     ): BusinessExpense {
-        if ($transaction->company_id !== $company->id) {
-            throw ValidationException::withMessages([
-                'bank_transaction' => ['Transaction does not belong to this company.'],
-            ]);
-        }
-
-        if ($transaction->resolvedDirection() !== BankTransactionDirection::Debit) {
-            throw ValidationException::withMessages([
-                'direction' => ['Expenses can only be created from outgoing bank movements.'],
-            ]);
-        }
-
-        if ($transaction->business_expense_id !== null) {
-            throw ValidationException::withMessages([
-                'bank_transaction' => ['This movement is already linked to an expense.'],
-            ]);
-        }
-
-        if ($transaction->match_status === BankTransactionMatchStatus::Matched && $transaction->match) {
-            throw ValidationException::withMessages([
-                'bank_transaction' => ['This movement is already matched to an invoice.'],
-            ]);
-        }
-
         return DB::transaction(function () use ($company, $transaction, $data) {
-            $issueDate = $data['issue_date'] ?? $transaction->booked_at->toDateString();
-            $supplier = trim((string) ($data['supplier'] ?? $transaction->counterparty_name ?? ''));
+            $locked = BankTransaction::query()
+                ->whereKey($transaction->id)
+                ->lockForUpdate()
+                ->with('match')
+                ->firstOrFail();
+
+            if ($locked->company_id !== $company->id) {
+                throw ValidationException::withMessages([
+                    'bank_transaction' => ['Transaction does not belong to this company.'],
+                ]);
+            }
+
+            if ($locked->resolvedDirection() !== BankTransactionDirection::Debit) {
+                throw ValidationException::withMessages([
+                    'direction' => ['Expenses can only be created from outgoing bank movements.'],
+                ]);
+            }
+
+            if ($locked->business_expense_id !== null) {
+                throw ValidationException::withMessages([
+                    'bank_transaction' => ['This movement is already linked to an expense.'],
+                ]);
+            }
+
+            if ($locked->match_status === BankTransactionMatchStatus::Matched && $locked->match) {
+                throw ValidationException::withMessages([
+                    'bank_transaction' => ['This movement is already matched to an invoice.'],
+                ]);
+            }
+
+            $issueDate = $data['issue_date'] ?? $locked->booked_at->toDateString();
+            $supplier = trim((string) ($data['supplier'] ?? $locked->counterparty_name ?? ''));
             $category = trim((string) ($data['category'] ?? ''));
             $title = trim((string) ($data['title'] ?? ''));
 
             if ($title === '') {
-                $title = $this->defaultTitle($supplier, $category, $transaction);
+                $title = $this->defaultTitle($supplier, $category, $locked);
             }
 
             $internalNote = trim((string) ($data['internal_note'] ?? ''));
             if ($internalNote === '') {
-                $internalNote = $this->defaultInternalNote($transaction, $supplier, $category);
+                $internalNote = $this->defaultInternalNote($locked, $supplier, $category);
             }
 
             $expense = $this->expenseService->create($company, [
                 'title' => $title,
-                'variable_symbol' => $data['variable_symbol'] ?? $transaction->variable_symbol,
-                'constant_symbol' => $data['constant_symbol'] ?? $transaction->constant_symbol,
-                'specific_symbol' => $data['specific_symbol'] ?? $transaction->specific_symbol,
+                'variable_symbol' => $data['variable_symbol'] ?? $locked->variable_symbol,
+                'constant_symbol' => $data['constant_symbol'] ?? $locked->constant_symbol,
+                'specific_symbol' => $data['specific_symbol'] ?? $locked->specific_symbol,
                 'issue_date' => $issueDate,
                 'delivery_date' => $data['delivery_date'] ?? $issueDate,
                 'due_date' => $data['due_date'] ?? $issueDate,
-                'total' => $data['total'] ?? $transaction->amount,
-                'currency' => $data['currency'] ?? $transaction->currency,
+                'total' => $data['total'] ?? $locked->amount,
+                'currency' => $data['currency'] ?? $locked->currency,
                 'internal_note' => $internalNote,
             ], (bool) ($data['mark_paid'] ?? true));
 
-            $transaction->update([
+            $locked->update([
                 'business_expense_id' => $expense->id,
                 'match_status' => BankTransactionMatchStatus::Matched,
             ]);
 
-            AuditLog::log('bank_transaction.expense_created', 'bank_transaction', $transaction->id, [
+            AuditLog::log('bank_transaction.expense_created', 'bank_transaction', $locked->id, [
                 'business_expense_id' => $expense->id,
                 'company_id' => $company->id,
             ]);

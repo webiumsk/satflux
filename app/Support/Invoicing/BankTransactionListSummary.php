@@ -28,6 +28,7 @@ final class BankTransactionListSummary
     public function forQuery(Builder $query): array
     {
         $rows = (clone $query)
+            ->setEagerLoads([])
             ->reorder()
             ->selectRaw('direction, currency, COUNT(*) as cnt, SUM(ABS(amount)) as total')
             ->groupBy('direction', 'currency')
@@ -41,7 +42,7 @@ final class BankTransactionListSummary
         $byCurrency = [];
 
         foreach ($rows as $row) {
-            $currency = $row->currency !== '' ? (string) $row->currency : 'EUR';
+            $currency = filled($row->currency) ? (string) $row->currency : 'EUR';
             $cnt = (int) $row->cnt;
             $total = (float) $row->total;
             $direction = $row->direction instanceof BankTransactionDirection

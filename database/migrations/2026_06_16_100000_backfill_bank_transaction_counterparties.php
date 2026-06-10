@@ -27,8 +27,10 @@ return new class extends Migration
                     }
 
                     if (trim((string) ($transaction->variable_symbol ?? '')) === '' && $transaction->reference) {
-                        $rows = $parser->parse('notify@tatrabanka.sk', (string) $transaction->reference, (string) $transaction->reference);
+                        $reference = (string) $transaction->reference;
+                        $rows = $parser->parse('notify@tatrabanka.sk', $reference, $reference);
                         $vs = $rows[0]->variableSymbol ?? null;
+                        $vs ??= $this->extractVariableSymbolFromReference($reference);
                         if ($vs !== null) {
                             $updates['variable_symbol'] = $vs;
                         }
@@ -68,6 +70,25 @@ return new class extends Migration
                     default => null,
                 };
             }
+        }
+
+        return null;
+    }
+
+    protected function extractVariableSymbolFromReference(string $reference): ?string
+    {
+        if (preg_match('/\/VS([^\/]*)\/SS/iu', $reference, $m)) {
+            $digits = preg_replace('/\D/', '', $m[1]);
+
+            return $digits !== '' ? $digits : null;
+        }
+
+        if (preg_match('/\bVS[:\s\/-]*([0-9]{1,10})\b/iu', $reference, $m)) {
+            return $m[1];
+        }
+
+        if (preg_match('/\bvs([0-9]{1,10})\b/iu', $reference, $m)) {
+            return $m[1];
         }
 
         return null;

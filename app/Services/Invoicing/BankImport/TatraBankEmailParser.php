@@ -19,7 +19,7 @@ class TatraBankEmailParser implements BankNotificationParser
 
         return str_contains($haystack, 'tatrabanka')
             || str_contains($haystack, 'tatra banka')
-            || str_contains($subject, 'obrat');
+            || str_contains(strtolower($subject), 'obrat');
     }
 
     public function parse(string $from, string $subject, string $body): array
