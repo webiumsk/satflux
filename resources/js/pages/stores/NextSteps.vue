@@ -1,5 +1,5 @@
 <template>
-  <div class="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto overflow-x-hidden bg-gray-900 px-4 py-12 sm:px-6 lg:px-8">
+  <AppScrollPane class="relative flex flex-col items-center justify-center overflow-x-hidden bg-gray-900 px-4 py-12 sm:px-6 lg:px-8">
     <!-- Decorative background elements -->
     <div class="absolute top-0 left-0 -ml-24 -mt-24 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl"></div>
     <div class="absolute bottom-0 right-0 -mr-24 -mb-24 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
@@ -59,7 +59,7 @@
             </div>
         </div>
     </div>
-  </div>
+  </AppScrollPane>
 </template>
 
 <script setup lang="ts">
@@ -67,6 +67,7 @@ import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
+import AppScrollPane from '../../components/layout/AppScrollPane.vue';
 
 const { t } = useI18n();
 

@@ -1171,7 +1171,15 @@
     "footer_legal_terms": "Terms",
     "footer_legal_privacy": "Privacy",
     "footer_legal_imprint": "Imprint",
-    "footer_legal_dpa": "DPA"
+    "footer_legal_dpa": "DPA",
+    "footer_legal_nav_aria": "Legal documents",
+    "mobile_nav_aria": "Main navigation",
+    "mobile_nav_profile": "Profile",
+    "mobile_nav_info": "Info",
+    "mobile_nav_home_aria": "SATFLUX home",
+    "mobile_nav_dashboard_aria": "Dashboard",
+    "info_page_title": "About SATFLUX",
+    "info_page_subtitle": "Version, legal documents, open source, and support."
   },
   "auth": {
     "welcome_back": "Welcome back",

@@ -53,9 +53,7 @@
         </div>
 
         <!-- Content Container -->
-        <div
-          class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar"
-        >
+        <AppScrollPane>
           <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div
               class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
@@ -289,7 +287,7 @@
               </div>
             </div>
           </div>
-        </div>
+        </AppScrollPane>
       </div>
     </div>
   </AppLayout>
@@ -301,6 +299,7 @@ import { useForm, Link, router, usePage } from "@inertiajs/vue3";
 import { useI18n } from "vue-i18n";
 import AppLayout from "../../../components/layout/AppLayout.vue";
 import StoreSidebar from "../../../components/stores/StoreSidebar.vue";
+import AppScrollPane from "../../../components/layout/AppScrollPane.vue";
 
 const { t } = useI18n();
 

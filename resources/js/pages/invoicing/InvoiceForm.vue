@@ -295,16 +295,22 @@
                   <input v-model.number="line.quantity" type="number" min="0.0001" step="any" class="invoicing-sf-input w-full" :disabled="isLocked" />
                 </div>
                 <div>
+                  <label class="text-xs text-gray-500">{{ t('invoicing.col_unit') }}</label>
+                  <InvoiceLineUnitSelect v-model="line.unit" class="w-full" :disabled="isLocked" />
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
                   <label class="text-xs text-gray-500">{{ t('invoicing.col_unit_price') }}</label>
                   <input v-model.number="line.unit_price" type="number" min="0" step="0.01" class="invoicing-sf-input w-full" :disabled="isLocked" />
                 </div>
-              </div>
-              <div v-if="showLineTaxColumn" class="grid grid-cols-2 gap-2">
-                <div>
+                <div v-if="showLineTaxColumn">
                   <label class="text-xs text-gray-500">{{ lineTaxColumnLabel }}%</label>
                   <input v-model.number="line.tax_rate" type="number" min="0" max="100" class="invoicing-sf-input w-full" :disabled="isLocked" />
                 </div>
-                <div class="text-right self-end">
+              </div>
+              <div class="flex justify-end">
+                <div class="text-right">
                   <p class="text-xs text-gray-500">{{ t('invoicing.col_line_total_vat') }}</p>
                   <p class="font-medium">{{ lineTotalDisplay(line).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</p>
                 </div>

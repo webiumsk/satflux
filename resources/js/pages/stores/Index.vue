@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
+  <div class="min-h-0 flex-1 max-md:flex-none max-md:overflow-visible md:overflow-y-auto overscroll-y-contain custom-scrollbar">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
     <div class="flex justify-between items-center mb-10">
       <div>

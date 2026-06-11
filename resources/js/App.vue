@@ -1,7 +1,10 @@
 <template>
   <!-- Fill AppLayout main so routed pages get a bounded flex child (QLayout / QPageContainer pattern) -->
   <AppLayout v-if="needsLayout">
-    <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden max-md:flex-none max-md:min-h-0 max-md:overflow-visible">
+    <div
+      class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+      :class="layoutScrollMobile ? 'max-md:flex-none max-md:overflow-visible' : ''"
+    >
       <router-view />
     </div>
   </AppLayout>
@@ -16,11 +19,11 @@ import { useRoute } from "vue-router";
 import AppLayout from "./components/layout/AppLayout.vue";
 import FlashMessage from "./components/ui/FlashMessage.vue";
 import CookieConsentBanner from "./components/legal/CookieConsentBanner.vue";
+import { useAppLayoutScroll } from "./composables/useAppLayoutScroll";
 
 const route = useRoute();
+const { layoutScrollMobile } = useAppLayoutScroll();
 
-// Show layout for authenticated pages (pages that require auth)
-// Public pages (landing) don't need AppLayout, they have their own layout
 const needsLayout = computed(() => {
   return route.meta.requiresAuth === true && !route.meta.public;
 });

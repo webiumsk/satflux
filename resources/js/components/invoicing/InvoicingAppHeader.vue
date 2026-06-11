@@ -41,7 +41,7 @@
         </div>
 
         <button
-          v-if="showMobileFilters"
+          v-if="isMobileFilterAvailable"
           type="button"
           class="invoicing-mobile-icon-btn shrink-0 relative"
           :title="t('invoicing.mobile_filters')"
@@ -62,25 +62,6 @@
       </div>
     </div>
 
-    <!-- Desktop tools sub-nav -->
-    <nav
-      v-if="displayToolsSubNav"
-      class="invoicing-sub-nav hidden md:block w-full min-h-[42px] bg-slate-800 border-b border-slate-900"
-      aria-label="Company settings"
-    >
-      <div :class="[INVOICING_CONTAINER_CLASS, 'flex flex-wrap items-stretch']">
-        <RouterLink
-          v-for="tool in toolsNavItems"
-          :key="tool.section"
-          :to="toolsLinkTo(tool)"
-          class="invoicing-sub-nav__item"
-          :class="{ 'invoicing-sub-nav__item--active': activeToolsSection === tool.section }"
-        >
-          {{ t(tool.labelKey) }}
-        </RouterLink>
-      </div>
-    </nav>
-
     <!-- Desktop filter bar -->
     <div v-if="showFilterBar" class="invoicing-filter-bar hidden md:block">
       <div :class="[INVOICING_CONTAINER_CLASS, 'flex flex-wrap items-center gap-3 py-3']">
@@ -100,7 +81,7 @@
     />
 
     <InvoicingMobileFilterDrawer
-      v-if="showMobileFilters && $slots['mobile-filters']"
+      v-if="isMobileFilterAvailable"
       :open="filterDrawerOpen"
       :active-count="mobileFilterActiveCount"
       @close="filterDrawerOpen = false"
@@ -116,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, useSlots } from 'vue';
 import { useI18n } from 'vue-i18n';
 import '../../styles/invoicing-theme.css';
 import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompanySummary';
@@ -124,7 +105,6 @@ import {
   INVOICING_CONTAINER_CLASS,
   useInvoicingLayout,
   type InvoicingMainSection,
-  type InvoicingToolsNavItem,
 } from '../../composables/useInvoicingLayout';
 import InvoicingIcons from './icons/InvoicingIcons.vue';
 import InvoicingMobileNavDrawer from './InvoicingMobileNavDrawer.vue';
@@ -133,7 +113,6 @@ import InvoicingMobileFilterDrawer from './InvoicingMobileFilterDrawer.vue';
 const props = withDefaults(
   defineProps<{
     companyLabel?: string;
-    showToolsSubNav?: boolean;
     showFilterBar?: boolean;
     showMobileFilters?: boolean;
     mobileFilterActiveCount?: number;
@@ -164,6 +143,11 @@ const { hasBankAccount, companyName: summaryCompanyName } = useInvoicingCompanyS
 
 const navDrawerOpen = ref(false);
 const filterDrawerOpen = ref(false);
+const slots = useSlots();
+
+const isMobileFilterAvailable = computed(
+  () => props.showMobileFilters && Boolean(slots['mobile-filters'])
+);
 
 const displayCompanyLabel = computed(() => props.companyLabel || summaryCompanyName.value);
 
@@ -208,26 +192,16 @@ const mobileSubtitle = computed(() => {
   return '';
 });
 
-const displayToolsSubNav = computed(() => {
-  if (props.showToolsSubNav === false) return false;
-  if (props.showToolsSubNav === true) return true;
-  return activeMainSection.value === 'tools';
-});
-
-function toolsLinkTo(tool: InvoicingToolsNavItem) {
-  if (tool.section === 'subscription') {
-    return { name: tool.routeName };
-  }
-  if (!companyId.value) {
-    return { name: 'invoicing' };
-  }
-  return { name: tool.routeName, params: { companyId: companyId.value } };
-}
-
 function onFilterApply() {
   filterDrawerOpen.value = false;
   emit('mobile-filter-apply');
 }
 
-defineExpose({ openFilterDrawer: () => { filterDrawerOpen.value = true; } });
+defineExpose({
+  openFilterDrawer: () => {
+    if (isMobileFilterAvailable.value) {
+      filterDrawerOpen.value = true;
+    }
+  },
+});
 </script>

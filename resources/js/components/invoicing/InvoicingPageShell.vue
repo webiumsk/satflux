@@ -3,6 +3,7 @@
     <div class="sticky top-0 z-20 shadow-sm bg-gray-100">
       <slot name="header" />
       <InvoicingDocumentSubNav v-if="isDocumentsArea" />
+      <InvoicingToolsSubNav v-if="isToolsArea" />
       <slot name="subheader" />
     </div>
     <div v-if="$slots.toolbar" class="invoicing-toolbar">
@@ -33,6 +34,7 @@ import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { INVOICING_CONTAINER_CLASS } from '../../composables/useInvoicingLayout';
 import InvoicingDocumentSubNav from './InvoicingDocumentSubNav.vue';
+import InvoicingToolsSubNav from './InvoicingToolsSubNav.vue';
 import '../../styles/invoicing-theme.css';
 
 withDefaults(
@@ -65,6 +67,17 @@ const isDocumentsArea = computed(() => {
 
   return /\/invoicing\/companies\/[^/]+\/(invoices|proformas|delivery-notes|orders|quotes|recurring|credit-notes|drafts)(\/|$)/.test(
     route.path
+  );
+});
+
+const isToolsArea = computed(() => {
+  const name = String(route.name ?? '');
+  return (
+    name === 'invoicing-company'
+    || name === 'invoicing-company-app'
+    || name === 'invoicing-company-app-emails'
+    || name === 'invoicing-company-app-series'
+    || name === 'invoicing-company-import'
   );
 });
 </script>

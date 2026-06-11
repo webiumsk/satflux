@@ -1,10 +1,8 @@
 <template>
   <InvoicingPageShell content-class="pb-10">
     <template #header>
-      <InvoicingAppHeader :show-tools-sub-nav="true" :show-filter-bar="false" />
+      <InvoicingAppHeader :show-filter-bar="false" />
     </template>
-
-    <CompanySettingsSectionNav :company-id="companyId" class="mt-4" />
 
     <h1 class="invoicing-title mb-6">{{ t('invoicing.import_title') }}</h1>
 
@@ -234,7 +232,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import CompanySettingsSectionNav from '../../components/invoicing/CompanySettingsSectionNav.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import {

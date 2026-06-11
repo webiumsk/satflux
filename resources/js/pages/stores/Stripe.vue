@@ -136,9 +136,7 @@
         </div>
       </div>
 
-      <div
-        class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar"
-      >
+      <AppScrollPane>
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
           <!-- Free tier: Upgrade prompt -->
           <div
@@ -578,7 +576,7 @@
             </div>
           </form>
         </div>
-      </div>
+      </AppScrollPane>
     </div>
 
     <!-- Upgrade Modal (shown when Free user tries to access Stripe) -->
@@ -681,6 +679,7 @@ import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
 import { useAppsStore } from "../../store/apps";
 import StoreSidebar from "../../components/stores/StoreSidebar.vue";
+import AppScrollPane from "../../components/layout/AppScrollPane.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 import ProPlanBadge from "../../components/stores/ProPlanBadge.vue";
 import Select from "../../components/ui/Select.vue";

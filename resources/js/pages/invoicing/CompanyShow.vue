@@ -4,11 +4,8 @@
       <InvoicingAppHeader
         :company-label="company.trade_name || company.legal_name"
         :show-filter-bar="false"
-        :show-tools-sub-nav="true"
       />
     </template>
-
-    <CompanySettingsSectionNav :company-id="companyId" class="mt-4" />
 
     <h1 class="invoicing-title mb-4 mt-4">
       {{
@@ -56,7 +53,6 @@ import CompanyAppSettingsForm from '../../components/invoicing/CompanyAppSetting
 import CompanyEmailSettingsForm from '../../components/invoicing/CompanyEmailSettingsForm.vue';
 import CompanyNumberSeriesPanel from '../../components/invoicing/CompanyNumberSeriesPanel.vue';
 import CompanySettingsForm from '../../components/invoicing/CompanySettingsForm.vue';
-import CompanySettingsSectionNav from '../../components/invoicing/CompanySettingsSectionNav.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';

@@ -1,6 +1,6 @@
 <template>
   <div
-    class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar"
+    class="min-h-0 flex-1 max-md:flex-none max-md:overflow-visible md:overflow-y-auto overscroll-y-contain custom-scrollbar"
   >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="mb-8 flex items-center gap-4">

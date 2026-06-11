@@ -70,9 +70,7 @@
       </div>
 
       <!-- Content Container -->
-      <div
-        class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar"
-      >
+      <AppScrollPane>
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <!-- API Keys List -->
           <div v-if="!loading && apiKeys.length > 0" class="space-y-4">
@@ -513,7 +511,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </AppScrollPane>
     </div>
 
     <!-- Upgrade Modal -->
@@ -542,6 +540,7 @@ import { useStoresStore } from "../../store/stores";
 import { useAppsStore } from "../../store/apps";
 import { useFlashStore } from "../../store/flash";
 import StoreSidebar from "../../components/stores/StoreSidebar.vue";
+import AppScrollPane from "../../components/layout/AppScrollPane.vue";
 import ApiKeyCard from "../../components/stores/ApiKeyCard.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 import api from "../../services/api";

@@ -92,7 +92,7 @@
     "mobile_clear_filters": "Vymazať všetko",
     "mobile_apply_filters": "Použiť",
     "mobile_more_actions": "Ďalšie akcie",
-    "mobile_selected_count": "{count} vybraných",
+    "mobile_selected_count": "{count, plural, one {# vybraný} few {# vybrané} other {# vybraných}}",
     "mobile_new_document": "Nový doklad",
     "mobile_new_expense": "Nový výdavok",
     "mobile_new_contact": "Nový kontakt",
@@ -1171,7 +1171,15 @@
     "footer_legal_terms": "Podmienky",
     "footer_legal_privacy": "Súkromie",
     "footer_legal_imprint": "Impressum",
-    "footer_legal_dpa": "DPA"
+    "footer_legal_dpa": "DPA",
+    "footer_legal_nav_aria": "Právne dokumenty",
+    "mobile_nav_aria": "Hlavná navigácia",
+    "mobile_nav_profile": "Profil",
+    "mobile_nav_info": "Info",
+    "mobile_nav_home_aria": "SATFLUX domov",
+    "mobile_nav_dashboard_aria": "Nástenka",
+    "info_page_title": "O SATFLUX",
+    "info_page_subtitle": "Verzia, právne dokumenty, open source a podpora."
   },
   "auth": {
     "welcome_back": "Vitajte späť",

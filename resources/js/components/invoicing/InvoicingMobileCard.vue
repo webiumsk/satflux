@@ -2,7 +2,11 @@
   <article
     class="invoicing-mobile-card"
     :class="{ 'invoicing-mobile-card--selected': selected }"
+    role="button"
+    tabindex="0"
+    :aria-pressed="selectable ? selected : undefined"
     @click="emit('open')"
+    @keydown="onKeydown"
   >
     <div v-if="selectable" class="flex items-start gap-3">
       <input
@@ -45,4 +49,11 @@ const emit = defineEmits<{
   open: [];
   'toggle-select': [];
 }>();
+
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    emit('open');
+  }
+}
 </script>

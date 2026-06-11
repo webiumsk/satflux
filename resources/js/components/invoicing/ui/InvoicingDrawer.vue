@@ -67,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 const props = withDefaults(
@@ -85,6 +85,7 @@ const emit = defineEmits<{ close: [] }>();
 const { t } = useI18n();
 const panelRef = ref<HTMLElement | null>(null);
 const titleId = `invoicing-drawer-title-${Math.random().toString(36).slice(2, 9)}`;
+const prevBodyOverflow = ref('');
 
 const panelEnterFrom = computed(() =>
   props.side === 'left' ? '-translate-x-full' : 'translate-x-full'
@@ -93,16 +94,46 @@ const panelLeaveTo = computed(() =>
   props.side === 'left' ? '-translate-x-full' : 'translate-x-full'
 );
 
+function lockBodyScroll() {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  prevBodyOverflow.value = document.body.style.overflow;
+  document.body.style.overflow = 'hidden';
+}
+
+function unlockBodyScroll() {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  document.body.style.overflow = prevBodyOverflow.value;
+}
+
 watch(
   () => props.open,
   (isOpen) => {
     if (typeof document === 'undefined') {
       return;
     }
-    document.body.style.overflow = isOpen ? 'hidden' : '';
     if (isOpen) {
+      lockBodyScroll();
       requestAnimationFrame(() => panelRef.value?.focus());
+    } else {
+      unlockBodyScroll();
     }
   }
 );
+
+onMounted(() => {
+  if (props.open) {
+    lockBodyScroll();
+    requestAnimationFrame(() => panelRef.value?.focus());
+  }
+});
+
+onBeforeUnmount(() => {
+  if (props.open) {
+    unlockBodyScroll();
+  }
+});
 </script>

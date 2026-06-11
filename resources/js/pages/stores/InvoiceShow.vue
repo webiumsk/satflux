@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
+  <AppScrollPane>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="mb-6">
       <router-link
@@ -17,11 +17,12 @@
       <p class="text-sm text-gray-500 mt-2">Invoice ID: {{ invoiceId }}</p>
     </div>
   </div>
-  </div>
+  </AppScrollPane>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
+import AppScrollPane from '../../components/layout/AppScrollPane.vue';
 
 const route = useRoute();
 const storeId = route.params.id as string;
