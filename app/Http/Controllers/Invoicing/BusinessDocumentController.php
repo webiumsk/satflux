@@ -331,6 +331,12 @@ class BusinessDocumentController extends Controller
                 return;
             }
 
+            if (! $locked->canCancel()) {
+                throw ValidationException::withMessages([
+                    'status' => ['This document cannot be cancelled in its current status.'],
+                ]);
+            }
+
             $wasIssued = $locked->status === BusinessDocumentStatus::Issued;
 
             $locked->update([
