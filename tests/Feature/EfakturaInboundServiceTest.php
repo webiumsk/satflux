@@ -8,6 +8,7 @@ use App\Models\EfakturaInboundReceipt;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Services\Invoicing\BusinessExpenseService;
 use App\Services\Invoicing\Efaktura\EfakturaInboundService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
@@ -219,5 +220,92 @@ XML;
         $this->assertSame('acknowledged', $receipt->status);
         $this->assertNotNull($receipt->acknowledged_at);
         $this->assertSame($expenseId, $receipt->business_expense_id);
+    }
+
+    #[Test]
+    public function poll_company_reimports_orphaned_unacknowledged_receipt_before_acknowledge(): void
+    {
+        config([
+            'efaktura.enabled' => true,
+            'efaktura.allowed_sapi_hosts' => ['sapi.test'],
+        ]);
+
+        $ubl = $this->sampleInboundUbl();
+        $ackCalls = 0;
+        $detailCalls = 0;
+
+        Http::fake(function ($request) use ($ubl, &$ackCalls, &$detailCalls) {
+            $url = $request->url();
+
+            if (str_contains($url, '/sapi/v1/auth/token')) {
+                return Http::response(['access_token' => 'token-abc', 'expires_in' => 900]);
+            }
+
+            if ($request->method() === 'GET' && str_contains($url, '/sapi/v1/document/receive/inbound-42') && ! str_contains($url, '/acknowledge')) {
+                $detailCalls++;
+
+                return Http::response([
+                    'providerDocumentId' => 'inbound-42',
+                    'payload' => $ubl,
+                ]);
+            }
+
+            if ($request->method() === 'GET' && (str_ends_with($url, '/sapi/v1/document/receive') || str_contains($url, '/document/receive?'))) {
+                return Http::response([
+                    'documents' => [
+                        ['providerDocumentId' => 'inbound-42'],
+                    ],
+                ]);
+            }
+
+            if (str_contains($url, '/acknowledge')) {
+                $ackCalls++;
+
+                return $ackCalls === 1
+                    ? Http::response(['error' => 'temporary'], 500)
+                    : Http::response(['status' => 'ACKNOWLEDGED']);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $company = $this->inboundCompany();
+        $service = app(EfakturaInboundService::class);
+
+        $firstStats = $service->pollCompany($company);
+
+        $this->assertSame(0, $firstStats['imported']);
+        $this->assertSame(0, $firstStats['acknowledged']);
+        $this->assertSame(1, $firstStats['failed']);
+
+        $receipt = EfakturaInboundReceipt::query()->first();
+        $this->assertNotNull($receipt);
+        $expense = $receipt->expense;
+        $this->assertNotNull($expense);
+        $oldExpenseId = $expense->id;
+
+        app(BusinessExpenseService::class)->permanentlyDelete($expense);
+        $receipt->refresh();
+        $this->assertNull($receipt->business_expense_id);
+
+        $secondStats = $service->pollCompany($company);
+
+        $this->assertSame(1, $secondStats['imported']);
+        $this->assertSame(1, $secondStats['acknowledged']);
+        $this->assertSame(2, $detailCalls);
+
+        $receipt->refresh();
+        $this->assertSame('acknowledged', $receipt->status);
+        $this->assertNotNull($receipt->acknowledged_at);
+        $this->assertNotNull($receipt->business_expense_id);
+        $this->assertNotSame($oldExpenseId, $receipt->business_expense_id);
+
+        $this->assertDatabaseHas('business_expenses', [
+            'id' => $receipt->business_expense_id,
+            'company_id' => $company->id,
+            'external_number' => 'IN-7788',
+            'title' => 'Supplier s.r.o.',
+            'total' => 88.50,
+        ]);
     }
 }

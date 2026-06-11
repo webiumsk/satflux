@@ -108,6 +108,19 @@ class EfakturaInboundService
 
                 if ($existingReceipt !== null) {
                     try {
+                        if ($existingReceipt->business_expense_id === null || ! $existingReceipt->expense()->exists()) {
+                            $detail = $this->client->receivedDocument($token, $participantId, $externalId, $baseUrl);
+                            $ubl = (string) ($detail['payload'] ?? $detail['ubl'] ?? '');
+                            if ($ubl === '') {
+                                $stats['failed']++;
+
+                                continue;
+                            }
+
+                            $existingReceipt = $this->importInboundDocument($company, $externalId, $ubl, $detail, $existingReceipt);
+                            $stats['imported']++;
+                        }
+
                         $this->client->acknowledgeReceived($token, $participantId, $externalId, $baseUrl);
                         $existingReceipt->update([
                             'status' => 'acknowledged',
@@ -189,25 +202,39 @@ class EfakturaInboundService
     /**
      * @param  array<string, mixed>  $detail
      */
-    protected function importInboundDocument(Company $company, string $externalId, string $ubl, array $detail): EfakturaInboundReceipt
-    {
+    protected function importInboundDocument(
+        Company $company,
+        string $externalId,
+        string $ubl,
+        array $detail,
+        ?EfakturaInboundReceipt $existingReceipt = null,
+    ): EfakturaInboundReceipt {
         $attachment = null;
 
         try {
-            return DB::transaction(function () use ($company, $externalId, $ubl, $detail, &$attachment) {
+            return DB::transaction(function () use ($company, $externalId, $ubl, $detail, $existingReceipt, &$attachment) {
                 $draft = $this->parser->parse($ubl);
                 $expense = $this->expenseService->create($company, $draft);
                 $attachment = $this->storeUblAttachment($expense, $ubl, $externalId);
 
-                return EfakturaInboundReceipt::query()->create([
+                $attributes = [
                     'company_id' => $company->id,
                     'external_document_id' => $externalId,
                     'business_expense_id' => $expense->id,
                     'status' => 'imported',
                     'attachment_disk' => $attachment['disk'],
                     'attachment_path' => $attachment['path'],
+                    'acknowledged_at' => null,
                     'response_payload' => $detail,
-                ]);
+                ];
+
+                if ($existingReceipt !== null) {
+                    $existingReceipt->update($attributes);
+
+                    return $existingReceipt->refresh();
+                }
+
+                return EfakturaInboundReceipt::query()->create($attributes);
             });
         } catch (\Throwable $e) {
             if (is_array($attachment)) {
