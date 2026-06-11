@@ -13,6 +13,7 @@ use App\Models\CompanyContact;
 use App\Models\CompanyDocumentSequence;
 use App\Models\CompanyStockItem;
 use App\Models\CompanyWarehouse;
+use App\Models\EfakturaInboundReceipt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -40,6 +41,7 @@ class CompanyDataResetService
                 'bank_import_batches' => BankImportBatch::query()->where('company_id', $company->id)->count(),
                 'stock_items' => CompanyStockItem::query()->where('company_id', $company->id)->count(),
                 'warehouses' => CompanyWarehouse::query()->where('company_id', $company->id)->count(),
+                'efaktura_inbound_receipts' => EfakturaInboundReceipt::query()->where('company_id', $company->id)->count(),
             ];
 
             BusinessDocument::query()
@@ -65,6 +67,7 @@ class CompanyDataResetService
                 ->with('attachments')
                 ->get()
                 ->each(fn (BusinessExpense $expense) => $this->expenseService->permanentlyDelete($expense));
+            EfakturaInboundReceipt::query()->where('company_id', $company->id)->delete();
             BusinessRecurringProfile::query()->where('company_id', $company->id)->delete();
             CompanyContact::query()->where('company_id', $company->id)->delete();
             CompanyStockItem::query()->where('company_id', $company->id)->delete();
