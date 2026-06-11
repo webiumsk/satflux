@@ -43,6 +43,7 @@ class Company extends Model
         'issuer_email',
         'website',
         'invoice_number_prefix',
+        'bank_inbound_token',
         'app_settings',
         'email_settings',
         'logo_path',
@@ -123,5 +124,32 @@ class Company extends Model
     public function displayName(): string
     {
         return $this->trade_name ?: $this->legal_name;
+    }
+
+    public function hasBankAccount(): bool
+    {
+        if (trim((string) ($this->iban ?? '')) !== '') {
+            return true;
+        }
+
+        return trim((string) ($this->bank_account ?? '')) !== '';
+    }
+
+    public function maskedBankAccountLabel(): ?string
+    {
+        $bankName = trim((string) ($this->bank_name ?? ''));
+        $digits = preg_replace('/\D/', '', (string) (($this->iban ?: $this->bank_account) ?: ''));
+
+        if ($bankName === '' && $digits === '') {
+            return null;
+        }
+
+        $suffix = strlen($digits) >= 4 ? ' ****'.substr($digits, -4) : '';
+
+        if ($bankName !== '') {
+            return $bankName.$suffix;
+        }
+
+        return $suffix !== '' ? ltrim($suffix) : null;
     }
 }

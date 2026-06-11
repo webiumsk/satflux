@@ -11,6 +11,7 @@ use App\Http\Requests\Invoicing\UpdateCompanyStoresRequest;
 use App\Models\AuditLog;
 use App\Models\Company;
 use App\Models\Store;
+use App\Services\Invoicing\BankInboundAddressService;
 use App\Services\Invoicing\CompanyBrandingService;
 use App\Services\Invoicing\CompanyDataResetService;
 use App\Services\Invoicing\DocumentSequenceService;
@@ -31,8 +32,11 @@ class CompanyController extends Controller
         return response()->json(['data' => $companies]);
     }
 
-    public function store(StoreCompanyRequest $request, DocumentSequenceService $sequenceService): JsonResponse
-    {
+    public function store(
+        StoreCompanyRequest $request,
+        DocumentSequenceService $sequenceService,
+        BankInboundAddressService $inboundAddressService,
+    ): JsonResponse {
         $validated = $request->validated();
         $storeId = $validated['store_id'] ?? null;
         unset($validated['store_id']);
@@ -46,6 +50,7 @@ class CompanyController extends Controller
             'default_currency' => $request->input('default_currency', 'EUR'),
             'vat_status' => $vatStatus,
             'vat_payer' => in_array($vatStatus, ['payer', 'partial'], true),
+            'bank_inbound_token' => $inboundAddressService->generateUniqueToken(),
         ]);
 
         if ($storeId) {
@@ -70,6 +75,20 @@ class CompanyController extends Controller
 
         return response()->json([
             'data' => $this->companyPayload($company, $brandingService),
+        ]);
+    }
+
+    public function summary(Company $company): JsonResponse
+    {
+        return response()->json([
+            'data' => [
+                'id' => $company->id,
+                'legal_name' => $company->legal_name,
+                'trade_name' => $company->trade_name,
+                'has_bank_account' => $company->hasBankAccount(),
+                'bank_account_label' => $company->maskedBankAccountLabel(),
+                'default_currency' => $company->default_currency,
+            ],
         ]);
     }
 

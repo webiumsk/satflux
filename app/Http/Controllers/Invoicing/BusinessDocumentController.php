@@ -23,6 +23,7 @@ use App\Services\Invoicing\BusinessDocumentFromProformaService;
 use App\Services\Invoicing\BusinessDocumentFromQuoteService;
 use App\Services\Invoicing\BusinessDocumentIsdocService;
 use App\Services\Invoicing\BusinessDocumentIssueService;
+use App\Services\Invoicing\BusinessDocumentListPresenter;
 use App\Services\Invoicing\BusinessDocumentMarkPaidService;
 use App\Services\Invoicing\BusinessDocumentPaymentTokenService;
 use App\Services\Invoicing\BusinessDocumentPdfService;
@@ -74,15 +75,19 @@ class BusinessDocumentController extends Controller
         ];
     }
 
-    public function index(Request $request, Company $company): JsonResponse
-    {
+    public function index(
+        Request $request,
+        Company $company,
+        BusinessDocumentListPresenter $listPresenter,
+    ): JsonResponse {
         $documents = $this->bulkService->filteredQuery($company, $request)
-            ->with($this->documentRelations())
+            ->select(BusinessDocumentListPresenter::listColumns())
+            ->with(BusinessDocumentListPresenter::listRelations())
             ->orderByDesc('issue_date')
             ->orderByDesc('created_at')
             ->paginate($request->integer('per_page', 25));
 
-        return response()->json($documents);
+        return response()->json($listPresenter->paginated($documents, $company));
     }
 
     public function bulk(BulkBusinessDocumentRequest $request, Company $company): JsonResponse|Response

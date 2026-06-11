@@ -54,4 +54,51 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Bank transaction direction hints (email / CSV reference text)
+    |--------------------------------------------------------------------------
+    */
+
+    'bank_debit_hints' => [
+        'debet na',
+        'debetna',
+        'debet ',
+        'debet.',
+        'debit',
+        'dbit',
+        'odchod',
+        'odch.',
+        'odchodz',
+        'výdaj',
+        'vydaj',
+        'nákup pos',
+        'nakup pos',
+        'eur nákup',
+        'eur nakup',
+        'pos nákup',
+        'pos nakup',
+        'transakčná daň',
+        'transakcna dan',
+        'poplatok',
+        'výber',
+        'vyber',
+        'platba kartou',
+        'platba prevodom',
+        'smerom von',
+    ],
+
+    'bank_credit_hints' => [
+        'kredit na',
+        'kredit ',
+        'credit',
+        'príjem',
+        'prijem',
+        'prijatie',
+        'vklad',
+        'pripis',
+        'pripísan',
+        'pripisan',
+    ],
+
 ];

@@ -329,6 +329,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyLimit::class);
             Route::get('/companies/{company}', [CompanyController::class, 'show'])
                 ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/summary', [CompanyController::class, 'summary'])
+                ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/us-sales-tax/preview', [UsSalesTaxController::class, 'preview'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::patch('/companies/{company}', [CompanyController::class, 'update'])
@@ -534,6 +536,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::post('/companies/{company}/bank-transactions/{bankTransaction}/ignore', [\App\Http\Controllers\Invoicing\BankTransactionController::class, 'ignore'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/bank-transactions/{bankTransaction}/unmatch', [\App\Http\Controllers\Invoicing\BankTransactionController::class, 'unmatch'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/bank-transactions/{bankTransaction}/create-expense', [\App\Http\Controllers\Invoicing\BankTransactionController::class, 'createExpense'])
                 ->middleware(EnsureCompanyOwnership::class);
         });
 

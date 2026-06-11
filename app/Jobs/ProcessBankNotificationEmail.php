@@ -20,7 +20,7 @@ class ProcessBankNotificationEmail implements ShouldQueue
     public function __construct(
         public array $payload,
     ) {
-        $this->onQueue('default');
+        $this->onQueue('webhooks');
     }
 
     public function handle(BankInboundEmailService $service): void

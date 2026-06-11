@@ -1,0 +1,118 @@
+<?php
+
+namespace App\Services\Invoicing;
+
+use App\Models\Company;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
+
+class BankInboundAddressService
+{
+    public function ensureToken(Company $company): string
+    {
+        if ($company->bank_inbound_token) {
+            return $company->bank_inbound_token;
+        }
+
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            try {
+                return DB::transaction(function () use ($company): string {
+                    $locked = Company::query()->whereKey($company->id)->lockForUpdate()->firstOrFail();
+
+                    if ($locked->bank_inbound_token) {
+                        $company->bank_inbound_token = $locked->bank_inbound_token;
+
+                        return $locked->bank_inbound_token;
+                    }
+
+                    $token = $this->generateUniqueToken();
+                    $locked->update(['bank_inbound_token' => $token]);
+                    $company->bank_inbound_token = $token;
+
+                    return $token;
+                });
+            } catch (UniqueConstraintViolationException) {
+                $company->refresh();
+                if ($company->bank_inbound_token) {
+                    return $company->bank_inbound_token;
+                }
+            }
+        }
+
+        return $this->ensureToken($company->refresh());
+    }
+
+    public function buildAddress(Company $company): string
+    {
+        $token = $this->ensureToken($company);
+        $address = $this->prefix().$token.'@'.$this->domain();
+
+        if (strlen($address) > $this->maxAddressLength()) {
+            throw new InvalidArgumentException(
+                'Bank inbound address exceeds max length ('.$this->maxAddressLength().' chars). Shorten BANK_INBOUND_DOMAIN or BANK_INBOUND_ADDRESS_PREFIX.'
+            );
+        }
+
+        return $address;
+    }
+
+    public function resolveCompany(string $to): Company
+    {
+        $to = strtolower(trim($to));
+        $domain = preg_quote($this->domain(), '/');
+        $prefix = preg_quote($this->prefix(), '/');
+        $tokenLength = $this->tokenLength();
+
+        if (! preg_match('/^'.$prefix.'([a-z0-9]{'.$tokenLength.'})@'.$domain.'$/', $to, $matches)) {
+            throw ValidationException::withMessages([
+                'to' => ['Unknown inbound bank address.'],
+            ]);
+        }
+
+        return Company::query()->where('bank_inbound_token', $matches[1])->firstOrFail();
+    }
+
+    public function generateUniqueToken(): string
+    {
+        $length = $this->tokenLength();
+
+        do {
+            $token = Str::lower(Str::random($length));
+        } while (! preg_match('/^[a-z0-9]{'.$length.'}$/', $token)
+            || Company::query()->where('bank_inbound_token', $token)->exists());
+
+        return $token;
+    }
+
+    public function tokenLength(): int
+    {
+        $maxLocal = $this->maxAddressLength() - strlen('@'.$this->domain());
+        $available = $maxLocal - strlen($this->prefix());
+
+        if ($available < 8) {
+            throw new InvalidArgumentException(
+                'Bank inbound address prefix/domain leave too little room for token (need at least 8 chars).'
+            );
+        }
+
+        return min(12, $available);
+    }
+
+    public function maxAddressLength(): int
+    {
+        return max(20, (int) config('bank_inbound.max_address_length', 50));
+    }
+
+    protected function domain(): string
+    {
+        return strtolower((string) config('bank_inbound.domain', 'payments.satflux.io'));
+    }
+
+    protected function prefix(): string
+    {
+        return strtolower((string) config('bank_inbound.address_prefix', 'pay'));
+    }
+}

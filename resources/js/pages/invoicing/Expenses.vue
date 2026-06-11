@@ -376,7 +376,7 @@ async function load() {
   error.value = '';
   try {
     const [companyRes, listRes] = await Promise.all([
-      api.get(`/invoicing/companies/${companyId.value}`),
+      api.get(`/invoicing/companies/${companyId.value}/summary`),
       api.get(`/invoicing/companies/${companyId.value}/expenses`, {
         params: {
           ...listFilterParams(),
