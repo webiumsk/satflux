@@ -84,13 +84,18 @@ async function submit() {
     error.value = t('invoicing.stock_transfer_invalid');
     return;
   }
+  const qty = Number(quantity.value);
+  if (!Number.isFinite(qty) || qty <= 0) {
+    error.value = t('invoicing.stock_transfer_invalid_quantity');
+    return;
+  }
   saving.value = true;
   error.value = '';
   try {
     await api.post(`/invoicing/companies/${props.companyId}/stock-items/${props.stockItemId}/transfer`, {
       from_warehouse_id: fromId.value,
       to_warehouse_id: toId.value,
-      quantity: quantity.value,
+      quantity: qty,
       note: note.value.trim() || null,
     });
     emit('transferred');

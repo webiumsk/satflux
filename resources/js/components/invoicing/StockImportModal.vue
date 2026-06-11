@@ -178,13 +178,17 @@ watch(
   }
 );
 
-function resetState() {
-  selectedFile.value = null;
+function clearPreview() {
   headers.value = [];
   for (const field of STOCK_IMPORT_FIELD_KEYS) {
     mapping[field] = null;
   }
   rowCount.value = 0;
+}
+
+function resetState() {
+  selectedFile.value = null;
+  clearPreview();
   loadingPreview.value = false;
   importing.value = false;
   error.value = '';
@@ -216,6 +220,7 @@ function pickFile(file: File | undefined) {
     error.value = t('invoicing.stock_import_file_too_large');
     selectedFile.value = null;
     result.value = null;
+    clearPreview();
     if (fileInput.value) fileInput.value.value = '';
     return;
   }
@@ -224,6 +229,7 @@ function pickFile(file: File | undefined) {
     error.value = t('invoicing.stock_import_file_invalid');
     selectedFile.value = null;
     result.value = null;
+    clearPreview();
     if (fileInput.value) fileInput.value.value = '';
     return;
   }

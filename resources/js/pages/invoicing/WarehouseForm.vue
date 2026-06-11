@@ -180,9 +180,9 @@ async function remove() {
   }
 }
 
-onMounted(async () => {
+onMounted(() => {
   rememberCompany(companyId.value);
-  await loadContacts();
-  await loadWarehouse();
+  void loadContacts().catch(() => {});
+  void loadWarehouse().catch(() => {});
 });
 </script>

@@ -180,6 +180,7 @@
     "stock_transfer_quantity": "Quantity",
     "stock_transfer_submit": "Transfer",
     "stock_transfer_invalid": "Choose different source and destination warehouses.",
+    "stock_transfer_invalid_quantity": "Enter a valid quantity greater than zero.",
     "doc_nav_invoice": "Invoices",
     "doc_nav_proforma": "Proforma invoices",
     "doc_nav_delivery": "Delivery notes",

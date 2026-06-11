@@ -73,6 +73,19 @@ class CompanyWarehouseController extends Controller
         }
 
         $validated = $request->validated();
+
+        $fromWarehouse = CompanyWarehouse::query()->find($validated['from_warehouse_id']);
+        $toWarehouse = CompanyWarehouse::query()->find($validated['to_warehouse_id']);
+
+        if (
+            ! $fromWarehouse
+            || ! $toWarehouse
+            || $fromWarehouse->company_id !== $company->id
+            || $toWarehouse->company_id !== $company->id
+        ) {
+            abort(404);
+        }
+
         $this->stockItemService->transfer(
             $company,
             $stockItem,

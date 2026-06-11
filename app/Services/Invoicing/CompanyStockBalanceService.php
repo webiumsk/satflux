@@ -5,6 +5,7 @@ namespace App\Services\Invoicing;
 use App\Models\CompanyStockBalance;
 use App\Models\CompanyStockItem;
 use App\Models\CompanyWarehouse;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -35,11 +36,27 @@ class CompanyStockBalanceService
             return $balance;
         }
 
-        return CompanyStockBalance::create([
-            'company_warehouse_id' => $warehouse->id,
-            'company_stock_item_id' => $item->id,
-            'quantity_on_hand' => 0,
-        ]);
+        if (! $lock) {
+            return CompanyStockBalance::create([
+                'company_warehouse_id' => $warehouse->id,
+                'company_stock_item_id' => $item->id,
+                'quantity_on_hand' => 0,
+            ]);
+        }
+
+        try {
+            return CompanyStockBalance::create([
+                'company_warehouse_id' => $warehouse->id,
+                'company_stock_item_id' => $item->id,
+                'quantity_on_hand' => 0,
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            return CompanyStockBalance::query()
+                ->where('company_warehouse_id', $warehouse->id)
+                ->where('company_stock_item_id', $item->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+        }
     }
 
     public function setQuantity(
@@ -47,11 +64,13 @@ class CompanyStockBalanceService
         CompanyStockItem $item,
         float $newQuantity,
     ): CompanyStockBalance {
-        $balance = $this->getOrCreateBalance($warehouse, $item, lock: true);
-        $balance->quantity_on_hand = $newQuantity;
-        $balance->save();
+        return DB::transaction(function () use ($warehouse, $item, $newQuantity) {
+            $balance = $this->getOrCreateBalance($warehouse, $item, lock: true);
+            $balance->quantity_on_hand = $newQuantity;
+            $balance->save();
 
-        return $balance;
+            return $balance;
+        });
     }
 
     /**

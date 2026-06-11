@@ -26,10 +26,6 @@ class CompanyStockItem extends Model
         'exclude_from_suggester',
     ];
 
-    protected $appends = [
-        'quantity_on_hand',
-    ];
-
     protected function casts(): array
     {
         return [

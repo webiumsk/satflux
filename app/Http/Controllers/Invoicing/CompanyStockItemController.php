@@ -22,10 +22,12 @@ class CompanyStockItemController extends Controller
 
     public function index(Request $request, Company $company): JsonResponse
     {
+        $warehouseId = $this->resolveCompanyWarehouseId($company, $request->input('warehouse_id'));
+
         $result = $this->stockItemService->list(
             $company,
             $request->input('q'),
-            $request->input('warehouse_id'),
+            $warehouseId,
         );
 
         return response()->json([
@@ -42,21 +44,39 @@ class CompanyStockItemController extends Controller
             'warehouse_id' => ['nullable', 'uuid'],
         ]);
 
+        $warehouseId = $this->resolveCompanyWarehouseId($company, $validated['warehouse_id'] ?? null);
+
         return response()->json([
             'data' => $this->stockItemService->search(
                 $company,
                 $validated['q'],
                 (int) ($validated['limit'] ?? 10),
-                $validated['warehouse_id'] ?? null,
+                $warehouseId,
             ),
         ]);
+    }
+
+    protected function resolveCompanyWarehouseId(Company $company, mixed $warehouseId): ?string
+    {
+        if ($warehouseId === null || $warehouseId === '') {
+            return null;
+        }
+
+        $owned = $company->warehouses()->where('id', $warehouseId)->exists();
+        if (! $owned) {
+            abort(403);
+        }
+
+        return (string) $warehouseId;
     }
 
     public function store(StoreCompanyStockItemRequest $request, Company $company): JsonResponse
     {
         $item = $this->stockItemService->create($company, $request->validated());
 
-        return response()->json(['data' => $item], 201);
+        return response()->json([
+            'data' => $this->stockItemService->showPayload($company, $item),
+        ], 201);
     }
 
     public function show(Company $company, CompanyStockItem $stockItem): JsonResponse

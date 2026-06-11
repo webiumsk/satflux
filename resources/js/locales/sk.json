@@ -180,6 +180,7 @@
     "stock_transfer_quantity": "Množstvo",
     "stock_transfer_submit": "Presunúť",
     "stock_transfer_invalid": "Vyberte rôzny zdrojový a cieľový sklad.",
+    "stock_transfer_invalid_quantity": "Zadajte platné množstvo väčšie ako nula.",
     "doc_nav_invoice": "Faktúry",
     "doc_nav_proforma": "Zálohové faktúry",
     "doc_nav_delivery": "Dodacie listy",

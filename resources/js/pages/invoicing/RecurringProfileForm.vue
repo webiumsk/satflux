@@ -544,6 +544,8 @@ function payload() {
       unit_price: l.unit_price,
       line_discount_percent: l.line_discount_percent || 0,
       tax_rate: l.tax_rate ?? defaultVat.value,
+      company_stock_item_id: l.company_stock_item_id ?? null,
+      company_warehouse_id: l.company_warehouse_id ?? null,
     })),
   };
 }
@@ -603,6 +605,8 @@ async function loadProfile() {
       unit_price: parseFloat(l.unit_price),
       line_discount_percent: parseFloat(l.line_discount_percent) || 0,
       tax_rate: parseFloat(l.tax_rate) || defaultVat.value,
+      company_stock_item_id: l.company_stock_item_id ?? null,
+      company_warehouse_id: l.company_warehouse_id ?? null,
     })),
   });
   tagsInput.value = (d.tags || []).join(', ');

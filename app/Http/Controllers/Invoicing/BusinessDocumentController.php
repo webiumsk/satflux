@@ -247,6 +247,12 @@ class BusinessDocumentController extends Controller
             'store_id' => $this->resolveStoreId($company, $request) ?? $businessDocument->store_id,
         ]));
 
+        if ($businessDocument->type === BusinessDocumentType::Quote) {
+            $businessDocument->pdf_show_payment_info = false;
+            $businessDocument->payment_btc_enabled = false;
+            $businessDocument->payment_bank_enabled = false;
+        }
+
         $businessDocument->setRelation('company', $company);
         $lines = $request->input('lines', []);
         $this->totalsCalculator->applyToDocument(
@@ -315,17 +321,26 @@ class BusinessDocumentController extends Controller
             ]);
         }
 
-        $wasIssued = $businessDocument->status === BusinessDocumentStatus::Issued;
+        DB::transaction(function () use ($businessDocument) {
+            $locked = BusinessDocument::query()
+                ->whereKey($businessDocument->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        DB::transaction(function () use ($businessDocument, $wasIssued) {
-            $businessDocument->update([
+            if ($locked->status === BusinessDocumentStatus::Cancelled) {
+                return;
+            }
+
+            $wasIssued = $locked->status === BusinessDocumentStatus::Issued;
+
+            $locked->update([
                 'status' => BusinessDocumentStatus::Cancelled,
                 'paid_at' => null,
                 'amount_paid' => null,
             ]);
 
             if ($wasIssued) {
-                $this->stockMovementService->reverseDocumentCancel($businessDocument->fresh(['lines']));
+                $this->stockMovementService->reverseDocumentCancel($locked->fresh(['lines']));
             }
         });
 

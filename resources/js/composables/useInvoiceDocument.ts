@@ -397,7 +397,7 @@ export function useInvoiceDocument() {
         line_discount_percent: parseFloat(l.line_discount_percent) || 0,
         tax_rate: parseFloat(l.tax_rate) || defaultVat.value,
         company_stock_item_id: l.company_stock_item_id || null,
-        company_warehouse_id: l.company_warehouse_id || defaultWarehouseIdValue.value || null,
+        company_warehouse_id: l.company_warehouse_id ?? null,
         stock_quantity_hint: null,
         stock_quantities_by_warehouse: {},
         warehouse_deduct_on_issue: null,

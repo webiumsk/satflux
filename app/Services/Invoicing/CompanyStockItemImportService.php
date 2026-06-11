@@ -2,6 +2,7 @@
 
 namespace App\Services\Invoicing;
 
+use App\Models\AuditLog;
 use App\Models\Company;
 use App\Support\Invoicing\CompanyStockItemImportFields;
 use Illuminate\Http\UploadedFile;
@@ -101,7 +102,9 @@ class CompanyStockItemImportService
                 DB::transaction(function () use ($company, $payload, &$imported, &$updated) {
                     $importRef = $payload['import_document_ref'] ?? null;
                     $warehouseName = $payload['warehouse_name'] ?? null;
-                    $quantityOnHand = (float) ($payload['quantity_on_hand'] ?? 0);
+                    $quantityOnHand = array_key_exists('quantity_on_hand', $payload)
+                        ? (float) $payload['quantity_on_hand']
+                        : null;
                     unset(
                         $payload['import_document_ref'],
                         $payload['warehouse_name'],
@@ -121,15 +124,34 @@ class CompanyStockItemImportService
                         $previousQuantity = $this->balanceService->getQuantity($warehouse, $existing);
                         $existing->fill($payload);
                         $existing->save();
-                        $this->balanceService->setQuantity($warehouse, $existing, $quantityOnHand);
-                        $this->movementService->recordImportChange($existing, $warehouse, $previousQuantity, $note);
+                        if ($quantityOnHand !== null) {
+                            $this->balanceService->setQuantity($warehouse, $existing, $quantityOnHand);
+                            $this->movementService->recordImportChange($existing, $warehouse, $previousQuantity, $note);
+                        }
+                        AuditLog::log('stock_item.import.update', 'company_stock_item', $existing->id, [
+                            'company_id' => $company->id,
+                            'sku' => $existing->sku,
+                            'warehouse_id' => $warehouse->id,
+                            'warehouse_name' => $warehouse->name,
+                            'previous_quantity' => $previousQuantity,
+                            'new_quantity' => $quantityOnHand,
+                            'import_document_ref' => $importRef,
+                        ]);
                         $updated++;
                     } else {
                         $item = $company->stockItems()->create($payload);
-                        if ($quantityOnHand !== 0.0) {
+                        if ($quantityOnHand !== null && $quantityOnHand !== 0.0) {
                             $this->balanceService->setQuantity($warehouse, $item, $quantityOnHand);
                             $this->movementService->recordImportChange($item, $warehouse, 0.0, $note);
                         }
+                        AuditLog::log('stock_item.import.create', 'company_stock_item', $item->id, [
+                            'company_id' => $company->id,
+                            'sku' => $item->sku,
+                            'warehouse_id' => $warehouse->id,
+                            'warehouse_name' => $warehouse->name,
+                            'new_quantity' => $quantityOnHand,
+                            'import_document_ref' => $importRef,
+                        ]);
                         $imported++;
                     }
                 });
@@ -281,7 +303,6 @@ class CompanyStockItemImportService
             'purchase_unit_price' => null,
             'purchase_currency' => null,
             'unit' => 'ks',
-            'quantity_on_hand' => 0,
             'warehouse_name' => null,
             'description' => null,
             'import_document_ref' => null,

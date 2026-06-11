@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Enums\CompanyJurisdiction;
 use App\Models\BusinessDocumentLine;
 use App\Models\Company;
-use App\Models\CompanyStockItem;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;

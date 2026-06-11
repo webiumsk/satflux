@@ -2250,6 +2250,7 @@
     "stock_transfer_quantity": "Cantidad",
     "stock_transfer_submit": "Transferir",
     "stock_transfer_invalid": "Elija almacenes de origen y destino diferentes.",
+    "stock_transfer_invalid_quantity": "Introduzca una cantidad válida mayor que cero.",
     "doc_nav_invoice": "Facturas",
     "doc_nav_proforma": "Facturas proforma",
     "doc_nav_delivery": "Albaranes",

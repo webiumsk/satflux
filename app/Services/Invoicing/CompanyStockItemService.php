@@ -183,6 +183,7 @@ class CompanyStockItemService
         ]);
 
         $row = $item->toArray();
+        $row['quantity_on_hand'] = $this->totalQuantityOnHand($item);
         $row['balances'] = $this->balanceService->balancesPayload($item);
         $row['movements'] = $item->movements->map(fn ($movement) => [
             'id' => $movement->id,
@@ -255,7 +256,7 @@ class CompanyStockItemService
         $saleTotal = 0.0;
 
         foreach ($items as $item) {
-            $qty = (float) $item->quantity_on_hand;
+            $qty = $this->totalQuantityOnHand($item);
             if ($item->purchase_unit_price !== null
                 && strtoupper((string) $item->purchase_currency) === $currency) {
                 $purchaseTotal += $qty * (float) $item->purchase_unit_price;
@@ -284,6 +285,8 @@ class CompanyStockItemService
         if ($warehouseId) {
             $balance = $item->balances->firstWhere('company_warehouse_id', $warehouseId);
             $row['quantity_on_hand'] = $balance ? (float) $balance->quantity_on_hand : 0.0;
+        } else {
+            $row['quantity_on_hand'] = $this->totalQuantityOnHand($item);
         }
 
         return $row;
@@ -321,12 +324,21 @@ class CompanyStockItemService
             'sku' => $item->sku,
             'unit' => $item->unit,
             'sale_unit_price' => $item->sale_unit_price,
-            'quantity_on_hand' => $selectedWarehouseQty ?? (float) $item->quantity_on_hand,
-            'total_on_hand' => (float) $item->quantity_on_hand,
+            'quantity_on_hand' => $selectedWarehouseQty ?? $this->totalQuantityOnHand($item),
+            'total_on_hand' => $this->totalQuantityOnHand($item),
             'quantities_by_warehouse' => $quantitiesByWarehouse,
             'track_inventory' => $item->track_inventory,
             'deduct_on_issue' => $deductOnIssue,
         ];
+    }
+
+    protected function totalQuantityOnHand(CompanyStockItem $item): float
+    {
+        if ($item->relationLoaded('balances')) {
+            return (float) $item->balances->sum(fn ($balance) => (float) $balance->quantity_on_hand);
+        }
+
+        return (float) $item->balances()->sum('quantity_on_hand');
     }
 
     protected function resolveWarehouse(Company $company, ?string $warehouseId): CompanyWarehouse

@@ -84,6 +84,37 @@ class CompanyWarehouseTest extends TestCase
             ->deleteJson("/api/invoicing/companies/{$this->company->id}/warehouses/{$id}");
         $delete->assertOk();
         $this->assertDatabaseMissing('company_warehouses', ['id' => $id]);
+
+        $otherUser = User::factory()->create();
+        Subscription::create([
+            'user_id' => $otherUser->id,
+            'plan_id' => SubscriptionPlan::where('code', 'pro')->firstOrFail()->id,
+            'status' => 'active',
+            'starts_at' => now(),
+            'expires_at' => now()->addYear(),
+        ]);
+        $otherCompany = Company::create([
+            'user_id' => $otherUser->id,
+            'legal_name' => 'Other s.r.o.',
+            'jurisdiction' => CompanyJurisdiction::EuSk,
+            'default_currency' => 'EUR',
+            'vat_payer' => false,
+        ]);
+
+        $this->actingAs($otherUser)
+            ->getJson("/api/invoicing/companies/{$this->company->id}/warehouses")
+            ->assertForbidden();
+
+        $this->actingAs($otherUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/warehouses", [
+                'name' => 'Intruder',
+                'type' => CompanyWarehouseType::Own->value,
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($otherUser)
+            ->getJson("/api/invoicing/companies/{$otherCompany->id}/warehouses")
+            ->assertOk();
     }
 
     #[Test]
@@ -135,6 +166,28 @@ class CompanyWarehouseTest extends TestCase
         $issue->assertOk();
 
         $this->assertEquals(10.0, $this->stockQuantity($item, $default));
+        $this->assertEquals(2.0, $this->stockQuantity($item, $branch));
+
+        $otherUser = User::factory()->create();
+        Subscription::create([
+            'user_id' => $otherUser->id,
+            'plan_id' => SubscriptionPlan::where('code', 'pro')->firstOrFail()->id,
+            'status' => 'active',
+            'starts_at' => now(),
+            'expires_at' => now()->addYear(),
+        ]);
+        Company::create([
+            'user_id' => $otherUser->id,
+            'legal_name' => 'Rival s.r.o.',
+            'jurisdiction' => CompanyJurisdiction::EuSk,
+            'default_currency' => 'EUR',
+            'vat_payer' => false,
+        ]);
+
+        $this->actingAs($otherUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents/{$documentId}/issue")
+            ->assertForbidden();
+
         $this->assertEquals(2.0, $this->stockQuantity($item, $branch));
     }
 
@@ -188,6 +241,32 @@ class CompanyWarehouseTest extends TestCase
             'business_document_id' => $documentId,
             'source' => 'document_issue',
         ]);
+
+        $otherUser = User::factory()->create();
+        Subscription::create([
+            'user_id' => $otherUser->id,
+            'plan_id' => SubscriptionPlan::where('code', 'pro')->firstOrFail()->id,
+            'status' => 'active',
+            'starts_at' => now(),
+            'expires_at' => now()->addYear(),
+        ]);
+
+        $this->actingAs($otherUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents", [
+                'type' => 'invoice',
+                'currency' => 'EUR',
+                'lines' => [
+                    [
+                        'name' => 'Dropship',
+                        'quantity' => 1,
+                        'unit' => 'ks',
+                        'unit_price' => 10,
+                        'company_stock_item_id' => $item->id,
+                        'company_warehouse_id' => $dropship->id,
+                    ],
+                ],
+            ])
+            ->assertForbidden();
     }
 
     #[Test]
@@ -215,6 +294,26 @@ class CompanyWarehouseTest extends TestCase
             ]);
 
         $response->assertOk();
+        $this->assertEquals(5.0, $this->stockQuantity($item, $from));
+        $this->assertEquals(3.0, $this->stockQuantity($item, $to));
+
+        $otherUser = User::factory()->create();
+        Subscription::create([
+            'user_id' => $otherUser->id,
+            'plan_id' => SubscriptionPlan::where('code', 'pro')->firstOrFail()->id,
+            'status' => 'active',
+            'starts_at' => now(),
+            'expires_at' => now()->addYear(),
+        ]);
+
+        $this->actingAs($otherUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/stock-items/{$item->id}/transfer", [
+                'from_warehouse_id' => $from->id,
+                'to_warehouse_id' => $to->id,
+                'quantity' => 1,
+            ])
+            ->assertForbidden();
+
         $this->assertEquals(5.0, $this->stockQuantity($item, $from));
         $this->assertEquals(3.0, $this->stockQuantity($item, $to));
     }

@@ -86,6 +86,7 @@ const companyName = ref('');
 const warehouses = ref<WarehouseRow[]>([]);
 const loading = ref(true);
 const error = ref('');
+let loadRequestId = 0;
 
 function locationLine(w: WarehouseRow): string {
   const parts = [w.city, w.country].filter(Boolean);
@@ -93,20 +94,27 @@ function locationLine(w: WarehouseRow): string {
 }
 
 async function load() {
+  const requestId = ++loadRequestId;
   loading.value = true;
   error.value = '';
   try {
     const companyRes = await api.get(`/invoicing/companies/${companyId.value}/summary`);
+    if (requestId !== loadRequestId) return;
     companyName.value = companyRes.data.data?.trade_name || companyRes.data.data?.legal_name || '';
 
     const res = await api.get(`/invoicing/companies/${companyId.value}/warehouses`);
+    if (requestId !== loadRequestId) return;
     warehouses.value = res.data.data ?? [];
   } catch (e: unknown) {
+    if (requestId !== loadRequestId) return;
     warehouses.value = [];
+    companyName.value = '';
     error.value =
       (e as { response?: { data?: { message?: string } } })?.response?.data?.message || t('errors.generic');
   } finally {
-    loading.value = false;
+    if (requestId === loadRequestId) {
+      loading.value = false;
+    }
   }
 }
 
