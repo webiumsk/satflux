@@ -23,6 +23,7 @@
     </template>
 
     <p v-if="success" class="text-sm text-green-700 mb-4">{{ success }}</p>
+    <p v-if="error" class="text-sm text-red-600 mb-4">{{ error }}</p>
 
     <div v-if="selectionCount > 0" class="invoicing-bulk-bar">
       <span class="text-sm text-indigo-800 font-medium">
@@ -42,7 +43,7 @@
       {{ t('invoicing.stock_empty') }}
     </div>
 
-    <div v-else class="relative">
+    <div v-else class="space-y-4">
       <div class="invoicing-card overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full min-w-[900px] text-sm">
@@ -105,7 +106,7 @@
 
       <div
         v-if="summary"
-        class="mt-4 sm:mt-0 sm:absolute sm:bottom-0 sm:right-0 sm:max-w-xs w-full rounded-lg border border-gray-200 bg-white shadow-sm p-4 text-sm space-y-1"
+        class="ml-auto max-w-xs w-full sm:w-auto rounded-lg border border-gray-200 bg-white shadow-sm p-4 text-sm space-y-1"
       >
         <p class="font-medium text-gray-800">
           {{ t('invoicing.stock_summary_count', { count: summary.item_count }) }}
@@ -164,6 +165,7 @@ const searchQuery = ref('');
 const selectedIds = ref(new Set<string>());
 const showImportModal = ref(false);
 const success = ref('');
+const error = ref('');
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 const summaryCurrency = computed(() => summary.value?.summary_currency ?? 'EUR');
@@ -199,6 +201,7 @@ function clearSelection() {
 
 async function load() {
   loading.value = true;
+  error.value = '';
   try {
     const companyRes = await api.get(`/invoicing/companies/${companyId.value}/summary`);
     companyName.value = companyRes.data.data?.trade_name || companyRes.data.data?.legal_name || '';
@@ -208,6 +211,11 @@ async function load() {
     });
     items.value = res.data.data ?? [];
     summary.value = res.data.meta ?? null;
+  } catch (e: unknown) {
+    items.value = [];
+    summary.value = null;
+    error.value =
+      (e as { response?: { data?: { message?: string } } })?.response?.data?.message || t('errors.generic');
   } finally {
     loading.value = false;
   }

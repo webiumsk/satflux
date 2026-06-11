@@ -124,6 +124,8 @@
     "stock_import_intro": "Upload an Excel file in the prescribed format.",
     "stock_import_example_link": "Download sample file",
     "stock_import_drop": "Click or drag files here (max 2 MB).",
+    "stock_import_file_too_large": "File is too large. Maximum size is 2 MB.",
+    "stock_import_file_invalid": "Please upload an Excel (.xlsx, .xls) or CSV file.",
     "stock_import_mapping_title": "Column mapping",
     "stock_import_mapping_hint": "Map spreadsheet columns to stock fields.",
     "stock_import_row_count": "{count} data rows detected.",

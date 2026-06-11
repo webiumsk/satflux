@@ -144,8 +144,8 @@
             <tr v-for="m in movements" :key="m.id" class="border-t border-gray-100">
               <td class="px-3 py-2 whitespace-nowrap">{{ formatDate(m.created_at) }}</td>
               <td class="px-3 py-2 text-right">{{ m.quantity_after }}</td>
-              <td class="px-3 py-2 text-right">{{ m.purchase_unit_price ?? '—' }}</td>
-              <td class="px-3 py-2 text-right">{{ m.sale_unit_price ?? '—' }}</td>
+              <td class="px-3 py-2 text-right">{{ formatStockPrice(m.purchase_unit_price) }}</td>
+              <td class="px-3 py-2 text-right">{{ formatStockPrice(m.sale_unit_price) }}</td>
               <td class="px-3 py-2 text-gray-600">{{ m.note || '—' }}</td>
               <td class="px-3 py-2">{{ m.document_number || '—' }}</td>
             </tr>
@@ -164,6 +164,7 @@ import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vu
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import {
   emptyStockItemForm,
+  formatStockPrice,
   formToStockPayload,
   stockItemToForm,
   useStockItemPage,

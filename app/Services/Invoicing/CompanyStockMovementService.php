@@ -64,27 +64,31 @@ class CompanyStockMovementService
             return [];
         }
 
-        $alreadyReversed = CompanyStockItemMovement::query()
-            ->where('business_document_id', $document->id)
-            ->where('source', CompanyStockMovementSource::DocumentCancel)
-            ->exists();
-
-        if ($alreadyReversed) {
-            return [];
-        }
-
-        $issueMovements = CompanyStockItemMovement::query()
-            ->where('business_document_id', $document->id)
-            ->where('source', CompanyStockMovementSource::DocumentIssue)
-            ->get();
-
-        if ($issueMovements->isEmpty()) {
-            return [];
-        }
-
         $movements = [];
 
-        DB::transaction(function () use ($issueMovements, $document, &$movements) {
+        DB::transaction(function () use ($document, &$movements) {
+            if (! BusinessDocument::query()->where('id', $document->id)->lockForUpdate()->exists()) {
+                return;
+            }
+
+            $alreadyReversed = CompanyStockItemMovement::query()
+                ->where('business_document_id', $document->id)
+                ->where('source', CompanyStockMovementSource::DocumentCancel)
+                ->exists();
+
+            if ($alreadyReversed) {
+                return;
+            }
+
+            $issueMovements = CompanyStockItemMovement::query()
+                ->where('business_document_id', $document->id)
+                ->where('source', CompanyStockMovementSource::DocumentIssue)
+                ->get();
+
+            if ($issueMovements->isEmpty()) {
+                return;
+            }
+
             foreach ($issueMovements as $issueMovement) {
                 $item = CompanyStockItem::query()
                     ->where('id', $issueMovement->company_stock_item_id)

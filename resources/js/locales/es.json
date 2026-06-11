@@ -2194,6 +2194,8 @@
     "stock_import_intro": "Suba un archivo Excel con el formato prescrito.",
     "stock_import_example_link": "Descargar archivo de ejemplo",
     "stock_import_drop": "Haga clic o arrastre archivos aquí (máx. 2 MB).",
+    "stock_import_file_too_large": "El archivo es demasiado grande. El tamaño máximo es 2 MB.",
+    "stock_import_file_invalid": "Suba un archivo Excel (.xlsx, .xls) o CSV.",
     "stock_import_mapping_title": "Asignación de columnas",
     "stock_import_mapping_hint": "Asigne las columnas de la hoja a los campos de almacén.",
     "stock_import_row_count": "Filas detectadas: {count}.",

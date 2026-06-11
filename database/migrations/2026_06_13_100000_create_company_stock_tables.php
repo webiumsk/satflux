@@ -25,7 +25,6 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['company_id', 'name']);
-            $table->index(['company_id', 'sku']);
             $table->unique(['company_id', 'sku']);
         });
 

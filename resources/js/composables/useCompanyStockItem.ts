@@ -67,6 +67,21 @@ export function emptyStockItemForm(defaultCurrency = 'EUR'): StockItemFormState 
   };
 }
 
+function toFiniteNumber(value: unknown, fallback: number): number {
+  const n = Number(value);
+
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function toNullableFiniteNumber(value: unknown): number | null {
+  if (value == null || value === '') {
+    return null;
+  }
+  const n = Number(value);
+
+  return Number.isFinite(n) ? n : null;
+}
+
 export function stockItemToForm(item: StockItemRow, defaultCurrency = 'EUR'): StockItemFormState {
   return {
     name: item.name ?? '',
@@ -74,10 +89,10 @@ export function stockItemToForm(item: StockItemRow, defaultCurrency = 'EUR'): St
     description: item.description ?? '',
     unit: item.unit ?? 'ks',
     track_inventory: item.track_inventory ?? true,
-    quantity_on_hand: Number(item.quantity_on_hand ?? 0),
-    purchase_unit_price: item.purchase_unit_price != null ? Number(item.purchase_unit_price) : null,
+    quantity_on_hand: toFiniteNumber(item.quantity_on_hand, 0),
+    purchase_unit_price: toNullableFiniteNumber(item.purchase_unit_price),
     purchase_currency: item.purchase_currency ?? defaultCurrency,
-    sale_unit_price: item.sale_unit_price != null ? Number(item.sale_unit_price) : null,
+    sale_unit_price: toNullableFiniteNumber(item.sale_unit_price),
     internal_note: item.internal_note ?? '',
     exclude_from_suggester: item.exclude_from_suggester ?? false,
   };
@@ -129,6 +144,9 @@ export function useStockItemPage() {
 
 export function formatStockQuantity(qty: number | string, unit: string): string {
   const n = Number(qty);
+  if (!Number.isFinite(n)) {
+    return '—';
+  }
   const formatted = Number.isInteger(n) ? String(n) : n.toLocaleString(undefined, { maximumFractionDigits: 4 });
   const u = unit?.trim();
   return u ? `${formatted} ${u}` : formatted;

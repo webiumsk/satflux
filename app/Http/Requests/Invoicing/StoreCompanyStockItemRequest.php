@@ -19,7 +19,7 @@ class StoreCompanyStockItemRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:10000'],
             'unit' => ['nullable', 'string', 'max:32'],
             'track_inventory' => ['sometimes', 'boolean'],
-            'quantity_on_hand' => ['nullable', 'numeric'],
+            'quantity_on_hand' => ['nullable', 'numeric', 'min:0'],
             'purchase_unit_price' => ['nullable', 'numeric', 'min:0'],
             'purchase_currency' => ['nullable', 'string', 'size:3'],
             'sale_unit_price' => ['nullable', 'numeric', 'min:0'],

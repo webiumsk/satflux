@@ -183,13 +183,16 @@
                     :company-id="companyId"
                     :name="line.name"
                     :description="line.description"
+                    :stock-item-id="line.company_stock_item_id"
+                    :quantity-on-hand="line.stock_quantity_hint"
+                    :unit="line.unit"
                     :enabled="showLineSuggester"
                     :required="true"
                     :description-placeholder="t('invoicing.item_description')"
                     @update:name="line.name = $event"
                     @update:description="line.description = $event"
                     @pick="onLineStockPick(line, $event)"
-                    @clear-stock-link="() => {}"
+                    @clear-stock-link="clearLineStockLink(line)"
                   />
                   <template v-else>
                     <input v-model="line.name" class="invoicing-sf-input-table" required />
@@ -326,15 +329,17 @@ const profileCurrencyOptions = computed(() =>
 const showLineSuggester = computed(() => appSettingsFromCompany(company.value).show_line_suggester);
 const tagsInput = ref('');
 
-function onLineStockPick(
-  line: (typeof form.lines)[0],
-  payload: { name: string; description: string; unit: string; unit_price: number }
-) {
-  line.name = payload.name;
-  line.description = payload.description;
-  line.unit = payload.unit;
-  line.unit_price = payload.unit_price;
-}
+type RecurringLineForm = {
+  name: string;
+  description: string;
+  quantity: number;
+  unit: string;
+  unit_price: number;
+  line_discount_percent: number;
+  tax_rate: number;
+  company_stock_item_id?: string | null;
+  stock_quantity_hint?: number | null;
+};
 
 const form = reactive({
   document_type: 'invoice' as 'invoice' | 'proforma',
@@ -371,6 +376,8 @@ const form = reactive({
       unit_price: 0,
       line_discount_percent: 0,
       tax_rate: 23,
+      company_stock_item_id: null as string | null,
+      stock_quantity_hint: null as number | null,
     },
   ],
 });
@@ -400,6 +407,30 @@ function onDocumentTypeChange() {
   } else {
     form.title = `Faktúra ${RECURRING_INVOICE_NUMBER_TOKEN}`;
   }
+}
+
+function onLineStockPick(
+  line: RecurringLineForm,
+  payload: {
+    name: string;
+    description: string;
+    unit: string;
+    unit_price: number;
+    company_stock_item_id: string;
+    quantity_on_hand: number | null;
+  }
+) {
+  line.name = payload.name;
+  line.description = payload.description;
+  line.unit = payload.unit;
+  line.unit_price = payload.unit_price;
+  line.company_stock_item_id = payload.company_stock_item_id;
+  line.stock_quantity_hint = payload.quantity_on_hand;
+}
+
+function clearLineStockLink(line: RecurringLineForm) {
+  line.company_stock_item_id = null;
+  line.stock_quantity_hint = null;
 }
 
 function lineTotal(line: (typeof form.lines)[0]) {
@@ -438,6 +469,8 @@ function addLine() {
     unit_price: 0,
     line_discount_percent: 0,
     tax_rate: defaultVat.value,
+    company_stock_item_id: null,
+    stock_quantity_hint: null,
   });
 }
 

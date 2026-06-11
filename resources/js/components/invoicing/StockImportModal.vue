@@ -140,6 +140,15 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+const MAX_FILE_BYTES = 2 * 1024 * 1024;
+const ACCEPTED_EXTENSIONS = ['.xlsx', '.xls', '.csv'];
+const ACCEPTED_MIME_TYPES = new Set([
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+  'text/csv',
+  'text/plain',
+]);
+
 const dragOver = ref(false);
 const selectedFile = ref<File | null>(null);
 const headers = ref<string[]>([]);
@@ -192,8 +201,33 @@ function onDragLeave() {
   dragOver.value = false;
 }
 
+function isAcceptedImportFile(file: File): boolean {
+  const name = file.name.toLowerCase();
+  const byExtension = ACCEPTED_EXTENSIONS.some((ext) => name.endsWith(ext));
+  const byMime = file.type === '' || ACCEPTED_MIME_TYPES.has(file.type);
+
+  return byExtension && byMime;
+}
+
 function pickFile(file: File | undefined) {
   if (!file) return;
+
+  if (file.size > MAX_FILE_BYTES) {
+    error.value = t('invoicing.stock_import_file_too_large');
+    selectedFile.value = null;
+    result.value = null;
+    if (fileInput.value) fileInput.value.value = '';
+    return;
+  }
+
+  if (!isAcceptedImportFile(file)) {
+    error.value = t('invoicing.stock_import_file_invalid');
+    selectedFile.value = null;
+    result.value = null;
+    if (fileInput.value) fileInput.value.value = '';
+    return;
+  }
+
   selectedFile.value = file;
   error.value = '';
   result.value = null;

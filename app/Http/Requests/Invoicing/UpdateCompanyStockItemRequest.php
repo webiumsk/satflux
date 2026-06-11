@@ -2,6 +2,4 @@
 
 namespace App\Http\Requests\Invoicing;
 
-class UpdateCompanyStockItemRequest extends StoreCompanyStockItemRequest
-{
-}
+class UpdateCompanyStockItemRequest extends StoreCompanyStockItemRequest {}

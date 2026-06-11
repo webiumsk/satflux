@@ -65,15 +65,15 @@ class CompanyStockItemImportService
         $rowNumber = 1;
 
         foreach ($parsed['rows'] as $row) {
-            $rowNumber++;
-
             if ($imported + $updated + $skipped >= self::MAX_ROWS) {
                 $errors[] = [
-                    'row' => $rowNumber,
+                    'row' => $rowNumber + 1,
                     'message' => 'Row limit exceeded ('.self::MAX_ROWS.').',
                 ];
                 break;
             }
+
+            $rowNumber++;
 
             if ($this->isEmptyRow($row)) {
                 continue;

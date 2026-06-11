@@ -124,6 +124,8 @@
     "stock_import_intro": "Nahrajte súbor Excel v predpísanom formáte.",
     "stock_import_example_link": "Stiahnite si vzorový súbor",
     "stock_import_drop": "Kliknite alebo potiahnite súbory sem (max. 2 MB).",
+    "stock_import_file_too_large": "Súbor je príliš veľký. Maximálna veľkosť je 2 MB.",
+    "stock_import_file_invalid": "Nahrajte súbor Excel (.xlsx, .xls) alebo CSV.",
     "stock_import_mapping_title": "Mapovanie stĺpcov",
     "stock_import_mapping_hint": "Priraďte stĺpce tabuľky k poliam skladu.",
     "stock_import_row_count": "Nájdených riadkov: {count}.",

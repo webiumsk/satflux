@@ -2,8 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Enums\BusinessDocumentStatus;
-use App\Enums\BusinessDocumentType;
 use App\Enums\CompanyJurisdiction;
 use App\Enums\CompanyStockMovementSource;
 use App\Models\Company;

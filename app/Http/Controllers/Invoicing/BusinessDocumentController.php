@@ -37,6 +37,7 @@ use App\Services\Invoicing\DocumentTotalsCalculator;
 use App\Support\Invoicing\CompanyAppSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -311,15 +312,17 @@ class BusinessDocumentController extends Controller
 
         $wasIssued = $businessDocument->status === BusinessDocumentStatus::Issued;
 
-        $businessDocument->update([
-            'status' => BusinessDocumentStatus::Cancelled,
-            'paid_at' => null,
-            'amount_paid' => null,
-        ]);
+        DB::transaction(function () use ($businessDocument, $wasIssued) {
+            $businessDocument->update([
+                'status' => BusinessDocumentStatus::Cancelled,
+                'paid_at' => null,
+                'amount_paid' => null,
+            ]);
 
-        if ($wasIssued) {
-            $this->stockMovementService->reverseDocumentCancel($businessDocument->fresh(['lines']));
-        }
+            if ($wasIssued) {
+                $this->stockMovementService->reverseDocumentCancel($businessDocument->fresh(['lines']));
+            }
+        });
 
         AuditLog::log('business_document.cancelled', 'business_document', $businessDocument->id, [
             'company_id' => $company->id,

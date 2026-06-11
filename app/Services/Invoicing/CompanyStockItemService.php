@@ -227,6 +227,10 @@ class CompanyStockItemService
 
     protected function whereLikeInsensitive(Builder $query, string $column, string $pattern): void
     {
+        if (! in_array($column, ['name', 'sku', 'description'], true)) {
+            throw new \InvalidArgumentException('Invalid search column.');
+        }
+
         if ($query->getConnection()->getDriverName() === 'pgsql') {
             $query->where($column, 'ilike', $pattern);
         } else {
