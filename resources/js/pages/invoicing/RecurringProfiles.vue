@@ -1,11 +1,50 @@
 <template>
   <InvoicingPageShell content-class="pb-8">
     <template #header>
-      <InvoicingAppHeader :company-label="companyName" :show-filter-bar="false" />
+      <InvoicingAppHeader
+        :company-label="companyName"
+        :show-filter-bar="false"
+        show-mobile-filters
+        :mobile-filter-active-count="activeFilter !== 'all' ? 1 : 0"
+        @mobile-filter-apply="load"
+        @mobile-filter-clear="activeFilter = 'all'; load()"
+      >
+        <template #mobile-filters>
+          <div class="invoicing-mobile-filter-stack">
+            <button
+              v-for="f in filters"
+              :key="f.id"
+              type="button"
+              class="invoicing-filter"
+              :class="activeFilter === f.id ? 'invoicing-filter--active' : 'invoicing-filter--idle'"
+              @click="setFilter(f.id)"
+            >
+              {{ f.label }}
+            </button>
+          </div>
+        </template>
+        <template #mobile-actions>
+          <RouterLink
+            :to="{ name: 'invoicing-recurring-new', params: { companyId } }"
+            class="invoicing-btn-primary w-full text-center"
+          >
+            + {{ t('invoicing.new_recurring') }}
+          </RouterLink>
+        </template>
+        <template #mobile-primary-action>
+          <RouterLink
+            :to="{ name: 'invoicing-recurring-new', params: { companyId } }"
+            class="invoicing-mobile-icon-btn"
+            :title="t('invoicing.new_recurring')"
+          >
+            <InvoicingIcons name="plus" />
+          </RouterLink>
+        </template>
+      </InvoicingAppHeader>
     </template>
 
     <template #subheader>
-      <div class="invoicing-filter-bar bg-white border-b border-gray-200 sticky top-0 z-20">
+      <div class="invoicing-filter-bar bg-white border-b border-gray-200 hidden md:block sticky top-0 z-20">
         <div :class="[INVOICING_CONTAINER_CLASS, 'flex flex-wrap items-center gap-3 py-3']">
           <div class="flex flex-wrap items-center gap-2 flex-1 min-w-0">
             <button
@@ -35,8 +74,8 @@
       {{ t('invoicing.no_recurring') }}
     </div>
 
-    <div v-else class="my-8 invoicing-card overflow-hidden">
-      <div class="overflow-x-auto">
+    <div v-else class="my-4 md:my-8 invoicing-card overflow-hidden">
+      <div class="hidden md:block overflow-x-auto">
         <table class="invoice-table w-full min-w-[800px] text-sm text-left">
           <thead class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide border-b border-gray-200">
             <tr>
@@ -84,6 +123,30 @@
           </tbody>
         </table>
       </div>
+
+      <div class="md:hidden divide-y divide-gray-100">
+        <InvoicingMobileCard
+          v-for="p in profiles"
+          :key="p.id"
+          @open="$router.push({ name: 'invoicing-recurring-edit', params: { companyId, profileId: p.id } })"
+        >
+          <div class="relative pl-3">
+            <span
+              class="status-corner absolute left-0 top-0"
+              :class="p.is_active ? 'status-corner--paid' : 'status-corner--draft'"
+            />
+            <p class="font-semibold text-gray-900 truncate">{{ profileLabel(p) }}</p>
+            <p class="text-sm text-gray-600 truncate">{{ p.contact?.name || '—' }}</p>
+            <p class="text-xs text-gray-500 mt-1">
+              {{ intervalLabel(p.recurrence_interval) }}
+              · {{ p.next_issue_date ? formatDate(p.next_issue_date) : '—' }}
+            </p>
+          </div>
+          <template #actions>
+            <span class="text-sm font-semibold text-gray-900">{{ formatMoney(p.total) }} {{ p.currency }}</span>
+          </template>
+        </InvoicingMobileCard>
+      </div>
     </div>
 
     <p v-if="error" class="text-sm text-red-600 mt-4">{{ error }}</p>
@@ -96,6 +159,8 @@ import { useI18n } from 'vue-i18n';
 import '../../styles/invoicing-theme.css';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
+import InvoicingMobileCard from '../../components/invoicing/InvoicingMobileCard.vue';
+import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
 import api from '../../services/api';
 import { INVOICING_CONTAINER_CLASS, useInvoicingLayout } from '../../composables/useInvoicingLayout';
 

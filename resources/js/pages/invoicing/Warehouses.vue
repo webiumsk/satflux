@@ -10,6 +10,11 @@
             + {{ t('invoicing.warehouse_new') }}
           </RouterLink>
         </template>
+        <template #mobile-primary-action>
+          <RouterLink :to="warehouseNewTo()" class="invoicing-mobile-icon-btn" :title="t('invoicing.warehouse_new')">
+            <InvoicingIcons name="plus" />
+          </RouterLink>
+        </template>
       </InvoicingAppHeader>
     </template>
 
@@ -23,7 +28,7 @@
     </div>
 
     <div v-else class="invoicing-card overflow-hidden">
-      <div class="overflow-x-auto">
+      <div class="hidden md:block overflow-x-auto">
         <table class="w-full min-w-[720px] text-sm">
           <thead class="bg-gray-50 border-b border-gray-200 text-gray-600 text-xs uppercase tracking-wide">
             <tr>
@@ -57,6 +62,18 @@
           </tbody>
         </table>
       </div>
+
+      <div class="md:hidden divide-y divide-gray-100">
+        <InvoicingMobileCard
+          v-for="w in warehouses"
+          :key="w.id"
+          @open="$router.push(warehouseEditTo(w.id))"
+        >
+          <p class="font-semibold text-gray-900">{{ w.name }}</p>
+          <p class="text-sm text-gray-600">{{ t(warehouseTypeLabelKey(w.type)) }}</p>
+          <p v-if="w.is_default" class="text-xs text-indigo-700 mt-1">{{ t('invoicing.warehouse_default_badge') }}</p>
+        </InvoicingMobileCard>
+      </div>
     </div>
   </InvoicingPageShell>
 </template>
@@ -67,6 +84,8 @@ import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
+import InvoicingMobileCard from '../../components/invoicing/InvoicingMobileCard.vue';
+import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
 import { useStockRoutes } from '../../composables/useCompanyStockItem';
 import {
   useWarehouseRoutes,

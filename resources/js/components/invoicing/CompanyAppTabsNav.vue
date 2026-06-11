@@ -1,5 +1,5 @@
 <template>
-  <nav class="invoicing-tabs mb-6" role="tablist">
+  <nav class="invoicing-tabs invoicing-app-tabs-scroll mb-6" role="tablist">
     <RouterLink
       :to="{ name: 'invoicing-company-app', params: { companyId } }"
       role="tab"

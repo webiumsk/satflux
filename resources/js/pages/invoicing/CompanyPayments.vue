@@ -1,7 +1,13 @@
 <template>
   <InvoicingPageShell content-class="pb-8">
     <template #header>
-      <InvoicingAppHeader :show-filter-bar="activeTab === 'transactions' && hasBankAccount">
+      <InvoicingAppHeader
+        :show-filter-bar="activeTab === 'transactions' && hasBankAccount"
+        :show-mobile-filters="activeTab === 'transactions' && hasBankAccount"
+        :mobile-filter-active-count="matchFilter !== 'all' ? 1 : 0"
+        @mobile-filter-apply="load"
+        @mobile-filter-clear="matchFilter = 'all'; load()"
+      >
         <template #filters>
           <select v-model="matchFilter" class="invoicing-sf-input max-w-[180px]" @change="load">
             <option value="all">{{ t('invoicing.bank_filter_all') }}</option>
@@ -12,6 +18,19 @@
         </template>
         <template #actions>
           <button type="button" class="invoicing-btn-secondary" @click="activeTab = 'import'">
+            {{ t('invoicing.bank_tab_import') }}
+          </button>
+        </template>
+        <template #mobile-filters>
+          <select v-model="matchFilter" class="invoicing-sf-input w-full" @change="load">
+            <option value="all">{{ t('invoicing.bank_filter_all') }}</option>
+            <option value="unmatched">{{ t('invoicing.bank_filter_unmatched') }}</option>
+            <option value="matched">{{ t('invoicing.bank_filter_matched') }}</option>
+            <option value="ignored">{{ t('invoicing.bank_filter_ignored') }}</option>
+          </select>
+        </template>
+        <template #mobile-actions>
+          <button type="button" class="invoicing-btn-secondary w-full" @click="activeTab = 'import'">
             {{ t('invoicing.bank_tab_import') }}
           </button>
         </template>
@@ -34,7 +53,7 @@
     <template v-else>
       <h1 class="invoicing-title mb-4">{{ t('invoicing.main_nav_payments') }}</h1>
 
-      <div class="flex gap-2 mb-4 border-b border-gray-200">
+      <div class="flex gap-2 mb-4 border-b border-gray-200 overflow-x-auto flex-nowrap md:flex-wrap">
         <button
           type="button"
           class="px-3 py-2 text-sm font-medium"
@@ -107,7 +126,7 @@
             {{ t('invoicing.bank_no_transactions') }}
           </div>
           <div v-else class="invoicing-card overflow-hidden mb-6">
-            <div class="overflow-x-auto">
+            <div class="hidden md:block overflow-x-auto">
               <table class="w-full text-sm bank-movements-table">
               <thead class="bg-gray-50 border-b text-gray-600 text-xs uppercase tracking-wide">
                 <tr>
@@ -208,8 +227,56 @@
                 </tr>
               </tbody>
             </table>
+            </div>
+
+            <div class="md:hidden divide-y divide-gray-100">
+              <InvoicingMobileCard v-for="tx in transactions" :key="tx.id">
+                <div class="relative pl-3">
+                  <span class="status-corner absolute left-0 top-0" :class="pairingCornerClass(tx)" />
+                  <div class="flex justify-between gap-2">
+                    <div class="min-w-0">
+                      <p
+                        class="font-semibold tabular-nums"
+                        :class="tx.direction === 'credit' ? 'text-emerald-700' : 'text-red-600'"
+                      >
+                        {{ formatSignedAmount(tx) }}
+                      </p>
+                      <p class="text-xs text-gray-500">{{ formatDate(tx.booked_at) }}</p>
+                      <p class="text-sm text-gray-700 truncate mt-1">{{ counterpartyDisplay(tx) }}</p>
+                    </div>
+                  </div>
+                </div>
+                <template #actions>
+                  <InvoicingRowActionsMenu>
+                    <button
+                      v-if="tx.match_status === 'unmatched'"
+                      type="button"
+                      class="invoicing-dropdown-item"
+                      @click="ignoreTx(tx)"
+                    >
+                      {{ t('invoicing.bank_ignore') }}
+                    </button>
+                    <button
+                      v-if="tx.match_status === 'unmatched' && tx.direction === 'credit'"
+                      type="button"
+                      class="invoicing-dropdown-item"
+                      @click="openMatch(tx)"
+                    >
+                      {{ t('invoicing.bank_match') }}
+                    </button>
+                    <button
+                      v-if="tx.match_status === 'matched'"
+                      type="button"
+                      class="invoicing-dropdown-item"
+                      @click="unmatchTx(tx)"
+                    >
+                      {{ t('invoicing.bank_unmatch') }}
+                    </button>
+                  </InvoicingRowActionsMenu>
+                </template>
+              </InvoicingMobileCard>
+            </div>
           </div>
-        </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div class="invoicing-card-pad">
@@ -323,6 +390,8 @@ import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
+import InvoicingMobileCard from '../../components/invoicing/InvoicingMobileCard.vue';
+import InvoicingRowActionsMenu from '../../components/invoicing/InvoicingRowActionsMenu.vue';
 import BankCreateExpenseModal, { type BankExpenseDraft } from '../../components/invoicing/BankCreateExpenseModal.vue';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompanySummary';

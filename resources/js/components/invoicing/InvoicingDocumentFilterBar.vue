@@ -1,7 +1,23 @@
 <template>
-  <div class="invoicing-filter-bar bg-white border-b border-gray-200 sticky top-0 z-20">
-    <div :class="[containerClass, 'flex flex-wrap items-center gap-2 py-3']">
-      <div class="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+  <div
+    class="invoicing-filter-bar bg-white border-b border-gray-200"
+    :class="layout === 'bar' ? 'sticky top-0 z-20 hidden md:block' : ''"
+  >
+    <div
+      :class="[
+        containerClass,
+        layout === 'bar'
+          ? 'flex flex-wrap items-center gap-2 py-3'
+          : 'invoicing-mobile-filter-stack py-1',
+      ]"
+    >
+      <div
+        :class="
+          layout === 'bar'
+            ? 'flex flex-wrap items-center gap-2 flex-1 min-w-0'
+            : 'invoicing-mobile-filter-stack'
+        "
+      >
         <button
           v-for="f in statusFilters"
           :key="f.id"
@@ -92,7 +108,7 @@
         </div>
 
         <button
-          v-if="showAdvancedButton"
+          v-if="showAdvancedButton && layout === 'bar'"
           type="button"
           class="invoicing-filter invoicing-filter--idle"
           :class="{ 'invoicing-filter--active': showAdvanced || hasActiveAdvanced }"
@@ -102,11 +118,80 @@
         </button>
       </div>
 
-      <slot name="actions" />
+      <slot v-if="layout === 'bar'" name="actions" />
+    </div>
+
+    <!-- Drawer layout: advanced fields always visible -->
+    <div v-if="layout === 'drawer' && showAdvancedButton" class="space-y-4 pt-2">
+      <div class="grid grid-cols-1 gap-4">
+        <div>
+          <label class="invoicing-sf-label text-xs">{{ t('invoicing.adv_status') }}</label>
+          <select v-model="advancedDraft.status" class="invoicing-sf-input text-sm w-full">
+            <option value="all">{{ t('invoicing.adv_all') }}</option>
+            <option value="draft">{{ t('invoicing.status_draft') }}</option>
+            <option value="issued">{{ t('invoicing.status_issued') }}</option>
+            <option value="paid">{{ t('invoicing.status_paid') }}</option>
+            <option value="cancelled">{{ t('invoicing.status_cancelled') }}</option>
+          </select>
+        </div>
+        <div v-if="!isQuoteList">
+          <label class="invoicing-sf-label text-xs">{{ t('invoicing.adv_paid') }}</label>
+          <select v-model="advancedDraft.paid" class="invoicing-sf-input text-sm w-full">
+            <option value="all">{{ t('invoicing.adv_all') }}</option>
+            <option value="yes">{{ t('invoicing.adv_yes') }}</option>
+            <option value="no">{{ t('invoicing.adv_no') }}</option>
+          </select>
+        </div>
+        <div v-if="!isQuoteList">
+          <label class="invoicing-sf-label text-xs">{{ t('invoicing.adv_due') }}</label>
+          <select v-model="advancedDraft.due" class="invoicing-sf-input text-sm w-full">
+            <option value="all">{{ t('invoicing.adv_all') }}</option>
+            <option value="overdue">{{ t('invoicing.filter_overdue') }}</option>
+            <option value="custom">{{ t('invoicing.adv_custom_range') }}</option>
+          </select>
+        </div>
+        <div v-if="!isQuoteList && advancedDraft.due === 'custom'">
+          <label class="invoicing-sf-label text-xs">{{ t('invoicing.adv_due_range') }}</label>
+          <div class="flex flex-col gap-2">
+            <input v-model="advancedDraft.dueFrom" type="date" class="invoicing-sf-input text-sm w-full" />
+            <input v-model="advancedDraft.dueTo" type="date" class="invoicing-sf-input text-sm w-full" />
+          </div>
+        </div>
+        <div>
+          <label class="invoicing-sf-label text-xs">{{ t('invoicing.adv_amount') }}</label>
+          <div class="flex gap-2">
+            <input
+              v-model="advancedDraft.amountMin"
+              type="number"
+              min="0"
+              step="0.01"
+              class="invoicing-sf-input text-sm flex-1"
+              :placeholder="t('invoicing.adv_amount_from')"
+            />
+            <input
+              v-model="advancedDraft.amountMax"
+              type="number"
+              min="0"
+              step="0.01"
+              class="invoicing-sf-input text-sm flex-1"
+              :placeholder="t('invoicing.adv_amount_to')"
+            />
+          </div>
+        </div>
+        <div>
+          <label class="invoicing-sf-label text-xs">{{ t('invoicing.adv_search') }}</label>
+          <input
+            v-model="advancedDraft.search"
+            type="search"
+            class="invoicing-sf-input text-sm w-full"
+            :placeholder="t('invoicing.adv_search_ph')"
+          />
+        </div>
+      </div>
     </div>
 
     <div
-      v-if="showAdvanced && showAdvancedButton"
+      v-if="showAdvanced && showAdvancedButton && layout === 'bar'"
       class="border-t border-gray-100 bg-gray-50/80"
       @click.stop
     >
@@ -224,8 +309,9 @@ const props = withDefaults(
     hasActiveAdvanced: boolean;
     isQuoteList?: boolean;
     showAdvancedButton?: boolean;
+    layout?: 'bar' | 'drawer';
   }>(),
-  { isQuoteList: false, showAdvancedButton: true }
+  { isQuoteList: false, showAdvancedButton: true, layout: 'bar' }
 );
 
 const emit = defineEmits<{

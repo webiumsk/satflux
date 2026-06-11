@@ -1,7 +1,67 @@
 <template>
   <InvoicingPageShell content-class="pb-8">
     <template #header>
-      <InvoicingAppHeader :company-label="companyName" :show-filter-bar="false" />
+      <InvoicingAppHeader
+        :company-label="companyName"
+        :show-filter-bar="false"
+        show-mobile-filters
+        :mobile-filter-active-count="mobileFilterActiveCount"
+        @mobile-filter-apply="onMobileFilterApply"
+        @mobile-filter-clear="onMobileFilterClear"
+      >
+        <template #mobile-filters>
+          <InvoicingDocumentFilterBar
+            layout="drawer"
+            :container-class="''"
+            :status-filters="filters"
+            :active-filter="activeFilter"
+            :issue-period="issuePeriod"
+            :advanced-draft="advancedDraft"
+            :has-active-advanced="hasActiveAdvanced()"
+            :is-quote-list="isQuoteList"
+            @filter-change="setFilter"
+            @period-change="onPeriodChange"
+            @advanced-open="resetAdvancedDraft"
+            @advanced-apply="onAdvancedApply"
+          />
+        </template>
+        <template #mobile-actions>
+          <button
+            v-if="activeDocumentNav?.mvpEnabled && isCreditNoteList"
+            type="button"
+            class="invoicing-btn-primary w-full"
+            @click="openCreditNoteStart"
+          >
+            + {{ newDocumentLabel() }}
+          </button>
+          <RouterLink
+            v-else-if="activeDocumentNav?.mvpEnabled"
+            :to="newDocumentLink"
+            class="invoicing-btn-primary w-full text-center"
+          >
+            + {{ newDocumentLabel() }}
+          </RouterLink>
+        </template>
+        <template #mobile-primary-action>
+          <RouterLink
+            v-if="activeDocumentNav?.mvpEnabled && !isCreditNoteList"
+            :to="newDocumentLink"
+            class="invoicing-mobile-icon-btn"
+            :title="newDocumentLabel()"
+          >
+            <InvoicingIcons name="plus" />
+          </RouterLink>
+          <button
+            v-else-if="activeDocumentNav?.mvpEnabled && isCreditNoteList"
+            type="button"
+            class="invoicing-mobile-icon-btn"
+            :title="newDocumentLabel()"
+            @click="openCreditNoteStart"
+          >
+            <InvoicingIcons name="plus" />
+          </button>
+        </template>
+      </InvoicingAppHeader>
     </template>
 
     <template #subheader>
@@ -38,7 +98,7 @@
       </InvoicingDocumentFilterBar>
     </template>
 
-    <div v-if="selectionCount > 0" class="invoicing-bulk-bar">
+    <div v-if="selectionCount > 0" class="invoicing-bulk-bar hidden md:flex">
       <span class="text-sm text-indigo-800 font-medium">
         {{ t('invoicing.bulk_selected', { count: selectionCount }) }}
       </span>
@@ -80,14 +140,38 @@
       </div>
     </div>
 
+    <InvoicingMobileBulkBar
+      :open="selectionCount > 0"
+      :selection-count="selectionCount"
+      @clear="clearSelection"
+    >
+      <button type="button" class="invoicing-btn-secondary text-sm shrink-0" @click="showBulkMenu = !showBulkMenu">
+        {{ t('invoicing.bulk_actions') }}
+      </button>
+      <button
+        v-if="!isQuoteList"
+        type="button"
+        class="invoicing-btn-secondary text-sm shrink-0"
+        @click="runBulk('mark_paid')"
+      >
+        {{ t('invoicing.bulk_mark_paid') }}
+      </button>
+      <button type="button" class="invoicing-btn-secondary text-sm shrink-0" @click="runBulk('pdf_zip')">
+        PDF
+      </button>
+      <button type="button" class="invoicing-btn-secondary text-sm shrink-0" @click="runBulk('export_xlsx')">
+        XLSX
+      </button>
+    </InvoicingMobileBulkBar>
+
     <div v-if="loading" class="invoicing-muted py-8">{{ t('common.loading') }}</div>
 
     <div v-else-if="documents.length === 0" class="invoicing-card-pad text-center text-gray-600">
       {{ emptyMessage }}
     </div>
 
-    <div v-else class="my-8 space-y-0 invoicing-card overflow-hidden">
-      <div class="border-b border-gray-200 overflow-x-auto invoice-table-wrap">
+    <div v-else class="my-4 md:my-8 space-y-0 invoicing-card max-md:overflow-visible md:overflow-hidden">
+      <div class="hidden md:block border-b border-gray-200 overflow-x-auto invoice-table-wrap">
         <table class="invoice-table w-full min-w-[900px] text-sm text-left">
           <thead class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide border-b border-gray-200">
             <tr>
@@ -492,6 +576,64 @@
         </table>
       </div>
 
+      <div class="md:hidden divide-y divide-gray-100 pb-4">
+        <InvoicingMobileCard
+          v-for="d in documents"
+          :key="d.id"
+          selectable
+          :selected="rowSelected(d.id)"
+          @open="router.push(documentShowTo(d))"
+          @toggle-select="toggleRow(d.id)"
+        >
+          <div class="relative pl-3">
+            <span
+              class="status-corner absolute left-0 top-0"
+              :class="statusCornerClass(d)"
+              :title="statusLabel(statusKind(d))"
+            />
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <p class="font-semibold text-gray-900 truncate">{{ documentListNumber(d) }}</p>
+                <p v-if="d.contact?.name" class="text-sm text-gray-600 truncate">{{ d.contact.name }}</p>
+                <p v-if="invoiceTitle(d)" class="text-xs text-gray-500 truncate mt-0.5">{{ invoiceTitle(d) }}</p>
+                <p class="text-xs text-gray-500 mt-1">
+                  <template v-if="!isQuoteList">
+                    {{ d.issue_date ? formatDate(d.issue_date) : '—' }}
+                    /
+                    <span :class="isOverdue(d) ? 'text-red-500 font-medium' : ''">
+                      {{ d.due_date ? formatDate(d.due_date) : '—' }}
+                    </span>
+                  </template>
+                  <template v-else>
+                    {{ d.due_date ? formatDate(d.due_date) : '—' }}
+                  </template>
+                </p>
+              </div>
+              <p class="text-sm font-semibold text-gray-900 shrink-0">{{ formatMoney(d.total, d.currency) }}</p>
+            </div>
+          </div>
+          <template #actions>
+            <InvoicingRowActionsMenu>
+              <button v-if="canIssue(d)" type="button" class="invoicing-dropdown-item" @click="issueDoc(d)">
+                {{ t('invoicing.action_issue') }}
+              </button>
+              <button v-if="canMarkPaid(d)" type="button" class="invoicing-dropdown-item" @click="markPaid(d)">
+                {{ t('invoicing.action_mark_paid') }}
+              </button>
+              <button v-if="d.status !== 'draft'" type="button" class="invoicing-dropdown-item" @click="downloadPdf(d)">
+                {{ t('invoicing.action_pdf') }}
+              </button>
+              <RouterLink v-if="d.can_update" :to="documentEditTo(d)" class="invoicing-dropdown-item block">
+                {{ t('common.edit') }}
+              </RouterLink>
+              <button v-if="d.can_delete" type="button" class="invoicing-dropdown-item text-red-600" @click="deleteDoc(d)">
+                {{ t('invoicing.action_delete') }}
+              </button>
+            </InvoicingRowActionsMenu>
+          </template>
+        </InvoicingMobileCard>
+      </div>
+
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-4 py-3 border-t border-gray-200 bg-gray-50">
         <div class="flex items-center gap-2 text-sm">
           <button
@@ -603,6 +745,10 @@ import { useRoute, useRouter } from 'vue-router';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingDocumentFilterBar from '../../components/invoicing/InvoicingDocumentFilterBar.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
+import InvoicingMobileBulkBar from '../../components/invoicing/InvoicingMobileBulkBar.vue';
+import InvoicingMobileCard from '../../components/invoicing/InvoicingMobileCard.vue';
+import InvoicingRowActionsMenu from '../../components/invoicing/InvoicingRowActionsMenu.vue';
+import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
 import { useInvoicingDocumentListFilters } from '../../composables/useInvoicingDocumentListFilters';
 import CreditNotePickInvoiceModal from '../../components/invoicing/CreditNotePickInvoiceModal.vue';
 import CreditNoteStartModal from '../../components/invoicing/CreditNoteStartModal.vue';
@@ -727,6 +873,29 @@ const legendItems = computed(() => {
 const selectionCount = computed(() =>
   selectAllMode.value ? totalCount.value : selectedIds.value.size
 );
+
+const mobileFilterActiveCount = computed(() => {
+  let count = 0;
+  if (activeFilter.value !== 'all') count++;
+  if (issuePeriod.preset !== 'all') count++;
+  if (hasActiveAdvanced()) count++;
+  return count;
+});
+
+function onMobileFilterApply() {
+  onAdvancedApply();
+  load();
+}
+
+function onMobileFilterClear() {
+  activeFilter.value = 'all';
+  issuePeriod.preset = 'all';
+  issuePeriod.customFrom = '';
+  issuePeriod.customTo = '';
+  resetAdvancedDraft();
+  applyAdvancedDraft();
+  load();
+}
 
 const pageTotal = computed(() =>
   documents.value.reduce((sum, d) => sum + Number(d.total || 0), 0)

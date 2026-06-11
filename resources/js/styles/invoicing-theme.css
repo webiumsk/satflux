@@ -2,6 +2,7 @@
 
 .invoicing-page {
   @apply min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-gray-100 text-gray-900;
+  @apply max-md:flex-none max-md:overflow-visible;
 }
 
 /* Legacy aliases - prefer INVOICING_CONTAINER_CLASS in composable */
@@ -50,6 +51,20 @@
 
 .invoicing-sub-nav__item--disabled {
   @apply opacity-40 cursor-not-allowed hover:bg-transparent hover:text-slate-300;
+}
+
+.invoicing-doc-sub-nav-scroll {
+  @apply overflow-x-auto flex-nowrap overscroll-x-contain snap-x snap-mandatory;
+  @apply -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:flex-wrap md:overflow-visible md:snap-none;
+  scrollbar-width: none;
+}
+
+.invoicing-doc-sub-nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.invoicing-sub-nav__item--scroll {
+  @apply shrink-0 snap-start px-3 py-2 text-xs md:px-4 md:py-2.5 md:text-sm;
 }
 
 .invoicing-filter-bar {
@@ -260,4 +275,81 @@
 
 .invoice-email-indicator--disabled {
   @apply border-gray-200 text-gray-300 bg-gray-50 cursor-not-allowed opacity-60;
+}
+
+/* Mobile invoicing UX */
+.invoicing-mobile-header {
+  @apply bg-gray-100 border-b border-gray-200;
+}
+
+.invoicing-mobile-icon-btn {
+  @apply inline-flex items-center justify-center h-11 w-11 rounded-lg text-gray-700 hover:bg-gray-200/80 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1;
+}
+
+.invoicing-mobile-nav-item {
+  @apply flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors;
+}
+
+.invoicing-mobile-nav-item--active {
+  @apply bg-indigo-50 text-indigo-800;
+}
+
+.invoicing-mobile-nav-subitem {
+  @apply block rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 text-left transition-colors;
+}
+
+.invoicing-mobile-nav-subitem--active {
+  @apply bg-indigo-50 text-indigo-800 font-medium;
+}
+
+.invoicing-mobile-nav-subitem--disabled {
+  @apply opacity-40 cursor-not-allowed hover:bg-transparent;
+}
+
+.invoicing-mobile-card {
+  @apply bg-white rounded-lg border border-gray-200 shadow-sm p-4 active:bg-gray-50 transition-colors cursor-pointer;
+}
+
+.invoicing-mobile-card--selected {
+  @apply border-indigo-400 bg-indigo-50/30;
+}
+
+.invoicing-mobile-bottom-bar {
+  @apply fixed inset-x-0 bottom-0 z-30 bg-white border-t border-gray-200 shadow-lg;
+}
+
+.invoicing-drawer-backdrop {
+  @apply touch-none;
+}
+
+.invoicing-drawer-panel {
+  @apply focus:outline-none;
+}
+
+.invoicing-mobile-filter-stack {
+  @apply flex flex-col gap-2;
+}
+
+.invoicing-mobile-filter-stack .invoicing-filter {
+  @apply w-full justify-center;
+}
+
+.invoicing-mobile-toolbar {
+  @apply flex items-center gap-2 min-h-[48px];
+}
+
+.invoicing-mobile-toolbar-title {
+  @apply flex-1 min-w-0 text-sm font-semibold text-gray-900 truncate;
+}
+
+.invoicing-line-item-card {
+  @apply bg-white rounded-lg border border-gray-200 p-4 space-y-3;
+}
+
+.invoicing-app-tabs-scroll {
+  @apply flex overflow-x-auto gap-0 flex-nowrap snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 md:flex-wrap md:overflow-visible;
+}
+
+.invoicing-letter-filter-scroll {
+  @apply flex overflow-x-auto gap-1 flex-nowrap pb-2 -mx-1 px-1 md:flex-wrap md:overflow-visible;
 }

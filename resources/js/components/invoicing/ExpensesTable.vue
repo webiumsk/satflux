@@ -1,5 +1,5 @@
 <template>
-  <div class="expense-table-wrap border-b border-gray-200 overflow-x-auto">
+  <div class="expense-table-wrap border-b border-gray-200 overflow-x-auto hidden md:block">
     <table class="expense-table w-full min-w-[1024px] text-sm text-left">
       <thead class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide border-b border-gray-200">
         <tr>
@@ -234,11 +234,55 @@
       </tbody>
     </table>
   </div>
+
+  <div class="md:hidden divide-y divide-gray-100">
+    <InvoicingMobileCard
+      v-for="row in rows"
+      :key="row.id"
+      selectable
+      :selected="isSelected(row.id)"
+      @open="$emit('open', row.id)"
+      @toggle-select="$emit('toggle-row', row.id)"
+    >
+      <div class="relative pl-3">
+        <span class="status-corner absolute left-0 top-0" :class="expenseStatusCornerClass(row)" />
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <p class="font-semibold text-gray-900 truncate">{{ displayTitle(row) }}</p>
+            <p class="text-sm text-gray-600 truncate">{{ metaFor(row).supplier || '—' }}</p>
+            <p class="text-xs text-gray-500 mt-1">{{ formatDate(row.issue_date) }}</p>
+          </div>
+          <p class="text-sm font-semibold shrink-0">{{ formatMoney(row.total, row.currency) }}</p>
+        </div>
+      </div>
+      <template #actions>
+        <InvoicingRowActionsMenu>
+          <button
+            v-if="row.status === 'recorded'"
+            type="button"
+            class="invoicing-dropdown-item"
+            @click="$emit('mark-paid', row.id)"
+          >
+            {{ t('invoicing.action_mark_paid') }}
+          </button>
+          <RouterLink :to="editTo(row.id)" class="invoicing-dropdown-item block">{{ t('common.edit') }}</RouterLink>
+          <button type="button" class="invoicing-dropdown-item" @click="$emit('duplicate', row.id)">
+            {{ t('invoicing.expense_action_duplicate') }}
+          </button>
+          <button type="button" class="invoicing-dropdown-item text-red-600" @click="$emit('cancel', row.id)">
+            {{ t('invoicing.expense_action_cancel') }}
+          </button>
+        </InvoicingRowActionsMenu>
+      </template>
+    </InvoicingMobileCard>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 import IconPaperclip from './icons/IconPaperclip.vue';
+import InvoicingMobileCard from './InvoicingMobileCard.vue';
+import InvoicingRowActionsMenu from './InvoicingRowActionsMenu.vue';
 import {
   expenseOverdueDays,
   expenseStatusCornerClass,

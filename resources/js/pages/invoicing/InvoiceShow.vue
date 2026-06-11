@@ -8,7 +8,27 @@
       <InvoicingDocumentSubNav />
     </div>
     <div class="invoicing-toolbar">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex flex-wrap items-center gap-4 py-3">
+      <div class="md:hidden max-w-7xl mx-auto px-4 w-full py-2 invoicing-mobile-toolbar">
+        <RouterLink :to="{ name: documentRoutes.list, params: { companyId } }" class="invoicing-mobile-icon-btn shrink-0">
+          <InvoicingIcons name="chevron-left" />
+        </RouterLink>
+        <span class="invoicing-mobile-toolbar-title">
+          {{ displayDocumentNumber || t('invoicing.draft_label') }}
+        </span>
+        <InvoicingRowActionsMenu>
+          <RouterLink
+            v-if="canUpdate"
+            :to="{ name: documentRoutes.edit, params: { companyId, documentId } }"
+            class="invoicing-dropdown-item block"
+          >
+            {{ t('invoicing.action_edit') }}
+          </RouterLink>
+          <button type="button" class="invoicing-dropdown-item" @click="downloadPdf">
+            {{ t('invoicing.action_pdf') }}
+          </button>
+        </InvoicingRowActionsMenu>
+      </div>
+      <div class="hidden md:flex max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-wrap items-center gap-4 py-3">
         <RouterLink :to="{ name: documentRoutes.list, params: { companyId } }" class="invoicing-back mb-0">
           ← {{ listTitle }}
         </RouterLink>
@@ -215,6 +235,8 @@ import { computed, onMounted, ref, watch } from 'vue';
 import '../../styles/invoicing-theme.css';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingDocumentSubNav from '../../components/invoicing/InvoicingDocumentSubNav.vue';
+import InvoicingRowActionsMenu from '../../components/invoicing/InvoicingRowActionsMenu.vue';
+import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
 import InvoiceEfakturaPanel from '../../components/invoicing/InvoiceEfakturaPanel.vue';
 import InvoiceFormSidebar from '../../components/invoicing/InvoiceFormSidebar.vue';
 import SendDocumentEmailModal from '../../components/invoicing/SendDocumentEmailModal.vue';

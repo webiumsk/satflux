@@ -1,7 +1,13 @@
 <template>
   <InvoicingPageShell content-class="pb-8">
     <template #header>
-      <InvoicingAppHeader :company-label="companyName">
+      <InvoicingAppHeader
+        :company-label="companyName"
+        show-mobile-filters
+        :mobile-filter-active-count="mobileFilterActiveCount"
+        @mobile-filter-apply="load"
+        @mobile-filter-clear="onMobileFilterClear"
+      >
         <template #filters>
           <input
             v-model="searchQuery"
@@ -19,10 +25,52 @@
             + {{ t('invoicing.new_contact') }}
           </RouterLink>
         </template>
+        <template #mobile-filters>
+          <input
+            v-model="searchQuery"
+            type="search"
+            class="invoicing-sf-input w-full"
+            :placeholder="t('invoicing.search_contact')"
+            @input="onSearchInput"
+          />
+          <div class="invoicing-letter-filter-scroll">
+            <button
+              type="button"
+              class="invoicing-letter shrink-0"
+              :class="activeLetter === 'all' ? 'invoicing-letter--active' : 'invoicing-letter--idle'"
+              @click="setLetter('all')"
+            >
+              {{ t('invoicing.letter_all') }}
+            </button>
+            <button
+              v-for="ch in ALPHABET_FILTER"
+              :key="ch"
+              type="button"
+              class="invoicing-letter shrink-0"
+              :class="letterClass(ch)"
+              @click="setLetter(ch)"
+            >
+              {{ ch }}
+            </button>
+          </div>
+        </template>
+        <template #mobile-actions>
+          <button type="button" class="invoicing-btn-secondary w-full" @click="showImportModal = true">
+            {{ t('invoicing.import_contacts') }}
+          </button>
+          <RouterLink :to="contactNewTo()" class="invoicing-btn-primary w-full text-center">
+            + {{ t('invoicing.new_contact') }}
+          </RouterLink>
+        </template>
+        <template #mobile-primary-action>
+          <RouterLink :to="contactNewTo()" class="invoicing-mobile-icon-btn" :title="t('invoicing.mobile_new_contact')">
+            <InvoicingIcons name="plus" />
+          </RouterLink>
+        </template>
       </InvoicingAppHeader>
     </template>
 
-    <div class="invoicing-letter-filter">
+    <div class="invoicing-letter-filter hidden md:flex">
       <button
         type="button"
         class="invoicing-letter"
@@ -45,7 +93,7 @@
 
     <p v-if="success" class="text-sm text-green-700 mb-4">{{ success }}</p>
 
-    <div v-if="selectionCount > 0" class="invoicing-bulk-bar">
+    <div v-if="selectionCount > 0" class="invoicing-bulk-bar hidden md:flex">
       <span class="text-sm text-indigo-800 font-medium">
         {{ t('invoicing.bulk_selected', { count: selectionCount }) }}
       </span>
@@ -68,6 +116,19 @@
       </div>
     </div>
 
+    <InvoicingMobileBulkBar
+      :open="selectionCount > 0"
+      :selection-count="selectionCount"
+      @clear="clearSelection"
+    >
+      <button type="button" class="invoicing-btn-secondary text-sm shrink-0" @click="runBulk('export_xlsx')">
+        XLSX
+      </button>
+      <button type="button" class="invoicing-btn-secondary text-sm shrink-0 text-red-600" @click="runBulk('delete')">
+        {{ t('invoicing.bulk_delete_contacts') }}
+      </button>
+    </InvoicingMobileBulkBar>
+
     <div v-if="loading" class="invoicing-muted py-8">{{ t('common.loading') }}</div>
 
     <div v-else-if="contacts.length === 0" class="invoicing-card-pad text-center text-gray-600">
@@ -75,7 +136,7 @@
     </div>
 
     <div v-else class="invoicing-card overflow-hidden">
-      <div class="overflow-x-auto">
+      <div class="hidden md:block overflow-x-auto">
         <table class="contact-table w-full min-w-[800px] text-sm">
           <thead class="bg-gray-50 border-b border-gray-200 text-gray-600 text-xs uppercase tracking-wide">
             <tr>
@@ -157,6 +218,23 @@
           </tbody>
         </table>
       </div>
+
+      <div class="md:hidden divide-y divide-gray-100">
+        <InvoicingMobileCard
+          v-for="c in contacts"
+          :key="c.id"
+          selectable
+          :selected="rowSelected(c.id)"
+          @open="$router.push(contactShowTo(c.id))"
+          @toggle-select="toggleRow(c.id)"
+        >
+          <p class="font-semibold text-gray-900 truncate">{{ c.name }}</p>
+          <p v-if="statLine(c)" class="text-sm text-gray-600 mt-1">{{ statLine(c)?.main }}</p>
+          <p v-if="c.stats?.avg_payment_days != null" class="text-xs text-gray-500 mt-0.5">
+            {{ c.stats.avg_payment_days }} {{ t('invoicing.days_suffix') }}
+          </p>
+        </InvoicingMobileCard>
+      </div>
     </div>
 
     <ContactImportModal
@@ -175,6 +253,9 @@ import { useRoute } from 'vue-router';
 import ContactImportModal from '../../components/invoicing/ContactImportModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
+import InvoicingMobileBulkBar from '../../components/invoicing/InvoicingMobileBulkBar.vue';
+import InvoicingMobileCard from '../../components/invoicing/InvoicingMobileCard.vue';
+import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import {
   ALPHABET_FILTER,
@@ -206,6 +287,20 @@ let searchTimer: ReturnType<typeof setTimeout> | null = null;
 const selectionCount = computed(() =>
   selectAllMode.value ? contacts.value.length : selectedIds.value.size
 );
+
+const mobileFilterActiveCount = computed(() => {
+  let count = 0;
+  if (searchQuery.value.trim()) count++;
+  if (activeLetter.value !== 'all') count++;
+  return count;
+});
+
+function onMobileFilterClear() {
+  searchQuery.value = '';
+  activeLetter.value = 'all';
+  clearSelection();
+  load();
+}
 
 function onContactsImported() {
   load();
