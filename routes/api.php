@@ -27,6 +27,7 @@ use App\Http\Controllers\Invoicing\BusinessExpenseController;
 use App\Http\Controllers\Invoicing\BusinessExpenseImportController;
 use App\Http\Controllers\Invoicing\CompanyBrandingController;
 use App\Http\Controllers\Invoicing\CompanyContactController;
+use App\Http\Controllers\Invoicing\CompanyStockItemController;
 use App\Http\Controllers\Invoicing\CompanyController;
 use App\Http\Controllers\Invoicing\CompanyDocumentSequenceController;
 use App\Http\Controllers\Invoicing\CompanyEmailSettingsController;
@@ -389,6 +390,25 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::patch('/companies/{company}/contacts/{contact}', [CompanyContactController::class, 'update'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::delete('/companies/{company}/contacts/{contact}', [CompanyContactController::class, 'destroy'])
+                ->middleware(EnsureCompanyOwnership::class);
+
+            Route::get('/companies/{company}/stock-items/search', [CompanyStockItemController::class, 'search'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/stock-items/import/example', [CompanyStockItemController::class, 'importExample'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/stock-items/import/preview', [CompanyStockItemController::class, 'importPreview'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/stock-items/import', [CompanyStockItemController::class, 'import'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/stock-items', [CompanyStockItemController::class, 'index'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/stock-items', [CompanyStockItemController::class, 'store'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/stock-items/{stockItem}', [CompanyStockItemController::class, 'show'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::patch('/companies/{company}/stock-items/{stockItem}', [CompanyStockItemController::class, 'update'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::delete('/companies/{company}/stock-items/{stockItem}', [CompanyStockItemController::class, 'destroy'])
                 ->middleware(EnsureCompanyOwnership::class);
 
             Route::get('/companies/{company}/recurring-profiles', [\App\Http\Controllers\Invoicing\BusinessRecurringProfileController::class, 'index'])

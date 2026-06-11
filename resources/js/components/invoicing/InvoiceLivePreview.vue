@@ -218,6 +218,8 @@ export type InvoiceLineForm = {
   unit_price: number;
   line_discount_percent: number;
   tax_rate: number;
+  company_stock_item_id?: string | null;
+  stock_quantity_hint?: number | null;
 };
 
 export type InvoicePreviewForm = {

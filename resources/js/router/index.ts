@@ -175,6 +175,24 @@ const router = createRouter({
             meta: { requiresAuth: true, invoicingSection: 'contacts' },
         },
         {
+            path: '/invoicing/companies/:companyId/stock',
+            name: 'invoicing-stock',
+            component: () => import('../pages/invoicing/StockItems.vue'),
+            meta: { requiresAuth: true, invoicingSection: 'stock' },
+        },
+        {
+            path: '/invoicing/companies/:companyId/stock/new',
+            name: 'invoicing-stock-new',
+            component: () => import('../pages/invoicing/StockItemForm.vue'),
+            meta: { requiresAuth: true, invoicingSection: 'stock' },
+        },
+        {
+            path: '/invoicing/companies/:companyId/stock/:itemId',
+            name: 'invoicing-stock-edit',
+            component: () => import('../pages/invoicing/StockItemForm.vue'),
+            meta: { requiresAuth: true, invoicingSection: 'stock' },
+        },
+        {
             path: '/invoicing/companies/:companyId/contacts/new',
             name: 'invoicing-contact-new',
             component: () => import('../pages/invoicing/ContactForm.vue'),

@@ -191,13 +191,32 @@
               <tbody>
                 <tr v-for="(line, idx) in form.lines" :key="idx" class="border-t border-gray-200">
                   <td class="px-3 py-2 align-top">
-                    <input v-model="line.name" class="invoicing-sf-input-table" :required="!isLocked" :disabled="isLocked" />
-                    <input
-                      v-model="line.description"
-                      class="invoicing-sf-input-table mt-1 text-gray-500"
-                      :placeholder="t('invoicing.item_description')"
+                    <StockLineSuggestField
+                      v-if="showLineSuggester && !isLocked"
+                      :company-id="companyId"
+                      :name="line.name"
+                      :description="line.description"
+                      :stock-item-id="line.company_stock_item_id"
+                      :quantity-on-hand="line.stock_quantity_hint"
+                      :unit="line.unit"
+                      :enabled="showLineSuggester"
                       :disabled="isLocked"
+                      :required="!isLocked"
+                      :description-placeholder="t('invoicing.item_description')"
+                      @update:name="line.name = $event"
+                      @update:description="line.description = $event"
+                      @pick="onLineStockPick(line, $event)"
+                      @clear-stock-link="clearLineStockLink(line)"
                     />
+                    <template v-else>
+                      <input v-model="line.name" class="invoicing-sf-input-table" :required="!isLocked" :disabled="isLocked" />
+                      <input
+                        v-model="line.description"
+                        class="invoicing-sf-input-table mt-1 text-gray-500"
+                        :placeholder="t('invoicing.item_description')"
+                        :disabled="isLocked"
+                      />
+                    </template>
                   </td>
                   <td class="px-2 py-2 align-middle">
                     <input v-model.number="line.quantity" type="number" min="0.0001" step="any" class="invoicing-sf-input-table text-center" :disabled="isLocked" />
@@ -332,10 +351,13 @@ import { computed, onMounted, ref, watch } from 'vue';
 import ContactCreateModal from '../../components/invoicing/ContactCreateModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoiceLineUnitSelect from '../../components/invoicing/InvoiceLineUnitSelect.vue';
+import StockLineSuggestField from '../../components/invoicing/StockLineSuggestField.vue';
+import type { InvoiceLineForm } from '../../components/invoicing/InvoiceLivePreview.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import api, { businessDocumentPdfPath, getWebBlob } from '../../services/api';
 import { companyCurrencyOptions } from '../../config/companyCurrencies';
+import { appSettingsFromCompany } from '../../composables/useCompanyAppSettings';
 import { useInvoiceDocument } from '../../composables/useInvoiceDocument';
 
 const {
@@ -383,6 +405,31 @@ const { rememberCompany } = useInvoicingLayout();
 
 const isNew = computed(() => !documentId.value);
 const showContactCreateModal = ref(false);
+const showLineSuggester = computed(() => appSettingsFromCompany(company.value).show_line_suggester);
+
+function onLineStockPick(
+  line: InvoiceLineForm,
+  payload: {
+    name: string;
+    description: string;
+    unit: string;
+    unit_price: number;
+    company_stock_item_id: string;
+    quantity_on_hand: number | null;
+  }
+) {
+  line.name = payload.name;
+  line.description = payload.description;
+  line.unit = payload.unit;
+  line.unit_price = payload.unit_price;
+  line.company_stock_item_id = payload.company_stock_item_id;
+  line.stock_quantity_hint = payload.quantity_on_hand;
+}
+
+function clearLineStockLink(line: InvoiceLineForm) {
+  line.company_stock_item_id = null;
+  line.stock_quantity_hint = null;
+}
 
 const documentCurrencyOptions = computed(() =>
   companyCurrencyOptions(form.currency || company.value?.default_currency)

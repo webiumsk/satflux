@@ -178,12 +178,27 @@
             <tbody>
               <tr v-for="(line, idx) in form.lines" :key="idx" class="border-t border-gray-200">
                 <td class="px-3 py-2 align-top">
-                  <input v-model="line.name" class="invoicing-sf-input-table" required />
-                  <input
-                    v-model="line.description"
-                    class="invoicing-sf-input-table mt-1 text-gray-500"
-                    :placeholder="t('invoicing.item_description')"
+                  <StockLineSuggestField
+                    v-if="showLineSuggester"
+                    :company-id="companyId"
+                    :name="line.name"
+                    :description="line.description"
+                    :enabled="showLineSuggester"
+                    :required="true"
+                    :description-placeholder="t('invoicing.item_description')"
+                    @update:name="line.name = $event"
+                    @update:description="line.description = $event"
+                    @pick="onLineStockPick(line, $event)"
+                    @clear-stock-link="() => {}"
                   />
+                  <template v-else>
+                    <input v-model="line.name" class="invoicing-sf-input-table" required />
+                    <input
+                      v-model="line.description"
+                      class="invoicing-sf-input-table mt-1 text-gray-500"
+                      :placeholder="t('invoicing.item_description')"
+                    />
+                  </template>
                 </td>
                 <td class="px-2 py-2 align-middle">
                   <input v-model.number="line.quantity" type="number" min="0.0001" step="any" class="invoicing-sf-input-table text-center" />
@@ -280,6 +295,7 @@ import { useI18n } from 'vue-i18n';
 import ContactCreateModal from '../../components/invoicing/ContactCreateModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoiceLineUnitSelect from '../../components/invoicing/InvoiceLineUnitSelect.vue';
+import StockLineSuggestField from '../../components/invoicing/StockLineSuggestField.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import { DEFAULT_INVOICE_LINE_UNIT } from '../../composables/useInvoiceLineUnits';
 import api from '../../services/api';
@@ -307,7 +323,18 @@ const linkedStores = ref<any[]>([]);
 const profileCurrencyOptions = computed(() =>
   companyCurrencyOptions(form.currency || company.value?.default_currency)
 );
+const showLineSuggester = computed(() => appSettingsFromCompany(company.value).show_line_suggester);
 const tagsInput = ref('');
+
+function onLineStockPick(
+  line: (typeof form.lines)[0],
+  payload: { name: string; description: string; unit: string; unit_price: number }
+) {
+  line.name = payload.name;
+  line.description = payload.description;
+  line.unit = payload.unit;
+  line.unit_price = payload.unit_price;
+}
 
 const form = reactive({
   document_type: 'invoice' as 'invoice' | 'proforma',

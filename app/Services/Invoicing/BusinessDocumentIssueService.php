@@ -19,6 +19,7 @@ class BusinessDocumentIssueService
         protected BusinessDocumentPaymentTokenService $paymentTokenService,
         protected BusinessDocumentBtcPayService $btcPayService,
         protected ComplianceSubmissionService $complianceSubmissionService,
+        protected CompanyStockMovementService $stockMovementService,
     ) {}
 
     public function issue(BusinessDocument $document): BusinessDocument
@@ -70,7 +71,10 @@ class BusinessDocumentIssueService
                 'number' => $document->number,
             ]);
 
-            return $document->fresh(['lines', 'contact', 'store', 'company']);
+            $document = $document->fresh(['lines', 'contact', 'store', 'company']);
+            $this->stockMovementService->applyDocumentIssue($document);
+
+            return $document;
         });
 
         $this->complianceSubmissionService->queueIfEligible($issued);

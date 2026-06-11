@@ -13,6 +13,7 @@ use App\Models\BusinessDocument;
 use App\Models\BusinessDocumentLine;
 use App\Models\Company;
 use App\Models\CompanyContact;
+use App\Models\CompanyStockItem;
 use App\Models\Store;
 use App\Services\Invoicing\BusinessDocumentBtcPayService;
 use App\Services\Invoicing\BusinessDocumentBulkService;
@@ -30,6 +31,7 @@ use App\Services\Invoicing\BusinessDocumentPdfService;
 use App\Services\Invoicing\BusinessDocumentQuoteService;
 use App\Services\Invoicing\BusinessDocumentUblService;
 use App\Services\Invoicing\CanonicalInvoiceBuilder;
+use App\Services\Invoicing\CompanyStockMovementService;
 use App\Services\Invoicing\DocumentSequenceService;
 use App\Services\Invoicing\DocumentTotalsCalculator;
 use App\Support\Invoicing\CompanyAppSettings;
@@ -58,6 +60,7 @@ class BusinessDocumentController extends Controller
         protected CanonicalInvoiceBuilder $canonicalBuilder,
         protected BusinessDocumentIsdocService $isdocService,
         protected BusinessDocumentUblService $ublService,
+        protected CompanyStockMovementService $stockMovementService,
     ) {}
 
     /**
@@ -136,6 +139,7 @@ class BusinessDocumentController extends Controller
 
         $this->assertContactBelongsToCompany($request->input('company_contact_id'), $company);
         $this->assertStoreBelongsToCompany($request->input('store_id'), $company);
+        $this->assertStockItemsBelongToCompany($request->input('lines', []), $company);
 
         $document = new BusinessDocument([
             'company_id' => $company->id,
@@ -212,6 +216,7 @@ class BusinessDocumentController extends Controller
 
         $this->assertContactBelongsToCompany($request->input('company_contact_id'), $company);
         $this->assertStoreBelongsToCompany($request->input('store_id'), $company);
+        $this->assertStockItemsBelongToCompany($request->input('lines', []), $company);
 
         $businessDocument->fill(array_merge($request->only([
             'company_contact_id',
@@ -304,11 +309,17 @@ class BusinessDocumentController extends Controller
             ]);
         }
 
+        $wasIssued = $businessDocument->status === BusinessDocumentStatus::Issued;
+
         $businessDocument->update([
             'status' => BusinessDocumentStatus::Cancelled,
             'paid_at' => null,
             'amount_paid' => null,
         ]);
+
+        if ($wasIssued) {
+            $this->stockMovementService->reverseDocumentCancel($businessDocument->fresh(['lines']));
+        }
 
         AuditLog::log('business_document.cancelled', 'business_document', $businessDocument->id, [
             'company_id' => $company->id,
@@ -569,6 +580,7 @@ class BusinessDocumentController extends Controller
 
             BusinessDocumentLine::create([
                 'business_document_id' => $document->id,
+                'company_stock_item_id' => $line['company_stock_item_id'] ?? null,
                 'sort_order' => $index,
                 'name' => $line['name'],
                 'description' => $line['description'] ?? null,
@@ -598,6 +610,34 @@ class BusinessDocumentController extends Controller
         if (! CompanyContact::where('id', $contactId)->where('company_id', $company->id)->exists()) {
             throw ValidationException::withMessages([
                 'company_contact_id' => ['Invalid contact for this company.'],
+            ]);
+        }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $lines
+     */
+    protected function assertStockItemsBelongToCompany(array $lines, Company $company): void
+    {
+        $ids = collect($lines)
+            ->pluck('company_stock_item_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($ids === []) {
+            return;
+        }
+
+        $validCount = CompanyStockItem::query()
+            ->where('company_id', $company->id)
+            ->whereIn('id', $ids)
+            ->count();
+
+        if ($validCount !== count($ids)) {
+            throw ValidationException::withMessages([
+                'lines' => ['One or more stock items are invalid for this company.'],
             ]);
         }
     }

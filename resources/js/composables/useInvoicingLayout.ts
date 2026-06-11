@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n';
 /** Shared content width for all invoicing pages. */
 export const INVOICING_CONTAINER_CLASS = 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full';
 
-export type InvoicingMainSection = 'documents' | 'expenses' | 'contacts' | 'payments' | 'tools';
+export type InvoicingMainSection = 'documents' | 'expenses' | 'contacts' | 'stock' | 'payments' | 'tools';
 
 export type InvoicingDocumentKind =
   | 'invoice'
@@ -69,6 +69,9 @@ export function useInvoicingLayout() {
 
     if (path.includes('/contacts') || name.includes('contact')) {
       return 'contacts';
+    }
+    if (path.includes('/stock') || name.includes('stock')) {
+      return 'stock';
     }
     if (path.includes('/payments') || name.includes('payment')) {
       return 'payments';
@@ -174,6 +177,13 @@ export function useInvoicingLayout() {
       case 'contacts':
         if (cid) {
           router.push({ name: 'invoicing-contacts', params: { companyId: cid } });
+        } else {
+          router.push({ name: 'invoicing' });
+        }
+        break;
+      case 'stock':
+        if (cid) {
+          router.push({ name: 'invoicing-stock', params: { companyId: cid } });
         } else {
           router.push({ name: 'invoicing' });
         }

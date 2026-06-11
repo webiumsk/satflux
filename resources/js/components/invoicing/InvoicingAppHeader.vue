@@ -96,6 +96,7 @@ const visibleMainNav = computed(() => {
 
   items.push(
     { id: 'contacts', labelKey: 'invoicing.main_nav_contacts' },
+    { id: 'stock', labelKey: 'invoicing.main_nav_stock' },
     { id: 'tools', labelKey: 'invoicing.main_nav_tools' },
   );
 

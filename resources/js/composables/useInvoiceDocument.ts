@@ -290,6 +290,8 @@ export function useInvoiceDocument() {
       unit_price: 0,
       line_discount_percent: 0,
       tax_rate: vatPolicy.resolveLineTaxRate(company.value, selectedContact.value, defaultVat.value),
+      company_stock_item_id: null,
+      stock_quantity_hint: null,
     };
   }
 
@@ -320,6 +322,7 @@ export function useInvoiceDocument() {
         unit_price: l.unit_price,
         line_discount_percent: l.line_discount_percent || 0,
         tax_rate: l.tax_rate ?? defaultVat.value,
+        company_stock_item_id: l.company_stock_item_id || null,
       })),
     };
   }
@@ -385,6 +388,8 @@ export function useInvoiceDocument() {
         unit_price: parseFloat(l.unit_price),
         line_discount_percent: parseFloat(l.line_discount_percent) || 0,
         tax_rate: parseFloat(l.tax_rate) || defaultVat.value,
+        company_stock_item_id: l.company_stock_item_id || null,
+        stock_quantity_hint: null,
       })),
     });
     if (documentStatus.value === 'draft' && !documentNumber.value) {
