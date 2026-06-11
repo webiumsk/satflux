@@ -208,8 +208,7 @@ class EfakturaInboundService
         string $ubl,
         array $detail,
         ?EfakturaInboundReceipt $existingReceipt = null,
-    ): EfakturaInboundReceipt
-    {
+    ): EfakturaInboundReceipt {
         $attachment = null;
 
         try {
