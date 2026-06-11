@@ -15,6 +15,7 @@ class CompanyStockItemMovement extends Model
 
     protected $fillable = [
         'company_stock_item_id',
+        'company_warehouse_id',
         'company_id',
         'quantity_after',
         'quantity_delta',
@@ -43,6 +44,11 @@ class CompanyStockItemMovement extends Model
     public function stockItem(): BelongsTo
     {
         return $this->belongsTo(CompanyStockItem::class, 'company_stock_item_id');
+    }
+
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(CompanyWarehouse::class, 'company_warehouse_id');
     }
 
     public function company(): BelongsTo

@@ -1,5 +1,6 @@
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
+import type { StockBalanceRow } from './useCompanyWarehouse';
 
 export type StockItemRow = {
   id: string;
@@ -9,6 +10,7 @@ export type StockItemRow = {
   unit: string;
   track_inventory: boolean;
   quantity_on_hand: number | string;
+  balances?: StockBalanceRow[];
   purchase_unit_price?: number | string | null;
   purchase_currency?: string | null;
   sale_unit_price?: number | string | null;
@@ -28,6 +30,14 @@ export type StockItemMovementRow = {
   document_number?: string | null;
   document_type?: string | null;
   business_document_id?: string | null;
+  company_warehouse_id?: string | null;
+  warehouse_name?: string | null;
+};
+
+export type StockBalanceFormRow = {
+  warehouse_id: string;
+  warehouse_name: string;
+  quantity_on_hand: number;
 };
 
 export type StockItemFormState = {
@@ -36,7 +46,7 @@ export type StockItemFormState = {
   description: string;
   unit: string;
   track_inventory: boolean;
-  quantity_on_hand: number;
+  balances: StockBalanceFormRow[];
   purchase_unit_price: number | null;
   purchase_currency: string;
   sale_unit_price: number | null;
@@ -58,7 +68,7 @@ export function emptyStockItemForm(defaultCurrency = 'EUR'): StockItemFormState 
     description: '',
     unit: 'ks',
     track_inventory: true,
-    quantity_on_hand: 0,
+    balances: [],
     purchase_unit_price: null,
     purchase_currency: defaultCurrency,
     sale_unit_price: null,
@@ -82,14 +92,38 @@ function toNullableFiniteNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function stockItemToForm(item: StockItemRow, defaultCurrency = 'EUR'): StockItemFormState {
+export function stockItemToForm(
+  item: StockItemRow,
+  defaultCurrency = 'EUR',
+  warehouses: { id: string; name: string }[] = []
+): StockItemFormState {
+  const balanceMap = new Map(
+    (item.balances ?? []).map((b) => [b.warehouse_id, toFiniteNumber(b.quantity_on_hand, 0)])
+  );
+
+  const balances: StockBalanceFormRow[] = warehouses.map((w) => ({
+    warehouse_id: w.id,
+    warehouse_name: w.name,
+    quantity_on_hand: balanceMap.get(w.id) ?? 0,
+  }));
+
+  if (balances.length === 0 && (item.balances ?? []).length > 0) {
+    for (const b of item.balances ?? []) {
+      balances.push({
+        warehouse_id: b.warehouse_id,
+        warehouse_name: b.warehouse_name ?? b.warehouse_id,
+        quantity_on_hand: toFiniteNumber(b.quantity_on_hand, 0),
+      });
+    }
+  }
+
   return {
     name: item.name ?? '',
     sku: item.sku ?? '',
     description: item.description ?? '',
     unit: item.unit ?? 'ks',
     track_inventory: item.track_inventory ?? true,
-    quantity_on_hand: toFiniteNumber(item.quantity_on_hand, 0),
+    balances,
     purchase_unit_price: toNullableFiniteNumber(item.purchase_unit_price),
     purchase_currency: item.purchase_currency ?? defaultCurrency,
     sale_unit_price: toNullableFiniteNumber(item.sale_unit_price),
@@ -99,19 +133,27 @@ export function stockItemToForm(item: StockItemRow, defaultCurrency = 'EUR'): St
 }
 
 export function formToStockPayload(form: StockItemFormState) {
-  return {
+  const payload: Record<string, unknown> = {
     name: form.name.trim(),
     sku: form.sku.trim() || null,
     description: form.description.trim() || null,
     unit: form.unit.trim() || 'ks',
     track_inventory: form.track_inventory,
-    quantity_on_hand: form.quantity_on_hand,
     purchase_unit_price: form.purchase_unit_price,
     purchase_currency: form.purchase_currency || null,
     sale_unit_price: form.sale_unit_price,
     internal_note: form.internal_note.trim() || null,
     exclude_from_suggester: form.exclude_from_suggester,
   };
+
+  if (form.track_inventory && form.balances.length > 0) {
+    payload.balances = form.balances.map((b) => ({
+      warehouse_id: b.warehouse_id,
+      quantity_on_hand: b.quantity_on_hand,
+    }));
+  }
+
+  return payload;
 }
 
 export function useStockRoutes(companyId: { value: string }) {

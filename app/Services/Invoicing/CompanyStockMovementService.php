@@ -5,22 +5,29 @@ namespace App\Services\Invoicing;
 use App\Enums\BusinessDocumentType;
 use App\Enums\CompanyStockMovementSource;
 use App\Models\BusinessDocument;
+use App\Models\Company;
 use App\Models\CompanyStockItem;
 use App\Models\CompanyStockItemMovement;
+use App\Models\CompanyWarehouse;
 use Illuminate\Support\Facades\DB;
 
 class CompanyStockMovementService
 {
+    public function __construct(
+        protected CompanyWarehouseService $warehouseService,
+        protected CompanyStockBalanceService $balanceService,
+    ) {}
+
     /**
      * @return list<CompanyStockItemMovement>
      */
     public function applyDocumentIssue(BusinessDocument $document): array
     {
-        if (! in_array($document->type, [BusinessDocumentType::Invoice, BusinessDocumentType::CreditNote], true)) {
+        if (! in_array($document->type, [BusinessDocumentType::Invoice, BusinessDocumentType::CreditNote, BusinessDocumentType::DeliveryNote], true)) {
             return [];
         }
 
-        $document->loadMissing(['lines', 'company']);
+        $document->loadMissing(['lines.warehouse', 'company']);
         $movements = [];
 
         DB::transaction(function () use ($document, &$movements) {
@@ -39,11 +46,19 @@ class CompanyStockMovementService
                     continue;
                 }
 
+                $warehouse = $this->resolveWarehouseForLine($document->company, $line->company_warehouse_id);
+                if (! $warehouse->deduct_on_issue) {
+                    continue;
+                }
+
                 $quantity = (float) $line->quantity;
-                $delta = $document->type === BusinessDocumentType::CreditNote ? $quantity : -$quantity;
+                $delta = in_array($document->type, [BusinessDocumentType::CreditNote], true)
+                    ? $quantity
+                    : -$quantity;
 
                 $movements[] = $this->applyDelta(
                     $item,
+                    $warehouse,
                     $delta,
                     CompanyStockMovementSource::DocumentIssue,
                     note: null,
@@ -60,7 +75,7 @@ class CompanyStockMovementService
      */
     public function reverseDocumentCancel(BusinessDocument $document): array
     {
-        if (! in_array($document->type, [BusinessDocumentType::Invoice, BusinessDocumentType::CreditNote], true)) {
+        if (! in_array($document->type, [BusinessDocumentType::Invoice, BusinessDocumentType::CreditNote, BusinessDocumentType::DeliveryNote], true)) {
             return [];
         }
 
@@ -95,12 +110,22 @@ class CompanyStockMovementService
                     ->lockForUpdate()
                     ->first();
 
-                if (! $item || ! $item->track_inventory) {
+                if (! $item || ! $item->track_inventory || ! $issueMovement->company_warehouse_id) {
+                    continue;
+                }
+
+                $warehouse = CompanyWarehouse::query()
+                    ->where('id', $issueMovement->company_warehouse_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $warehouse) {
                     continue;
                 }
 
                 $movements[] = $this->applyDelta(
                     $item,
+                    $warehouse,
                     -((float) $issueMovement->quantity_delta),
                     CompanyStockMovementSource::DocumentCancel,
                     note: null,
@@ -114,10 +139,12 @@ class CompanyStockMovementService
 
     public function recordManualChange(
         CompanyStockItem $item,
+        CompanyWarehouse $warehouse,
         float $previousQuantity,
         ?string $note = null,
     ): ?CompanyStockItemMovement {
-        $delta = (float) $item->quantity_on_hand - $previousQuantity;
+        $current = $this->balanceService->getQuantity($warehouse, $item);
+        $delta = $current - $previousQuantity;
 
         if (abs($delta) < 0.00001) {
             return null;
@@ -125,8 +152,9 @@ class CompanyStockMovementService
 
         return $this->logMovement(
             $item,
+            $warehouse,
             $delta,
-            (float) $item->quantity_on_hand,
+            $current,
             CompanyStockMovementSource::Manual,
             $note,
         );
@@ -134,10 +162,12 @@ class CompanyStockMovementService
 
     public function recordImportChange(
         CompanyStockItem $item,
+        CompanyWarehouse $warehouse,
         float $previousQuantity,
         ?string $note = null,
     ): ?CompanyStockItemMovement {
-        $delta = (float) $item->quantity_on_hand - $previousQuantity;
+        $current = $this->balanceService->getQuantity($warehouse, $item);
+        $delta = $current - $previousQuantity;
 
         if (abs($delta) < 0.00001 && $note === null) {
             return null;
@@ -145,27 +175,66 @@ class CompanyStockMovementService
 
         return $this->logMovement(
             $item,
+            $warehouse,
             $delta,
-            (float) $item->quantity_on_hand,
+            $current,
             CompanyStockMovementSource::Import,
             $note,
         );
     }
 
+    /**
+     * @return array{out: CompanyStockItemMovement, in: CompanyStockItemMovement}
+     */
+    public function recordTransfer(
+        CompanyStockItem $item,
+        CompanyWarehouse $from,
+        CompanyWarehouse $to,
+        float $quantity,
+        ?string $note = null,
+    ): array {
+        return DB::transaction(function () use ($item, $from, $to, $quantity, $note) {
+            $balances = $this->balanceService->transfer($from, $to, $item, $quantity);
+
+            $outMovement = $this->logMovement(
+                $item,
+                $from,
+                -$quantity,
+                (float) $balances['out']->quantity_on_hand,
+                CompanyStockMovementSource::Transfer,
+                $note,
+            );
+
+            $inMovement = $this->logMovement(
+                $item,
+                $to,
+                $quantity,
+                (float) $balances['in']->quantity_on_hand,
+                CompanyStockMovementSource::Transfer,
+                $note,
+            );
+
+            return ['out' => $outMovement, 'in' => $inMovement];
+        });
+    }
+
     public function applyDelta(
         CompanyStockItem $item,
+        CompanyWarehouse $warehouse,
         float $delta,
         CompanyStockMovementSource $source,
         ?string $note = null,
         ?BusinessDocument $document = null,
     ): CompanyStockItemMovement {
-        $item->quantity_on_hand = (float) $item->quantity_on_hand + $delta;
-        $item->save();
+        $balance = $this->balanceService->getOrCreateBalance($warehouse, $item, lock: true);
+        $balance->quantity_on_hand = (float) $balance->quantity_on_hand + $delta;
+        $balance->save();
 
         return $this->logMovement(
             $item,
+            $warehouse,
             $delta,
-            (float) $item->quantity_on_hand,
+            (float) $balance->quantity_on_hand,
             $source,
             $note,
             $document,
@@ -174,6 +243,7 @@ class CompanyStockMovementService
 
     protected function logMovement(
         CompanyStockItem $item,
+        CompanyWarehouse $warehouse,
         float $delta,
         float $quantityAfter,
         CompanyStockMovementSource $source,
@@ -182,6 +252,7 @@ class CompanyStockMovementService
     ): CompanyStockItemMovement {
         return CompanyStockItemMovement::create([
             'company_stock_item_id' => $item->id,
+            'company_warehouse_id' => $warehouse->id,
             'company_id' => $item->company_id,
             'quantity_after' => $quantityAfter,
             'quantity_delta' => $delta,
@@ -194,5 +265,21 @@ class CompanyStockMovementService
             'document_type' => $document?->type?->value,
             'created_at' => now(),
         ]);
+    }
+
+    protected function resolveWarehouseForLine(Company $company, ?string $warehouseId): CompanyWarehouse
+    {
+        if ($warehouseId) {
+            $warehouse = $company->warehouses()
+                ->where('id', $warehouseId)
+                ->where('is_active', true)
+                ->first();
+
+            if ($warehouse) {
+                return $warehouse;
+            }
+        }
+
+        return $this->warehouseService->defaultWarehouse($company);
     }
 }

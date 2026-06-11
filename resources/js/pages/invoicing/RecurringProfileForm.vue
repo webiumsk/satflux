@@ -167,6 +167,7 @@
             <thead class="bg-gray-100 text-gray-600 text-xs uppercase">
               <tr>
                 <th class="text-left px-3 py-2">{{ t('invoicing.col_item') }}</th>
+                <th v-if="showLineSuggester" class="text-left px-2 py-2 min-w-[130px]">{{ t('invoicing.warehouse_col_name') }}</th>
                 <th class="text-center px-2 py-2 w-20">{{ t('invoicing.col_qty') }}</th>
                 <th class="text-center px-2 py-2 w-24">{{ t('invoicing.col_unit') }}</th>
                 <th class="text-right px-2 py-2 w-28">{{ t('invoicing.col_unit_price') }}</th>
@@ -184,7 +185,9 @@
                     :name="line.name"
                     :description="line.description"
                     :stock-item-id="line.company_stock_item_id"
+                    :warehouse-id="line.company_warehouse_id"
                     :quantity-on-hand="line.stock_quantity_hint"
+                    :deduct-on-issue="line.warehouse_deduct_on_issue"
                     :unit="line.unit"
                     :enabled="showLineSuggester"
                     :required="true"
@@ -202,6 +205,13 @@
                       :placeholder="t('invoicing.item_description')"
                     />
                   </template>
+                </td>
+                <td v-if="showLineSuggester" class="px-2 py-2 align-top">
+                  <StockWarehouseSelect
+                    v-model="line.company_warehouse_id"
+                    :warehouses="warehouses"
+                    @update:model-value="onLineWarehouseChange(line)"
+                  />
                 </td>
                 <td class="px-2 py-2 align-middle">
                   <input v-model.number="line.quantity" type="number" min="0.0001" step="any" class="invoicing-sf-input-table text-center" />
@@ -299,6 +309,8 @@ import ContactCreateModal from '../../components/invoicing/ContactCreateModal.vu
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoiceLineUnitSelect from '../../components/invoicing/InvoiceLineUnitSelect.vue';
 import StockLineSuggestField from '../../components/invoicing/StockLineSuggestField.vue';
+import StockWarehouseSelect from '../../components/invoicing/StockWarehouseSelect.vue';
+import { defaultWarehouseId, type WarehouseRow } from '../../composables/useCompanyWarehouse';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import { DEFAULT_INVOICE_LINE_UNIT } from '../../composables/useInvoiceLineUnits';
 import api from '../../services/api';
@@ -328,6 +340,8 @@ const profileCurrencyOptions = computed(() =>
 );
 const showLineSuggester = computed(() => appSettingsFromCompany(company.value).show_line_suggester);
 const tagsInput = ref('');
+const warehouses = ref<WarehouseRow[]>([]);
+const defaultWarehouseIdValue = computed(() => defaultWarehouseId(warehouses.value));
 
 type RecurringLineForm = {
   name: string;
@@ -338,7 +352,10 @@ type RecurringLineForm = {
   line_discount_percent: number;
   tax_rate: number;
   company_stock_item_id?: string | null;
+  company_warehouse_id?: string | null;
   stock_quantity_hint?: number | null;
+  stock_quantities_by_warehouse?: Record<string, number>;
+  warehouse_deduct_on_issue?: boolean | null;
 };
 
 const form = reactive({
@@ -377,7 +394,10 @@ const form = reactive({
       line_discount_percent: 0,
       tax_rate: 23,
       company_stock_item_id: null as string | null,
+      company_warehouse_id: null as string | null,
       stock_quantity_hint: null as number | null,
+      stock_quantities_by_warehouse: {},
+      warehouse_deduct_on_issue: null,
     },
   ],
 });
@@ -418,6 +438,8 @@ function onLineStockPick(
     unit_price: number;
     company_stock_item_id: string;
     quantity_on_hand: number | null;
+    quantities_by_warehouse?: Record<string, number>;
+    deduct_on_issue?: boolean | null;
   }
 ) {
   line.name = payload.name;
@@ -425,12 +447,36 @@ function onLineStockPick(
   line.unit = payload.unit;
   line.unit_price = payload.unit_price;
   line.company_stock_item_id = payload.company_stock_item_id;
-  line.stock_quantity_hint = payload.quantity_on_hand;
+  line.stock_quantities_by_warehouse = payload.quantities_by_warehouse ?? {};
+  if (!line.company_warehouse_id) {
+    line.company_warehouse_id = defaultWarehouseIdValue.value || null;
+  }
+  syncLineStockHint(line);
+}
+
+function onLineWarehouseChange(line: RecurringLineForm) {
+  syncLineStockHint(line);
+}
+
+function syncLineStockHint(line: RecurringLineForm) {
+  const warehouseId = line.company_warehouse_id;
+  if (!warehouseId) {
+    line.stock_quantity_hint = null;
+    line.warehouse_deduct_on_issue = null;
+    return;
+  }
+  const warehouse = warehouses.value.find((w) => w.id === warehouseId);
+  line.warehouse_deduct_on_issue = warehouse?.deduct_on_issue ?? null;
+  if (line.company_stock_item_id && line.stock_quantities_by_warehouse) {
+    const qty = line.stock_quantities_by_warehouse[warehouseId];
+    line.stock_quantity_hint = qty != null ? Number(qty) : null;
+  }
 }
 
 function clearLineStockLink(line: RecurringLineForm) {
   line.company_stock_item_id = null;
   line.stock_quantity_hint = null;
+  line.stock_quantities_by_warehouse = {};
 }
 
 function lineTotal(line: (typeof form.lines)[0]) {
@@ -470,7 +516,10 @@ function addLine() {
     line_discount_percent: 0,
     tax_rate: defaultVat.value,
     company_stock_item_id: null,
+    company_warehouse_id: defaultWarehouseIdValue.value || null,
     stock_quantity_hint: null,
+    stock_quantities_by_warehouse: {},
+    warehouse_deduct_on_issue: null,
   });
 }
 
@@ -506,6 +555,9 @@ async function loadCompany() {
   contacts.value = (
     await api.get(`/invoicing/companies/${companyId.value}/contacts`)
   ).data.data ?? [];
+  warehouses.value = (
+    await api.get(`/invoicing/companies/${companyId.value}/warehouses`)
+  ).data.data?.filter((w: WarehouseRow) => w.is_active) ?? [];
   const app = appSettingsFromCompany(company.value);
   if (!form.constant_symbol) form.constant_symbol = app.default_constant_symbol;
   if (!form.note_footer) form.note_footer = company.value?.legal_footer_note || '';

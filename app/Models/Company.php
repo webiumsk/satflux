@@ -96,6 +96,11 @@ class Company extends Model
         return $this->hasMany(CompanyStockItem::class);
     }
 
+    public function warehouses(): HasMany
+    {
+        return $this->hasMany(CompanyWarehouse::class);
+    }
+
     public function stores(): HasMany
     {
         return $this->hasMany(Store::class);

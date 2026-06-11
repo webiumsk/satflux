@@ -50,6 +50,7 @@ class StoreBusinessDocumentRequest extends FormRequest
             'lines.*.line_discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'lines.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'lines.*.company_stock_item_id' => ['nullable', 'uuid'],
+            'lines.*.company_warehouse_id' => ['nullable', 'uuid'],
         ];
     }
 }

@@ -4,6 +4,7 @@ namespace App\Services\Invoicing;
 
 use App\Models\Company;
 use App\Models\CompanyStockItem;
+use App\Models\CompanyWarehouse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -12,14 +13,16 @@ class CompanyStockItemService
 {
     public function __construct(
         protected CompanyStockMovementService $movementService,
+        protected CompanyWarehouseService $warehouseService,
+        protected CompanyStockBalanceService $balanceService,
     ) {}
 
     /**
      * @return array{data: Collection<int, CompanyStockItem>, meta: array<string, mixed>}
      */
-    public function list(Company $company, ?string $search = null): array
+    public function list(Company $company, ?string $search = null, ?string $warehouseId = null): array
     {
-        $query = $company->stockItems()->orderBy('name');
+        $query = $company->stockItems()->with(['balances.warehouse'])->orderBy('name');
 
         if ($search !== null && trim($search) !== '') {
             $pattern = '%'.trim($search).'%';
@@ -34,10 +37,17 @@ class CompanyStockItemService
             });
         }
 
+        if ($warehouseId) {
+            $query->whereHas('balances', function (Builder $q) use ($warehouseId) {
+                $q->where('company_warehouse_id', $warehouseId)
+                    ->where('quantity_on_hand', '!=', 0);
+            });
+        }
+
         $items = $query->get();
 
         return [
-            'data' => $items,
+            'data' => $items->map(fn (CompanyStockItem $item) => $this->listRowPayload($item, $warehouseId)),
             'meta' => $this->summaryMeta($company, $items),
         ];
     }
@@ -45,7 +55,7 @@ class CompanyStockItemService
     /**
      * @return list<array<string, mixed>>
      */
-    public function search(Company $company, string $query, int $limit = 10): array
+    public function search(Company $company, string $query, int $limit = 10, ?string $warehouseId = null): array
     {
         $q = trim($query);
         if (mb_strlen($q) < 1) {
@@ -54,6 +64,7 @@ class CompanyStockItemService
 
         $pattern = '%'.$q.'%';
         $items = $company->stockItems()
+            ->with(['balances.warehouse'])
             ->where('exclude_from_suggester', false)
             ->where(function (Builder $builder) use ($pattern) {
                 $this->whereLikeInsensitive($builder, 'name', $pattern);
@@ -65,24 +76,33 @@ class CompanyStockItemService
             ->limit(min($limit, 25))
             ->get();
 
-        return $items->map(fn (CompanyStockItem $item) => $this->suggesterPayload($item))->all();
+        return $items->map(fn (CompanyStockItem $item) => $this->suggesterPayload($item, $warehouseId))->all();
     }
 
     public function create(Company $company, array $data): CompanyStockItem
     {
         $this->assertUniqueSku($company, $data['sku'] ?? null);
 
-        $item = $company->stockItems()->create($data);
+        $balances = $data['balances'] ?? null;
+        $quantityOnHand = $data['quantity_on_hand'] ?? null;
+        $warehouseId = $data['warehouse_id'] ?? null;
+        unset($data['balances'], $data['quantity_on_hand'], $data['warehouse_id']);
 
-        if ($item->track_inventory && (float) $item->quantity_on_hand !== 0.0) {
-            $this->movementService->recordManualChange(
-                $item,
-                0.0,
-                'Initial stock level',
-            );
+        $item = $company->stockItems()->create($data);
+        $item->refresh();
+
+        if ($balances !== null) {
+            $this->syncBalances($company, $item, $balances, isCreate: true);
+        } elseif ($quantityOnHand !== null && $item->track_inventory) {
+            $warehouse = $this->resolveWarehouse($company, $warehouseId);
+            $qty = (float) $quantityOnHand;
+            if ($qty !== 0.0) {
+                $this->balanceService->setQuantity($warehouse, $item, $qty);
+                $this->movementService->recordManualChange($item, $warehouse, 0.0, 'Initial stock level');
+            }
         }
 
-        return $item->fresh();
+        return $item->fresh(['balances.warehouse']);
     }
 
     public function update(Company $company, CompanyStockItem $item, array $data): CompanyStockItem
@@ -95,13 +115,42 @@ class CompanyStockItemService
             $this->assertUniqueSku($company, $data['sku'], $item->id);
         }
 
-        $previousQuantity = (float) $item->quantity_on_hand;
+        $balances = $data['balances'] ?? null;
+        $quantityOnHand = array_key_exists('quantity_on_hand', $data) ? $data['quantity_on_hand'] : null;
+        $warehouseId = $data['warehouse_id'] ?? null;
+        unset($data['balances'], $data['quantity_on_hand'], $data['warehouse_id']);
+
         $item->fill($data);
         $item->save();
 
-        $this->movementService->recordManualChange($item, $previousQuantity);
+        if ($balances !== null) {
+            $this->syncBalances($company, $item, $balances);
+        } elseif ($quantityOnHand !== null && $item->track_inventory) {
+            $warehouse = $this->resolveWarehouse($company, $warehouseId);
+            $previous = $this->balanceService->getQuantity($warehouse, $item);
+            $this->balanceService->setQuantity($warehouse, $item, (float) $quantityOnHand);
+            $this->movementService->recordManualChange($item, $warehouse, $previous);
+        }
 
-        return $item->fresh();
+        return $item->fresh(['balances.warehouse']);
+    }
+
+    public function transfer(
+        Company $company,
+        CompanyStockItem $item,
+        string $fromWarehouseId,
+        string $toWarehouseId,
+        float $quantity,
+        ?string $note = null,
+    ): void {
+        if ($item->company_id !== $company->id) {
+            abort(404);
+        }
+
+        $from = $this->findWarehouse($company, $fromWarehouseId);
+        $to = $this->findWarehouse($company, $toWarehouseId);
+
+        $this->movementService->recordTransfer($item, $from, $to, $quantity, $note);
     }
 
     public function delete(Company $company, CompanyStockItem $item): void
@@ -128,9 +177,13 @@ class CompanyStockItemService
             abort(404);
         }
 
-        $item->load(['movements' => fn ($q) => $q->limit(100)]);
+        $item->load([
+            'balances.warehouse',
+            'movements' => fn ($q) => $q->with('warehouse:id,name')->limit(100),
+        ]);
 
         $row = $item->toArray();
+        $row['balances'] = $this->balanceService->balancesPayload($item);
         $row['movements'] = $item->movements->map(fn ($movement) => [
             'id' => $movement->id,
             'created_at' => $movement->created_at?->toIso8601String(),
@@ -143,6 +196,8 @@ class CompanyStockItemService
             'document_number' => $movement->document_number,
             'document_type' => $movement->document_type,
             'business_document_id' => $movement->business_document_id,
+            'company_warehouse_id' => $movement->company_warehouse_id,
+            'warehouse_name' => $movement->warehouse?->name,
         ])->all();
         $row['neighbor_ids'] = $this->neighborIds($company, $item);
 
@@ -158,6 +213,35 @@ class CompanyStockItemService
             ->orderBy('name')
             ->pluck('id')
             ->all();
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $balances
+     */
+    protected function syncBalances(Company $company, CompanyStockItem $item, array $balances, bool $isCreate = false): void
+    {
+        foreach ($balances as $row) {
+            $warehouse = $this->findWarehouse($company, (string) ($row['warehouse_id'] ?? ''));
+            $newQty = (float) ($row['quantity_on_hand'] ?? 0);
+            $previous = $this->balanceService->getQuantity($warehouse, $item);
+
+            if (abs($newQty - $previous) < 0.00001) {
+                continue;
+            }
+
+            $this->balanceService->setQuantity($warehouse, $item, $newQty);
+
+            if ($isCreate) {
+                $this->movementService->recordManualChange(
+                    $item,
+                    $warehouse,
+                    0.0,
+                    'Initial stock level',
+                );
+            } else {
+                $this->movementService->recordManualChange($item, $warehouse, $previous);
+            }
+        }
     }
 
     /**
@@ -192,8 +276,44 @@ class CompanyStockItemService
     /**
      * @return array<string, mixed>
      */
-    protected function suggesterPayload(CompanyStockItem $item): array
+    protected function listRowPayload(CompanyStockItem $item, ?string $warehouseId): array
     {
+        $row = $item->toArray();
+        $row['balances'] = $this->balanceService->balancesPayload($item);
+
+        if ($warehouseId) {
+            $balance = $item->balances->firstWhere('company_warehouse_id', $warehouseId);
+            $row['quantity_on_hand'] = $balance ? (float) $balance->quantity_on_hand : 0.0;
+        }
+
+        return $row;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function suggesterPayload(CompanyStockItem $item, ?string $warehouseId = null): array
+    {
+        $quantitiesByWarehouse = collect($this->balanceService->balancesPayload($item))
+            ->mapWithKeys(fn (array $row) => [$row['warehouse_id'] => (float) $row['quantity_on_hand']])
+            ->all();
+
+        $selectedWarehouseQty = null;
+        $deductOnIssue = null;
+
+        if ($warehouseId && isset($quantitiesByWarehouse[$warehouseId])) {
+            $selectedWarehouseQty = $quantitiesByWarehouse[$warehouseId];
+            $balanceRow = collect($this->balanceService->balancesPayload($item))
+                ->firstWhere('warehouse_id', $warehouseId);
+            $deductOnIssue = $balanceRow['deduct_on_issue'] ?? null;
+        } elseif ($warehouseId) {
+            $warehouse = CompanyWarehouse::query()
+                ->where('company_id', $item->company_id)
+                ->find($warehouseId);
+            $selectedWarehouseQty = 0.0;
+            $deductOnIssue = $warehouse?->deduct_on_issue;
+        }
+
         return [
             'id' => $item->id,
             'name' => $item->name,
@@ -201,9 +321,33 @@ class CompanyStockItemService
             'sku' => $item->sku,
             'unit' => $item->unit,
             'sale_unit_price' => $item->sale_unit_price,
-            'quantity_on_hand' => $item->quantity_on_hand,
+            'quantity_on_hand' => $selectedWarehouseQty ?? (float) $item->quantity_on_hand,
+            'total_on_hand' => (float) $item->quantity_on_hand,
+            'quantities_by_warehouse' => $quantitiesByWarehouse,
             'track_inventory' => $item->track_inventory,
+            'deduct_on_issue' => $deductOnIssue,
         ];
+    }
+
+    protected function resolveWarehouse(Company $company, ?string $warehouseId): CompanyWarehouse
+    {
+        if ($warehouseId) {
+            return $this->findWarehouse($company, $warehouseId);
+        }
+
+        return $this->warehouseService->defaultWarehouse($company);
+    }
+
+    protected function findWarehouse(Company $company, string $warehouseId): CompanyWarehouse
+    {
+        $warehouse = $company->warehouses()->where('id', $warehouseId)->first();
+        if (! $warehouse) {
+            throw ValidationException::withMessages([
+                'warehouse_id' => ['Invalid warehouse for this company.'],
+            ]);
+        }
+
+        return $warehouse;
     }
 
     protected function assertUniqueSku(Company $company, ?string $sku, ?string $ignoreId = null): void

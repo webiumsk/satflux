@@ -22,7 +22,11 @@ class CompanyStockItemController extends Controller
 
     public function index(Request $request, Company $company): JsonResponse
     {
-        $result = $this->stockItemService->list($company, $request->input('q'));
+        $result = $this->stockItemService->list(
+            $company,
+            $request->input('q'),
+            $request->input('warehouse_id'),
+        );
 
         return response()->json([
             'data' => $result['data'],
@@ -35,6 +39,7 @@ class CompanyStockItemController extends Controller
         $validated = $request->validate([
             'q' => ['required', 'string', 'max:255'],
             'limit' => ['nullable', 'integer', 'min:1', 'max:25'],
+            'warehouse_id' => ['nullable', 'uuid'],
         ]);
 
         return response()->json([
@@ -42,6 +47,7 @@ class CompanyStockItemController extends Controller
                 $company,
                 $validated['q'],
                 (int) ($validated['limit'] ?? 10),
+                $validated['warehouse_id'] ?? null,
             ),
         ]);
     }

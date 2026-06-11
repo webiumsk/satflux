@@ -12,10 +12,12 @@ use App\Models\User;
 use App\Services\Invoicing\DocumentSequenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\CreatesCompanyStock;
 use Tests\TestCase;
 
 class CompanyStockDocumentMovementTest extends TestCase
 {
+    use CreatesCompanyStock;
     use RefreshDatabase;
 
     private User $proUser;
@@ -58,15 +60,13 @@ class CompanyStockDocumentMovementTest extends TestCase
 
         app(DocumentSequenceService::class)->seedDefaultsForCompany($this->company);
 
-        $this->stockItem = CompanyStockItem::create([
-            'company_id' => $this->company->id,
+        $this->stockItem = $this->createStockItem($this->company, [
             'name' => 'Jablká',
             'sku' => 'Jab-123',
             'unit' => 'kg',
-            'quantity_on_hand' => 10,
             'sale_unit_price' => 1.5,
             'track_inventory' => true,
-        ]);
+        ], quantity: 10);
     }
 
     #[Test]
@@ -93,8 +93,7 @@ class CompanyStockDocumentMovementTest extends TestCase
             ->postJson("/api/invoicing/companies/{$this->company->id}/documents/{$documentId}/issue");
         $issue->assertOk();
 
-        $this->stockItem->refresh();
-        $this->assertEquals(7.0, (float) $this->stockItem->quantity_on_hand);
+        $this->assertEquals(7.0, $this->stockQuantity($this->stockItem));
 
         $this->assertDatabaseHas('company_stock_item_movements', [
             'company_stock_item_id' => $this->stockItem->id,
@@ -107,8 +106,7 @@ class CompanyStockDocumentMovementTest extends TestCase
             ->postJson("/api/invoicing/companies/{$this->company->id}/documents/{$documentId}/cancel");
         $cancel->assertOk();
 
-        $this->stockItem->refresh();
-        $this->assertEquals(10.0, (float) $this->stockItem->quantity_on_hand);
+        $this->assertEquals(10.0, $this->stockQuantity($this->stockItem));
 
         $this->assertDatabaseHas('company_stock_item_movements', [
             'company_stock_item_id' => $this->stockItem->id,
@@ -121,7 +119,8 @@ class CompanyStockDocumentMovementTest extends TestCase
     #[Test]
     public function issuing_credit_note_returns_stock(): void
     {
-        $this->stockItem->update(['quantity_on_hand' => 5]);
+        app(\App\Services\Invoicing\CompanyStockBalanceService::class)
+            ->setQuantity($this->defaultWarehouse($this->company), $this->stockItem, 5);
 
         $create = $this->actingAs($this->proUser)
             ->postJson("/api/invoicing/companies/{$this->company->id}/documents", [
@@ -144,8 +143,7 @@ class CompanyStockDocumentMovementTest extends TestCase
             ->postJson("/api/invoicing/companies/{$this->company->id}/documents/{$documentId}/issue");
         $issue->assertOk();
 
-        $this->stockItem->refresh();
-        $this->assertEquals(7.0, (float) $this->stockItem->quantity_on_hand);
+        $this->assertEquals(7.0, $this->stockQuantity($this->stockItem));
     }
 
     #[Test]
@@ -172,7 +170,6 @@ class CompanyStockDocumentMovementTest extends TestCase
             ->postJson("/api/invoicing/companies/{$this->company->id}/documents/{$documentId}/issue");
         $issue->assertOk();
 
-        $this->stockItem->refresh();
-        $this->assertEquals(10.0, (float) $this->stockItem->quantity_on_hand);
+        $this->assertEquals(10.0, $this->stockQuantity($this->stockItem));
     }
 }

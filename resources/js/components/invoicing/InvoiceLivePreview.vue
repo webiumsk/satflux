@@ -75,8 +75,8 @@
               <td class="text-right pr-2 text-gray-500">{{ t('invoicing.delivery_date') }}:</td>
               <td class="text-right font-semibold">{{ formatDate(form.delivery_date) }}</td>
             </tr>
-            <tr>
-              <td class="text-right pr-2 text-gray-500">{{ t('invoicing.due_date') }}:</td>
+            <tr v-if="form.due_date">
+              <td class="text-right pr-2 text-gray-500">{{ isQuote ? t('invoicing.valid_until') : t('invoicing.due_date') }}:</td>
               <td class="text-right font-semibold">{{ formatDate(form.due_date) }}</td>
             </tr>
           </tbody>
@@ -143,7 +143,7 @@
           <span>{{ t('invoicing.grand_total') }}</span>
           <span>{{ formatMoney(totals.total) }} {{ form.currency }}</span>
         </div>
-        <template v-if="form.pdf_show_payment_info && isPaid">
+        <template v-if="!isQuote && form.pdf_show_payment_info && isPaid">
           <div class="flex justify-between text-emerald-700">
             <span>{{ t('invoicing.paid_amount') }}</span>
             <span>{{ formatMoney(amountPaid) }} {{ form.currency }}</span>
@@ -153,7 +153,7 @@
             <span>0,00 {{ form.currency }}</span>
           </div>
         </template>
-        <div v-else-if="form.payment_bank_enabled" class="flex justify-between font-semibold">
+        <div v-else-if="!isQuote && form.payment_bank_enabled" class="flex justify-between font-semibold">
           <span>{{ t('invoicing.amount_due_sum') }}</span>
           <span>{{ formatMoney(amountDue) }} {{ form.currency }}</span>
         </div>
@@ -176,7 +176,7 @@
     </div>
 
     <div
-      v-if="form.payment_bank_enabled && company?.iban"
+      v-if="!isQuote && form.payment_bank_enabled && company?.iban"
       class="mt-5 grid grid-cols-4 gap-2 rounded border border-sky-200 bg-sky-100 px-3 py-2.5 text-[10px] text-sky-950"
     >
       <div>
@@ -219,7 +219,10 @@ export type InvoiceLineForm = {
   line_discount_percent: number;
   tax_rate: number;
   company_stock_item_id?: string | null;
+  company_warehouse_id?: string | null;
   stock_quantity_hint?: number | null;
+  stock_quantities_by_warehouse?: Record<string, number>;
+  warehouse_deduct_on_issue?: boolean | null;
 };
 
 export type InvoicePreviewForm = {
@@ -295,6 +298,7 @@ const invoiceHeading = computed(() => {
   return t(newKey);
 });
 
+const isQuote = computed(() => props.documentType === 'quote');
 const isPaid = computed(() => props.documentStatus === 'paid');
 
 const amountPaid = computed(() => props.amountPaid ?? props.totals.total);

@@ -11,10 +11,12 @@ use App\Models\SubscriptionPlan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\CreatesCompanyStock;
 use Tests\TestCase;
 
 class CompanyStockItemCrudTest extends TestCase
 {
+    use CreatesCompanyStock;
     use RefreshDatabase;
 
     private User $proUser;
@@ -70,6 +72,7 @@ class CompanyStockItemCrudTest extends TestCase
 
         $create->assertCreated();
         $id = $create->json('data.id');
+        $create->assertJsonPath('data.quantity_on_hand', 13);
 
         $list = $this->actingAs($this->proUser)
             ->getJson("/api/invoicing/companies/{$this->company->id}/stock-items?q=jab");
@@ -100,11 +103,9 @@ class CompanyStockItemCrudTest extends TestCase
     #[Test]
     public function sku_must_be_unique_within_company(): void
     {
-        CompanyStockItem::create([
-            'company_id' => $this->company->id,
+        $this->createStockItem($this->company, [
             'name' => 'Existing',
             'sku' => 'dup-sku',
-            'quantity_on_hand' => 0,
         ]);
 
         $response = $this->actingAs($this->proUser)
@@ -120,12 +121,10 @@ class CompanyStockItemCrudTest extends TestCase
     #[Test]
     public function stock_item_used_on_document_cannot_be_deleted(): void
     {
-        $item = CompanyStockItem::create([
-            'company_id' => $this->company->id,
+        $item = $this->createStockItem($this->company, [
             'name' => 'Used item',
             'sku' => 'used-1',
-            'quantity_on_hand' => 5,
-        ]);
+        ], quantity: 5);
 
         BusinessDocumentLine::create([
             'business_document_id' => \App\Models\BusinessDocument::create([
@@ -152,14 +151,12 @@ class CompanyStockItemCrudTest extends TestCase
     #[Test]
     public function suggester_excludes_items_marked_exclude_from_suggester(): void
     {
-        CompanyStockItem::create([
-            'company_id' => $this->company->id,
+        $this->createStockItem($this->company, [
             'name' => 'Hidden pears',
             'sku' => 'pear-hidden',
             'exclude_from_suggester' => true,
         ]);
-        CompanyStockItem::create([
-            'company_id' => $this->company->id,
+        $this->createStockItem($this->company, [
             'name' => 'Visible pears',
             'sku' => 'pear-visible',
         ]);

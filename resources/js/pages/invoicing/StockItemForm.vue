@@ -60,12 +60,42 @@
           {{ t('invoicing.stock_field_track_inventory') }}
         </label>
 
-        <div v-if="form.track_inventory">
-          <label class="invoicing-sf-label">
-            {{ t('invoicing.stock_field_quantity') }}
-            <span class="text-red-500">*</span>
-          </label>
-          <input v-model.number="form.quantity_on_hand" type="number" step="any" class="invoicing-sf-input" required />
+        <div v-if="form.track_inventory" class="space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <label class="invoicing-sf-label mb-0">{{ t('invoicing.stock_balances_title') }}</label>
+            <button
+              v-if="!isNew && form.balances.length > 1"
+              type="button"
+              class="text-sm text-indigo-600 hover:underline"
+              @click="showTransferModal = true"
+            >
+              {{ t('invoicing.stock_transfer_title') }}
+            </button>
+          </div>
+          <div class="rounded border border-gray-200 overflow-hidden">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+                <tr>
+                  <th class="text-left px-3 py-2">{{ t('invoicing.warehouse_col_name') }}</th>
+                  <th class="text-right px-3 py-2 w-32">{{ t('invoicing.stock_col_on_hand') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in form.balances" :key="row.warehouse_id" class="border-t border-gray-100">
+                  <td class="px-3 py-2">{{ row.warehouse_name }}</td>
+                  <td class="px-3 py-2">
+                    <input
+                      v-model.number="row.quantity_on_hand"
+                      type="number"
+                      step="any"
+                      min="0"
+                      class="invoicing-sf-input-table text-right w-full"
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div>
@@ -133,6 +163,7 @@
           <thead class="text-xs uppercase text-gray-500 bg-white border-b border-gray-100">
             <tr>
               <th class="text-left px-3 py-2">{{ t('invoicing.stock_history_date') }}</th>
+              <th class="text-left px-3 py-2">{{ t('invoicing.warehouse_col_name') }}</th>
               <th class="text-right px-3 py-2">{{ t('invoicing.stock_history_quantity') }}</th>
               <th class="text-right px-3 py-2">{{ t('invoicing.stock_col_purchase') }}</th>
               <th class="text-right px-3 py-2">{{ t('invoicing.stock_col_sale') }}</th>
@@ -143,6 +174,7 @@
           <tbody>
             <tr v-for="m in movements" :key="m.id" class="border-t border-gray-100">
               <td class="px-3 py-2 whitespace-nowrap">{{ formatDate(m.created_at) }}</td>
+              <td class="px-3 py-2">{{ m.warehouse_name || '—' }}</td>
               <td class="px-3 py-2 text-right">{{ m.quantity_after }}</td>
               <td class="px-3 py-2 text-right">{{ formatStockPrice(m.purchase_unit_price) }}</td>
               <td class="px-3 py-2 text-right">{{ formatStockPrice(m.sale_unit_price) }}</td>
@@ -153,6 +185,15 @@
         </table>
       </div>
     </section>
+
+    <StockTransferModal
+      :open="showTransferModal"
+      :company-id="companyId"
+      :stock-item-id="itemId || ''"
+      :warehouses="warehouses"
+      @close="showTransferModal = false"
+      @transferred="onTransferred"
+    />
   </InvoicingPageShell>
 </template>
 
@@ -162,6 +203,8 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
+import StockTransferModal from '../../components/invoicing/StockTransferModal.vue';
+import type { WarehouseRow } from '../../composables/useCompanyWarehouse';
 import {
   emptyStockItemForm,
   formatStockPrice,
@@ -186,6 +229,8 @@ const error = ref('');
 const saleCurrency = ref('EUR');
 const neighborIds = ref<string[]>([]);
 const movements = ref<StockItemMovementRow[]>([]);
+const warehouses = ref<WarehouseRow[]>([]);
+const showTransferModal = ref(false);
 const currencyOptions = ['EUR', 'CZK', 'USD', 'GBP', 'PLN', 'HUF'];
 
 const neighborIndex = computed(() => {
@@ -199,19 +244,40 @@ function formatDate(iso?: string) {
   return new Date(iso).toLocaleString(locale.value);
 }
 
+async function loadWarehouses() {
+  const res = await api.get(`/invoicing/companies/${companyId.value}/warehouses`);
+  warehouses.value = (res.data.data ?? []).filter((w: WarehouseRow) => w.is_active);
+}
+
+function initBalancesForNew() {
+  form.balances = warehouses.value.map((w) => ({
+    warehouse_id: w.id,
+    warehouse_name: w.name,
+    quantity_on_hand: 0,
+  }));
+}
+
 async function loadCompany() {
   const res = await api.get(`/invoicing/companies/${companyId.value}/summary`);
   saleCurrency.value = res.data.data?.default_currency || 'EUR';
   Object.assign(form, emptyStockItemForm(saleCurrency.value));
+  await loadWarehouses();
+  if (isNew.value) {
+    initBalancesForNew();
+  }
 }
 
 async function loadItem() {
   if (isNew.value || !itemId.value) return;
   const res = await api.get(`/invoicing/companies/${companyId.value}/stock-items/${itemId.value}`);
   const data = res.data.data;
-  Object.assign(form, stockItemToForm(data, saleCurrency.value));
+  Object.assign(form, stockItemToForm(data, saleCurrency.value, warehouses.value));
   neighborIds.value = data.neighbor_ids ?? [];
   movements.value = data.movements ?? [];
+}
+
+async function onTransferred() {
+  await loadItem();
 }
 
 async function save() {
@@ -248,7 +314,9 @@ function goNeighbor(delta: number) {
 onMounted(async () => {
   rememberCompany(companyId.value);
   await loadCompany();
-  await loadItem();
+  if (!isNew.value) {
+    await loadItem();
+  }
 });
 
 watch(itemId, async () => {

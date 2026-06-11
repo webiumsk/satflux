@@ -66,6 +66,9 @@ export type StockSuggestItem = {
   unit: string;
   sale_unit_price?: number | string | null;
   quantity_on_hand?: number | string;
+  total_on_hand?: number | string;
+  quantities_by_warehouse?: Record<string, number>;
+  deduct_on_issue?: boolean | null;
   track_inventory?: boolean;
 };
 
@@ -75,7 +78,9 @@ const props = withDefaults(
     name: string;
     description: string;
     stockItemId?: string | null;
+    warehouseId?: string | null;
     quantityOnHand?: number | null;
+    deductOnIssue?: boolean | null;
     unit?: string;
     enabled?: boolean;
     disabled?: boolean;
@@ -85,7 +90,9 @@ const props = withDefaults(
   }>(),
   {
     stockItemId: null,
+    warehouseId: null,
     quantityOnHand: null,
+    deductOnIssue: null,
     unit: '',
     enabled: true,
     disabled: false,
@@ -106,6 +113,8 @@ const emit = defineEmits<{
       unit_price: number;
       company_stock_item_id: string;
       quantity_on_hand: number | null;
+      quantities_by_warehouse: Record<string, number>;
+      deduct_on_issue: boolean | null;
     },
   ];
   clearStockLink: [];
@@ -131,7 +140,11 @@ const dropdownStyle = computed(() => ({
 
 const stockHint = computed(() => {
   if (!props.stockItemId || props.quantityOnHand == null || !props.unit) return '';
-  return t('invoicing.stock_on_hand_hint', { qty: props.quantityOnHand, unit: props.unit });
+  const base = t('invoicing.stock_on_hand_hint', { qty: props.quantityOnHand, unit: props.unit });
+  if (props.deductOnIssue === false) {
+    return `${base} · ${t('invoicing.warehouse_no_deduct_short')}`;
+  }
+  return base;
 });
 
 function updateDropdownPosition() {
@@ -187,7 +200,11 @@ async function fetchSuggestions(q: string) {
   loading.value = true;
   try {
     const { data } = await api.get(`/invoicing/companies/${props.companyId}/stock-items/search`, {
-      params: { q, limit: 10 },
+      params: {
+        q,
+        limit: 10,
+        warehouse_id: props.warehouseId || undefined,
+      },
     });
     suggestions.value = data.data ?? [];
     showSuggestions.value = suggestions.value.length > 0;
@@ -211,10 +228,21 @@ function pickItem(item: StockSuggestItem) {
     unit_price: item.sale_unit_price != null ? Number(item.sale_unit_price) : 0,
     company_stock_item_id: item.id,
     quantity_on_hand: item.track_inventory ? Number(item.quantity_on_hand ?? 0) : null,
+    quantities_by_warehouse: item.quantities_by_warehouse ?? {},
+    deduct_on_issue: item.deduct_on_issue ?? null,
   });
   showSuggestions.value = false;
   suggestions.value = [];
 }
+
+watch(
+  () => props.warehouseId,
+  () => {
+    if (props.name.trim().length >= 1 && props.enabled) {
+      scheduleSearch(props.name);
+    }
+  }
+);
 
 watch(
   () => props.enabled,

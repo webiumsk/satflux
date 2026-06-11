@@ -14,6 +14,7 @@ use App\Models\BusinessDocumentLine;
 use App\Models\Company;
 use App\Models\CompanyContact;
 use App\Models\CompanyStockItem;
+use App\Models\CompanyWarehouse;
 use App\Models\Store;
 use App\Services\Invoicing\BusinessDocumentBtcPayService;
 use App\Services\Invoicing\BusinessDocumentBulkService;
@@ -141,6 +142,9 @@ class BusinessDocumentController extends Controller
         $this->assertContactBelongsToCompany($request->input('company_contact_id'), $company);
         $this->assertStoreBelongsToCompany($request->input('store_id'), $company);
         $this->assertStockItemsBelongToCompany($request->input('lines', []), $company);
+        $this->assertWarehousesBelongToCompany($request->input('lines', []), $company);
+
+        $isQuote = $type === BusinessDocumentType::Quote;
 
         $document = new BusinessDocument([
             'company_id' => $company->id,
@@ -162,10 +166,10 @@ class BusinessDocumentController extends Controller
             'internal_note' => $request->input('internal_note'),
             'pdf_locale' => $request->input('pdf_locale'),
             'pdf_show_signature' => $request->boolean('pdf_show_signature', true),
-            'pdf_show_payment_info' => $request->boolean('pdf_show_payment_info', true),
+            'pdf_show_payment_info' => $request->boolean('pdf_show_payment_info', ! $isQuote),
             'tags' => $request->input('tags'),
-            'payment_btc_enabled' => $request->boolean('payment_btc_enabled'),
-            'payment_bank_enabled' => $request->boolean('payment_bank_enabled', true),
+            'payment_btc_enabled' => $isQuote ? false : $request->boolean('payment_btc_enabled'),
+            'payment_bank_enabled' => $isQuote ? false : $request->boolean('payment_bank_enabled', true),
         ]);
 
         $document->setRelation('company', $company);
@@ -218,6 +222,7 @@ class BusinessDocumentController extends Controller
         $this->assertContactBelongsToCompany($request->input('company_contact_id'), $company);
         $this->assertStoreBelongsToCompany($request->input('store_id'), $company);
         $this->assertStockItemsBelongToCompany($request->input('lines', []), $company);
+        $this->assertWarehousesBelongToCompany($request->input('lines', []), $company);
 
         $businessDocument->fill(array_merge($request->only([
             'company_contact_id',
@@ -584,6 +589,7 @@ class BusinessDocumentController extends Controller
             BusinessDocumentLine::create([
                 'business_document_id' => $document->id,
                 'company_stock_item_id' => $line['company_stock_item_id'] ?? null,
+                'company_warehouse_id' => $line['company_warehouse_id'] ?? null,
                 'sort_order' => $index,
                 'name' => $line['name'],
                 'description' => $line['description'] ?? null,
@@ -641,6 +647,34 @@ class BusinessDocumentController extends Controller
         if ($validCount !== count($ids)) {
             throw ValidationException::withMessages([
                 'lines' => ['One or more stock items are invalid for this company.'],
+            ]);
+        }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $lines
+     */
+    protected function assertWarehousesBelongToCompany(array $lines, Company $company): void
+    {
+        $ids = collect($lines)
+            ->pluck('company_warehouse_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($ids === []) {
+            return;
+        }
+
+        $validCount = CompanyWarehouse::query()
+            ->where('company_id', $company->id)
+            ->whereIn('id', $ids)
+            ->count();
+
+        if ($validCount !== count($ids)) {
+            throw ValidationException::withMessages([
+                'lines' => ['One or more warehouses are invalid for this company.'],
             ]);
         }
     }

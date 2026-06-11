@@ -38,7 +38,7 @@
             <input v-model="form.pdf_show_signature" type="checkbox" class="rounded border-gray-300" @change="persistPdfOptions" />
             {{ t('invoicing.pdf_signature') }}
           </label>
-          <label class="text-xs text-gray-700 flex items-center gap-1.5">
+          <label v-if="!isQuote" class="text-xs text-gray-700 flex items-center gap-1.5">
             <input v-model="form.pdf_show_payment_info" type="checkbox" class="rounded border-gray-300" @change="persistPdfOptions" />
             {{ t('invoicing.pdf_payment_info') }}
           </label>

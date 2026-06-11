@@ -17,6 +17,8 @@ class CompanyStockItemImportService
 
     public function __construct(
         protected CompanyStockMovementService $movementService,
+        protected CompanyWarehouseService $warehouseService,
+        protected CompanyStockBalanceService $balanceService,
     ) {}
 
     /**
@@ -98,7 +100,16 @@ class CompanyStockItemImportService
             try {
                 DB::transaction(function () use ($company, $payload, &$imported, &$updated) {
                     $importRef = $payload['import_document_ref'] ?? null;
-                    unset($payload['import_document_ref']);
+                    $warehouseName = $payload['warehouse_name'] ?? null;
+                    $quantityOnHand = (float) ($payload['quantity_on_hand'] ?? 0);
+                    unset(
+                        $payload['import_document_ref'],
+                        $payload['warehouse_name'],
+                        $payload['quantity_on_hand'],
+                    );
+
+                    $warehouse = $this->resolveImportWarehouse($company, $warehouseName);
+                    $note = $importRef ? 'Hromadný import skladu ('.$importRef.')' : 'Hromadný import skladu';
 
                     $sku = isset($payload['sku']) ? trim((string) $payload['sku']) : '';
                     $existing = null;
@@ -107,17 +118,17 @@ class CompanyStockItemImportService
                     }
 
                     if ($existing) {
-                        $previousQuantity = (float) $existing->quantity_on_hand;
+                        $previousQuantity = $this->balanceService->getQuantity($warehouse, $existing);
                         $existing->fill($payload);
                         $existing->save();
-                        $note = $importRef ? 'Hromadný import skladu ('.$importRef.')' : 'Hromadný import skladu';
-                        $this->movementService->recordImportChange($existing, $previousQuantity, $note);
+                        $this->balanceService->setQuantity($warehouse, $existing, $quantityOnHand);
+                        $this->movementService->recordImportChange($existing, $warehouse, $previousQuantity, $note);
                         $updated++;
                     } else {
                         $item = $company->stockItems()->create($payload);
-                        $note = $importRef ? 'Hromadný import skladu ('.$importRef.')' : 'Hromadný import skladu';
-                        if ((float) $item->quantity_on_hand !== 0.0) {
-                            $this->movementService->recordImportChange($item, 0.0, $note);
+                        if ($quantityOnHand !== 0.0) {
+                            $this->balanceService->setQuantity($warehouse, $item, $quantityOnHand);
+                            $this->movementService->recordImportChange($item, $warehouse, 0.0, $note);
                         }
                         $imported++;
                     }
@@ -150,6 +161,7 @@ class CompanyStockItemImportService
                 'EUR',
                 'kg',
                 '13',
+                '',
                 'Odroda Red Delicious',
                 'FA001',
                 '',
@@ -162,6 +174,7 @@ class CompanyStockItemImportService
                 'CZK',
                 'ks',
                 '0',
+                '',
                 'Drevená bednička, nosnosť 3kg',
                 '',
                 '',
@@ -269,6 +282,7 @@ class CompanyStockItemImportService
             'purchase_currency' => null,
             'unit' => 'ks',
             'quantity_on_hand' => 0,
+            'warehouse_name' => null,
             'description' => null,
             'import_document_ref' => null,
             'internal_note' => null,
@@ -333,8 +347,25 @@ class CompanyStockItemImportService
             'sku' => $payload['sku'] ?? null,
             'sale_unit_price' => $payload['sale_unit_price'] ?? null,
             'quantity_on_hand' => $payload['quantity_on_hand'] ?? null,
+            'warehouse_name' => $payload['warehouse_name'] ?? null,
             'unit' => $payload['unit'] ?? null,
         ];
+    }
+
+    protected function resolveImportWarehouse(Company $company, ?string $warehouseName): \App\Models\CompanyWarehouse
+    {
+        $name = trim((string) $warehouseName);
+        if ($name !== '') {
+            $warehouse = $company->warehouses()
+                ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+                ->first();
+
+            if ($warehouse) {
+                return $warehouse;
+            }
+        }
+
+        return $this->warehouseService->defaultWarehouse($company);
     }
 
     /**

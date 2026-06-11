@@ -16,10 +16,12 @@ use Illuminate\Http\UploadedFile;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\CreatesCompanyStock;
 use Tests\TestCase;
 
 class CompanyStockItemImportTest extends TestCase
 {
+    use CreatesCompanyStock;
     use RefreshDatabase;
 
     private User $proUser;
@@ -82,6 +84,7 @@ class CompanyStockItemImportTest extends TestCase
                 'EUR',
                 'kg',
                 '13',
+                '',
                 'Odroda Red Delicious',
                 'FA001',
                 '',
@@ -110,13 +113,11 @@ class CompanyStockItemImportTest extends TestCase
     #[Test]
     public function import_upserts_existing_item_by_sku(): void
     {
-        CompanyStockItem::create([
-            'company_id' => $this->company->id,
+        $this->createStockItem($this->company, [
             'name' => 'Old name',
             'sku' => 'Jab-123',
-            'quantity_on_hand' => 5,
             'sale_unit_price' => 1,
-        ]);
+        ], quantity: 5);
 
         $file = $this->makeSpreadsheetUpload([
             CompanyStockItemImportFields::EXAMPLE_HEADERS,
@@ -128,6 +129,7 @@ class CompanyStockItemImportTest extends TestCase
                 'EUR',
                 'kg',
                 '20',
+                '',
                 'New description',
                 'FA002',
                 '',

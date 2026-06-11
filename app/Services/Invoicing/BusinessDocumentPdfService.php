@@ -2,6 +2,7 @@
 
 namespace App\Services\Invoicing;
 
+use App\Enums\BusinessDocumentType;
 use App\Enums\CompanyJurisdiction;
 use App\Models\AuditLog;
 use App\Models\BusinessDocument;
@@ -97,7 +98,7 @@ class BusinessDocumentPdfService
     {
         $company = $document->company;
         $bankQr = null;
-        if ($document->payment_bank_enabled) {
+        if ($document->payment_bank_enabled && $document->type !== BusinessDocumentType::Quote) {
             $bankQr = $this->payBySquare->generateQrDataUri($company, $document);
         }
 

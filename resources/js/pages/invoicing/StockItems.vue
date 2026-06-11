@@ -10,8 +10,19 @@
             :placeholder="t('invoicing.stock_search')"
             @input="onSearchInput"
           />
+          <select
+            v-model="warehouseFilter"
+            class="invoicing-sf-input max-w-xs min-w-[160px]"
+            @change="onWarehouseFilterChange"
+          >
+            <option value="">{{ t('invoicing.warehouse_filter_all') }}</option>
+            <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
+          </select>
         </template>
         <template #actions>
+          <RouterLink :to="warehouseListTo()" class="invoicing-btn-secondary">
+            {{ t('invoicing.warehouses_title') }}
+          </RouterLink>
           <button type="button" class="invoicing-btn-secondary" @click="showImportModal = true">
             {{ t('invoicing.stock_bulk_import') }}
           </button>
@@ -92,9 +103,17 @@
                 <td class="px-3 py-3 text-right whitespace-nowrap">
                   {{ formatStockPrice(item.sale_unit_price, summaryCurrency) }}
                 </td>
-                <td class="px-3 py-3 text-right whitespace-nowrap">
+                <td class="px-3 py-3 text-right whitespace-nowrap align-top">
                   <template v-if="item.track_inventory">
-                    {{ formatStockQuantity(item.quantity_on_hand, item.unit) }}
+                    <div>{{ formatStockQuantity(item.quantity_on_hand, item.unit) }}</div>
+                    <ul
+                      v-if="!warehouseFilter && (item.balances?.length ?? 0) > 1"
+                      class="text-xs text-gray-500 mt-1 space-y-0.5"
+                    >
+                      <li v-for="b in item.balances" :key="b.warehouse_id">
+                        {{ b.warehouse_name }}: {{ formatStockQuantity(b.quantity_on_hand, item.unit) }}
+                      </li>
+                    </ul>
                   </template>
                   <span v-else class="text-gray-400">—</span>
                 </td>
@@ -149,6 +168,7 @@ import {
   type StockItemRow,
   type StockSummaryMeta,
 } from '../../composables/useCompanyStockItem';
+import { useWarehouseRoutes, type WarehouseRow } from '../../composables/useCompanyWarehouse';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import api from '../../services/api';
 
@@ -156,12 +176,15 @@ const { t } = useI18n();
 const route = useRoute();
 const { companyId, rememberCompany } = useInvoicingLayout();
 const { stockNewTo, stockEditTo } = useStockRoutes(companyId);
+const { warehouseListTo } = useWarehouseRoutes(companyId);
 
 const companyName = ref('');
 const items = ref<StockItemRow[]>([]);
+const warehouses = ref<WarehouseRow[]>([]);
 const summary = ref<StockSummaryMeta | null>(null);
 const loading = ref(true);
 const searchQuery = ref('');
+const warehouseFilter = ref('');
 const selectedIds = ref(new Set<string>());
 const showImportModal = ref(false);
 const success = ref('');
@@ -178,6 +201,11 @@ function onSearchInput() {
     clearSelection();
     void load();
   }, 300);
+}
+
+function onWarehouseFilterChange() {
+  clearSelection();
+  void load();
 }
 
 function toggleRow(id: string) {
@@ -206,8 +234,14 @@ async function load() {
     const companyRes = await api.get(`/invoicing/companies/${companyId.value}/summary`);
     companyName.value = companyRes.data.data?.trade_name || companyRes.data.data?.legal_name || '';
 
+    const whRes = await api.get(`/invoicing/companies/${companyId.value}/warehouses`);
+    warehouses.value = whRes.data.data ?? [];
+
     const res = await api.get(`/invoicing/companies/${companyId.value}/stock-items`, {
-      params: { q: searchQuery.value.trim() || undefined },
+      params: {
+        q: searchQuery.value.trim() || undefined,
+        warehouse_id: warehouseFilter.value || undefined,
+      },
     });
     items.value = res.data.data ?? [];
     summary.value = res.data.meta ?? null;

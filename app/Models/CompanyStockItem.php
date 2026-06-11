@@ -19,7 +19,6 @@ class CompanyStockItem extends Model
         'description',
         'unit',
         'track_inventory',
-        'quantity_on_hand',
         'purchase_unit_price',
         'purchase_currency',
         'sale_unit_price',
@@ -27,20 +26,37 @@ class CompanyStockItem extends Model
         'exclude_from_suggester',
     ];
 
+    protected $appends = [
+        'quantity_on_hand',
+    ];
+
     protected function casts(): array
     {
         return [
             'track_inventory' => 'boolean',
-            'quantity_on_hand' => 'decimal:4',
             'purchase_unit_price' => 'decimal:2',
             'sale_unit_price' => 'decimal:2',
             'exclude_from_suggester' => 'boolean',
         ];
     }
 
+    public function getQuantityOnHandAttribute(): float
+    {
+        if ($this->relationLoaded('balances')) {
+            return (float) $this->balances->sum(fn (CompanyStockBalance $balance) => (float) $balance->quantity_on_hand);
+        }
+
+        return (float) $this->balances()->sum('quantity_on_hand');
+    }
+
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function balances(): HasMany
+    {
+        return $this->hasMany(CompanyStockBalance::class);
     }
 
     public function movements(): HasMany

@@ -70,7 +70,7 @@ export function useInvoicingLayout() {
     if (path.includes('/contacts') || name.includes('contact')) {
       return 'contacts';
     }
-    if (path.includes('/stock') || name.includes('stock')) {
+    if (path.includes('/stock') || path.includes('/warehouses') || name.includes('stock') || name.includes('warehouse')) {
       return 'stock';
     }
     if (path.includes('/payments') || name.includes('payment')) {

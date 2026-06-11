@@ -20,6 +20,7 @@ final class CompanyStockItemImportFields
         'Nákupná mena [ISO kód]',
         'Merná jednotka položky',
         'Stav skladu alebo zmena stavu',
+        'Sklad',
         'Popis',
         'Doklad',
         'Interná poznámka',
@@ -38,6 +39,7 @@ final class CompanyStockItemImportFields
             ['key' => 'purchase_currency', 'required' => false],
             ['key' => 'unit', 'required' => false],
             ['key' => 'quantity_on_hand', 'required' => false],
+            ['key' => 'warehouse_name', 'required' => false],
             ['key' => 'description', 'required' => false],
             ['key' => 'import_document_ref', 'required' => false],
             ['key' => 'internal_note', 'required' => false],
@@ -69,6 +71,7 @@ final class CompanyStockItemImportFields
             'quantity_on_hand' => [
                 'stav skladu alebo zmena stavu', 'stav skladu', 'stock', 'quantity', 'mnozstvo',
             ],
+            'warehouse_name' => ['sklad', 'warehouse', 'lokacia', 'location'],
             'description' => ['popis', 'description'],
             'import_document_ref' => ['doklad', 'document', 'document ref'],
             'internal_note' => ['interna poznamka', 'internal note', 'poznamka'],
