@@ -76,14 +76,36 @@ export function defaultAppSettings(): CompanyAppSettingsState {
 export function appSettingsFromCompany(company: Record<string, unknown> | null): CompanyAppSettingsState {
   const raw = (company?.app_settings ?? {}) as Partial<CompanyAppSettingsState>;
   const base = defaultAppSettings();
+
   return {
-    ...base,
-    ...raw,
+    rounding_method: raw.rounding_method ?? base.rounding_method,
     invoice_line_label: raw.invoice_line_label ?? '',
-    default_delivery_method: raw.default_delivery_method ?? '',
-    default_payment_method: raw.default_payment_method ?? '',
-    expense_attachment_name_pattern: raw.expense_attachment_name_pattern ?? '',
+    default_invoice_payment_terms_days:
+      raw.default_invoice_payment_terms_days ?? base.default_invoice_payment_terms_days,
+    default_delivery_method: raw.default_delivery_method ?? base.default_delivery_method,
+    default_delivery_date_mode: raw.default_delivery_date_mode ?? base.default_delivery_date_mode,
+    default_payment_method: raw.default_payment_method ?? base.default_payment_method,
+    pdf_filename_pattern: raw.pdf_filename_pattern ?? base.pdf_filename_pattern,
+    expense_attachment_name_pattern: raw.expense_attachment_name_pattern ?? base.expense_attachment_name_pattern,
+    sort_lists_by: raw.sort_lists_by ?? base.sort_lists_by,
+    number_documents_by: raw.number_documents_by ?? base.number_documents_by,
     default_constant_symbol: raw.default_constant_symbol ?? base.default_constant_symbol,
     tax_free_minimum: String(raw.tax_free_minimum ?? base.tax_free_minimum),
+    show_contextual_help: raw.show_contextual_help ?? base.show_contextual_help,
+    embed_isdoc_in_pdf: raw.embed_isdoc_in_pdf ?? base.embed_isdoc_in_pdf,
+    reverse_charge: raw.reverse_charge ?? base.reverse_charge,
+    reverse_charge_note: raw.reverse_charge_note ?? base.reverse_charge_note,
+    us_sales_tax_provider: raw.us_sales_tax_provider ?? base.us_sales_tax_provider,
+    stripe_tax_secret_key: raw.stripe_tax_secret_key ?? base.stripe_tax_secret_key,
+    show_pay_by_square: raw.show_pay_by_square ?? base.show_pay_by_square,
+    show_invoice_by_square: raw.show_invoice_by_square ?? base.show_invoice_by_square,
+    show_client_phone_on_invoices: raw.show_client_phone_on_invoices ?? base.show_client_phone_on_invoices,
+    show_payme_on_invoices: raw.show_payme_on_invoices ?? base.show_payme_on_invoices,
+    variable_symbol_from_proforma: raw.variable_symbol_from_proforma ?? base.variable_symbol_from_proforma,
+    show_prices_on_delivery_notes: raw.show_prices_on_delivery_notes ?? base.show_prices_on_delivery_notes,
+    show_prices_on_orders: raw.show_prices_on_orders ?? base.show_prices_on_orders,
+    show_line_suggester: raw.show_line_suggester ?? base.show_line_suggester,
+    show_summary_on_quotes: raw.show_summary_on_quotes ?? base.show_summary_on_quotes,
+    runs_eshop: raw.runs_eshop ?? base.runs_eshop,
   };
 }

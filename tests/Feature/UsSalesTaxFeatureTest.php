@@ -244,9 +244,11 @@ class UsSalesTaxFeatureTest extends TestCase
             ])
             ->assertOk()
             ->assertJsonPath('data.app_settings.us_sales_tax_provider', 'stripe_tax')
-            ->assertJsonPath('data.app_settings.stripe_tax_secret_key', 'sk_test_company_key');
+            ->assertJsonPath('data.app_settings.stripe_tax_secret_key_set', true)
+            ->assertJsonMissingPath('data.app_settings.stripe_tax_secret_key');
 
         $this->usCompany->refresh();
         $this->assertSame('stripe_tax', $this->usCompany->app_settings['us_sales_tax_provider']);
+        $this->assertSame('sk_test_company_key', $this->usCompany->app_settings['stripe_tax_secret_key']);
     }
 }

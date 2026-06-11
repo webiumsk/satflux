@@ -95,9 +95,9 @@ class CompanyController extends Controller
         Company $company,
         CompanyBrandingService $brandingService,
     ): JsonResponse {
-        $incoming = $request->validatedSettings();
+        $incoming = $this->normalizeWriteOnlySettings($request->validatedSettings());
         $eligibility = app(\App\Support\Invoicing\CompanyEfakturaEligibility::class);
-        if ($eligibility->efakturaSettingKeys($incoming) !== []) {
+        if ($this->hasMeaningfulEfakturaSettings($incoming)) {
             if (! $eligibility->supportsCompany($company)) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'efaktura' => ['E-faktura settings are available only for full VAT payers.'],
@@ -180,5 +180,54 @@ class CompanyController extends Controller
             ['email_settings' => $company->resolvedEmailSettings()],
             $brandingService->brandingMeta($company),
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $incoming
+     * @return array<string, mixed>
+     */
+    protected function normalizeWriteOnlySettings(array $incoming): array
+    {
+        if (array_key_exists('stripe_tax_secret_key', $incoming)) {
+            $secret = is_string($incoming['stripe_tax_secret_key'])
+                ? trim($incoming['stripe_tax_secret_key'])
+                : $incoming['stripe_tax_secret_key'];
+
+            if ($secret === null || $secret === '') {
+                unset($incoming['stripe_tax_secret_key']);
+            } else {
+                $incoming['stripe_tax_secret_key'] = (string) $secret;
+            }
+        }
+
+        return $incoming;
+    }
+
+    /**
+     * @param  array<string, mixed>  $incoming
+     */
+    protected function hasMeaningfulEfakturaSettings(array $incoming): bool
+    {
+        foreach ([
+            'efaktura_enabled',
+            'efaktura_auto_send',
+            'efaktura_inbound_enabled',
+        ] as $key) {
+            if (($incoming[$key] ?? false) === true) {
+                return true;
+            }
+        }
+
+        foreach ([
+            'efaktura_peppol_participant_id',
+            'efaktura_sapi_client_id',
+            'efaktura_sapi_client_secret',
+        ] as $key) {
+            if (array_key_exists($key, $incoming) && trim((string) $incoming[$key]) !== '') {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

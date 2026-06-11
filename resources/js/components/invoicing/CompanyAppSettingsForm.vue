@@ -224,7 +224,11 @@ async function save() {
   saving.value = true;
   saveError.value = '';
   try {
-    const res = await api.patch(`/invoicing/companies/${props.companyId}/app-settings`, { ...form });
+    const payload: Partial<CompanyAppSettingsState> = { ...form };
+    if (!payload.stripe_tax_secret_key) {
+      delete payload.stripe_tax_secret_key;
+    }
+    const res = await api.patch(`/invoicing/companies/${props.companyId}/app-settings`, payload);
     emit('updated', res.data.data);
   } catch (e: any) {
     saveError.value = e?.response?.data?.message ?? t('common.error_generic');

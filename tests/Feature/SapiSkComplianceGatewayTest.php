@@ -14,8 +14,11 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\Invoicing\Efaktura\ComplianceSubmissionService;
+use App\Services\Invoicing\Efaktura\SapiSkClient;
 use App\Services\Invoicing\Efaktura\SapiSkComplianceGateway;
+use App\Support\Invoicing\BuyerSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
@@ -125,6 +128,8 @@ class SapiSkComplianceGatewayTest extends TestCase
     #[Test]
     public function submit_persists_compliance_row_with_http_fake(): void
     {
+        Cache::flush();
+
         config([
             'efaktura.enabled' => true,
             'efaktura.allowed_sapi_hosts' => ['sapi.test'],
@@ -194,6 +199,100 @@ class SapiSkComplianceGatewayTest extends TestCase
                 && ($body['payloadFormat'] ?? null) === 'XML'
                 && ($body['metadata']['receiverParticipantId'] ?? null) === '0245:2123456789'
                 && str_contains((string) ($body['payload'] ?? ''), 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2');
+        });
+    }
+
+    #[Test]
+    public function access_token_cache_is_scoped_by_client_secret(): void
+    {
+        Cache::flush();
+
+        config(['efaktura.allowed_sapi_hosts' => ['sapi.test']]);
+
+        Http::fake([
+            'https://sapi.test/sapi/v1/auth/token' => Http::sequence()
+                ->push(['access_token' => 'token-one', 'expires_in' => 3600])
+                ->push(['access_token' => 'token-two', 'expires_in' => 3600]),
+        ]);
+
+        $client = app(SapiSkClient::class);
+
+        $this->assertSame('token-one', $client->accessToken('shared-client', 'secret-one', 'https://sapi.test'));
+        $this->assertSame('token-two', $client->accessToken('shared-client', 'secret-two', 'https://sapi.test'));
+
+        Http::assertSentCount(2);
+    }
+
+    #[Test]
+    public function submit_uses_frozen_buyer_snapshot_for_receiver_metadata_and_ubl_endpoint(): void
+    {
+        Cache::flush();
+
+        config([
+            'efaktura.enabled' => true,
+            'efaktura.allowed_sapi_hosts' => ['sapi.test'],
+        ]);
+
+        Http::fake([
+            'https://sapi.test/sapi/v1/auth/token' => Http::response([
+                'access_token' => 'token-abc',
+                'expires_in' => 3600,
+            ]),
+            'https://sapi.test/sapi/v1/document/send' => Http::response([
+                'providerDocumentId' => 'doc-remote-99',
+                'status' => 'ACCEPTED',
+            ], 202),
+        ]);
+
+        [$company, $contact] = $this->skCompanyWithEfaktura();
+        $contact->update([
+            'tax_id' => '1111111111',
+            'peppol_participant_id' => '0245:1111111111',
+        ]);
+
+        $doc = BusinessDocument::create([
+            'company_id' => $company->id,
+            'company_contact_id' => $contact->id,
+            'buyer_snapshot' => BuyerSnapshot::fromContact($contact->fresh()),
+            'type' => BusinessDocumentType::Invoice,
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => '20261206',
+            'subtotal' => 50,
+            'tax_total' => 0,
+            'total' => 50,
+            'currency' => 'EUR',
+            'issue_date' => now(),
+        ]);
+
+        BusinessDocumentLine::create([
+            'business_document_id' => $doc->id,
+            'sort_order' => 0,
+            'name' => 'Položka',
+            'quantity' => 1,
+            'unit_price' => 50,
+            'line_total' => 50,
+        ]);
+
+        $contact->update([
+            'tax_id' => '2222222222',
+            'peppol_participant_id' => '0245:2222222222',
+        ]);
+
+        $result = app(ComplianceSubmissionService::class)->submitNow($doc->fresh(['company', 'contact', 'lines']));
+
+        $this->assertSame(ComplianceSubmissionStatus::Approved, $result->status);
+
+        Http::assertSent(function ($request) {
+            if ($request->url() !== 'https://sapi.test/sapi/v1/document/send') {
+                return false;
+            }
+
+            $body = $request->data();
+            $payload = (string) ($body['payload'] ?? '');
+
+            return ($body['metadata']['receiverParticipantId'] ?? null) === '0245:1111111111'
+                && str_contains($payload, 'schemeID="0245">1111111111</cbc:EndpointID>')
+                && ! str_contains($payload, '2222222222');
         });
     }
 

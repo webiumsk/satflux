@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\Invoicing\CompanyPdfFilenameBuilder;
 use App\Services\Invoicing\PayBySquareGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Crypt;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -73,6 +74,42 @@ class CompanyAppSettingsTest extends TestCase
     }
 
     #[Test]
+    public function company_payload_redacts_write_only_app_settings_secrets(): void
+    {
+        $this->company->update([
+            'app_settings' => [
+                'stripe_tax_secret_key' => 'sk_live_secret',
+                'efaktura_sapi_client_secret_encrypted' => Crypt::encryptString('sapi-secret'),
+            ],
+        ]);
+
+        $this->actingAs($this->proUser)
+            ->getJson("/api/invoicing/companies/{$this->company->id}")
+            ->assertOk()
+            ->assertJsonMissingPath('data.app_settings.stripe_tax_secret_key')
+            ->assertJsonPath('data.app_settings.stripe_tax_secret_key_set', true)
+            ->assertJsonMissingPath('data.app_settings.efaktura_sapi_client_secret_encrypted')
+            ->assertJsonPath('data.app_settings.efaktura_sapi_client_secret_set', true);
+    }
+
+    #[Test]
+    public function company_index_does_not_expose_raw_settings_columns(): void
+    {
+        $this->company->update([
+            'app_settings' => ['stripe_tax_secret_key' => 'sk_live_secret'],
+            'email_settings' => [
+                'smtp' => ['password_encrypted' => Crypt::encryptString('smtp-secret')],
+            ],
+        ]);
+
+        $this->actingAs($this->proUser)
+            ->getJson('/api/invoicing/companies')
+            ->assertOk()
+            ->assertJsonMissingPath('data.0.app_settings')
+            ->assertJsonMissingPath('data.0.email_settings');
+    }
+
+    #[Test]
     public function pro_user_can_update_app_settings(): void
     {
         $response = $this->actingAs($this->proUser)
@@ -89,6 +126,48 @@ class CompanyAppSettingsTest extends TestCase
 
         $this->company->refresh();
         $this->assertSame('0558', $this->company->app_settings['default_constant_symbol']);
+    }
+
+    #[Test]
+    public function empty_stripe_tax_secret_is_write_only_and_does_not_clear_existing_secret(): void
+    {
+        $this->company->update([
+            'app_settings' => [
+                'us_sales_tax_provider' => 'stripe_tax',
+                'stripe_tax_secret_key' => 'sk_test_existing',
+            ],
+        ]);
+
+        $this->actingAs($this->proUser)
+            ->patchJson("/api/invoicing/companies/{$this->company->id}/app-settings", [
+                'default_constant_symbol' => '0558',
+                'stripe_tax_secret_key' => '',
+            ])
+            ->assertOk()
+            ->assertJsonMissingPath('data.app_settings.stripe_tax_secret_key')
+            ->assertJsonPath('data.app_settings.stripe_tax_secret_key_set', true);
+
+        $this->company->refresh();
+        $this->assertSame('sk_test_existing', $this->company->app_settings['stripe_tax_secret_key']);
+        $this->assertSame('0558', $this->company->app_settings['default_constant_symbol']);
+    }
+
+    #[Test]
+    public function non_eligible_company_can_save_generic_settings_with_noop_efaktura_defaults(): void
+    {
+        $this->actingAs($this->proUser)
+            ->patchJson("/api/invoicing/companies/{$this->company->id}/app-settings", [
+                'default_constant_symbol' => '0558',
+                'efaktura_enabled' => false,
+                'efaktura_auto_send' => false,
+                'efaktura_inbound_enabled' => false,
+                'efaktura_provider' => 'sapi_sk',
+                'efaktura_sapi_base_url' => 'https://sapi.test',
+                'efaktura_peppol_participant_id' => '',
+                'efaktura_sapi_client_id' => '',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.app_settings.default_constant_symbol', '0558');
     }
 
     #[Test]
