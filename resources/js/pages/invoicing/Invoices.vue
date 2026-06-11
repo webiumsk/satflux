@@ -154,13 +154,13 @@
         {{ t('invoicing.bulk_mark_paid') }}
       </button>
       <button type="button" class="invoicing-btn-secondary text-sm shrink-0" @click="runBulk('pdf_zip')">
-        PDF
+        {{ t('invoicing.bulk_pdf_separate') }}
       </button>
       <button type="button" class="invoicing-btn-secondary text-sm shrink-0" @click="runBulk('pdf_merge')">
         {{ t('invoicing.bulk_pdf_merge') }}
       </button>
       <button type="button" class="invoicing-btn-secondary text-sm shrink-0" @click="runBulk('export_xlsx')">
-        XLSX
+        {{ t('invoicing.bulk_export_xlsx') }}
       </button>
       <button type="button" class="invoicing-btn-secondary text-sm shrink-0 text-red-600" @click="runBulk('delete')">
         {{ t('invoicing.bulk_delete') }}

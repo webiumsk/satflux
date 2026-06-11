@@ -30,7 +30,7 @@
             href="https://x.com/satflux"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Satflux on X (Twitter)"
+            :aria-label="t('common.footer_social_x_aria')"
             class="text-gray-500 hover:text-gray-300 transition-colors"
           >
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -41,7 +41,7 @@
             href="https://www.youtube.com/@Satflux"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Satflux on YouTube"
+            :aria-label="t('common.footer_social_youtube_aria')"
             class="text-gray-500 hover:text-gray-300 transition-colors"
           >
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -52,7 +52,7 @@
             href="https://njump.me/npub1suj9trhvxcc5c77d5k45xyjl8xqa5w9nu94dmth096w7dxcpp65szde8uw"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Satflux on Nostr"
+            :aria-label="t('common.footer_social_nostr_aria')"
             class="text-gray-500 hover:text-gray-300 transition-colors"
           >
             <svg class="w-4 h-4" viewBox="0 0 750 750" fill="currentColor" aria-hidden="true">

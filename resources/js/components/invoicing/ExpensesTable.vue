@@ -266,7 +266,7 @@
             {{ t('invoicing.action_mark_paid') }}
           </button>
           <button
-            v-if="row.has_attachment"
+            v-if="row.has_attachment && row.status !== 'cancelled'"
             type="button"
             class="invoicing-dropdown-item"
             @click="$emit('open-attachment', row.id)"

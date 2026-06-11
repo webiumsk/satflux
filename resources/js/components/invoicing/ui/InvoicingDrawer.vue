@@ -85,7 +85,9 @@ const emit = defineEmits<{ close: [] }>();
 const { t } = useI18n();
 const panelRef = ref<HTMLElement | null>(null);
 const titleId = `invoicing-drawer-title-${Math.random().toString(36).slice(2, 9)}`;
-const prevBodyOverflow = ref('');
+
+let drawerLockCount = 0;
+let savedBodyOverflow = '';
 
 const panelEnterFrom = computed(() =>
   props.side === 'left' ? '-translate-x-full' : 'translate-x-full'
@@ -98,15 +100,24 @@ function lockBodyScroll() {
   if (typeof document === 'undefined') {
     return;
   }
-  prevBodyOverflow.value = document.body.style.overflow;
-  document.body.style.overflow = 'hidden';
+  if (drawerLockCount === 0) {
+    savedBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+  }
+  drawerLockCount += 1;
 }
 
 function unlockBodyScroll() {
   if (typeof document === 'undefined') {
     return;
   }
-  document.body.style.overflow = prevBodyOverflow.value;
+  if (drawerLockCount <= 0) {
+    return;
+  }
+  drawerLockCount -= 1;
+  if (drawerLockCount === 0) {
+    document.body.style.overflow = savedBodyOverflow;
+  }
 }
 
 watch(

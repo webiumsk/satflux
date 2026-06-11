@@ -4,7 +4,6 @@
     :class="{ 'invoicing-mobile-card--selected': selected }"
     role="button"
     tabindex="0"
-    :aria-pressed="selectable ? selected : undefined"
     @click="emit('open')"
     @keydown="onKeydown"
   >

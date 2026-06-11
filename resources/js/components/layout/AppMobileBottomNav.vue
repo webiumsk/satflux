@@ -1,6 +1,6 @@
 <template>
   <nav
-    class="shrink-0 border-t border-gray-800 bg-gray-900 md:hidden"
+    class="shrink-0 border-t border-gray-800 bg-gray-900 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden"
     :aria-label="t('common.mobile_nav_aria')"
   >
     <div class="mx-auto flex max-w-lg items-center justify-around px-1 py-2">

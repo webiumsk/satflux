@@ -226,7 +226,7 @@
                   <input v-model.number="line.tax_rate" type="number" min="0" max="100" class="invoicing-sf-input-table text-right" />
                 </td>
                 <td class="px-2 py-2 align-middle text-right font-medium whitespace-nowrap">
-                  {{ lineTotal(line).toLocaleString(locale, { minimumFractionDigits: 2 }) }}
+                  {{ lineTotal(line).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                 </td>
                 <td class="px-1 py-2 text-center">
                   <button
