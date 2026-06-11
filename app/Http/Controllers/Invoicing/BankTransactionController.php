@@ -60,7 +60,7 @@ class BankTransactionController extends Controller
 
         $summary = app(BankTransactionListSummary::class)->forQuery($query);
 
-        $paginated = $query->paginate((int) ($validated['per_page'] ?? 25));
+        $paginated = $query->excludingBalanceSnapshots()->paginate((int) ($validated['per_page'] ?? 25));
 
         return response()->json([
             'data' => collect($paginated->items())->map(fn (BankTransaction $tx) => $this->transactionPayload($tx)),

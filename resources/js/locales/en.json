@@ -800,6 +800,7 @@
     "bank_summary_credit": "Credit movements",
     "bank_summary_debit": "Debit movements",
     "bank_summary_balance": "Balance",
+    "bank_summary_account_balance": "Account balance",
     "bulk_pdf_separate": "Download PDF (each file)",
     "bulk_pdf_merge": "Download PDF (merged)",
     "bulk_export_xlsx": "Download Excel",

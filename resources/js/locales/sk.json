@@ -800,6 +800,7 @@
     "bank_summary_credit": "Kreditné pohyby",
     "bank_summary_debit": "Debetné pohyby",
     "bank_summary_balance": "Bilancia",
+    "bank_summary_account_balance": "Zostatok na účte",
     "bulk_pdf_separate": "Stiahnuť PDF (každá zvlášť)",
     "bulk_pdf_merge": "Stiahnuť PDF (zlúčené)",
     "bulk_export_xlsx": "Stiahnuť Excel",

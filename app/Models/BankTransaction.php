@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\BankTransactionDirection;
 use App\Enums\BankTransactionMatchStatus;
 use App\Support\Invoicing\BankTransactionDirectionGuesser;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -101,5 +102,48 @@ class BankTransaction extends Model
     {
         return trim((string) ($this->reference ?? '')) !== ''
             || trim((string) ($this->counterparty_name ?? '')) !== '';
+    }
+
+    public function isAccountBalanceSnapshot(): bool
+    {
+        foreach ([$this->counterparty_name, $this->reference] as $value) {
+            if ($value === null || trim($value) === '') {
+                continue;
+            }
+
+            $lower = mb_strtolower(trim($value));
+            if (str_contains($lower, 'stav na ucte') || str_contains($lower, 'stav na účte')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function scopeExcludingBalanceSnapshots(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            foreach (['counterparty_name', 'reference'] as $column) {
+                $q->where(function (Builder $inner) use ($column) {
+                    $inner->whereNull($column)
+                        ->orWhere(function (Builder $c) use ($column) {
+                            $c->whereRaw("LOWER({$column}) NOT LIKE ?", ['%stav na ucte%'])
+                                ->whereRaw("LOWER({$column}) NOT LIKE ?", ['%stav na účte%']);
+                        });
+                });
+            }
+        });
+    }
+
+    public function scopeBalanceSnapshotsOnly(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            foreach (['counterparty_name', 'reference'] as $column) {
+                $q->orWhere(function (Builder $inner) use ($column) {
+                    $inner->whereRaw("LOWER(COALESCE({$column}, '')) LIKE ?", ['%stav na ucte%'])
+                        ->orWhereRaw("LOWER(COALESCE({$column}, '')) LIKE ?", ['%stav na účte%']);
+                });
+            }
+        });
     }
 }

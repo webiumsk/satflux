@@ -22,12 +22,15 @@ final class BankTransactionListSummary
      *         debit_count: int,
      *         debit_total: string,
      *         balance: string
-     *     }>
+     *     }>,
+     *     account_balance: array{amount: string, currency: string, as_of: string}|null
      * }
      */
     public function forQuery(Builder $query): array
     {
-        $rows = (clone $query)
+        $movementsQuery = (clone $query)->excludingBalanceSnapshots();
+
+        $rows = $movementsQuery
             ->setEagerLoads([])
             ->reorder()
             ->selectRaw('direction, currency, COUNT(*) as cnt, SUM(ABS(amount)) as total')
@@ -91,6 +94,30 @@ final class BankTransactionListSummary
             'balance' => $singleCurrency !== null ? $this->formatMoney($creditTotal - $debitTotal) : null,
             'currency' => $singleCurrency,
             'by_currency' => $byCurrencyFormatted,
+            'account_balance' => $this->latestAccountBalance($query),
+        ];
+    }
+
+    /**
+     * @return array{amount: string, currency: string, as_of: string}|null
+     */
+    protected function latestAccountBalance(Builder $query): ?array
+    {
+        $snapshot = (clone $query)
+            ->balanceSnapshotsOnly()
+            ->setEagerLoads([])
+            ->reorder()
+            ->orderByDesc('booked_at')
+            ->first(['amount', 'currency', 'booked_at']);
+
+        if ($snapshot === null) {
+            return null;
+        }
+
+        return [
+            'amount' => $this->formatMoney((float) $snapshot->amount),
+            'currency' => filled($snapshot->currency) ? (string) $snapshot->currency : 'EUR',
+            'as_of' => $snapshot->booked_at?->toIso8601String() ?? '',
         ];
     }
 

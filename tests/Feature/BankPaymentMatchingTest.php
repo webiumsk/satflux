@@ -175,4 +175,46 @@ class BankPaymentMatchingTest extends TestCase
         $response->assertJsonPath('data.bank_account_label', 'Tatra banka ****6976');
         $response->assertJsonPath('data.default_currency', 'EUR');
     }
+
+    #[Test]
+    public function balance_snapshot_is_excluded_from_list_but_in_summary(): void
+    {
+        \App\Models\BankTransaction::create([
+            'company_id' => $this->company->id,
+            'booked_at' => now(),
+            'amount' => 18.80,
+            'currency' => 'EUR',
+            'direction' => \App\Enums\BankTransactionDirection::Credit,
+            'match_status' => \App\Enums\BankTransactionMatchStatus::Unmatched,
+            'counterparty_name' => 'Platba 1100/000000-2629709868',
+            'reference' => 'COD - DOBIERKA:0610182023',
+            'variable_symbol' => '0610182023',
+            'source' => 'email',
+            'dedupe_hash' => 'movement-1',
+        ]);
+
+        \App\Models\BankTransaction::create([
+            'company_id' => $this->company->id,
+            'booked_at' => now()->subMinute(),
+            'amount' => 107.13,
+            'currency' => 'EUR',
+            'direction' => \App\Enums\BankTransactionDirection::Credit,
+            'match_status' => \App\Enums\BankTransactionMatchStatus::Unmatched,
+            'counterparty_name' => 'Stav na účte',
+            'reference' => 'Stav na ucte (ID=100626/103565-3)',
+            'source' => 'email',
+            'dedupe_hash' => 'balance-1',
+        ]);
+
+        $response = $this->actingAs($this->user)->getJson(
+            "/api/invoicing/companies/{$this->company->id}/bank-transactions",
+        );
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'data');
+        $response->assertJsonPath('meta.summary.credit_count', 1);
+        $response->assertJsonPath('meta.summary.credit_total', '18.80');
+        $response->assertJsonPath('meta.summary.account_balance.amount', '107.13');
+        $response->assertJsonPath('meta.summary.account_balance.currency', 'EUR');
+    }
 }

@@ -2871,6 +2871,7 @@
     "bank_summary_credit": "Movimientos de crédito",
     "bank_summary_debit": "Movimientos de débito",
     "bank_summary_balance": "Balance",
+    "bank_summary_account_balance": "Saldo de la cuenta",
     "bulk_pdf_separate": "Descargar PDF (cada una)",
     "bulk_pdf_merge": "Descargar PDF (combinado)",
     "bulk_export_xlsx": "Descargar Excel",

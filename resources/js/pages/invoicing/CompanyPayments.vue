@@ -256,6 +256,15 @@
                     {{ formatSummaryAmount(section.balance, section.currency, parseFloat(section.balance) < 0) }}
                   </dd>
                 </div>
+                <div v-if="accountBalanceFor(section.currency)" class="flex justify-between gap-4 border-t pt-2">
+                  <dt class="text-gray-800 font-medium">{{ t('invoicing.bank_summary_account_balance') }}</dt>
+                  <dd class="font-semibold tabular-nums text-right text-gray-900">
+                    {{ formatSummaryAmount(accountBalanceFor(section.currency)!.amount, section.currency) }}
+                    <span class="block text-xs font-normal text-gray-500">
+                      {{ formatDate(accountBalanceFor(section.currency)!.as_of) }}
+                    </span>
+                  </dd>
+                </div>
               </dl>
             </div>
           </div>
@@ -339,7 +348,7 @@ type BankTx = {
   expense?: LinkedExpense | null;
 };
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const route = useRoute();
 const { rememberCompany } = useInvoicingLayout();
 const { hasBankAccount, summaryLoaded, bankAccountLabel, defaultCurrency } = useInvoicingCompanySummary();
@@ -395,6 +404,13 @@ type BankSummary = {
   balance: string | null;
   currency: string | null;
   by_currency: BankSummarySection[];
+  account_balance?: AccountBalance | null;
+};
+
+type AccountBalance = {
+  amount: string;
+  currency: string;
+  as_of: string;
 };
 
 const emptySummary = (): BankSummary => ({
@@ -423,6 +439,15 @@ const summarySections = computed((): BankSummarySection[] => {
     balance: summary.value.balance || '0.00',
   }];
 });
+
+function accountBalanceFor(currency: string): AccountBalance | null {
+  const balance = summary.value.account_balance;
+  if (!balance || balance.currency !== currency) {
+    return null;
+  }
+
+  return balance;
+}
 
 const legendItems = computed(() => [
   { kind: 'matched', label: t('invoicing.bank_legend_with_document') },
@@ -679,7 +704,11 @@ async function submitCreateExpense(draft: BankExpenseDraft) {
 
 function formatDate(iso: string) {
   try {
-    return new Date(iso).toLocaleDateString();
+    return new Date(iso).toLocaleDateString(locale.value, {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
   } catch {
     return iso;
   }
