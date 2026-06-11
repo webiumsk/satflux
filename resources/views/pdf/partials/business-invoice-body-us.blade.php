@@ -1,6 +1,8 @@
 @php
+    $isQuote = $document->type->value === 'quote';
     $amountDue = max(0, (float) $document->total - (float) ($document->amount_paid ?? 0));
-    $showPaidInfo = $document->pdf_show_payment_info
+    $showPaidInfo = ! $isQuote
+        && $document->pdf_show_payment_info
         && ($document->status->value === 'paid' || $amountDue < 0.005);
 @endphp
 
@@ -22,7 +24,9 @@
         @endif
         <br>
         Issue date: {{ $document->issue_date?->format('m/d/Y') }}<br>
-        Due date: {{ $document->due_date?->format('m/d/Y') }}<br>
+        @if($document->due_date)
+            {{ $isQuote ? __('Quote valid until') : __('Due date') }}: {{ $document->due_date->format('m/d/Y') }}<br>
+        @endif
     </div>
 </div>
 
@@ -74,7 +78,11 @@
     @elseif((float) $document->tax_total > 0)
         <div>Sales tax: {{ number_format((float) $document->tax_total, 2) }} {{ $document->currency }}</div>
     @endif
-    <div><strong>Total due: {{ number_format($showPaidInfo ? 0 : $amountDue, 2) }} {{ $document->currency }}</strong></div>
+    @if(! $isQuote)
+        <div><strong>Total due: {{ number_format($showPaidInfo ? 0 : $amountDue, 2) }} {{ $document->currency }}</strong></div>
+    @else
+        <div><strong>{{ __('Grand total') }}: {{ number_format((float) $document->total, 2) }} {{ $document->currency }}</strong></div>
+    @endif
     @if($showPaidInfo)
         <div class="muted">Paid {{ $document->paid_at?->format('m/d/Y') }}</div>
     @endif
@@ -84,7 +92,7 @@
     <p class="muted" style="margin-top:16px;">{{ $document->note_footer }}</p>
 @endif
 
-@if($btcPayQr)
+@if(! $isQuote && $btcPayQr)
     <div class="qr-block">
         <div class="muted">{{ __('Bitcoin / Lightning (payment link)') }}</div>
         <img src="{{ $btcPayQr }}" alt="">

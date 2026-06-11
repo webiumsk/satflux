@@ -5,9 +5,13 @@
         'quote' => __('Quote'),
         default => __('Invoice'),
     };
+    $isQuote = $document->type->value === 'quote';
     $amountDue = max(0, (float) $document->total - (float) ($document->amount_paid ?? 0));
-    $showPaidInfo = $document->pdf_show_payment_info
+    $showPaidInfo = ! $isQuote
+        && $document->pdf_show_payment_info
         && ($document->status->value === 'paid' || $amountDue < 0.005);
+    $showPaymentTotals = ! $isQuote && ($showPaidInfo || $document->payment_bank_enabled || $document->payment_btc_enabled);
+    $showPayBar = ! $isQuote && $document->payment_bank_enabled && $company->iban;
     $formatIban = static function (?string $iban): string {
         if (! $iban) {
             return '';
@@ -97,10 +101,12 @@
                         <td class="date-value">{{ $document->delivery_date->format('d.m.Y') }}</td>
                     </tr>
                 @endif
-                <tr>
-                    <td class="date-label">{{ __('Due date') }}:</td>
-                    <td class="date-value">{{ $document->due_date?->format('d.m.Y') }}</td>
-                </tr>
+                @if($document->due_date)
+                    <tr>
+                        <td class="date-label">{{ $isQuote ? __('Quote valid until') : __('Due date') }}:</td>
+                        <td class="date-value">{{ $document->due_date->format('d.m.Y') }}</td>
+                    </tr>
+                @endif
             </table>
         </td>
     </tr>
@@ -202,7 +208,7 @@
                             <td class="value muted">{{ $document->paid_at->format('d.m.Y') }}</td>
                         </tr>
                     @endif
-                @elseif($document->payment_bank_enabled || $document->payment_btc_enabled)
+                @elseif($showPaymentTotals)
                     <tr class="due">
                         <td class="label">{{ __('Amount due') }}</td>
                         <td class="value">{{ number_format($amountDue, 2, ',', ' ') }} {{ $document->currency }}</td>
@@ -226,7 +232,7 @@
     </div>
 @endif
 
-@if($document->payment_bank_enabled && $company->iban)
+@if($showPayBar)
     <table class="pay-bar">
         <tr>
             <td>
@@ -261,7 +267,7 @@
     </div>
 @endif
 
-@if($bankQr || $btcPayQr)
+@if(! $isQuote && ($bankQr || $btcPayQr))
     <div class="qr-block">
         @if($bankQr)
             <div class="qr-item">

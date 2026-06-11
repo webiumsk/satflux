@@ -13,6 +13,8 @@ class BusinessDocumentLine extends Model
 
     protected $fillable = [
         'business_document_id',
+        'company_stock_item_id',
+        'company_warehouse_id',
         'sort_order',
         'name',
         'description',
@@ -38,5 +40,15 @@ class BusinessDocumentLine extends Model
     public function document(): BelongsTo
     {
         return $this->belongsTo(BusinessDocument::class, 'business_document_id');
+    }
+
+    public function stockItem(): BelongsTo
+    {
+        return $this->belongsTo(CompanyStockItem::class, 'company_stock_item_id');
+    }
+
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(CompanyWarehouse::class, 'company_warehouse_id');
     }
 }

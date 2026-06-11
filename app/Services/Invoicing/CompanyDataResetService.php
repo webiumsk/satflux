@@ -11,6 +11,8 @@ use App\Models\BusinessRecurringProfile;
 use App\Models\Company;
 use App\Models\CompanyContact;
 use App\Models\CompanyDocumentSequence;
+use App\Models\CompanyStockItem;
+use App\Models\CompanyWarehouse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -36,6 +38,8 @@ class CompanyDataResetService
                 'recurring_profiles' => BusinessRecurringProfile::query()->where('company_id', $company->id)->count(),
                 'bank_transactions' => BankTransaction::query()->where('company_id', $company->id)->count(),
                 'bank_import_batches' => BankImportBatch::query()->where('company_id', $company->id)->count(),
+                'stock_items' => CompanyStockItem::query()->where('company_id', $company->id)->count(),
+                'warehouses' => CompanyWarehouse::query()->where('company_id', $company->id)->count(),
             ];
 
             BusinessDocument::query()
@@ -63,6 +67,8 @@ class CompanyDataResetService
                 ->each(fn (BusinessExpense $expense) => $this->expenseService->permanentlyDelete($expense));
             BusinessRecurringProfile::query()->where('company_id', $company->id)->delete();
             CompanyContact::query()->where('company_id', $company->id)->delete();
+            CompanyStockItem::query()->where('company_id', $company->id)->delete();
+            CompanyWarehouse::query()->where('company_id', $company->id)->delete();
 
             CompanyDocumentSequence::query()
                 ->where('company_id', $company->id)

@@ -180,6 +180,7 @@
               <thead class="bg-gray-100 text-gray-600 text-xs uppercase">
                 <tr>
                   <th class="text-left px-3 py-2 min-w-[200px]">{{ t('invoicing.col_item') }}</th>
+                  <th v-if="showLineSuggester" class="text-left px-2 py-2 min-w-[130px]">{{ t('invoicing.warehouse_col_name') }}</th>
                   <th class="text-center px-2 py-2 w-20">{{ t('invoicing.col_qty') }}</th>
                   <th class="text-center px-2 py-2 w-24">{{ t('invoicing.col_unit') }}</th>
                   <th class="text-right px-2 py-2 w-28">{{ t('invoicing.col_unit_price') }}</th>
@@ -191,13 +192,48 @@
               <tbody>
                 <tr v-for="(line, idx) in form.lines" :key="idx" class="border-t border-gray-200">
                   <td class="px-3 py-2 align-top">
-                    <input v-model="line.name" class="invoicing-sf-input-table" :required="!isLocked" :disabled="isLocked" />
-                    <input
-                      v-model="line.description"
-                      class="invoicing-sf-input-table mt-1 text-gray-500"
-                      :placeholder="t('invoicing.item_description')"
+                    <StockLineSuggestField
+                      v-if="showLineSuggester && !isLocked"
+                      :company-id="companyId"
+                      :name="line.name"
+                      :description="line.description"
+                      :stock-item-id="line.company_stock_item_id"
+                      :warehouse-id="line.company_warehouse_id"
+                      :quantity-on-hand="line.stock_quantity_hint"
+                      :deduct-on-issue="line.warehouse_deduct_on_issue"
+                      :unit="line.unit"
+                      :enabled="showLineSuggester"
                       :disabled="isLocked"
+                      :required="!isLocked"
+                      :description-placeholder="t('invoicing.item_description')"
+                      @update:name="line.name = $event"
+                      @update:description="line.description = $event"
+                      @pick="onLineStockPick(line, $event)"
+                      @clear-stock-link="clearLineStockLink(line)"
                     />
+                    <template v-else>
+                      <input v-model="line.name" class="invoicing-sf-input-table" :required="!isLocked" :disabled="isLocked" />
+                      <input
+                        v-model="line.description"
+                        class="invoicing-sf-input-table mt-1 text-gray-500"
+                        :placeholder="t('invoicing.item_description')"
+                        :disabled="isLocked"
+                      />
+                    </template>
+                  </td>
+                  <td v-if="showLineSuggester" class="px-2 py-2 align-top">
+                    <StockWarehouseSelect
+                      v-model="line.company_warehouse_id"
+                      :warehouses="warehouses"
+                      :disabled="isLocked"
+                      @update:model-value="onLineWarehouseChange(line)"
+                    />
+                    <p
+                      v-if="line.company_stock_item_id && line.warehouse_deduct_on_issue === false"
+                      class="text-xs text-amber-600 mt-1"
+                    >
+                      {{ t('invoicing.warehouse_no_deduct_hint') }}
+                    </p>
                   </td>
                   <td class="px-2 py-2 align-middle">
                     <input v-model.number="line.quantity" type="number" min="0.0001" step="any" class="invoicing-sf-input-table text-center" :disabled="isLocked" />
@@ -332,10 +368,14 @@ import { computed, onMounted, ref, watch } from 'vue';
 import ContactCreateModal from '../../components/invoicing/ContactCreateModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoiceLineUnitSelect from '../../components/invoicing/InvoiceLineUnitSelect.vue';
+import StockLineSuggestField from '../../components/invoicing/StockLineSuggestField.vue';
+import StockWarehouseSelect from '../../components/invoicing/StockWarehouseSelect.vue';
+import type { InvoiceLineForm } from '../../components/invoicing/InvoiceLivePreview.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import api, { businessDocumentPdfPath, getWebBlob } from '../../services/api';
 import { companyCurrencyOptions } from '../../config/companyCurrencies';
+import { appSettingsFromCompany } from '../../composables/useCompanyAppSettings';
 import { useInvoiceDocument } from '../../composables/useInvoiceDocument';
 
 const {
@@ -377,12 +417,65 @@ const {
   sourceDocument,
   applyDocument,
   showLineTaxColumn,
+  warehouses,
+  defaultWarehouseIdValue,
 } = useInvoiceDocument();
 
 const { rememberCompany } = useInvoicingLayout();
 
 const isNew = computed(() => !documentId.value);
 const showContactCreateModal = ref(false);
+const showLineSuggester = computed(() => appSettingsFromCompany(company.value).show_line_suggester);
+
+function onLineStockPick(
+  line: InvoiceLineForm,
+  payload: {
+    name: string;
+    description: string;
+    unit: string;
+    unit_price: number;
+    company_stock_item_id: string;
+    quantity_on_hand: number | null;
+    quantities_by_warehouse?: Record<string, number>;
+    deduct_on_issue?: boolean | null;
+  }
+) {
+  line.name = payload.name;
+  line.description = payload.description;
+  line.unit = payload.unit;
+  line.unit_price = payload.unit_price;
+  line.company_stock_item_id = payload.company_stock_item_id;
+  line.stock_quantities_by_warehouse = payload.quantities_by_warehouse ?? {};
+  if (!line.company_warehouse_id) {
+    line.company_warehouse_id = defaultWarehouseIdValue.value || null;
+  }
+  syncLineStockHint(line);
+}
+
+function onLineWarehouseChange(line: InvoiceLineForm) {
+  syncLineStockHint(line);
+}
+
+function syncLineStockHint(line: InvoiceLineForm) {
+  const warehouseId = line.company_warehouse_id;
+  if (!warehouseId) {
+    line.stock_quantity_hint = null;
+    line.warehouse_deduct_on_issue = null;
+    return;
+  }
+  const warehouse = warehouses.value.find((w) => w.id === warehouseId);
+  line.warehouse_deduct_on_issue = warehouse?.deduct_on_issue ?? null;
+  if (line.company_stock_item_id && line.stock_quantities_by_warehouse) {
+    const qty = line.stock_quantities_by_warehouse[warehouseId];
+    line.stock_quantity_hint = qty != null ? Number(qty) : null;
+  }
+}
+
+function clearLineStockLink(line: InvoiceLineForm) {
+  line.company_stock_item_id = null;
+  line.stock_quantity_hint = null;
+  line.stock_quantities_by_warehouse = {};
+}
 
 const documentCurrencyOptions = computed(() =>
   companyCurrencyOptions(form.currency || company.value?.default_currency)

@@ -8,6 +8,7 @@ import { useCompanyVatPolicy } from './useCompanyVatPolicy';
 import { DEFAULT_INVOICE_LINE_UNIT } from './useInvoiceLineUnits';
 import { invoicingDocumentRoutes, type InvoicingDocumentRoutes } from './useInvoicingDocumentRoutes';
 import type { InvoicingDocumentKind } from './useInvoicingLayout';
+import { defaultWarehouseId, type WarehouseRow } from './useCompanyWarehouse';
 
 export function useInvoiceDocument() {
   const { t, locale } = useI18n();
@@ -35,6 +36,7 @@ export function useInvoiceDocument() {
   } | null>(null);
   const company = ref<Record<string, any> | null>(null);
   const contacts = ref<any[]>([]);
+  const warehouses = ref<WarehouseRow[]>([]);
   const linkedStores = ref<any[]>([]);
   const history = ref<any[]>([]);
   const neighborIds = ref<string[]>([]);
@@ -99,6 +101,8 @@ export function useInvoiceDocument() {
       isUsCompany.value
       && (appSettingsFromCompany(company.value).us_sales_tax_provider === 'stripe_tax')
   );
+
+  const defaultWarehouseIdValue = computed(() => defaultWarehouseId(warehouses.value));
 
   const serverTotals = ref<{
     subtotal: number;
@@ -290,6 +294,11 @@ export function useInvoiceDocument() {
       unit_price: 0,
       line_discount_percent: 0,
       tax_rate: vatPolicy.resolveLineTaxRate(company.value, selectedContact.value, defaultVat.value),
+      company_stock_item_id: null,
+      company_warehouse_id: defaultWarehouseIdValue.value || null,
+      stock_quantity_hint: null,
+      stock_quantities_by_warehouse: {},
+      warehouse_deduct_on_issue: null,
     };
   }
 
@@ -320,6 +329,8 @@ export function useInvoiceDocument() {
         unit_price: l.unit_price,
         line_discount_percent: l.line_discount_percent || 0,
         tax_rate: l.tax_rate ?? defaultVat.value,
+        company_stock_item_id: l.company_stock_item_id || null,
+        company_warehouse_id: l.company_warehouse_id || null,
       })),
     };
   }
@@ -385,6 +396,11 @@ export function useInvoiceDocument() {
         unit_price: parseFloat(l.unit_price),
         line_discount_percent: parseFloat(l.line_discount_percent) || 0,
         tax_rate: parseFloat(l.tax_rate) || defaultVat.value,
+        company_stock_item_id: l.company_stock_item_id || null,
+        company_warehouse_id: l.company_warehouse_id ?? null,
+        stock_quantity_hint: null,
+        stock_quantities_by_warehouse: {},
+        warehouse_deduct_on_issue: null,
       })),
     });
     if (documentStatus.value === 'draft' && !documentNumber.value) {
@@ -452,14 +468,23 @@ export function useInvoiceDocument() {
     if (!documentId.value) {
       const app = appSettingsFromCompany(company.value);
       if (!form.constant_symbol) form.constant_symbol = app.default_constant_symbol;
-      form.payment_bank_enabled = app.show_pay_by_square;
       documentType.value = resolveDocumentTypeFromRoute();
+      if (documentType.value === 'quote') {
+        form.payment_bank_enabled = false;
+        form.payment_btc_enabled = false;
+        form.pdf_show_payment_info = false;
+      } else {
+        form.payment_bank_enabled = app.show_pay_by_square;
+      }
       applyQuoteDueDefault();
       await loadNextNumberPreview();
     }
 
     const contactsRes = await api.get(`/invoicing/companies/${companyId.value}/contacts`);
     contacts.value = contactsRes.data.data ?? [];
+
+    const whRes = await api.get(`/invoicing/companies/${companyId.value}/warehouses`);
+    warehouses.value = (whRes.data.data ?? []).filter((w: WarehouseRow) => w.is_active);
   }
 
   watch(documentType, async () => {
@@ -584,6 +609,8 @@ export function useInvoiceDocument() {
     payload,
     extractError,
     applyDocument,
+    warehouses,
+    defaultWarehouseIdValue,
     loadCompanyAndContacts,
     reloadDocument,
     loadHistory,
