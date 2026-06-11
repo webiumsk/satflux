@@ -73,9 +73,7 @@
       </div>
 
       <!-- Content Container -->
-      <div
-        class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar"
-      >
+      <AppScrollPane>
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <ArchivedStoreBanner :store="store" />
 
@@ -319,7 +317,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </AppScrollPane>
     </div>
   </div>
 </template>
@@ -331,6 +329,7 @@ import { useI18n } from "vue-i18n";
 import { useAppsStore } from "../../store/apps";
 import { useAuthStore } from "../../store/auth";
 import StoreSidebar from "../../components/stores/StoreSidebar.vue";
+import AppScrollPane from "../../components/layout/AppScrollPane.vue";
 import ArchivedStoreBanner from "../../components/stores/ArchivedStoreBanner.vue";
 import api from "../../services/api";
 

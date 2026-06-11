@@ -265,6 +265,14 @@
                       {{ t('invoicing.bank_match') }}
                     </button>
                     <button
+                      v-if="tx.match_status === 'unmatched' && tx.direction === 'debit'"
+                      type="button"
+                      class="invoicing-dropdown-item"
+                      @click="openCreateExpense(tx)"
+                    >
+                      {{ t('invoicing.bank_create_expense') }}
+                    </button>
+                    <button
                       v-if="tx.match_status === 'matched'"
                       type="button"
                       class="invoicing-dropdown-item"

@@ -121,6 +121,12 @@ const router = createRouter({
             meta: { requiresAuth: true, titleKey: 'messages.title' },
         },
         {
+            path: '/info',
+            name: 'info',
+            component: () => import('../pages/Info.vue'),
+            meta: { requiresAuth: true, titleKey: 'common.info_page_title' },
+        },
+        {
             path: '/invoicing',
             name: 'invoicing',
             component: () => import('../pages/invoicing/Index.vue'),

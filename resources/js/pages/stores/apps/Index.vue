@@ -62,9 +62,7 @@
         </div>
 
         <!-- Content -->
-        <div
-          class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar"
-        >
+        <AppScrollPane>
           <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <ArchivedStoreBanner :store="store" />
 
@@ -257,7 +255,7 @@
               </template>
             </div>
           </div>
-        </div>
+        </AppScrollPane>
       </div>
     </div>
   </AppLayout>
@@ -269,6 +267,7 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import AppLayout from "../../../components/layout/AppLayout.vue";
 import StoreSidebar from "../../../components/stores/StoreSidebar.vue";
+import AppScrollPane from "../../../components/layout/AppScrollPane.vue";
 import ArchivedStoreBanner from "../../../components/stores/ArchivedStoreBanner.vue";
 
 const { t } = useI18n();

@@ -265,13 +265,23 @@
           >
             {{ t('invoicing.action_mark_paid') }}
           </button>
-          <RouterLink :to="editTo(row.id)" class="invoicing-dropdown-item block">{{ t('common.edit') }}</RouterLink>
-          <button type="button" class="invoicing-dropdown-item" @click="$emit('duplicate', row.id)">
-            {{ t('invoicing.expense_action_duplicate') }}
+          <button
+            v-if="row.has_attachment && row.status !== 'cancelled'"
+            type="button"
+            class="invoicing-dropdown-item"
+            @click="$emit('open-attachment', row.id)"
+          >
+            {{ t('invoicing.expense_attachment_view') }}
           </button>
-          <button type="button" class="invoicing-dropdown-item text-red-600" @click="$emit('cancel', row.id)">
-            {{ t('invoicing.expense_action_cancel') }}
-          </button>
+          <template v-if="row.status !== 'cancelled'">
+            <RouterLink :to="editTo(row.id)" class="invoicing-dropdown-item block">{{ t('common.edit') }}</RouterLink>
+            <button type="button" class="invoicing-dropdown-item" @click="$emit('duplicate', row.id)">
+              {{ t('invoicing.expense_action_duplicate') }}
+            </button>
+            <button type="button" class="invoicing-dropdown-item text-red-600" @click="$emit('cancel', row.id)">
+              {{ t('invoicing.expense_action_cancel') }}
+            </button>
+          </template>
         </InvoicingRowActionsMenu>
       </template>
     </InvoicingMobileCard>

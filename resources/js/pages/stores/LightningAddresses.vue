@@ -136,9 +136,7 @@
       </div>
 
       <!-- Content Container -->
-      <div
-        class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar"
-      >
+      <AppScrollPane>
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <!-- Addresses List -->
           <div
@@ -351,7 +349,7 @@
             </button>
           </div>
         </div>
-      </div>
+      </AppScrollPane>
     </div>
 
     <!-- Add Form Modal -->
@@ -739,6 +737,7 @@ import { useI18n } from "vue-i18n";
 import { useAppsStore } from "../../store/apps";
 import { useFlashStore } from "../../store/flash";
 import StoreSidebar from "../../components/stores/StoreSidebar.vue";
+import AppScrollPane from "../../components/layout/AppScrollPane.vue";
 import InfoTooltip from "../../components/ui/InfoTooltip.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 import UrlQrModal from "../../components/ui/UrlQrModal.vue";

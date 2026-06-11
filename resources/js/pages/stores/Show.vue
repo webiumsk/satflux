@@ -22,7 +22,7 @@
 
     <!-- Main Content -->
     <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-l border-gray-800 bg-gray-900">
-      <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
+      <AppScrollPane>
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
         <ArchivedStoreBanner :store="store" />
@@ -243,7 +243,7 @@
           </div>
         </div>
       </div>
-      </div>
+      </AppScrollPane>
     </div>
   </div>
 
@@ -271,6 +271,7 @@ import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
 import { useAppsStore } from '../../store/apps';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
+import AppScrollPane from '../../components/layout/AppScrollPane.vue';
 import WalletTypeIcon from '../../components/WalletTypeIcon.vue';
 import DashboardStats from '../../components/stores/DashboardStats.vue';
 import RecentInvoices from '../../components/stores/RecentInvoices.vue';

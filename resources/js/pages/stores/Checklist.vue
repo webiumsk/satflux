@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain border-l border-gray-800 bg-gray-900">
+  <AppScrollPane class="border-l border-gray-800 bg-gray-900">
     <div class="max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
       <!-- Back Link -->
       <div class="mb-8">
@@ -75,7 +75,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </AppScrollPane>
 </template>
 
 <script setup lang="ts">
@@ -85,6 +85,7 @@ import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
 import WalletChecklist from '../../components/stores/WalletChecklist.vue';
 import WalletTypeIcon from '../../components/WalletTypeIcon.vue';
+import AppScrollPane from '../../components/layout/AppScrollPane.vue';
 
 const { t } = useI18n();
 

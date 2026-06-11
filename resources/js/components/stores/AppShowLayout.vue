@@ -5,13 +5,13 @@
       <div class="shrink-0 bg-gray-900">
         <slot name="toolbar" :app="propsApp" :store="propsStore" />
       </div>
-      <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
+      <AppScrollPane>
         <slot :app="propsApp" :store="propsStore" />
-      </div>
+      </AppScrollPane>
     </template>
-    <div v-else class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
+    <AppScrollPane v-else>
       <slot :app="propsApp" :store="propsStore" />
-    </div>
+    </AppScrollPane>
   </div>
 
   <div v-else-if="loading && !loadedApp" class="flex items-center justify-center h-screen bg-gray-900">
@@ -38,19 +38,19 @@
         <div class="shrink-0 bg-gray-900">
           <slot name="toolbar" :app="loadedApp" :store="loadedStore" />
         </div>
-        <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
+        <AppScrollPane>
           <div class="px-4 sm:px-6 lg:px-8 pt-8">
             <ArchivedStoreBanner :store="loadedStore" />
           </div>
           <slot :app="loadedApp" :store="loadedStore" />
-        </div>
+        </AppScrollPane>
       </template>
-      <div v-else class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
+      <AppScrollPane v-else>
         <div class="px-4 sm:px-6 lg:px-8 pt-8">
           <ArchivedStoreBanner :store="loadedStore" />
         </div>
         <slot :app="loadedApp" :store="loadedStore" />
-      </div>
+      </AppScrollPane>
     </div>
   </div>
 
@@ -72,6 +72,7 @@ import { useAppsStore } from '../../store/apps';
 import { useStoresStore } from '../../store/stores';
 import StoreSidebar from './StoreSidebar.vue';
 import ArchivedStoreBanner from './ArchivedStoreBanner.vue';
+import AppScrollPane from '../layout/AppScrollPane.vue';
 
 const props = defineProps<{ store?: any; app?: any }>();
 const { t } = useI18n();

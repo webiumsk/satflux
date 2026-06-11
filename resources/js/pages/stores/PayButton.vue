@@ -12,7 +12,7 @@
     <!-- Main Content -->
     <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-l border-gray-800 bg-gray-900">
       <!-- Scrollable Content Area -->
-      <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar">
+      <AppScrollPane>
         <!-- Header -->
         <AppShowHeader
           :title="t('stores.pay_button')"
@@ -82,7 +82,7 @@
             </PayButtonForm>
           </template>
         </div>
-      </div>
+      </AppScrollPane>
     </div>
   </div>
 </template>
@@ -96,6 +96,7 @@ import { useAppsStore } from '../../store/apps';
 import { useFlashStore } from '../../store/flash';
 import api from '../../services/api';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
+import AppScrollPane from '../../components/layout/AppScrollPane.vue';
 import AppShowHeader from '../../components/stores/AppShowHeader.vue';
 import PayButtonForm from './PayButtonForm.vue';
 import CopyFeedbackButton from '../../components/ui/CopyFeedbackButton.vue';

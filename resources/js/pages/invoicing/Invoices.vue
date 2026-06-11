@@ -145,9 +145,6 @@
       :selection-count="selectionCount"
       @clear="clearSelection"
     >
-      <button type="button" class="invoicing-btn-secondary text-sm shrink-0" @click="showBulkMenu = !showBulkMenu">
-        {{ t('invoicing.bulk_actions') }}
-      </button>
       <button
         v-if="!isQuoteList"
         type="button"
@@ -157,10 +154,19 @@
         {{ t('invoicing.bulk_mark_paid') }}
       </button>
       <button type="button" class="invoicing-btn-secondary text-sm shrink-0" @click="runBulk('pdf_zip')">
-        PDF
+        {{ t('invoicing.bulk_pdf_separate') }}
+      </button>
+      <button type="button" class="invoicing-btn-secondary text-sm shrink-0" @click="runBulk('pdf_merge')">
+        {{ t('invoicing.bulk_pdf_merge') }}
       </button>
       <button type="button" class="invoicing-btn-secondary text-sm shrink-0" @click="runBulk('export_xlsx')">
-        XLSX
+        {{ t('invoicing.bulk_export_xlsx') }}
+      </button>
+      <button type="button" class="invoicing-btn-secondary text-sm shrink-0 text-red-600" @click="runBulk('delete')">
+        {{ t('invoicing.bulk_delete') }}
+      </button>
+      <button type="button" class="invoicing-btn-secondary text-sm shrink-0 text-amber-700" @click="runBulk('cancel')">
+        {{ t('invoicing.bulk_cancel') }}
       </button>
     </InvoicingMobileBulkBar>
 
@@ -884,7 +890,6 @@ const mobileFilterActiveCount = computed(() => {
 
 function onMobileFilterApply() {
   onAdvancedApply();
-  load();
 }
 
 function onMobileFilterClear() {
@@ -894,6 +899,8 @@ function onMobileFilterClear() {
   issuePeriod.customTo = '';
   resetAdvancedDraft();
   applyAdvancedDraft();
+  currentPage.value = 1;
+  clearSelection();
   load();
 }
 

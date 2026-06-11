@@ -52,9 +52,7 @@
       </div>
 
       <!-- Content Container -->
-      <div
-        class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar"
-      >
+      <AppScrollPane>
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div
             class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
@@ -244,7 +242,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </AppScrollPane>
     </div>
   </div>
 </template>
@@ -258,6 +256,7 @@ import { useStoresStore } from "../../store/stores";
 import { useAuthStore } from "../../store/auth";
 import { useFlashStore } from "../../store/flash";
 import StoreSidebar from "../../components/stores/StoreSidebar.vue";
+import AppScrollPane from "../../components/layout/AppScrollPane.vue";
 import api from "../../services/api";
 
 const { t } = useI18n();

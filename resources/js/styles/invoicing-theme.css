@@ -2,7 +2,7 @@
 
 .invoicing-page {
   @apply min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-gray-100 text-gray-900;
-  @apply max-md:flex-none max-md:overflow-visible;
+  @apply max-md:overflow-visible;
 }
 
 /* Legacy aliases - prefer INVOICING_CONTAINER_CLASS in composable */
@@ -55,7 +55,9 @@
 
 .invoicing-doc-sub-nav-scroll {
   @apply overflow-x-auto flex-nowrap overscroll-x-contain snap-x snap-mandatory;
-  @apply -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:flex-wrap md:overflow-visible md:snap-none;
+  @apply -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8;
+  @apply md:mx-0 md:px-0 md:flex-wrap md:overflow-visible md:snap-none;
+
   scrollbar-width: none;
 }
 
