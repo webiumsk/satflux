@@ -1,6 +1,7 @@
 <template>
   <header class="invoicing-app-header">
-    <div :class="INVOICING_CONTAINER_CLASS">
+    <!-- Desktop main nav -->
+    <div :class="INVOICING_CONTAINER_CLASS" class="hidden md:block">
       <nav class="invoicing-main-nav" aria-label="Invoicing main">
         <button
           v-for="item in visibleMainNav"
@@ -12,15 +13,59 @@
         >
           {{ t(item.labelKey) }}
         </button>
-        <div v-if="companyId && displayCompanyLabel" class="invoicing-main-nav__company ml-auto hidden sm:block">
+        <div v-if="companyId && displayCompanyLabel" class="invoicing-main-nav__company ml-auto">
           {{ displayCompanyLabel }}
         </div>
       </nav>
     </div>
 
+    <!-- Mobile compact header -->
+    <div class="invoicing-mobile-header md:hidden">
+      <div :class="INVOICING_CONTAINER_CLASS" class="flex items-center gap-2 min-h-[48px] py-1">
+        <button
+          type="button"
+          class="invoicing-mobile-icon-btn shrink-0"
+          :title="t('invoicing.mobile_nav_open')"
+          @click="navDrawerOpen = true"
+        >
+          <InvoicingIcons name="menu" />
+        </button>
+
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-semibold text-gray-900 truncate leading-tight">
+            {{ mobileTitle }}
+          </p>
+          <p v-if="mobileSubtitle" class="text-xs text-gray-500 truncate leading-tight">
+            {{ mobileSubtitle }}
+          </p>
+        </div>
+
+        <button
+          v-if="showMobileFilters"
+          type="button"
+          class="invoicing-mobile-icon-btn shrink-0 relative"
+          :title="t('invoicing.mobile_filters')"
+          @click="filterDrawerOpen = true"
+        >
+          <InvoicingIcons name="filter" />
+          <span
+            v-if="mobileFilterActiveCount > 0"
+            class="absolute -top-0.5 -right-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-bold text-white"
+          >
+            {{ mobileFilterActiveCount > 9 ? '9+' : mobileFilterActiveCount }}
+          </span>
+        </button>
+
+        <div v-if="$slots['mobile-primary-action']" class="shrink-0">
+          <slot name="mobile-primary-action" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop tools sub-nav -->
     <nav
       v-if="displayToolsSubNav"
-      class="invoicing-sub-nav block w-full min-h-[42px] bg-slate-800 border-b border-slate-900"
+      class="invoicing-sub-nav hidden md:block w-full min-h-[42px] bg-slate-800 border-b border-slate-900"
       aria-label="Company settings"
     >
       <div :class="[INVOICING_CONTAINER_CLASS, 'flex flex-wrap items-stretch']">
@@ -36,7 +81,8 @@
       </div>
     </nav>
 
-    <div v-if="showFilterBar" class="invoicing-filter-bar">
+    <!-- Desktop filter bar -->
+    <div v-if="showFilterBar" class="invoicing-filter-bar hidden md:block">
       <div :class="[INVOICING_CONTAINER_CLASS, 'flex flex-wrap items-center gap-3 py-3']">
         <div class="flex flex-wrap items-center gap-2 flex-1 min-w-0">
           <slot name="filters" />
@@ -46,11 +92,31 @@
         </div>
       </div>
     </div>
+
+    <InvoicingMobileNavDrawer
+      :open="navDrawerOpen"
+      :company-label="displayCompanyLabel"
+      @close="navDrawerOpen = false"
+    />
+
+    <InvoicingMobileFilterDrawer
+      v-if="showMobileFilters && $slots['mobile-filters']"
+      :open="filterDrawerOpen"
+      :active-count="mobileFilterActiveCount"
+      @close="filterDrawerOpen = false"
+      @apply="onFilterApply"
+      @clear="emit('mobile-filter-clear')"
+    >
+      <slot name="mobile-filters" />
+      <template v-if="$slots['mobile-actions']" #actions>
+        <slot name="mobile-actions" />
+      </template>
+    </InvoicingMobileFilterDrawer>
   </header>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import '../../styles/invoicing-theme.css';
 import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompanySummary';
@@ -60,17 +126,29 @@ import {
   type InvoicingMainSection,
   type InvoicingToolsNavItem,
 } from '../../composables/useInvoicingLayout';
+import InvoicingIcons from './icons/InvoicingIcons.vue';
+import InvoicingMobileNavDrawer from './InvoicingMobileNavDrawer.vue';
+import InvoicingMobileFilterDrawer from './InvoicingMobileFilterDrawer.vue';
 
 const props = withDefaults(
   defineProps<{
     companyLabel?: string;
     showToolsSubNav?: boolean;
     showFilterBar?: boolean;
+    showMobileFilters?: boolean;
+    mobileFilterActiveCount?: number;
   }>(),
   {
     showFilterBar: true,
+    showMobileFilters: false,
+    mobileFilterActiveCount: 0,
   }
 );
+
+const emit = defineEmits<{
+  'mobile-filter-apply': [];
+  'mobile-filter-clear': [];
+}>();
 
 const { t } = useI18n();
 const {
@@ -78,9 +156,14 @@ const {
   toolsNavItems,
   activeMainSection,
   activeToolsSection,
+  activeDocumentKind,
+  documentNavItems,
   navigateMain,
 } = useInvoicingLayout();
 const { hasBankAccount, companyName: summaryCompanyName } = useInvoicingCompanySummary();
+
+const navDrawerOpen = ref(false);
+const filterDrawerOpen = ref(false);
 
 const displayCompanyLabel = computed(() => props.companyLabel || summaryCompanyName.value);
 
@@ -103,6 +186,28 @@ const visibleMainNav = computed(() => {
   return items;
 });
 
+const mainSectionLabelKey = computed(() => {
+  const item = visibleMainNav.value.find((i) => i.id === activeMainSection.value);
+  return item?.labelKey ?? 'invoicing.main_nav_documents';
+});
+
+const mobileTitle = computed(() => t(mainSectionLabelKey.value));
+
+const mobileSubtitle = computed(() => {
+  if (activeMainSection.value === 'documents') {
+    const doc = documentNavItems.value.find((d) => d.kind === activeDocumentKind.value);
+    return doc ? t(doc.labelKey) : '';
+  }
+  if (activeMainSection.value === 'tools') {
+    const tool = toolsNavItems.value.find((tItem) => tItem.section === activeToolsSection.value);
+    return tool ? t(tool.labelKey) : '';
+  }
+  if (displayCompanyLabel.value) {
+    return displayCompanyLabel.value;
+  }
+  return '';
+});
+
 const displayToolsSubNav = computed(() => {
   if (props.showToolsSubNav === false) return false;
   if (props.showToolsSubNav === true) return true;
@@ -118,4 +223,11 @@ function toolsLinkTo(tool: InvoicingToolsNavItem) {
   }
   return { name: tool.routeName, params: { companyId: companyId.value } };
 }
+
+function onFilterApply() {
+  filterDrawerOpen.value = false;
+  emit('mobile-filter-apply');
+}
+
+defineExpose({ openFilterDrawer: () => { filterDrawerOpen.value = true; } });
 </script>

@@ -1,7 +1,13 @@
 <template>
   <InvoicingPageShell content-class="pb-8">
     <template #header>
-      <InvoicingAppHeader :company-label="companyName">
+      <InvoicingAppHeader
+        :company-label="companyName"
+        show-mobile-filters
+        :mobile-filter-active-count="mobileFilterActiveCount"
+        @mobile-filter-apply="load"
+        @mobile-filter-clear="onMobileFilterClear"
+      >
         <template #filters>
           <input
             v-model="searchQuery"
@@ -30,13 +36,39 @@
             + {{ t('invoicing.stock_new_item') }}
           </RouterLink>
         </template>
+        <template #mobile-filters>
+          <input
+            v-model="searchQuery"
+            type="search"
+            class="invoicing-sf-input w-full"
+            :placeholder="t('invoicing.stock_search')"
+            @input="onSearchInput"
+          />
+          <select v-model="warehouseFilter" class="invoicing-sf-input w-full" @change="onWarehouseFilterChange">
+            <option value="">{{ t('invoicing.warehouse_filter_all') }}</option>
+            <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
+          </select>
+        </template>
+        <template #mobile-actions>
+          <RouterLink :to="warehouseListTo()" class="invoicing-btn-secondary w-full text-center">
+            {{ t('invoicing.warehouses_title') }}
+          </RouterLink>
+          <RouterLink :to="stockNewTo()" class="invoicing-btn-primary w-full text-center">
+            + {{ t('invoicing.stock_new_item') }}
+          </RouterLink>
+        </template>
+        <template #mobile-primary-action>
+          <RouterLink :to="stockNewTo()" class="invoicing-mobile-icon-btn" :title="t('invoicing.mobile_new_stock')">
+            <InvoicingIcons name="plus" />
+          </RouterLink>
+        </template>
       </InvoicingAppHeader>
     </template>
 
     <p v-if="success" class="text-sm text-green-700 mb-4">{{ success }}</p>
     <p v-if="error" class="text-sm text-red-600 mb-4">{{ error }}</p>
 
-    <div v-if="selectionCount > 0" class="invoicing-bulk-bar">
+    <div v-if="selectionCount > 0" class="invoicing-bulk-bar hidden md:flex">
       <span class="text-sm text-indigo-800 font-medium">
         {{ t('invoicing.bulk_selected', { count: selectionCount }) }}
       </span>
@@ -48,6 +80,16 @@
       </button>
     </div>
 
+    <InvoicingMobileBulkBar
+      :open="selectionCount > 0"
+      :selection-count="selectionCount"
+      @clear="clearSelection"
+    >
+      <button type="button" class="invoicing-btn-secondary text-sm shrink-0 text-red-600" @click="bulkDelete">
+        {{ t('invoicing.stock_bulk_delete') }}
+      </button>
+    </InvoicingMobileBulkBar>
+
     <div v-if="loading" class="invoicing-muted py-8">{{ t('common.loading') }}</div>
 
     <div v-else-if="items.length === 0" class="invoicing-card-pad text-center text-gray-600">
@@ -56,7 +98,7 @@
 
     <div v-else class="space-y-4">
       <div class="invoicing-card overflow-hidden">
-        <div class="overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
           <table class="w-full min-w-[900px] text-sm">
             <thead class="bg-gray-50 border-b border-gray-200 text-gray-600 text-xs uppercase tracking-wide">
               <tr>
@@ -121,6 +163,24 @@
             </tbody>
           </table>
         </div>
+
+        <div class="md:hidden divide-y divide-gray-100">
+          <InvoicingMobileCard
+            v-for="item in items"
+            :key="item.id"
+            selectable
+            :selected="selectedIds.has(item.id)"
+            @open="$router.push(stockEditTo(item.id))"
+            @toggle-select="toggleRow(item.id)"
+          >
+            <p class="font-semibold text-gray-900 truncate">{{ item.name }}</p>
+            <p v-if="item.sku" class="text-xs text-gray-500">{{ item.sku }}</p>
+            <div class="flex justify-between mt-1 text-sm">
+              <span class="text-gray-600">{{ formatStockPrice(item.sale_unit_price, summaryCurrency) }}</span>
+              <span v-if="item.track_inventory">{{ formatStockQuantity(item.quantity_on_hand, item.unit) }}</span>
+            </div>
+          </InvoicingMobileCard>
+        </div>
       </div>
 
       <div
@@ -161,6 +221,9 @@ import { useRoute } from 'vue-router';
 import StockImportModal from '../../components/invoicing/StockImportModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
+import InvoicingMobileBulkBar from '../../components/invoicing/InvoicingMobileBulkBar.vue';
+import InvoicingMobileCard from '../../components/invoicing/InvoicingMobileCard.vue';
+import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
 import {
   formatStockPrice,
   formatStockQuantity,
@@ -193,6 +256,21 @@ let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 const summaryCurrency = computed(() => summary.value?.summary_currency ?? 'EUR');
 const selectionCount = computed(() => selectedIds.value.size);
+
+const mobileFilterActiveCount = computed(() => {
+  let count = 0;
+  if (searchQuery.value.trim()) count++;
+  if (warehouseFilter.value) count++;
+  return count;
+});
+
+function onMobileFilterClear() {
+  searchQuery.value = '';
+  warehouseFilter.value = '';
+  clearSelection();
+  load();
+}
+
 const allSelected = computed(() => items.value.length > 0 && selectedIds.value.size === items.value.length);
 
 function onSearchInput() {

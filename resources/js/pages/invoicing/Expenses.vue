@@ -1,11 +1,56 @@
 <template>
   <InvoicingPageShell content-class="pb-8">
     <template #header>
-      <InvoicingAppHeader :company-label="companyName" :show-filter-bar="false" />
+      <InvoicingAppHeader
+        :company-label="companyName"
+        :show-filter-bar="false"
+        show-mobile-filters
+        :mobile-filter-active-count="mobileFilterActiveCount"
+        @mobile-filter-apply="load"
+        @mobile-filter-clear="onMobileFilterClear"
+      >
+        <template #mobile-filters>
+          <div class="invoicing-mobile-filter-stack">
+            <button
+              v-for="f in statusFilters"
+              :key="f.id"
+              type="button"
+              class="invoicing-filter"
+              :class="activeFilter === f.id ? 'invoicing-filter--active' : 'invoicing-filter--idle'"
+              @click="setFilter(f.id)"
+            >
+              {{ t(f.labelKey) }}
+            </button>
+            <select
+              v-model="year"
+              class="invoicing-sf-input w-full"
+              @change="load"
+            >
+              <option v-for="y in yearOptions" :key="y" :value="y">{{ yearLabel(y) }}</option>
+            </select>
+          </div>
+        </template>
+        <template #mobile-actions>
+          <button type="button" class="invoicing-btn-secondary w-full" @click="openImport('excel')">
+            {{ t('invoicing.expense_import_action') }}
+          </button>
+          <button type="button" class="invoicing-btn-secondary w-full" @click="openImport('pdf')">
+            {{ t('invoicing.expense_attach_import_action') }}
+          </button>
+          <RouterLink :to="expenseNewTo()" class="invoicing-btn-primary w-full text-center">
+            + {{ t('invoicing.expenses_new') }}
+          </RouterLink>
+        </template>
+        <template #mobile-primary-action>
+          <RouterLink :to="expenseNewTo()" class="invoicing-mobile-icon-btn" :title="t('invoicing.mobile_new_expense')">
+            <InvoicingIcons name="plus" />
+          </RouterLink>
+        </template>
+      </InvoicingAppHeader>
     </template>
 
     <template #subheader>
-      <div class="invoicing-filter-bar bg-white border-b border-gray-200">
+      <div class="invoicing-filter-bar bg-white border-b border-gray-200 hidden md:block">
         <div :class="[INVOICING_CONTAINER_CLASS, 'flex flex-wrap items-center gap-2 py-3']">
           <div class="flex flex-wrap items-center gap-2 flex-1 min-w-0">
             <button
@@ -58,6 +103,19 @@
 
     <p v-if="success" class="text-sm text-green-700 mb-4">{{ success }}</p>
     <p v-if="error" class="text-sm text-red-700 mb-4">{{ error }}</p>
+
+    <InvoicingMobileBulkBar
+      :open="selectionCount > 0"
+      :selection-count="selectionCount"
+      @clear="clearSelection"
+    >
+      <button type="button" class="invoicing-btn-secondary text-sm shrink-0" @click="runBulk('mark_paid')">
+        {{ t('invoicing.expense_bulk_mark_paid') }}
+      </button>
+      <button type="button" class="invoicing-btn-secondary text-sm shrink-0" @click="runBulk('export_xlsx')">
+        XLSX
+      </button>
+    </InvoicingMobileBulkBar>
 
     <div v-if="loading" class="invoicing-muted py-8">{{ t('common.loading') }}</div>
 
@@ -129,6 +187,8 @@ import ExpenseImportModal from '../../components/invoicing/ExpenseImportModal.vu
 import ExpensesTable from '../../components/invoicing/ExpensesTable.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
+import InvoicingMobileBulkBar from '../../components/invoicing/InvoicingMobileBulkBar.vue';
+import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
 import { expenseOverdueDays, type ExpenseListRow } from '../../composables/useExpenseRowMeta';
 import { INVOICING_CONTAINER_CLASS, useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import api from '../../services/api';
@@ -170,6 +230,21 @@ const yearOptions = computed(() => {
 });
 
 const selectionCount = computed(() => (selectAllMode.value ? totalCount.value : selectedIds.value.size));
+
+const mobileFilterActiveCount = computed(() => {
+  let count = 0;
+  if (activeFilter.value !== 'all') count++;
+  if (year.value !== new Date().getFullYear()) count++;
+  return count;
+});
+
+function onMobileFilterClear() {
+  activeFilter.value = 'all';
+  year.value = new Date().getFullYear();
+  page.value = 1;
+  clearSelection();
+  load();
+}
 
 const fileActions = new Set(['export_xlsx', 'attachments_zip']);
 

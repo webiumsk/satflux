@@ -162,7 +162,7 @@
       </section>
 
       <section>
-        <div class="overflow-x-auto rounded border border-gray-200">
+        <div class="hidden md:block overflow-x-auto rounded border border-gray-200">
           <table class="w-full text-sm">
             <thead class="bg-gray-100 text-gray-600 text-xs uppercase">
               <tr>
@@ -241,6 +241,28 @@
               </tr>
             </tbody>
           </table>
+        </div>
+        <div class="md:hidden space-y-3">
+          <div v-for="(line, idx) in form.lines" :key="`mobile-line-${idx}`" class="invoicing-line-item-card">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-semibold text-gray-500 uppercase">{{ t('invoicing.col_item') }} {{ idx + 1 }}</span>
+              <button v-if="form.lines.length > 1" type="button" class="text-red-500 text-sm" @click="form.lines.splice(idx, 1)">
+                {{ t('invoicing.action_delete') }}
+              </button>
+            </div>
+            <input v-model="line.name" class="invoicing-sf-input w-full" required />
+            <input v-model="line.description" class="invoicing-sf-input w-full" :placeholder="t('invoicing.item_description')" />
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-xs text-gray-500">{{ t('invoicing.col_qty') }}</label>
+                <input v-model.number="line.quantity" type="number" min="0.0001" step="any" class="invoicing-sf-input w-full" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-500">{{ t('invoicing.col_unit_price') }}</label>
+                <input v-model.number="line.unit_price" type="number" min="0" step="0.01" class="invoicing-sf-input w-full" />
+              </div>
+            </div>
+          </div>
         </div>
         <button type="button" class="mt-2 text-sm text-indigo-600 hover:underline" @click="addLine">
           {{ t('invoicing.add_line') }}
