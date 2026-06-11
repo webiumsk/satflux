@@ -39,7 +39,7 @@ class SapiSkClient
     public function accessToken(string $clientId, string $clientSecret, ?string $baseUrl = null): string
     {
         $resolvedBaseUrl = $this->resolveBaseUrl($baseUrl);
-        $cacheKey = 'efaktura.sapi_sk.token.'.sha1($clientId.'|'.$resolvedBaseUrl);
+        $cacheKey = 'efaktura.sapi_sk.token.'.hash('sha256', $clientId.'|'.$clientSecret.'|'.$resolvedBaseUrl);
 
         $cached = Cache::get($cacheKey);
         if (is_string($cached) && $cached !== '') {

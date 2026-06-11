@@ -17,6 +17,7 @@ final class BuyerSnapshot
         return [
             'name' => $contact->name,
             'registration_number' => $contact->registration_number,
+            'peppol_participant_id' => $contact->peppol_participant_id,
             'email' => $contact->email,
             'phone' => $contact->phone,
             'fax' => $contact->fax,

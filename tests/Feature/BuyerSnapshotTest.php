@@ -35,6 +35,7 @@ class BuyerSnapshotTest extends TestCase
             'name' => 'Client Ltd',
             'email' => 'client@example.com',
             'tax_id' => '12345678',
+            'peppol_participant_id' => '0245:12345678',
         ]);
         $document = BusinessDocument::create([
             'company_id' => $company->id,
@@ -50,9 +51,11 @@ class BuyerSnapshotTest extends TestCase
         $this->assertIsArray($document->buyer_snapshot);
         $this->assertSame('Client Ltd', $document->buyer_snapshot['name']);
         $this->assertSame('client@example.com', $document->buyer_snapshot['email']);
+        $this->assertSame('0245:12345678', $document->buyer_snapshot['peppol_participant_id']);
 
         $resolved = $document->resolvedBuyer();
         $this->assertSame('Client Ltd', $resolved?->name);
+        $this->assertSame('0245:12345678', $resolved?->peppol_participant_id);
     }
 
     #[Test]

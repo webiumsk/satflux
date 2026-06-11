@@ -14,6 +14,11 @@ class Company extends Model
 {
     use HasFactory, HasUuids, SoftDeletes;
 
+    protected $hidden = [
+        'app_settings',
+        'email_settings',
+    ];
+
     protected $fillable = [
         'user_id',
         'legal_name',
@@ -67,9 +72,17 @@ class Company extends Model
     public function resolvedAppSettings(): array
     {
         $settings = \App\Support\Invoicing\CompanyAppSettings::from($this->app_settings)->toArray();
+        $stripeTaxSecretSet = is_string($settings['stripe_tax_secret_key'] ?? null)
+            && trim((string) $settings['stripe_tax_secret_key']) !== '';
+
+        unset($settings['stripe_tax_secret_key']);
         unset($settings['efaktura_sapi_client_secret_encrypted']);
 
-        return array_merge($settings, \App\Support\Invoicing\CompanyEfakturaSettings::fromCompany($this)->publicPayload());
+        return array_merge(
+            $settings,
+            ['stripe_tax_secret_key_set' => $stripeTaxSecretSet],
+            \App\Support\Invoicing\CompanyEfakturaSettings::fromCompany($this)->publicPayload(),
+        );
     }
 
     /**

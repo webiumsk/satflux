@@ -50,6 +50,7 @@ class SapiSkComplianceGateway implements ComplianceSubmissionGateway
 
         $document->loadMissing(['company', 'contact']);
         $company = $document->company;
+        $buyer = $document->resolvedBuyer();
 
         if (! app(CompanyEfakturaEligibility::class)->supportsCompany($company)) {
             return false;
@@ -60,16 +61,16 @@ class SapiSkComplianceGateway implements ComplianceSubmissionGateway
             return false;
         }
 
-        if ($document->contact === null) {
+        if ($buyer === null) {
             return false;
         }
 
-        $contactCountry = trim((string) ($document->contact->country ?? ''));
+        $contactCountry = trim((string) ($buyer->country ?? ''));
         if ($contactCountry === '') {
             return false;
         }
 
-        return SkUblProfile::countryCode($document->contact) === 'SK';
+        return SkUblProfile::countryCode($buyer) === 'SK';
     }
 
     public function submit(BusinessDocument $document): \App\Support\Invoicing\ComplianceSubmissionResult
@@ -82,9 +83,10 @@ class SapiSkComplianceGateway implements ComplianceSubmissionGateway
         }
 
         $document->loadMissing(['company', 'contact', 'lines']);
+        $buyer = $document->resolvedBuyer();
         $settings = CompanyEfakturaSettings::fromCompany($document->company);
         $senderParticipantId = (string) $settings->peppolParticipantId();
-        $receiverParticipantId = PeppolParticipantId::fromContact($document->contact);
+        $receiverParticipantId = $buyer !== null ? PeppolParticipantId::fromContact($buyer) : null;
 
         if ($receiverParticipantId === null) {
             return new \App\Support\Invoicing\ComplianceSubmissionResult(
