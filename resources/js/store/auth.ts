@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import axios from 'axios';
 import api from '../services/api';
 import { ensureCsrfCookie } from '../services/csrf';
 import { useStoresStore } from './stores';
@@ -86,7 +85,7 @@ export const useAuthStore = defineStore('auth', () => {
 
         autoRestoreInFlight = true;
         try {
-            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            await ensureCsrfCookie();
             const chRes = await api.post('/auth/guest/recovery/challenge');
             const { challenge_id, nonce } = chRes.data.data;
             const message = guestRecoveryMessage(challenge_id, nonce);
@@ -109,7 +108,7 @@ export const useAuthStore = defineStore('auth', () => {
         loading.value = true;
         try {
             // Ensure CSRF cookie is set before login
-            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            await ensureCsrfCookie();
 
             const response = await api.post('/auth/login', {
                 email,
@@ -132,7 +131,7 @@ export const useAuthStore = defineStore('auth', () => {
         loading.value = true;
         try {
             // Ensure CSRF cookie is set before register
-            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            await ensureCsrfCookie();
 
             const response = await api.post('/auth/register', {
                 email,
@@ -152,7 +151,7 @@ export const useAuthStore = defineStore('auth', () => {
     async function continueAsGuest(recoveryPublicKeyHex?: string) {
         loading.value = true;
         try {
-            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            await ensureCsrfCookie();
             const response = await api.post('/auth/guest', {
                 ...(recoveryPublicKeyHex
                     ? { recovery_public_key: recoveryPublicKeyHex }
@@ -169,7 +168,7 @@ export const useAuthStore = defineStore('auth', () => {
     async function enrollGuestRecoveryPublicKey(recoveryPublicKeyHex: string) {
         loading.value = true;
         try {
-            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            await ensureCsrfCookie();
             const response = await api.post('/auth/guest', {
                 recovery_public_key: recoveryPublicKeyHex,
             });
@@ -185,7 +184,7 @@ export const useAuthStore = defineStore('auth', () => {
     async function restoreGuestFromMnemonic(mnemonic: string) {
         loading.value = true;
         try {
-            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            await ensureCsrfCookie();
             const chRes = await api.post('/auth/guest/recovery/challenge');
             const { challenge_id, nonce } = chRes.data.data;
             const message = guestRecoveryMessage(challenge_id, nonce);

@@ -19,11 +19,7 @@ class PublicSpaRoutes
     ];
 
     /** @var list<string> */
-    private const PREFIXES = [
-        'legal/',
-        'documentation/',
-        'auth/verify-email/',
-    ];
+    private const LEGAL_SLUGS = ['terms', 'privacy', 'imprint', 'dpa'];
 
     public static function isPublicMarketing(string $path): bool
     {
@@ -33,10 +29,23 @@ class PublicSpaRoutes
             return true;
         }
 
-        foreach (self::PREFIXES as $prefix) {
-            if ($path === rtrim($prefix, '/') || str_starts_with($path, $prefix)) {
-                return true;
-            }
+        if (preg_match('#^legal/([^/]+)$#', $path, $m) && in_array($m[1], self::LEGAL_SLUGS, true)) {
+            return true;
+        }
+
+        if ($path === 'documentation' || preg_match('#^documentation/[^/]+$#', $path)) {
+            return true;
+        }
+
+        $parts = explode('/', $path);
+        if (
+            count($parts) === 4
+            && $parts[0] === 'auth'
+            && $parts[1] === 'verify-email'
+            && $parts[2] !== ''
+            && $parts[3] !== ''
+        ) {
+            return true;
         }
 
         return false;

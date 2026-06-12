@@ -14,8 +14,11 @@ class PublicSpaPerformanceSupportTest extends TestCase
         $this->assertTrue(PublicSpaRoutes::isPublicMarketing('pricing'));
         $this->assertTrue(PublicSpaRoutes::isPublicMarketing('legal/privacy'));
         $this->assertTrue(PublicSpaRoutes::isPublicMarketing('documentation/getting-started'));
+        $this->assertTrue(PublicSpaRoutes::isPublicMarketing('auth/verify-email/1/abc123'));
         $this->assertFalse(PublicSpaRoutes::isPublicMarketing('dashboard'));
         $this->assertFalse(PublicSpaRoutes::isPublicMarketing('stores/abc'));
+        $this->assertFalse(PublicSpaRoutes::isPublicMarketing('legal/foo'));
+        $this->assertFalse(PublicSpaRoutes::isPublicMarketing('auth/verify-email/1/abc/extra'));
     }
 
     public function test_landing_home_detection(): void

@@ -13,10 +13,30 @@ const EXACT = new Set([
     'billing/success',
 ]);
 
-const PREFIXES = ['legal/', 'documentation/', 'auth/verify-email/'];
+const LEGAL_SLUGS = new Set(['terms', 'privacy', 'imprint', 'dpa']);
 
 export function normalizePath(path: string): string {
     return path.replace(/^\/+|\/+$/g, '');
+}
+
+function matchesLegal(normalized: string): boolean {
+    const match = normalized.match(/^legal\/([^/]+)$/);
+    return match !== null && LEGAL_SLUGS.has(match[1]);
+}
+
+function matchesDocumentation(normalized: string): boolean {
+    return normalized === 'documentation' || /^documentation\/[^/]+$/.test(normalized);
+}
+
+function matchesVerifyEmail(normalized: string): boolean {
+    const parts = normalized.split('/');
+    return (
+        parts.length === 4
+        && parts[0] === 'auth'
+        && parts[1] === 'verify-email'
+        && parts[2] !== ''
+        && parts[3] !== ''
+    );
 }
 
 export function isPublicMarketingPath(path: string): boolean {
@@ -24,12 +44,13 @@ export function isPublicMarketingPath(path: string): boolean {
     if (EXACT.has(normalized)) {
         return true;
     }
-    return PREFIXES.some(
-        (prefix) => normalized === prefix.replace(/\/$/, '') || normalized.startsWith(prefix),
-    );
+    return matchesLegal(normalized)
+        || matchesDocumentation(normalized)
+        || matchesVerifyEmail(normalized);
 }
 
 /** Full page load into the authenticated app bundle. */
 export function navigateToAppPath(path: string): void {
-    window.location.assign(path.startsWith('/') ? path : `/${path}`);
+    const normalized = `/${normalizePath(path)}`;
+    window.location.assign(normalized);
 }

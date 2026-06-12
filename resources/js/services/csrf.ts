@@ -15,4 +15,6 @@ export function ensureCsrfCookie(): Promise<boolean> {
 }
 
 /** @deprecated Use ensureCsrfCookie() */
-export const csrfReady = ensureCsrfCookie();
+export function csrfReady(): Promise<boolean> {
+    return ensureCsrfCookie();
+}

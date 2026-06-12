@@ -86,12 +86,12 @@ Route::get('/reset-password/{token}', function (Request $request, string $token)
 
 // Named route for authentication redirects (used by Laravel auth middleware)
 Route::get('/login', function () {
-    return view('app');
+    return view('public');
 })->name('login');
 
 // Verification route for Vue router (redirects to SPA, component handles API call)
 Route::get('/auth/verify-email/{id}/{hash}', function () {
-    return view('app');
+    return view('public');
 })->where(['id' => '[0-9]+', 'hash' => '[a-f0-9]+']);
 
 // WooCommerce plugin - Connect flow

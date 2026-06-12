@@ -44,5 +44,7 @@
         </a>
       </div>
     </div>
-  </section>
+    </section>
+  {{-- Scroll target for hero_cta_how (#how-it-works) before Vue hydration --}}
+  <div id="how-it-works" hidden aria-hidden="true"></div>
 </div>
