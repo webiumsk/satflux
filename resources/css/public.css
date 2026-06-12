@@ -1,8 +1,8 @@
-@config "../../tailwind.public.config.js";
-
 @import '@fontsource/outfit/400.css';
 @import '@fontsource/outfit/600.css';
 @import '@fontsource/outfit/700.css';
+
+@config "../../tailwind.public.config.js";
 
 @tailwind base;
 @tailwind components;
