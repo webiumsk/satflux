@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" style="background-color:#111827;color:#fff">
 
 <head>
     @include('partials.spa-head')
@@ -11,7 +11,7 @@
     @endphp
 </head>
 
-<body class="font-sans antialiased">
+<body class="font-sans antialiased bg-gray-900 text-white">
     @if(!empty($showLandingShell))
         @include('partials.landing-hero-shell')
     @endif

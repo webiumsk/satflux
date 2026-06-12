@@ -6,7 +6,7 @@ declare global {
     }
 }
 
-let matomoLoaded = false;
+let analyticsLoaded = false;
 
 function getMatomoConfig(): { url: string; siteId: string } | null {
     const url = document.querySelector('meta[name="satflux-matomo-url"]')?.getAttribute('content')?.trim();
@@ -17,9 +17,9 @@ function getMatomoConfig(): { url: string; siteId: string } | null {
     return { url, siteId };
 }
 
-/** Load Matomo only after analytics cookie consent. */
-export function loadMatomoIfConsented(): void {
-    if (matomoLoaded || getCookieConsent() !== 'all') {
+/** Load Matomo only after analytics cookie consent (dynamic import - not on critical path). */
+export function loadAnalyticsIfConsented(): void {
+    if (analyticsLoaded || getCookieConsent() !== 'all') {
         return;
     }
 
@@ -28,7 +28,7 @@ export function loadMatomoIfConsented(): void {
         return;
     }
 
-    matomoLoaded = true;
+    analyticsLoaded = true;
     const trackerBase = config.url.replace(/\/$/, '') + '/';
     const _paq = (window._paq = window._paq || []);
     _paq.push(['setTrackerUrl', trackerBase + 'matomo.php']);
@@ -44,5 +44,5 @@ export function loadMatomoIfConsented(): void {
 
 /** Called when user accepts all cookies in the banner. */
 export function onAnalyticsConsentGranted(): void {
-    loadMatomoIfConsented();
+    loadAnalyticsIfConsented();
 }

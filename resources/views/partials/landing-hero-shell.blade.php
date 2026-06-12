@@ -1,5 +1,10 @@
 {{-- Static LCP shell: removed by Vue after mount. Copy from locale JSON via LandingCopy. --}}
 <style>
+  html,
+  body {
+    background-color: #111827;
+    color: #fff;
+  }
   #landing-shell {
     font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;

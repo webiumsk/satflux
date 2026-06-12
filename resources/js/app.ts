@@ -12,7 +12,6 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import router from './router';
 import i18n, { initLocaleFromBackend, preloadActiveLocale } from './i18n';
 import App from './App.vue';
-import { loadMatomoIfConsented } from './services/matomo';
 
 const el = document.getElementById('app');
 const isInertia = el?.hasAttribute('data-page');
@@ -53,7 +52,7 @@ if (isInertia) {
     mountSpa();
 }
 
-loadMatomoIfConsented();
+void import('./services/analytics').then(({ loadAnalyticsIfConsented }) => loadAnalyticsIfConsented());
 void initLocaleFromBackend();
 
 

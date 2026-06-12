@@ -3289,9 +3289,6 @@ const posDemoUrl = computed(() => {
 
 // Ensure user, pricing and plan features are fetched after first paint
 onMounted(() => {
-  document.getElementById('landing-shell')?.remove();
-  document.getElementById('app')?.classList.remove('sf-app-pending');
-
   const loadDeferred = () => {
     void Promise.all([loadPricing(), loadPlanFeatures(), loadBtcpayConfig()]);
     void authStore.fetchUser();
