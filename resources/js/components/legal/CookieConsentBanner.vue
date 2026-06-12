@@ -55,6 +55,7 @@ onMounted(() => {
 function accept() {
   setCookieConsent('all');
   visible.value = false;
+  void import('../../services/matomo').then(({ onAnalyticsConsentGranted }) => onAnalyticsConsentGranted());
 }
 
 function acceptEssentialOnly() {

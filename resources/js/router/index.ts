@@ -675,21 +675,26 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore();
 
-    // Fetch user info for all pages (except login/register/password-reset) to determine auth state
-    // This is needed for landing page to show correct buttons
+    if (to.meta.public) {
+        if (
+            !authStore.user
+            && to.name !== 'login'
+            && to.name !== 'register'
+            && to.name !== 'password-reset'
+        ) {
+            void authStore.fetchUser();
+        }
+        next();
+        return;
+    }
+
+    // Fetch user info for protected pages to determine auth state
     if (!authStore.user && to.name !== 'login' && to.name !== 'register' && to.name !== 'password-reset') {
         try {
             await authStore.fetchUser();
         } catch (error) {
             // If fetch fails (401), user is null which is correct
-            // This allows public pages to work correctly
         }
-    }
-
-    // Skip auth check for public pages
-    if (to.meta.public) {
-        next();
-        return;
     }
 
     // Hard gate: guests cannot use the app until wallet setup is complete (Lightning connected or Cashu mint+LN address).

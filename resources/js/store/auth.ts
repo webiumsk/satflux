@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import axios from 'axios';
 import api from '../services/api';
+import { ensureCsrfCookie } from '../services/csrf';
 import { useStoresStore } from './stores';
 import {
     clearStoredGuestMnemonic,
@@ -62,9 +63,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     async function fetchUser() {
         try {
-            // Ensure session/CSRF cookie is set first (same-origin request).
-            // Required after full page reload so the session cookie is sent on /api/user.
-            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            await ensureCsrfCookie();
             const response = await api.get('/user');
             user.value = response.data;
             if (!user.value?.is_guest) {

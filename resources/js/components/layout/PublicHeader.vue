@@ -11,7 +11,7 @@
             <div
               class="w-8 h-8 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-1"
             >
-              <img src="/img/logo-satflux-white.svg" alt="SATFLUX" class="w-full h-full object-contain" />
+              <img src="/img/logo-satflux-white.svg" alt="" width="32" height="32" class="w-full h-full object-contain" aria-hidden="true" />
             </div>
             <span class="text-xl font-bold text-white tracking-tight"
               >SATFLUX</span
@@ -87,13 +87,13 @@
             >
               {{ t("header.support") }}
             </router-link>
-            <router-link
+            <a
               v-if="authStore.isAuthenticated"
-              to="/stores"
+              href="/stores"
               class="inline-flex items-center px-3.5 py-2 rounded-lg text-sm font-semibold text-indigo-100 bg-indigo-600/25 border border-indigo-500/45 hover:bg-indigo-600/40 hover:text-white hover:border-indigo-400/60 transition-all shadow-sm shadow-indigo-950/40"
             >
               {{ t("header.my_stores") }}
-            </router-link>
+            </a>
           </nav>
         </div>
 
@@ -103,7 +103,7 @@
             <div
               class="w-7 h-7 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-1"
             >
-              <img src="/img/logo-satflux-white.svg" alt="SATFLUX" class="w-full h-full object-contain" />
+              <img src="/img/logo-satflux-white.svg" alt="" width="32" height="32" class="w-full h-full object-contain" aria-hidden="true" />
             </div>
             <span class="text-lg font-bold text-white tracking-tight"
               >SATFLUX</span
@@ -135,8 +135,8 @@
               </router-link>
             </template>
             <template v-else>
-              <router-link
-                to="/dashboard"
+              <a
+                href="/dashboard"
                 class="flex items-center space-x-3 p-1.5 pl-3 rounded-full hover:bg-gray-800 border border-transparent hover:border-gray-700 transition-all group"
               >
                 <span class="text-sm font-medium text-gray-400 group-hover:text-white transition-colors">{{ userName }}</span>
@@ -145,7 +145,7 @@
                 >
                   {{ userInitials }}
                 </div>
-              </router-link>
+              </a>
             </template>
           </div>
 
@@ -315,14 +315,14 @@
           >
             {{ t("header.support") }}
           </router-link>
-          <router-link
+          <a
             v-if="authStore.isAuthenticated"
-            to="/stores"
+            href="/stores"
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-xl text-base font-semibold text-indigo-100 bg-indigo-600/25 border border-indigo-500/45 hover:bg-indigo-600/40 hover:text-white transition-colors shadow-sm shadow-indigo-950/40"
           >
             {{ t("header.my_stores") }}
-          </router-link>
+          </a>
 
           <!-- Auth Links (Logged Out) -->
           <div v-if="!authStore.isAuthenticated" class="pt-4 flex flex-col gap-3">
@@ -345,8 +345,8 @@
           <!-- Logged In Links -->
           <template v-else>
             <div class="border-t border-gray-800 my-4"></div>
-            <router-link
-              to="/dashboard"
+            <a
+              href="/dashboard"
               @click="closeMobileMenu"
               class="flex items-center px-4 py-3 rounded-xl text-base font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
             >
@@ -356,7 +356,7 @@
                 {{ userInitials }}
               </div>
               {{ t("header.dashboard") }}
-            </router-link>
+            </a>
           </template>
         </nav>
       </div>

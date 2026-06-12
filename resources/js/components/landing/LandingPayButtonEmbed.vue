@@ -14,6 +14,7 @@
         value="AZi7YMtvvWrcc4uWbzD9V5f9niQ4Q6ehzAXsBvPEncVa"
       />
       <div class="btcpay-custom-container">
+        <label class="sr-only" for="landing-pay-price">{{ t('landing.pay_button_amount_label') }}</label>
         <div class="btcpay-custom">
           <button
             class="plus-minus"
@@ -22,10 +23,12 @@
             data-step="1"
             data-min="1"
             data-max="20000"
+            :aria-label="t('landing.pay_button_decrease')"
           >
             -
           </button>
           <input
+            id="landing-pay-price"
             class="btcpay-input-price"
             type="number"
             name="price"
@@ -43,11 +46,13 @@
             data-step="1"
             data-min="1"
             data-max="20000"
+            :aria-label="t('landing.pay_button_increase')"
           >
             +
           </button>
         </div>
-        <select name="currency">
+        <label class="sr-only" for="landing-pay-currency">{{ t('landing.pay_button_currency_label') }}</label>
+        <select id="landing-pay-currency" name="currency">
           <option value="USD">USD</option>
           <option value="GBP">GBP</option>
           <option value="EUR" selected>EUR</option>
@@ -73,7 +78,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
+
+const { t } = useI18n();
 
 const FALLBACK_BTCPAY_BASE = "https://satflux.org";
 

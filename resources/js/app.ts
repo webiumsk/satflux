@@ -1,4 +1,7 @@
 import './bootstrap';
+import '@fontsource/outfit/400.css';
+import '@fontsource/outfit/600.css';
+import '@fontsource/outfit/700.css';
 import '../css/app.css';
 import './styles/invoicing-theme.css';
 
@@ -7,8 +10,9 @@ import { createPinia } from 'pinia';
 import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import router from './router';
-import i18n, { initLocaleFromBackend } from './i18n';
+import i18n, { initLocaleFromBackend, preloadActiveLocale } from './i18n';
 import App from './App.vue';
+import { loadMatomoIfConsented } from './services/matomo';
 
 const el = document.getElementById('app');
 const isInertia = el?.hasAttribute('data-page');
@@ -40,14 +44,17 @@ function mountInertia(): void {
     });
 }
 
-// Initialize locale from backend before mounting app
-initLocaleFromBackend().then(() => {
-    if (isInertia) {
-        mountInertia();
-    } else {
-        mountSpa();
-    }
-});
+// Initialize locale from backend without blocking first paint
+preloadActiveLocale();
+
+if (isInertia) {
+    mountInertia();
+} else {
+    mountSpa();
+}
+
+loadMatomoIfConsented();
+void initLocaleFromBackend();
 
 
 

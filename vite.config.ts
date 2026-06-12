@@ -6,19 +6,30 @@ export default defineConfig({
     build: {
         outDir: 'public/build',
         emptyOutDir: true,
-        // Keep production minification enabled by default; allow debug opt-out via env.
         minify: process.env.VITE_DISABLE_MINIFY === 'true' ? false : 'esbuild',
         sourcemap: false,
         target: 'es2020',
         cssCodeSplit: true,
         rollupOptions: {
             output: {
-                // Use simpler chunk names for better compatibility
                 chunkFileNames: 'assets/[name]-[hash].js',
                 entryFileNames: 'assets/[name]-[hash].js',
                 assetFileNames: 'assets/[name]-[hash].[ext]',
-                // Ensure proper encoding
                 format: 'es',
+                manualChunks(id) {
+                    if (id.includes('node_modules/vue/') || id.includes('node_modules/@vue/')) {
+                        return 'vue';
+                    }
+                    if (id.includes('node_modules/vue-router')) {
+                        return 'vue-router';
+                    }
+                    if (id.includes('node_modules/vue-i18n') || id.includes('node_modules/@intlify')) {
+                        return 'vue-i18n';
+                    }
+                    if (id.includes('node_modules/pinia')) {
+                        return 'pinia';
+                    }
+                },
             },
         },
     },
@@ -26,7 +37,9 @@ export default defineConfig({
         laravel({
             input: [
                 'resources/css/app.css',
+                'resources/css/public.css',
                 'resources/js/app.ts',
+                'resources/js/public.ts',
             ],
             refresh: true,
         }),
@@ -45,11 +58,3 @@ export default defineConfig({
         },
     },
 });
-
-
-
-
-
-
-
-

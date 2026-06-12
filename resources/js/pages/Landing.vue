@@ -16,13 +16,13 @@
       />
       <div class="absolute inset-0 bg-gray-900">
         <div
-          class="absolute top-0 -left-4 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"
+          class="absolute top-0 -left-4 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply opacity-20"
         ></div>
         <div
-          class="absolute top-0 -right-4 w-80 h-80 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-[0.18] animate-blob [animation-delay:2.5s]"
+          class="absolute top-0 -right-4 w-80 h-80 bg-indigo-500 rounded-full mix-blend-multiply opacity-[0.18]"
         ></div>
         <div
-          class="absolute -bottom-8 left-1/4 w-72 h-72 bg-orange-500 rounded-full mix-blend-multiply filter blur-3xl opacity-[0.12] animate-blob [animation-delay:5s]"
+          class="absolute -bottom-8 left-1/4 w-72 h-72 bg-orange-500 rounded-full mix-blend-multiply opacity-[0.12]"
         ></div>
       </div>
 
@@ -83,14 +83,14 @@
                 class="flex flex-wrap items-center justify-between gap-3 mb-4"
               >
                 <span
-                  class="text-[10px] uppercase tracking-widest text-gray-500 font-semibold"
+                  class="text-[10px] uppercase tracking-widest text-gray-400 font-semibold"
                 >
                   {{ t("landing.hero_carousel_hint") }}
                 </span>
                 <div class="flex items-center gap-1">
                   <button
                     type="button"
-                    class="rounded-lg border border-gray-700 p-2 text-gray-400 hover:border-indigo-500/40 hover:text-white hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                    class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-gray-700 p-2 text-gray-400 hover:border-indigo-500/40 hover:text-white hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                     :aria-label="t('landing.hero_carousel_prev')"
                     @click="heroSlidePrev"
                   >
@@ -111,7 +111,7 @@
                   </button>
                   <button
                     type="button"
-                    class="rounded-lg border border-gray-700 p-2 text-gray-400 hover:border-indigo-500/40 hover:text-white hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                    class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-gray-700 p-2 text-gray-400 hover:border-indigo-500/40 hover:text-white hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                     :aria-label="t('landing.hero_carousel_next')"
                     @click="heroSlideNext"
                   >
@@ -3287,13 +3287,20 @@ const posDemoUrl = computed(() => {
   return b ? `${b}/` : "";
 });
 
-// Ensure user, pricing and plan features are fetched on mount; anchor smooth-scroll
-onMounted(async () => {
-  await Promise.all([loadPricing(), loadPlanFeatures(), loadBtcpayConfig()]);
-  try {
-    await authStore.fetchUser();
-  } catch {
-    // User not authenticated, which is fine
+// Ensure user, pricing and plan features are fetched after first paint
+onMounted(() => {
+  document.getElementById('landing-shell')?.remove();
+  document.getElementById('app')?.classList.remove('sf-app-pending');
+
+  const loadDeferred = () => {
+    void Promise.all([loadPricing(), loadPlanFeatures(), loadBtcpayConfig()]);
+    void authStore.fetchUser();
+  };
+
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(loadDeferred);
+  } else {
+    setTimeout(loadDeferred, 0);
   }
 
   if (window.location.hash) {

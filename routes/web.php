@@ -11,6 +11,7 @@ use App\Http\Middleware\EnsureCompanyOwnership;
 use App\Http\Middleware\EnsurePlanAllowsBusinessInvoicing;
 use App\Http\Middleware\EnsureStoreOwnership;
 use App\Http\Middleware\RequireVerifiedEmail;
+use App\Support\PublicSpaRoutes;
 use Illuminate\Filesystem\ServeFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -133,6 +134,13 @@ Route::get('/{any}', function (Request $request) {
         $location = rtrim(config('app.url', $request->getSchemeAndHttpHost()), '/').'/'.ltrim($request->getRequestUri(), '/');
 
         return response('', 409)->header('X-Inertia-Location', $location);
+    }
+
+    $path = $request->path();
+    if (PublicSpaRoutes::isPublicMarketing($path)) {
+        return view('public', [
+            'showLandingShell' => PublicSpaRoutes::isLandingHome($path),
+        ]);
     }
 
     return view('app');
