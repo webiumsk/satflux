@@ -24,12 +24,19 @@ function mountPublicSpa(): void {
     app.mount('#app');
 
     void router.isReady().then(() => {
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                revealApp();
-                scheduleAnalyticsLoad();
-            });
-        });
+        const hasLandingShell = document.getElementById('landing-shell') !== null;
+        const onLanding = router.currentRoute.value.name === 'landing';
+
+        // Landing keeps the static shell until Landing.vue has painted (avoids white flash).
+        if (!hasLandingShell || !onLanding) {
+            requestAnimationFrame(() => revealApp());
+        }
+
+        if ('requestIdleCallback' in window) {
+            requestIdleCallback(() => scheduleAnalyticsLoad());
+        } else {
+            setTimeout(scheduleAnalyticsLoad, 2000);
+        }
     });
 }
 

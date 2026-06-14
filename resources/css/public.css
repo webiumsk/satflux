@@ -23,3 +23,7 @@ a {
     height: 0;
     overflow: hidden;
 }
+
+#app {
+    background-color: #111827;
+}

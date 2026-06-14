@@ -3177,7 +3177,7 @@ import {
 } from "../composables/usePricing";
 import { usePlanFeatures } from "../composables/usePlanFeatures";
 import { useCurrentPlan } from "../composables/useCurrentPlan";
-import { onMounted, ref, computed } from "vue";
+import { onMounted, ref, computed, nextTick } from "vue";
 import { useI18n } from "vue-i18n";
 import PublicHeader from "../components/layout/PublicHeader.vue";
 import AppFooter from "../components/layout/AppFooter.vue";
@@ -3289,6 +3289,13 @@ const posDemoUrl = computed(() => {
 
 // Ensure user, pricing and plan features are fetched after first paint
 onMounted(() => {
+  void nextTick().then(() => {
+    requestAnimationFrame(() => {
+      document.getElementById('landing-shell')?.remove();
+      document.getElementById('app')?.classList.remove('sf-app-pending');
+    });
+  });
+
   const loadDeferred = () => {
     void Promise.all([loadPricing(), loadPlanFeatures(), loadBtcpayConfig()]);
     void authStore.fetchUser();
