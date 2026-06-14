@@ -3177,7 +3177,7 @@ import {
 } from "../composables/usePricing";
 import { usePlanFeatures } from "../composables/usePlanFeatures";
 import { useCurrentPlan } from "../composables/useCurrentPlan";
-import { onMounted, ref, computed, nextTick } from "vue";
+import { onMounted, onBeforeUnmount, ref, computed, nextTick } from "vue";
 import { useI18n } from "vue-i18n";
 import PublicHeader from "../components/layout/PublicHeader.vue";
 import AppFooter from "../components/layout/AppFooter.vue";
@@ -3287,6 +3287,20 @@ const posDemoUrl = computed(() => {
   return b ? `${b}/` : "";
 });
 
+function handleHashAnchorClick(e: Event) {
+  const targetAnchor = e.currentTarget as HTMLAnchorElement;
+  const href = targetAnchor.getAttribute("href");
+  if (href && href !== "#") {
+    e.preventDefault();
+    const target = document.querySelector(href);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+}
+
+let hashAnchorElements: HTMLAnchorElement[] = [];
+
 // Ensure user, pricing and plan features are fetched after first paint
 onMounted(() => {
   void nextTick().then(() => {
@@ -3316,20 +3330,17 @@ onMounted(() => {
     }, 100);
   }
 
-  const anchors = document.querySelectorAll('a[href^="#"]');
-  anchors.forEach((anchor) => {
-    anchor.addEventListener("click", function (e) {
-      const targetAnchor = e.currentTarget as HTMLAnchorElement;
-      const href = targetAnchor.getAttribute("href");
-      if (href && href !== "#") {
-        e.preventDefault();
-        const target = document.querySelector(href);
-        if (target) {
-          target.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      }
-    });
+  hashAnchorElements = [...document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]')];
+  hashAnchorElements.forEach((anchor) => {
+    anchor.addEventListener("click", handleHashAnchorClick);
   });
+});
+
+onBeforeUnmount(() => {
+  hashAnchorElements.forEach((anchor) => {
+    anchor.removeEventListener("click", handleHashAnchorClick);
+  });
+  hashAnchorElements = [];
 });
 
 async function handleUpgrade(plan: string) {
