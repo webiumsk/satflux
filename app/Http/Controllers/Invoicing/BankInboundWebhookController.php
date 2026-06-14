@@ -59,7 +59,11 @@ class BankInboundWebhookController extends Controller
     protected function nativeAuthFailure(Request $request): ?JsonResponse
     {
         $secret = config('bank_inbound.webhook_secret');
-        if ($secret && $request->header('X-Bank-Inbound-Secret') !== $secret) {
+        if (! is_string($secret) || $secret === '') {
+            return response()->json(['error' => 'Bank inbound webhook secret is not configured.'], 503);
+        }
+
+        if (! hash_equals($secret, (string) $request->header('X-Bank-Inbound-Secret', ''))) {
             return response()->json(['error' => 'Invalid webhook secret'], 403);
         }
 

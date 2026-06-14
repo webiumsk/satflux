@@ -31,6 +31,19 @@ class CompanyStockMovementService
         $movements = [];
 
         DB::transaction(function () use ($document, &$movements) {
+            if (! BusinessDocument::query()->where('id', $document->id)->lockForUpdate()->exists()) {
+                return;
+            }
+
+            $alreadyApplied = CompanyStockItemMovement::query()
+                ->where('business_document_id', $document->id)
+                ->where('source', CompanyStockMovementSource::DocumentIssue)
+                ->exists();
+
+            if ($alreadyApplied) {
+                return;
+            }
+
             foreach ($document->lines as $line) {
                 if (! $line->company_stock_item_id) {
                     continue;
