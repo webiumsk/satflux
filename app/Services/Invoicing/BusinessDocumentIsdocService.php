@@ -139,15 +139,17 @@ class BusinessDocumentIsdocService
     /**
      * @throws ISDOC\WriterException
      */
-    public function xml(BusinessDocument $document): string
+    public function xml(BusinessDocument $document, bool $auditDownload = true): string
     {
         $xml = Manager::create()->getWriter()->xml($this->build($document));
 
-        AuditLog::log('business_document.isdoc_downloaded', 'business_document', $document->id, [
-            'company_id' => $document->company_id,
-            'number' => $document->number,
-            'format' => 'isdoc',
-        ]);
+        if ($auditDownload) {
+            AuditLog::log('business_document.isdoc_downloaded', 'business_document', $document->id, [
+                'company_id' => $document->company_id,
+                'number' => $document->number,
+                'format' => 'isdoc',
+            ]);
+        }
 
         return $xml;
     }

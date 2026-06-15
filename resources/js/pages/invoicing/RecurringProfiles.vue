@@ -1,5 +1,10 @@
 <template>
-  <InvoicingPageShell content-class="pb-8">
+  <InvoicingServerOnlyPage
+    v-if="localFirst"
+    :title="t('invoicing.doc_nav_recurring')"
+    detail-key="invoicing.local_first_recurring_bridge"
+  />
+  <InvoicingPageShell v-else content-class="pb-8">
     <template #header>
       <InvoicingAppHeader
         :company-label="companyName"
@@ -159,12 +164,15 @@ import { useI18n } from 'vue-i18n';
 import '../../styles/invoicing-theme.css';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
+import InvoicingServerOnlyPage from '../../components/invoicing/InvoicingServerOnlyPage.vue';
 import InvoicingMobileCard from '../../components/invoicing/InvoicingMobileCard.vue';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
 import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
 import api from '../../services/api';
 import { INVOICING_CONTAINER_CLASS, useInvoicingLayout } from '../../composables/useInvoicingLayout';
 
 const { t, locale } = useI18n();
+const localFirst = isInvoicingLocalFirst();
 const { companyId, rememberCompany } = useInvoicingLayout();
 
 const loading = ref(true);

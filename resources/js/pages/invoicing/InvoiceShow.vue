@@ -132,7 +132,28 @@
               </button>
             </div>
           </div>
-          <div v-if="btcPayUrl && documentStatus !== 'paid'">
+          <div v-if="localFirst && form.payment_btc_enabled && form.store_id && documentStatus !== 'draft' && documentStatus !== 'paid'">
+            <label class="invoicing-sf-label">{{ t('invoicing.btc_pay_link') }}</label>
+            <div v-if="localBtcpayCheckoutLoading" class="text-sm text-gray-500 mt-1">
+              {{ t('common.loading') }}
+            </div>
+            <template v-else-if="btcPayUrl">
+              <div class="flex gap-2 mt-1">
+                <input :value="btcPayUrl" readonly class="invoicing-sf-input flex-1 text-xs" />
+                <a :href="btcPayUrl" target="_blank" rel="noopener" class="invoicing-btn-secondary text-sm shrink-0">
+                  {{ t('invoicing.btc_pay_open') }}
+                </a>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">{{ t('invoicing.local_first_btcpay_checkout_hint') }}</p>
+            </template>
+            <div v-else class="mt-1 flex flex-wrap items-center gap-2">
+              <p class="text-sm text-gray-500">{{ t('invoicing.local_first_btcpay_checkout_missing') }}</p>
+              <button type="button" class="invoicing-btn-secondary text-sm" @click="loadLocalBtcpayCheckout">
+                {{ t('invoicing.local_first_btcpay_checkout_refresh') }}
+              </button>
+            </div>
+          </div>
+          <div v-else-if="btcPayUrl && documentStatus !== 'paid'">
             <label class="invoicing-sf-label">{{ t('invoicing.btc_pay_link') }}</label>
             <div class="flex gap-2 mt-1">
               <input :value="btcPayUrl" readonly class="invoicing-sf-input flex-1 text-xs" />
@@ -171,6 +192,8 @@
         :open="sendEmailOpen"
         :company-id="companyId"
         :document-id="documentId || ''"
+        :ephemeral-snapshot="localFirst ? ephemeralSnapshotForModal : null"
+        :bridge-company-id="ephemeralBridgeCompanyId"
         @close="sendEmailOpen = false"
         @sent="onEmailSent"
       />
@@ -182,6 +205,10 @@
           :document-id="documentId"
           :company="company"
           :selected-contact="selectedContact"
+          :local-first="localFirst"
+          :ephemeral-snapshot="localFirst ? ephemeralSnapshotForModal : null"
+          :evolu-document-id="localFirst ? documentId : undefined"
+          :bridge-company-id="ephemeralBridgeCompanyId"
           @sent="onEfakturaSent"
         />
 
@@ -211,7 +238,7 @@
         :bank-match="bankMatch"
         :paid-via-btcpay="paidViaBtcpay"
         @issue="issueDocument"
-        @send-email="sendEmailOpen = true"
+        @send-email="openSendEmail"
         @pdf="downloadPdf"
         @isdoc="downloadIsdoc"
         @ubl="downloadUbl"
@@ -252,6 +279,15 @@ import api, {
   businessDocumentUblPath,
   getWebBlob,
 } from '../../services/api';
+import {
+  buildEphemeralSnapshot,
+  downloadEphemeralIsdoc,
+  downloadEphemeralPdf,
+  downloadEphemeralUbl,
+  resolveEphemeralBridgeCompanyId,
+} from '../../evolu/ephemeralBridge';
+import { markLocalDocumentEmailSent } from '../../evolu/documentCrud';
+import type { DocumentId } from '../../evolu/schema';
 
 const {
   t,
@@ -282,6 +318,8 @@ const {
   neighborIndex,
   pdfUrl,
   btcPayUrl,
+  localBtcpayCheckoutLoading,
+  loadLocalBtcpayCheckout,
   previewForm,
   previewTotals,
   extractError,
@@ -299,6 +337,11 @@ const {
   resolvedQuoteStatus,
   sourceDocument,
   finalInvoice,
+  localFirst,
+  local,
+  persistLocalPdfOptions,
+  localTaxHelpers,
+  payloadFromApiDocument,
 } = useInvoiceDocument();
 
 const paidViaBtcpay = computed(
@@ -350,6 +393,47 @@ const canCreateInvoiceFromQuote = computed(
 );
 
 const sendEmailOpen = ref(false);
+const ephemeralBridgeCompanyId = ref<string | null>(null);
+
+function buildCurrentEphemeralSnapshot() {
+  const p = payload();
+  return buildEphemeralSnapshot(
+    company.value,
+    selectedContact.value,
+    {
+      type: documentType.value,
+      status: documentStatus.value,
+      title: form.title,
+      number: documentNumber.value || displayDocumentNumber.value,
+      variable_symbol: form.variable_symbol,
+      constant_symbol: form.constant_symbol,
+      specific_symbol: form.specific_symbol,
+      issue_date: form.issue_date,
+      delivery_date: form.delivery_date,
+      due_date: form.due_date,
+      currency: form.currency,
+      note_above_lines: form.note_above_lines,
+      note_footer: form.note_footer,
+      internal_note: form.internal_note,
+      pdf_locale: form.pdf_locale,
+      pdf_show_signature: form.pdf_show_signature,
+      pdf_show_payment_info: form.pdf_show_payment_info,
+      payment_bank_enabled: form.payment_bank_enabled,
+      discount_percent: form.discount_percent,
+      amount_paid: amountPaid.value,
+    },
+    p.lines,
+  );
+}
+
+const ephemeralSnapshotForModal = computed(() => (localFirst ? buildCurrentEphemeralSnapshot() : null));
+
+async function openSendEmail() {
+  if (localFirst) {
+    ephemeralBridgeCompanyId.value = await resolveEphemeralBridgeCompanyId();
+  }
+  sendEmailOpen.value = true;
+}
 const { enabled: efakturaGloballyEnabled, load: loadEfakturaFeature } = useEfakturaFeature();
 
 const supportsEuExport = computed(() => {
@@ -372,7 +456,14 @@ async function onEfakturaSent() {
   await loadHistory();
 }
 
-async function onEmailSent() {
+async function onEmailSent(payload?: { email_sent_at?: string }) {
+  if (localFirst && local && documentId.value) {
+    markLocalDocumentEmailSent(
+      local.evolu,
+      documentId.value as DocumentId,
+      payload?.email_sent_at,
+    );
+  }
   success.value = t('invoicing.send_email_success');
   await reloadDocument();
   await loadHistory();
@@ -380,6 +471,10 @@ async function onEmailSent() {
 
 async function persistPdfOptions() {
   if (!documentId.value || isLocked.value) return;
+  if (localFirst) {
+    await persistLocalPdfOptions();
+    return;
+  }
   try {
     await api.patch(
       `/invoicing/companies/${companyId.value}/documents/${documentId.value}`,
@@ -392,6 +487,24 @@ async function persistPdfOptions() {
 
 async function downloadPdf() {
   if (!documentId.value) return;
+  if (localFirst) {
+    saving.value = true;
+    error.value = '';
+    try {
+      const bridgeCompanyId = await resolveEphemeralBridgeCompanyId();
+      const snapshot = buildCurrentEphemeralSnapshot();
+      await downloadEphemeralPdf(
+        snapshot,
+        `invoice-${documentNumber.value || documentId.value}.pdf`,
+        bridgeCompanyId,
+      );
+    } catch (e: unknown) {
+      error.value = extractError(e);
+    } finally {
+      saving.value = false;
+    }
+    return;
+  }
   await downloadWebFile(
     businessDocumentPdfPath(companyId.value, documentId.value),
     `invoice-${documentNumber.value || documentId.value}.pdf`
@@ -400,6 +513,24 @@ async function downloadPdf() {
 
 async function downloadIsdoc() {
   if (!documentId.value) return;
+  if (localFirst) {
+    saving.value = true;
+    error.value = '';
+    try {
+      const bridgeCompanyId = await resolveEphemeralBridgeCompanyId();
+      const snapshot = buildCurrentEphemeralSnapshot();
+      await downloadEphemeralIsdoc(
+        snapshot,
+        `${documentNumber.value || documentId.value}.isdoc`,
+        bridgeCompanyId,
+      );
+    } catch (e: unknown) {
+      error.value = extractError(e);
+    } finally {
+      saving.value = false;
+    }
+    return;
+  }
   await downloadWebFile(
     businessDocumentIsdocPath(companyId.value, documentId.value),
     `${documentNumber.value || documentId.value}.isdoc`
@@ -408,6 +539,24 @@ async function downloadIsdoc() {
 
 async function downloadUbl() {
   if (!documentId.value) return;
+  if (localFirst) {
+    saving.value = true;
+    error.value = '';
+    try {
+      const bridgeCompanyId = await resolveEphemeralBridgeCompanyId();
+      const snapshot = buildCurrentEphemeralSnapshot();
+      await downloadEphemeralUbl(
+        snapshot,
+        `${documentNumber.value || documentId.value}.xml`,
+        bridgeCompanyId,
+      );
+    } catch (e: unknown) {
+      error.value = extractError(e);
+    } finally {
+      saving.value = false;
+    }
+    return;
+  }
   await downloadWebFile(
     businessDocumentUblPath(companyId.value, documentId.value),
     `${documentNumber.value || documentId.value}.xml`
@@ -433,6 +582,24 @@ async function downloadWebFile(path: string, filename: string) {
 
 async function duplicateCurrent() {
   if (!documentId.value) return;
+  if (localFirst && local) {
+    await local.refreshAll();
+    const apiDoc = local.documentApi(documentId.value as import('../../evolu/schema').DocumentId);
+    if (!apiDoc) return;
+    const p = payloadFromApiDocument(apiDoc);
+    p.title = p.title ? `${p.title} (copy)` : 'Copy';
+    const result = local.saveLocalDocument(local.evolu, companyId.value as import('../../evolu/schema').CompanyId, p, {
+      ...localTaxHelpers(),
+      documentId: undefined,
+    });
+    if (!result.ok) return;
+    const routes = invoicingDocumentRoutesForType(String(apiDoc.type || 'invoice'));
+    router.push({
+      name: routes.edit,
+      params: { companyId: companyId.value, documentId: result.value.id },
+    });
+    return;
+  }
   const res = await api.post(
     `/invoicing/companies/${companyId.value}/documents/${documentId.value}/duplicate`
   );
@@ -448,6 +615,20 @@ async function issueDocument() {
   saving.value = true;
   error.value = '';
   try {
+    if (localFirst && local) {
+      const companyRow = local.companyRows.value.find((c) => c.id === companyId.value);
+      if (!companyRow) throw new Error('company');
+      const issueResult = local.issueLocalDocument(
+        local.evolu,
+        documentId.value as import('../../evolu/schema').DocumentId,
+        companyRow as import('../../evolu/companyMap').EvoluCompanyRow,
+        local.documentRows.value as import('../../evolu/documentMap').EvoluDocumentRow[],
+      );
+      if (!issueResult.ok) throw new Error('issue');
+      success.value = t('invoicing.issue_success');
+      await reloadDocument();
+      return;
+    }
     await api.post(
       `/invoicing/companies/${companyId.value}/documents/${documentId.value}/issue`
     );
@@ -466,6 +647,25 @@ async function createFinalInvoice() {
   saving.value = true;
   error.value = '';
   try {
+    if (localFirst && local) {
+      await local.refreshAll();
+      const apiDoc = local.documentApi(documentId.value as import('../../evolu/schema').DocumentId);
+      if (!apiDoc) throw new Error('not_found');
+      const result = local.createLocalFinalInvoiceFromProforma(
+        local.evolu,
+        documentId.value as import('../../evolu/schema').DocumentId,
+        local.documentRows.value as import('../../evolu/documentMap').EvoluDocumentRow[],
+        local.lineRows.value as import('../../evolu/documentMap').EvoluDocumentLineRow[],
+        (doc) => payloadFromApiDocument(doc),
+        { ...localTaxHelpers(), documentId: undefined },
+      );
+      if (!result.ok) throw new Error('create');
+      router.push({
+        name: 'invoicing-invoice-edit',
+        params: { companyId: companyId.value, documentId: result.value.id },
+      });
+      return;
+    }
     const res = await api.post(
       `/invoicing/companies/${companyId.value}/documents/${documentId.value}/create-final-invoice`
     );
@@ -485,6 +685,12 @@ async function approveQuote() {
   saving.value = true;
   error.value = '';
   try {
+    if (localFirst && local) {
+      local.approveLocalQuote(local.evolu, documentId.value as import('../../evolu/schema').DocumentId);
+      success.value = t('invoicing.quote_approved_success');
+      await reloadDocument();
+      return;
+    }
     await api.post(
       `/invoicing/companies/${companyId.value}/documents/${documentId.value}/approve-quote`
     );
@@ -503,6 +709,12 @@ async function rejectQuote() {
   saving.value = true;
   error.value = '';
   try {
+    if (localFirst && local) {
+      local.rejectLocalQuote(local.evolu, documentId.value as import('../../evolu/schema').DocumentId);
+      success.value = t('invoicing.quote_rejected_success');
+      await reloadDocument();
+      return;
+    }
     await api.post(
       `/invoicing/companies/${companyId.value}/documents/${documentId.value}/reject-quote`
     );
@@ -521,6 +733,25 @@ async function createInvoiceFromQuote() {
   saving.value = true;
   error.value = '';
   try {
+    if (localFirst && local) {
+      await local.refreshAll();
+      const apiDoc = local.documentApi(documentId.value as import('../../evolu/schema').DocumentId);
+      if (!apiDoc) throw new Error('not_found');
+      const result = local.createLocalInvoiceFromQuote(
+        local.evolu,
+        documentId.value as import('../../evolu/schema').DocumentId,
+        local.documentRows.value as import('../../evolu/documentMap').EvoluDocumentRow[],
+        local.lineRows.value as import('../../evolu/documentMap').EvoluDocumentLineRow[],
+        (doc) => payloadFromApiDocument(doc),
+        { ...localTaxHelpers(), documentId: undefined },
+      );
+      if (!result.ok) throw new Error('create');
+      router.push({
+        name: 'invoicing-invoice-edit',
+        params: { companyId: companyId.value, documentId: result.value.id },
+      });
+      return;
+    }
     const res = await api.post(
       `/invoicing/companies/${companyId.value}/documents/${documentId.value}/create-invoice-from-quote`
     );
@@ -536,18 +767,28 @@ async function createInvoiceFromQuote() {
 }
 
 async function deleteDoc() {
-  if (!documentId.value) return;
+  if (!documentId.value || !canDelete.value) return;
   const msg =
     documentStatus.value === 'paid' || documentStatus.value === 'issued'
       ? t('invoicing.confirm_delete_last')
       : t('invoicing.confirm_delete');
   if (!window.confirm(msg)) return;
+  if (localFirst && local) {
+    local.deleteLocalDocument(local.evolu, documentId.value as import('../../evolu/schema').DocumentId);
+    router.push({ name: documentRoutes.value.list, params: { companyId: companyId.value } });
+    return;
+  }
   await api.delete(`/invoicing/companies/${companyId.value}/documents/${documentId.value}`);
   router.push({ name: documentRoutes.value.list, params: { companyId: companyId.value } });
 }
 
 async function cancelDoc() {
   if (!documentId.value || !window.confirm(t('invoicing.confirm_cancel'))) return;
+  if (localFirst && local) {
+    local.cancelLocalDocument(local.evolu, documentId.value as import('../../evolu/schema').DocumentId);
+    await reloadDocument();
+    return;
+  }
   await api.post(`/invoicing/companies/${companyId.value}/documents/${documentId.value}/cancel`);
   await reloadDocument();
   await loadHistory();
@@ -557,6 +798,16 @@ async function markPaid() {
   if (!documentId.value) return;
   saving.value = true;
   try {
+    if (localFirst && local) {
+      await local.refreshAll();
+      local.markLocalDocumentPaid(
+        local.evolu,
+        documentId.value as import('../../evolu/schema').DocumentId,
+        local.documentRows.value as import('../../evolu/documentMap').EvoluDocumentRow[],
+      );
+      await reloadDocument();
+      return;
+    }
     await api.post(`/invoicing/companies/${companyId.value}/documents/${documentId.value}/mark-paid`);
     await reloadDocument();
     await loadHistory();
@@ -572,6 +823,14 @@ async function unmarkPaid() {
   if (!window.confirm(t('invoicing.confirm_unmark_paid'))) return;
   saving.value = true;
   try {
+    if (localFirst && local) {
+      local.unmarkLocalDocumentPaid(
+        local.evolu,
+        documentId.value as import('../../evolu/schema').DocumentId,
+      );
+      await reloadDocument();
+      return;
+    }
     await api.post(`/invoicing/companies/${companyId.value}/documents/${documentId.value}/unmark-paid`);
     await reloadDocument();
     await loadHistory();

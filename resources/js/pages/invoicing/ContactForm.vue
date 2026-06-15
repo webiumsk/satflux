@@ -60,12 +60,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import ContactFormFields from '../../components/invoicing/ContactFormFields.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
+import { useInvoicingCompany, asCompanyId } from '../../composables/useInvoicingCompany';
+import { useInvoicingContact } from '../../composables/useInvoicingContacts';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import {
   contactToForm,
@@ -74,6 +76,13 @@ import {
   useContactRoutes,
   type ContactFormState,
 } from '../../composables/useCompanyContact';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
+import { useInvoicingEvolu } from '../../evolu/client';
+import {
+  insertLocalContactFromForm,
+  updateLocalContactFromForm,
+} from '../../evolu/contactCrud';
+import type { ContactId } from '../../evolu/schema';
 import api from '../../services/api';
 
 const { t } = useI18n();
@@ -83,8 +92,12 @@ const { companyId, rememberCompany } = useInvoicingLayout();
 const contactId = computed(() => route.params.contactId as string | undefined);
 const isNew = computed(() => route.name === 'invoicing-contact-new');
 const { contactListTo, contactShowTo } = useContactRoutes(companyId);
+const localFirst = isInvoicingLocalFirst();
+const evolu = localFirst ? useInvoicingEvolu() : null;
 
-const company = ref<Record<string, unknown> | null>(null);
+const { company } = useInvoicingCompany(companyId);
+const { contact, refresh: refreshContact } = useInvoicingContact(companyId, contactId);
+
 const form = ref<ContactFormState>(emptyContactForm());
 const activeTab = ref<'billing' | 'defaults'>('billing');
 const saving = ref(false);
@@ -101,12 +114,15 @@ const showDelivery = computed(
     )
 );
 
+watch(contact, (row) => {
+  if (!row || isNew.value) return;
+  contactName.value = row.name;
+  form.value = contactToForm(row);
+});
+
 async function loadContact() {
   if (isNew.value) return;
-  const res = await api.get(`/invoicing/companies/${companyId.value}/contacts/${contactId.value}`);
-  const data = res.data.data;
-  contactName.value = data.name;
-  form.value = contactToForm(data);
+  await refreshContact();
 }
 
 async function save() {
@@ -117,6 +133,29 @@ async function save() {
   }
   saving.value = true;
   try {
+    if (localFirst && evolu) {
+      const result = isNew.value
+        ? insertLocalContactFromForm(
+            evolu,
+            asCompanyId(companyId.value),
+            form.value,
+            showDelivery.value,
+          )
+        : updateLocalContactFromForm(
+            evolu,
+            contactId.value as ContactId,
+            form.value,
+            showDelivery.value,
+          );
+      if (!result.ok) {
+        error.value = t('invoicing.company_save_validation_error');
+        return;
+      }
+      const savedId = isNew.value && "value" in result ? result.value.id : contactId.value!;
+      await router.push(contactShowTo(savedId));
+      return;
+    }
+
     const payload = formToPayload(form.value, showDelivery.value);
     if (isNew.value) {
       const res = await api.post(`/invoicing/companies/${companyId.value}/contacts`, payload);
@@ -132,13 +171,8 @@ async function save() {
   }
 }
 
-async function loadCompany() {
-  const res = await api.get(`/invoicing/companies/${companyId.value}`);
-  company.value = res.data.data;
-}
-
 onMounted(async () => {
   rememberCompany(companyId.value);
-  await Promise.all([loadCompany(), loadContact()]);
+  await loadContact();
 });
 </script>

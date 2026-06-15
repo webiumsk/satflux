@@ -6,7 +6,7 @@
 
     <p v-if="!configured" class="text-xs text-gray-700">
       {{ t('invoicing.efaktura_panel_not_configured') }}
-      <RouterLink :to="settingsTo" class="text-indigo-700 hover:text-indigo-900 underline">
+      <RouterLink v-if="settingsTo" :to="settingsTo" class="text-indigo-700 hover:text-indigo-900 underline">
         {{ t('invoicing.efaktura_panel_configure_link') }}
       </RouterLink>
     </p>
@@ -77,6 +77,13 @@ import {
   isEfakturaConfigured,
   isSkDomesticContact,
 } from '../../composables/useCompanyEfakturaSettings';
+import {
+  fetchEphemeralEfakturaBridge,
+  fetchEphemeralEfakturaStatus,
+  refreshEphemeralEfakturaStatus,
+  sendEphemeralEfaktura,
+  type EphemeralSnapshotPayload,
+} from '../../evolu/ephemeralBridge';
 import api from '../../services/api';
 
 type ComplianceRow = {
@@ -93,6 +100,10 @@ const props = defineProps<{
   documentId: string;
   company: Record<string, unknown> | null;
   selectedContact: Record<string, unknown> | null;
+  localFirst?: boolean;
+  ephemeralSnapshot?: EphemeralSnapshotPayload | null;
+  evoluDocumentId?: string;
+  bridgeCompanyId?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -106,14 +117,26 @@ const busy = ref(false);
 const panelError = ref('');
 const panelSuccess = ref('');
 const rows = ref<ComplianceRow[]>([]);
+const resolvedBridgeCompanyId = ref<string | null>(null);
 
 const configured = computed(() => isEfakturaConfigured(props.company));
-const eligibleContact = computed(() => isSkDomesticContact(props.selectedContact));
 
-const settingsTo = computed(() => ({
-  name: 'invoicing-company',
-  params: { companyId: props.companyId },
-}));
+const effectiveBridgeCompanyId = computed(
+  () => props.bridgeCompanyId ?? resolvedBridgeCompanyId.value,
+);
+
+const settingsTo = computed(() => {
+  const companyId = props.companyId;
+
+  if (!companyId) {
+    return null;
+  }
+
+  return {
+    name: 'invoicing-company',
+    params: { companyId },
+  };
+});
 
 const peppolRow = computed(() => rows.value.find((row) => row.provider === 'peppol') ?? rows.value[0] ?? null);
 
@@ -173,15 +196,30 @@ const sendButtonLabel = computed(() => {
 
 const storedDetailMessage = computed(() => complianceDetailMessage(peppolRow.value));
 
+const eligibleContact = computed(() => isSkDomesticContact(props.selectedContact));
+
 watch(
-  () => [props.documentId, props.companyId] as const,
+  () => [props.documentId, props.companyId, props.localFirst, props.evoluDocumentId] as const,
   () => {
     panelError.value = '';
     panelSuccess.value = '';
-    void loadCompliance();
+    void bootstrap();
   },
-  { immediate: true }
+  { immediate: true },
 );
+
+async function bootstrap() {
+  if (props.localFirst) {
+    try {
+      const bridge = await fetchEphemeralEfakturaBridge();
+      resolvedBridgeCompanyId.value = bridge.bridge_company_id;
+    } catch {
+      resolvedBridgeCompanyId.value = null;
+    }
+  }
+
+  await loadCompliance();
+}
 
 async function loadCompliance() {
   if (!props.documentId || !configured.value) {
@@ -191,8 +229,13 @@ async function loadCompliance() {
 
   loading.value = true;
   try {
+    if (props.localFirst && props.evoluDocumentId) {
+      rows.value = await fetchEphemeralEfakturaStatus(props.evoluDocumentId);
+      return;
+    }
+
     const res = await api.get(
-      `/invoicing/companies/${props.companyId}/documents/${props.documentId}/efaktura/compliance`
+      `/invoicing/companies/${props.companyId}/documents/${props.documentId}/efaktura/compliance`,
     );
     rows.value = Array.isArray(res.data?.data) ? res.data.data : [];
   } catch {
@@ -212,10 +255,17 @@ async function refreshStatus() {
   panelSuccess.value = '';
 
   try {
-    await api.post(
-      `/invoicing/companies/${props.companyId}/documents/${props.documentId}/efaktura/compliance/refresh`
-    );
-    await loadCompliance();
+    if (props.localFirst && props.evoluDocumentId) {
+      rows.value = await refreshEphemeralEfakturaStatus(
+        props.evoluDocumentId,
+        effectiveBridgeCompanyId.value,
+      );
+    } else {
+      await api.post(
+        `/invoicing/companies/${props.companyId}/documents/${props.documentId}/efaktura/compliance/refresh`,
+      );
+      await loadCompliance();
+    }
     panelSuccess.value = t('invoicing.efaktura_panel_refresh_success');
   } catch (e: any) {
     panelError.value = extractError(e);
@@ -234,15 +284,28 @@ async function send() {
   panelSuccess.value = '';
 
   try {
-    const res = await api.post(
-      `/invoicing/companies/${props.companyId}/documents/${props.documentId}/efaktura/send`
-    );
-    const data = res.data?.data ?? {};
-    panelSuccess.value = t('invoicing.efaktura_panel_send_success');
-    if (typeof data.message === 'string' && data.message) {
-      panelSuccess.value = data.message;
+    if (props.localFirst && props.ephemeralSnapshot && props.evoluDocumentId) {
+      const data = await sendEphemeralEfaktura(
+        props.ephemeralSnapshot,
+        props.evoluDocumentId,
+        effectiveBridgeCompanyId.value,
+      );
+      panelSuccess.value = t('invoicing.efaktura_panel_send_success');
+      if (typeof data.message === 'string' && data.message) {
+        panelSuccess.value = data.message;
+      }
+      rows.value = data ? [data] : [];
+    } else {
+      const res = await api.post(
+        `/invoicing/companies/${props.companyId}/documents/${props.documentId}/efaktura/send`,
+      );
+      const data = res.data?.data ?? {};
+      panelSuccess.value = t('invoicing.efaktura_panel_send_success');
+      if (typeof data.message === 'string' && data.message) {
+        panelSuccess.value = data.message;
+      }
+      await loadCompliance();
     }
-    await loadCompliance();
     emit('sent');
   } catch (e: any) {
     panelError.value = extractError(e);

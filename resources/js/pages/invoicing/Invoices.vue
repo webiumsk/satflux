@@ -64,6 +64,20 @@
       </InvoicingAppHeader>
     </template>
 
+    <LocalFirstBridgeNotice
+      v-if="localFirst"
+      :detail="t('invoicing.local_first_pdf_email_bridge')"
+      class="mb-4"
+    />
+
+    <IntegrationInboxPanel
+      v-if="localFirst && activeDocumentNav?.kind === 'invoice' && localCompanyForInbox"
+      :company-id="companyId"
+      :company="localCompanyForInbox"
+      enabled
+      @imported="onIntegrationInboxImported"
+    />
+
     <template #subheader>
       <InvoicingDocumentFilterBar
         :container-class="INVOICING_CONTAINER_CLASS"
@@ -373,6 +387,26 @@
                     </svg>
                   </button>
                   <button
+                    v-if="localFirst && canDownloadStructuredExport(d)"
+                    type="button"
+                    class="row-action-btn"
+                    :title="t('invoicing.action_isdoc')"
+                    :disabled="actionId === d.id"
+                    @click="downloadIsdoc(d)"
+                  >
+                    <span class="text-[10px] font-bold leading-none">IS</span>
+                  </button>
+                  <button
+                    v-if="localFirst && canDownloadStructuredExport(d)"
+                    type="button"
+                    class="row-action-btn"
+                    :title="t('invoicing.action_ubl')"
+                    :disabled="actionId === d.id"
+                    @click="downloadUbl(d)"
+                  >
+                    <span class="text-[10px] font-bold leading-none">UBL</span>
+                  </button>
+                  <button
                     type="button"
                     class="row-action-btn"
                     :title="t('invoicing.action_duplicate')"
@@ -519,6 +553,26 @@
                     </svg>
                   </button>
                   <button
+                    v-if="localFirst && canDownloadStructuredExport(d)"
+                    type="button"
+                    class="row-action-btn"
+                    :title="t('invoicing.action_isdoc')"
+                    :disabled="actionId === d.id"
+                    @click="downloadIsdoc(d)"
+                  >
+                    <span class="text-[10px] font-bold leading-none">IS</span>
+                  </button>
+                  <button
+                    v-if="localFirst && canDownloadStructuredExport(d)"
+                    type="button"
+                    class="row-action-btn"
+                    :title="t('invoicing.action_ubl')"
+                    :disabled="actionId === d.id"
+                    @click="downloadUbl(d)"
+                  >
+                    <span class="text-[10px] font-bold leading-none">UBL</span>
+                  </button>
+                  <button
                     type="button"
                     class="row-action-btn"
                     :title="t('invoicing.action_duplicate')"
@@ -629,6 +683,22 @@
               <button v-if="d.status !== 'draft'" type="button" class="invoicing-dropdown-item" @click="downloadPdf(d)">
                 {{ t('invoicing.action_pdf') }}
               </button>
+              <button
+                v-if="localFirst && canDownloadStructuredExport(d)"
+                type="button"
+                class="invoicing-dropdown-item"
+                @click="downloadIsdoc(d)"
+              >
+                {{ t('invoicing.action_isdoc') }}
+              </button>
+              <button
+                v-if="localFirst && canDownloadStructuredExport(d)"
+                type="button"
+                class="invoicing-dropdown-item"
+                @click="downloadUbl(d)"
+              >
+                {{ t('invoicing.action_ubl') }}
+              </button>
               <RouterLink v-if="d.can_update" :to="documentEditTo(d)" class="invoicing-dropdown-item block">
                 {{ t('common.edit') }}
               </RouterLink>
@@ -725,6 +795,8 @@
       :open="sendEmailOpen"
       :company-id="companyId"
       :document-id="sendEmailDocumentId"
+      :ephemeral-snapshot="sendEmailEphemeralSnapshot"
+      :bridge-company-id="sendEmailBridgeCompanyId"
       @close="closeSendEmail"
       @sent="onEmailSent"
     />
@@ -755,11 +827,48 @@ import InvoicingMobileBulkBar from '../../components/invoicing/InvoicingMobileBu
 import InvoicingMobileCard from '../../components/invoicing/InvoicingMobileCard.vue';
 import InvoicingRowActionsMenu from '../../components/invoicing/InvoicingRowActionsMenu.vue';
 import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
+import LocalFirstBridgeNotice from '../../components/invoicing/LocalFirstBridgeNotice.vue';
+import IntegrationInboxPanel from '../../components/invoicing/IntegrationInboxPanel.vue';
 import { useInvoicingDocumentListFilters } from '../../composables/useInvoicingDocumentListFilters';
+import { useCompanyVatPolicy } from '../../composables/useCompanyVatPolicy';
+import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompanySummary';
+import { useInvoicingDocumentsLocal } from '../../composables/useInvoicingDocumentsLocal';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
+import { useLocalInvoiceDocumentSupport } from '../../composables/useLocalInvoiceDocument';
+import {
+  deleteLocalDocument,
+  cancelLocalDocument,
+  markLocalDocumentPaid,
+  unmarkLocalDocumentPaid,
+  markLocalDocumentEmailSent,
+  payloadFromApiDocument,
+} from '../../evolu/documentCrud';
+import type { CompanyId, DocumentId } from '../../evolu/schema';
+import type { EvoluCompanyRow } from '../../evolu/companyMap';
+import type { EvoluDocumentRow } from '../../evolu/documentMap';
 import CreditNotePickInvoiceModal from '../../components/invoicing/CreditNotePickInvoiceModal.vue';
 import CreditNoteStartModal from '../../components/invoicing/CreditNoteStartModal.vue';
 import SendDocumentEmailModal from '../../components/invoicing/SendDocumentEmailModal.vue';
 import api, { businessDocumentPdfPath, getWebBlob } from '../../services/api';
+import {
+  buildBulkEphemeralRequest,
+  buildLocalDocumentEphemeralSnapshot,
+  downloadEphemeralIsdoc,
+  downloadEphemeralPdf,
+  downloadEphemeralPdfMerge,
+  downloadEphemeralPdfZip,
+  downloadEphemeralUbl,
+  type EphemeralSnapshotPayload,
+} from '../../evolu/ephemeralBridge';
+import {
+  bulkCancelLocal,
+  bulkDeleteLocal,
+  bulkMarkPaidLocal,
+  buildDocumentsCsvBlob,
+  downloadCsvBlob,
+  localBulkFilterOptions,
+  resolveBulkTargets,
+} from '../../evolu/documentBulkLocal';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import { invoicingDocumentRoutesForType } from '../../composables/useInvoicingDocumentRoutes';
 
@@ -786,9 +895,51 @@ const {
   INVOICING_CONTAINER_CLASS,
 } = useInvoicingLayout();
 
+const localFirst = isInvoicingLocalFirst();
+const contactFilterId = computed(() => {
+  const id = route.query.contact_id;
+  return typeof id === 'string' && id ? id : undefined;
+});
+const localDocuments = localFirst ? useInvoicingDocumentsLocal(companyId) : null;
+const localDoc = localFirst ? useLocalInvoiceDocumentSupport() : null;
+const vatPolicy = useCompanyVatPolicy();
+const { companyName: summaryCompanyName } = useInvoicingCompanySummary();
+
+const localCompanyJurisdiction = computed(() => {
+  if (!localFirst || !localDoc) return null;
+  return localDoc.companyApi(companyId.value)?.jurisdiction as string | undefined;
+});
+
+const localCompanyForInbox = computed(() => {
+  if (!localFirst || !localDoc) return null;
+  return localDoc.companyApi(companyId.value);
+});
+
+async function onIntegrationInboxImported(): Promise<void> {
+  if (!localFirst || !localDoc || !localDocuments) return;
+  await localDoc.refreshAll();
+  const nav = activeDocumentNav.value;
+  await localDocuments.refresh({
+    apiType: nav.kind === 'drafts' ? undefined : nav.apiType,
+    statusFilter: nav.kind === 'drafts' ? 'draft' : activeFilter.value,
+    issuePeriod: { ...issuePeriod },
+    advanced: { ...advancedApplied },
+    contactId: contactFilterId.value,
+  });
+}
+
+const supportsEuExport = computed(() => {
+  const j = localCompanyJurisdiction.value;
+  if (localFirst) {
+    return j === 'eu_sk' || j === 'eu_cz' || j === 'eu_other';
+  }
+  return false;
+});
+
 const {
   issuePeriod,
   advancedDraft,
+  advancedApplied,
   resetAdvancedDraft,
   applyAdvancedDraft,
   hasActiveAdvanced,
@@ -827,6 +978,8 @@ const showSelectMenu = ref(false);
 const showBulkMenu = ref(false);
 const sendEmailOpen = ref(false);
 const sendEmailDocumentId = ref('');
+const sendEmailEphemeralSnapshot = ref<EphemeralSnapshotPayload | null>(null);
+const sendEmailBridgeCompanyId = ref<string | null>(null);
 
 const emptyMessage = computed(() => {
   const kind = activeDocumentNav.value.kind;
@@ -1027,6 +1180,12 @@ async function approveQuote(d: { id: string }) {
   actionId.value = d.id;
   error.value = '';
   try {
+    if (localFirst && localDoc) {
+      localDoc.approveLocalQuote(localDoc.evolu, d.id as DocumentId);
+      success.value = t('invoicing.quote_approved_success');
+      await load();
+      return;
+    }
     await api.post(`/invoicing/companies/${companyId.value}/documents/${d.id}/approve-quote`);
     success.value = t('invoicing.quote_approved_success');
     await load();
@@ -1041,6 +1200,12 @@ async function rejectQuote(d: { id: string }) {
   actionId.value = d.id;
   error.value = '';
   try {
+    if (localFirst && localDoc) {
+      localDoc.rejectLocalQuote(localDoc.evolu, d.id as DocumentId);
+      success.value = t('invoicing.quote_rejected_success');
+      await load();
+      return;
+    }
     await api.post(`/invoicing/companies/${companyId.value}/documents/${d.id}/reject-quote`);
     success.value = t('invoicing.quote_rejected_success');
     await load();
@@ -1055,6 +1220,38 @@ async function createInvoiceFromQuote(d: { id: string }) {
   actionId.value = d.id;
   error.value = '';
   try {
+    if (localFirst && localDoc) {
+      await localDoc.refreshAll();
+      const apiDoc = localDoc.documentApi(d.id as DocumentId);
+      if (!apiDoc) return;
+      const contact = apiDoc.company_contact_id
+        ? localDoc.contactsForCompany(companyId.value).find((c) => c.id === apiDoc.company_contact_id) ?? null
+        : null;
+      const company = localDoc.companyApi(companyId.value);
+      const result = localDoc.createLocalInvoiceFromQuote(
+        localDoc.evolu,
+        d.id as DocumentId,
+        localDoc.documentRows.value as EvoluDocumentRow[],
+        localDoc.lineRows.value as import('../../evolu/documentMap').EvoluDocumentLineRow[],
+        (doc) => payloadFromApiDocument(doc),
+        {
+          ...localDoc.saveOptions(
+            Number(company?.vat_rate_default ?? 23),
+            () => vatPolicy.calculatesVatAmounts(company, contact),
+            (line) => vatPolicy.resolveLineTaxRate(company, contact, line.tax_rate),
+          ),
+        },
+      );
+      if (!result.ok) {
+        error.value = t('common.error');
+        return;
+      }
+      router.push({
+        name: 'invoicing-invoice-edit',
+        params: { companyId: companyId.value, documentId: result.value.id },
+      });
+      return;
+    }
     const res = await api.post(
       `/invoicing/companies/${companyId.value}/documents/${d.id}/create-invoice-from-quote`
     );
@@ -1083,6 +1280,38 @@ async function createFinalInvoice(d: { id: string }) {
   actionId.value = d.id;
   error.value = '';
   try {
+    if (localFirst && localDoc) {
+      await localDoc.refreshAll();
+      const apiDoc = localDoc.documentApi(d.id as DocumentId);
+      if (!apiDoc) return;
+      const contact = apiDoc.company_contact_id
+        ? localDoc.contactsForCompany(companyId.value).find((c) => c.id === apiDoc.company_contact_id) ?? null
+        : null;
+      const company = localDoc.companyApi(companyId.value);
+      const result = localDoc.createLocalFinalInvoiceFromProforma(
+        localDoc.evolu,
+        d.id as DocumentId,
+        localDoc.documentRows.value as EvoluDocumentRow[],
+        localDoc.lineRows.value as import('../../evolu/documentMap').EvoluDocumentLineRow[],
+        (doc) => payloadFromApiDocument(doc),
+        {
+          ...localDoc.saveOptions(
+            Number(company?.vat_rate_default ?? 23),
+            () => vatPolicy.calculatesVatAmounts(company, contact),
+            (line) => vatPolicy.resolveLineTaxRate(company, contact, line.tax_rate),
+          ),
+        },
+      );
+      if (!result.ok) {
+        error.value = t('common.error');
+        return;
+      }
+      router.push({
+        name: 'invoicing-invoice-edit',
+        params: { companyId: companyId.value, documentId: result.value.id },
+      });
+      return;
+    }
     const res = await api.post(
       `/invoicing/companies/${companyId.value}/documents/${d.id}/create-final-invoice`
     );
@@ -1118,24 +1347,45 @@ function emailIndicatorTitle(d: { email_sent_at?: string | null }) {
   return t('invoicing.email_indicator_send');
 }
 
-function openSendEmail(d: { id: string }) {
+async function openSendEmail(d: { id: string }) {
   sendEmailDocumentId.value = d.id;
+  sendEmailEphemeralSnapshot.value = null;
+  sendEmailBridgeCompanyId.value = null;
+  if (localFirst && localDoc) {
+    const ctx = await buildLocalDocumentEphemeralSnapshot(
+      localDoc,
+      companyId.value,
+      d.id,
+    );
+    if (!ctx) {
+      error.value = t('common.error_generic');
+      return;
+    }
+    sendEmailEphemeralSnapshot.value = ctx.snapshot;
+    sendEmailBridgeCompanyId.value = ctx.bridgeCompanyId;
+  }
   sendEmailOpen.value = true;
 }
 
 function closeSendEmail() {
   sendEmailOpen.value = false;
   sendEmailDocumentId.value = '';
+  sendEmailEphemeralSnapshot.value = null;
+  sendEmailBridgeCompanyId.value = null;
 }
 
 function onEmailSent(payload?: { email_sent_at?: string }) {
   const id = sendEmailDocumentId.value;
+  if (localFirst && localDoc && id) {
+    markLocalDocumentEmailSent(localDoc.evolu, id as DocumentId, payload?.email_sent_at);
+  }
   const row = documents.value.find((doc) => doc.id === id);
   if (row) {
     row.email_sent_at = payload?.email_sent_at ?? new Date().toISOString();
   }
   success.value = t('invoicing.send_email_success');
   closeSendEmail();
+  void load();
 }
 
 function rowSelected(id: string) {
@@ -1183,6 +1433,9 @@ function listQueryParams(): Record<string, unknown> {
   } else if (nav.apiType) {
     params.type = nav.apiType;
   }
+  if (contactFilterId.value) {
+    params.company_contact_id = contactFilterId.value;
+  }
   return appendListQueryParams(params, activeFilter.value);
 }
 
@@ -1203,6 +1456,120 @@ function bulkPayload(action: string) {
 
 const fileActions = new Set(['pdf_zip', 'pdf_merge', 'export_xlsx']);
 
+async function runBulkLocal(action: string) {
+  if (!localDoc || !localDocuments) return;
+
+  await localDoc.refreshAll();
+  await localDocuments.refresh({
+    apiType: activeDocumentNav.value.kind === 'drafts' ? undefined : activeDocumentNav.value.apiType,
+    statusFilter: activeDocumentNav.value.kind === 'drafts' ? 'draft' : activeFilter.value,
+    issuePeriod: { ...issuePeriod },
+    advanced: { ...advancedApplied },
+    contactId: contactFilterId.value,
+  });
+
+  const allDocuments = localDocuments.documentRows.value as unknown as EvoluDocumentRow[];
+  const contactNameById = new Map<string, string>();
+  for (const row of localDocuments.contactRows.value) {
+    if (row.companyId !== companyId.value) continue;
+    contactNameById.set(row.id, String(row.name || ''));
+  }
+
+  const filterOpts = localBulkFilterOptions(
+    activeDocumentNav.value,
+    activeFilter.value,
+    issuePeriod,
+    advancedApplied,
+    contactNameById,
+  );
+
+  const targets = resolveBulkTargets({
+    companyId: companyId.value as CompanyId,
+    selectAll: selectAllMode.value,
+    selectedIds: selectedIds.value,
+    allDocuments,
+    ...filterOpts,
+  });
+
+  if (targets.length === 0) {
+    error.value = t('common.error');
+    return;
+  }
+
+  if (action === 'mark_paid') {
+    const result = bulkMarkPaidLocal(localDoc.evolu, targets, allDocuments);
+    success.value = t('invoicing.bulk_result', {
+      processed: result.processed,
+      skipped: result.skipped,
+    });
+    await load();
+    clearSelection();
+    return;
+  }
+
+  if (action === 'delete') {
+    const result = bulkDeleteLocal(localDoc.evolu, targets, allDocuments);
+    success.value = t('invoicing.bulk_result', {
+      processed: result.processed,
+      skipped: result.skipped,
+    });
+    await load();
+    clearSelection();
+    return;
+  }
+
+  if (action === 'cancel') {
+    const result = bulkCancelLocal(localDoc.evolu, targets);
+    success.value = t('invoicing.bulk_result', {
+      processed: result.processed,
+      skipped: result.skipped,
+    });
+    await load();
+    clearSelection();
+    return;
+  }
+
+  if (action === 'export_xlsx') {
+    const rows = targets.map((row) => ({
+      number: row.number || '',
+      status: row.status,
+      client: row.contactId ? (contactNameById.get(row.contactId) || '') : '',
+      total: row.total || '0',
+      currency: row.currency || 'EUR',
+      issueDate: row.issueDate || '',
+      dueDate: row.dueDate || '',
+      variableSymbol: row.variableSymbol || '',
+    }));
+    downloadCsvBlob(buildDocumentsCsvBlob(rows), 'invoices.csv');
+    clearSelection();
+    return;
+  }
+
+  if (action === 'pdf_zip' || action === 'pdf_merge') {
+    const issuedIds = targets
+      .filter((row) => row.status !== 'draft')
+      .map((row) => row.id);
+
+    if (issuedIds.length === 0) {
+      error.value = t('common.error');
+      return;
+    }
+
+    const bulk = await buildBulkEphemeralRequest(localDoc, companyId.value, issuedIds);
+    if (!bulk) {
+      error.value = t('common.error_generic');
+      return;
+    }
+
+    if (action === 'pdf_zip') {
+      await downloadEphemeralPdfZip(bulk.body, bulk.bridgeCompanyId);
+    } else {
+      await downloadEphemeralPdfMerge(bulk.body, bulk.bridgeCompanyId);
+    }
+    clearSelection();
+  }
+}
+
 async function runBulk(action: string) {
   if (selectionCount.value === 0) return;
   showBulkMenu.value = false;
@@ -1215,6 +1582,11 @@ async function runBulk(action: string) {
   loading.value = true;
 
   try {
+    if (localFirst && localDoc && localDocuments) {
+      await runBulkLocal(action);
+      return;
+    }
+
     const isFile = fileActions.has(action);
     const res = await api.post(
       `/invoicing/companies/${companyId.value}/documents/bulk`,
@@ -1311,6 +1683,25 @@ async function load() {
   loading.value = true;
   error.value = '';
   try {
+    if (localFirst && localDocuments) {
+      const nav = activeDocumentNav.value;
+      await localDocuments.refresh({
+        apiType: nav.kind === 'drafts' ? undefined : nav.apiType,
+        statusFilter: nav.kind === 'drafts' ? 'draft' : activeFilter.value,
+        issuePeriod: { ...issuePeriod },
+        advanced: { ...advancedApplied },
+        contactId: contactFilterId.value,
+      });
+      companyName.value = summaryCompanyName.value;
+      const all = [...localDocuments.documents.value];
+      totalCount.value = all.length;
+      lastPage.value = Math.max(1, Math.ceil(all.length / perPage.value));
+      if (currentPage.value > lastPage.value) currentPage.value = 1;
+      const start = (currentPage.value - 1) * perPage.value;
+      documents.value = all.slice(start, start + perPage.value);
+      return;
+    }
+
     const [companyRes, docsRes] = await Promise.all([
       api.get(`/invoicing/companies/${companyId.value}/summary`),
       api.get(`/invoicing/companies/${companyId.value}/documents`, {
@@ -1377,6 +1768,19 @@ function onAdvancedApply() {
 async function issueDoc(d: { id: string }) {
   actionId.value = d.id;
   try {
+    if (localFirst && localDoc) {
+      await localDoc.refreshAll();
+      const companyRow = localDoc.companyRows.value.find((c) => c.id === companyId.value);
+      if (!companyRow) return;
+      localDoc.issueLocalDocument(
+        localDoc.evolu,
+        d.id as DocumentId,
+        companyRow as EvoluCompanyRow,
+        localDoc.documentRows.value as EvoluDocumentRow[],
+      );
+      await load();
+      return;
+    }
     await api.post(`/invoicing/companies/${companyId.value}/documents/${d.id}/issue`);
     await load();
   } catch (e: any) {
@@ -1389,6 +1793,16 @@ async function issueDoc(d: { id: string }) {
 async function markPaid(d: { id: string }) {
   actionId.value = d.id;
   try {
+    if (localFirst && localDoc) {
+      await localDoc.refreshAll();
+      markLocalDocumentPaid(
+        localDoc.evolu,
+        d.id as DocumentId,
+        localDoc.documentRows.value as EvoluDocumentRow[],
+      );
+      await load();
+      return;
+    }
     await api.post(`/invoicing/companies/${companyId.value}/documents/${d.id}/mark-paid`);
     await load();
   } catch (e: any) {
@@ -1402,6 +1816,11 @@ async function unmarkPaid(d: { id: string }) {
   if (!window.confirm(t('invoicing.confirm_unmark_paid'))) return;
   actionId.value = d.id;
   try {
+    if (localFirst && localDoc) {
+      unmarkLocalDocumentPaid(localDoc.evolu, d.id as DocumentId);
+      await load();
+      return;
+    }
     await api.post(`/invoicing/companies/${companyId.value}/documents/${d.id}/unmark-paid`);
     await load();
   } catch (e: any) {
@@ -1414,6 +1833,23 @@ async function unmarkPaid(d: { id: string }) {
 async function downloadPdf(d: { id: string; number?: string }) {
   actionId.value = d.id;
   try {
+    if (localFirst && localDoc) {
+      const ctx = await buildLocalDocumentEphemeralSnapshot(
+        localDoc,
+        companyId.value,
+        d.id,
+      );
+      if (!ctx) {
+        error.value = t('common.error_generic');
+        return;
+      }
+      await downloadEphemeralPdf(
+        ctx.snapshot,
+        `invoice-${d.number || d.id}.pdf`,
+        ctx.bridgeCompanyId,
+      );
+      return;
+    }
     const blob = await getWebBlob(businessDocumentPdfPath(companyId.value, d.id));
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1428,9 +1864,85 @@ async function downloadPdf(d: { id: string; number?: string }) {
   }
 }
 
-async function duplicateDoc(d: { id: string }) {
+function canDownloadStructuredExport(d: { status: string; number?: string | null }) {
+  return supportsEuExport.value && d.status !== 'draft' && Boolean(d.number);
+}
+
+async function downloadIsdoc(d: { id: string; number?: string }) {
+  if (!canDownloadStructuredExport(d)) return;
   actionId.value = d.id;
   try {
+    const ctx = await buildLocalDocumentEphemeralSnapshot(localDoc!, companyId.value, d.id);
+    if (!ctx) {
+      error.value = t('common.error_generic');
+      return;
+    }
+    await downloadEphemeralIsdoc(
+      ctx.snapshot,
+      `${d.number || d.id}.isdoc`,
+      ctx.bridgeCompanyId,
+    );
+  } catch (e: any) {
+    error.value = e?.response?.data?.message || t('common.error');
+  } finally {
+    actionId.value = null;
+  }
+}
+
+async function downloadUbl(d: { id: string; number?: string }) {
+  if (!canDownloadStructuredExport(d)) return;
+  actionId.value = d.id;
+  try {
+    const ctx = await buildLocalDocumentEphemeralSnapshot(localDoc!, companyId.value, d.id);
+    if (!ctx) {
+      error.value = t('common.error_generic');
+      return;
+    }
+    await downloadEphemeralUbl(
+      ctx.snapshot,
+      `${d.number || d.id}.xml`,
+      ctx.bridgeCompanyId,
+    );
+  } catch (e: any) {
+    error.value = e?.response?.data?.message || t('common.error');
+  } finally {
+    actionId.value = null;
+  }
+}
+
+async function duplicateDoc(d: { id: string; type?: string }) {
+  actionId.value = d.id;
+  try {
+    if (localFirst && localDoc) {
+      await localDoc.refreshAll();
+      const apiDoc = localDoc.documentApi(d.id as DocumentId);
+      if (!apiDoc) return;
+      const p = payloadFromApiDocument(apiDoc);
+      p.title = p.title ? `${p.title} (copy)` : 'Copy';
+      const company = localDoc.companyApi(companyId.value);
+      const contact = p.company_contact_id
+        ? localDoc.contactsForCompany(companyId.value).find((c) => c.id === p.company_contact_id) ?? null
+        : null;
+      const defaultVat = Number(company?.vat_rate_default ?? 23);
+      const result = localDoc.saveLocalDocument(
+        localDoc.evolu,
+        companyId.value as CompanyId,
+        p,
+        localDoc.saveOptions(
+          defaultVat,
+          () => vatPolicy.calculatesVatAmounts(company, contact),
+          (line) => vatPolicy.resolveLineTaxRate(company, contact, line.tax_rate),
+        ),
+      );
+      if (!result.ok) return;
+      const routes = invoicingDocumentRoutesForType(String(apiDoc.type || d.type || 'invoice'));
+      router.push({
+        name: routes.edit,
+        params: { companyId: companyId.value, documentId: result.value.id },
+      });
+      return;
+    }
+
     const res = await api.post(
       `/invoicing/companies/${companyId.value}/documents/${d.id}/duplicate`
     );
@@ -1454,6 +1966,11 @@ async function deleteDoc(d: { id: string; status?: string; can_delete?: boolean 
   if (!window.confirm(msg)) return;
   actionId.value = d.id;
   try {
+    if (localFirst && localDoc) {
+      deleteLocalDocument(localDoc.evolu, d.id as DocumentId);
+      await load();
+      return;
+    }
     await api.delete(`/invoicing/companies/${companyId.value}/documents/${d.id}`);
     await load();
   } catch (e: any) {
@@ -1467,6 +1984,11 @@ async function cancelDoc(d: { id: string }) {
   if (!window.confirm(t('invoicing.confirm_cancel'))) return;
   actionId.value = d.id;
   try {
+    if (localFirst && localDoc) {
+      cancelLocalDocument(localDoc.evolu, d.id as DocumentId);
+      await load();
+      return;
+    }
     await api.post(`/invoicing/companies/${companyId.value}/documents/${d.id}/cancel`);
     await load();
   } catch (e: any) {
@@ -1481,6 +2003,15 @@ watch(companyId, () => {
   currentPage.value = 1;
   load();
 });
+
+watch(
+  () => route.query.contact_id,
+  () => {
+    currentPage.value = 1;
+    clearSelection();
+    load();
+  },
+);
 
 watch(
   () => route.name,

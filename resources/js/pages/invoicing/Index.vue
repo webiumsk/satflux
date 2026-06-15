@@ -8,7 +8,7 @@
         v-if="canUse && canCreateCompany"
         type="button"
         class="invoicing-btn-primary"
-        @click="router.push({ name: 'invoicing-company-new' })"
+        @click="onAddCompany"
       >
         {{ t('invoicing.add_company') }}
       </button>
@@ -16,6 +16,10 @@
         {{ t('invoicing.company_limit_reached', { max: companyLimitMax }) }}
       </p>
     </template>
+
+    <div v-if="localFirst" class="invoicing-alert-warn mb-4">
+      <p class="text-sm">{{ t('invoicing.local_first_notice') }}</p>
+    </div>
 
     <div v-if="!canUse" class="invoicing-alert-warn">
       <p class="font-medium">{{ t('invoicing.pro_required') }}</p>
@@ -27,13 +31,13 @@
 
     <div v-else-if="loading" class="invoicing-muted py-8">{{ t('common.loading') }}</div>
 
-    <div v-else-if="companies.length === 0" class="invoicing-card-pad text-center">
+    <div v-else-if="companyList.length === 0" class="invoicing-card-pad text-center">
       <p class="text-gray-700">{{ t('invoicing.no_companies') }}</p>
       <button
         v-if="canCreateCompany"
         type="button"
         class="invoicing-btn-primary mt-4"
-        @click="router.push({ name: 'invoicing-company-new' })"
+        @click="onAddCompany"
       >
         {{ t('invoicing.create_first_company') }}
       </button>
@@ -41,10 +45,10 @@
 
     <ul v-else class="space-y-3">
       <li
-        v-for="c in companies"
+        v-for="c in companyList"
         :key="c.id"
         class="invoicing-list-item"
-        @click="router.push({ name: 'invoicing-invoices', params: { companyId: c.id } })"
+        @click="openCompany(c)"
       >
         <div>
           <p class="font-medium text-gray-900">{{ c.trade_name || c.legal_name }}</p>
@@ -59,12 +63,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref, unref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
-import api from '../../services/api';
 import { useBusinessInvoicing } from '../../composables/useBusinessInvoicing';
+import { useInvoicingCompanies } from '../../composables/useInvoicingCompanies';
 import { useAuthStore } from '../../store/auth';
 import UpgradeModal from '../../components/stores/UpgradeModal.vue';
 
@@ -73,9 +77,20 @@ const router = useRouter();
 const authStore = useAuthStore();
 const { canUse } = useBusinessInvoicing();
 
-const companies = ref<any[]>([]);
-const loading = ref(false);
+const {
+  localFirst,
+  companies,
+  loading,
+  forbidden,
+} = useInvoicingCompanies();
+
 const showUpgrade = ref(false);
+
+watch(forbidden, (isForbidden) => {
+  if (isForbidden) showUpgrade.value = true;
+});
+
+const companyList = computed(() => unref(companies));
 
 const companyLimitMax = computed(() => {
   const plan = authStore.user?.plan;
@@ -87,19 +102,14 @@ const canCreateCompany = computed(() => {
   if (!canUse.value) return false;
   const max = companyLimitMax.value;
   if (max === null) return true;
-  return companies.value.length < max;
+  return companyList.value.length < max;
 });
 
-onMounted(async () => {
-  if (!canUse.value) return;
-  loading.value = true;
-  try {
-    const res = await api.get('/invoicing/companies');
-    companies.value = res.data.data ?? [];
-  } catch (e: any) {
-    if (e?.response?.status === 403) showUpgrade.value = true;
-  } finally {
-    loading.value = false;
-  }
-});
+function openCompany(c: { id: string }): void {
+  router.push({ name: 'invoicing-invoices', params: { companyId: c.id } });
+}
+
+function onAddCompany(): void {
+  router.push({ name: 'invoicing-company-new' });
+}
 </script>

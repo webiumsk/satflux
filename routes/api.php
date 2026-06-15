@@ -33,6 +33,8 @@ use App\Http\Controllers\Invoicing\CompanyEmailSettingsController;
 use App\Http\Controllers\Invoicing\CompanyRegistryController;
 use App\Http\Controllers\Invoicing\CompanyStockItemController;
 use App\Http\Controllers\Invoicing\CompanyWarehouseController;
+use App\Http\Controllers\Invoicing\EphemeralBusinessDocumentController;
+use App\Http\Controllers\Invoicing\IntegrationDocumentInboxController;
 use App\Http\Controllers\Invoicing\UsSalesTaxController;
 use App\Http\Controllers\Invoicing\ViesValidationController;
 use App\Http\Controllers\LightningAddressController;
@@ -327,6 +329,19 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             });
 
             Route::get('/companies', [CompanyController::class, 'index']);
+            Route::post('/ephemeral/pdf', [EphemeralBusinessDocumentController::class, 'pdfWithoutCompany']);
+            Route::post('/ephemeral/email-preview', [EphemeralBusinessDocumentController::class, 'emailPreviewWithoutCompany']);
+            Route::post('/ephemeral/send-email', [EphemeralBusinessDocumentController::class, 'sendEmailWithoutCompany']);
+            Route::post('/ephemeral/isdoc', [EphemeralBusinessDocumentController::class, 'isdocWithoutCompany']);
+            Route::post('/ephemeral/ubl', [EphemeralBusinessDocumentController::class, 'ublWithoutCompany']);
+            Route::post('/ephemeral/btcpay-checkout', [EphemeralBusinessDocumentController::class, 'btcpayCheckoutWithoutCompany']);
+            Route::get('/ephemeral/btcpay-status', [EphemeralBusinessDocumentController::class, 'btcpayStatus']);
+            Route::get('/ephemeral/efaktura/bridge', [EphemeralBusinessDocumentController::class, 'efakturaBridge']);
+            Route::get('/ephemeral/efaktura/status', [EphemeralBusinessDocumentController::class, 'efakturaStatus']);
+            Route::post('/ephemeral/efaktura/send', [EphemeralBusinessDocumentController::class, 'efakturaSendWithoutCompany']);
+            Route::post('/ephemeral/efaktura/refresh', [EphemeralBusinessDocumentController::class, 'efakturaRefreshWithoutCompany']);
+            Route::post('/ephemeral/bulk/pdf-zip', [EphemeralBusinessDocumentController::class, 'bulkPdfZipWithoutCompany']);
+            Route::post('/ephemeral/bulk/pdf-merge', [EphemeralBusinessDocumentController::class, 'bulkPdfMergeWithoutCompany']);
             Route::post('/companies', [CompanyController::class, 'store'])
                 ->middleware(EnsureCompanyLimit::class);
             Route::get('/companies/{company}', [CompanyController::class, 'show'])
@@ -440,6 +455,13 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::post('/companies/{company}/recurring-profiles/{recurringProfile}/generate', [\App\Http\Controllers\Invoicing\BusinessRecurringProfileController::class, 'generateNow'])
                 ->middleware(EnsureCompanyOwnership::class);
 
+            Route::get('/companies/{company}/integration-inbox', [IntegrationDocumentInboxController::class, 'index'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/integration-inbox/{inbox}/dismiss', [IntegrationDocumentInboxController::class, 'dismiss'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/integration-inbox/{inbox}/imported', [IntegrationDocumentInboxController::class, 'markImported'])
+                ->middleware(EnsureCompanyOwnership::class);
+
             Route::get('/companies/{company}/documents/import/fields', [\App\Http\Controllers\Invoicing\BusinessDocumentImportController::class, 'fields'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::get('/companies/{company}/documents/import/example', [\App\Http\Controllers\Invoicing\BusinessDocumentImportController::class, 'example'])
@@ -454,6 +476,26 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::post('/companies/{company}/documents/bulk', [BusinessDocumentController::class, 'bulk'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/documents', [BusinessDocumentController::class, 'store'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/pdf', [EphemeralBusinessDocumentController::class, 'pdf'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/email-preview', [EphemeralBusinessDocumentController::class, 'emailPreview'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/send-email', [EphemeralBusinessDocumentController::class, 'sendEmail'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/isdoc', [EphemeralBusinessDocumentController::class, 'isdoc'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/ubl', [EphemeralBusinessDocumentController::class, 'ubl'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/btcpay-checkout', [EphemeralBusinessDocumentController::class, 'btcpayCheckout'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/efaktura/send', [EphemeralBusinessDocumentController::class, 'efakturaSend'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/efaktura/refresh', [EphemeralBusinessDocumentController::class, 'efakturaRefresh'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/bulk/pdf-zip', [EphemeralBusinessDocumentController::class, 'bulkPdfZip'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/bulk/pdf-merge', [EphemeralBusinessDocumentController::class, 'bulkPdfMerge'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/documents/credit-note-from-invoice', [BusinessDocumentController::class, 'createCreditNoteFromInvoice'])
                 ->middleware(EnsureCompanyOwnership::class);

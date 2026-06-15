@@ -8,6 +8,7 @@ use App\Models\BusinessDocument;
 use App\Models\BusinessDocumentLine;
 use App\Models\Company;
 use App\Models\CompanyContact;
+use App\Models\IntegrationDocumentInbox;
 use App\Models\StoreIntegration;
 use App\Services\Invoicing\BusinessDocumentIssueService;
 use App\Services\Invoicing\DocumentTotalsCalculator;
@@ -22,6 +23,7 @@ class WooCommerceDocumentService
         protected DocumentTotalsCalculator $totalsCalculator,
         protected BusinessDocumentIssueService $issueService,
         protected SubscriptionService $subscriptionService,
+        protected IntegrationDocumentInboxService $inboxService,
     ) {}
 
     /**
@@ -90,7 +92,7 @@ class WooCommerceDocumentService
     /**
      * @param  array<string, mixed>  $payload
      */
-    public function createDocument(StoreIntegration $integration, array $payload): BusinessDocument
+    public function createDocument(StoreIntegration $integration, array $payload): BusinessDocument|IntegrationDocumentInbox
     {
         $company = $this->resolveCompany($integration);
         $store = $integration->store;
@@ -100,6 +102,12 @@ class WooCommerceDocumentService
             throw ValidationException::withMessages([
                 'plan' => ['Business invoicing requires a Pro plan.'],
             ]);
+        }
+
+        if ($this->shouldUseInbox($company)) {
+            $result = $this->inboxService->enqueueFromWoo($integration, $payload);
+
+            return IntegrationDocumentInbox::query()->findOrFail($result['inbox_id']);
         }
 
         $wcOrderId = (int) ($payload['woocommerce_order_id'] ?? 0);
@@ -171,6 +179,23 @@ class WooCommerceDocumentService
         }
 
         return $this->issueService->issue($document);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function serializeInboxEntry(IntegrationDocumentInbox $entry): array
+    {
+        return $this->inboxService->serializeEntry($entry);
+    }
+
+    protected function shouldUseInbox(Company $company): bool
+    {
+        if (config('invoicing.woocommerce_inbox_mode')) {
+            return true;
+        }
+
+        return ! $company->usesServerInvoicing();
     }
 
     /**

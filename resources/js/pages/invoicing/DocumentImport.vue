@@ -53,6 +53,9 @@
       <div class="invoicing-card-pad space-y-4">
         <p class="text-sm text-gray-600">
           {{ t('invoicing.import_files_hint') }}
+          <span v-if="localFirst" class="block mt-1 text-xs text-amber-800">
+            {{ t('invoicing.local_first_document_import_csv') }}
+          </span>
           <button type="button" class="text-indigo-600 hover:underline" @click="downloadExample">
             {{ t('invoicing.import_example_link') }}
           </button>
@@ -242,19 +245,43 @@ import {
   type DocumentImportMapping,
   type DocumentImportSource,
 } from '../../composables/useDocumentImportFields';
+import {
+  allCompaniesDetailQuery,
+  allContactsQuery,
+  allDocumentsQuery,
+  useInvoicingEvolu,
+} from '../../evolu/client';
+import { evoluCompanyToApi, type EvoluCompanyRow } from '../../evolu/companyMap';
+import {
+  buildDocumentImportExampleCsvBlob,
+  downloadCsvBlob,
+  importDocumentImportCsv,
+  isDocumentImportCsvFile,
+  parseDocumentImportCsv,
+  previewDocumentImportCsv,
+  readDocumentImportCsvFile,
+  type DocumentImportPreviewRow,
+} from '../../evolu/documentImportLocal';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
+import type { CompanyId } from '../../evolu/schema';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
+import { useStoresStore } from '../../store/stores';
 import api from '../../services/api';
 
 const { t } = useI18n();
+const localFirst = isInvoicingLocalFirst();
+const evolu = localFirst ? useInvoicingEvolu() : null;
+const storesStore = useStoresStore();
 const { companyId, rememberCompany } = useInvoicingLayout();
 
 const step = ref(1);
 const selectedSource = ref<DocumentImportSource | null>('excel');
 const selectedFile = ref<File | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
+const csvRows = ref<string[][]>([]);
 const headers = ref<string[]>([]);
 const mapping = reactive<DocumentImportMapping>({});
-const previewRows = ref<Record<string, unknown>[]>([]);
+const previewRows = ref<DocumentImportPreviewRow[]>([]);
 const rowCount = ref(0);
 const oneRowPerInvoice = ref(true);
 const createContacts = ref(true);
@@ -326,9 +353,31 @@ function selectSource(src: (typeof DOCUMENT_IMPORT_SOURCES)[number]) {
   selectedSource.value = src.id;
 }
 
+function localCompanyApi() {
+  if (!evolu) return null;
+  const row = evolu.getQueryRows(allCompaniesDetailQuery).find((c) => c.id === companyId.value);
+  if (!row) return null;
+  return evoluCompanyToApi(row as EvoluCompanyRow, (storeId) => {
+    const store = storesStore.stores.find((s) => s.id === storeId);
+    return store
+      ? { id: store.id, name: store.name, default_currency: store.default_currency }
+      : undefined;
+  });
+}
+
+async function ensureLocalQueriesLoaded() {
+  if (!evolu) return;
+  await Promise.all([
+    evolu.loadQuery(allCompaniesDetailQuery),
+    evolu.loadQuery(allDocumentsQuery),
+    evolu.loadQuery(allContactsQuery),
+  ]);
+}
+
 function pickFile(file: File | undefined) {
   if (!file) return;
   selectedFile.value = file;
+  csvRows.value = [];
   error.value = '';
   void loadPreview();
 }
@@ -357,6 +406,29 @@ async function loadPreview() {
   loading.value = true;
   error.value = '';
   try {
+    if (localFirst) {
+      if (!isDocumentImportCsvFile(selectedFile.value)) {
+        error.value = t('invoicing.local_first_document_import_csv');
+        headers.value = [];
+        rowCount.value = 0;
+        csvRows.value = [];
+        return;
+      }
+      const text = await readDocumentImportCsvFile(selectedFile.value);
+      const parsed = parseDocumentImportCsv(text);
+      csvRows.value = parsed.rows;
+      const company = localCompanyApi();
+      const preview = previewDocumentImportCsv(text, undefined, {
+        defaultCurrency: company?.default_currency ?? 'EUR',
+      });
+      headers.value = preview.headers;
+      rowCount.value = preview.row_count;
+      for (const field of DOCUMENT_IMPORT_FIELD_KEYS) {
+        mapping[field] = preview.suggested_mapping[field] ?? null;
+      }
+      return;
+    }
+
     const { data } = await api.post(
       `/invoicing/companies/${companyId.value}/documents/import/preview`,
       buildFormData(false)
@@ -380,6 +452,25 @@ async function goToConfirm() {
   loading.value = true;
   error.value = '';
   try {
+    if (localFirst) {
+      if (!isDocumentImportCsvFile(selectedFile.value)) {
+        error.value = t('invoicing.local_first_document_import_csv');
+        return;
+      }
+      const text = await readDocumentImportCsvFile(selectedFile.value);
+      const parsed = parseDocumentImportCsv(text);
+      csvRows.value = parsed.rows;
+      const company = localCompanyApi();
+      const preview = previewDocumentImportCsv(text, mapping, {
+        defaultCurrency: company?.default_currency ?? 'EUR',
+        includePreview: true,
+      });
+      previewRows.value = preview.preview ?? [];
+      rowCount.value = preview.row_count;
+      step.value = 3;
+      return;
+    }
+
     const { data } = await api.post(
       `/invoicing/companies/${companyId.value}/documents/import/preview`,
       buildFormData(true)
@@ -400,6 +491,42 @@ async function runImport() {
   error.value = '';
   importResult.value = null;
   try {
+    if (localFirst && evolu) {
+      if (!isDocumentImportCsvFile(selectedFile.value)) {
+        error.value = t('invoicing.local_first_document_import_csv');
+        return;
+      }
+      if (!csvRows.value.length) {
+        const text = await readDocumentImportCsvFile(selectedFile.value);
+        csvRows.value = parseDocumentImportCsv(text).rows;
+      }
+      await ensureLocalQueriesLoaded();
+      const company = localCompanyApi();
+      const result = importDocumentImportCsv(
+        evolu,
+        companyId.value as CompanyId,
+        csvRows.value,
+        mapping,
+        {
+          lineName: lineName.value,
+          lineDescription: lineDescription.value,
+          createContacts: createContacts.value,
+          defaultCurrency: company?.default_currency ?? 'EUR',
+          noteFooter: company?.legal_footer_note ?? null,
+          company,
+        },
+      );
+      importResult.value = {
+        imported: result.imported,
+        skipped: result.skipped,
+        contacts_created: result.contacts_created,
+        contacts_linked: result.contacts_linked,
+        errors: result.errors,
+      };
+      importDone.value = true;
+      return;
+    }
+
     const { data } = await api.post(
       `/invoicing/companies/${companyId.value}/documents/import`,
       buildFormData(true)
@@ -421,6 +548,11 @@ async function runImport() {
 }
 
 async function downloadExample() {
+  if (localFirst) {
+    downloadCsvBlob(buildDocumentImportExampleCsvBlob(), 'invoice_import_example.csv');
+    return;
+  }
+
   try {
     const { data } = await api.get(`/invoicing/companies/${companyId.value}/documents/import/example`, {
       responseType: 'blob',
@@ -438,5 +570,8 @@ async function downloadExample() {
 
 onMounted(() => {
   rememberCompany(companyId.value);
+  if (localFirst && evolu) {
+    void ensureLocalQueriesLoaded();
+  }
 });
 </script>

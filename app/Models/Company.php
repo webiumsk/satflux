@@ -149,6 +149,15 @@ class Company extends Model
         return $this->trade_name ?: $this->legal_name;
     }
 
+    public function usesServerInvoicing(): bool
+    {
+        if (\App\Support\Invoicing\CompanyAppSettings::from($this->app_settings)->bool('local_first')) {
+            return false;
+        }
+
+        return ! config('invoicing.local_first', false);
+    }
+
     public function hasBankAccount(): bool
     {
         if (trim((string) ($this->iban ?? '')) !== '') {

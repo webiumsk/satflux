@@ -164,7 +164,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import api from '../../services/api';
 import {
   EMAIL_PLACEHOLDERS,
   EMAIL_TEMPLATE_KEYS,
@@ -173,6 +172,13 @@ import {
   type CompanyEmailSettingsState,
   type EmailTemplateKey,
 } from '../../composables/useCompanyEmailSettings';
+import { asCompanyId } from '../../composables/useInvoicingCompany';
+import { allCompaniesDetailQuery, useInvoicingEvolu } from '../../evolu/client';
+import { evoluCompanyToApi, type EvoluCompanyRow } from '../../evolu/companyMap';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
+import { updateLocalEmailSettings } from '../../evolu/companySettingsCrud';
+import api from '../../services/api';
+import { useStoresStore } from '../../store/stores';
 import CompanyAppTabsNav from './CompanyAppTabsNav.vue';
 
 const props = defineProps<{
@@ -185,6 +191,9 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const localFirst = isInvoicingLocalFirst();
+const evolu = localFirst ? useInvoicingEvolu() : null;
+const storesStore = useStoresStore();
 
 const deliveryMethods = [
   { id: 'system' as const, labelKey: 'invoicing.email_delivery_system' },
@@ -261,7 +270,32 @@ async function saveAll() {
   saving.value = true;
   saveError.value = '';
   try {
-    const res = await api.patch(`/invoicing/companies/${props.companyId}/email-settings`, buildPayload());
+    const payload = buildPayload();
+
+    if (localFirst && evolu) {
+      const result = updateLocalEmailSettings(evolu, asCompanyId(props.companyId), payload);
+      if (!result.ok) {
+        saveError.value = t('invoicing.company_save_validation_error');
+        return;
+      }
+      form.smtp.password = '';
+      const row = evolu.getQueryRows(allCompaniesDetailQuery).find((c) => c.id === props.companyId);
+      if (row) {
+        const updated = evoluCompanyToApi(row as EvoluCompanyRow, (storeId) => {
+          const store = storesStore.stores.find((s) => s.id === storeId);
+          return store
+            ? { id: store.id, name: store.name, default_currency: store.default_currency }
+            : undefined;
+        });
+        emit('updated', updated);
+        if (updated.email_settings?.smtp) {
+          form.smtp.password_set = updated.email_settings.smtp.password_set;
+        }
+      }
+      return;
+    }
+
+    const res = await api.patch(`/invoicing/companies/${props.companyId}/email-settings`, payload);
     emit('updated', res.data.data);
     form.smtp.password = '';
     if (res.data.data.email_settings?.smtp) {
@@ -275,6 +309,11 @@ async function saveAll() {
 }
 
 async function testSmtp() {
+  if (localFirst) {
+    smtpTestOk.value = false;
+    smtpTestMessage.value = t('invoicing.local_first_smtp_test_unavailable');
+    return;
+  }
   testingSmtp.value = true;
   smtpTestMessage.value = '';
   try {

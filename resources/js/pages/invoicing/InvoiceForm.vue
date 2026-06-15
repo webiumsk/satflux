@@ -427,6 +427,11 @@ import type { InvoiceLineForm } from '../../components/invoicing/InvoiceLivePrev
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import api, { businessDocumentPdfPath, getWebBlob } from '../../services/api';
+import {
+  buildEphemeralSnapshot,
+  downloadEphemeralPdf,
+  resolveEphemeralBridgeCompanyId,
+} from '../../evolu/ephemeralBridge';
 import { companyCurrencyOptions } from '../../config/companyCurrencies';
 import { appSettingsFromCompany } from '../../composables/useCompanyAppSettings';
 import { useInvoiceDocument } from '../../composables/useInvoiceDocument';
@@ -472,6 +477,8 @@ const {
   showLineTaxColumn,
   warehouses,
   defaultWarehouseIdValue,
+  localFirst,
+  saveLocalDocumentFlow,
 } = useInvoiceDocument();
 
 const { rememberCompany } = useInvoicingLayout();
@@ -604,6 +611,51 @@ async function save(downloadPdf: boolean) {
   saving.value = true;
   error.value = '';
   try {
+    if (localFirst) {
+      const docId = await saveLocalDocumentFlow();
+      if (!docId) {
+        error.value = t('invoicing.company_save_validation_error');
+        return;
+      }
+      if (downloadPdf) {
+        const p = payload();
+        const snapshot = buildEphemeralSnapshot(
+          company.value,
+          selectedContact.value,
+          {
+            type: documentType.value,
+            status: 'issued',
+            title: form.title,
+            number: form.variable_symbol || undefined,
+            variable_symbol: form.variable_symbol,
+            constant_symbol: form.constant_symbol,
+            specific_symbol: form.specific_symbol,
+            issue_date: form.issue_date,
+            delivery_date: form.delivery_date,
+            due_date: form.due_date,
+            currency: form.currency,
+            note_above_lines: form.note_above_lines,
+            note_footer: form.note_footer,
+            internal_note: form.internal_note,
+            pdf_locale: form.pdf_locale,
+            pdf_show_signature: form.pdf_show_signature,
+            pdf_show_payment_info: form.pdf_show_payment_info,
+            payment_bank_enabled: form.payment_bank_enabled,
+            discount_percent: form.discount_percent,
+            amount_paid: 0,
+          },
+          p.lines,
+        );
+        const bridgeCompanyId = await resolveEphemeralBridgeCompanyId();
+        await downloadEphemeralPdf(snapshot, `invoice-${docId}.pdf`, bridgeCompanyId);
+      }
+      router.push({
+        name: documentRoutes.value.show,
+        params: { companyId: companyId.value, documentId: docId },
+      });
+      return;
+    }
+
     const wasDraft = isNew.value || documentStatus.value === 'draft';
     let docId = documentId.value;
     if (!isNew.value && docId) {

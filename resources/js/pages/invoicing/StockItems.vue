@@ -1,5 +1,10 @@
 <template>
-  <InvoicingPageShell content-class="pb-8">
+  <InvoicingServerOnlyPage
+    v-if="localFirst"
+    :title="t('invoicing.stock_title')"
+    detail-key="invoicing.local_first_stock_bridge"
+  />
+  <InvoicingPageShell v-else content-class="pb-8">
     <template #header>
       <InvoicingAppHeader
         :company-label="companyName"
@@ -221,7 +226,9 @@ import { useRoute } from 'vue-router';
 import StockImportModal from '../../components/invoicing/StockImportModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
+import InvoicingServerOnlyPage from '../../components/invoicing/InvoicingServerOnlyPage.vue';
 import InvoicingMobileBulkBar from '../../components/invoicing/InvoicingMobileBulkBar.vue';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
 import InvoicingMobileCard from '../../components/invoicing/InvoicingMobileCard.vue';
 import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
 import {
@@ -236,6 +243,7 @@ import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import api from '../../services/api';
 
 const { t } = useI18n();
+const localFirst = isInvoicingLocalFirst();
 const route = useRoute();
 const { companyId, rememberCompany } = useInvoicingLayout();
 const { stockNewTo, stockEditTo } = useStockRoutes(companyId);

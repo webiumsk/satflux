@@ -120,6 +120,17 @@ import {
   type ContactImportFieldKey,
   type ContactImportMapping,
 } from '../../composables/useContactImportFields';
+import { useInvoicingEvolu } from '../../evolu/client';
+import {
+  buildContactImportExampleCsvBlob,
+  downloadCsvBlob,
+  importContactsFromCsv,
+  isContactImportCsvFile,
+  previewContactImportCsv,
+  readContactImportCsvFile,
+} from '../../evolu/contactImportLocal';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
+import type { CompanyId } from '../../evolu/schema';
 import api from '../../services/api';
 
 const props = defineProps<{
@@ -133,6 +144,9 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const localFirst = isInvoicingLocalFirst();
+const evolu = localFirst ? useInvoicingEvolu() : null;
 
 const dragOver = ref(false);
 const selectedFile = ref<File | null>(null);
@@ -211,6 +225,23 @@ async function loadPreview() {
   loadingPreview.value = true;
   error.value = '';
   try {
+    if (localFirst) {
+      if (!isContactImportCsvFile(selectedFile.value)) {
+        error.value = t('invoicing.stock_import_file_invalid');
+        headers.value = [];
+        rowCount.value = 0;
+        return;
+      }
+      const text = await readContactImportCsvFile(selectedFile.value);
+      const preview = previewContactImportCsv(text);
+      headers.value = preview.headers;
+      rowCount.value = preview.row_count;
+      for (const field of CONTACT_IMPORT_FIELD_KEYS) {
+        mapping[field] = preview.suggested_mapping[field] ?? null;
+      }
+      return;
+    }
+
     const { data } = await api.post(
       `/invoicing/companies/${props.companyId}/contacts/import/preview`,
       buildFormData(false)
@@ -222,7 +253,7 @@ async function loadPreview() {
       mapping[field] = suggested[field] ?? null;
     }
   } catch (e: any) {
-    error.value = e?.response?.data?.message || t('errors.generic');
+    error.value = e?.response?.data?.message || e?.message || t('errors.generic');
     headers.value = [];
     rowCount.value = 0;
   } finally {
@@ -231,6 +262,11 @@ async function loadPreview() {
 }
 
 async function downloadExample() {
+  if (localFirst) {
+    downloadCsvBlob(buildContactImportExampleCsvBlob(), 'client_import_example.csv');
+    return;
+  }
+
   try {
     const { data } = await api.get(`/invoicing/companies/${props.companyId}/contacts/import/example`, {
       responseType: 'blob',
@@ -251,6 +287,19 @@ async function submitImport() {
   importing.value = true;
   error.value = '';
   try {
+    if (localFirst && evolu) {
+      if (!isContactImportCsvFile(selectedFile.value)) {
+        error.value = t('invoicing.stock_import_file_invalid');
+        return;
+      }
+      const text = await readContactImportCsvFile(selectedFile.value);
+      result.value = importContactsFromCsv(evolu, props.companyId as CompanyId, text, mapping);
+      if (result.value.imported > 0) {
+        emit('imported');
+      }
+      return;
+    }
+
     const { data } = await api.post(
       `/invoicing/companies/${props.companyId}/contacts/import`,
       buildFormData(true)
@@ -260,7 +309,7 @@ async function submitImport() {
       emit('imported');
     }
   } catch (e: any) {
-    error.value = e?.response?.data?.message || t('errors.generic');
+    error.value = e?.response?.data?.message || e?.message || t('errors.generic');
   } finally {
     importing.value = false;
   }

@@ -54,7 +54,7 @@ class BusinessDocumentPdfService
         Pdf::view($view, $viewData)->save($visualPath);
 
         try {
-            if ($this->isdocService->supportsEmbedInPdf($document)) {
+            if ($document->exists && $this->isdocService->supportsEmbedInPdf($document)) {
                 $isdocPath = $this->tempPdfPath('pdf-isdoc-'.uniqid().'.pdf');
                 try {
                     $this->isdocService->embedIsdocInPdf($visualPath, $document, $isdocPath);
@@ -143,8 +143,14 @@ class BusinessDocumentPdfService
             'reverseChargeNote' => $reverseChargeNote,
             'bankQr' => $bankQr,
             'btcPayQr' => $btcPayQr,
-            'logoDataUri' => $this->brandingService->imageDataUri($company->logo_path),
-            'signatureStampDataUri' => $this->brandingService->imageDataUri($company->signature_stamp_path),
+            'logoDataUri' => $this->brandingService->resolveBrandingDataUri(
+                $company->getAttribute('ephemeral_logo_url'),
+                $company->logo_path,
+            ),
+            'signatureStampDataUri' => $this->brandingService->resolveBrandingDataUri(
+                $company->getAttribute('ephemeral_signature_stamp_url'),
+                $company->signature_stamp_path,
+            ),
         ];
     }
 

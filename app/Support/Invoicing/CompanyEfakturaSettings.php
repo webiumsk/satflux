@@ -68,6 +68,11 @@ final class CompanyEfakturaSettings
 
     public function sapiClientSecret(): ?string
     {
+        $plain = $this->values['efaktura_sapi_client_secret'] ?? null;
+        if (is_string($plain) && $plain !== '') {
+            return $plain;
+        }
+
         $encrypted = $this->values['efaktura_sapi_client_secret_encrypted'] ?? null;
         if (! is_string($encrypted) || $encrypted === '') {
             return null;

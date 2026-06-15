@@ -184,6 +184,7 @@ import { useRouter } from 'vue-router';
 import InvoicingJurisdictionSelect from '../../components/invoicing/InvoicingJurisdictionSelect.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import RegistryLookupField from '../../components/invoicing/RegistryLookupField.vue';
+import type { CompanyJurisdictionValue } from '../../config/companyJurisdiction';
 import {
   countryAllowedForJurisdiction,
   countriesForJurisdiction,
@@ -203,12 +204,18 @@ import {
   type RegistrySummary,
 } from '../../composables/useCompanyRegistryLookup';
 import api from '../../services/api';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
+import { useInvoicingEvolu } from '../../evolu/client';
+import { insertLocalCompanyFromPayload } from '../../evolu/companyInsert';
+import { seedDefaultNumberSeries } from '../../evolu/numberSeriesCrud';
 import { useStoresStore } from '../../store/stores';
 
 const { t, te } = useI18n();
 const router = useRouter();
 const storesStore = useStoresStore();
 const saving = ref(false);
+const localFirst = isInvoicingLocalFirst();
+const evolu = localFirst ? useInvoicingEvolu() : null;
 
 const form = reactive({
   legal_name: '',
@@ -379,7 +386,7 @@ async function save() {
     const payload = {
       legal_name: form.legal_name,
       store_id: form.store_id || null,
-      jurisdiction: form.jurisdiction,
+      jurisdiction: form.jurisdiction as CompanyJurisdictionValue,
       default_currency: form.default_currency,
       registration_number: form.registration_number || null,
       tax_id: form.tax_id || null,
@@ -397,8 +404,23 @@ async function save() {
       commercial_register: form.commercial_register || null,
       vat_payer: showVatPayer.value ? form.vat_payer || Boolean(form.vat_number) : false,
       vat_status:
-        !showVatPayer.value || (!form.vat_payer && !form.vat_number) ? 'none' : 'payer',
+        (!showVatPayer.value || (!form.vat_payer && !form.vat_number) ? 'none' : 'payer') as
+          | 'none'
+          | 'payer'
+          | 'partial',
     };
+
+    if (localFirst && evolu) {
+      const result = insertLocalCompanyFromPayload(evolu, payload);
+      if (!result.ok) {
+        window.alert(t('invoicing.company_save_validation_error'));
+        return;
+      }
+      seedDefaultNumberSeries(evolu, result.value.id);
+      router.push({ name: 'invoicing' });
+      return;
+    }
+
     const res = await api.post('/invoicing/companies', payload);
     router.push({ name: 'invoicing-company', params: { companyId: res.data.data.id } });
   } finally {

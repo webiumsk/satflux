@@ -1,5 +1,5 @@
 export type NumberSeriesRow = {
-  id: number;
+  id: number | string;
   company_id: string;
   name: string;
   document_type: string;

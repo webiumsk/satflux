@@ -63,6 +63,18 @@ class CompanyBrandingService
     }
 
     /**
+     * Use an inline data URL from the client snapshot, or resolve a stored path.
+     */
+    public function resolveBrandingDataUri(?string $inlineDataUrl, ?string $storedPath): ?string
+    {
+        if ($inlineDataUrl && str_starts_with($inlineDataUrl, 'data:image/')) {
+            return $inlineDataUrl;
+        }
+
+        return $this->imageDataUri($storedPath);
+    }
+
+    /**
      * @return array{logo_url: string|null, signature_stamp_url: string|null, has_logo: bool, has_signature_stamp: bool}
      */
     public function brandingMeta(Company $company): array

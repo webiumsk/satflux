@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Integrations;
 
 use App\Http\Controllers\Controller;
 use App\Models\BusinessDocument;
+use App\Models\IntegrationDocumentInbox;
 use App\Models\StoreIntegration;
 use App\Services\Integrations\WooCommerceDocumentService;
 use Illuminate\Http\JsonResponse;
@@ -63,10 +64,16 @@ class WooCommerceIntegrationController extends Controller
             'lines.*.tax_rate' => ['sometimes', 'numeric'],
         ]);
 
-        $document = $this->documentService->createDocument($integration, $validated);
+        $result = $this->documentService->createDocument($integration, $validated);
+
+        if ($result instanceof IntegrationDocumentInbox) {
+            return response()->json([
+                'data' => $this->documentService->serializeInboxEntry($result),
+            ], 201);
+        }
 
         return response()->json([
-            'data' => $this->documentService->serializeDocument($document),
+            'data' => $this->documentService->serializeDocument($result),
         ], 201);
     }
 

@@ -1,5 +1,10 @@
 <template>
-  <InvoicingPageShell content-class="pb-8">
+  <InvoicingServerOnlyPage
+    v-if="localFirst"
+    :title="t('invoicing.main_nav_expenses')"
+    detail-key="invoicing.local_first_expenses_bridge"
+  />
+  <InvoicingPageShell v-else content-class="pb-8">
     <template #header>
       <InvoicingAppHeader
         :company-label="companyName"
@@ -187,13 +192,16 @@ import ExpenseImportModal from '../../components/invoicing/ExpenseImportModal.vu
 import ExpensesTable from '../../components/invoicing/ExpensesTable.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
+import InvoicingServerOnlyPage from '../../components/invoicing/InvoicingServerOnlyPage.vue';
 import InvoicingMobileBulkBar from '../../components/invoicing/InvoicingMobileBulkBar.vue';
 import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
 import { expenseOverdueDays, type ExpenseListRow } from '../../composables/useExpenseRowMeta';
 import { INVOICING_CONTAINER_CLASS, useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import api from '../../services/api';
 
 const { t } = useI18n();
+const localFirst = isInvoicingLocalFirst();
 const route = useRoute();
 const router = useRouter();
 const { rememberCompany } = useInvoicingLayout();

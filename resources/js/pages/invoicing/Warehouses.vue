@@ -1,5 +1,10 @@
 <template>
-  <InvoicingPageShell content-class="pb-8">
+  <InvoicingServerOnlyPage
+    v-if="localFirst"
+    :title="t('invoicing.warehouses_title')"
+    detail-key="invoicing.local_first_warehouses_bridge"
+  />
+  <InvoicingPageShell v-else content-class="pb-8">
     <template #header>
       <InvoicingAppHeader :company-label="companyName">
         <template #actions>
@@ -84,7 +89,9 @@ import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
+import InvoicingServerOnlyPage from '../../components/invoicing/InvoicingServerOnlyPage.vue';
 import InvoicingMobileCard from '../../components/invoicing/InvoicingMobileCard.vue';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
 import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
 import { useStockRoutes } from '../../composables/useCompanyStockItem';
 import {
@@ -96,6 +103,7 @@ import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import api from '../../services/api';
 
 const { t } = useI18n();
+const localFirst = isInvoicingLocalFirst();
 const route = useRoute();
 const { companyId, rememberCompany } = useInvoicingLayout();
 const { stockListTo } = useStockRoutes(companyId);

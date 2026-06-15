@@ -283,7 +283,8 @@
     />
 
     <!-- Logo a podpis -->
-    <div v-show="activeTab === 'branding'" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div v-show="activeTab === 'branding'">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
       <div>
         <label class="invoicing-sf-label">{{ t('invoicing.company_logo') }}</label>
         <p class="text-xs text-gray-500 mb-2">{{ t('invoicing.company_logo_hint') }}</p>
@@ -329,6 +330,7 @@
           </button>
         </div>
       </div>
+    </div>
     </div>
 
     <p v-if="saveError" class="mt-4 text-sm text-red-600">{{ saveError }}</p>
@@ -422,10 +424,31 @@ import {
 } from '../../composables/useCompanyRegistryLookup';
 import { useViesValidation } from '../../composables/useViesValidation';
 import { useStoresStore } from '../../store/stores';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
+import { useInvoicingEvolu } from '../../evolu/client';
+import { asCompanyId } from '../../composables/useInvoicingCompany';
+import { evoluCompanyToApi } from '../../evolu/companyMap';
+import { updateLocalCompanyBank, updateLocalCompanyContact } from '../../evolu/companyUpdate';
+import {
+  resizeImageFile,
+  updateLocalCompanyLogo,
+  updateLocalCompanySignature,
+} from '../../evolu/companyBranding';
+
+const LOGO_MAX_BYTES = 100 * 1024;
+const SIGNATURE_MAX_BYTES = 100 * 1024;
+import { resetLocalCompanyData } from '../../evolu/companyResetLocal';
+import {
+  allContactsQuery,
+  allDocumentEventsQuery,
+  allDocumentsQuery,
+  allNumberSeriesQuery,
+} from '../../evolu/client';
 
 const props = defineProps<{
   companyId: string;
   company: Record<string, any> | null;
+  localFirst?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -435,6 +458,8 @@ const emit = defineEmits<{
 const { t, te } = useI18n();
 const router = useRouter();
 const storesStore = useStoresStore();
+const localFirst = computed(() => props.localFirst ?? isInvoicingLocalFirst());
+const evolu = isInvoicingLocalFirst() ? useInvoicingEvolu() : null;
 
 const activeTab = ref<'contact' | 'bank' | 'branding' | 'efaktura'>('contact');
 const linkedStoreId = ref('');
@@ -733,6 +758,66 @@ async function saveContact() {
   savingContact.value = true;
   saveError.value = '';
   try {
+    if (localFirst.value && evolu) {
+      const result = updateLocalCompanyContact(evolu, asCompanyId(props.companyId), {
+        ...contactForm,
+        ...vatPayload(),
+        linked_store_id: linkedStoreId.value || null,
+      });
+      if (!result.ok) {
+        saveError.value = t('invoicing.company_save_validation_error');
+        return;
+      }
+      savedLinkedStoreId.value = linkedStoreId.value;
+      const row = evoluCompanyToApi(
+        {
+          id: asCompanyId(props.companyId),
+          legalName: contactForm.legal_name,
+          tradeName: props.company?.trade_name ?? null,
+          jurisdiction: contactForm.jurisdiction,
+          defaultCurrency: bankForm.default_currency,
+          registrationNumber: contactForm.registration_number || null,
+          taxId: contactForm.tax_id || null,
+          vatNumber: contactForm.vat_number || null,
+          commercialRegister: contactForm.commercial_register || null,
+          street: contactForm.street || null,
+          city: contactForm.city || null,
+          postalCode: contactForm.postal_code || null,
+          country: contactForm.country || null,
+          stateRegion: contactForm.state_region || null,
+          iban: bankForm.iban || null,
+          bic: bankForm.bic || null,
+          bankName: bankForm.bank_name || null,
+          bankAccount: bankForm.bank_account || null,
+          bankCode: bankForm.bank_code || null,
+          vatPayer: vatPayload().vat_payer ? 1 : 0,
+          vatStatus: vatPayload().vat_status,
+          vatRateDefault: String(contactForm.vat_rate_default ?? 0),
+          legalFooterNote: contactForm.legal_footer_note || null,
+          issuerName: contactForm.issuer_name || null,
+          issuerPhone: contactForm.issuer_phone || null,
+          issuerEmail: contactForm.issuer_email || null,
+          website: contactForm.website || null,
+          invoiceNumberPrefix: props.company?.invoice_number_prefix ?? null,
+          linkedStoreId: linkedStoreId.value || null,
+          appSettingsJson: props.company?.app_settings
+            ? JSON.stringify(props.company.app_settings)
+            : null,
+          emailSettingsJson: props.company?.email_settings
+            ? JSON.stringify(props.company.email_settings)
+            : null,
+          logoDataUrl: logoPreviewUrl.value,
+          signatureDataUrl: signaturePreviewUrl.value,
+        },
+        (storeId) => {
+          const store = storesStore.stores.find((s) => s.id === storeId);
+          return store ? { id: store.id, name: store.name } : undefined;
+        },
+      );
+      emit('updated', row);
+      return;
+    }
+
     const res = await api.patch(`/invoicing/companies/${props.companyId}`, {
       ...contactForm,
       ...vatPayload(),
@@ -782,6 +867,28 @@ async function saveBank() {
     if (isUs.value) {
       payload.bank_code = '';
     }
+
+    if (localFirst.value && evolu) {
+      const result = updateLocalCompanyBank(evolu, asCompanyId(props.companyId), payload);
+      if (!result.ok) {
+        saveError.value = t('invoicing.company_save_validation_error');
+        return;
+      }
+      if (props.company) {
+        emit('updated', {
+          ...props.company,
+          ...payload,
+          default_currency: payload.default_currency,
+          bank_name: payload.bank_name,
+          bank_account: payload.bank_account,
+          bank_code: payload.bank_code,
+          iban: payload.iban,
+          bic: payload.bic,
+        });
+      }
+      return;
+    }
+
     const res = await api.patch(`/invoicing/companies/${props.companyId}`, payload);
     emit('updated', res.data.data);
   } catch (e: any) {
@@ -797,12 +904,26 @@ async function uploadLogo(e: Event) {
   uploadingLogo.value = true;
   saveError.value = '';
   try {
+    if (localFirst.value && evolu) {
+      const dataUrl = await resizeImageFile(file, 800, 400, LOGO_MAX_BYTES);
+      const result = updateLocalCompanyLogo(evolu, asCompanyId(props.companyId), dataUrl);
+      if (!result.ok) {
+        saveError.value = t('invoicing.company_save_validation_error');
+        return;
+      }
+      logoPreviewUrl.value = dataUrl;
+      if (props.company) {
+        emit('updated', { ...props.company, logo_url: dataUrl });
+      }
+      return;
+    }
+
     const fd = new FormData();
     fd.append('image', file);
     const res = await api.post(`/invoicing/companies/${props.companyId}/branding/logo`, fd);
     emit('updated', res.data.data);
   } catch (err: any) {
-    saveError.value = err?.response?.data?.message || t('common.error');
+    saveError.value = err?.message || err?.response?.data?.message || t('common.error');
   } finally {
     uploadingLogo.value = false;
     (e.target as HTMLInputElement).value = '';
@@ -815,12 +936,26 @@ async function uploadSignature(e: Event) {
   uploadingSignature.value = true;
   saveError.value = '';
   try {
+    if (localFirst.value && evolu) {
+      const dataUrl = await resizeImageFile(file, 800, 300, SIGNATURE_MAX_BYTES);
+      const result = updateLocalCompanySignature(evolu, asCompanyId(props.companyId), dataUrl);
+      if (!result.ok) {
+        saveError.value = t('invoicing.company_save_validation_error');
+        return;
+      }
+      signaturePreviewUrl.value = dataUrl;
+      if (props.company) {
+        emit('updated', { ...props.company, signature_stamp_url: dataUrl });
+      }
+      return;
+    }
+
     const fd = new FormData();
     fd.append('image', file);
     const res = await api.post(`/invoicing/companies/${props.companyId}/branding/signature-stamp`, fd);
     emit('updated', res.data.data);
   } catch (err: any) {
-    saveError.value = err?.response?.data?.message || t('common.error');
+    saveError.value = err?.message || err?.response?.data?.message || t('common.error');
   } finally {
     uploadingSignature.value = false;
     (e.target as HTMLInputElement).value = '';
@@ -829,9 +964,25 @@ async function uploadSignature(e: Event) {
 
 async function removeLogo() {
   uploadingLogo.value = true;
+  saveError.value = '';
   try {
+    if (localFirst.value && evolu) {
+      const result = updateLocalCompanyLogo(evolu, asCompanyId(props.companyId), null);
+      if (!result.ok) {
+        saveError.value = t('invoicing.company_save_validation_error');
+        return;
+      }
+      logoPreviewUrl.value = null;
+      if (props.company) {
+        emit('updated', { ...props.company, logo_url: null });
+      }
+      return;
+    }
+
     const res = await api.delete(`/invoicing/companies/${props.companyId}/branding/logo`);
     emit('updated', res.data.data);
+  } catch (err: any) {
+    saveError.value = err?.response?.data?.message || t('common.error');
   } finally {
     uploadingLogo.value = false;
   }
@@ -839,9 +990,25 @@ async function removeLogo() {
 
 async function removeSignature() {
   uploadingSignature.value = true;
+  saveError.value = '';
   try {
+    if (localFirst.value && evolu) {
+      const result = updateLocalCompanySignature(evolu, asCompanyId(props.companyId), null);
+      if (!result.ok) {
+        saveError.value = t('invoicing.company_save_validation_error');
+        return;
+      }
+      signaturePreviewUrl.value = null;
+      if (props.company) {
+        emit('updated', { ...props.company, signature_stamp_url: null });
+      }
+      return;
+    }
+
     const res = await api.delete(`/invoicing/companies/${props.companyId}/branding/signature-stamp`);
     emit('updated', res.data.data);
+  } catch (err: any) {
+    saveError.value = err?.response?.data?.message || t('common.error');
   } finally {
     uploadingSignature.value = false;
   }
@@ -852,9 +1019,19 @@ async function resetCompanyData() {
   resetting.value = true;
   resetError.value = '';
   try {
-    await api.post(`/invoicing/companies/${props.companyId}/reset-data`, {
-      confirm_name: resetConfirmName.value.trim(),
-    });
+    if (localFirst.value && evolu) {
+      await Promise.all([
+        evolu.loadQuery(allDocumentsQuery),
+        evolu.loadQuery(allContactsQuery),
+        evolu.loadQuery(allNumberSeriesQuery),
+        evolu.loadQuery(allDocumentEventsQuery),
+      ]);
+      resetLocalCompanyData(evolu, asCompanyId(props.companyId));
+    } else {
+      await api.post(`/invoicing/companies/${props.companyId}/reset-data`, {
+        confirm_name: resetConfirmName.value.trim(),
+      });
+    }
     showResetModal.value = false;
     resetConfirmName.value = '';
     await router.push({ name: 'invoicing-invoices', params: { companyId: props.companyId } });

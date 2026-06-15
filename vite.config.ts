@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import laravel from 'laravel-vite-plugin';
 
+const viteDevOrigin = process.env.VITE_DEV_SERVER_ORIGIN || 'http://localhost:8080';
+
 export default defineConfig({
     build: {
         outDir: 'public/build',
@@ -55,6 +57,34 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': '/resources/js',
+        },
+    },
+    optimizeDeps: {
+        // Evolu: sqlite-wasm must not be prebundled; @evolu/web must stay unbundled so
+        // Db.worker.js resolves to node_modules/@evolu/web/... (not missing .vite/deps/Db.worker.js).
+        exclude: [
+            '@sqlite.org/sqlite-wasm',
+            '@evolu/sqlite-wasm',
+            '@evolu/web',
+            '@evolu/common',
+            '@evolu/vue',
+        ],
+    },
+    worker: {
+        format: 'es',
+    },
+    server: {
+        host: '0.0.0.0',
+        port: 5173,
+        strictPort: true,
+        // Page is served via Laravel/nginx :8080; asset URLs use origin below.
+        // HMR WebSocket connects directly to Vite :5173 (nginx does not proxy it reliably).
+        origin: viteDevOrigin,
+        cors: true,
+        hmr: {
+            host: 'localhost',
+            port: 5173,
+            protocol: 'ws',
         },
     },
 });

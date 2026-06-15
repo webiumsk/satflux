@@ -1,8 +1,23 @@
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onUnmounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import type { InvoiceLineForm } from '../components/invoicing/InvoiceLivePreview.vue';
 import api from '../services/api';
+import { isInvoicingLocalFirst } from '../evolu/flags';
+import { allDocumentEventsQuery } from '../evolu/client';
+import type { CompanyId, DocumentId } from '../evolu/schema';
+import type { DocumentSavePayload } from '../evolu/documentCrud';
+import { payloadFromApiDocument, markLocalDocumentPaid } from '../evolu/documentCrud';
+import { documentHistoryFromEvents } from '../evolu/documentEventLog';
+import type { EvoluDocumentRow } from '../evolu/documentMap';
+import {
+  buildEphemeralSnapshot,
+  fetchEphemeralBtcpayCheckout,
+  fetchEphemeralBtcpayStatus,
+  resolveEphemeralBridgeCompanyId,
+} from '../evolu/ephemeralBridge';
+import { useLocalInvoiceDocumentSupport } from './useLocalInvoiceDocument';
+import { useStoresStore } from '../store/stores';
 import { appSettingsFromCompany } from './useCompanyAppSettings';
 import { useCompanyVatPolicy } from './useCompanyVatPolicy';
 import { DEFAULT_INVOICE_LINE_UNIT } from './useInvoiceLineUnits';
@@ -14,6 +29,9 @@ export function useInvoiceDocument() {
   const { t, locale } = useI18n();
   const route = useRoute();
   const router = useRouter();
+  const localFirst = isInvoicingLocalFirst();
+  const local = localFirst ? useLocalInvoiceDocumentSupport() : null;
+  const storesStore = useStoresStore();
 
   const companyId = computed(() => route.params.companyId as string);
   const documentId = computed(() => route.params.documentId as string | undefined);
@@ -42,6 +60,10 @@ export function useInvoiceDocument() {
   const neighborIds = ref<string[]>([]);
   const tagsInput = ref('');
   const paymentToken = ref<string | null>(null);
+  const localBtcpayCheckoutLink = ref('');
+  const localBtcpayCheckoutLoading = ref(false);
+  const localBtcpayInvoiceId = ref('');
+  let localBtcpayPollTimer: ReturnType<typeof setInterval> | null = null;
   const sourceDocument = ref<{ id: string; number?: string; type?: string } | null>(null);
   const finalInvoice = ref<{ id: string; number?: string; status?: string } | null>(null);
   const quoteStatus = ref<string | null>(null);
@@ -149,6 +171,12 @@ export function useInvoiceDocument() {
   });
 
   const btcPayUrl = computed(() => {
+    if (localFirst) {
+      if (!form.payment_btc_enabled || documentStatus.value === 'draft' || documentStatus.value === 'paid') {
+        return '';
+      }
+      return localBtcpayCheckoutLink.value;
+    }
     if (!paymentToken.value || !form.payment_btc_enabled || documentStatus.value === 'draft') {
       return '';
     }
@@ -423,6 +451,14 @@ export function useInvoiceDocument() {
   }
 
   async function loadNextNumberPreview() {
+    if (local) {
+      await local.refreshAll();
+      nextNumberPreview.value = local.previewNumber(
+        companyId.value as CompanyId,
+        documentType.value,
+      );
+      return;
+    }
     try {
       const res = await api.get(
         `/invoicing/companies/${companyId.value}/number-series/preview`,
@@ -457,6 +493,39 @@ export function useInvoiceDocument() {
   }
 
   async function loadCompanyAndContacts() {
+    if (local) {
+      if (!storesStore.stores.length) {
+        await storesStore.fetchStores();
+      }
+      await local.refreshAll();
+      company.value = local.companyApi(companyId.value);
+      linkedStores.value = company.value?.stores ?? [];
+      contacts.value = local.contactsForCompany(companyId.value);
+      warehouses.value = [];
+
+      if (company.value) {
+        form.currency = company.value.default_currency || 'EUR';
+        if (!form.note_footer) form.note_footer = company.value.legal_footer_note || '';
+      }
+      applyPaymentDefaults();
+
+      if (!documentId.value) {
+        const app = appSettingsFromCompany(company.value);
+        if (!form.constant_symbol) form.constant_symbol = app.default_constant_symbol;
+        documentType.value = resolveDocumentTypeFromRoute();
+        if (documentType.value === 'quote') {
+          form.payment_bank_enabled = false;
+          form.payment_btc_enabled = false;
+          form.pdf_show_payment_info = false;
+        } else {
+          form.payment_bank_enabled = app.show_pay_by_square;
+        }
+        applyQuoteDueDefault();
+        await loadNextNumberPreview();
+      }
+      return;
+    }
+
     const companyRes = await api.get(`/invoicing/companies/${companyId.value}`);
     company.value = companyRes.data.data;
     linkedStores.value = company.value?.stores ?? [];
@@ -495,14 +564,148 @@ export function useInvoiceDocument() {
 
   async function reloadDocument() {
     if (!documentId.value) return;
+    if (local) {
+      await local.refreshAll();
+      const apiDoc = local.documentApi(documentId.value as DocumentId);
+      if (apiDoc) await applyDocument(apiDoc);
+      await loadLocalBtcpayCheckout();
+      return;
+    }
     const docRes = await api.get(
       `/invoicing/companies/${companyId.value}/documents/${documentId.value}`
     );
     await applyDocument(docRes.data.data);
   }
 
+  function buildCurrentEphemeralSnapshot() {
+    const p = payload();
+    return buildEphemeralSnapshot(
+      company.value,
+      selectedContact.value,
+      {
+        type: documentType.value,
+        status: documentStatus.value,
+        title: form.title,
+        number: documentNumber.value || displayDocumentNumber.value,
+        variable_symbol: form.variable_symbol,
+        constant_symbol: form.constant_symbol,
+        specific_symbol: form.specific_symbol,
+        issue_date: form.issue_date,
+        delivery_date: form.delivery_date,
+        due_date: form.due_date,
+        currency: form.currency,
+        note_above_lines: form.note_above_lines,
+        note_footer: form.note_footer,
+        internal_note: form.internal_note,
+        pdf_locale: form.pdf_locale,
+        pdf_show_signature: form.pdf_show_signature,
+        pdf_show_payment_info: form.pdf_show_payment_info,
+        payment_bank_enabled: form.payment_bank_enabled,
+        payment_btc_enabled: form.payment_btc_enabled,
+        discount_percent: form.discount_percent,
+        amount_paid: amountPaid.value,
+      },
+      p.lines,
+    );
+  }
+
+  async function loadLocalBtcpayCheckout() {
+    localBtcpayCheckoutLink.value = '';
+    localBtcpayInvoiceId.value = '';
+    stopLocalBtcpayPolling();
+    if (!localFirst || !documentId.value) return;
+    if (
+      !form.payment_btc_enabled
+      || !form.store_id
+      || documentStatus.value === 'draft'
+      || documentStatus.value === 'paid'
+    ) {
+      return;
+    }
+
+    localBtcpayCheckoutLoading.value = true;
+    try {
+      const bridgeCompanyId = await resolveEphemeralBridgeCompanyId();
+      const result = await fetchEphemeralBtcpayCheckout(
+        buildCurrentEphemeralSnapshot(),
+        form.store_id,
+        documentId.value,
+        bridgeCompanyId,
+      );
+      localBtcpayCheckoutLink.value = result.checkout_link || '';
+      localBtcpayInvoiceId.value = result.btcpay_invoice_id || '';
+      if (localBtcpayInvoiceId.value) {
+        startLocalBtcpayPolling();
+      }
+    } catch {
+      localBtcpayCheckoutLink.value = '';
+      localBtcpayInvoiceId.value = '';
+    } finally {
+      localBtcpayCheckoutLoading.value = false;
+    }
+  }
+
+  function stopLocalBtcpayPolling() {
+    if (localBtcpayPollTimer) {
+      clearInterval(localBtcpayPollTimer);
+      localBtcpayPollTimer = null;
+    }
+  }
+
+  async function syncEphemeralBtcpayPayment(): Promise<boolean> {
+    if (!local || !documentId.value || !localBtcpayInvoiceId.value) return false;
+    if (documentStatus.value === 'paid') {
+      stopLocalBtcpayPolling();
+      return true;
+    }
+    try {
+      const status = await fetchEphemeralBtcpayStatus(
+        documentId.value,
+        localBtcpayInvoiceId.value,
+      );
+      if (status.status !== 'paid') return false;
+      await local.refreshAll();
+      markLocalDocumentPaid(
+        local.evolu,
+        documentId.value as DocumentId,
+        local.documentRows.value as EvoluDocumentRow[],
+      );
+      await local.refreshAll();
+      const apiDoc = local.documentApi(documentId.value as DocumentId);
+      if (apiDoc) await applyDocument(apiDoc);
+      stopLocalBtcpayPolling();
+      success.value = t('invoicing.local_first_btcpay_paid_synced');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function startLocalBtcpayPolling() {
+    stopLocalBtcpayPolling();
+    if (!localFirst || documentStatus.value === 'paid' || !localBtcpayInvoiceId.value) {
+      return;
+    }
+    void syncEphemeralBtcpayPayment();
+    localBtcpayPollTimer = setInterval(() => {
+      void syncEphemeralBtcpayPayment();
+    }, 15000);
+  }
+
+  onUnmounted(() => {
+    stopLocalBtcpayPolling();
+  });
+
   async function loadHistory() {
     if (!documentId.value) return;
+    if (local) {
+      await local.evolu.loadQuery(allDocumentEventsQuery);
+      const events = local.documentEventRows.value.filter(
+        (event) => event.documentId === documentId.value,
+      );
+      history.value = documentHistoryFromEvents(events);
+      return;
+    }
     const res = await api.get(
       `/invoicing/companies/${companyId.value}/documents/${documentId.value}/history`
     );
@@ -510,6 +713,17 @@ export function useInvoiceDocument() {
   }
 
   async function loadNeighbors() {
+    if (local) {
+      await local.refreshAll();
+      neighborIds.value = local.documentRows.value
+        .filter(
+          (d) =>
+            d.companyId === companyId.value
+            && d.documentType === documentType.value,
+        )
+        .map((d) => d.id);
+      return;
+    }
     const res = await api.get(`/invoicing/companies/${companyId.value}/documents`, {
       params: { type: documentType.value, per_page: 100 },
     });
@@ -551,11 +765,80 @@ export function useInvoiceDocument() {
     return parts.join(', ') || '';
   }
 
+  function localTaxHelpers() {
+    return local!.saveOptions(
+      defaultVat.value,
+      () => lineTaxApplies(),
+      (line) =>
+        lineTaxRate({
+          name: line.name,
+          description: line.description || '',
+          quantity: line.quantity,
+          unit: line.unit,
+          unit_price: line.unit_price,
+          line_discount_percent: line.line_discount_percent,
+          tax_rate: line.tax_rate,
+          company_stock_item_id: line.company_stock_item_id,
+          company_warehouse_id: line.company_warehouse_id,
+          stock_quantity_hint: null,
+          stock_quantities_by_warehouse: {},
+          warehouse_deduct_on_issue: null,
+        }),
+    );
+  }
+
+  async function saveLocalDocumentFlow(): Promise<string | null> {
+    if (!local) return null;
+    await local.refreshAll();
+    const p = payload() as DocumentSavePayload;
+    const wasDraft = !documentId.value || documentStatus.value === 'draft';
+    const saveResult = local.saveLocalDocument(
+      local.evolu,
+      companyId.value as CompanyId,
+      p,
+      {
+        ...localTaxHelpers(),
+        documentId: documentId.value as DocumentId | undefined,
+      },
+    );
+    if (!saveResult.ok) {
+      throw new Error('validation');
+    }
+    let docId = saveResult.value.id;
+    if (wasDraft) {
+      const companyRow = local.companyRows.value.find((c) => c.id === companyId.value);
+      if (!companyRow) throw new Error('company');
+      const issueResult = local.issueLocalDocument(
+        local.evolu,
+        docId,
+        companyRow as import('../evolu/companyMap').EvoluCompanyRow,
+        local.documentRows.value as import('../evolu/documentMap').EvoluDocumentRow[],
+      );
+      if (!issueResult.ok) throw new Error('issue');
+      await local.refreshAll();
+      docId = saveResult.value.id;
+      const apiDoc = local.documentApi(docId);
+      if (apiDoc) await applyDocument(apiDoc);
+    }
+    return docId;
+  }
+
+  async function persistLocalPdfOptions(): Promise<void> {
+    if (!local || !documentId.value || isLocked.value) return;
+    await local.refreshAll();
+    local.saveLocalDocument(local.evolu, companyId.value as CompanyId, payload() as DocumentSavePayload, {
+      ...localTaxHelpers(),
+      documentId: documentId.value as DocumentId,
+    });
+  }
+
   return {
     t,
     locale,
     router,
     route,
+    localFirst,
+    local,
     companyId,
     documentId,
     saving,
@@ -589,6 +872,8 @@ export function useInvoiceDocument() {
     neighborIndex,
     pdfUrl,
     btcPayUrl,
+    localBtcpayCheckoutLoading,
+    loadLocalBtcpayCheckout,
     paymentToken,
     documentType,
     documentKind,
@@ -620,5 +905,9 @@ export function useInvoiceDocument() {
     contactEditTo,
     contactNewTo,
     formatContactAddress,
+    saveLocalDocumentFlow,
+    persistLocalPdfOptions,
+    localTaxHelpers,
+    payloadFromApiDocument,
   };
 }

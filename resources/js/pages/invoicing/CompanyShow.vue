@@ -30,23 +30,28 @@
       @updated="onCompanyUpdated"
     />
     <CompanyAppSettingsForm
-      v-else-if="settingsSection === 'app'"
+      v-else-if="settingsSection === 'app' && appTab === 'basic'"
       :company-id="companyId"
       :company="company"
       @updated="onCompanyUpdated"
     />
 
     <CompanySettingsForm
-      v-else
+      v-else-if="settingsSection === 'profile'"
       :company-id="companyId"
       :company="company"
+      :local-first="localFirst"
       @updated="onCompanyUpdated"
     />
+  </InvoicingPageShell>
+
+  <InvoicingPageShell v-else-if="loading" content-class="pb-8">
+    <div class="invoicing-muted py-8">{{ t('common.loading') }}</div>
   </InvoicingPageShell>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import CompanyAppSettingsForm from '../../components/invoicing/CompanyAppSettingsForm.vue';
@@ -55,12 +60,14 @@ import CompanyNumberSeriesPanel from '../../components/invoicing/CompanyNumberSe
 import CompanySettingsForm from '../../components/invoicing/CompanySettingsForm.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
+import { useInvoicingCompany } from '../../composables/useInvoicingCompany';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
-import api from '../../services/api';
+import type { InvoicingCompanyRecord } from '../../evolu/companyMap';
+
 const { t } = useI18n();
 const route = useRoute();
 const { companyId, rememberCompany } = useInvoicingLayout();
-const company = ref<Record<string, any> | null>(null);
+const { localFirst, company, loading, applyCompanyPatch } = useInvoicingCompany(companyId);
 
 const settingsSection = computed<'profile' | 'app' | 'subscription'>(() => {
   if (
@@ -79,17 +86,11 @@ const appTab = computed<'basic' | 'emails' | 'series'>(() => {
   return 'basic';
 });
 
-async function load() {
-  const res = await api.get(`/invoicing/companies/${companyId.value}`);
-  company.value = res.data.data;
+function onCompanyUpdated(c: InvoicingCompanyRecord) {
+  applyCompanyPatch(c);
 }
 
-function onCompanyUpdated(c: Record<string, any>) {
-  company.value = { ...company.value, ...c, stores: company.value?.stores ?? c.stores };
-}
-
-onMounted(async () => {
+onMounted(() => {
   rememberCompany(companyId.value);
-  await load();
 });
 </script>

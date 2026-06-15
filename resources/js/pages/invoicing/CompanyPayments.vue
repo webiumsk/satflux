@@ -1,5 +1,10 @@
 <template>
-  <InvoicingPageShell content-class="pb-8">
+  <InvoicingServerOnlyPage
+    v-if="localFirst"
+    :title="t('invoicing.main_nav_payments')"
+    detail-key="invoicing.local_first_payments_bridge"
+  />
+  <InvoicingPageShell v-else content-class="pb-8">
     <template #header>
       <InvoicingAppHeader
         :show-filter-bar="activeTab === 'transactions' && hasBankAccount"
@@ -397,7 +402,9 @@ import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
+import InvoicingServerOnlyPage from '../../components/invoicing/InvoicingServerOnlyPage.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
 import InvoicingMobileCard from '../../components/invoicing/InvoicingMobileCard.vue';
 import InvoicingRowActionsMenu from '../../components/invoicing/InvoicingRowActionsMenu.vue';
 import BankCreateExpenseModal, { type BankExpenseDraft } from '../../components/invoicing/BankCreateExpenseModal.vue';
@@ -426,6 +433,7 @@ type BankTx = {
 };
 
 const { t, locale } = useI18n();
+const localFirst = isInvoicingLocalFirst();
 const route = useRoute();
 const { rememberCompany } = useInvoicingLayout();
 const { hasBankAccount, summaryLoaded, bankAccountLabel, defaultCurrency } = useInvoicingCompanySummary();

@@ -96,6 +96,13 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
 import { resolveIssuePeriodRange, defaultIssuePeriodState } from '../../composables/useInvoicingIssuePeriod';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
+import { useLocalInvoiceDocumentSupport } from '../../composables/useLocalInvoiceDocument';
+import { useCompanyVatPolicy } from '../../composables/useCompanyVatPolicy';
+import { createLocalCreditNoteFromInvoice } from '../../evolu/documentCrud';
+import type { DocumentId } from '../../evolu/schema';
+import type { EvoluDocumentRow, EvoluDocumentLineRow } from '../../evolu/documentMap';
+import { evoluContactToApi } from '../../evolu/contactMap';
 
 const props = defineProps<{
   open: boolean;
@@ -108,6 +115,9 @@ const emit = defineEmits<{
 }>();
 
 const { t, locale } = useI18n();
+const localFirst = isInvoicingLocalFirst();
+const localDoc = localFirst ? useLocalInvoiceDocumentSupport() : null;
+const vatPolicy = useCompanyVatPolicy();
 
 const loading = ref(false);
 const creating = ref(false);
@@ -135,11 +145,71 @@ function setFilter(id: string) {
   loadInvoices();
 }
 
+function isOverdue(inv: { status: string; due_date?: string }) {
+  if (inv.status !== 'issued' || !inv.due_date) return false;
+  return new Date(`${inv.due_date}T23:59:59`) < new Date();
+}
+
+function matchesIssuePeriod(inv: { issue_date?: string }) {
+  const range = resolveIssuePeriodRange(issuePeriod);
+  if (!inv.issue_date) return true;
+  const issue = inv.issue_date.slice(0, 10);
+  if (range.from && issue < range.from) return false;
+  if (range.to && issue > range.to) return false;
+  return true;
+}
+
+function matchesStatusFilter(inv: { status: string; due_date?: string }) {
+  if (activeFilter.value === 'paid') return inv.status === 'paid';
+  if (activeFilter.value === 'unpaid') return inv.status === 'issued' && !isOverdue(inv);
+  if (activeFilter.value === 'overdue') return inv.status === 'issued' && isOverdue(inv);
+  return true;
+}
+
+async function loadLocalInvoices() {
+  if (!localDoc) return;
+  await localDoc.refreshAll();
+  const rows = localDoc.documentRows.value.filter(
+    (d) =>
+      d.companyId === props.companyId
+      && d.documentType === 'invoice'
+      && d.status !== 'cancelled'
+      && d.status !== 'draft'
+      && d.number,
+  );
+
+  invoices.value = rows
+    .filter((row) => matchesIssuePeriod({ issue_date: row.issueDate ?? undefined }))
+    .filter((row) =>
+      matchesStatusFilter({
+        status: row.status,
+        due_date: row.dueDate ?? undefined,
+      }),
+    )
+    .map((row) => {
+      const apiDoc = localDoc.documentApi(row.id as DocumentId);
+      if (!apiDoc) return null;
+      const contactRow = row.contactId
+        ? localDoc.contactRows.value.find((c) => c.id === row.contactId)
+        : null;
+      return {
+        ...apiDoc,
+        contact: contactRow ? evoluContactToApi(contactRow) : null,
+      };
+    })
+    .filter((inv): inv is NonNullable<typeof inv> => inv != null);
+}
+
 async function loadInvoices() {
   if (!props.companyId) return;
   loading.value = true;
   error.value = '';
   try {
+    if (localFirst && localDoc) {
+      await loadLocalInvoices();
+      return;
+    }
+
     const range = resolveIssuePeriodRange(issuePeriod);
     const params: Record<string, unknown> = {
       type: 'invoice',
@@ -161,6 +231,46 @@ async function loadInvoices() {
   } finally {
     loading.value = false;
   }
+}
+
+function localSaveOptions(contactId: string | null) {
+  const company = localDoc!.companyApi(props.companyId);
+  const contact = contactId
+    ? localDoc!.contactsForCompany(props.companyId).find((c) => c.id === contactId) ?? null
+    : null;
+  const defaultVat = Number(company?.vat_rate_default ?? 23);
+  return localDoc!.saveOptions(
+    defaultVat,
+    () => vatPolicy.calculatesVatAmounts(company, contact),
+    (line) => vatPolicy.resolveLineTaxRate(company, contact, line.tax_rate),
+  );
+}
+
+const creditNoteErrors: Record<string, string> = {
+  not_found: 'common.error',
+  not_invoice: 'common.error',
+  cancelled: 'common.error',
+  not_issued: 'common.error',
+  no_number: 'common.error',
+};
+
+async function createLocalCreditNote(invoiceId: string) {
+  if (!localDoc) return null;
+  await localDoc.refreshAll();
+  const invoiceRow = localDoc.documentRows.value.find((d) => d.id === invoiceId);
+  const result = createLocalCreditNoteFromInvoice(
+    localDoc.evolu,
+    invoiceId as DocumentId,
+    localDoc.documentRows.value as EvoluDocumentRow[],
+    localDoc.lineRows.value as EvoluDocumentLineRow[],
+    localSaveOptions(invoiceRow?.contactId ?? null),
+  );
+  if (!result.ok) {
+    const key = creditNoteErrors[result.error] ?? 'common.error';
+    error.value = t(key);
+    return null;
+  }
+  return result.value.id;
 }
 
 function invoiceTitle(inv: { title?: string; number?: string }) {
@@ -188,6 +298,12 @@ async function confirmSelected() {
   creating.value = true;
   error.value = '';
   try {
+    if (localFirst && localDoc) {
+      const docId = await createLocalCreditNote(selectedId.value);
+      if (docId) emit('selected', docId);
+      return;
+    }
+
     const res = await api.post(
       `/invoicing/companies/${props.companyId}/documents/credit-note-from-invoice`,
       { invoice_id: selectedId.value }

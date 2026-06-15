@@ -13,6 +13,7 @@ class BusinessDocumentPaymentWebhookService
     public function __construct(
         protected BusinessDocumentMarkPaidService $markPaidService,
         protected BusinessDocumentBtcPayService $btcPayService,
+        protected EphemeralBtcpayCheckoutService $ephemeralCheckoutService,
     ) {}
 
     /**
@@ -26,6 +27,22 @@ class BusinessDocumentPaymentWebhookService
 
         if (! BtcPayWebhookEventType::shouldMarkBusinessDocumentPaid($eventType)) {
             return false;
+        }
+
+        $metadata = $this->extractMetadata($payload);
+        $invoiceId = $this->extractInvoiceId($payload);
+        if ($invoiceId && $this->ephemeralCheckoutService->metadataIndicatesEphemeral($metadata)) {
+            $ephemeral = $this->ephemeralCheckoutService->markPaidFromWebhook($store, $invoiceId, $metadata);
+            if ($ephemeral) {
+                Log::info('Ephemeral BTCPay checkout marked paid from webhook', [
+                    'evolu_document_id' => $ephemeral->evolu_document_id,
+                    'store_id' => $store->id,
+                    'btcpay_invoice_id' => $invoiceId,
+                    'event_type' => BtcPayWebhookEventType::normalize($eventType),
+                ]);
+
+                return true;
+            }
         }
 
         $document = $this->resolveDocument($payload, $store);

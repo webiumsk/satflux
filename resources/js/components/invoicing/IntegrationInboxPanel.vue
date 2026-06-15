@@ -1,0 +1,162 @@
+<template>
+  <section
+    v-if="visible"
+    class="mb-4 rounded-lg border border-amber-200 bg-amber-50/80 p-4"
+  >
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <p class="text-sm font-medium text-amber-950">
+          {{ t('invoicing.integration_inbox_title') }}
+        </p>
+        <p class="mt-1 text-sm text-amber-900/90">
+          {{ t('invoicing.integration_inbox_detail') }}
+        </p>
+      </div>
+      <button
+        type="button"
+        class="invoicing-btn-secondary shrink-0"
+        :disabled="loading"
+        @click="refresh"
+      >
+        {{ t('invoicing.integration_inbox_refresh') }}
+      </button>
+    </div>
+
+    <p v-if="error" class="mt-3 text-sm text-red-700">{{ error }}</p>
+
+    <ul v-else-if="items.length" class="mt-4 space-y-3">
+      <li
+        v-for="item in items"
+        :key="item.inbox_id"
+        class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200 bg-white/70 px-3 py-2"
+      >
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-gray-900 truncate">
+            <span v-if="item.woocommerce_order_id">
+              {{ t('invoicing.integration_inbox_order', { id: item.woocommerce_order_id }) }}
+            </span>
+            <span v-else>{{ t('invoicing.integration_inbox_unlinked_order') }}</span>
+          </p>
+          <p class="text-xs text-gray-600 mt-0.5">
+            {{ item.summary.buyer_name || t('invoicing.integration_inbox_unknown_buyer') }}
+            · {{ item.summary.line_count }} {{ t('invoicing.integration_inbox_lines') }}
+            · {{ item.summary.currency }}
+          </p>
+        </div>
+        <div class="flex shrink-0 gap-2">
+          <button
+            type="button"
+            class="invoicing-btn-secondary"
+            :disabled="busyId === item.inbox_id"
+            @click="dismissItem(item)"
+          >
+            {{ t('invoicing.integration_inbox_dismiss') }}
+          </button>
+          <button
+            type="button"
+            class="invoicing-btn-primary"
+            :disabled="busyId === item.inbox_id"
+            @click="importItem(item)"
+          >
+            {{ t('invoicing.integration_inbox_import') }}
+          </button>
+        </div>
+      </li>
+    </ul>
+
+    <p v-else-if="!loading" class="mt-3 text-sm text-amber-900/80">
+      {{ t('invoicing.integration_inbox_empty') }}
+    </p>
+  </section>
+</template>
+
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+import type { VatPolicyCompany } from '@/composables/useCompanyVatPolicy';
+import { useInvoicingEvolu } from '@/evolu/client';
+import {
+  dismissIntegrationInboxItem,
+  fetchIntegrationInbox,
+  importIntegrationInboxEntry,
+  type IntegrationInboxEntry,
+} from '@/evolu/integrationInboxImport';
+
+const props = defineProps<{
+  companyId: string;
+  company: VatPolicyCompany;
+  enabled: boolean;
+}>();
+
+const emit = defineEmits<{
+  imported: [];
+}>();
+
+const { t } = useI18n();
+const evolu = useInvoicingEvolu();
+
+const items = ref<IntegrationInboxEntry[]>([]);
+const loading = ref(false);
+const error = ref('');
+const busyId = ref<string | null>(null);
+
+const visible = computed(() => props.enabled);
+
+async function refresh(): Promise<void> {
+  if (!props.enabled || !props.companyId) return;
+  loading.value = true;
+  error.value = '';
+  try {
+    items.value = await fetchIntegrationInbox(props.companyId);
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } } };
+    error.value = err?.response?.data?.message || t('errors.generic');
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function importItem(item: IntegrationInboxEntry): Promise<void> {
+  busyId.value = item.inbox_id;
+  error.value = '';
+  try {
+    const result = await importIntegrationInboxEntry(evolu, props.companyId, item, props.company);
+    if (!result.ok) {
+      error.value = t('invoicing.integration_inbox_import_failed');
+      return;
+    }
+    items.value = items.value.filter((row) => row.inbox_id !== item.inbox_id);
+    emit('imported');
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } } };
+    error.value = err?.response?.data?.message || t('errors.generic');
+  } finally {
+    busyId.value = null;
+  }
+}
+
+async function dismissItem(item: IntegrationInboxEntry): Promise<void> {
+  busyId.value = item.inbox_id;
+  error.value = '';
+  try {
+    await dismissIntegrationInboxItem(props.companyId, item.inbox_id);
+    items.value = items.value.filter((row) => row.inbox_id !== item.inbox_id);
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } } };
+    error.value = err?.response?.data?.message || t('errors.generic');
+  } finally {
+    busyId.value = null;
+  }
+}
+
+onMounted(() => {
+  void refresh();
+});
+
+watch(
+  () => [props.companyId, props.enabled] as const,
+  () => {
+    void refresh();
+  },
+);
+</script>

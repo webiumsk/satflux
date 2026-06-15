@@ -66,11 +66,18 @@
 import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
+import {
+  previewEphemeralEmail,
+  sendEphemeralEmail,
+  type EphemeralSnapshotPayload,
+} from '../../evolu/ephemeralBridge';
 
 const props = defineProps<{
   open: boolean;
   companyId: string;
   documentId: string;
+  ephemeralSnapshot?: EphemeralSnapshotPayload | null;
+  bridgeCompanyId?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -90,11 +97,28 @@ const subject = ref('');
 const body = ref('');
 const attachmentName = ref('');
 
+function extractError(e: unknown): string {
+  const err = e as { response?: { data?: { message?: string; errors?: { status?: string[] } } } };
+  return (
+    err?.response?.data?.message
+    ?? err?.response?.data?.errors?.status?.[0]
+    ?? t('common.error_generic')
+  );
+}
+
 async function loadPreview() {
-  if (!props.documentId) return;
+  if (!props.documentId && !props.ephemeralSnapshot) return;
   loadingPreview.value = true;
   error.value = '';
   try {
+    if (props.ephemeralSnapshot) {
+      const data = await previewEphemeralEmail(props.ephemeralSnapshot, props.bridgeCompanyId);
+      toInput.value = data.to ?? '';
+      subject.value = data.subject ?? '';
+      body.value = data.body ?? '';
+      attachmentName.value = data.attachment_filename ?? '';
+      return;
+    }
     const res = await api.get(
       `/invoicing/companies/${props.companyId}/documents/${props.documentId}/email-preview`
     );
@@ -103,8 +127,8 @@ async function loadPreview() {
     subject.value = data.subject ?? '';
     body.value = data.body ?? '';
     attachmentName.value = data.attachment_filename ?? '';
-  } catch (e: any) {
-    error.value = e?.response?.data?.message ?? e?.response?.data?.errors?.status?.[0] ?? t('common.error_generic');
+  } catch (e: unknown) {
+    error.value = extractError(e);
   } finally {
     loadingPreview.value = false;
   }
@@ -114,6 +138,18 @@ async function send() {
   sending.value = true;
   error.value = '';
   try {
+    if (props.ephemeralSnapshot) {
+      const result = await sendEphemeralEmail(props.ephemeralSnapshot, {
+        to: toInput.value,
+        cc: ccInput.value || undefined,
+        bcc: bccInput.value || undefined,
+        subject: subject.value,
+        body: body.value,
+      }, props.bridgeCompanyId);
+      emit('sent', { email_sent_at: result.email_sent_at });
+      close();
+      return;
+    }
     const res = await api.post(
       `/invoicing/companies/${props.companyId}/documents/${props.documentId}/send-email`,
       {
@@ -126,8 +162,8 @@ async function send() {
     );
     emit('sent', { email_sent_at: res.data.data?.email_sent_at });
     close();
-  } catch (e: any) {
-    error.value = e?.response?.data?.message ?? t('common.error_generic');
+  } catch (e: unknown) {
+    error.value = extractError(e);
   } finally {
     sending.value = false;
   }
@@ -138,8 +174,8 @@ function close() {
 }
 
 watch(
-  () => props.open,
-  (isOpen) => {
+  () => [props.open, props.documentId, props.ephemeralSnapshot, props.bridgeCompanyId] as const,
+  ([isOpen]) => {
     if (isOpen) {
       loadPreview();
     }

@@ -4,6 +4,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Local-first invoicing (server-side flag)
+    |--------------------------------------------------------------------------
+    | When true, WooCommerce order payloads are stored in integration_document_inbox
+    | instead of BusinessDocument (unless the linked company uses server invoicing).
+    */
+
+    'local_first' => filter_var(env('INVOICING_LOCAL_FIRST', false), FILTER_VALIDATE_BOOL),
+
+    /*
+    |--------------------------------------------------------------------------
+    | WooCommerce inbox PoC
+    |--------------------------------------------------------------------------
+    | When true, all WooCommerce create-document calls enqueue to the inbox
+    | instead of creating BusinessDocument records (backward compat: default false).
+    */
+
+    'woocommerce_inbox_mode' => filter_var(env('WOOCOMMERCE_INBOX_MODE', false), FILTER_VALIDATE_BOOL),
+
+    /*
+    |--------------------------------------------------------------------------
     | Beta override for Pro company limit
     |--------------------------------------------------------------------------
     | When set (e.g. 5), Pro users can create up to this many invoicing companies

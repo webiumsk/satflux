@@ -18,7 +18,11 @@
           />
         </template>
         <template #actions>
-          <button type="button" class="invoicing-btn-secondary" @click="showImportModal = true">
+          <button
+            type="button"
+            class="invoicing-btn-secondary"
+            @click="showImportModal = true"
+          >
             {{ t('invoicing.import_contacts') }}
           </button>
           <RouterLink :to="contactNewTo()" class="invoicing-btn-primary">
@@ -55,7 +59,11 @@
           </div>
         </template>
         <template #mobile-actions>
-          <button type="button" class="invoicing-btn-secondary w-full" @click="showImportModal = true">
+          <button
+            type="button"
+            class="invoicing-btn-secondary w-full"
+            @click="showImportModal = true"
+          >
             {{ t('invoicing.import_contacts') }}
           </button>
           <RouterLink :to="contactNewTo()" class="invoicing-btn-primary w-full text-center">
@@ -257,6 +265,8 @@ import InvoicingMobileBulkBar from '../../components/invoicing/InvoicingMobileBu
 import InvoicingMobileCard from '../../components/invoicing/InvoicingMobileCard.vue';
 import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
+import { useInvoicingContacts } from '../../composables/useInvoicingContacts';
+import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompanySummary';
 import {
   ALPHABET_FILTER,
   formatOverduePair,
@@ -264,16 +274,31 @@ import {
   type CompanyContactRow,
 } from '../../composables/useCompanyContact';
 import api from '../../services/api';
+import {
+  bulkDeleteLocalContacts,
+  buildContactsCsvBlob,
+  downloadCsvBlob,
+  resolveBulkContactTargets,
+} from '../../evolu/contactBulkLocal';
+import type { EvoluContactRow } from '../../evolu/contactMap';
+import type { EvoluDocumentRow } from '../../evolu/documentMap';
+import type { CompanyId } from '../../evolu/schema';
 
 const { t } = useI18n();
 const route = useRoute();
 const { companyId, rememberCompany } = useInvoicingLayout();
 const { contactShowTo, contactNewTo } = useContactRoutes(companyId);
-const companyName = ref('');
-
-const contacts = ref<CompanyContactRow[]>([]);
-const availableLetters = ref<string[]>([]);
-const loading = ref(true);
+const { companyName } = useInvoicingCompanySummary();
+const {
+  localFirst,
+  contacts,
+  availableLetters,
+  loading,
+  refresh: refreshContacts,
+  evolu: evoluClient,
+  contactRows,
+  documentRows,
+} = useInvoicingContacts(companyId);
 const searchQuery = ref('');
 const activeLetter = ref('all');
 const selectedIds = ref(new Set<string>());
@@ -314,19 +339,7 @@ function listFilterParams(): Record<string, string | undefined> {
 }
 
 async function load() {
-  loading.value = true;
-  try {
-    const companyRes = await api.get(`/invoicing/companies/${companyId.value}/summary`);
-    companyName.value = companyRes.data.data?.trade_name || companyRes.data.data?.legal_name || '';
-
-    const res = await api.get(`/invoicing/companies/${companyId.value}/contacts`, {
-      params: listFilterParams(),
-    });
-    contacts.value = res.data.data ?? [];
-    availableLetters.value = res.data.meta?.letters ?? [];
-  } finally {
-    loading.value = false;
-  }
+  await refreshContacts(listFilterParams());
 }
 
 function onSearchInput() {
@@ -408,6 +421,51 @@ function bulkPayload(action: string) {
   return base;
 }
 
+async function runBulkLocal(action: 'export_xlsx' | 'delete') {
+  if (!evoluClient) return;
+
+  await refreshContacts(listFilterParams());
+
+  const targets = resolveBulkContactTargets(
+    companyId.value as CompanyId,
+    selectAllMode.value,
+    selectedIds.value,
+    contactRows.value as EvoluContactRow[],
+    listFilterParams(),
+  );
+
+  if (targets.length === 0) {
+    alert(t('common.error'));
+    return;
+  }
+
+  if (action === 'delete') {
+    const allDocuments = documentRows.value as unknown as EvoluDocumentRow[];
+    const result = bulkDeleteLocalContacts(evoluClient, targets, allDocuments);
+    success.value = t('invoicing.bulk_result', {
+      processed: result.processed,
+      skipped: result.skipped,
+    });
+    await load();
+    clearSelection();
+    return;
+  }
+
+  if (action === 'export_xlsx') {
+    const rows = targets.map((row) => ({
+      name: row.name || '',
+      email: row.email || '',
+      registrationNumber: row.registrationNumber || '',
+      taxId: row.taxId || '',
+      vatId: row.vatId || '',
+      city: row.city || '',
+      country: row.country || '',
+    }));
+    downloadCsvBlob(buildContactsCsvBlob(rows), 'contacts.csv');
+    clearSelection();
+  }
+}
+
 async function runBulk(action: 'export_xlsx' | 'delete') {
   if (selectionCount.value === 0) return;
   showBulkMenu.value = false;
@@ -417,6 +475,17 @@ async function runBulk(action: 'export_xlsx' | 'delete') {
   }
 
   success.value = '';
+
+  if (localFirst && evoluClient) {
+    loading.value = true;
+    try {
+      await runBulkLocal(action);
+    } finally {
+      loading.value = false;
+    }
+    return;
+  }
+
   loading.value = true;
   try {
     const isFile = action === 'export_xlsx';

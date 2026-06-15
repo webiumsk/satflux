@@ -47,6 +47,11 @@ class ComplianceSubmissionService
         return $result;
     }
 
+    public function submitEphemeral(BusinessDocument $document): ComplianceSubmissionResult
+    {
+        return $this->gateway->submit($document);
+    }
+
     protected function persist(BusinessDocument $document, ComplianceSubmissionResult $result): BusinessDocumentCompliance
     {
         $now = now();
