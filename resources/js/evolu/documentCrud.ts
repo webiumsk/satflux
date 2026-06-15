@@ -11,11 +11,13 @@ import {
     type EvoluDocumentLineRow,
     type EvoluDocumentRow,
 } from "./documentMap";
-import { nextNumberForIssue } from "./numberSeriesCrud";
+import { nextNumberForIssue, syncLocalSeriesCounterFromIssuedNumber } from "./numberSeriesCrud";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import { variableSymbolFromNumber } from "./documentNumber";
 import type { EvoluCompanyRow } from "./companyMap";
 import { logDocumentEvent } from "./documentEventLog";
+import { reserveNextDocumentNumberFromStore } from "./numberSequenceBridge";
+import type { DocumentType } from "./schema";
 
 export type DocumentLinePayload = {
     name: string;
@@ -290,6 +292,79 @@ export function issueLocalDocument(
     });
     if (result.ok) {
         logDocumentEvent(evolu, documentId, "business_document.issued", { number });
+    }
+    return result;
+}
+
+export async function issueLocalDocumentAsync(
+    evolu: Evolu<InvoicingLocalSchema>,
+    documentId: DocumentId,
+    company: EvoluCompanyRow,
+    allDocuments: EvoluDocumentRow[],
+    allSeries: EvoluNumberSeriesRow[],
+) {
+    const doc = allDocuments.find((d) => d.id === documentId);
+    if (!doc || doc.status !== "draft") {
+        return { ok: false as const, error: "not_draft" };
+    }
+
+    const linkedStoreId = company.linkedStoreId?.trim();
+    if (linkedStoreId) {
+        const reserveResult = await reserveNextDocumentNumberFromStore(
+            linkedStoreId,
+            doc.documentType,
+        );
+        if (!reserveResult.ok) {
+            return reserveResult;
+        }
+
+        const number = reserveResult.value.number;
+        syncLocalSeriesCounterFromIssuedNumber(
+            evolu,
+            company.id,
+            doc.documentType as DocumentType,
+            number,
+            allSeries,
+        );
+
+        const variableSymbol = doc.variableSymbol || variableSymbolFromNumber(number);
+        const quoteStatus = doc.documentType === "quote" ? "pending" : doc.quoteStatus;
+        const result = evolu.update("document", {
+            id: documentId,
+            status: "issued",
+            number,
+            variableSymbol,
+            quoteStatus,
+        });
+        if (result.ok) {
+            logDocumentEvent(evolu, documentId, "business_document.issued", { number, source: "store_bridge" });
+        }
+        return result;
+    }
+
+    return issueLocalDocument(evolu, documentId, company, allDocuments, allSeries);
+}
+
+export function applyReservedNumberToLocalDocument(
+    evolu: Evolu<InvoicingLocalSchema>,
+    documentId: DocumentId,
+    companyId: CompanyId,
+    documentType: DocumentType,
+    number: string,
+    allSeries: EvoluNumberSeriesRow[],
+    variableSymbol?: string | null,
+) {
+    syncLocalSeriesCounterFromIssuedNumber(evolu, companyId, documentType, number, allSeries);
+    const quoteStatus = documentType === "quote" ? "pending" : null;
+    const result = evolu.update("document", {
+        id: documentId,
+        status: "issued",
+        number,
+        variableSymbol: variableSymbol || variableSymbolFromNumber(number),
+        quoteStatus,
+    });
+    if (result.ok) {
+        logDocumentEvent(evolu, documentId, "business_document.issued", { number, source: "woo_inbox" });
     }
     return result;
 }

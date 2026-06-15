@@ -141,7 +141,7 @@
 
             <div class="lg:w-1/2 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col min-h-[420px] lg:min-h-0">
               <ExpenseAttachmentPanel
-                v-if="expense.status !== 'cancelled' || savedAttachments.length > 0"
+                v-if="!localFirst && (expense.status !== 'cancelled' || savedAttachments.length > 0)"
                 embedded
                 fill-height
                 :file-name="panelFileName"
@@ -160,6 +160,10 @@
                 @download="downloadAttachment"
                 @select-attachment="onSelectAttachment"
                 @remove-saved="onRemoveSavedAttachment"
+              />
+              <LocalFirstBridgeNotice
+                v-else-if="localFirst"
+                :detail="t('invoicing.local_first_expenses_attachments_bridge')"
               />
             </div>
           </div>
@@ -210,6 +214,7 @@ import { useRoute, useRouter } from 'vue-router';
 import ExpenseAttachmentPanel from '../../components/invoicing/ExpenseAttachmentPanel.vue';
 import ExpenseIsdocExtractModal from '../../components/invoicing/ExpenseIsdocExtractModal.vue';
 import ExpenseShowSidebar from '../../components/invoicing/ExpenseShowSidebar.vue';
+import LocalFirstBridgeNotice from '../../components/invoicing/LocalFirstBridgeNotice.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import {
@@ -217,7 +222,18 @@ import {
   type ExpenseImportDraft,
 } from '../../composables/useExpenseIsdocAttachment';
 import { parseExpenseRowMeta } from '../../composables/useExpenseRowMeta';
+import { useInvoicingExpense } from '../../composables/useInvoicingExpenses';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
+import {
+  cancelLocalExpense,
+  duplicateLocalExpense,
+  markLocalExpensePaid,
+  unmarkLocalExpensePaid,
+  updateLocalExpense,
+} from '../../evolu/expenseCrud';
+import { filterLocalExpenses } from '../../evolu/expenseMap';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
+import type { ExpenseId } from '../../evolu/schema';
 import api, { getWebBlob } from '../../services/api';
 
 type ExpenseAttachment = {
@@ -260,6 +276,8 @@ const route = useRoute();
 const router = useRouter();
 const { companyId, rememberCompany } = useInvoicingLayout();
 const expenseId = computed(() => route.params.expenseId as string);
+const localFirst = isInvoicingLocalFirst();
+const expenseResource = useInvoicingExpense(companyId, expenseId);
 
 const expense = ref<Expense | null>(null);
 const history = ref<HistoryRow[]>([]);
@@ -395,6 +413,14 @@ function historyLabel(action: string) {
 }
 
 async function loadNeighbors() {
+  if (localFirst) {
+    const rows = filterLocalExpenses(
+      expenseResource.expenseRows.value.filter((row) => row.companyId === companyId.value),
+      { year: new Date().getFullYear() },
+    );
+    neighborIds.value = rows.map((row) => row.id);
+    return;
+  }
   const res = await api.get(`/invoicing/companies/${companyId.value}/expenses`, {
     params: { per_page: 200, year: new Date().getFullYear() },
   });
@@ -413,6 +439,14 @@ function goNeighbor(delta: number) {
 async function load() {
   loading.value = true;
   try {
+    if (localFirst) {
+      await expenseResource.refresh();
+      expense.value = expenseResource.expense.value as Expense | null;
+      noteDraft.value = expense.value?.internal_note ?? '';
+      history.value = [];
+      selectedAttachmentId.value = null;
+      return;
+    }
     const [expRes, histRes] = await Promise.all([
       api.get(`/invoicing/companies/${companyId.value}/expenses/${expenseId.value}`),
       api.get(`/invoicing/companies/${companyId.value}/expenses/${expenseId.value}/history`),
@@ -499,6 +533,28 @@ async function saveNote() {
   if (!expense.value || noteDraft.value === (expense.value.internal_note ?? '')) return;
   noteSaving.value = true;
   try {
+    if (localFirst && expenseResource.evolu && expense.value) {
+      await updateLocalExpense(
+        expenseResource.evolu,
+        expenseId.value as ExpenseId,
+        {
+          issue_date: expense.value.issue_date,
+          total: expense.value.total,
+          internal_note: noteDraft.value,
+          title: expense.value.title,
+          external_number: expense.value.external_number,
+          variable_symbol: expense.value.variable_symbol,
+          constant_symbol: expense.value.constant_symbol,
+          specific_symbol: expense.value.specific_symbol,
+          delivery_date: expense.value.delivery_date,
+          due_date: expense.value.due_date,
+          currency: expense.value.currency,
+        },
+      );
+      await expenseResource.refresh();
+      expense.value = expenseResource.expense.value as Expense | null;
+      return;
+    }
     const res = await api.patch(`/invoicing/companies/${companyId.value}/expenses/${expenseId.value}`, {
       internal_note: noteDraft.value,
     });
@@ -511,6 +567,21 @@ async function saveNote() {
 async function duplicate() {
   duplicating.value = true;
   try {
+    if (localFirst && expenseResource.evolu) {
+      const source = expenseResource.expenseRows.value.find((row) => row.id === expenseId.value);
+      if (!source) return;
+      const result = duplicateLocalExpense(
+        expenseResource.evolu,
+        source,
+        expenseResource.expenseRows.value,
+      );
+      if (!result.ok) return;
+      await router.push({
+        name: 'invoicing-expense-edit',
+        params: { companyId: companyId.value, expenseId: result.value.id },
+      });
+      return;
+    }
     const res = await api.post(
       `/invoicing/companies/${companyId.value}/expenses/${expenseId.value}/duplicate`,
     );
@@ -526,6 +597,11 @@ async function duplicate() {
 async function markPaid() {
   acting.value = true;
   try {
+    if (localFirst && expenseResource.evolu) {
+      markLocalExpensePaid(expenseResource.evolu, expenseId.value as ExpenseId);
+      await load();
+      return;
+    }
     const res = await api.post(
       `/invoicing/companies/${companyId.value}/expenses/${expenseId.value}/mark-paid`,
     );
@@ -540,6 +616,11 @@ async function markPaid() {
 async function unmarkPaid() {
   acting.value = true;
   try {
+    if (localFirst && expenseResource.evolu) {
+      unmarkLocalExpensePaid(expenseResource.evolu, expenseId.value as ExpenseId);
+      await load();
+      return;
+    }
     const res = await api.post(
       `/invoicing/companies/${companyId.value}/expenses/${expenseId.value}/unmark-paid`,
     );
@@ -553,6 +634,11 @@ async function cancelExpense() {
   if (!confirm(t('invoicing.expense_cancel_confirm'))) return;
   acting.value = true;
   try {
+    if (localFirst && expenseResource.evolu) {
+      cancelLocalExpense(expenseResource.evolu, expenseId.value as ExpenseId);
+      await router.push(expenseListTo());
+      return;
+    }
     await api.delete(`/invoicing/companies/${companyId.value}/expenses/${expenseId.value}`);
     await router.push(expenseListTo());
   } finally {
@@ -652,7 +738,9 @@ watch(expenseId, () => {
 
 onMounted(() => {
   rememberCompany(companyId.value);
-  loadQuota();
+  if (!localFirst) {
+    loadQuota();
+  }
   load();
   loadNeighbors();
 });

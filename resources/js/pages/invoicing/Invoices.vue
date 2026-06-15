@@ -71,8 +71,9 @@
     />
 
     <IntegrationInboxPanel
-      v-if="localFirst && activeDocumentNav?.kind === 'invoice' && localCompanyForInbox"
+      v-if="localFirst && activeDocumentNav?.kind === 'invoice' && localCompanyForInbox && linkedStoreIdForInbox"
       :company-id="companyId"
+      :linked-store-id="linkedStoreIdForInbox"
       :company="localCompanyForInbox"
       enabled
       @imported="onIntegrationInboxImported"
@@ -913,6 +914,12 @@ const localCompanyJurisdiction = computed(() => {
 const localCompanyForInbox = computed(() => {
   if (!localFirst || !localDoc) return null;
   return localDoc.companyApi(companyId.value);
+});
+
+const linkedStoreIdForInbox = computed(() => {
+  const company = localCompanyForInbox.value;
+  if (!company) return null;
+  return company.stores?.[0]?.id ?? null;
 });
 
 async function onIntegrationInboxImported(): Promise<void> {
@@ -1773,7 +1780,7 @@ async function issueDoc(d: { id: string }) {
       await localDoc.refreshAll();
       const companyRow = localDoc.companyRows.value.find((c) => c.id === companyId.value);
       if (!companyRow) return;
-      localDoc.issueLocalDocument(
+      await localDoc.issueLocalDocumentAsync(
         localDoc.evolu,
         d.id as DocumentId,
         companyRow as EvoluCompanyRow,

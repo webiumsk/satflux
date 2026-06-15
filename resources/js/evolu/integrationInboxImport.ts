@@ -8,10 +8,13 @@ import { insertLocalContactFromForm } from "./contactCrud";
 import type { EvoluContactRow } from "./contactMap";
 import {
     saveLocalDocument,
+    applyReservedNumberToLocalDocument,
     type DocumentLinePayload,
     type DocumentSavePayload,
 } from "./documentCrud";
-import type { CompanyId, ContactId, DocumentId, InvoicingLocalSchema } from "./schema";
+import type { CompanyId, ContactId, DocumentId, DocumentType, InvoicingLocalSchema } from "./schema";
+import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
+import { allNumberSeriesQuery } from "./client";
 
 export type IntegrationInboxEntry = {
     inbox_id: string;
@@ -28,17 +31,36 @@ export type IntegrationInboxEntry = {
     };
 };
 
-export async function fetchIntegrationInbox(companyId: string): Promise<IntegrationInboxEntry[]> {
-    const { data } = await api.get(`/invoicing/companies/${companyId}/integration-inbox`);
+function integrationInboxBasePath(companyId: string, linkedStoreId?: string | null): string {
+    if (linkedStoreId) {
+        return `/invoicing/stores/${linkedStoreId}/integration-inbox`;
+    }
+
+    return `/invoicing/companies/${companyId}/integration-inbox`;
+}
+
+export async function fetchIntegrationInbox(
+    companyId: string,
+    linkedStoreId?: string | null,
+): Promise<IntegrationInboxEntry[]> {
+    const { data } = await api.get(integrationInboxBasePath(companyId, linkedStoreId));
     return (data.data ?? []) as IntegrationInboxEntry[];
 }
 
-export async function dismissIntegrationInboxItem(companyId: string, inboxId: string): Promise<void> {
-    await api.post(`/invoicing/companies/${companyId}/integration-inbox/${inboxId}/dismiss`);
+export async function dismissIntegrationInboxItem(
+    companyId: string,
+    inboxId: string,
+    linkedStoreId?: string | null,
+): Promise<void> {
+    await api.post(`${integrationInboxBasePath(companyId, linkedStoreId)}/${inboxId}/dismiss`);
 }
 
-export async function markIntegrationInboxImported(companyId: string, inboxId: string): Promise<void> {
-    await api.post(`/invoicing/companies/${companyId}/integration-inbox/${inboxId}/imported`);
+export async function markIntegrationInboxImported(
+    companyId: string,
+    inboxId: string,
+    linkedStoreId?: string | null,
+): Promise<void> {
+    await api.post(`${integrationInboxBasePath(companyId, linkedStoreId)}/${inboxId}/imported`);
 }
 
 function vatOptionsForContact(company: VatPolicyCompany, contact: VatPolicyContact | null) {
@@ -148,6 +170,7 @@ export async function importIntegrationInboxEntry(
     companyId: string,
     entry: IntegrationInboxEntry,
     company: VatPolicyCompany,
+    linkedStoreId?: string | null,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
     const typedCompanyId = companyId as CompanyId;
     const contacts = (await evolu.loadQuery(allContactsQuery)) as EvoluContactRow[];
@@ -171,11 +194,30 @@ export async function importIntegrationInboxEntry(
         return { ok: false, error: String(saveResult.error ?? "save_failed") };
     }
 
-    await markIntegrationInboxImported(companyId, entry.inbox_id);
+    const reservedNumber = String(entry.payload.number ?? "").trim();
+    if (reservedNumber) {
+        const allSeries = (await evolu.loadQuery(allNumberSeriesQuery)) as EvoluNumberSeriesRow[];
+        const documentType = String(entry.payload.type ?? "invoice") as DocumentType;
+        const applyResult = applyReservedNumberToLocalDocument(
+            evolu,
+            entry.evolu_document_id as DocumentId,
+            typedCompanyId,
+            documentType,
+            reservedNumber,
+            allSeries,
+            entry.payload.variable_symbol as string | null | undefined,
+        );
+        if (!applyResult.ok) {
+            return { ok: false, error: String(applyResult.error ?? "issue_failed") };
+        }
+    }
+
+    await markIntegrationInboxImported(companyId, entry.inbox_id, linkedStoreId);
     await Promise.all([
         evolu.loadQuery(allContactsQuery),
         evolu.loadQuery(allDocumentLinesQuery),
         evolu.loadQuery(allDocumentsQuery),
+        evolu.loadQuery(allNumberSeriesQuery),
     ]);
 
     return { ok: true };

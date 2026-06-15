@@ -84,6 +84,7 @@ import {
 
 const props = defineProps<{
   companyId: string;
+  linkedStoreId?: string | null;
   company: VatPolicyCompany;
   enabled: boolean;
 }>();
@@ -107,7 +108,7 @@ async function refresh(): Promise<void> {
   loading.value = true;
   error.value = '';
   try {
-    items.value = await fetchIntegrationInbox(props.companyId);
+    items.value = await fetchIntegrationInbox(props.companyId, props.linkedStoreId);
   } catch (e: unknown) {
     const err = e as { response?: { data?: { message?: string } } };
     error.value = err?.response?.data?.message || t('errors.generic');
@@ -120,7 +121,13 @@ async function importItem(item: IntegrationInboxEntry): Promise<void> {
   busyId.value = item.inbox_id;
   error.value = '';
   try {
-    const result = await importIntegrationInboxEntry(evolu, props.companyId, item, props.company);
+    const result = await importIntegrationInboxEntry(
+      evolu,
+      props.companyId,
+      item,
+      props.company,
+      props.linkedStoreId,
+    );
     if (!result.ok) {
       error.value = t('invoicing.integration_inbox_import_failed');
       return;
@@ -139,7 +146,7 @@ async function dismissItem(item: IntegrationInboxEntry): Promise<void> {
   busyId.value = item.inbox_id;
   error.value = '';
   try {
-    await dismissIntegrationInboxItem(props.companyId, item.inbox_id);
+    await dismissIntegrationInboxItem(props.companyId, item.inbox_id, props.linkedStoreId);
     items.value = items.value.filter((row) => row.inbox_id !== item.inbox_id);
   } catch (e: unknown) {
     const err = e as { response?: { data?: { message?: string } } };
@@ -154,7 +161,7 @@ onMounted(() => {
 });
 
 watch(
-  () => [props.companyId, props.enabled] as const,
+  () => [props.companyId, props.linkedStoreId, props.enabled] as const,
   () => {
     void refresh();
   },

@@ -37,19 +37,23 @@
                 <div class="flex gap-1">
                   <button
                     type="button"
-                    class="invoicing-btn-secondary px-2 py-1.5"
+                    class="row-action-btn"
                     :title="t('common.edit')"
                     @click="openEdit(row)"
                   >
-                    ✎
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
                   </button>
                   <button
                     type="button"
-                    class="invoicing-btn-secondary px-2 py-1.5 text-red-700"
+                    class="row-action-btn row-action-btn--danger"
                     :title="t('common.delete')"
                     @click="remove(row)"
                   >
-                    🗑
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
                   </button>
                 </div>
               </td>
@@ -157,6 +161,7 @@ import {
   createNumberSeries,
   deleteNumberSeries,
   seedDefaultNumberSeries,
+  localizedDefaultSeries,
   updateNumberSeries,
 } from '../../evolu/numberSeriesCrud';
 import { previewNextNumber } from '../../evolu/numberSeriesFormat';
@@ -235,7 +240,12 @@ async function loadLocal() {
   try {
     await evolu.loadQuery(allNumberSeriesQuery);
     if (localSeriesRows().length === 0) {
-      seedDefaultNumberSeries(evolu, props.companyId as CompanyId, seriesRows.value as EvoluNumberSeriesRow[]);
+      seedDefaultNumberSeries(
+        evolu,
+        props.companyId as CompanyId,
+        seriesRows.value as EvoluNumberSeriesRow[],
+        localizedDefaultSeries(t),
+      );
       await evolu.loadQuery(allNumberSeriesQuery);
     }
     syncLocalSeriesList();
@@ -386,3 +396,13 @@ if (localFirst) {
 
 onMounted(load);
 </script>
+
+<style scoped>
+.row-action-btn {
+  @apply p-2 text-black/90 hover:text-white hover:bg-indigo-500/80 rounded transition-colors inline-flex items-center justify-center;
+}
+
+.row-action-btn--danger {
+  @apply hover:bg-red-500/80;
+}
+</style>

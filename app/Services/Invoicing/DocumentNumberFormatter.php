@@ -9,7 +9,7 @@ use InvalidArgumentException;
  * Formats document numbers from patterns (R/M/C runs + literal text).
  *
  * R = year digits, M = month digits, C = zero-padded counter.
- * Example: DODRRCCC → DOD26001, RRRRCCCC → 20260066, OBJRRRRMMCCC → OBJ202606001
+ * Example: DELRRRRCCCC → DEL20260001, INVRRRRCCCC → INV20260066, PORRRRRCCCC → PO20260001
  */
 final class DocumentNumberFormatter
 {

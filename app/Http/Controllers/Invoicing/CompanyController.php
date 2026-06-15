@@ -60,7 +60,7 @@ class CompanyController extends Controller
                 ->update(['company_id' => $company->id]);
         }
 
-        $sequenceService->seedDefaultsForCompany($company);
+        $sequenceService->seedDefaultsForCompany($company, app()->getLocale());
 
         AuditLog::log('company.created', 'company', $company->id);
 

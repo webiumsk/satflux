@@ -20,6 +20,8 @@ import {
     deleteLocalDocument,
     getLocalDocumentApi,
     issueLocalDocument,
+    issueLocalDocumentAsync,
+    applyReservedNumberToLocalDocument,
     markLocalDocumentPaid,
     markLocalDocumentEmailSent,
     payloadFromApiDocument,
@@ -100,6 +102,32 @@ export function useLocalInvoiceDocumentSupport() {
         );
     }
 
+    async function issueLocalDocumentAsyncWrapped(
+        evoluInst: typeof evolu,
+        documentId: DocumentId,
+        company: EvoluCompanyRow,
+        allDocuments: Parameters<typeof issueLocalDocumentAsync>[3],
+    ) {
+        return issueLocalDocumentAsync(
+            evoluInst,
+            documentId,
+            company,
+            allDocuments,
+            seriesRows.value as EvoluNumberSeriesRow[],
+        );
+    }
+
+    async function previewNumberAsync(companyId: CompanyId, documentType: string) {
+        const companyRow = companyRows.value.find((c) => c.id === companyId) as EvoluCompanyRow | undefined;
+        const linkedStoreId = companyRow?.linkedStoreId?.trim();
+        if (linkedStoreId) {
+            const { previewNextDocumentNumberFromStore } = await import("@/evolu/numberSequenceBridge");
+            const preview = await previewNextDocumentNumberFromStore(linkedStoreId, documentType);
+            if (preview) return preview;
+        }
+        return previewNumber(companyId, documentType);
+    }
+
     function documentApi(documentId: DocumentId) {
         return getLocalDocumentApi(
             documentId,
@@ -136,10 +164,12 @@ export function useLocalInvoiceDocumentSupport() {
         companyApi,
         contactsForCompany,
         previewNumber,
+        previewNumberAsync,
         documentApi,
         saveOptions,
         saveLocalDocument,
         issueLocalDocument: issueLocalDocumentWrapped,
+        issueLocalDocumentAsync: issueLocalDocumentAsyncWrapped,
         deleteLocalDocument,
         cancelLocalDocument,
         markLocalDocumentPaid,

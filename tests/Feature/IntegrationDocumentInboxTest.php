@@ -118,6 +118,20 @@ class IntegrationDocumentInboxTest extends TestCase
     }
 
     #[Test]
+    public function user_can_list_pending_inbox_items_for_store(): void
+    {
+        $service = app(IntegrationDocumentInboxService::class);
+        $service->enqueueFromWoo($this->integration, $this->samplePayload(2002));
+
+        $this->actingAs($this->user)
+            ->getJson("/api/invoicing/stores/{$this->store->id}/integration-inbox")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.woocommerce_order_id', 2002)
+            ->assertJsonPath('data.0.status', 'pending');
+    }
+
+    #[Test]
     public function user_can_list_pending_inbox_items_for_company(): void
     {
         $service = app(IntegrationDocumentInboxService::class);
@@ -151,6 +165,50 @@ class IntegrationDocumentInboxTest extends TestCase
             ->getJson("/api/invoicing/companies/{$this->company->id}/integration-inbox")
             ->assertOk()
             ->assertJsonCount(0, 'data');
+    }
+
+    #[Test]
+    public function user_can_issue_inbox_entry_and_reserve_invoice_number(): void
+    {
+        config(['invoicing.woocommerce_inbox_mode' => true]);
+
+        $create = $this->withHeader('Authorization', 'Bearer '.$this->integrationToken)
+            ->postJson('/api/integrations/woocommerce/documents', $this->samplePayload(5005));
+
+        $create->assertCreated();
+        $inboxId = $create->json('data.inbox_id');
+
+        $this->withHeader('Authorization', 'Bearer '.$this->integrationToken)
+            ->postJson("/api/integrations/woocommerce/documents/{$inboxId}/issue")
+            ->assertOk()
+            ->assertJsonPath('data.number', fn ($value) => is_string($value) && $value !== '')
+            ->assertJsonPath('data.status', 'issued');
+
+        $this->assertDatabaseHas('integration_document_inbox', [
+            'id' => $inboxId,
+        ]);
+
+        $entry = IntegrationDocumentInbox::query()->findOrFail($inboxId);
+        $payload = is_array($entry->payload_json) ? $entry->payload_json : [];
+        $this->assertNotEmpty($payload['number']);
+    }
+
+    #[Test]
+    public function user_can_reserve_number_via_store_bridge(): void
+    {
+        app(\App\Services\Invoicing\DocumentSequenceService::class)->seedDefaultsForCompany($this->company);
+
+        $this->actingAs($this->user)
+            ->postJson("/api/invoicing/stores/{$this->store->id}/number-series/reserve", [
+                'document_type' => 'invoice',
+            ])
+            ->assertOk()
+            ->assertJsonStructure(['data' => ['number', 'document_type']]);
+
+        $this->actingAs($this->user)
+            ->getJson("/api/invoicing/stores/{$this->store->id}/number-series/preview?type=invoice")
+            ->assertOk()
+            ->assertJsonStructure(['data' => ['next_number', 'document_type']]);
     }
 
     #[Test]

@@ -6,6 +6,7 @@ import {
 } from "@evolu/common";
 import type { Evolu } from "@evolu/common/local-first";
 import type { NumberSeriesFormState } from "@/composables/useCompanyNumberSeries";
+import i18n from "@/i18n";
 import type { EvoluDocumentRow } from "./documentMap";
 import {
     counterDigitsInFormat,
@@ -15,19 +16,37 @@ import {
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import type { CompanyId, DocumentType, InvoicingLocalSchema, NumberSeriesId, ResetPeriod } from "./schema";
 
-export const DEFAULT_SERIES: ReadonlyArray<{
+export type LocalizedDefaultSeriesDef = {
     documentType: DocumentType;
     name: string;
     format: string;
     isDefault: boolean;
+};
+
+const DEFAULT_SERIES_DEFS: ReadonlyArray<{
+    documentType: DocumentType;
+    nameKey: string;
+    format: string;
+    isDefault: boolean;
 }> = [
-    { documentType: "invoice", name: "Faktúra", format: "RRRRCCCC", isDefault: true },
-    { documentType: "credit_note", name: "Dobropis", format: "RRRRCCCC", isDefault: true },
-    { documentType: "proforma", name: "Zálohová faktúra", format: "ZALRRRRCCCC", isDefault: true },
-    { documentType: "delivery_note", name: "Dodací list", format: "DODRRCCC", isDefault: true },
-    { documentType: "quote", name: "Cenová ponuka", format: "PONRRRRCCC", isDefault: true },
-    { documentType: "order_received", name: "Prijatá objednávka", format: "OBJRRRRMMCCC", isDefault: true },
+    { documentType: "invoice", nameKey: "invoicing.series_default_name_invoice", format: "INVRRRRCCCC", isDefault: true },
+    { documentType: "credit_note", nameKey: "invoicing.series_default_name_credit_note", format: "CNRRRRCCCC", isDefault: true },
+    { documentType: "proforma", nameKey: "invoicing.series_default_name_proforma", format: "PFRRRRCCCC", isDefault: true },
+    { documentType: "delivery_note", nameKey: "invoicing.series_default_name_delivery_note", format: "DELRRRRCCCC", isDefault: true },
+    { documentType: "quote", nameKey: "invoicing.series_default_name_quote", format: "QTRRRRCCCC", isDefault: true },
+    { documentType: "order_received", nameKey: "invoicing.series_default_name_order_received", format: "PORRRRCCCC", isDefault: true },
 ];
+
+export function localizedDefaultSeries(
+    translate: (key: string) => string = (key) => String(i18n.global.t(key)),
+): LocalizedDefaultSeriesDef[] {
+    return DEFAULT_SERIES_DEFS.map((def) => ({
+        documentType: def.documentType,
+        name: translate(def.nameKey),
+        format: def.format,
+        isDefault: def.isDefault,
+    }));
+}
 
 const NameType = maxLength(255)(NonEmptyString);
 const FormatType = maxLength(64)(NonEmptyString);
@@ -114,11 +133,12 @@ export function seedDefaultNumberSeries(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
     existingSeries: EvoluNumberSeriesRow[] = [],
+    seriesDefs: LocalizedDefaultSeriesDef[] = localizedDefaultSeries(),
 ): EvoluNumberSeriesRow[] {
     const companyRows = existingSeries.filter((row) => row.companyId === companyId);
     const created: EvoluNumberSeriesRow[] = [];
 
-    for (const def of DEFAULT_SERIES) {
+    for (const def of seriesDefs) {
         const exists = companyRows.some(
             (row) => row.documentType === def.documentType && row.isDefault !== 0,
         );
@@ -345,4 +365,38 @@ export function syncNumberSeriesCounterFromDocuments(
             lastNumber: synced.lastNumber,
         });
     }
+}
+
+/** Align local Evolu counter with a server-reserved document number (Woo / store bridge). */
+export function syncLocalSeriesCounterFromIssuedNumber(
+    evolu: Evolu<InvoicingLocalSchema>,
+    companyId: CompanyId,
+    documentType: DocumentType,
+    issuedNumber: string,
+    allSeries: EvoluNumberSeriesRow[],
+): void {
+    let workingSeries = allSeries;
+    let series = resolveDefaultSeries(workingSeries, companyId, documentType);
+    if (!series) {
+        const seeded = seedDefaultNumberSeries(evolu, companyId, workingSeries);
+        workingSeries = [...workingSeries, ...seeded];
+        series = resolveDefaultSeries(workingSeries, companyId, documentType);
+    }
+    if (!series) return;
+
+    const digitLen = counterDigitsInFormat(series.format);
+    if (issuedNumber.length < digitLen) return;
+    const suffix = issuedNumber.slice(-digitLen);
+    if (!/^\d+$/.test(suffix)) return;
+
+    const counter = parseInt(suffix, 10);
+    const synced = syncPeriodFields(series);
+    const current = parseInt(synced.lastNumber || "0", 10) || 0;
+    if (counter <= current) return;
+
+    evolu.update("numberSeries", {
+        id: series.id,
+        periodKey: synced.periodKey,
+        lastNumber: String(counter),
+    });
 }

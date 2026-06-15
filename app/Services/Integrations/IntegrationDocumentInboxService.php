@@ -6,6 +6,7 @@ use App\Enums\BusinessDocumentType;
 use App\Enums\IntegrationDocumentInboxStatus;
 use App\Models\Company;
 use App\Models\IntegrationDocumentInbox;
+use App\Models\Store;
 use App\Models\StoreIntegration;
 use App\Models\User;
 use App\Support\Invoicing\CompanyAppSettings;
@@ -15,6 +16,10 @@ use Illuminate\Validation\ValidationException;
 
 class IntegrationDocumentInboxService
 {
+    public function __construct(
+        protected \App\Services\Invoicing\DocumentSequenceService $sequenceService,
+    ) {}
+
     /**
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
@@ -109,6 +114,23 @@ class IntegrationDocumentInboxService
             ->map(fn (IntegrationDocumentInbox $entry) => $this->serializeEntry($entry));
     }
 
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function listForStore(User $user, Store $store): Collection
+    {
+        if ($store->user_id !== $user->id && ! $user->isSupport() && ! $user->isAdmin()) {
+            abort(403, 'Unauthorized access to store');
+        }
+
+        return IntegrationDocumentInbox::query()
+            ->where('status', IntegrationDocumentInboxStatus::Pending)
+            ->whereHas('storeIntegration', fn ($query) => $query->where('store_id', $store->id))
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn (IntegrationDocumentInbox $entry) => $this->serializeEntry($entry));
+    }
+
     public function markImported(IntegrationDocumentInbox $entry): IntegrationDocumentInbox
     {
         if ($entry->status !== IntegrationDocumentInboxStatus::Pending) {
@@ -121,6 +143,31 @@ class IntegrationDocumentInboxService
         $entry->save();
 
         return $entry;
+    }
+
+    public function issuePendingEntry(IntegrationDocumentInbox $entry, Company $company): IntegrationDocumentInbox
+    {
+        $payload = is_array($entry->payload_json) ? $entry->payload_json : [];
+
+        if (! empty($payload['number'])) {
+            return $entry;
+        }
+
+        if ($entry->status !== IntegrationDocumentInboxStatus::Pending) {
+            throw ValidationException::withMessages([
+                'inbox' => ['Inbox item is not pending.'],
+            ]);
+        }
+
+        $type = (string) ($payload['type'] ?? 'invoice');
+        $number = $this->sequenceService->nextNumber($company, $type);
+        $payload['number'] = $number;
+        $payload['variable_symbol'] = preg_replace('/\D/', '', $number) ?: null;
+        $payload['issued_at'] = now()->toIso8601String();
+        $entry->payload_json = $payload;
+        $entry->save();
+
+        return $entry->fresh();
     }
 
     public function dismiss(IntegrationDocumentInbox $entry): IntegrationDocumentInbox
@@ -146,6 +193,14 @@ class IntegrationDocumentInboxService
 
         $linkedCompanyId = $integration->company_id ?? $integration->store?->company_id;
         if ($linkedCompanyId !== $company->id) {
+            abort(404);
+        }
+    }
+
+    public function assertEntryBelongsToStore(IntegrationDocumentInbox $entry, Store $store): void
+    {
+        $integration = $entry->storeIntegration()->first();
+        if (! $integration || $integration->store_id !== $store->id) {
             abort(404);
         }
     }

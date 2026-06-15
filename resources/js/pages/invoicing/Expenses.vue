@@ -1,10 +1,5 @@
 <template>
-  <InvoicingServerOnlyPage
-    v-if="localFirst"
-    :title="t('invoicing.main_nav_expenses')"
-    detail-key="invoicing.local_first_expenses_bridge"
-  />
-  <InvoicingPageShell v-else content-class="pb-8">
+  <InvoicingPageShell content-class="pb-8">
     <template #header>
       <InvoicingAppHeader
         :company-label="companyName"
@@ -106,6 +101,12 @@
       </div>
     </template>
 
+    <LocalFirstBridgeNotice
+      v-if="localFirst && showLocalBridgeNotice"
+      class="mb-4"
+      :detail="t('invoicing.local_first_expenses_import_bridge')"
+    />
+
     <p v-if="success" class="text-sm text-green-700 mb-4">{{ success }}</p>
     <p v-if="error" class="text-sm text-red-700 mb-4">{{ error }}</p>
 
@@ -192,11 +193,24 @@ import ExpenseImportModal from '../../components/invoicing/ExpenseImportModal.vu
 import ExpensesTable from '../../components/invoicing/ExpensesTable.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
-import InvoicingServerOnlyPage from '../../components/invoicing/InvoicingServerOnlyPage.vue';
+import LocalFirstBridgeNotice from '../../components/invoicing/LocalFirstBridgeNotice.vue';
 import InvoicingMobileBulkBar from '../../components/invoicing/InvoicingMobileBulkBar.vue';
 import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
+import {
+  bulkCancelLocalExpenses,
+  bulkMarkPaidLocalExpenses,
+  resolveBulkExpenseTargets,
+} from '../../evolu/expenseBulkLocal';
+import {
+  cancelLocalExpense,
+  duplicateLocalExpense,
+  markLocalExpensePaid,
+} from '../../evolu/expenseCrud';
+import type { CompanyId, ExpenseId } from '../../evolu/schema';
 import { expenseOverdueDays, type ExpenseListRow } from '../../composables/useExpenseRowMeta';
+import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompanySummary';
+import { useInvoicingExpenses } from '../../composables/useInvoicingExpenses';
 import { INVOICING_CONTAINER_CLASS, useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import api from '../../services/api';
 
@@ -205,8 +219,10 @@ const localFirst = isInvoicingLocalFirst();
 const route = useRoute();
 const router = useRouter();
 const { rememberCompany } = useInvoicingLayout();
+const { companyName } = useInvoicingCompanySummary();
 const companyId = computed(() => route.params.companyId as string);
-const companyName = ref('');
+const invoicingExpenses = useInvoicingExpenses(companyId);
+const showLocalBridgeNotice = ref(false);
 const showImportModal = ref(false);
 const showAttachImportModal = ref(false);
 const showImportMenu = ref(false);
@@ -286,6 +302,10 @@ function changePage(p: number) {
 
 function openImport(kind: 'excel' | 'pdf') {
   showImportMenu.value = false;
+  if (localFirst) {
+    showLocalBridgeNotice.value = true;
+    return;
+  }
   if (kind === 'excel') {
     showImportModal.value = true;
   } else {
@@ -358,6 +378,43 @@ async function runBulk(action: string) {
   loading.value = true;
 
   try {
+    if (localFirst && invoicingExpenses.evolu) {
+      if (action === 'export_xlsx' || action === 'attachments_zip') {
+        showLocalBridgeNotice.value = true;
+        return;
+      }
+
+      const targets = resolveBulkExpenseTargets(
+        companyId.value as CompanyId,
+        selectAllMode.value,
+        selectedIds.value,
+        invoicingExpenses.expenseRows.value,
+        listFilterParams(),
+      );
+
+      if (targets.length === 0) {
+        error.value = t('common.error');
+        return;
+      }
+
+      const result =
+        action === 'mark_paid'
+          ? bulkMarkPaidLocalExpenses(invoicingExpenses.evolu, targets)
+          : action === 'cancel'
+            ? bulkCancelLocalExpenses(invoicingExpenses.evolu, targets)
+            : null;
+
+      if (result) {
+        success.value = t('invoicing.bulk_result', {
+          processed: result.processed,
+          skipped: result.skipped,
+        });
+        await load();
+        clearSelection();
+      }
+      return;
+    }
+
     const isFile = fileActions.has(action);
     const res = await api.post(
       `/invoicing/companies/${companyId.value}/expenses/bulk`,
@@ -407,6 +464,11 @@ async function markPaidRow(expenseId: string) {
   actionId.value = expenseId;
   error.value = '';
   try {
+    if (localFirst && invoicingExpenses.evolu) {
+      markLocalExpensePaid(invoicingExpenses.evolu, expenseId as ExpenseId);
+      await load();
+      return;
+    }
     await api.post(`/invoicing/companies/${companyId.value}/expenses/${expenseId}/mark-paid`);
     await load();
   } catch (e: any) {
@@ -420,6 +482,21 @@ async function duplicateRow(expenseId: string) {
   actionId.value = expenseId;
   error.value = '';
   try {
+    if (localFirst && invoicingExpenses.evolu) {
+      const source = invoicingExpenses.expenseRows.value.find((row) => row.id === expenseId);
+      if (!source) return;
+      const result = duplicateLocalExpense(
+        invoicingExpenses.evolu,
+        source,
+        invoicingExpenses.expenseRows.value,
+      );
+      if (!result.ok) return;
+      await router.push({
+        name: 'invoicing-expense-edit',
+        params: { companyId: companyId.value, expenseId: result.value.id },
+      });
+      return;
+    }
     const res = await api.post(`/invoicing/companies/${companyId.value}/expenses/${expenseId}/duplicate`);
     await router.push({
       name: 'invoicing-expense-edit',
@@ -436,6 +513,11 @@ async function cancelRow(expenseId: string) {
   actionId.value = expenseId;
   error.value = '';
   try {
+    if (localFirst && invoicingExpenses.evolu) {
+      cancelLocalExpense(invoicingExpenses.evolu, expenseId as ExpenseId);
+      await load();
+      return;
+    }
     await api.delete(`/invoicing/companies/${companyId.value}/expenses/${expenseId}`);
     await load();
   } catch (e: any) {
@@ -446,6 +528,10 @@ async function cancelRow(expenseId: string) {
 }
 
 function openAttachment(expenseId: string) {
+  if (localFirst) {
+    showLocalBridgeNotice.value = true;
+    return;
+  }
   window.open(`/api/invoicing/companies/${companyId.value}/expenses/${expenseId}/attachment`, '_blank');
 }
 
@@ -458,16 +544,23 @@ async function load() {
   loading.value = true;
   error.value = '';
   try {
-    const [companyRes, listRes] = await Promise.all([
-      api.get(`/invoicing/companies/${companyId.value}/summary`),
-      api.get(`/invoicing/companies/${companyId.value}/expenses`, {
-        params: {
-          ...listFilterParams(),
-          page: page.value,
-        },
-      }),
-    ]);
-    companyName.value = companyRes.data.data?.trade_name || companyRes.data.data?.legal_name || '';
+    if (localFirst) {
+      await invoicingExpenses.refresh(listFilterParams());
+      const all = [...invoicingExpenses.expenses.value];
+      totalCount.value = all.length;
+      lastPage.value = Math.max(1, Math.ceil(all.length / 25));
+      if (page.value > lastPage.value) page.value = lastPage.value;
+      const start = (page.value - 1) * 25;
+      expenses.value = all.slice(start, start + 25);
+      return;
+    }
+
+    const listRes = await api.get(`/invoicing/companies/${companyId.value}/expenses`, {
+      params: {
+        ...listFilterParams(),
+        page: page.value,
+      },
+    });
     const today = new Date().toISOString().slice(0, 10);
     const rows = listRes.data.data ?? [];
     expenses.value = rows.map((e: ExpenseListRow & { attachment_path?: string | null; attachments_count?: number }) => ({

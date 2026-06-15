@@ -618,7 +618,7 @@ async function issueDocument() {
     if (localFirst && local) {
       const companyRow = local.companyRows.value.find((c) => c.id === companyId.value);
       if (!companyRow) throw new Error('company');
-      const issueResult = local.issueLocalDocument(
+      const issueResult = await local.issueLocalDocumentAsync(
         local.evolu,
         documentId.value as import('../../evolu/schema').DocumentId,
         companyRow as import('../../evolu/companyMap').EvoluCompanyRow,

@@ -81,6 +81,19 @@ class WooCommerceIntegrationController extends Controller
     {
         /** @var StoreIntegration $integration */
         $integration = $request->attributes->get('store_integration');
+
+        $inbox = IntegrationDocumentInbox::query()
+            ->where('id', $documentId)
+            ->where('store_integration_id', $integration->id)
+            ->first();
+        if ($inbox) {
+            $entry = $this->documentService->issueInboxEntry($integration, $inbox);
+
+            return response()->json([
+                'data' => $this->documentService->serializeIssuedInboxEntry($entry),
+            ]);
+        }
+
         $document = BusinessDocument::findOrFail($documentId);
         $document = $this->documentService->issueDocument($integration, $document);
 
@@ -93,6 +106,17 @@ class WooCommerceIntegrationController extends Controller
     {
         /** @var StoreIntegration $integration */
         $integration = $request->attributes->get('store_integration');
+
+        $inbox = IntegrationDocumentInbox::query()
+            ->where('id', $documentId)
+            ->where('store_integration_id', $integration->id)
+            ->first();
+        if ($inbox) {
+            return response()->json([
+                'data' => $this->documentService->serializeIssuedInboxEntry($inbox),
+            ]);
+        }
+
         $document = BusinessDocument::findOrFail($documentId);
         $company = $integration->company ?? $integration->store->company;
         if (! $company || $document->company_id !== $company->id) {

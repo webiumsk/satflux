@@ -181,6 +181,39 @@ class WooCommerceDocumentService
         return $this->issueService->issue($document);
     }
 
+    public function issueInboxEntry(
+        StoreIntegration $integration,
+        IntegrationDocumentInbox $inbox,
+    ): IntegrationDocumentInbox {
+        $this->assertInboxAccess($integration, $inbox);
+        $company = $this->resolveCompany($integration);
+
+        return $this->inboxService->issuePendingEntry($inbox, $company);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function serializeIssuedInboxEntry(IntegrationDocumentInbox $entry): array
+    {
+        $payload = is_array($entry->payload_json) ? $entry->payload_json : [];
+        $base = $this->inboxService->serializeEntry($entry);
+
+        return [
+            'id' => $entry->evolu_document_id,
+            'inbox_id' => $entry->id,
+            'evolu_document_id' => $entry->evolu_document_id,
+            'number' => $payload['number'] ?? null,
+            'status' => ! empty($payload['number']) ? 'issued' : $entry->status->value,
+            'woocommerce_order_id' => $entry->woocommerce_order_id,
+            'currency' => (string) ($payload['currency'] ?? 'EUR'),
+            'payment_token' => null,
+            'pdf_url' => null,
+            'payment_url' => null,
+            'summary' => $base['summary'] ?? [],
+        ];
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -236,6 +269,14 @@ class WooCommerceDocumentService
     {
         $company = $this->resolveCompany($integration);
         if ($document->company_id !== $company->id) {
+            abort(404);
+        }
+    }
+
+    protected function assertInboxAccess(StoreIntegration $integration, IntegrationDocumentInbox $inbox): void
+    {
+        $integrationId = $inbox->store_integration_id;
+        if ($integrationId !== $integration->id) {
             abort(404);
         }
     }

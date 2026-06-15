@@ -220,4 +220,34 @@ export const allDocumentEventsQuery = evolu.createQuery((db) =>
         .orderBy("createdAt"),
 );
 
+const expenseColumns = [
+    "id",
+    "companyId",
+    "status",
+    "internalNumber",
+    "externalNumber",
+    "title",
+    "variableSymbol",
+    "constantSymbol",
+    "specificSymbol",
+    "issueDate",
+    "deliveryDate",
+    "dueDate",
+    "paidAt",
+    "cancelledAt",
+    "total",
+    "currency",
+    "internalNote",
+] as const;
+
+export const allExpensesQuery = evolu.createQuery((db) =>
+    db
+        .selectFrom("expense")
+        .select(expenseColumns)
+        .where("isDeleted", "is not", sqliteTrue)
+        .where("internalNumber", "is not", null)
+        .$narrowType<{ internalNumber: kysely.NotNull }>()
+        .orderBy("createdAt"),
+);
+
 export { EVOLU_RELAY_URL } from "./config";

@@ -31,20 +31,22 @@ export const DOCUMENT_TYPE_OPTIONS = [
 ] as const;
 
 export const FORMAT_PRESETS = [
+  'INVRRRRCCCC',
+  'CNRRRRCCCC',
+  'PFRRRRCCCC',
+  'DELRRRRCCCC',
+  'QTRRRRCCCC',
+  'PORRRRCCCC',
+  'SORRRRCCCC',
+  'EXPRRRRCCCC',
   'RRRRCCCC',
-  'RRRRMMCCCC',
-  'DODRRCCC',
-  'ZALRRRRCCCC',
-  'PONRRRRCCC',
-  'OBJRRRRMMCCC',
-  'VOBJRRRRCCC',
 ] as const;
 
 export function emptySeriesForm(): NumberSeriesFormState {
   return {
     name: '',
     document_type: 'invoice',
-    format: 'RRRRCCCC',
+    format: 'INVRRRRCCCC',
     reset_period: 'yearly',
     is_default: false,
     last_number: 0,

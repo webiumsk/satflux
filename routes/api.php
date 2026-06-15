@@ -35,6 +35,7 @@ use App\Http\Controllers\Invoicing\CompanyStockItemController;
 use App\Http\Controllers\Invoicing\CompanyWarehouseController;
 use App\Http\Controllers\Invoicing\EphemeralBusinessDocumentController;
 use App\Http\Controllers\Invoicing\IntegrationDocumentInboxController;
+use App\Http\Controllers\Invoicing\StoreDocumentSequenceController;
 use App\Http\Controllers\Invoicing\UsSalesTaxController;
 use App\Http\Controllers\Invoicing\ViesValidationController;
 use App\Http\Controllers\LightningAddressController;
@@ -461,6 +462,17 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/integration-inbox/{inbox}/imported', [IntegrationDocumentInboxController::class, 'markImported'])
                 ->middleware(EnsureCompanyOwnership::class);
+
+            Route::get('/stores/{store}/integration-inbox', [IntegrationDocumentInboxController::class, 'indexForStore'])
+                ->middleware(EnsureStoreOwnership::class);
+            Route::post('/stores/{store}/integration-inbox/{inbox}/dismiss', [IntegrationDocumentInboxController::class, 'dismissForStore'])
+                ->middleware(EnsureStoreOwnership::class);
+            Route::post('/stores/{store}/integration-inbox/{inbox}/imported', [IntegrationDocumentInboxController::class, 'markImportedForStore'])
+                ->middleware(EnsureStoreOwnership::class);
+            Route::get('/stores/{store}/number-series/preview', [StoreDocumentSequenceController::class, 'preview'])
+                ->middleware(EnsureStoreOwnership::class);
+            Route::post('/stores/{store}/number-series/reserve', [StoreDocumentSequenceController::class, 'reserve'])
+                ->middleware(EnsureStoreOwnership::class);
 
             Route::get('/companies/{company}/documents/import/fields', [\App\Http\Controllers\Invoicing\BusinessDocumentImportController::class, 'fields'])
                 ->middleware(EnsureCompanyOwnership::class);

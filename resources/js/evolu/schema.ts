@@ -26,6 +26,9 @@ export type NumberSeriesId = typeof NumberSeriesId.Type;
 export const DocumentEventId = id("DocumentEvent");
 export type DocumentEventId = typeof DocumentEventId.Type;
 
+export const ExpenseId = id("Expense");
+export type ExpenseId = typeof ExpenseId.Type;
+
 const LegalName = maxLength(255)(NonEmptyString);
 const OptionalString16 = nullOr(maxLength(16)(NonEmptyString));
 const OptionalString32 = nullOr(maxLength(32)(NonEmptyString));
@@ -63,6 +66,9 @@ export type VatStatus = typeof VatStatus.Type;
 
 export const DocumentStatus = union("draft", "issued", "paid", "cancelled");
 export type DocumentStatus = typeof DocumentStatus.Type;
+
+export const ExpenseStatus = union("recorded", "paid", "cancelled");
+export type ExpenseStatus = typeof ExpenseStatus.Type;
 
 export const QuoteStatus = union("pending", "approved", "rejected", "expired");
 export type QuoteStatus = typeof QuoteStatus.Type;
@@ -217,6 +223,25 @@ export const InvoicingLocalSchema = {
         documentId: DocumentId,
         action: DocumentAction,
         metadataJson: OptionalString4000,
+    },
+    expense: {
+        id: ExpenseId,
+        companyId: CompanyId,
+        status: ExpenseStatus,
+        internalNumber: maxLength(64)(NonEmptyString),
+        externalNumber: OptionalString64,
+        title: OptionalString255,
+        variableSymbol: OptionalString32,
+        constantSymbol: OptionalString16,
+        specificSymbol: OptionalString16,
+        issueDate: OptionalString32,
+        deliveryDate: OptionalString32,
+        dueDate: OptionalString32,
+        paidAt: OptionalString32,
+        cancelledAt: OptionalString32,
+        total: OptionalString32,
+        currency: nullOr(CurrencyCode),
+        internalNote: OptionalString4000,
     },
 } satisfies EvoluSchema;
 

@@ -453,7 +453,7 @@ export function useInvoiceDocument() {
   async function loadNextNumberPreview() {
     if (local) {
       await local.refreshAll();
-      nextNumberPreview.value = local.previewNumber(
+      nextNumberPreview.value = await local.previewNumberAsync(
         companyId.value as CompanyId,
         documentType.value,
       );
@@ -808,7 +808,7 @@ export function useInvoiceDocument() {
     if (wasDraft) {
       const companyRow = local.companyRows.value.find((c) => c.id === companyId.value);
       if (!companyRow) throw new Error('company');
-      const issueResult = local.issueLocalDocument(
+      const issueResult = await local.issueLocalDocumentAsync(
         local.evolu,
         docId,
         companyRow as import('../evolu/companyMap').EvoluCompanyRow,

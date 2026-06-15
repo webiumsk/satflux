@@ -6,6 +6,7 @@ use App\Models\BusinessDocument;
 use App\Models\BusinessExpense;
 use App\Models\Company;
 use App\Models\CompanyDocumentSequence;
+use App\Support\LandingCopy;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -186,25 +187,43 @@ class DocumentSequenceService
     }
 
     /**
+     * Default number series seeded for new companies.
+     * Format tokens: R = year, M = month, C = counter. Literal prefix letters must not include R, M, or C.
+     *
      * @return array<int, array<string, mixed>>
      */
-    public function defaultSeriesDefinitions(): array
+    public function defaultSeriesDefinitions(?string $locale = null): array
+    {
+        return array_map(function (array $def) use ($locale) {
+            return [
+                'document_type' => $def['document_type'],
+                'name' => LandingCopy::get($def['name_key'], $locale),
+                'format' => $def['format'],
+                'is_default' => true,
+            ];
+        }, $this->defaultSeriesFormatDefinitions());
+    }
+
+    /**
+     * @return array<int, array{document_type: string, name_key: string, format: string}>
+     */
+    protected function defaultSeriesFormatDefinitions(): array
     {
         return [
-            ['document_type' => 'invoice', 'name' => 'Faktúra', 'format' => 'RRRRCCCC', 'is_default' => true],
-            ['document_type' => 'credit_note', 'name' => 'Dobropis', 'format' => 'RRRRCCCC', 'is_default' => true],
-            ['document_type' => 'proforma', 'name' => 'Zálohová faktúra', 'format' => 'ZALRRRRCCCC', 'is_default' => true],
-            ['document_type' => 'delivery_note', 'name' => 'Dodací list', 'format' => 'DODRRCCC', 'is_default' => true],
-            ['document_type' => 'quote', 'name' => 'Cenová ponuka', 'format' => 'PONRRRRCCC', 'is_default' => true],
-            ['document_type' => 'order_received', 'name' => 'Prijatá objednávka', 'format' => 'OBJRRRRMMCCC', 'is_default' => true],
-            ['document_type' => 'order_issued', 'name' => 'Vydaná objednávka', 'format' => 'VOBJRRRRCCC', 'is_default' => true],
-            ['document_type' => 'expense', 'name' => 'Náklad', 'format' => 'NRRRRCCCC', 'is_default' => true],
+            ['document_type' => 'invoice', 'name_key' => 'invoicing.series_default_name_invoice', 'format' => 'INVRRRRCCCC'],
+            ['document_type' => 'credit_note', 'name_key' => 'invoicing.series_default_name_credit_note', 'format' => 'CNRRRRCCCC'],
+            ['document_type' => 'proforma', 'name_key' => 'invoicing.series_default_name_proforma', 'format' => 'PFRRRRCCCC'],
+            ['document_type' => 'delivery_note', 'name_key' => 'invoicing.series_default_name_delivery_note', 'format' => 'DELRRRRCCCC'],
+            ['document_type' => 'quote', 'name_key' => 'invoicing.series_default_name_quote', 'format' => 'QTRRRRCCCC'],
+            ['document_type' => 'order_received', 'name_key' => 'invoicing.series_default_name_order_received', 'format' => 'PORRRRCCCC'],
+            ['document_type' => 'order_issued', 'name_key' => 'invoicing.series_default_name_order_issued', 'format' => 'SORRRRCCCC'],
+            ['document_type' => 'expense', 'name_key' => 'invoicing.series_default_name_expense', 'format' => 'EXPRRRRCCCC'],
         ];
     }
 
-    public function seedDefaultsForCompany(Company $company): void
+    public function seedDefaultsForCompany(Company $company, ?string $locale = null): void
     {
-        foreach ($this->defaultSeriesDefinitions() as $def) {
+        foreach ($this->defaultSeriesDefinitions($locale) as $def) {
             $exists = CompanyDocumentSequence::query()
                 ->where('company_id', $company->id)
                 ->where('document_type', $def['document_type'])

@@ -207,7 +207,7 @@ import api from '../../services/api';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
 import { useInvoicingEvolu } from '../../evolu/client';
 import { insertLocalCompanyFromPayload } from '../../evolu/companyInsert';
-import { seedDefaultNumberSeries } from '../../evolu/numberSeriesCrud';
+import { seedDefaultNumberSeries, localizedDefaultSeries } from '../../evolu/numberSeriesCrud';
 import { useStoresStore } from '../../store/stores';
 
 const { t, te } = useI18n();
@@ -416,7 +416,7 @@ async function save() {
         window.alert(t('invoicing.company_save_validation_error'));
         return;
       }
-      seedDefaultNumberSeries(evolu, result.value.id);
+      seedDefaultNumberSeries(evolu, result.value.id, [], localizedDefaultSeries(t));
       router.push({ name: 'invoicing' });
       return;
     }
