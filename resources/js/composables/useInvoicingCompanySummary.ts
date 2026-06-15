@@ -1,4 +1,4 @@
-import { computed, ref, watch, type Ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useQuery } from "@evolu/vue";
 import { useRoute } from "vue-router";
 import api from "@/services/api";
@@ -6,7 +6,6 @@ import { allCompaniesDetailQuery, useInvoicingEvolu } from "@/evolu/client";
 import {
     companyBankAccountLabel,
     companyHasBankAccount,
-    evoluCompanyToApi,
     type EvoluCompanyRow,
 } from "@/evolu/companyMap";
 import { isInvoicingLocalFirst } from "@/evolu/flags";

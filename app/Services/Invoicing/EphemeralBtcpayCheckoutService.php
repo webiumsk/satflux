@@ -2,6 +2,7 @@
 
 namespace App\Services\Invoicing;
 
+use App\Models\AuditLog;
 use App\Models\EphemeralBtcpayCheckout;
 use App\Models\Store;
 use App\Models\User;
@@ -71,6 +72,12 @@ class EphemeralBtcpayCheckoutService
             'status' => EphemeralBtcpayCheckout::STATUS_PAID,
             'paid_at' => Carbon::now(),
         ]);
+
+        AuditLog::log('business_document.ephemeral_btcpay_paid', 'store', (string) $store->id, [
+            'checkout_id' => $checkout->id,
+            'btcpay_invoice_id' => $btcpayInvoiceId,
+            'evolu_document_id' => $checkout->evolu_document_id,
+        ], $checkout->user_id);
 
         return $checkout->fresh();
     }

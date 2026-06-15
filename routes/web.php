@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Integrations\WooCommerceConnectController;
 use App\Http\Controllers\Invoicing\BusinessDocumentController;
 use App\Http\Controllers\Invoicing\BusinessDocumentPayController;
+use App\Http\Controllers\LandingPayButtonController;
 use App\Http\Controllers\OgImageController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StoreAppPageController;
@@ -112,6 +113,9 @@ Route::middleware(['auth', RequireVerifiedEmail::class, EnsurePlanAllowsBusiness
 Route::middleware(['auth', RequireVerifiedEmail::class, EnsurePlanAllowsBusinessInvoicing::class, 'guest.restrict'])
     ->get('/invoicing/companies/{company}/documents/{businessDocument}/ubl', [BusinessDocumentController::class, 'ubl'])
     ->middleware(EnsureCompanyOwnership::class);
+
+// Marketing landing Pay Button (BTCPay store resolved server-side; no store ID in frontend markup)
+Route::post('/landing/pay-button', [LandingPayButtonController::class, 'store']);
 
 // Inertia routes: store apps (must be before SPA catch-all)
 Route::middleware(['auth'])->group(function () {

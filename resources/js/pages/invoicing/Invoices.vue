@@ -1529,7 +1529,7 @@ async function runBulkLocal(action: string) {
     return;
   }
 
-  if (action === 'export_xlsx') {
+  if (action === 'export_csv') {
     const rows = targets.map((row) => ({
       number: row.number || '',
       status: row.status,
@@ -1583,7 +1583,8 @@ async function runBulk(action: string) {
 
   try {
     if (localFirst && localDoc && localDocuments) {
-      await runBulkLocal(action);
+      const localAction = action === 'export_xlsx' ? 'export_csv' : action;
+      await runBulkLocal(localAction);
       return;
     }
 
@@ -1869,10 +1870,10 @@ function canDownloadStructuredExport(d: { status: string; number?: string | null
 }
 
 async function downloadIsdoc(d: { id: string; number?: string }) {
-  if (!canDownloadStructuredExport(d)) return;
+  if (!canDownloadStructuredExport(d) || !localDoc) return;
   actionId.value = d.id;
   try {
-    const ctx = await buildLocalDocumentEphemeralSnapshot(localDoc!, companyId.value, d.id);
+    const ctx = await buildLocalDocumentEphemeralSnapshot(localDoc, companyId.value, d.id);
     if (!ctx) {
       error.value = t('common.error_generic');
       return;
@@ -1890,10 +1891,10 @@ async function downloadIsdoc(d: { id: string; number?: string }) {
 }
 
 async function downloadUbl(d: { id: string; number?: string }) {
-  if (!canDownloadStructuredExport(d)) return;
+  if (!canDownloadStructuredExport(d) || !localDoc) return;
   actionId.value = d.id;
   try {
-    const ctx = await buildLocalDocumentEphemeralSnapshot(localDoc!, companyId.value, d.id);
+    const ctx = await buildLocalDocumentEphemeralSnapshot(localDoc, companyId.value, d.id);
     if (!ctx) {
       error.value = t('common.error_generic');
       return;

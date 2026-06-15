@@ -264,6 +264,9 @@ async function createLocalCreditNote(invoiceId: string) {
     localDoc.documentRows.value as EvoluDocumentRow[],
     localDoc.lineRows.value as EvoluDocumentLineRow[],
     localSaveOptions(invoiceRow?.contactId ?? null),
+    invoiceRow?.number
+      ? `${t('invoicing.linked_credited_invoice', { number: invoiceRow.number })}.`
+      : undefined,
   );
   if (!result.ok) {
     const key = creditNoteErrors[result.error] ?? 'common.error';

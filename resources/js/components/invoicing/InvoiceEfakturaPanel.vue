@@ -125,6 +125,29 @@ const effectiveBridgeCompanyId = computed(
   () => props.bridgeCompanyId ?? resolvedBridgeCompanyId.value,
 );
 
+function setLocalFirstBridgeError(): void {
+  panelError.value = t('invoicing.efaktura_panel_bridge_not_configured');
+}
+
+function localFirstBridgeReady(requireSnapshot = false): boolean {
+  if (!props.localFirst) {
+    return true;
+  }
+  if (!props.evoluDocumentId) {
+    setLocalFirstBridgeError();
+    return false;
+  }
+  if (requireSnapshot && !props.ephemeralSnapshot) {
+    panelError.value = t('common.error_generic');
+    return false;
+  }
+  if (!effectiveBridgeCompanyId.value) {
+    setLocalFirstBridgeError();
+    return false;
+  }
+  return true;
+}
+
 const settingsTo = computed(() => {
   const companyId = props.companyId;
 
@@ -229,7 +252,11 @@ async function loadCompliance() {
 
   loading.value = true;
   try {
-    if (props.localFirst && props.evoluDocumentId) {
+    if (props.localFirst) {
+      if (!props.evoluDocumentId) {
+        rows.value = [];
+        return;
+      }
       rows.value = await fetchEphemeralEfakturaStatus(props.evoluDocumentId);
       return;
     }
@@ -255,9 +282,12 @@ async function refreshStatus() {
   panelSuccess.value = '';
 
   try {
-    if (props.localFirst && props.evoluDocumentId) {
+    if (props.localFirst) {
+      if (!localFirstBridgeReady()) {
+        return;
+      }
       rows.value = await refreshEphemeralEfakturaStatus(
-        props.evoluDocumentId,
+        props.evoluDocumentId!,
         effectiveBridgeCompanyId.value,
       );
     } else {
@@ -284,10 +314,13 @@ async function send() {
   panelSuccess.value = '';
 
   try {
-    if (props.localFirst && props.ephemeralSnapshot && props.evoluDocumentId) {
+    if (props.localFirst) {
+      if (!localFirstBridgeReady(true)) {
+        return;
+      }
       const data = await sendEphemeralEfaktura(
-        props.ephemeralSnapshot,
-        props.evoluDocumentId,
+        props.ephemeralSnapshot!,
+        props.evoluDocumentId!,
         effectiveBridgeCompanyId.value,
       );
       panelSuccess.value = t('invoicing.efaktura_panel_send_success');

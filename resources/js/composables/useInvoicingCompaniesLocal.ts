@@ -1,4 +1,4 @@
-import { computed, ref, type ComputedRef, type Ref } from "vue";
+import { computed, ref } from "vue";
 import { useQuery } from "@evolu/vue";
 import {
     allCompaniesQuery,

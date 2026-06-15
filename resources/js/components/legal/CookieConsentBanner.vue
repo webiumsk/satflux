@@ -55,7 +55,9 @@ onMounted(() => {
 function accept() {
   setCookieConsent('all');
   visible.value = false;
-  void import('../../services/analytics').then(({ onAnalyticsConsentGranted }) => onAnalyticsConsentGranted());
+  void import('../../services/analytics')
+    .then(({ onAnalyticsConsentGranted }) => onAnalyticsConsentGranted())
+    .catch(() => {});
 }
 
 function acceptEssentialOnly() {

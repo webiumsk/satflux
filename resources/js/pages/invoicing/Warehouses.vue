@@ -121,6 +121,7 @@ function locationLine(w: WarehouseRow): string {
 }
 
 async function load() {
+  if (localFirst) return;
   const requestId = ++loadRequestId;
   loading.value = true;
   error.value = '';

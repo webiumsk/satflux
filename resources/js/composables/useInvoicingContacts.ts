@@ -1,5 +1,5 @@
 import type { Evolu } from "@evolu/common/local-first";
-import { computed, onMounted, ref, watch, type ComputedRef, type Ref } from "vue";
+import { computed, ref, watch, type ComputedRef, type Ref } from "vue";
 import { useQuery } from "@evolu/vue";
 import api from "@/services/api";
 import { allContactsQuery, allDocumentsQuery, useInvoicingEvolu } from "@/evolu/client";
@@ -74,6 +74,7 @@ function useLocalInvoicingContacts(companyId: Ref<string>): UseInvoicingContacts
     const evolu = useInvoicingEvolu();
     const loading = ref(true);
     const filters = ref<ContactListFilters>({});
+    let lastFilters: ContactListFilters = {};
 
     const contactsPromise = evolu.loadQuery(allContactsQuery);
     const documentsPromise = evolu.loadQuery(allDocumentsQuery);
@@ -99,7 +100,8 @@ function useLocalInvoicingContacts(companyId: Ref<string>): UseInvoicingContacts
 
     const availableLetters = computed(() => availableContactLetters(companyContacts.value));
 
-    async function refresh(nextFilters: ContactListFilters = {}): Promise<void> {
+    async function refresh(nextFilters: ContactListFilters = lastFilters): Promise<void> {
+        lastFilters = nextFilters;
         filters.value = nextFilters;
         loading.value = true;
         try {

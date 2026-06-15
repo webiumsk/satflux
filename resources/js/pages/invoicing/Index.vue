@@ -44,17 +44,18 @@
     </div>
 
     <ul v-else class="space-y-3">
-      <li
-        v-for="c in companyList"
-        :key="c.id"
-        class="invoicing-list-item"
-        @click="openCompany(c)"
-      >
-        <div>
-          <p class="font-medium text-gray-900">{{ c.trade_name || c.legal_name }}</p>
-          <p class="text-xs text-gray-500">{{ c.legal_name }}</p>
-        </div>
-        <span class="text-xs text-gray-500">{{ c.documents_count ?? 0 }} {{ t('invoicing.invoices_short') }}</span>
+      <li v-for="c in companyList" :key="c.id">
+        <button
+          type="button"
+          class="invoicing-list-item w-full text-left"
+          @click="openCompany(c)"
+        >
+          <div>
+            <p class="font-medium text-gray-900">{{ c.trade_name || c.legal_name }}</p>
+            <p class="text-xs text-gray-500">{{ c.legal_name }}</p>
+          </div>
+          <span class="text-xs text-gray-500">{{ c.documents_count ?? 0 }} {{ t('invoicing.invoices_short') }}</span>
+        </button>
       </li>
     </ul>
 

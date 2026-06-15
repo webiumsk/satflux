@@ -70,9 +70,11 @@ export function evoluContactToApi(row: EvoluContactRow): CompanyContactRow {
         delivery_postal_code: row.deliveryPostalCode,
         delivery_city: row.deliveryCity,
         delivery_country: row.deliveryCountry,
-        default_payment_terms_days: row.defaultPaymentTermsDays
-            ? Number(row.defaultPaymentTermsDays)
-            : null,
+        default_payment_terms_days: (() => {
+            if (!row.defaultPaymentTermsDays) return null;
+            const days = Number(row.defaultPaymentTermsDays);
+            return Number.isFinite(days) ? days : null;
+        })(),
         notes: row.notes,
         contact_persons: parseContactPersons(row.contactPersonsJson),
         is_active: sqliteBoolToBoolean(row.isActive),
@@ -126,8 +128,9 @@ export function contactPayloadFromForm(
 export function contactFirstLetter(name: string): string {
     const trimmed = name.trim();
     if (!trimmed) return "#";
-    const ch = trimmed[0].toUpperCase();
-    return ch >= "A" && ch <= "Z" ? ch : "#";
+    const base = trimmed[0].normalize("NFD").replace(/\p{M}/gu, "").toUpperCase();
+    if (base.length === 1 && base >= "A" && base <= "Z") return base;
+    return "#";
 }
 
 export function filterContacts(

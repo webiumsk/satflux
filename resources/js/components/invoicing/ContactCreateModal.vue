@@ -60,7 +60,7 @@ import { useInvoicingCompany, asCompanyId } from '../../composables/useInvoicing
 import { isInvoicingLocalFirst } from '../../evolu/flags';
 import { useInvoicingEvolu } from '../../evolu/client';
 import { insertLocalContactFromForm } from '../../evolu/contactCrud';
-import { evoluContactToApi } from '../../evolu/contactMap';
+import { contactPayloadFromForm, evoluContactToApi } from '../../evolu/contactMap';
 import api from '../../services/api';
 
 const props = defineProps<{
@@ -128,34 +128,11 @@ async function save() {
         error.value = t('invoicing.company_save_validation_error');
         return;
       }
+      const payload = contactPayloadFromForm(form.value, showDelivery.value);
       const row = evoluContactToApi({
         id: result.value.id,
         companyId: asCompanyId(props.companyId),
-        name: form.value.name.trim(),
-        registrationNumber: null,
-        peppolParticipantId: null,
-        email: form.value.email || null,
-        phone: null,
-        fax: null,
-        taxId: null,
-        vatId: null,
-        street: null,
-        city: null,
-        postalCode: null,
-        stateRegion: null,
-        country: null,
-        bankAccount: null,
-        bankCode: null,
-        iban: null,
-        swift: null,
-        deliveryStreet: null,
-        deliveryPostalCode: null,
-        deliveryCity: null,
-        deliveryCountry: null,
-        defaultPaymentTermsDays: null,
-        notes: null,
-        contactPersonsJson: null,
-        isActive: 1,
+        ...payload,
       });
       emit('saved', row as unknown as Record<string, unknown>);
       emit('close');

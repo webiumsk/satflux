@@ -19,7 +19,7 @@ class EphemeralBusinessDocumentBulkTest extends TestCase
     #[Test]
     public function authenticated_user_can_download_ephemeral_bulk_pdf_zip_without_persisting_documents(): void
     {
-        [$user, $company] = $this->createProUserWithCompany();
+        [$user] = $this->createProUserWithCompany();
         $single = $this->singleDocumentPayload();
         $payload = [
             'company' => $single['company'],
@@ -57,7 +57,7 @@ class EphemeralBusinessDocumentBulkTest extends TestCase
     #[Test]
     public function authenticated_user_can_download_ephemeral_bulk_pdf_merge_without_persisting_documents(): void
     {
-        [$user, $company] = $this->createProUserWithCompany();
+        [$user] = $this->createProUserWithCompany();
         $single = $this->singleDocumentPayload();
         $payload = [
             'company' => $single['company'],

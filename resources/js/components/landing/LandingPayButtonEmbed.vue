@@ -5,14 +5,10 @@
   >
     <form
       method="POST"
-      :action="invoiceActionUrl"
+      action="/landing/pay-button"
       class="btcpay-form btcpay-form--block"
     >
-      <input
-        type="hidden"
-        name="storeId"
-        value="AZi7YMtvvWrcc4uWbzD9V5f9niQ4Q6ehzAXsBvPEncVa"
-      />
+      <input type="hidden" name="_token" :value="csrfToken" />
       <div class="btcpay-custom-container">
         <label class="sr-only" for="landing-pay-price">{{ t('landing.pay_button_amount_label') }}</label>
         <div class="btcpay-custom">
@@ -88,12 +84,10 @@ const FALLBACK_BTCPAY_BASE = "https://satflux.org";
 const rootRef = ref<HTMLElement | null>(null);
 const { btcPayUrl, load } = useBtcPayUrl();
 
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+
 const btcpayBase = computed(
   () => (btcPayUrl.value || FALLBACK_BTCPAY_BASE).replace(/\/$/, ""),
-);
-
-const invoiceActionUrl = computed(
-  () => `${btcpayBase.value}/api/v1/invoices`,
 );
 
 const payButtonLogoUrl = computed(

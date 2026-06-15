@@ -67,6 +67,11 @@ class EphemeralEfakturaSubmissionService
         string $evoluDocumentId,
     ): ComplianceSubmissionResult {
         $bridgeCompany = $bridgeCompany->fresh() ?? $bridgeCompany;
+
+        if ($bridgeCompany->user_id !== $user->id) {
+            abort(403, 'Unauthorized access to company');
+        }
+
         $documentCompany = $document->company;
         if (! CompanyEfakturaSettings::fromCompany($documentCompany)->configured()) {
             $document->setRelation('company', $bridgeCompany);

@@ -227,7 +227,7 @@ async function loadPreview() {
   try {
     if (localFirst) {
       if (!isContactImportCsvFile(selectedFile.value)) {
-        error.value = t('invoicing.stock_import_file_invalid');
+        error.value = t('invoicing.contact_import_file_invalid');
         headers.value = [];
         rowCount.value = 0;
         return;
@@ -289,7 +289,7 @@ async function submitImport() {
   try {
     if (localFirst && evolu) {
       if (!isContactImportCsvFile(selectedFile.value)) {
-        error.value = t('invoicing.stock_import_file_invalid');
+        error.value = t('invoicing.contact_import_file_invalid');
         return;
       }
       const text = await readContactImportCsvFile(selectedFile.value);

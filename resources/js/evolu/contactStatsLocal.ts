@@ -17,9 +17,19 @@ function isOverdue(doc: EvoluDocumentRow): boolean {
     return !Number.isNaN(due.getTime()) && due < new Date();
 }
 
+function parseDateValue(value: string): Date {
+    if (value.includes("T")) {
+        return new Date(value);
+    }
+    if (/^\d+$/.test(value)) {
+        return new Date(Number(value));
+    }
+    return new Date(`${value}T00:00:00`);
+}
+
 function diffDays(issueDate: string, paidAt: string): number {
-    const issue = new Date(`${issueDate}T00:00:00`);
-    const paid = new Date(`${paidAt}T00:00:00`);
+    const issue = parseDateValue(issueDate);
+    const paid = parseDateValue(paidAt);
     if (Number.isNaN(issue.getTime()) || Number.isNaN(paid.getTime())) return 0;
     return Math.round((paid.getTime() - issue.getTime()) / (1000 * 60 * 60 * 24));
 }

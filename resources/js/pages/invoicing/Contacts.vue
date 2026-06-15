@@ -421,7 +421,7 @@ function bulkPayload(action: string) {
   return base;
 }
 
-async function runBulkLocal(action: 'export_xlsx' | 'delete') {
+async function runBulkLocal(action: 'export_csv' | 'delete') {
   if (!evoluClient) return;
 
   await refreshContacts(listFilterParams());
@@ -451,7 +451,7 @@ async function runBulkLocal(action: 'export_xlsx' | 'delete') {
     return;
   }
 
-  if (action === 'export_xlsx') {
+  if (action === 'export_csv') {
     const rows = targets.map((row) => ({
       name: row.name || '',
       email: row.email || '',
@@ -479,7 +479,8 @@ async function runBulk(action: 'export_xlsx' | 'delete') {
   if (localFirst && evoluClient) {
     loading.value = true;
     try {
-      await runBulkLocal(action);
+      const localAction = action === 'export_xlsx' ? 'export_csv' : action;
+      await runBulkLocal(localAction);
     } finally {
       loading.value = false;
     }

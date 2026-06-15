@@ -378,6 +378,15 @@ function pickFile(file: File | undefined) {
   if (!file) return;
   selectedFile.value = file;
   csvRows.value = [];
+  headers.value = [];
+  previewRows.value = [];
+  rowCount.value = 0;
+  importResult.value = null;
+  importDone.value = false;
+  step.value = 1;
+  for (const field of DOCUMENT_IMPORT_FIELD_KEYS) {
+    mapping[field] = null;
+  }
   error.value = '';
   void loadPreview();
 }

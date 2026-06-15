@@ -1,6 +1,7 @@
 import type { DocumentType, CompanyId } from "./schema";
 import type { EvoluDocumentRow } from "./documentMap";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
+import { previewNextDocumentNumberFromSeries } from "./numberSeriesCrud";
 
 const DEFAULT_PREFIX: Record<string, string> = {
     invoice: "",

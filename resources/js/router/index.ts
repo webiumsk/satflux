@@ -431,7 +431,7 @@ router.beforeEach(async (to, from, next) => {
             && to.name !== 'register'
             && to.name !== 'password-reset'
         ) {
-            void authStore.fetchUser();
+            void authStore.fetchUser().catch(() => {});
         }
         next();
         return;

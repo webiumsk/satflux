@@ -25,8 +25,15 @@ function resolveQuoteStatus(doc: EvoluDocumentRow): string | null {
     return base;
 }
 
+function localDateString(date = new Date()): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
+
 function applyQuoteFilter(rows: EvoluDocumentRow[], filter: string): EvoluDocumentRow[] {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateString();
 
     return rows.filter((row) => {
         if (row.status === "draft") return filter === "all";

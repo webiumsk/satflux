@@ -48,6 +48,13 @@ export function documentHistoryFromEvents(events: EvoluDocumentEventRow[]): Docu
             action: event.action,
             created_at: event.createdAt,
             user: null,
-            metadata: event.metadataJson ? (JSON.parse(event.metadataJson) as Record<string, unknown>) : null,
+            metadata: (() => {
+                if (!event.metadataJson) return null;
+                try {
+                    return JSON.parse(event.metadataJson) as Record<string, unknown>;
+                } catch {
+                    return null;
+                }
+            })(),
         }));
 }

@@ -486,8 +486,12 @@ class EphemeralBusinessDocumentController extends Controller
             'company_less' => $auditCompany === null,
         ], $request->user()?->id);
 
-        $binary = file_get_contents($zipPath) ?: '';
+        $binary = file_get_contents($zipPath);
         @unlink($zipPath);
+
+        if ($binary === false) {
+            abort(500, 'Could not read generated ZIP archive.');
+        }
 
         return response($binary, 200, [
             'Content-Type' => 'application/zip',

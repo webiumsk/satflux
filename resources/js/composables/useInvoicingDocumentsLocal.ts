@@ -28,13 +28,17 @@ function mapDocumentRow(
 
 export function useInvoicingDocumentsLocal(companyId: Ref<string>) {
     const evolu = useInvoicingEvolu();
-    const loading = ref(false);
+    const loading = ref(true);
     const filterOptions = ref<LocalDocumentsRefreshOptions>({});
 
     const documentsPromise = evolu.loadQuery(allDocumentsQuery);
     const contactsPromise = evolu.loadQuery(allContactsQuery);
     const documentRows = useQuery(allDocumentsQuery, { promise: documentsPromise });
     const contactRows = useQuery(allContactsQuery, { promise: contactsPromise });
+
+    void Promise.all([documentsPromise, contactsPromise]).finally(() => {
+        loading.value = false;
+    });
 
     const contactNameById = computed(() => {
         const map = new Map<string, string>();

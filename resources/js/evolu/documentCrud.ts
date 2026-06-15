@@ -11,7 +11,7 @@ import {
     type EvoluDocumentLineRow,
     type EvoluDocumentRow,
 } from "./documentMap";
-import { previewNextDocumentNumberFromSeries, nextNumberForIssue } from "./numberSeriesCrud";
+import { nextNumberForIssue } from "./numberSeriesCrud";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import { variableSymbolFromNumber } from "./documentNumber";
 import type { EvoluCompanyRow } from "./companyMap";
@@ -458,16 +458,13 @@ export function createLocalFinalInvoiceFromProforma(
     return result;
 }
 
-function creditNoteInvoiceReferenceNote(invoiceNumber: string): string {
-    return `K faktúre č. ${invoiceNumber}.`;
-}
-
 export function createLocalCreditNoteFromInvoice(
     evolu: Evolu<InvoicingLocalSchema>,
     invoiceId: DocumentId,
     documents: EvoluDocumentRow[],
     lines: EvoluDocumentLineRow[],
     saveOptions: Parameters<typeof saveLocalDocument>[3],
+    referenceNote?: string,
 ) {
     const invoice = documents.find((d) => d.id === invoiceId);
     if (!invoice) return { ok: false as const, error: "not_found" };
@@ -493,7 +490,7 @@ export function createLocalCreditNoteFromInvoice(
     payload.title = "";
     payload.issue_date = today;
     payload.due_date = today;
-    payload.note_above_lines = creditNoteInvoiceReferenceNote(invoice.number);
+    payload.note_above_lines = referenceNote ?? `For invoice ${invoice.number}.`;
     payload.pdf_show_payment_info = false;
     payload.payment_btc_enabled = false;
     payload.payment_bank_enabled = false;

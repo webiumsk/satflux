@@ -123,7 +123,10 @@ export function normalizeMapping(mapping: ContactImportMapping): ContactImportMa
     const normalized: ContactImportMapping = {};
     for (const field of CONTACT_IMPORT_FIELD_KEYS) {
         const value = mapping[field];
-        normalized[field] = value === "" || value == null ? null : Number(value);
+        normalized[field] = value === "" || value == null ? null : (() => {
+            const index = Number(value);
+            return Number.isInteger(index) && index >= 0 ? index : null;
+        })();
     }
 
     if (normalized.name == null) {

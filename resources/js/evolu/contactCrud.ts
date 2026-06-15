@@ -14,7 +14,7 @@ const Opt1000 = maxLength(1000)(NonEmptyString);
 const Opt4000 = maxLength(4000)(NonEmptyString);
 const EmailType = maxLength(100)(NonEmptyString);
 
-function parseOpt(value: string | null, type: ReturnType<typeof maxLength>) {
+function parseOpt(value: string | null, type: ReturnType<ReturnType<typeof maxLength>>) {
     if (value == null || value.trim() === "") return { ok: true as const, value: null };
     return type.from(value.trim());
 }

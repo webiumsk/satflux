@@ -314,6 +314,7 @@ function clearSelection() {
 }
 
 async function load() {
+  if (localFirst) return;
   loading.value = true;
   error.value = '';
   try {

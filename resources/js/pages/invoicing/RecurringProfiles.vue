@@ -217,6 +217,7 @@ function setFilter(id: string) {
 }
 
 async function load() {
+  if (localFirst) return;
   loading.value = true;
   error.value = '';
   try {

@@ -28,12 +28,14 @@ describe('navigateToAppPath', () => {
         const assign = vi.fn();
         vi.stubGlobal('location', { assign });
 
-        navigateToAppPath('//evil.example');
-        expect(assign).toHaveBeenCalledWith('/evil.example');
+        try {
+            navigateToAppPath('//evil.example');
+            expect(assign).toHaveBeenCalledWith('/evil.example');
 
-        navigateToAppPath('dashboard');
-        expect(assign).toHaveBeenCalledWith('/dashboard');
-
-        vi.unstubAllGlobals();
+            navigateToAppPath('dashboard');
+            expect(assign).toHaveBeenCalledWith('/dashboard');
+        } finally {
+            vi.unstubAllGlobals();
+        }
     });
 });

@@ -94,6 +94,9 @@ export type DocumentImportOptions = {
     defaultCurrency: string;
     noteFooter: string | null;
     company: VatPolicyCompany;
+    defaultVat?: number;
+    lineTaxApplies?: (line: DocumentLinePayload) => boolean;
+    lineTaxRate?: (line: DocumentLinePayload) => number;
 };
 
 function vatOptionsForContact(company: VatPolicyCompany, contact: VatPolicyContact | null) {

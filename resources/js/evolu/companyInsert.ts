@@ -1,6 +1,19 @@
-import { booleanToSqliteBoolean, maxLength, NonEmptyString } from "@evolu/common";
+import { booleanToSqliteBoolean } from "@evolu/common";
 import type { Evolu } from "@evolu/common/local-first";
 import type { CompanyJurisdictionValue } from "@/config/companyJurisdiction";
+import {
+    CountryType,
+    CurrencyType,
+    LegalNameType,
+    Opt16,
+    Opt32,
+    Opt64,
+    Opt128,
+    Opt255,
+    Opt512,
+    parseOptional,
+    parseRequired,
+} from "./parseUtils";
 import type { InvoicingLocalSchema } from "./schema";
 
 /** Payload aligned with CompanyForm save() / StoreCompanyRequest. */
@@ -26,32 +39,6 @@ export interface LocalCompanyCreatePayload {
     vat_payer: boolean;
     vat_status: "none" | "payer" | "partial";
 }
-
-function emptyToNull(value: string | null | undefined): string | null {
-    if (value == null) return null;
-    const trimmed = value.trim();
-    return trimmed === "" ? null : trimmed;
-}
-
-function parseRequired(value: string, type: ReturnType<typeof maxLength>) {
-    return type.from(value.trim());
-}
-
-function parseOptional(value: string | null | undefined, type: ReturnType<typeof maxLength>) {
-    const normalized = emptyToNull(value);
-    if (normalized == null) return { ok: true as const, value: null };
-    return type.from(normalized);
-}
-
-const LegalNameType = maxLength(255)(NonEmptyString);
-const CurrencyType = maxLength(3)(NonEmptyString);
-const CountryType = maxLength(2)(NonEmptyString);
-const Opt16 = maxLength(16)(NonEmptyString);
-const Opt32 = maxLength(32)(NonEmptyString);
-const Opt64 = maxLength(64)(NonEmptyString);
-const Opt128 = maxLength(128)(NonEmptyString);
-const Opt255 = maxLength(255)(NonEmptyString);
-const Opt512 = maxLength(512)(NonEmptyString);
 
 export function insertLocalCompanyFromPayload(
     evolu: Evolu<InvoicingLocalSchema>,

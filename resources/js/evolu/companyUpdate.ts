@@ -1,29 +1,19 @@
-import { booleanToSqliteBoolean, maxLength, NonEmptyString } from "@evolu/common";
+import { booleanToSqliteBoolean } from "@evolu/common";
 import type { Evolu } from "@evolu/common/local-first";
 import type { CompanyJurisdictionValue } from "@/config/companyJurisdiction";
+import {
+    CountryType,
+    CurrencyType,
+    LegalNameType,
+    Opt16,
+    Opt32,
+    Opt64,
+    Opt128,
+    Opt255,
+    Opt512,
+    parseOptional,
+} from "./parseUtils";
 import type { CompanyId, InvoicingLocalSchema } from "./schema";
-
-function emptyToNull(value: string | null | undefined): string | null {
-    if (value == null) return null;
-    const trimmed = value.trim();
-    return trimmed === "" ? null : trimmed;
-}
-
-function parseOptional(value: string | null | undefined, type: ReturnType<typeof maxLength>) {
-    const normalized = emptyToNull(value);
-    if (normalized == null) return { ok: true as const, value: null };
-    return type.from(normalized);
-}
-
-const Opt16 = maxLength(16)(NonEmptyString);
-const Opt32 = maxLength(32)(NonEmptyString);
-const Opt64 = maxLength(64)(NonEmptyString);
-const Opt128 = maxLength(128)(NonEmptyString);
-const Opt255 = maxLength(255)(NonEmptyString);
-const Opt512 = maxLength(512)(NonEmptyString);
-const CountryType = maxLength(2)(NonEmptyString);
-const CurrencyType = maxLength(3)(NonEmptyString);
-const LegalNameType = maxLength(255)(NonEmptyString);
 
 export type LocalCompanyContactPatch = {
     legal_name?: string;

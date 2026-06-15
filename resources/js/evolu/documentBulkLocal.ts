@@ -11,7 +11,7 @@ import {
     type LocalDocumentFilterOptions,
 } from "./documentListFilters";
 import type { EvoluDocumentRow } from "./documentMap";
-import type { CompanyId, DocumentId, InvoicingLocalSchema } from "./schema";
+import type { CompanyId, InvoicingLocalSchema } from "./schema";
 
 export type BulkResult = {
     processed: number;
