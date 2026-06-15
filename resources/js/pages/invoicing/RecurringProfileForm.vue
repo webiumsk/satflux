@@ -250,8 +250,36 @@
                 {{ t('invoicing.action_delete') }}
               </button>
             </div>
-            <input v-model="line.name" class="invoicing-sf-input w-full" required />
-            <input v-model="line.description" class="invoicing-sf-input w-full" :placeholder="t('invoicing.item_description')" />
+            <StockLineSuggestField
+              v-if="showLineSuggester"
+              :company-id="companyId"
+              :name="line.name"
+              :description="line.description"
+              :stock-item-id="line.company_stock_item_id"
+              :warehouse-id="line.company_warehouse_id"
+              :quantity-on-hand="line.stock_quantity_hint"
+              :deduct-on-issue="line.warehouse_deduct_on_issue"
+              :unit="line.unit"
+              :enabled="showLineSuggester"
+              :required="true"
+              :description-placeholder="t('invoicing.item_description')"
+              @update:name="line.name = $event"
+              @update:description="line.description = $event"
+              @pick="onLineStockPick(line, $event)"
+              @clear-stock-link="clearLineStockLink(line)"
+            />
+            <template v-else>
+              <input v-model="line.name" class="invoicing-sf-input w-full" required />
+              <input v-model="line.description" class="invoicing-sf-input w-full" :placeholder="t('invoicing.item_description')" />
+            </template>
+            <div v-if="showLineSuggester" class="space-y-1">
+              <label class="text-xs text-gray-500">{{ t('invoicing.warehouse_col_name') }}</label>
+              <StockWarehouseSelect
+                v-model="line.company_warehouse_id"
+                :warehouses="warehouses"
+                @update:model-value="onLineWarehouseChange(line)"
+              />
+            </div>
             <div class="grid grid-cols-2 gap-2">
               <div>
                 <label class="text-xs text-gray-500">{{ t('invoicing.col_qty') }}</label>

@@ -282,13 +282,49 @@
                   {{ t('invoicing.action_delete') }}
                 </button>
               </div>
-              <input v-model="line.name" class="invoicing-sf-input w-full" :required="!isLocked" :disabled="isLocked" />
-              <input
-                v-model="line.description"
-                class="invoicing-sf-input w-full text-gray-500"
-                :placeholder="t('invoicing.item_description')"
+              <StockLineSuggestField
+                v-if="showLineSuggester && !isLocked"
+                :company-id="companyId"
+                :name="line.name"
+                :description="line.description"
+                :stock-item-id="line.company_stock_item_id"
+                :warehouse-id="line.company_warehouse_id"
+                :quantity-on-hand="line.stock_quantity_hint"
+                :deduct-on-issue="line.warehouse_deduct_on_issue"
+                :unit="line.unit"
+                :enabled="showLineSuggester"
                 :disabled="isLocked"
+                :required="!isLocked"
+                :description-placeholder="t('invoicing.item_description')"
+                @update:name="line.name = $event"
+                @update:description="line.description = $event"
+                @pick="onLineStockPick(line, $event)"
+                @clear-stock-link="clearLineStockLink(line)"
               />
+              <template v-else>
+                <input v-model="line.name" class="invoicing-sf-input w-full" :required="!isLocked" :disabled="isLocked" />
+                <input
+                  v-model="line.description"
+                  class="invoicing-sf-input w-full text-gray-500"
+                  :placeholder="t('invoicing.item_description')"
+                  :disabled="isLocked"
+                />
+              </template>
+              <div v-if="showLineSuggester" class="space-y-1">
+                <label class="text-xs text-gray-500">{{ t('invoicing.warehouse_col_name') }}</label>
+                <StockWarehouseSelect
+                  v-model="line.company_warehouse_id"
+                  :warehouses="warehouses"
+                  :disabled="isLocked"
+                  @update:model-value="onLineWarehouseChange(line)"
+                />
+                <p
+                  v-if="line.company_stock_item_id && line.warehouse_deduct_on_issue === false"
+                  class="text-xs text-amber-600"
+                >
+                  {{ t('invoicing.warehouse_no_deduct_hint') }}
+                </p>
+              </div>
               <div class="grid grid-cols-2 gap-2">
                 <div>
                   <label class="text-xs text-gray-500">{{ t('invoicing.col_qty') }}</label>
