@@ -17,6 +17,7 @@ import { variableSymbolFromNumber } from "./documentNumber";
 import type { EvoluCompanyRow } from "./companyMap";
 import { logDocumentEvent } from "./documentEventLog";
 import { reserveNextDocumentNumberFromStore } from "./numberSequenceBridge";
+import { applyDocumentStockOnIssueAsync, reverseDocumentStockOnCancelAsync } from "./documentStockMovement";
 import type { DocumentType } from "./schema";
 
 export type DocumentLinePayload = {
@@ -296,6 +297,16 @@ export function issueLocalDocument(
     return result;
 }
 
+async function finalizeIssueStock(
+    evolu: Evolu<InvoicingLocalSchema>,
+    documentId: DocumentId,
+    issueResult: { ok: boolean },
+) {
+    if (issueResult.ok) {
+        await applyDocumentStockOnIssueAsync(evolu, documentId);
+    }
+}
+
 export async function issueLocalDocumentAsync(
     evolu: Evolu<InvoicingLocalSchema>,
     documentId: DocumentId,
@@ -339,10 +350,13 @@ export async function issueLocalDocumentAsync(
         if (result.ok) {
             logDocumentEvent(evolu, documentId, "business_document.issued", { number, source: "store_bridge" });
         }
+        await finalizeIssueStock(evolu, documentId, result);
         return result;
     }
 
-    return issueLocalDocument(evolu, documentId, company, allDocuments, allSeries);
+    const result = issueLocalDocument(evolu, documentId, company, allDocuments, allSeries);
+    await finalizeIssueStock(evolu, documentId, result);
+    return result;
 }
 
 export function applyReservedNumberToLocalDocument(
@@ -366,6 +380,28 @@ export function applyReservedNumberToLocalDocument(
     if (result.ok) {
         logDocumentEvent(evolu, documentId, "business_document.issued", { number, source: "woo_inbox" });
     }
+    return result;
+}
+
+export async function applyReservedNumberToLocalDocumentAsync(
+    evolu: Evolu<InvoicingLocalSchema>,
+    documentId: DocumentId,
+    companyId: CompanyId,
+    documentType: DocumentType,
+    number: string,
+    allSeries: EvoluNumberSeriesRow[],
+    variableSymbol?: string | null,
+) {
+    const result = applyReservedNumberToLocalDocument(
+        evolu,
+        documentId,
+        companyId,
+        documentType,
+        number,
+        allSeries,
+        variableSymbol,
+    );
+    await finalizeIssueStock(evolu, documentId, result);
     return result;
 }
 
@@ -418,6 +454,18 @@ export function cancelLocalDocument(evolu: Evolu<InvoicingLocalSchema>, document
     return result;
 }
 
+export async function cancelLocalDocumentAsync(
+    evolu: Evolu<InvoicingLocalSchema>,
+    documentId: DocumentId,
+    documents: EvoluDocumentRow[],
+) {
+    const doc = documents.find((row) => row.id === documentId);
+    if (doc?.status === "issued") {
+        await reverseDocumentStockOnCancelAsync(evolu, documentId);
+    }
+    return cancelLocalDocument(evolu, documentId);
+}
+
 export function markLocalDocumentPaid(
     evolu: Evolu<InvoicingLocalSchema>,
     documentId: DocumentId,
@@ -425,14 +473,41 @@ export function markLocalDocumentPaid(
 ) {
     const doc = documents.find((d) => d.id === documentId);
     if (!doc) return { ok: false as const, error: "not_found" };
+    const total = parseFloat(doc.total || "0");
+    return markLocalDocumentPaidWithAmount(evolu, documentId, documents, total);
+}
+
+export function markLocalDocumentPaidWithAmount(
+    evolu: Evolu<InvoicingLocalSchema>,
+    documentId: DocumentId,
+    documents: EvoluDocumentRow[],
+    amountPaid: number,
+    tolerance = 0.01,
+) {
+    const doc = documents.find((d) => d.id === documentId);
+    if (!doc) return { ok: false as const, error: "not_found" };
+    if (doc.status === "cancelled") {
+        return { ok: false as const, error: "cancelled" };
+    }
+    if (doc.status === "paid") {
+        return { ok: true as const, value: { id: documentId } };
+    }
+    if (doc.status !== "issued") {
+        return { ok: false as const, error: "not_issued" };
+    }
+
+    const total = parseFloat(doc.total || "0");
+    const fullyPaid = Math.abs(amountPaid - total) <= tolerance;
     const result = evolu.update("document", {
         id: documentId,
-        status: "paid",
-        paidAt: new Date().toISOString(),
-        amountPaid: doc.total,
+        status: fullyPaid ? "paid" : "issued",
+        paidAt: fullyPaid ? new Date().toISOString() : doc.paidAt,
+        amountPaid: amountPaid.toFixed(2),
     });
     if (result.ok) {
-        logDocumentEvent(evolu, documentId, "business_document.marked_paid");
+        logDocumentEvent(evolu, documentId, "business_document.marked_paid", {
+            amount_paid: amountPaid,
+        });
     }
     return result;
 }

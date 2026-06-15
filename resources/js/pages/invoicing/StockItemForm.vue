@@ -215,12 +215,24 @@ import {
   type StockItemMovementRow,
 } from '../../composables/useCompanyStockItem';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
+import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompanySummary';
+import { useInvoicingWarehouses } from '../../composables/useInvoicingWarehouses';
+import { useLocalStockItemDetail } from '../../composables/useInvoicingStockItems';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
+import { saveLocalStockItem } from '../../evolu/stockCrud';
+import type { CompanyId, StockItemId } from '../../evolu/schema';
+import type { EvoluStockBalanceRow, EvoluStockItemRow } from '../../evolu/stockMap';
+import type { StockItemSavePayload } from '../../evolu/stockMap';
 import api from '../../services/api';
 
 const { t, locale } = useI18n();
 const router = useRouter();
+const localFirst = isInvoicingLocalFirst();
 const { companyId, itemId, isNew } = useStockItemPage();
 const { rememberCompany } = useInvoicingLayout();
+const { defaultCurrency } = useInvoicingCompanySummary();
+const invoicingWarehouses = useInvoicingWarehouses(companyId);
+const localStockDetail = localFirst ? useLocalStockItemDetail(companyId) : null;
 const { stockListTo, stockEditTo } = useStockRoutes(companyId);
 
 const form = reactive(emptyStockItemForm());
@@ -245,6 +257,11 @@ function formatDate(iso?: string) {
 }
 
 async function loadWarehouses() {
+  if (localFirst) {
+    await invoicingWarehouses.refresh(true);
+    warehouses.value = invoicingWarehouses.warehouses.value.filter((w) => w.is_active);
+    return;
+  }
   const res = await api.get(`/invoicing/companies/${companyId.value}/warehouses`);
   warehouses.value = (res.data.data ?? []).filter((w: WarehouseRow) => w.is_active);
 }
@@ -258,22 +275,53 @@ function initBalancesForNew() {
 }
 
 async function loadCompany() {
+  if (localFirst) {
+    saleCurrency.value = defaultCurrency.value || 'EUR';
+    Object.assign(form, emptyStockItemForm(saleCurrency.value));
+    await loadWarehouses();
+    if (isNew.value) initBalancesForNew();
+    return;
+  }
   const res = await api.get(`/invoicing/companies/${companyId.value}/summary`);
   saleCurrency.value = res.data.data?.default_currency || 'EUR';
   Object.assign(form, emptyStockItemForm(saleCurrency.value));
   await loadWarehouses();
-  if (isNew.value) {
-    initBalancesForNew();
-  }
+  if (isNew.value) initBalancesForNew();
 }
 
 async function loadItem() {
   if (isNew.value || !itemId.value) return;
+  if (localFirst && localStockDetail) {
+    await localStockDetail.refreshAll();
+    const data = localStockDetail.itemApi(itemId.value);
+    if (!data) return;
+    Object.assign(form, stockItemToForm(data, saleCurrency.value, warehouses.value));
+    neighborIds.value = data.neighbor_ids ?? [];
+    movements.value = data.movements ?? [];
+    return;
+  }
   const res = await api.get(`/invoicing/companies/${companyId.value}/stock-items/${itemId.value}`);
   const data = res.data.data;
   Object.assign(form, stockItemToForm(data, saleCurrency.value, warehouses.value));
   neighborIds.value = data.neighbor_ids ?? [];
   movements.value = data.movements ?? [];
+}
+
+function toLocalStockPayload(): StockItemSavePayload {
+  const raw = formToStockPayload(form);
+  return {
+    name: String(raw.name),
+    sku: (raw.sku as string | null) ?? null,
+    description: (raw.description as string | null) ?? null,
+    unit: String(raw.unit || 'ks'),
+    track_inventory: Boolean(raw.track_inventory),
+    purchase_unit_price: raw.purchase_unit_price as number | null,
+    purchase_currency: (raw.purchase_currency as string | null) ?? null,
+    sale_unit_price: raw.sale_unit_price as number | null,
+    internal_note: (raw.internal_note as string | null) ?? null,
+    exclude_from_suggester: Boolean(raw.exclude_from_suggester),
+    balances: (raw.balances as StockItemSavePayload['balances']) ?? [],
+  };
 }
 
 async function onTransferred() {
@@ -284,6 +332,29 @@ async function save() {
   saving.value = true;
   error.value = '';
   try {
+    if (localFirst && localStockDetail?.evolu) {
+      await localStockDetail.refreshAll();
+      const result = saveLocalStockItem(
+        localStockDetail.evolu,
+        companyId.value as CompanyId,
+        toLocalStockPayload(),
+        {
+          itemId: isNew.value ? undefined : (itemId.value as StockItemId),
+          existingItems: localStockDetail.itemRows.value as EvoluStockItemRow[],
+          existingBalances: localStockDetail.balanceRows.value as EvoluStockBalanceRow[],
+        },
+      );
+      if (!result.ok) {
+        error.value = result.error === 'duplicate_sku' ? t('invoicing.stock_sku_duplicate') : t('errors.generic');
+        return;
+      }
+      if (isNew.value) {
+        await router.push(stockEditTo(result.value.id));
+      } else {
+        await loadItem();
+      }
+      return;
+    }
     const payload = formToStockPayload(form);
     if (isNew.value) {
       const res = await api.post(`/invoicing/companies/${companyId.value}/stock-items`, payload);

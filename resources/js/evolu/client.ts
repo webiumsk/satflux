@@ -250,4 +250,233 @@ export const allExpensesQuery = evolu.createQuery((db) =>
         .orderBy("createdAt"),
 );
 
+const recurringProfileColumns = [
+    "id",
+    "companyId",
+    "contactId",
+    "storeId",
+    "documentType",
+    "isActive",
+    "recurrenceInterval",
+    "firstIssueDate",
+    "nextIssueDate",
+    "endsAt",
+    "repeatIndefinitely",
+    "issueLastDayOfMonth",
+    "title",
+    "variableSymbol",
+    "constantSymbol",
+    "specificSymbol",
+    "paymentTermsDays",
+    "deliveryDateMode",
+    "currency",
+    "discountPercent",
+    "subtotal",
+    "taxTotal",
+    "total",
+    "noteAboveLines",
+    "noteFooter",
+    "internalNote",
+    "pdfLocale",
+    "pdfShowSignature",
+    "pdfShowPaymentInfo",
+    "paymentBtcEnabled",
+    "paymentBankEnabled",
+    "sendEmailAfterIssue",
+    "emailBcc",
+    "tagsJson",
+    "lastGeneratedDocumentId",
+    "lastGeneratedAt",
+] as const;
+
+const recurringProfileLineColumns = [
+    "id",
+    "recurringProfileId",
+    "sortOrder",
+    "name",
+    "description",
+    "quantity",
+    "unit",
+    "unitPrice",
+    "lineDiscountPercent",
+    "taxRate",
+    "lineTotal",
+] as const;
+
+export const allRecurringProfilesQuery = evolu.createQuery((db) =>
+    db
+        .selectFrom("recurringProfile")
+        .select(recurringProfileColumns)
+        .where("isDeleted", "is not", sqliteTrue)
+        .orderBy("createdAt"),
+);
+
+export const allRecurringProfileLinesQuery = evolu.createQuery((db) =>
+    db
+        .selectFrom("recurringProfileLine")
+        .select(recurringProfileLineColumns)
+        .where("isDeleted", "is not", sqliteTrue)
+        .where("name", "is not", null)
+        .$narrowType<{ name: kysely.NotNull }>()
+        .orderBy("createdAt"),
+);
+
+const companyWarehouseColumns = [
+    "id",
+    "companyId",
+    "name",
+    "type",
+    "deductOnIssue",
+    "isDefault",
+    "isActive",
+    "companyContactId",
+    "street",
+    "city",
+    "postalCode",
+    "country",
+    "notes",
+] as const;
+
+const companyStockItemColumns = [
+    "id",
+    "companyId",
+    "name",
+    "sku",
+    "description",
+    "unit",
+    "trackInventory",
+    "purchaseUnitPrice",
+    "purchaseCurrency",
+    "saleUnitPrice",
+    "internalNote",
+    "excludeFromSuggester",
+] as const;
+
+const companyStockBalanceColumns = [
+    "id",
+    "companyId",
+    "companyWarehouseId",
+    "companyStockItemId",
+    "quantityOnHand",
+] as const;
+
+const companyStockMovementColumns = [
+    "id",
+    "companyId",
+    "companyStockItemId",
+    "companyWarehouseId",
+    "quantityAfter",
+    "quantityDelta",
+    "purchaseUnitPrice",
+    "saleUnitPrice",
+    "note",
+    "source",
+    "businessDocumentId",
+    "documentNumber",
+    "documentType",
+    "movementAt",
+] as const;
+
+export const allCompanyWarehousesQuery = evolu.createQuery((db) =>
+    db
+        .selectFrom("companyWarehouse")
+        .select(companyWarehouseColumns)
+        .where("isDeleted", "is not", sqliteTrue)
+        .where("name", "is not", null)
+        .$narrowType<{ name: kysely.NotNull }>()
+        .orderBy("createdAt"),
+);
+
+export const allCompanyStockItemsQuery = evolu.createQuery((db) =>
+    db
+        .selectFrom("companyStockItem")
+        .select(companyStockItemColumns)
+        .where("isDeleted", "is not", sqliteTrue)
+        .where("name", "is not", null)
+        .$narrowType<{ name: kysely.NotNull }>()
+        .orderBy("createdAt"),
+);
+
+export const allCompanyStockBalancesQuery = evolu.createQuery((db) =>
+    db
+        .selectFrom("companyStockBalance")
+        .select(companyStockBalanceColumns)
+        .where("isDeleted", "is not", sqliteTrue)
+        .orderBy("createdAt"),
+);
+
+export const allCompanyStockMovementsQuery = evolu.createQuery((db) =>
+    db
+        .selectFrom("companyStockMovement")
+        .select(companyStockMovementColumns)
+        .where("isDeleted", "is not", sqliteTrue)
+        .orderBy("createdAt"),
+);
+
+const bankImportBatchColumns = [
+    "id",
+    "companyId",
+    "source",
+    "filename",
+    "rowCount",
+    "importedCount",
+    "skippedDuplicates",
+    "autoMatchedCount",
+    "createdAt",
+] as const;
+
+const bankTransactionColumns = [
+    "id",
+    "companyId",
+    "bankImportBatchId",
+    "bookedAt",
+    "amount",
+    "currency",
+    "direction",
+    "matchStatus",
+    "businessExpenseId",
+    "variableSymbol",
+    "constantSymbol",
+    "specificSymbol",
+    "counterpartyName",
+    "counterpartyIban",
+    "reference",
+    "bankTransactionId",
+    "dedupeHash",
+    "source",
+] as const;
+
+const bankTransactionMatchColumns = [
+    "id",
+    "bankTransactionId",
+    "businessDocumentId",
+    "matchedAmount",
+    "matchType",
+    "matchedAt",
+] as const;
+
+export const allBankImportBatchesQuery = evolu.createQuery((db) =>
+    db
+        .selectFrom("bankImportBatch")
+        .select(bankImportBatchColumns)
+        .where("isDeleted", "is not", sqliteTrue)
+        .orderBy("createdAt", "desc"),
+);
+
+export const allBankTransactionsQuery = evolu.createQuery((db) =>
+    db
+        .selectFrom("bankTransaction")
+        .select(bankTransactionColumns)
+        .where("isDeleted", "is not", sqliteTrue)
+        .orderBy("createdAt"),
+);
+
+export const allBankTransactionMatchesQuery = evolu.createQuery((db) =>
+    db
+        .selectFrom("bankTransactionMatch")
+        .select(bankTransactionMatchColumns)
+        .where("isDeleted", "is not", sqliteTrue)
+        .orderBy("createdAt"),
+);
+
 export { EVOLU_RELAY_URL } from "./config";

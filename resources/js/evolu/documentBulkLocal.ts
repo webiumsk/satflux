@@ -3,6 +3,7 @@ import type { DocumentAdvancedFilters } from "@/composables/useInvoicingDocument
 import type { IssuePeriodState } from "@/composables/useInvoicingIssuePeriod";
 import {
     cancelLocalDocument,
+    cancelLocalDocumentAsync,
     deleteLocalDocument,
     markLocalDocumentPaid,
 } from "./documentCrud";
@@ -127,6 +128,26 @@ export function bulkDeleteLocal(
             continue;
         }
         deleteLocalDocument(evolu, row.id);
+        processed++;
+    }
+
+    return { processed, skipped };
+}
+
+export async function bulkCancelLocalAsync(
+    evolu: Evolu<InvoicingLocalSchema>,
+    rows: EvoluDocumentRow[],
+    allDocuments: EvoluDocumentRow[],
+): Promise<BulkResult> {
+    let processed = 0;
+    let skipped = 0;
+
+    for (const row of rows) {
+        if (!canCancelLocalDocument(row)) {
+            skipped++;
+            continue;
+        }
+        await cancelLocalDocumentAsync(evolu, row.id, allDocuments);
         processed++;
     }
 

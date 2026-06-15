@@ -1,10 +1,5 @@
 <template>
-  <InvoicingServerOnlyPage
-    v-if="localFirst"
-    :title="t('invoicing.warehouses_title')"
-    detail-key="invoicing.local_first_warehouses_bridge"
-  />
-  <InvoicingPageShell v-else content-class="pb-8">
+  <InvoicingPageShell content-class="pb-8">
     <template #header>
       <InvoicingAppHeader :company-label="companyName">
         <template #actions>
@@ -84,15 +79,15 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
-import InvoicingServerOnlyPage from '../../components/invoicing/InvoicingServerOnlyPage.vue';
 import InvoicingMobileCard from '../../components/invoicing/InvoicingMobileCard.vue';
-import { isInvoicingLocalFirst } from '../../evolu/flags';
 import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
+import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompanySummary';
+import { useInvoicingWarehouses } from '../../composables/useInvoicingWarehouses';
 import { useStockRoutes } from '../../composables/useCompanyStockItem';
 import {
   useWarehouseRoutes,
@@ -100,20 +95,20 @@ import {
   type WarehouseRow,
 } from '../../composables/useCompanyWarehouse';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
-import api from '../../services/api';
 
 const { t } = useI18n();
-const localFirst = isInvoicingLocalFirst();
 const route = useRoute();
 const { companyId, rememberCompany } = useInvoicingLayout();
+const { companyName: summaryCompanyName } = useInvoicingCompanySummary();
+const invoicingWarehouses = useInvoicingWarehouses(companyId);
 const { stockListTo } = useStockRoutes(companyId);
 const { warehouseNewTo, warehouseEditTo } = useWarehouseRoutes(companyId);
 
 const companyName = ref('');
-const warehouses = ref<WarehouseRow[]>([]);
-const loading = ref(true);
 const error = ref('');
-let loadRequestId = 0;
+
+const loading = computed(() => invoicingWarehouses.loading.value);
+const warehouses = computed(() => invoicingWarehouses.warehouses.value);
 
 function locationLine(w: WarehouseRow): string {
   const parts = [w.city, w.country].filter(Boolean);
@@ -121,28 +116,13 @@ function locationLine(w: WarehouseRow): string {
 }
 
 async function load() {
-  if (localFirst) return;
-  const requestId = ++loadRequestId;
-  loading.value = true;
   error.value = '';
   try {
-    const companyRes = await api.get(`/invoicing/companies/${companyId.value}/summary`);
-    if (requestId !== loadRequestId) return;
-    companyName.value = companyRes.data.data?.trade_name || companyRes.data.data?.legal_name || '';
-
-    const res = await api.get(`/invoicing/companies/${companyId.value}/warehouses`);
-    if (requestId !== loadRequestId) return;
-    warehouses.value = res.data.data ?? [];
+    companyName.value = summaryCompanyName.value;
+    await invoicingWarehouses.refresh(false);
   } catch (e: unknown) {
-    if (requestId !== loadRequestId) return;
-    warehouses.value = [];
-    companyName.value = '';
     error.value =
       (e as { response?: { data?: { message?: string } } })?.response?.data?.message || t('errors.generic');
-  } finally {
-    if (requestId === loadRequestId) {
-      loading.value = false;
-    }
   }
 }
 

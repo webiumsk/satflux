@@ -1,6 +1,8 @@
 import { booleanToSqliteBoolean } from "@evolu/common";
 import type { Evolu } from "@evolu/common/local-first";
 import type { CompanyJurisdictionValue } from "@/config/companyJurisdiction";
+import { ensureDefaultLocalWarehouse } from "./warehouseCrud";
+import type { EvoluWarehouseRow } from "./warehouseMap";
 import {
     CountryType,
     CurrencyType,
@@ -112,4 +114,8 @@ export function insertLocalCompanyFromPayload(
         invoiceNumberPrefix: null,
         linkedStoreId: linkedStoreId.value,
     });
+    if (!result.ok) return result;
+
+    ensureDefaultLocalWarehouse(evolu, result.value.id, [] as EvoluWarehouseRow[]);
+    return result;
 }

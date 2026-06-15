@@ -109,13 +109,24 @@ import {
   warehouseToForm,
 } from '../../composables/useCompanyWarehouse';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
+import { useInvoicingWarehouses } from '../../composables/useInvoicingWarehouses';
+import { useQuery } from '@evolu/vue';
+import { allContactsQuery } from '../../evolu/client';
+import { evoluContactToApi } from '../../evolu/contactMap';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
+import { deleteLocalWarehouse, localWarehouseApi, saveLocalWarehouse } from '../../evolu/warehouseCrud';
+import type { CompanyId, WarehouseId } from '../../evolu/schema';
+import { allCompanyStockBalancesQuery } from '../../evolu/client';
 import api from '../../services/api';
 
 const { t } = useI18n();
 const router = useRouter();
+const localFirst = isInvoicingLocalFirst();
 const { companyId, warehouseId, isNew } = useWarehousePage();
 const { rememberCompany } = useInvoicingLayout();
 const { warehouseListTo } = useWarehouseRoutes(companyId);
+const invoicingWarehouses = useInvoicingWarehouses(companyId);
+const contactRows = localFirst ? useQuery(allContactsQuery) : null;
 
 const form = reactive(emptyWarehouseForm());
 const saving = ref(false);
@@ -133,6 +144,13 @@ const typeHint = computed(() => {
 });
 
 async function loadContacts() {
+  if (localFirst && contactRows) {
+    contacts.value = contactRows.value
+      .filter((c) => c.companyId === companyId.value)
+      .map((c) => evoluContactToApi(c))
+      .map((c) => ({ id: c.id, name: c.name }));
+    return;
+  }
   const res = await api.get(`/invoicing/companies/${companyId.value}/contacts`);
   contacts.value = (res.data.data ?? []).map((c: { id: string; name: string }) => ({
     id: c.id,
@@ -142,6 +160,17 @@ async function loadContacts() {
 
 async function loadWarehouse() {
   if (isNew.value || !warehouseId.value) return;
+  if (localFirst && invoicingWarehouses.evolu) {
+    await invoicingWarehouses.refresh(false);
+    const contactNames = new Map(contacts.value.map((c) => [c.id, c.name]));
+    const row = localWarehouseApi(
+      warehouseId.value as WarehouseId,
+      invoicingWarehouses.warehouseRows.value,
+      contactNames,
+    );
+    if (row) Object.assign(form, warehouseToForm(row));
+    return;
+  }
   const res = await api.get(`/invoicing/companies/${companyId.value}/warehouses/${warehouseId.value}`);
   Object.assign(form, warehouseToForm(res.data.data));
 }
@@ -151,6 +180,23 @@ async function save() {
   error.value = '';
   try {
     const payload = formToWarehousePayload(form);
+    if (localFirst && invoicingWarehouses.evolu) {
+      const result = saveLocalWarehouse(
+        invoicingWarehouses.evolu,
+        companyId.value as CompanyId,
+        payload,
+        {
+          warehouseId: isNew.value ? undefined : (warehouseId.value as WarehouseId),
+          existingRows: invoicingWarehouses.warehouseRows.value,
+        },
+      );
+      if (!result.ok) {
+        error.value = t('errors.generic');
+        return;
+      }
+      await router.push(warehouseListTo());
+      return;
+    }
     if (isNew.value) {
       await api.post(`/invoicing/companies/${companyId.value}/warehouses`, payload);
     } else {
@@ -170,6 +216,31 @@ async function remove() {
   saving.value = true;
   error.value = '';
   try {
+    if (localFirst && invoicingWarehouses.evolu) {
+      await invoicingWarehouses.evolu.loadQuery(allCompanyStockBalancesQuery);
+      const balanceRows = (await invoicingWarehouses.evolu.loadQuery(allCompanyStockBalancesQuery)) as Array<{
+        companyWarehouseId: string;
+        quantityOnHand: string | null;
+      }>;
+      const result = deleteLocalWarehouse(
+        invoicingWarehouses.evolu,
+        companyId.value as CompanyId,
+        warehouseId.value as WarehouseId,
+        {
+          warehouseRows: invoicingWarehouses.warehouseRows.value,
+          balanceRows,
+        },
+      );
+      if (!result.ok) {
+        error.value =
+          result.error === 'has_stock'
+            ? t('invoicing.warehouse_delete_has_stock')
+            : t('errors.generic');
+        return;
+      }
+      await router.push(warehouseListTo());
+      return;
+    }
     await api.delete(`/invoicing/companies/${companyId.value}/warehouses/${warehouseId.value}`);
     await router.push(warehouseListTo());
   } catch (e: unknown) {
@@ -180,9 +251,9 @@ async function remove() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   rememberCompany(companyId.value);
-  void loadContacts().catch(() => {});
-  void loadWarehouse().catch(() => {});
+  await loadContacts().catch(() => {});
+  await loadWarehouse().catch(() => {});
 });
 </script>

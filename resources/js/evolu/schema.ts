@@ -29,6 +29,33 @@ export type DocumentEventId = typeof DocumentEventId.Type;
 export const ExpenseId = id("Expense");
 export type ExpenseId = typeof ExpenseId.Type;
 
+export const RecurringProfileId = id("RecurringProfile");
+export type RecurringProfileId = typeof RecurringProfileId.Type;
+
+export const RecurringProfileLineId = id("RecurringProfileLine");
+export type RecurringProfileLineId = typeof RecurringProfileLineId.Type;
+
+export const WarehouseId = id("Warehouse");
+export type WarehouseId = typeof WarehouseId.Type;
+
+export const StockItemId = id("StockItem");
+export type StockItemId = typeof StockItemId.Type;
+
+export const StockBalanceId = id("StockBalance");
+export type StockBalanceId = typeof StockBalanceId.Type;
+
+export const StockMovementId = id("StockMovement");
+export type StockMovementId = typeof StockMovementId.Type;
+
+export const BankImportBatchId = id("BankImportBatch");
+export type BankImportBatchId = typeof BankImportBatchId.Type;
+
+export const BankTransactionId = id("BankTransaction");
+export type BankTransactionId = typeof BankTransactionId.Type;
+
+export const BankTransactionMatchId = id("BankTransactionMatch");
+export type BankTransactionMatchId = typeof BankTransactionMatchId.Type;
+
 const LegalName = maxLength(255)(NonEmptyString);
 const OptionalString16 = nullOr(maxLength(16)(NonEmptyString));
 const OptionalString32 = nullOr(maxLength(32)(NonEmptyString));
@@ -85,6 +112,40 @@ export type DocumentType = typeof DocumentType.Type;
 
 export const ResetPeriod = union("yearly", "monthly", "never");
 export type ResetPeriod = typeof ResetPeriod.Type;
+
+export const RecurringInterval = union("monthly", "yearly");
+export type RecurringInterval = typeof RecurringInterval.Type;
+
+export const RecurringDocType = union("invoice", "proforma");
+export type RecurringDocType = typeof RecurringDocType.Type;
+
+export const RecurringDeliveryDateMode = union("on_issue", "empty");
+export type RecurringDeliveryDateMode = typeof RecurringDeliveryDateMode.Type;
+
+export const WarehouseType = union("own", "owned_external", "supplier_availability");
+export type WarehouseType = typeof WarehouseType.Type;
+
+export const StockMovementSource = union(
+    "manual",
+    "import",
+    "document_issue",
+    "document_cancel",
+    "transfer",
+    "purchase_receipt",
+);
+export type StockMovementSource = typeof StockMovementSource.Type;
+
+export const BankTransactionDirection = union("credit", "debit");
+export type BankTransactionDirection = typeof BankTransactionDirection.Type;
+
+export const BankTransactionMatchStatus = union("unmatched", "matched", "ignored");
+export type BankTransactionMatchStatus = typeof BankTransactionMatchStatus.Type;
+
+export const BankImportSource = union("csv", "camt053", "inbound_email");
+export type BankImportSource = typeof BankImportSource.Type;
+
+export const BankMatchType = union("auto", "manual");
+export type BankMatchType = typeof BankMatchType.Type;
 
 /** Local-first invoicing schema. Data lives in browser SQLite, synced E2EE via relay. */
 export const InvoicingLocalSchema = {
@@ -242,6 +303,147 @@ export const InvoicingLocalSchema = {
         total: OptionalString32,
         currency: nullOr(CurrencyCode),
         internalNote: OptionalString4000,
+    },
+    recurringProfile: {
+        id: RecurringProfileId,
+        companyId: CompanyId,
+        contactId: nullOr(ContactId),
+        storeId: OptionalString64,
+        documentType: RecurringDocType,
+        isActive: nullOr(SqliteBoolean),
+        recurrenceInterval: RecurringInterval,
+        firstIssueDate: OptionalString32,
+        nextIssueDate: OptionalString32,
+        endsAt: OptionalString32,
+        repeatIndefinitely: nullOr(SqliteBoolean),
+        issueLastDayOfMonth: nullOr(SqliteBoolean),
+        title: OptionalString1000,
+        variableSymbol: OptionalString32,
+        constantSymbol: OptionalString16,
+        specificSymbol: OptionalString16,
+        paymentTermsDays: OptionalString16,
+        deliveryDateMode: RecurringDeliveryDateMode,
+        currency: nullOr(CurrencyCode),
+        discountPercent: OptionalString16,
+        subtotal: OptionalString32,
+        taxTotal: OptionalString32,
+        total: OptionalString32,
+        noteAboveLines: OptionalString4000,
+        noteFooter: OptionalString4000,
+        internalNote: OptionalString4000,
+        pdfLocale: OptionalString16,
+        pdfShowSignature: nullOr(SqliteBoolean),
+        pdfShowPaymentInfo: nullOr(SqliteBoolean),
+        paymentBtcEnabled: nullOr(SqliteBoolean),
+        paymentBankEnabled: nullOr(SqliteBoolean),
+        sendEmailAfterIssue: nullOr(SqliteBoolean),
+        emailBcc: OptionalString255,
+        tagsJson: OptionalString1000,
+        lastGeneratedDocumentId: nullOr(DocumentId),
+        lastGeneratedAt: OptionalString32,
+    },
+    recurringProfileLine: {
+        id: RecurringProfileLineId,
+        recurringProfileId: RecurringProfileId,
+        sortOrder: OptionalString16,
+        name: LineName,
+        description: OptionalString4000,
+        quantity: OptionalString32,
+        unit: OptionalString32,
+        unitPrice: OptionalString32,
+        lineDiscountPercent: OptionalString16,
+        taxRate: OptionalString16,
+        lineTotal: OptionalString32,
+    },
+    companyWarehouse: {
+        id: WarehouseId,
+        companyId: CompanyId,
+        name: maxLength(255)(NonEmptyString),
+        type: WarehouseType,
+        deductOnIssue: nullOr(SqliteBoolean),
+        isDefault: nullOr(SqliteBoolean),
+        isActive: nullOr(SqliteBoolean),
+        companyContactId: nullOr(ContactId),
+        street: OptionalString255,
+        city: OptionalString128,
+        postalCode: OptionalString32,
+        country: nullOr(CountryCode),
+        notes: OptionalString4000,
+    },
+    companyStockItem: {
+        id: StockItemId,
+        companyId: CompanyId,
+        name: LineName,
+        sku: OptionalString64,
+        description: OptionalString4000,
+        unit: OptionalString32,
+        trackInventory: nullOr(SqliteBoolean),
+        purchaseUnitPrice: OptionalString32,
+        purchaseCurrency: nullOr(CurrencyCode),
+        saleUnitPrice: OptionalString32,
+        internalNote: OptionalString4000,
+        excludeFromSuggester: nullOr(SqliteBoolean),
+    },
+    companyStockBalance: {
+        id: StockBalanceId,
+        companyId: CompanyId,
+        companyWarehouseId: WarehouseId,
+        companyStockItemId: StockItemId,
+        quantityOnHand: OptionalString32,
+    },
+    companyStockMovement: {
+        id: StockMovementId,
+        companyId: CompanyId,
+        companyStockItemId: StockItemId,
+        companyWarehouseId: WarehouseId,
+        quantityAfter: OptionalString32,
+        quantityDelta: OptionalString32,
+        purchaseUnitPrice: OptionalString32,
+        saleUnitPrice: OptionalString32,
+        note: OptionalString4000,
+        source: StockMovementSource,
+        businessDocumentId: nullOr(DocumentId),
+        documentNumber: OptionalString64,
+        documentType: OptionalString32,
+        movementAt: OptionalString32,
+    },
+    bankImportBatch: {
+        id: BankImportBatchId,
+        companyId: CompanyId,
+        source: BankImportSource,
+        filename: OptionalString255,
+        rowCount: OptionalString16,
+        importedCount: OptionalString16,
+        skippedDuplicates: OptionalString16,
+        autoMatchedCount: OptionalString16,
+    },
+    bankTransaction: {
+        id: BankTransactionId,
+        companyId: CompanyId,
+        bankImportBatchId: nullOr(BankImportBatchId),
+        bookedAt: OptionalString32,
+        amount: OptionalString32,
+        currency: nullOr(CurrencyCode),
+        direction: BankTransactionDirection,
+        matchStatus: BankTransactionMatchStatus,
+        businessExpenseId: nullOr(ExpenseId),
+        variableSymbol: OptionalString32,
+        constantSymbol: OptionalString16,
+        specificSymbol: OptionalString16,
+        counterpartyName: OptionalString255,
+        counterpartyIban: OptionalString64,
+        reference: OptionalString4000,
+        bankTransactionId: OptionalString128,
+        dedupeHash: OptionalString128,
+        source: BankImportSource,
+    },
+    bankTransactionMatch: {
+        id: BankTransactionMatchId,
+        bankTransactionId: BankTransactionId,
+        businessDocumentId: DocumentId,
+        matchedAmount: OptionalString32,
+        matchType: BankMatchType,
+        matchedAt: OptionalString32,
     },
 } satisfies EvoluSchema;
 

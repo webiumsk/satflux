@@ -838,7 +838,7 @@ import { isInvoicingLocalFirst } from '../../evolu/flags';
 import { useLocalInvoiceDocumentSupport } from '../../composables/useLocalInvoiceDocument';
 import {
   deleteLocalDocument,
-  cancelLocalDocument,
+  cancelLocalDocumentAsync,
   markLocalDocumentPaid,
   unmarkLocalDocumentPaid,
   markLocalDocumentEmailSent,
@@ -862,7 +862,7 @@ import {
   type EphemeralSnapshotPayload,
 } from '../../evolu/ephemeralBridge';
 import {
-  bulkCancelLocal,
+  bulkCancelLocalAsync,
   bulkDeleteLocal,
   bulkMarkPaidLocal,
   buildDocumentsCsvBlob,
@@ -1526,7 +1526,7 @@ async function runBulkLocal(action: string) {
   }
 
   if (action === 'cancel') {
-    const result = bulkCancelLocal(localDoc.evolu, targets);
+    const result = await bulkCancelLocalAsync(localDoc.evolu, targets, allDocuments);
     success.value = t('invoicing.bulk_result', {
       processed: result.processed,
       skipped: result.skipped,
@@ -1993,7 +1993,11 @@ async function cancelDoc(d: { id: string }) {
   actionId.value = d.id;
   try {
     if (localFirst && localDoc) {
-      cancelLocalDocument(localDoc.evolu, d.id as DocumentId);
+      await cancelLocalDocumentAsync(
+        localDoc.evolu,
+        d.id as DocumentId,
+        localDoc.documentRows.value as EvoluDocumentRow[],
+      );
       await load();
       return;
     }

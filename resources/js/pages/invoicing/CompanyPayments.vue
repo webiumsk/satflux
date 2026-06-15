@@ -1,10 +1,5 @@
 <template>
-  <InvoicingServerOnlyPage
-    v-if="localFirst"
-    :title="t('invoicing.main_nav_payments')"
-    detail-key="invoicing.local_first_payments_bridge"
-  />
-  <InvoicingPageShell v-else content-class="pb-8">
+  <InvoicingPageShell content-class="pb-8">
     <template #header>
       <InvoicingAppHeader
         :show-filter-bar="activeTab === 'transactions' && hasBankAccount"
@@ -90,7 +85,7 @@
             {{ importing ? t('common.loading') : t('invoicing.bank_import_submit') }}
           </button>
         </form>
-        <div v-if="inboundEmail" class="text-sm border-t pt-4">
+        <div v-if="inboundEmailAvailable && inboundEmail" class="text-sm border-t pt-4">
           <p class="font-medium text-gray-800">{{ t('invoicing.bank_inbound_title') }}</p>
           <p class="text-gray-600 mt-1">{{ t('invoicing.bank_inbound_help', { max: inboundMaxLength || 50 }) }}</p>
           <div class="mt-2 flex flex-wrap items-center gap-2">
@@ -400,18 +395,17 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import api from '../../services/api';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
-import InvoicingServerOnlyPage from '../../components/invoicing/InvoicingServerOnlyPage.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
-import { isInvoicingLocalFirst } from '../../evolu/flags';
 import InvoicingMobileCard from '../../components/invoicing/InvoicingMobileCard.vue';
 import InvoicingRowActionsMenu from '../../components/invoicing/InvoicingRowActionsMenu.vue';
 import BankCreateExpenseModal, { type BankExpenseDraft } from '../../components/invoicing/BankCreateExpenseModal.vue';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompanySummary';
+import { useInvoicingBankPayments } from '../../composables/useInvoicingBankPayments';
 import { invoicingDocumentRoutesForType } from '../../composables/useInvoicingDocumentRoutes';
 import { useFlashStore } from '../../store/flash';
+import api from '../../services/api';
 
 type LinkedDocument = { id: string; number?: string; type?: string };
 type LinkedExpense = { id: string; internal_number: string };
@@ -433,24 +427,26 @@ type BankTx = {
 };
 
 const { t, locale } = useI18n();
-const localFirst = isInvoicingLocalFirst();
 const route = useRoute();
 const { rememberCompany } = useInvoicingLayout();
 const { hasBankAccount, summaryLoaded, bankAccountLabel, defaultCurrency } = useInvoicingCompanySummary();
 const flashStore = useFlashStore();
 
 const companyId = computed(() => route.params.companyId as string);
-const loading = ref(true);
-const transactions = ref<BankTx[]>([]);
+const bank = useInvoicingBankPayments(companyId, defaultCurrency);
+
+const loading = bank.loading;
+const transactions = bank.transactions;
+const summary = bank.summary;
+const batches = bank.batches;
+const inboundEmailAvailable = bank.inboundEmailAvailable;
+
 const matchFilter = ref('all');
 const activeTab = ref<'transactions' | 'import'>('transactions');
 const importFile = ref<File | null>(null);
 const importFormat = ref('');
 const importing = ref(false);
 const importResult = ref<{ imported: number; auto_matched: number } | null>(null);
-const batches = ref<
-  { id: string; filename?: string; source: string; imported_count: number; row_count: number }[]
->([]);
 const inboundEmail = ref('');
 const inboundEnabled = ref(false);
 const inboundLength = ref(0);
@@ -481,34 +477,11 @@ type BankSummarySection = {
   balance: string;
 };
 
-type BankSummary = {
-  credit_count: number;
-  credit_total: string | null;
-  debit_count: number;
-  debit_total: string | null;
-  balance: string | null;
-  currency: string | null;
-  by_currency: BankSummarySection[];
-  account_balance?: AccountBalance | null;
-};
-
 type AccountBalance = {
   amount: string;
   currency: string;
   as_of: string;
 };
-
-const emptySummary = (): BankSummary => ({
-  credit_count: 0,
-  credit_total: '0.00',
-  debit_count: 0,
-  debit_total: '0.00',
-  balance: '0.00',
-  currency: defaultCurrency.value,
-  by_currency: [],
-});
-
-const summary = ref<BankSummary>(emptySummary());
 
 const summarySections = computed((): BankSummarySection[] => {
   if (summary.value.by_currency.length > 0) {
@@ -599,43 +572,17 @@ function counterpartySubtext(tx: BankTx): string {
 }
 
 async function load() {
-  if (!hasBankAccount.value) {
-    loading.value = false;
-    return;
-  }
-
-  loading.value = true;
-  try {
-    const params: Record<string, string | number> = { per_page: 50 };
-    if (matchFilter.value !== 'all') {
-      params.match_status = matchFilter.value;
-    }
-    const { data } = await api.get(`/invoicing/companies/${companyId.value}/bank-transactions`, {
-      params,
-    });
-    transactions.value = data.data || [];
-    summary.value = data.meta?.summary || emptySummary();
-  } finally {
-    loading.value = false;
-  }
+  if (!hasBankAccount.value) return;
+  await bank.load(matchFilter.value);
 }
-
-watch(hasBankAccount, (value) => {
-  if (value) {
-    load();
-    loadBatches();
-    loadInbound();
-  }
-});
 
 async function loadBatches() {
   if (!hasBankAccount.value) return;
-  const { data } = await api.get(`/invoicing/companies/${companyId.value}/bank-transactions/batches`);
-  batches.value = data.data || [];
+  await bank.loadBatches();
 }
 
 async function loadInbound() {
-  if (!hasBankAccount.value) return;
+  if (!hasBankAccount.value || !inboundEmailAvailable.value) return;
   try {
     const { data } = await api.get(`/invoicing/companies/${companyId.value}/bank-transactions/inbound-email`);
     inboundEmail.value = data.data?.address || '';
@@ -669,38 +616,34 @@ function onFile(e: Event) {
   importFile.value = input.files?.[0] ?? null;
 }
 
+watch(hasBankAccount, (value) => {
+  if (value) {
+    load();
+    loadBatches();
+    loadInbound();
+  }
+});
+
 async function upload() {
   if (!importFile.value) return;
   importing.value = true;
   importResult.value = null;
   try {
-    const form = new FormData();
-    form.append('file', importFile.value);
-    if (importFormat.value) form.append('format', importFormat.value);
-    const { data } = await api.post(
-      `/invoicing/companies/${companyId.value}/bank-transactions/import`,
-      form,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
-    );
-    importResult.value = {
-      imported: data.data.imported,
-      auto_matched: data.data.auto_matched,
-    };
+    const result = await bank.importFile(importFile.value, importFormat.value || undefined);
+    importResult.value = result;
     importFile.value = null;
-    await loadBatches();
     activeTab.value = 'transactions';
     await load();
-  } catch (e: any) {
-    alert(e?.response?.data?.message || t('common.error'));
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } }; message?: string };
+    alert(err?.response?.data?.message || err?.message || t('common.error'));
   } finally {
     importing.value = false;
   }
 }
 
 async function autoMatchBatch(batchId: string) {
-  await api.post(
-    `/invoicing/companies/${companyId.value}/bank-transactions/batches/${batchId}/auto-match`,
-  );
+  await bank.autoMatchBatch(batchId);
   await load();
 }
 
@@ -709,10 +652,7 @@ async function openMatch(tx: BankTx) {
   suggestionsLoading.value = true;
   suggestions.value = [];
   try {
-    const { data } = await api.get(
-      `/invoicing/companies/${companyId.value}/bank-transactions/${tx.id}/suggestions`,
-    );
-    suggestions.value = data.data || [];
+    suggestions.value = await bank.fetchSuggestions(tx.id);
   } finally {
     suggestionsLoading.value = false;
   }
@@ -720,21 +660,18 @@ async function openMatch(tx: BankTx) {
 
 async function confirmMatch(documentId: string) {
   if (!matchModal.value) return;
-  await api.post(
-    `/invoicing/companies/${companyId.value}/bank-transactions/${matchModal.value.id}/match`,
-    { business_document_id: documentId },
-  );
+  await bank.matchTransaction(matchModal.value.id, documentId);
   matchModal.value = null;
   await load();
 }
 
 async function ignoreTx(tx: BankTx) {
-  await api.post(`/invoicing/companies/${companyId.value}/bank-transactions/${tx.id}/ignore`);
+  await bank.ignoreTransaction(tx.id);
   await load();
 }
 
 async function unmatchTx(tx: BankTx) {
-  await api.post(`/invoicing/companies/${companyId.value}/bank-transactions/${tx.id}/unmatch`);
+  await bank.unmatchTransaction(tx.id);
   await load();
 }
 
@@ -765,23 +702,12 @@ async function submitCreateExpense(draft: BankExpenseDraft) {
   creatingExpense.value = true;
   expenseError.value = '';
   try {
-    await api.post(
-      `/invoicing/companies/${companyId.value}/bank-transactions/${expenseModalTx.value.id}/create-expense`,
-      {
-        title: draft.title,
-        supplier: draft.supplier || undefined,
-        category: draft.category || undefined,
-        variable_symbol: draft.variable_symbol || undefined,
-        total: draft.total,
-        issue_date: draft.issue_date,
-        internal_note: draft.internal_note || undefined,
-        mark_paid: true,
-      },
-    );
+    await bank.createExpenseFromTransaction(expenseModalTx.value.id, draft);
     closeCreateExpense();
     await load();
-  } catch (e: any) {
-    expenseError.value = e?.response?.data?.message || t('common.error');
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } }; message?: string };
+    expenseError.value = err?.response?.data?.message || err?.message || t('common.error');
   } finally {
     creatingExpense.value = false;
   }

@@ -40,9 +40,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { WarehouseRow } from '../../composables/useCompanyWarehouse';
+import { useLocalStockItemDetail } from '../../composables/useInvoicingStockItems';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
+import { transferLocalStock } from '../../evolu/stockCrud';
+import type { CompanyId, StockItemId, WarehouseId } from '../../evolu/schema';
+import type { EvoluStockBalanceRow, EvoluStockItemRow } from '../../evolu/stockMap';
 import api from '../../services/api';
 
 const props = defineProps<{
@@ -58,6 +63,9 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const localFirst = isInvoicingLocalFirst();
+const companyIdRef = computed(() => props.companyId);
+const localStockDetail = localFirst ? useLocalStockItemDetail(companyIdRef) : null;
 
 const fromId = ref('');
 const toId = ref('');
@@ -92,6 +100,39 @@ async function submit() {
   saving.value = true;
   error.value = '';
   try {
+    if (localFirst && localStockDetail?.evolu) {
+      await localStockDetail.refreshAll();
+      const item = (localStockDetail.itemRows.value as EvoluStockItemRow[]).find(
+        (row) => row.id === props.stockItemId,
+      );
+      if (!item) {
+        error.value = t('errors.generic');
+        return;
+      }
+      const result = transferLocalStock(
+        localStockDetail.evolu,
+        props.companyId as CompanyId,
+        props.stockItemId as StockItemId,
+        fromId.value as WarehouseId,
+        toId.value as WarehouseId,
+        qty,
+        note.value.trim() || null,
+        {
+          item,
+          balanceRows: localStockDetail.balanceRows.value as EvoluStockBalanceRow[],
+        },
+      );
+      if (!result.ok) {
+        error.value =
+          result.error === 'insufficient'
+            ? t('invoicing.stock_transfer_insufficient')
+            : t('errors.generic');
+        return;
+      }
+      emit('transferred');
+      emit('close');
+      return;
+    }
     await api.post(`/invoicing/companies/${props.companyId}/stock-items/${props.stockItemId}/transfer`, {
       from_warehouse_id: fromId.value,
       to_warehouse_id: toId.value,

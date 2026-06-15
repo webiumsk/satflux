@@ -1,10 +1,5 @@
 <template>
-  <InvoicingServerOnlyPage
-    v-if="localFirst"
-    :title="t('invoicing.doc_nav_recurring')"
-    detail-key="invoicing.local_first_recurring_bridge"
-  />
-  <InvoicingPageShell v-else content-class="pb-8">
+  <InvoicingPageShell content-class="pb-8">
     <template #header>
       <InvoicingAppHeader
         :company-label="companyName"
@@ -164,27 +159,34 @@ import { useI18n } from 'vue-i18n';
 import '../../styles/invoicing-theme.css';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
-import InvoicingServerOnlyPage from '../../components/invoicing/InvoicingServerOnlyPage.vue';
 import InvoicingMobileCard from '../../components/invoicing/InvoicingMobileCard.vue';
-import { isInvoicingLocalFirst } from '../../evolu/flags';
 import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
 import api from '../../services/api';
 import { INVOICING_CONTAINER_CLASS, useInvoicingLayout } from '../../composables/useInvoicingLayout';
+import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompanySummary';
+import {
+  useInvoicingRecurringProfiles,
+  type RecurringListFilter,
+} from '../../composables/useInvoicingRecurringProfiles';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
 
 const { t, locale } = useI18n();
 const localFirst = isInvoicingLocalFirst();
 const { companyId, rememberCompany } = useInvoicingLayout();
+const { companyName: summaryCompanyName } = useInvoicingCompanySummary();
+const invoicingRecurring = useInvoicingRecurringProfiles(companyId);
 
-const loading = ref(true);
 const error = ref('');
-const profiles = ref<any[]>([]);
 const companyName = ref('');
-const activeFilter = ref('all');
+const activeFilter = ref<RecurringListFilter>('all');
+
+const loading = computed(() => invoicingRecurring.loading.value);
+const profiles = computed(() => invoicingRecurring.profiles.value);
 
 const filters = computed(() => [
-  { id: 'all', label: t('invoicing.filter_all') },
-  { id: 'active', label: t('invoicing.recurring_filter_active') },
-  { id: 'inactive', label: t('invoicing.recurring_filter_inactive') },
+  { id: 'all' as const, label: t('invoicing.filter_all') },
+  { id: 'active' as const, label: t('invoicing.recurring_filter_active') },
+  { id: 'inactive' as const, label: t('invoicing.recurring_filter_inactive') },
 ]);
 
 function formatMoney(n: string | number) {
@@ -204,40 +206,38 @@ function intervalLabel(interval: string) {
   return t(key);
 }
 
-function profileLabel(p: { title?: string; document_type?: string }) {
+function profileLabel(p: { title?: string | null; document_type?: string }) {
   if (p.title) return p.title;
   return p.document_type === 'proforma'
     ? t('invoicing.proforma_title_prefix') + ' #INVOICE_NUMBER#'
     : t('invoicing.invoice_title_prefix') + ' #INVOICE_NUMBER#';
 }
 
-function setFilter(id: string) {
+function setFilter(id: RecurringListFilter) {
   activeFilter.value = id;
-  load();
+  void load();
 }
 
 async function load() {
-  if (localFirst) return;
-  loading.value = true;
   error.value = '';
   try {
-    const [companyRes, listRes] = await Promise.all([
+    if (localFirst) {
+      companyName.value = summaryCompanyName.value;
+      await invoicingRecurring.refresh(activeFilter.value);
+      return;
+    }
+    const [companyRes] = await Promise.all([
       api.get(`/invoicing/companies/${companyId.value}/summary`),
-      api.get(`/invoicing/companies/${companyId.value}/recurring-profiles`, {
-        params: { filter: activeFilter.value, per_page: 100 },
-      }),
+      invoicingRecurring.refresh(activeFilter.value),
     ]);
     companyName.value = companyRes.data.data?.trade_name || companyRes.data.data?.legal_name || '';
-    profiles.value = listRes.data.data ?? [];
   } catch (e: any) {
     error.value = e?.response?.data?.message || t('common.error');
-  } finally {
-    loading.value = false;
   }
 }
 
 onMounted(() => {
   rememberCompany(companyId.value);
-  load();
+  void load();
 });
 </script>

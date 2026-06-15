@@ -56,6 +56,8 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { DEFAULT_INVOICE_LINE_UNIT } from '../../composables/useInvoiceLineUnits';
+import { useInvoicingStockItems } from '../../composables/useInvoicingStockItems';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
 import api from '../../services/api';
 
 export type StockSuggestItem = {
@@ -121,6 +123,9 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const localFirst = isInvoicingLocalFirst();
+const companyIdRef = computed(() => props.companyId);
+const localStock = localFirst ? useInvoicingStockItems(companyIdRef) : null;
 
 const inputRef = ref<HTMLInputElement | null>(null);
 const suggestions = ref<StockSuggestItem[]>([]);
@@ -199,6 +204,16 @@ function scheduleSearch(q: string) {
 async function fetchSuggestions(q: string) {
   loading.value = true;
   try {
+    if (localFirst && localStock) {
+      await localStock.refresh();
+      suggestions.value = localStock.search(q, 10, props.warehouseId || null) as StockSuggestItem[];
+      showSuggestions.value = suggestions.value.length > 0;
+      if (showSuggestions.value) {
+        await nextTick();
+        updateDropdownPosition();
+      }
+      return;
+    }
     const { data } = await api.get(`/invoicing/companies/${props.companyId}/stock-items/search`, {
       params: {
         q,

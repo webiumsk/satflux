@@ -8,7 +8,7 @@ import { insertLocalContactFromForm } from "./contactCrud";
 import type { EvoluContactRow } from "./contactMap";
 import {
     saveLocalDocument,
-    applyReservedNumberToLocalDocument,
+    applyReservedNumberToLocalDocumentAsync,
     type DocumentLinePayload,
     type DocumentSavePayload,
 } from "./documentCrud";
@@ -198,7 +198,7 @@ export async function importIntegrationInboxEntry(
     if (reservedNumber) {
         const allSeries = (await evolu.loadQuery(allNumberSeriesQuery)) as EvoluNumberSeriesRow[];
         const documentType = String(entry.payload.type ?? "invoice") as DocumentType;
-        const applyResult = applyReservedNumberToLocalDocument(
+        const applyResult = await applyReservedNumberToLocalDocumentAsync(
             evolu,
             entry.evolu_document_id as DocumentId,
             typedCompanyId,

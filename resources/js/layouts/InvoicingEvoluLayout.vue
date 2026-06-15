@@ -9,20 +9,32 @@
 </template>
 
 <script setup lang="ts">
-import { shallowRef } from "vue";
+import { shallowRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import type { Evolu } from "@evolu/common/local-first";
 import { EvoluProvider } from "@evolu/vue";
+import { useLocalRecurringDueRunner } from "@/composables/useLocalRecurringDueRunner";
 import { isInvoicingLocalFirst } from "@/evolu/flags";
 import type { InvoicingLocalSchema } from "@/evolu/schema";
 
 const { t } = useI18n();
 const localFirst = isInvoicingLocalFirst();
 const evolu = shallowRef<Evolu<InvoicingLocalSchema> | null>(null);
+const { runDueProfiles } = useLocalRecurringDueRunner();
 
 if (localFirst) {
     void import("@/evolu/client").then((mod) => {
         evolu.value = mod.evolu;
     });
 }
+
+watch(
+    evolu,
+    (client) => {
+        if (client) {
+            void runDueProfiles(client);
+        }
+    },
+    { immediate: true },
+);
 </script>

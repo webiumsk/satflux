@@ -785,7 +785,11 @@ async function deleteDoc() {
 async function cancelDoc() {
   if (!documentId.value || !window.confirm(t('invoicing.confirm_cancel'))) return;
   if (localFirst && local) {
-    local.cancelLocalDocument(local.evolu, documentId.value as import('../../evolu/schema').DocumentId);
+    await local.cancelLocalDocumentAsync(
+      local.evolu,
+      documentId.value as import('../../evolu/schema').DocumentId,
+      local.documentRows.value as import('../../evolu/documentMap').EvoluDocumentRow[],
+    );
     await reloadDocument();
     return;
   }

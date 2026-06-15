@@ -14,6 +14,7 @@ import { evoluContactToApi } from "@/evolu/contactMap";
 import {
     approveLocalQuote,
     cancelLocalDocument,
+    cancelLocalDocumentAsync,
     createLocalCreditNoteFromInvoice,
     createLocalFinalInvoiceFromProforma,
     createLocalInvoiceFromQuote,
@@ -172,6 +173,7 @@ export function useLocalInvoiceDocumentSupport() {
         issueLocalDocumentAsync: issueLocalDocumentAsyncWrapped,
         deleteLocalDocument,
         cancelLocalDocument,
+        cancelLocalDocumentAsync,
         markLocalDocumentPaid,
         unmarkLocalDocumentPaid,
         markLocalDocumentEmailSent,

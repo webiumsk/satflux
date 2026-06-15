@@ -1,10 +1,5 @@
 <template>
-  <InvoicingServerOnlyPage
-    v-if="localFirst"
-    :title="t('invoicing.stock_title')"
-    detail-key="invoicing.local_first_stock_bridge"
-  />
-  <InvoicingPageShell v-else content-class="pb-8">
+  <InvoicingPageShell content-class="pb-8">
     <template #header>
       <InvoicingAppHeader
         :company-label="companyName"
@@ -34,7 +29,7 @@
           <RouterLink :to="warehouseListTo()" class="invoicing-btn-secondary">
             {{ t('invoicing.warehouses_title') }}
           </RouterLink>
-          <button type="button" class="invoicing-btn-secondary" @click="showImportModal = true">
+          <button type="button" class="invoicing-btn-secondary" @click="openImport">
             {{ t('invoicing.stock_bulk_import') }}
           </button>
           <RouterLink :to="stockNewTo()" class="invoicing-btn-primary">
@@ -210,6 +205,12 @@
       </div>
     </div>
 
+    <LocalFirstBridgeNotice
+      v-if="localFirst && showImportBridge"
+      class="mb-4"
+      :detail="t('invoicing.local_first_stock_import_bridge')"
+    />
+
     <StockImportModal
       :open="showImportModal"
       :company-id="companyId"
@@ -226,19 +227,23 @@ import { useRoute } from 'vue-router';
 import StockImportModal from '../../components/invoicing/StockImportModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
-import InvoicingServerOnlyPage from '../../components/invoicing/InvoicingServerOnlyPage.vue';
+import LocalFirstBridgeNotice from '../../components/invoicing/LocalFirstBridgeNotice.vue';
 import InvoicingMobileBulkBar from '../../components/invoicing/InvoicingMobileBulkBar.vue';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
+import { deleteLocalStockItem } from '../../evolu/stockCrud';
+import type { CompanyId, StockItemId } from '../../evolu/schema';
+import type { EvoluStockBalanceRow, EvoluStockMovementRow } from '../../evolu/stockMap';
 import InvoicingMobileCard from '../../components/invoicing/InvoicingMobileCard.vue';
 import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
+import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompanySummary';
+import { useInvoicingStockItems, useLocalStockItemDetail } from '../../composables/useInvoicingStockItems';
+import { useInvoicingWarehouses } from '../../composables/useInvoicingWarehouses';
 import {
   formatStockPrice,
   formatStockQuantity,
   useStockRoutes,
-  type StockItemRow,
-  type StockSummaryMeta,
 } from '../../composables/useCompanyStockItem';
-import { useWarehouseRoutes, type WarehouseRow } from '../../composables/useCompanyWarehouse';
+import { useWarehouseRoutes } from '../../composables/useCompanyWarehouse';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import api from '../../services/api';
 
@@ -246,21 +251,27 @@ const { t } = useI18n();
 const localFirst = isInvoicingLocalFirst();
 const route = useRoute();
 const { companyId, rememberCompany } = useInvoicingLayout();
+const { companyName: summaryCompanyName } = useInvoicingCompanySummary();
+const invoicingStock = useInvoicingStockItems(companyId);
+const invoicingWarehouses = useInvoicingWarehouses(companyId);
+const localStockDetail = localFirst ? useLocalStockItemDetail(companyId) : null;
 const { stockNewTo, stockEditTo } = useStockRoutes(companyId);
 const { warehouseListTo } = useWarehouseRoutes(companyId);
 
 const companyName = ref('');
-const items = ref<StockItemRow[]>([]);
-const warehouses = ref<WarehouseRow[]>([]);
-const summary = ref<StockSummaryMeta | null>(null);
-const loading = ref(true);
 const searchQuery = ref('');
 const warehouseFilter = ref('');
 const selectedIds = ref(new Set<string>());
 const showImportModal = ref(false);
+const showImportBridge = ref(false);
 const success = ref('');
 const error = ref('');
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
+
+const loading = computed(() => invoicingStock.loading.value || invoicingWarehouses.loading.value);
+const items = computed(() => invoicingStock.items.value);
+const warehouses = computed(() => invoicingWarehouses.warehouses.value.filter((w) => w.is_active));
+const summary = computed(() => invoicingStock.meta.value);
 
 const summaryCurrency = computed(() => summary.value?.summary_currency ?? 'EUR');
 const selectionCount = computed(() => selectedIds.value.size);
@@ -313,32 +324,26 @@ function clearSelection() {
   selectedIds.value = new Set();
 }
 
+function openImport() {
+  if (localFirst) {
+    showImportBridge.value = true;
+    return;
+  }
+  showImportModal.value = true;
+}
+
 async function load() {
-  if (localFirst) return;
-  loading.value = true;
   error.value = '';
   try {
-    const companyRes = await api.get(`/invoicing/companies/${companyId.value}/summary`);
-    companyName.value = companyRes.data.data?.trade_name || companyRes.data.data?.legal_name || '';
-
-    const whRes = await api.get(`/invoicing/companies/${companyId.value}/warehouses`);
-    warehouses.value = whRes.data.data ?? [];
-
-    const res = await api.get(`/invoicing/companies/${companyId.value}/stock-items`, {
-      params: {
-        q: searchQuery.value.trim() || undefined,
-        warehouse_id: warehouseFilter.value || undefined,
-      },
+    companyName.value = summaryCompanyName.value;
+    await invoicingWarehouses.refresh(true);
+    await invoicingStock.refresh({
+      q: searchQuery.value.trim() || undefined,
+      warehouse_id: warehouseFilter.value || undefined,
     });
-    items.value = res.data.data ?? [];
-    summary.value = res.data.meta ?? null;
   } catch (e: unknown) {
-    items.value = [];
-    summary.value = null;
     error.value =
       (e as { response?: { data?: { message?: string } } })?.response?.data?.message || t('errors.generic');
-  } finally {
-    loading.value = false;
   }
 }
 
@@ -353,12 +358,29 @@ async function bulkDelete() {
 
   const ids = Array.from(selectedIds.value);
   let deleted = 0;
-  for (const id of ids) {
-    try {
-      await api.delete(`/invoicing/companies/${companyId.value}/stock-items/${id}`);
-      deleted++;
-    } catch {
-      /* skip items that cannot be deleted */
+  if (localFirst && invoicingStock.evolu && localStockDetail) {
+    await localStockDetail.refreshAll();
+    for (const id of ids) {
+      const result = deleteLocalStockItem(
+        invoicingStock.evolu,
+        companyId.value as CompanyId,
+        id as StockItemId,
+        {
+          documentLines: localStockDetail.documentLineRows.value,
+          balanceRows: localStockDetail.balanceRows.value as EvoluStockBalanceRow[],
+          movementRows: localStockDetail.movementRows.value as EvoluStockMovementRow[],
+        },
+      );
+      if (result.ok) deleted++;
+    }
+  } else {
+    for (const id of ids) {
+      try {
+        await api.delete(`/invoicing/companies/${companyId.value}/stock-items/${id}`);
+        deleted++;
+      } catch {
+        /* skip items that cannot be deleted */
+      }
     }
   }
   success.value = t('invoicing.stock_bulk_deleted', { count: deleted });
