@@ -2,8 +2,6 @@
 
 namespace App\Http\Requests\Invoicing;
 
-use Illuminate\Validation\Rule;
-
 class EphemeralBusinessDocumentBtcpayRequest extends EphemeralBusinessDocumentPdfRequest
 {
     public function rules(): array
