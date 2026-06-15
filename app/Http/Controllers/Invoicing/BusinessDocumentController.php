@@ -218,6 +218,7 @@ class BusinessDocumentController extends Controller
         $previousTotal = (float) $businessDocument->total;
         $previousStoreId = $businessDocument->store_id;
         $previousPaymentBtc = $businessDocument->payment_btc_enabled;
+        $wasIssued = $businessDocument->status === BusinessDocumentStatus::Issued;
 
         $this->assertContactBelongsToCompany($request->input('company_contact_id'), $company);
         $this->assertStoreBelongsToCompany($request->input('store_id'), $company);
@@ -261,9 +262,15 @@ class BusinessDocumentController extends Controller
             (float) $request->input('discount_percent', $businessDocument->discount_percent)
         );
 
-        $businessDocument->save();
-        $businessDocument->lines()->delete();
-        $this->syncLines($businessDocument, $lines);
+        DB::transaction(function () use ($businessDocument, $lines, $wasIssued) {
+            $businessDocument->save();
+            $businessDocument->lines()->delete();
+            $this->syncLines($businessDocument, $lines);
+
+            if ($wasIssued) {
+                $this->stockMovementService->rebuildDocumentIssue($businessDocument->fresh(['lines', 'company']));
+            }
+        });
 
         if ($businessDocument->status === BusinessDocumentStatus::Issued) {
             if (! $businessDocument->payment_btc_enabled || ! $businessDocument->store_id) {
@@ -587,8 +594,18 @@ class BusinessDocumentController extends Controller
         $id = $businessDocument->id;
         $number = $businessDocument->number;
         $documentType = $businessDocument->type->value;
-        $businessDocument->lines()->delete();
-        $businessDocument->delete();
+
+        DB::transaction(function () use ($businessDocument) {
+            if (in_array($businessDocument->status, [
+                BusinessDocumentStatus::Issued,
+                BusinessDocumentStatus::Paid,
+            ], true)) {
+                $this->stockMovementService->reverseDocumentCancel($businessDocument->fresh(['lines']));
+            }
+
+            $businessDocument->lines()->delete();
+            $businessDocument->delete();
+        });
 
         $this->sequenceService->syncSeriesAfterDocumentChange($company, $documentType);
 

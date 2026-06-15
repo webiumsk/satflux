@@ -317,4 +317,85 @@ class CompanyWarehouseTest extends TestCase
         $this->assertEquals(5.0, $this->stockQuantity($item, $from));
         $this->assertEquals(3.0, $this->stockQuantity($item, $to));
     }
+
+    #[Test]
+    public function transfer_cannot_overdraw_source_warehouse(): void
+    {
+        $from = $this->defaultWarehouse($this->company);
+        $to = CompanyWarehouse::create([
+            'company_id' => $this->company->id,
+            'name' => 'Pobočka',
+            'type' => CompanyWarehouseType::Own,
+            'deduct_on_issue' => true,
+            'is_active' => true,
+        ]);
+
+        $item = $this->createStockItem($this->company, [
+            'name' => 'Transfer item',
+            'sku' => 'tr-2',
+        ], quantity: 2);
+
+        $response = $this->actingAs($this->proUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/stock-items/{$item->id}/transfer", [
+                'from_warehouse_id' => $from->id,
+                'to_warehouse_id' => $to->id,
+                'quantity' => 3,
+            ]);
+
+        $response->assertUnprocessable();
+        $this->assertEquals(2.0, $this->stockQuantity($item, $from));
+        $this->assertEquals(0.0, $this->stockQuantity($item, $to));
+    }
+
+    #[Test]
+    public function warehouse_with_stock_movements_cannot_be_deleted_even_when_balance_is_zero(): void
+    {
+        $warehouse = CompanyWarehouse::create([
+            'company_id' => $this->company->id,
+            'name' => 'Branch',
+            'type' => CompanyWarehouseType::Own,
+            'deduct_on_issue' => true,
+            'is_active' => true,
+        ]);
+
+        $item = $this->createStockItem($this->company, [
+            'name' => 'Warehouse item',
+            'sku' => 'wh-1',
+            'sale_unit_price' => 1.5,
+        ], quantity: 0);
+
+        app(\App\Services\Invoicing\CompanyStockBalanceService::class)
+            ->setQuantity($warehouse, $item, 2);
+        app(\App\Services\Invoicing\DocumentSequenceService::class)->seedDefaultsForCompany($this->company);
+
+        $create = $this->actingAs($this->proUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents", [
+                'type' => 'invoice',
+                'currency' => 'EUR',
+                'lines' => [
+                    [
+                        'name' => 'Warehouse item',
+                        'quantity' => 2,
+                        'unit' => 'ks',
+                        'unit_price' => 1.5,
+                        'company_stock_item_id' => $item->id,
+                        'company_warehouse_id' => $warehouse->id,
+                    ],
+                ],
+            ]);
+        $create->assertCreated();
+        $documentId = $create->json('data.id');
+
+        $issue = $this->actingAs($this->proUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents/{$documentId}/issue");
+        $issue->assertOk();
+
+        $this->assertEquals(0.0, $this->stockQuantity($item, $warehouse));
+
+        $delete = $this->actingAs($this->proUser)
+            ->deleteJson("/api/invoicing/companies/{$this->company->id}/warehouses/{$warehouse->id}");
+
+        $delete->assertUnprocessable();
+        $this->assertDatabaseHas('company_warehouses', ['id' => $warehouse->id]);
+    }
 }

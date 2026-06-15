@@ -101,6 +101,12 @@ class CompanyStockBalanceService
             $outBalance = $this->getOrCreateBalance($from, $item, lock: true);
             $inBalance = $this->getOrCreateBalance($to, $item, lock: true);
 
+            if ((float) $outBalance->quantity_on_hand < $quantity) {
+                throw ValidationException::withMessages([
+                    'quantity' => ['Transfer quantity exceeds available stock in the source warehouse.'],
+                ]);
+            }
+
             $outBalance->quantity_on_hand = (float) $outBalance->quantity_on_hand - $quantity;
             $inBalance->quantity_on_hand = (float) $inBalance->quantity_on_hand + $quantity;
 
