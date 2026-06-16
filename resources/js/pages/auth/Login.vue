@@ -412,6 +412,7 @@ import { useRouter, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { usePage } from "@inertiajs/vue3";
 import { useAuthStore } from "../../store/auth";
+import { useStoresStore } from "../../store/stores";
 import { useFlashStore } from "../../store/flash";
 import api from "../../services/api";
 import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
@@ -539,12 +540,18 @@ async function handleLogin() {
 }
 
 function redirectAfterGuestRestore(payload: { store_id?: string | null }) {
-  const storeId = payload?.store_id;
-  if (storeId) {
-    router.replace(`/stores/${storeId}/wallet-connection`);
-    return;
-  }
-  router.replace("/stores/create");
+  const storesStore = useStoresStore();
+  void storesStore.fetchStores().then(() => {
+    const storeId =
+      payload?.store_id
+      ?? storesStore.stores[0]?.id
+      ?? null;
+    if (storeId) {
+      router.replace(`/stores/${storeId}/wallet-connection`);
+      return;
+    }
+    router.replace("/stores/create");
+  });
 }
 
 async function handleGuestEnrolled(payload: {

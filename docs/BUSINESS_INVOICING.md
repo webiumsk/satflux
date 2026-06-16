@@ -35,7 +35,16 @@ Legacy data created under a random pre-unification Evolu owner migrates automati
 
 **BTCPay store UUIDs** in local data (`company.linkedStoreId`, `document.storeId`) refer to server `stores.id` rows on **your** account. Importing or syncing data from another account leaves stale UUIDs; the app clears unknown store links on invoicing startup (`sanitizeLocalStoreReferences`). Re-link a store in company settings.
 
-Seed-first onboarding (`SEED_FIRST_REGISTRATION=true`) creates accounts via recovery phrase; email/password is added later in Account (guest upgrade). Guest accounts may use local-first invoicing; Pro server bridges (PDF, e-faktura, BTCPay checkout on ephemeral API) still require an active Pro subscription.
+### Multi-device sync (runbook)
+
+1. **Same recovery phrase** on every device - it is both the Satflux account key and the Evolu AppOwner.
+2. After sign-in with the phrase (or opening Invoicing on a new browser), wait for **“Synchronizujem…” / relay sync** to finish before creating a company. Creating too early can produce duplicate company rows (same legal name, different Evolu IDs).
+3. **Empty list after restore?** Wait up to ~45 seconds on the Invoicing index. If data was created on another device, companies appear when the relay pull completes.
+4. **Duplicate companies?** Open **Company settings → Danger zone → Delete company** on the copy with fewer documents. Keep one profile per legal entity.
+5. **Legacy Evolu owner** (pre-unification random/HKDF key): sign in with your phrase on the **original** browser once; migration uploads a snapshot to the unified owner. Then use only the Satflux phrase elsewhere.
+6. **Reset browser data** on a new device is fine - sign in with the phrase again; data reloads from the E2EE relay (not from satflux servers).
+
+Seed-first onboarding (`SEED_FIRST_REGISTRATION=true`) creates accounts via recovery phrase; email/password is added later in Account (guest upgrade). **Invoicing requires Pro.** Guest accounts have limited BTCPay access; upgrade Guest → Free (verified email) before purchasing Pro. Local-first data stays in the browser; Pro unlocks the module and ephemeral server bridges (PDF, e-faktura, BTCPay checkout).
 
 ## Subscription billing company
 

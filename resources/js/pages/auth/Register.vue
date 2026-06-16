@@ -99,6 +99,7 @@ import { useI18n } from "vue-i18n";
 import GuestBackupWizardModal from "../../components/auth/GuestBackupWizardModal.vue";
 import GuestRestoreModal from "../../components/auth/GuestRestoreModal.vue";
 import { useAuthStore } from "../../store/auth";
+import { useStoresStore } from "../../store/stores";
 import { useFlashStore } from "../../store/flash";
 import api from "../../services/api";
 import { storeGuestMnemonic } from "../../services/guestRecovery";
@@ -113,12 +114,18 @@ const showGuestBackupWizard = ref(false);
 const showGuestRestoreModal = ref(false);
 
 function redirectAfterGuestRestore(payload: { store_id?: string | null }) {
-  const storeId = payload?.store_id;
-  if (storeId) {
-    router.replace(`/stores/${storeId}/wallet-connection`);
-    return;
-  }
-  router.replace("/stores/create");
+  const storesStore = useStoresStore();
+  void storesStore.fetchStores().then(() => {
+    const storeId =
+      payload?.store_id
+      ?? storesStore.stores[0]?.id
+      ?? null;
+    if (storeId) {
+      router.replace(`/stores/${storeId}/wallet-connection`);
+      return;
+    }
+    router.replace("/stores/create");
+  });
 }
 
 async function handleGuestEnrolled(payload: {

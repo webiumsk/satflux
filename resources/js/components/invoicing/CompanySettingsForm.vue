@@ -351,6 +351,49 @@
         >
           {{ t('invoicing.company_reset_action') }}
         </button>
+
+        <div class="pt-4 border-t border-red-200">
+          <h3 class="text-sm font-semibold text-red-900">{{ t('invoicing.company_delete_title') }}</h3>
+          <p class="text-sm text-red-800/90 mt-1 max-w-2xl">{{ t('invoicing.company_delete_desc') }}</p>
+          <button
+            type="button"
+            class="invoicing-btn-secondary border-red-400 text-red-800 hover:bg-red-100 mt-3"
+            @click="showDeleteModal = true"
+          >
+            {{ t('invoicing.company_delete_action') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="showDeleteModal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      role="dialog"
+      aria-modal="true"
+      @click.self="showDeleteModal = false"
+    >
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5 space-y-4">
+        <h3 class="text-lg font-semibold text-gray-900">{{ t('invoicing.company_delete_confirm_title') }}</h3>
+        <p class="text-sm text-gray-700">{{ t('invoicing.company_delete_confirm_desc') }}</p>
+        <div>
+          <label class="invoicing-sf-label">{{ t('invoicing.company_delete_confirm_label', { name: companyDisplayName }) }}</label>
+          <input v-model="deleteConfirmName" type="text" class="invoicing-sf-input" />
+        </div>
+        <p v-if="deleteError" class="text-sm text-red-600">{{ deleteError }}</p>
+        <div class="flex justify-end gap-3">
+          <button type="button" class="invoicing-btn-secondary" :disabled="deleting" @click="showDeleteModal = false">
+            {{ t('common.cancel') }}
+          </button>
+          <button
+            type="button"
+            class="invoicing-btn-primary bg-red-600 hover:bg-red-700 border-red-600"
+            :disabled="deleting || !deleteConfirmMatches"
+            @click="deleteCompanyProfile"
+          >
+            {{ deleting ? t('common.loading') : t('invoicing.company_delete_action') }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -438,11 +481,23 @@ import {
 const LOGO_MAX_BYTES = 100 * 1024;
 const SIGNATURE_MAX_BYTES = 100 * 1024;
 import { resetLocalCompanyData } from '../../evolu/companyResetLocal';
+import { deleteLocalCompany } from '../../evolu/companyDeleteLocal';
 import {
+  allBankImportBatchesQuery,
+  allBankTransactionMatchesQuery,
+  allBankTransactionsQuery,
+  allCompanyStockBalancesQuery,
+  allCompanyStockItemsQuery,
+  allCompanyStockMovementsQuery,
+  allCompanyWarehousesQuery,
   allContactsQuery,
   allDocumentEventsQuery,
+  allDocumentLinesQuery,
   allDocumentsQuery,
+  allExpensesQuery,
   allNumberSeriesQuery,
+  allRecurringProfileLinesQuery,
+  allRecurringProfilesQuery,
 } from '../../evolu/client';
 
 const props = defineProps<{
@@ -475,6 +530,10 @@ const showResetModal = ref(false);
 const resetConfirmName = ref('');
 const resetting = ref(false);
 const resetError = ref('');
+const showDeleteModal = ref(false);
+const deleteConfirmName = ref('');
+const deleting = ref(false);
+const deleteError = ref('');
 const logoPreviewUrl = ref<string | null>(null);
 const signaturePreviewUrl = ref<string | null>(null);
 const vatStatus = ref<'none' | 'payer' | 'partial'>('none');
@@ -527,6 +586,13 @@ const companyDisplayName = computed(
 
 const resetConfirmMatches = computed(() => {
   const confirm = resetConfirmName.value.trim();
+  const legal = String(props.company?.legal_name ?? '').trim();
+  const trade = String(props.company?.trade_name ?? '').trim();
+  return confirm !== '' && (confirm === legal || confirm === trade);
+});
+
+const deleteConfirmMatches = computed(() => {
+  const confirm = deleteConfirmName.value.trim();
   const legal = String(props.company?.legal_name ?? '').trim();
   const trade = String(props.company?.trade_name ?? '').trim();
   return confirm !== '' && (confirm === legal || confirm === trade);
@@ -1039,6 +1105,48 @@ async function resetCompanyData() {
     resetError.value = e?.response?.data?.message || t('errors.generic');
   } finally {
     resetting.value = false;
+  }
+}
+
+async function loadLocalCompanyDeleteQueries(): Promise<void> {
+  if (!evolu) return;
+  await Promise.all([
+    evolu.loadQuery(allDocumentsQuery),
+    evolu.loadQuery(allDocumentLinesQuery),
+    evolu.loadQuery(allContactsQuery),
+    evolu.loadQuery(allNumberSeriesQuery),
+    evolu.loadQuery(allDocumentEventsQuery),
+    evolu.loadQuery(allExpensesQuery),
+    evolu.loadQuery(allRecurringProfilesQuery),
+    evolu.loadQuery(allRecurringProfileLinesQuery),
+    evolu.loadQuery(allCompanyWarehousesQuery),
+    evolu.loadQuery(allCompanyStockItemsQuery),
+    evolu.loadQuery(allCompanyStockBalancesQuery),
+    evolu.loadQuery(allCompanyStockMovementsQuery),
+    evolu.loadQuery(allBankImportBatchesQuery),
+    evolu.loadQuery(allBankTransactionsQuery),
+    evolu.loadQuery(allBankTransactionMatchesQuery),
+  ]);
+}
+
+async function deleteCompanyProfile() {
+  if (!deleteConfirmMatches.value) return;
+  deleting.value = true;
+  deleteError.value = '';
+  try {
+    if (localFirst.value && evolu) {
+      await loadLocalCompanyDeleteQueries();
+      deleteLocalCompany(evolu, asCompanyId(props.companyId));
+    } else {
+      await api.delete(`/invoicing/companies/${props.companyId}`);
+    }
+    showDeleteModal.value = false;
+    deleteConfirmName.value = '';
+    await router.push({ name: 'invoicing' });
+  } catch (e: any) {
+    deleteError.value = e?.response?.data?.message || t('errors.generic');
+  } finally {
+    deleting.value = false;
   }
 }
 </script>

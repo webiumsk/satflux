@@ -92,8 +92,8 @@ export async function initEvoluFromAccountSeedIfNeeded(
     mnemonic: string,
 ): Promise<EvoluAccountSeedInitResult> {
     const evoluMnemonic = deriveEvoluOwnerMnemonic(mnemonic);
-    const { evolu, allCompaniesQuery } = await import("@/evolu/client");
-    const { isEvoluRelaySyncPending, markEvoluRelaySyncPending, clearEvoluRelaySyncPending, waitForInvoicingRelayData } =
+    const { evolu } = await import("@/evolu/client");
+    const { isEvoluRelaySyncPending, markEvoluRelaySyncPending, waitForInvoicingRelaySync } =
         await import("@/evolu/relaySyncWait");
     const { restoreInvoicingSnapshot, snapshotHasInvoicingData, snapshotInvoicingData } =
         await import("@/evolu/invoicingSnapshot");
@@ -101,12 +101,8 @@ export async function initEvoluFromAccountSeedIfNeeded(
     const owner = await evolu.appOwner;
     if (isTargetEvoluOwner(owner.mnemonic, mnemonic)) {
         if (isEvoluRelaySyncPending()) {
-            const companies = await evolu.loadQuery(allCompaniesQuery);
-            if (companies.length === 0) {
-                const synced = await waitForInvoicingRelayData(evolu);
-                return synced ? "relay_synced" : "already_synced";
-            }
-            clearEvoluRelaySyncPending();
+            const synced = await waitForInvoicingRelaySync(evolu);
+            return synced ? "relay_synced" : "already_synced";
         }
         return "already_synced";
     }

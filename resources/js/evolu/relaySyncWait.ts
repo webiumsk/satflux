@@ -22,24 +22,60 @@ function sleep(ms: number): Promise<void> {
     });
 }
 
-/** Poll local Evolu DB until companies appear (relay pull) or timeout. */
-export async function waitForInvoicingRelayData(
+export type WaitForInvoicingRelaySyncOptions = {
+    timeoutMs?: number;
+    pollMs?: number;
+    /** Consecutive polls with unchanged company count before treating sync as settled. */
+    stablePolls?: number;
+    /** Minimum wait after restore so relay can push remote rows even when local DB is non-empty. */
+    minWaitMs?: number;
+};
+
+/**
+ * Poll local Evolu DB until company count stabilizes (relay merge finished) or timeout.
+ * Used after phrase restore / legacy owner migration so all browsers converge before UI actions.
+ */
+export async function waitForInvoicingRelaySync(
     evolu: Evolu<InvoicingLocalSchema>,
-    options?: { timeoutMs?: number; pollMs?: number },
+    options?: WaitForInvoicingRelaySyncOptions,
 ): Promise<boolean> {
     const timeoutMs = options?.timeoutMs ?? 45_000;
     const pollMs = options?.pollMs ?? 750;
+    const stablePolls = options?.stablePolls ?? 4;
+    const minWaitMs = options?.minWaitMs ?? 5_000;
     const deadline = Date.now() + timeoutMs;
+    const startedAt = Date.now();
+
+    let lastCount = -1;
+    let stable = 0;
 
     while (Date.now() < deadline) {
         const companies = await evolu.loadQuery(allCompaniesQuery);
-        if (companies.length > 0) {
-            clearEvoluRelaySyncPending();
-            return true;
+        const count = companies.length;
+
+        if (count === lastCount) {
+            stable += 1;
+            const elapsed = Date.now() - startedAt;
+            if (stable >= stablePolls && elapsed >= minWaitMs) {
+                clearEvoluRelaySyncPending();
+                return count > 0;
+            }
+        } else {
+            lastCount = count;
+            stable = 0;
         }
+
         await sleep(pollMs);
     }
 
     clearEvoluRelaySyncPending();
-    return false;
+    return lastCount > 0;
+}
+
+/** @deprecated Use waitForInvoicingRelaySync - kept for imports that expect the old name. */
+export async function waitForInvoicingRelayData(
+    evolu: Evolu<InvoicingLocalSchema>,
+    options?: WaitForInvoicingRelaySyncOptions,
+): Promise<boolean> {
+    return waitForInvoicingRelaySync(evolu, options);
 }

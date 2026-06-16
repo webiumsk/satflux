@@ -4,6 +4,11 @@
       <RouterLink :to="{ name: 'invoicing' }" class="invoicing-back">← {{ t('invoicing.title') }}</RouterLink>
     </template>
 
+    <div v-if="localFirst && isRelaySyncing" class="invoicing-alert-warn mb-4">
+      <p class="text-sm font-medium">{{ t('invoicing.relay_sync_loading') }}</p>
+      <p class="text-sm mt-2 opacity-90">{{ t('invoicing.relay_sync_wait_detail') }}</p>
+    </div>
+
     <form class="invoicing-card-pad space-y-6" @submit.prevent="save">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
@@ -166,7 +171,7 @@
       </label>
 
       <div class="flex flex-wrap gap-3 pt-2">
-        <button type="submit" class="invoicing-btn-primary" :disabled="saving">
+        <button type="submit" class="invoicing-btn-primary" :disabled="saving || isRelaySyncing">
           {{ t('common.save') }}
         </button>
         <RouterLink :to="{ name: 'invoicing' }" class="invoicing-btn-secondary">
@@ -204,9 +209,11 @@ import {
   type RegistrySummary,
 } from '../../composables/useCompanyRegistryLookup';
 import api from '../../services/api';
+import { useInvoicingRelaySync } from '../../composables/useInvoicingRelaySync';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
-import { useInvoicingEvolu } from '../../evolu/client';
+import { useInvoicingEvolu, allCompaniesQuery } from '../../evolu/client';
 import { insertLocalCompanyFromPayload } from '../../evolu/companyInsert';
+import { normalizeCompanyIdentityKey } from '../../evolu/duplicateCompanies';
 import { seedDefaultNumberSeries, localizedDefaultSeries } from '../../evolu/numberSeriesCrud';
 import { useStoresStore } from '../../store/stores';
 
@@ -215,6 +222,7 @@ const router = useRouter();
 const storesStore = useStoresStore();
 const saving = ref(false);
 const localFirst = isInvoicingLocalFirst();
+const { isRelaySyncing } = useInvoicingRelaySync();
 const evolu = localFirst ? useInvoicingEvolu() : null;
 
 const form = reactive({
@@ -381,6 +389,10 @@ onMounted(async () => {
 });
 
 async function save() {
+  if (localFirst && isRelaySyncing.value) {
+    window.alert(t('invoicing.relay_sync_wait_hint'));
+    return;
+  }
   saving.value = true;
   try {
     const payload = {
@@ -411,6 +423,16 @@ async function save() {
     };
 
     if (localFirst && evolu) {
+      const existing = await evolu.loadQuery(allCompaniesQuery);
+      const identityKey = normalizeCompanyIdentityKey(payload.legal_name);
+      const duplicate = existing.some(
+        (row) => normalizeCompanyIdentityKey(row.legalName) === identityKey,
+      );
+      if (duplicate) {
+        window.alert(t('invoicing.duplicate_company_blocked'));
+        return;
+      }
+
       const result = insertLocalCompanyFromPayload(evolu, payload);
       if (!result.ok) {
         window.alert(t('invoicing.company_save_validation_error'));

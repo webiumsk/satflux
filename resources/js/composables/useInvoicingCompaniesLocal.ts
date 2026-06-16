@@ -5,7 +5,7 @@ import {
     allDocumentsQuery,
     useInvoicingEvolu,
 } from "@/evolu/client";
-import { isEvoluRelaySyncPending, waitForInvoicingRelayData } from "@/evolu/relaySyncWait";
+import { isEvoluRelaySyncPending, waitForInvoicingRelaySync } from "@/evolu/relaySyncWait";
 import type { CompanyId } from "@/evolu/schema";
 import type { InvoicingCompanyListItem, UseInvoicingCompaniesResult } from "./useInvoicingCompanies";
 
@@ -39,14 +39,11 @@ export function useLocalInvoicingCompanies(): UseInvoicingCompaniesResult {
         try {
             await Promise.all([companiesPromise, documentsPromise]);
             if (isEvoluRelaySyncPending()) {
-                const companies = await evolu.loadQuery(allCompaniesQuery);
-                if (companies.length === 0) {
-                    await waitForInvoicingRelayData(evolu);
-                    await Promise.all([
-                        evolu.loadQuery(allCompaniesQuery),
-                        evolu.loadQuery(allDocumentsQuery),
-                    ]);
-                }
+                await waitForInvoicingRelaySync(evolu);
+                await Promise.all([
+                    evolu.loadQuery(allCompaniesQuery),
+                    evolu.loadQuery(allDocumentsQuery),
+                ]);
             }
         } finally {
             loading.value = false;

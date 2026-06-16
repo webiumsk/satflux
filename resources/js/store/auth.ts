@@ -110,6 +110,8 @@ export const useAuthStore = defineStore('auth', () => {
             });
             user.value = response.data.user;
             await syncAccountSeedAfterAuth(mnemonic);
+            const storesStore = useStoresStore();
+            await storesStore.fetchStores();
         } catch {
             // Keep user unauthenticated when auto-restore fails; manual restore remains available.
         } finally {
@@ -210,6 +212,8 @@ export const useAuthStore = defineStore('auth', () => {
             });
             user.value = response.data.user;
             await syncAccountSeedAfterAuth(mnemonic);
+            const storesStore = useStoresStore();
+            await storesStore.fetchStores();
             return response.data;
         } finally {
             loading.value = false;
