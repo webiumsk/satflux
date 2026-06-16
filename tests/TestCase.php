@@ -18,6 +18,15 @@ abstract class TestCase extends BaseTestCase
         $_ENV['REDIS_CLIENT'] = 'array';
         putenv('REDIS_CLIENT=array');
 
+        // CI copies .env.example with seed-first enabled; PHPUnit env should win,
+        // but force these before bootstrap so register/compliance tests stay stable.
+        $_ENV['SEED_FIRST_REGISTRATION'] = 'false';
+        putenv('SEED_FIRST_REGISTRATION=false');
+        $_ENV['COMPLIANCE_SCREENING_ENABLED'] = 'false';
+        putenv('COMPLIANCE_SCREENING_ENABLED=false');
+        $_ENV['COMPLIANCE_LIST_SCREENING_ENABLED'] = 'false';
+        putenv('COMPLIANCE_LIST_SCREENING_ENABLED=false');
+
         $app = require __DIR__.'/../bootstrap/app.php';
 
         $kernel = $app->make(\Illuminate\Contracts\Console\Kernel::class);
@@ -30,6 +39,7 @@ abstract class TestCase extends BaseTestCase
         // Default to compliance disabled in the shared test environment.
         // Individual compliance test suites explicitly enable it.
         config(['compliance.enabled' => false]);
+        config(['guest.seed_first_registration' => false]);
 
         // Override RateLimiter AFTER bootstrap to use array cache
         // This prevents Redis connection attempts during rate limiting
