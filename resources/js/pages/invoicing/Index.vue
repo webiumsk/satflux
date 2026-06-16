@@ -39,7 +39,28 @@
       </ul>
     </div>
 
-    <p v-if="localFirst" class="text-sm text-gray-600 mb-4">
+    <div v-if="localFirst && showServerMigration" class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-4 mb-4">
+      <p class="text-sm font-medium text-amber-950">{{ t('invoicing.server_migration_title') }}</p>
+      <p class="text-sm text-amber-900 mt-2">{{ t('invoicing.server_migration_detail') }}</p>
+      <p v-if="migrationStatus" class="text-xs text-amber-800 mt-2">
+        {{ t('invoicing.server_migration_counts', {
+          companies: migrationStatus.companies_count,
+          documents: migrationStatus.documents_count,
+          contacts: migrationStatus.contacts_count,
+          expenses: migrationStatus.expenses_count,
+        }) }}
+      </p>
+      <button
+        type="button"
+        class="invoicing-btn-primary mt-3"
+        :disabled="migrationImporting || isRelaySyncing"
+        @click="runServerMigration"
+      >
+        {{ migrationImporting ? t('invoicing.server_migration_importing') : t('invoicing.server_migration_import') }}
+      </button>
+    </div>
+
+    <p v-if="localFirst && !showServerMigration" class="text-sm text-gray-600 mb-4">
       {{ t('invoicing.local_first_data_notice') }}
       <router-link to="/legal/privacy" class="invoicing-link">{{ t('legal.nav.privacy') }}</router-link>.
     </p>
@@ -58,11 +79,11 @@
 
     <div v-else-if="companyList.length === 0" class="invoicing-card-pad text-center">
       <p class="text-gray-700">{{ t('invoicing.no_companies') }}</p>
-      <p v-if="localFirst" class="text-sm text-gray-500 mt-3 max-w-md mx-auto">
+      <p v-if="localFirst && !showServerMigration" class="text-sm text-gray-500 mt-3 max-w-md mx-auto">
         {{ isRelaySyncing ? t('invoicing.relay_sync_empty_hint') : t('invoicing.no_companies_restore_hint') }}
       </p>
       <button
-        v-if="canCreateCompany"
+        v-if="canCreateCompany && !showServerMigration"
         type="button"
         class="invoicing-btn-primary mt-4"
         :disabled="isRelaySyncing"
@@ -93,7 +114,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, unref, watch } from 'vue';
+import { computed, onMounted, ref, unref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
@@ -101,24 +122,39 @@ import { useBusinessInvoicing } from '../../composables/useBusinessInvoicing';
 import { useInvoicingCompanies } from '../../composables/useInvoicingCompanies';
 import type { InvoicingCompanyListItem } from '../../composables/useInvoicingCompanies';
 import { useInvoicingRelaySync } from '@/composables/useInvoicingRelaySync';
+import { useLocalStoreSanitizer } from '@/composables/useLocalStoreSanitizer';
+import { useInvoicingEvolu } from '@/evolu/client';
 import { isEvoluRelaySyncPending } from '@/evolu/relaySyncWait';
+import {
+  fetchServerMigrationStatus,
+  importServerInvoicingToEvolu,
+  isServerMigrationCompleted,
+  type ServerMigrationStatus,
+} from '@/evolu/serverMigration';
 import { findDuplicateCompanyGroups } from '@/evolu/duplicateCompanies';
 import { useAuthStore } from '../../store/auth';
+import { useFlashStore } from '@/store/flash';
 import UpgradeModal from '../../components/stores/UpgradeModal.vue';
 
 const { t } = useI18n();
 const router = useRouter();
 const authStore = useAuthStore();
+const flashStore = useFlashStore();
 const { canUse } = useBusinessInvoicing();
 const { isRelaySyncing, localFirst } = useInvoicingRelaySync();
+const evolu = useInvoicingEvolu();
+const { ensureStoresLoaded } = useLocalStoreSanitizer();
 
 const {
   companies,
   loading,
   forbidden,
+  refresh,
 } = useInvoicingCompanies();
 
 const showUpgrade = ref(false);
+const migrationStatus = ref<ServerMigrationStatus | null>(null);
+const migrationImporting = ref(false);
 
 const relaySyncLoading = computed(() => localFirst && isEvoluRelaySyncPending() && loading.value);
 
@@ -127,6 +163,52 @@ watch(forbidden, (isForbidden) => {
 });
 
 const companyList = computed(() => unref(companies));
+
+const showServerMigration = computed(() => {
+  if (!localFirst || loading.value || isRelaySyncing.value) return false;
+  if (companyList.value.length > 0) return false;
+  if (isServerMigrationCompleted()) return false;
+  return migrationStatus.value?.available === true;
+});
+
+async function loadMigrationStatus(): Promise<void> {
+  if (!localFirst || isServerMigrationCompleted()) return;
+  try {
+    migrationStatus.value = await fetchServerMigrationStatus();
+  } catch {
+    migrationStatus.value = null;
+  }
+}
+
+async function runServerMigration(): Promise<void> {
+  if (migrationImporting.value) return;
+  migrationImporting.value = true;
+  try {
+    const validStoreIds = await ensureStoresLoaded();
+    const result = await importServerInvoicingToEvolu(evolu, validStoreIds);
+    const companiesCount = result.counts.company ?? migrationStatus.value?.companies_count ?? 0;
+    flashStore.success(t('invoicing.server_migration_success', { companies: companiesCount }));
+    if (result.warnings.length > 0) {
+      flashStore.warning(t('invoicing.server_migration_warnings'));
+    }
+    migrationStatus.value = null;
+    await refresh();
+  } catch {
+    flashStore.error(t('invoicing.server_migration_error'));
+  } finally {
+    migrationImporting.value = false;
+  }
+}
+
+onMounted(() => {
+  void loadMigrationStatus();
+});
+
+watch(companyList, (list) => {
+  if (localFirst && list.length === 0 && !isServerMigrationCompleted()) {
+    void loadMigrationStatus();
+  }
+});
 
 const duplicateCompanyNames = computed(() => {
   if (!localFirst) return [];

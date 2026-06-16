@@ -25,10 +25,20 @@ The frontend flag is **global** (baked into the Vite bundle). There is no per-us
 
 Users who already have companies and documents **only in PostgreSQL** will see an **empty** Invoicing module after rollout until they:
 
+- use **Import from server** on `/invoicing` (one-time PG → Evolu import in the browser), or
 - restore the same Satflux recovery phrase on a device that already had Evolu data, or
 - create new local companies from scratch.
 
-There is **no automatic migration** from server `companies` / `business_documents` into Evolu. Plan communication if production already has paying Pro merchants on server invoicing.
+Server rows are **not deleted** by the import. After verifying local data, users can remove legacy companies under **Profile → Server companies**.
+
+### Migration API (Pro, authenticated)
+
+| Endpoint | Purpose |
+| -------- | ------- |
+| `GET /api/invoicing/migration/status` | Counts of server-side companies/contacts/documents/expenses |
+| `GET /api/invoicing/migration/export` | Full `InvoicingDataSnapshot` JSON for browser `restoreInvoicingSnapshot` (throttled 5/hour) |
+
+CLI for support: `php artisan invoicing:export-for-evolu {email}` writes JSON to `storage/app/private/`.
 
 ### 2. Plan and onboarding model
 

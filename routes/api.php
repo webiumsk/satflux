@@ -35,6 +35,7 @@ use App\Http\Controllers\Invoicing\CompanyStockItemController;
 use App\Http\Controllers\Invoicing\CompanyWarehouseController;
 use App\Http\Controllers\Invoicing\EphemeralBusinessDocumentController;
 use App\Http\Controllers\Invoicing\IntegrationDocumentInboxController;
+use App\Http\Controllers\Invoicing\InvoicingMigrationController;
 use App\Http\Controllers\Invoicing\StoreDocumentSequenceController;
 use App\Http\Controllers\Invoicing\UsSalesTaxController;
 use App\Http\Controllers\Invoicing\ViesValidationController;
@@ -330,6 +331,9 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             });
 
             Route::get('/companies', [CompanyController::class, 'index']);
+            Route::get('/migration/status', [InvoicingMigrationController::class, 'status']);
+            Route::get('/migration/export', [InvoicingMigrationController::class, 'export'])
+                ->middleware('throttle:5,60');
             Route::post('/ephemeral/pdf', [EphemeralBusinessDocumentController::class, 'pdfWithoutCompany']);
             Route::post('/ephemeral/email-preview', [EphemeralBusinessDocumentController::class, 'emailPreviewWithoutCompany']);
             Route::post('/ephemeral/send-email', [EphemeralBusinessDocumentController::class, 'sendEmailWithoutCompany']);
