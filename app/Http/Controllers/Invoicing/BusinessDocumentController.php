@@ -337,7 +337,10 @@ class BusinessDocumentController extends Controller
                 ]);
             }
 
-            $wasIssued = $locked->status === BusinessDocumentStatus::Issued;
+            $shouldReverseStock = in_array($locked->status, [
+                BusinessDocumentStatus::Issued,
+                BusinessDocumentStatus::Paid,
+            ], true);
 
             $locked->update([
                 'status' => BusinessDocumentStatus::Cancelled,
@@ -345,7 +348,7 @@ class BusinessDocumentController extends Controller
                 'amount_paid' => null,
             ]);
 
-            if ($wasIssued) {
+            if ($shouldReverseStock) {
                 $this->stockMovementService->reverseDocumentCancel($locked->fresh(['lines']));
             }
         });
@@ -584,11 +587,28 @@ class BusinessDocumentController extends Controller
             ]);
         }
 
-        $id = $businessDocument->id;
-        $number = $businessDocument->number;
-        $documentType = $businessDocument->type->value;
-        $businessDocument->lines()->delete();
-        $businessDocument->delete();
+        [$id, $number, $documentType] = DB::transaction(function () use ($businessDocument) {
+            $locked = BusinessDocument::query()
+                ->whereKey($businessDocument->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! $locked->canDelete()) {
+                throw ValidationException::withMessages([
+                    'status' => ['This document cannot be deleted. Cancel it first, or delete only the latest invoice without bank matches or linked documents.'],
+                ]);
+            }
+
+            $id = $locked->id;
+            $number = $locked->number;
+            $documentType = $locked->type->value;
+
+            $this->stockMovementService->reverseDocumentCancel($locked);
+            $locked->lines()->delete();
+            $locked->delete();
+
+            return [$id, $number, $documentType];
+        });
 
         $this->sequenceService->syncSeriesAfterDocumentChange($company, $documentType);
 

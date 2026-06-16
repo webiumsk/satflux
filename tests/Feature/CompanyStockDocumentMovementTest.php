@@ -117,6 +117,98 @@ class CompanyStockDocumentMovementTest extends TestCase
     }
 
     #[Test]
+    public function cancelling_paid_invoice_restores_stock(): void
+    {
+        $create = $this->actingAs($this->proUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents", [
+                'type' => 'invoice',
+                'currency' => 'EUR',
+                'lines' => [
+                    [
+                        'name' => 'Jablká',
+                        'quantity' => 3,
+                        'unit' => 'kg',
+                        'unit_price' => 1.5,
+                        'company_stock_item_id' => $this->stockItem->id,
+                    ],
+                ],
+            ]);
+        $create->assertCreated();
+        $documentId = $create->json('data.id');
+
+        $this->actingAs($this->proUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents/{$documentId}/issue")
+            ->assertOk();
+
+        $this->actingAs($this->proUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents/{$documentId}/mark-paid")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'paid');
+
+        $this->assertEquals(7.0, $this->stockQuantity($this->stockItem));
+
+        $this->actingAs($this->proUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents/{$documentId}/cancel")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'cancelled');
+
+        $this->assertEquals(10.0, $this->stockQuantity($this->stockItem));
+        $this->assertDatabaseHas('company_stock_item_movements', [
+            'company_stock_item_id' => $this->stockItem->id,
+            'business_document_id' => $documentId,
+            'source' => CompanyStockMovementSource::DocumentCancel->value,
+            'quantity_delta' => 3,
+        ]);
+    }
+
+    #[Test]
+    public function bulk_cancel_restores_stock_for_issued_and_paid_invoices(): void
+    {
+        $issuedId = $this->createIssuedStockInvoice(quantity: 2);
+        $paidId = $this->createIssuedStockInvoice(quantity: 3);
+
+        $this->actingAs($this->proUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents/{$paidId}/mark-paid")
+            ->assertOk();
+
+        $this->assertEquals(5.0, $this->stockQuantity($this->stockItem));
+
+        $this->actingAs($this->proUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents/bulk", [
+                'action' => 'cancel',
+                'document_ids' => [$issuedId, $paidId],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.processed', 2)
+            ->assertJsonPath('data.skipped', 0);
+
+        $this->assertEquals(10.0, $this->stockQuantity($this->stockItem));
+        foreach ([$issuedId => 2, $paidId => 3] as $documentId => $quantity) {
+            $this->assertDatabaseHas('company_stock_item_movements', [
+                'company_stock_item_id' => $this->stockItem->id,
+                'business_document_id' => $documentId,
+                'source' => CompanyStockMovementSource::DocumentCancel->value,
+                'quantity_delta' => $quantity,
+            ]);
+        }
+    }
+
+    #[Test]
+    public function deleting_issued_invoice_restores_stock_before_removing_document(): void
+    {
+        $documentId = $this->createIssuedStockInvoice(quantity: 3);
+
+        $this->assertEquals(7.0, $this->stockQuantity($this->stockItem));
+
+        $this->actingAs($this->proUser)
+            ->deleteJson("/api/invoicing/companies/{$this->company->id}/documents/{$documentId}")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('business_documents', ['id' => $documentId]);
+        $this->assertEquals(10.0, $this->stockQuantity($this->stockItem));
+    }
+
+    #[Test]
     public function issuing_credit_note_returns_stock(): void
     {
         app(\App\Services\Invoicing\CompanyStockBalanceService::class)
@@ -171,5 +263,31 @@ class CompanyStockDocumentMovementTest extends TestCase
         $issue->assertOk();
 
         $this->assertEquals(10.0, $this->stockQuantity($this->stockItem));
+    }
+
+    private function createIssuedStockInvoice(float $quantity): string
+    {
+        $create = $this->actingAs($this->proUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents", [
+                'type' => 'invoice',
+                'currency' => 'EUR',
+                'lines' => [
+                    [
+                        'name' => 'Jablká',
+                        'quantity' => $quantity,
+                        'unit' => 'kg',
+                        'unit_price' => 1.5,
+                        'company_stock_item_id' => $this->stockItem->id,
+                    ],
+                ],
+            ]);
+        $create->assertCreated();
+        $documentId = $create->json('data.id');
+
+        $this->actingAs($this->proUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents/{$documentId}/issue")
+            ->assertOk();
+
+        return $documentId;
     }
 }
