@@ -52,6 +52,27 @@ export class ServerMigrationError extends Error {
     }
 }
 
+const INFORMATIONAL_MIGRATION_WARNINGS = new Set([
+    "attachments_metadata_only",
+    "branding_skipped",
+]);
+
+/** True when export warnings mean real data loss the user should know about. */
+export function migrationWarningsNeedUserAttention(warnings: string[]): boolean {
+    return warnings.some((warning) => {
+        if (INFORMATIONAL_MIGRATION_WARNINGS.has(warning)) {
+            return false;
+        }
+
+        return (
+            warning.startsWith("attachment_")
+            || warning.startsWith("branding_")
+            || warning.startsWith("section_failed:")
+            || warning.startsWith("row_export_failed:")
+        );
+    });
+}
+
 export function isServerMigrationCompleted(): boolean {
     return localStorage.getItem(MIGRATION_COMPLETED_KEY) === "1";
 }

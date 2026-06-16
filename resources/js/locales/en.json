@@ -68,7 +68,7 @@
     "server_migration_counts": "{companies} companies, {documents} documents, {contacts} contacts, {expenses} expenses",
     "server_migration_import": "Import from server",
     "server_migration_importing": "Importing…",
-    "server_migration_success": "Import complete ({companies} companies). Server rows remain - delete them in Profile after you verify.",
+    "server_migration_success": "Import complete ({companies} companies). Server rows remain - delete them in Profile after you verify. Logos and PDF attachments were not copied in this step - re-upload them in company settings if needed.",
     "server_migration_warnings": "Some attachments or images could not be copied (size limit).",
     "server_migration_error": "Server import failed. Try again or contact support.",
     "server_migration_error_export": "Could not download data from the server. Try again in a moment.",

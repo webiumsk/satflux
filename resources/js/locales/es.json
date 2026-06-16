@@ -2226,7 +2226,7 @@
     "server_migration_counts": "{companies} empresas, {documents} documentos, {contacts} contactos, {expenses} gastos",
     "server_migration_import": "Importar del servidor",
     "server_migration_importing": "Importando…",
-    "server_migration_success": "Importación completada ({companies} empresas). Los registros del servidor permanecen; elimínelos en Perfil tras verificar.",
+    "server_migration_success": "Importación completada ({companies} empresas). Los registros del servidor permanecen; elimínelos en Perfil tras verificar. Los logotipos y adjuntos PDF no se copiaron en este paso; vuelva a subirlos en la configuración de la empresa si hace falta.",
     "server_migration_warnings": "Algunos adjuntos o imágenes no se pudieron copiar (límite de tamaño).",
     "server_migration_error": "La importación del servidor falló. Inténtelo de nuevo o contacte con soporte.",
     "server_migration_error_export": "No se pudieron descargar los datos del servidor. Inténtelo de nuevo en un momento.",

@@ -129,6 +129,7 @@ import {
   fetchServerMigrationStatus,
   importServerInvoicingToEvolu,
   isServerMigrationCompleted,
+  migrationWarningsNeedUserAttention,
   serverMigrationErrorMessage,
   type ServerMigrationStatus,
 } from '@/evolu/serverMigration';
@@ -189,7 +190,7 @@ async function runServerMigration(): Promise<void> {
     const result = await importServerInvoicingToEvolu(evolu, validStoreIds);
     const companiesCount = result.counts.company ?? migrationStatus.value?.companies_count ?? 0;
     flashStore.success(t('invoicing.server_migration_success', { companies: companiesCount }));
-    if (result.warnings.length > 0) {
+    if (migrationWarningsNeedUserAttention(result.warnings)) {
       flashStore.warning(t('invoicing.server_migration_warnings'));
     }
     migrationStatus.value = null;
