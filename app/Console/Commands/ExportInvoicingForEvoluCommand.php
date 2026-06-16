@@ -30,6 +30,7 @@ class ExportInvoicingForEvoluCommand extends Command
 
         $result = $exportService->exportForUser($user, [
             'include_attachment_content' => true,
+            'include_branding' => true,
         ]);
         $companies = $result['counts']['company'] ?? 0;
 

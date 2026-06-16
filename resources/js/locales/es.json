@@ -2231,6 +2231,7 @@
     "server_migration_error": "La importación del servidor falló. Inténtelo de nuevo o contacte con soporte.",
     "server_migration_error_export": "No se pudieron descargar los datos del servidor. Inténtelo de nuevo en un momento.",
     "server_migration_error_server": "El servidor falló al exportar los datos de facturación. Inténtelo de nuevo en un minuto.",
+    "server_migration_error_server_id": "El servidor falló al exportar los datos de facturación. Código de error: {id}",
     "server_migration_error_throttled": "La exportación está limitada temporalmente (5 por hora). Espere e inténtelo de nuevo.",
     "server_migration_error_empty": "El servidor no devolvió datos de facturación para importar.",
     "server_migration_error_upsert": "No se pudieron escribir los datos en Evolu. Actualice la página e inténtelo de nuevo.",

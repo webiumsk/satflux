@@ -39,6 +39,8 @@ class ServerToEvoluMigrationExportService
 
     private bool $includeAttachmentContent = true;
 
+    private bool $includeBranding = true;
+
     public function __construct(
         private readonly CompanyBrandingService $brandingService,
     ) {}
@@ -55,6 +57,7 @@ class ServerToEvoluMigrationExportService
     {
         $this->warnings = [];
         $this->includeAttachmentContent = (bool) ($options['include_attachment_content'] ?? true);
+        $this->includeBranding = (bool) ($options['include_branding'] ?? true);
 
         $companies = Company::query()
             ->where('user_id', $user->id)
@@ -89,68 +92,70 @@ class ServerToEvoluMigrationExportService
         ];
 
         foreach ($companies as $company) {
-            $snapshot['company'][] = $this->mapCompany($company);
+            $this->pushMappedRow($snapshot, 'company', fn () => $this->mapCompany($company), $company->id);
         }
 
-        $contacts = CompanyContact::query()
+        $contacts = $this->loadCollection('contact', fn () => CompanyContact::query()
             ->whereIn('company_id', $companyIds)
             ->orderBy('name')
-            ->get();
+            ->get());
         foreach ($contacts as $contact) {
-            $snapshot['contact'][] = $this->mapContact($contact);
+            $this->pushMappedRow($snapshot, 'contact', fn () => $this->mapContact($contact), $contact->id);
         }
 
-        $sequences = CompanyDocumentSequence::query()
+        $sequences = $this->loadCollection('numberSeries', fn () => CompanyDocumentSequence::query()
             ->whereIn('company_id', $companyIds)
             ->orderBy('document_type')
             ->orderBy('name')
-            ->get();
+            ->get());
         foreach ($sequences as $sequence) {
-            $snapshot['numberSeries'][] = $this->mapNumberSeries($sequence);
+            $this->pushMappedRow($snapshot, 'numberSeries', fn () => $this->mapNumberSeries($sequence), (string) $sequence->id);
         }
 
-        $documents = BusinessDocument::query()
+        $documents = $this->loadCollection('document', fn () => BusinessDocument::query()
             ->whereIn('company_id', $companyIds)
             ->orderBy('issue_date')
             ->orderBy('number')
-            ->get();
+            ->get());
         foreach ($documents as $document) {
-            $snapshot['document'][] = $this->mapDocument($document);
+            $this->pushMappedRow($snapshot, 'document', fn () => $this->mapDocument($document), $document->id);
         }
 
         $documentIds = $documents->pluck('id')->all();
         if ($documentIds !== []) {
-            $lines = BusinessDocumentLine::query()
+            $lines = $this->loadCollection('documentLine', fn () => BusinessDocumentLine::query()
                 ->whereIn('business_document_id', $documentIds)
                 ->orderBy('sort_order')
-                ->get();
+                ->get());
             foreach ($lines as $line) {
-                $snapshot['documentLine'][] = $this->mapDocumentLine($line);
+                $this->pushMappedRow($snapshot, 'documentLine', fn () => $this->mapDocumentLine($line), $line->id);
             }
         }
 
-        $expenses = BusinessExpense::query()
+        $expenses = $this->loadCollection('expense', fn () => BusinessExpense::query()
             ->whereIn('company_id', $companyIds)
             ->orderBy('issue_date')
             ->orderBy('internal_number')
-            ->get();
+            ->get());
         foreach ($expenses as $expense) {
-            $snapshot['expense'][] = $this->mapExpense($expense);
+            $this->pushMappedRow($snapshot, 'expense', fn () => $this->mapExpense($expense), $expense->id);
         }
 
         $expenseIds = $expenses->pluck('id')->all();
         $expensesWithRowAttachments = [];
         if ($expenseIds !== []) {
-            $attachments = BusinessExpenseAttachment::query()
+            $attachments = $this->loadCollection('expenseAttachment', fn () => BusinessExpenseAttachment::query()
                 ->whereIn('business_expense_id', $expenseIds)
                 ->orderBy('created_at')
-                ->get();
+                ->get());
             foreach ($attachments as $attachment) {
                 $expensesWithRowAttachments[$attachment->business_expense_id] = true;
-                $mapped = $this->mapExpenseAttachment($attachment);
-                if ($mapped !== null) {
-                    $snapshot['expenseAttachment'][] = $mapped;
-                }
+                $this->pushMappedRow(
+                    $snapshot,
+                    'expenseAttachment',
+                    fn () => $this->mapExpenseAttachment($attachment),
+                    $attachment->id,
+                );
             }
         }
 
@@ -158,97 +163,105 @@ class ServerToEvoluMigrationExportService
             if (isset($expensesWithRowAttachments[$expense->id])) {
                 continue;
             }
-            $mappedLegacy = $this->mapLegacyExpenseAttachment($expense);
-            if ($mappedLegacy !== null) {
-                $snapshot['expenseAttachment'][] = $mappedLegacy;
-            }
+            $this->pushMappedRow(
+                $snapshot,
+                'expenseAttachment',
+                fn () => $this->mapLegacyExpenseAttachment($expense),
+                $expense->id,
+            );
         }
 
-        $profiles = BusinessRecurringProfile::query()
+        $profiles = $this->loadCollection('recurringProfile', fn () => BusinessRecurringProfile::query()
             ->whereIn('company_id', $companyIds)
             ->orderBy('title')
-            ->get();
+            ->get());
         foreach ($profiles as $profile) {
-            $snapshot['recurringProfile'][] = $this->mapRecurringProfile($profile);
+            $this->pushMappedRow($snapshot, 'recurringProfile', fn () => $this->mapRecurringProfile($profile), $profile->id);
         }
 
         $profileIds = $profiles->pluck('id')->all();
         if ($profileIds !== []) {
-            $profileLines = BusinessRecurringProfileLine::query()
+            $profileLines = $this->loadCollection('recurringProfileLine', fn () => BusinessRecurringProfileLine::query()
                 ->whereIn('business_recurring_profile_id', $profileIds)
                 ->orderBy('sort_order')
-                ->get();
+                ->get());
             foreach ($profileLines as $line) {
-                $snapshot['recurringProfileLine'][] = $this->mapRecurringProfileLine($line);
+                $this->pushMappedRow(
+                    $snapshot,
+                    'recurringProfileLine',
+                    fn () => $this->mapRecurringProfileLine($line),
+                    (string) $line->id,
+                );
             }
         }
 
-        $warehouses = CompanyWarehouse::query()
+        $warehouses = $this->loadCollection('companyWarehouse', fn () => CompanyWarehouse::query()
             ->whereIn('company_id', $companyIds)
             ->orderBy('name')
-            ->get();
+            ->get());
         foreach ($warehouses as $warehouse) {
-            $snapshot['companyWarehouse'][] = $this->mapWarehouse($warehouse);
+            $this->pushMappedRow($snapshot, 'companyWarehouse', fn () => $this->mapWarehouse($warehouse), $warehouse->id);
         }
 
         $warehouseIds = $warehouses->pluck('id')->all();
-        $stockItems = CompanyStockItem::query()
+        $stockItems = $this->loadCollection('companyStockItem', fn () => CompanyStockItem::query()
             ->whereIn('company_id', $companyIds)
             ->orderBy('name')
-            ->get();
+            ->get());
         foreach ($stockItems as $item) {
-            $snapshot['companyStockItem'][] = $this->mapStockItem($item);
+            $this->pushMappedRow($snapshot, 'companyStockItem', fn () => $this->mapStockItem($item), $item->id);
         }
 
         if ($warehouseIds !== []) {
-            $balances = CompanyStockBalance::query()
+            $balances = $this->loadCollection('companyStockBalance', fn () => CompanyStockBalance::query()
                 ->whereIn('company_warehouse_id', $warehouseIds)
                 ->with('warehouse:id,company_id')
-                ->get();
+                ->get());
             foreach ($balances as $balance) {
-                $mapped = $this->mapStockBalance($balance);
-                if ($mapped !== null) {
-                    $snapshot['companyStockBalance'][] = $mapped;
-                }
+                $this->pushMappedRow($snapshot, 'companyStockBalance', fn () => $this->mapStockBalance($balance), $balance->id);
             }
         }
 
-        $movements = CompanyStockItemMovement::query()
+        $movements = $this->loadCollection('companyStockMovement', fn () => CompanyStockItemMovement::query()
             ->whereIn('company_id', $companyIds)
             ->orderBy('created_at')
-            ->get();
+            ->get());
         foreach ($movements as $movement) {
-            $snapshot['companyStockMovement'][] = $this->mapStockMovement($movement);
+            $this->pushMappedRow($snapshot, 'companyStockMovement', fn () => $this->mapStockMovement($movement), $movement->id);
         }
 
-        $batches = BankImportBatch::query()
+        $batches = $this->loadCollection('bankImportBatch', fn () => BankImportBatch::query()
             ->whereIn('company_id', $companyIds)
             ->orderBy('created_at')
-            ->get();
+            ->get());
         foreach ($batches as $batch) {
-            $snapshot['bankImportBatch'][] = $this->mapBankImportBatch($batch);
+            $this->pushMappedRow($snapshot, 'bankImportBatch', fn () => $this->mapBankImportBatch($batch), $batch->id);
         }
 
-        $transactions = BankTransaction::query()
+        $transactions = $this->loadCollection('bankTransaction', fn () => BankTransaction::query()
             ->whereIn('company_id', $companyIds)
             ->orderBy('booked_at')
-            ->get();
+            ->get());
         foreach ($transactions as $transaction) {
-            $snapshot['bankTransaction'][] = $this->mapBankTransaction($transaction);
+            $this->pushMappedRow($snapshot, 'bankTransaction', fn () => $this->mapBankTransaction($transaction), $transaction->id);
         }
 
         $transactionIds = $transactions->pluck('id')->all();
         if ($transactionIds !== []) {
-            $matches = BankTransactionMatch::query()
+            $matches = $this->loadCollection('bankTransactionMatch', fn () => BankTransactionMatch::query()
                 ->whereIn('bank_transaction_id', $transactionIds)
-                ->get();
+                ->get());
             foreach ($matches as $match) {
-                $snapshot['bankTransactionMatch'][] = $this->mapBankTransactionMatch($match);
+                $this->pushMappedRow($snapshot, 'bankTransactionMatch', fn () => $this->mapBankTransactionMatch($match), $match->id);
             }
         }
 
         if (! $this->includeAttachmentContent) {
             $this->warnings[] = 'attachments_metadata_only';
+        }
+
+        if (! $this->includeBranding) {
+            $this->warnings[] = 'branding_skipped';
         }
 
         return [
@@ -345,20 +358,82 @@ class ServerToEvoluMigrationExportService
     }
 
     /**
+     * @param  callable(): \Illuminate\Support\Collection<int, mixed>  $callback
+     * @return \Illuminate\Support\Collection<int, mixed>
+     */
+    private function loadCollection(string $section, callable $callback): \Illuminate\Support\Collection
+    {
+        try {
+            return $callback();
+        } catch (Throwable $e) {
+            $this->warnings[] = "section_failed:{$section}:".$e->getMessage();
+
+            return collect();
+        }
+    }
+
+    /**
+     * @param  callable(): array<string, mixed>|null  $mapper
+     */
+    private function pushMappedRow(array &$snapshot, string $table, callable $mapper, string $rowId): void
+    {
+        try {
+            $mapped = $mapper();
+            if ($mapped !== null) {
+                $snapshot[$table][] = $mapped;
+            }
+        } catch (Throwable $e) {
+            $this->warnings[] = "row_export_failed:{$table}:{$rowId}:".$e->getMessage();
+        }
+    }
+
+    private function enumValue(mixed $enum, ?string $default = null): ?string
+    {
+        if ($enum instanceof \BackedEnum) {
+            return $enum->value;
+        }
+
+        if (is_string($enum) && $enum !== '') {
+            return $enum;
+        }
+
+        return $default;
+    }
+
+    private function utf8Safe(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (mb_check_encoding($value, 'UTF-8')) {
+            return $value;
+        }
+
+        $converted = @iconv('UTF-8', 'UTF-8//IGNORE', $value);
+
+        return $converted === false ? null : $converted;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function mapCompany(Company $company): array
     {
         $linkedStoreId = $company->stores->first()?->id;
 
-        $logoDataUrl = $this->brandingDataUrl($company->logo_path, 'logo', $company->legal_name);
-        $signatureDataUrl = $this->brandingDataUrl($company->signature_stamp_path, 'signature', $company->legal_name);
+        $logoDataUrl = $this->includeBranding
+            ? $this->brandingDataUrl($company->logo_path, 'logo', $company->legal_name)
+            : null;
+        $signatureDataUrl = $this->includeBranding
+            ? $this->brandingDataUrl($company->signature_stamp_path, 'signature', $company->legal_name)
+            : null;
 
         return [
             'id' => $company->id,
-            'legalName' => $company->legal_name,
-            'tradeName' => $company->trade_name,
-            'jurisdiction' => $company->jurisdiction->value,
+            'legalName' => $this->utf8Safe($company->legal_name) ?? 'Company',
+            'tradeName' => $this->utf8Safe($company->trade_name),
+            'jurisdiction' => $this->enumValue($company->jurisdiction, 'eu_sk'),
             'defaultCurrency' => $company->default_currency,
             'registrationNumber' => $company->registration_number,
             'taxId' => $company->tax_id,
@@ -493,10 +568,10 @@ class ServerToEvoluMigrationExportService
             'id' => $document->id,
             'companyId' => $document->company_id,
             'contactId' => $document->company_contact_id,
-            'documentType' => $document->type->value,
-            'status' => $document->status->value,
-            'quoteStatus' => $document->quote_status?->value,
-            'title' => $this->nonEmptyTitle($document->title, $document->number, $document->type->value),
+            'documentType' => $this->enumValue($document->type, 'invoice'),
+            'status' => $this->enumValue($document->status, 'draft'),
+            'quoteStatus' => $this->enumValue($document->quote_status),
+            'title' => $this->nonEmptyTitle($document->title, $document->number, $this->enumValue($document->type, 'invoice') ?? 'invoice'),
             'number' => $document->number,
             'sourceDocumentId' => $document->source_document_id,
             'issueDate' => $this->dateStr($document->issue_date),
@@ -556,7 +631,7 @@ class ServerToEvoluMigrationExportService
         return [
             'id' => $expense->id,
             'companyId' => $expense->company_id,
-            'status' => $expense->status->value,
+            'status' => $this->enumValue($expense->status, 'recorded'),
             'internalNumber' => $expense->internal_number,
             'externalNumber' => $expense->external_number,
             'title' => $expense->title,
@@ -653,7 +728,7 @@ class ServerToEvoluMigrationExportService
             'storeId' => $profile->store_id,
             'documentType' => $profile->document_type,
             'isActive' => $this->boolToSqlite($profile->is_active),
-            'recurrenceInterval' => $profile->recurrence_interval?->value ?? 'monthly',
+            'recurrenceInterval' => $this->enumValue($profile->recurrence_interval, 'monthly'),
             'firstIssueDate' => $this->dateStr($profile->first_issue_date),
             'nextIssueDate' => $this->dateStr($profile->next_issue_date),
             'endsAt' => $this->dateStr($profile->ends_at),
@@ -717,7 +792,7 @@ class ServerToEvoluMigrationExportService
             'id' => $warehouse->id,
             'companyId' => $warehouse->company_id,
             'name' => $warehouse->name,
-            'type' => $warehouse->type->value,
+            'type' => $this->enumValue($warehouse->type, 'own'),
             'deductOnIssue' => $this->boolToSqlite($warehouse->deduct_on_issue),
             'isDefault' => $this->boolToSqlite($warehouse->is_default),
             'isActive' => $this->boolToSqlite($warehouse->is_active),
@@ -787,7 +862,7 @@ class ServerToEvoluMigrationExportService
             'purchaseUnitPrice' => $this->decimalStr($movement->purchase_unit_price),
             'saleUnitPrice' => $this->decimalStr($movement->sale_unit_price),
             'note' => $movement->note,
-            'source' => $movement->source->value,
+            'source' => $this->enumValue($movement->source, 'manual'),
             'businessDocumentId' => $movement->business_document_id,
             'documentNumber' => $movement->document_number,
             'documentType' => $movement->document_type,
@@ -803,7 +878,7 @@ class ServerToEvoluMigrationExportService
         return [
             'id' => $batch->id,
             'companyId' => $batch->company_id,
-            'source' => $batch->source->value,
+            'source' => $this->enumValue($batch->source, 'csv'),
             'filename' => $batch->filename,
             'rowCount' => $batch->row_count !== null ? (string) $batch->row_count : null,
             'importedCount' => $batch->imported_count !== null ? (string) $batch->imported_count : null,
@@ -824,8 +899,8 @@ class ServerToEvoluMigrationExportService
             'bookedAt' => $this->datetimeStr($transaction->booked_at),
             'amount' => $this->decimalStr($transaction->amount),
             'currency' => $transaction->currency,
-            'direction' => $transaction->direction->value,
-            'matchStatus' => $transaction->match_status->value,
+            'direction' => $this->enumValue($transaction->direction, 'credit'),
+            'matchStatus' => $this->enumValue($transaction->match_status, 'unmatched'),
             'businessExpenseId' => $transaction->business_expense_id,
             'variableSymbol' => $transaction->variable_symbol,
             'constantSymbol' => $transaction->constant_symbol,
@@ -835,7 +910,7 @@ class ServerToEvoluMigrationExportService
             'reference' => $transaction->reference,
             'bankTransactionId' => $transaction->bank_transaction_id,
             'dedupeHash' => $transaction->dedupe_hash,
-            'source' => $transaction->source->value,
+            'source' => $this->enumValue($transaction->source, 'csv'),
         ];
     }
 
@@ -849,7 +924,7 @@ class ServerToEvoluMigrationExportService
             'bankTransactionId' => $match->bank_transaction_id,
             'businessDocumentId' => $match->business_document_id,
             'matchedAmount' => $this->decimalStr($match->matched_amount),
-            'matchType' => $match->match_type->value,
+            'matchType' => $this->enumValue($match->match_type, 'manual'),
             'matchedAt' => $this->datetimeStr($match->matched_at),
         ];
     }
@@ -860,7 +935,14 @@ class ServerToEvoluMigrationExportService
             return null;
         }
 
-        $dataUrl = $this->brandingService->imageDataUri($path);
+        try {
+            $dataUrl = $this->brandingService->imageDataUri($path);
+        } catch (Throwable) {
+            $this->warnings[] = "branding_read_failed:{$kind}:{$label}";
+
+            return null;
+        }
+
         if (! $dataUrl) {
             $this->warnings[] = "branding_unreadable:{$kind}:{$label}";
 

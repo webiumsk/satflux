@@ -136,7 +136,8 @@ class InvoicingMigrationExportTest extends TestCase
             ->getJson('/api/invoicing/migration/export');
 
         $response->assertOk()
-            ->assertJsonPath('meta.include_attachments', false);
+            ->assertJsonPath('meta.include_attachments', false)
+            ->assertJsonPath('meta.include_branding', false);
     }
 
     #[Test]

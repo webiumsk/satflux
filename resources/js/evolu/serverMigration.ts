@@ -45,6 +45,7 @@ export class ServerMigrationError extends Error {
             | "upsert_failed"
             | "companies_missing",
         readonly status?: number,
+        readonly errorId?: string,
     ) {
         super(message);
         this.name = "ServerMigrationError";
@@ -75,7 +76,7 @@ export async function fetchServerMigrationExport(): Promise<{
     try {
         const { data } = await api.get("/invoicing/migration/export", {
             timeout: 180_000,
-            params: { include_attachments: 0 },
+            params: { include_attachments: 0, include_branding: 0 },
         });
         return {
             snapshot: data.data as InvoicingDataSnapshot,
@@ -83,15 +84,29 @@ export async function fetchServerMigrationExport(): Promise<{
         };
     } catch (error: unknown) {
         const axiosError = error as {
-            response?: { status?: number; data?: { message?: string } };
+            response?: { status?: number; data?: { message?: string; debug?: string; error_id?: string } };
             message?: string;
         };
         const status = axiosError.response?.status;
-        console.error("Server migration export failed", {
+        const body = axiosError.response?.data;
+        const debug = body?.debug;
+        const errorId = body?.error_id;
+        console.error("Server migration export failed", status ?? "no_status", body?.message ?? axiosError.message);
+        if (errorId) {
+            console.error("Server migration export error_id:", errorId);
+        }
+        if (debug) {
+            console.error("Server migration export debug:", debug);
+        }
+        if (!axiosError.response) {
+            console.error("Server migration export network error:", axiosError.message);
+        }
+        throw new ServerMigrationError(
+            debug ?? errorId ?? "export_failed",
+            "export_failed",
             status,
-            message: axiosError.response?.data?.message ?? axiosError.message,
-        });
-        throw new ServerMigrationError("export_failed", "export_failed", status);
+            errorId,
+        );
     }
 }
 
@@ -145,6 +160,15 @@ export function serverMigrationErrorMessage(
                 return t("invoicing.server_migration_error_empty");
             }
             if (error.status === 500 || error.status === 502 || error.status === 503) {
+                if (error.message && error.message !== "export_failed") {
+                    if (error.errorId) {
+                        return `${error.message} (${error.errorId})`;
+                    }
+                    return error.message;
+                }
+                if (error.errorId) {
+                    return t("invoicing.server_migration_error_server_id", { id: error.errorId });
+                }
                 return t("invoicing.server_migration_error_server");
             }
             return t("invoicing.server_migration_error_export");

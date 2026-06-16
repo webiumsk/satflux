@@ -7,6 +7,7 @@ use App\Services\Invoicing\ServerToEvoluMigrationExportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 class InvoicingMigrationController extends Controller
@@ -26,8 +27,10 @@ class InvoicingMigrationController extends Controller
     ): JsonResponse {
         try {
             $includeAttachments = $request->boolean('include_attachments');
+            $includeBranding = $request->boolean('include_branding');
             $result = $exportService->exportForUser($request->user(), [
                 'include_attachment_content' => $includeAttachments,
+                'include_branding' => $includeBranding,
             ]);
 
             if (($result['counts']['company'] ?? 0) === 0) {
@@ -36,23 +39,38 @@ class InvoicingMigrationController extends Controller
                 ], 404);
             }
 
-            return response()->json([
+            $payload = [
                 'data' => $result['snapshot'],
                 'meta' => [
                     'exported_at' => now()->toIso8601String(),
                     'warnings' => $result['warnings'],
                     'counts' => $result['counts'],
                     'include_attachments' => $includeAttachments,
+                    'include_branding' => $includeBranding,
                 ],
-            ], 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+            ];
+
+            $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+            if ($json === false) {
+                throw new \RuntimeException('json_encode failed: '.json_last_error_msg());
+            }
+
+            return new JsonResponse($json, 200, [
+                'Content-Type' => 'application/json',
+            ], 0, true);
         } catch (Throwable $e) {
+            $errorId = (string) Str::uuid();
             Log::error('invoicing.migration.export_failed', [
+                'error_id' => $errorId,
                 'user_id' => $request->user()?->id,
                 'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'message' => 'Invoicing export failed.',
+                'error_id' => $errorId,
+                'debug' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }
