@@ -4,12 +4,14 @@ import api from '../services/api';
 import { ensureCsrfCookie } from '../services/csrf';
 import { useStoresStore } from './stores';
 import {
-    clearStoredGuestMnemonic,
     getStoredGuestMnemonic,
     guestRecoveryMessage,
     guestRecoveryPublicKeyHexFromMnemonic,
     signGuestRecoveryMessage,
+    storeGuestMnemonic,
 } from '../services/guestRecovery';
+import { isInvoicingLocalFirst } from '../evolu/flags';
+import { ensureEvoluBoundToAccountSeed } from '../evolu/bootstrap';
 
 export interface User {
     id: number;
@@ -60,13 +62,23 @@ export const useAuthStore = defineStore('auth', () => {
         storesStore.currentStore = null;
     }
 
+    async function syncAccountSeedAfterAuth(mnemonic: string): Promise<void> {
+        storeGuestMnemonic(mnemonic);
+        try {
+            await ensureEvoluBoundToAccountSeed();
+        } catch {
+            // Evolu init is best-effort; invoicing layout may retry on first visit.
+        }
+    }
+
     async function fetchUser() {
         try {
             await ensureCsrfCookie();
             const response = await api.get('/user');
             user.value = response.data;
-            if (!user.value?.is_guest) {
-                clearStoredGuestMnemonic();
+            const mnemonic = getStoredGuestMnemonic();
+            if (mnemonic && isInvoicingLocalFirst()) {
+                void ensureEvoluBoundToAccountSeed();
             }
         } catch (error: any) {
             const status = error?.response?.status ?? error?.status;
@@ -97,6 +109,7 @@ export const useAuthStore = defineStore('auth', () => {
                 signature,
             });
             user.value = response.data.user;
+            await syncAccountSeedAfterAuth(mnemonic);
         } catch {
             // Keep user unauthenticated when auto-restore fails; manual restore remains available.
         } finally {
@@ -196,6 +209,7 @@ export const useAuthStore = defineStore('auth', () => {
                 signature,
             });
             user.value = response.data.user;
+            await syncAccountSeedAfterAuth(mnemonic);
             return response.data;
         } finally {
             loading.value = false;

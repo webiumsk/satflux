@@ -100,14 +100,14 @@ class CompanyDocumentSequenceTest extends TestCase
             ->postJson("/api/invoicing/companies/{$this->company->id}/number-series", [
                 'name' => 'Faktúra export',
                 'document_type' => 'invoice',
-                'format' => 'FAKRRRRCCCC',
+                'format' => 'FAKYYYYNNNN',
                 'reset_period' => 'yearly',
                 'is_default' => false,
                 'last_number' => 10,
             ]);
 
         $create->assertCreated();
-        $create->assertJsonPath('data.format', 'FAKRRRRCCCC');
+        $create->assertJsonPath('data.format', 'FAKYYYYNNNN');
         $create->assertJsonPath('data.next_number_preview', 'FAK20260011');
     }
 

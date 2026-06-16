@@ -317,8 +317,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
     Route::patch('/messages/{id}/read', [MessageController::class, 'markAsRead'])->where('id', '[a-zA-Z0-9_-]+');
     Route::post('/messages/mark-all-read', [MessageController::class, 'markAllAsRead']);
 
-    // Business invoicing (Pro+)
-    Route::middleware([EnsurePlanAllowsBusinessInvoicing::class, 'guest.restrict'])
+    // Business invoicing (Pro+; seed accounts may use local-first + ephemeral bridges)
+    Route::middleware([EnsurePlanAllowsBusinessInvoicing::class])
         ->prefix('invoicing')
         ->group(function () {
             Route::middleware(['throttle:30,1'])->group(function () {

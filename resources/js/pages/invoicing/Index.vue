@@ -29,10 +29,15 @@
       </button>
     </div>
 
-    <div v-else-if="loading" class="invoicing-muted py-8">{{ t('common.loading') }}</div>
+    <div v-else-if="loading" class="invoicing-muted py-8">
+      {{ relaySyncLoading ? t('invoicing.relay_sync_loading') : t('common.loading') }}
+    </div>
 
     <div v-else-if="companyList.length === 0" class="invoicing-card-pad text-center">
       <p class="text-gray-700">{{ t('invoicing.no_companies') }}</p>
+      <p v-if="localFirst" class="text-sm text-gray-500 mt-3 max-w-md mx-auto">
+        {{ t('invoicing.no_companies_restore_hint') }}
+      </p>
       <button
         v-if="canCreateCompany"
         type="button"
@@ -70,6 +75,7 @@ import { useRouter } from 'vue-router';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import { useBusinessInvoicing } from '../../composables/useBusinessInvoicing';
 import { useInvoicingCompanies } from '../../composables/useInvoicingCompanies';
+import { isEvoluRelaySyncPending } from '@/evolu/relaySyncWait';
 import { useAuthStore } from '../../store/auth';
 import UpgradeModal from '../../components/stores/UpgradeModal.vue';
 
@@ -86,6 +92,8 @@ const {
 } = useInvoicingCompanies();
 
 const showUpgrade = ref(false);
+
+const relaySyncLoading = computed(() => localFirst && isEvoluRelaySyncPending() && loading.value);
 
 watch(forbidden, (isForbidden) => {
   if (isForbidden) showUpgrade.value = true;

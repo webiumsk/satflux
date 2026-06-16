@@ -593,7 +593,6 @@ async function issueDocument() {
         local.evolu,
         documentId.value as import('../../evolu/schema').DocumentId,
         companyRow as import('../../evolu/companyMap').EvoluCompanyRow,
-        local.documentRows.value as import('../../evolu/documentMap').EvoluDocumentRow[],
       );
       if (!issueResult.ok) throw new Error('issue');
       success.value = t('invoicing.issue_success');

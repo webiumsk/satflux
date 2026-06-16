@@ -91,13 +91,12 @@ export function useLocalInvoiceDocumentSupport() {
         evoluInst: typeof evolu,
         documentId: DocumentId,
         company: EvoluCompanyRow,
-        allDocuments: Parameters<typeof issueLocalDocument>[3],
     ) {
         return issueLocalDocument(
             evoluInst,
             documentId,
             company,
-            allDocuments,
+            documentRows.value as EvoluDocumentRow[],
             seriesRows.value as EvoluNumberSeriesRow[],
         );
     }
@@ -106,15 +105,8 @@ export function useLocalInvoiceDocumentSupport() {
         evoluInst: typeof evolu,
         documentId: DocumentId,
         company: EvoluCompanyRow,
-        allDocuments: Parameters<typeof issueLocalDocumentAsync>[3],
     ) {
-        return issueLocalDocumentAsync(
-            evoluInst,
-            documentId,
-            company,
-            allDocuments,
-            seriesRows.value as EvoluNumberSeriesRow[],
-        );
+        return issueLocalDocumentAsync(evoluInst, documentId, company);
     }
 
     async function previewNumberAsync(companyId: CompanyId, documentType: string) {
@@ -122,19 +114,7 @@ export function useLocalInvoiceDocumentSupport() {
             evolu.loadQuery(allNumberSeriesQuery),
             evolu.loadQuery(allDocumentsQuery),
         ]);
-        const localPreview = previewNumber(companyId, documentType);
-        if (localPreview) {
-            return localPreview;
-        }
-
-        const companyRow = companyRows.value.find((c) => c.id === companyId) as EvoluCompanyRow | undefined;
-        const linkedStoreId = companyRow?.linkedStoreId?.trim();
-        if (linkedStoreId) {
-            const { previewNextDocumentNumberFromStore } = await import("@/evolu/numberSequenceBridge");
-            const preview = await previewNextDocumentNumberFromStore(linkedStoreId, documentType);
-            if (preview) return preview;
-        }
-        return localPreview;
+        return previewNumber(companyId, documentType);
     }
 
     function documentApi(documentId: DocumentId) {

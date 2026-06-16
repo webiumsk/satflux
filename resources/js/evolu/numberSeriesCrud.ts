@@ -12,10 +12,11 @@ import { previewNextDocumentNumber } from "./documentNumber";
 import {
     counterDigitsInFormat,
     currentPeriodKey,
+    formatHasCounterToken,
     previewNextNumber,
 } from "./numberSeriesFormat";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
-import type { CompanyId, DocumentType, InvoicingLocalSchema, NumberSeriesId, ResetPeriod } from "./schema";
+import type { CompanyId, DocumentType, InvoicingLocalSchema, NumberSeriesId, ResetPeriod, DocumentId } from "./schema";
 
 export type LocalizedDefaultSeriesDef = {
     documentType: DocumentType;
@@ -30,12 +31,12 @@ const DEFAULT_SERIES_DEFS: ReadonlyArray<{
     format: string;
     isDefault: boolean;
 }> = [
-    { documentType: "invoice", nameKey: "invoicing.series_default_name_invoice", format: "INVRRRRCCCC", isDefault: true },
-    { documentType: "credit_note", nameKey: "invoicing.series_default_name_credit_note", format: "CNRRRRCCCC", isDefault: true },
-    { documentType: "proforma", nameKey: "invoicing.series_default_name_proforma", format: "PFRRRRCCCC", isDefault: true },
-    { documentType: "delivery_note", nameKey: "invoicing.series_default_name_delivery_note", format: "DELRRRRCCCC", isDefault: true },
-    { documentType: "quote", nameKey: "invoicing.series_default_name_quote", format: "QTRRRRCCCC", isDefault: true },
-    { documentType: "order_received", nameKey: "invoicing.series_default_name_order_received", format: "PORRRRCCCC", isDefault: true },
+    { documentType: "invoice", nameKey: "invoicing.series_default_name_invoice", format: "INVYYYYNNNN", isDefault: true },
+    { documentType: "credit_note", nameKey: "invoicing.series_default_name_credit_note", format: "CNYYYYNNNN", isDefault: true },
+    { documentType: "proforma", nameKey: "invoicing.series_default_name_proforma", format: "PFYYYYNNNN", isDefault: true },
+    { documentType: "delivery_note", nameKey: "invoicing.series_default_name_delivery_note", format: "DELYYYYNNNN", isDefault: true },
+    { documentType: "quote", nameKey: "invoicing.series_default_name_quote", format: "QTYYYYNNNN", isDefault: true },
+    { documentType: "order_received", nameKey: "invoicing.series_default_name_order_received", format: "POYYYYNNNN", isDefault: true },
 ];
 
 export function localizedDefaultSeries(
@@ -103,10 +104,28 @@ function ensureCounterSynced(
         documents,
     );
     const current = parseInt(synced.lastNumber || "0", 10) || 0;
-    if (fromDocuments !== current) {
+    if (fromDocuments > current) {
         return { ...synced, lastNumber: String(fromDocuments) };
     }
     return synced;
+}
+
+export function isIssuedNumberTaken(
+    number: string,
+    companyId: CompanyId,
+    documentType: DocumentType,
+    documents: EvoluDocumentRow[],
+    excludeDocumentId?: DocumentId,
+): boolean {
+    return documents.some(
+        (doc) =>
+            doc.id !== excludeDocumentId
+            && doc.companyId === companyId
+            && doc.documentType === documentType
+            && doc.status !== "draft"
+            && doc.status !== "cancelled"
+            && doc.number === number,
+    );
 }
 
 export function resolveDefaultSeries(
@@ -206,7 +225,7 @@ export function createNumberSeries(
     if (!name.ok) return name;
     const format = FormatType.from(form.format.trim().toUpperCase());
     if (!format.ok) return format;
-    if (!format.value.includes("C")) {
+    if (!formatHasCounterToken(format.value)) {
         return { ok: false as const, error: "format_missing_counter" };
     }
 
@@ -238,7 +257,7 @@ export function updateNumberSeries(
     if (!name.ok) return name;
     const format = FormatType.from(form.format.trim().toUpperCase());
     if (!format.ok) return format;
-    if (!format.value.includes("C")) {
+    if (!formatHasCounterToken(format.value)) {
         return { ok: false as const, error: "format_missing_counter" };
     }
 
@@ -296,13 +315,24 @@ export function deleteNumberSeries(
     return evolu.update("numberSeries", { id: seriesId, isDeleted: sqliteTrue });
 }
 
-export function nextNumberForIssue(
+type NextNumberAllocation =
+    | {
+          ok: true;
+          value: string;
+          seriesId: NumberSeriesId;
+          periodKey: string | null;
+          nextCounter: number;
+      }
+    | { ok: false; error: string };
+
+export function allocateNextNumberForIssue(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
     documentType: DocumentType,
     allDocuments: EvoluDocumentRow[],
     allSeries: EvoluNumberSeriesRow[],
-): { ok: true; value: string } | { ok: false; error: string } {
+    excludeDocumentId?: DocumentId,
+): NextNumberAllocation {
     let workingSeries = allSeries;
     let series = resolveDefaultSeries(workingSeries, companyId, documentType);
     if (!series) {
@@ -315,19 +345,70 @@ export function nextNumberForIssue(
     }
 
     const synced = ensureCounterSynced(series, allDocuments);
-    const nextCounter = (parseInt(synced.lastNumber || "0", 10) || 0) + 1;
-    const number = previewNextNumber(synced, nextCounter);
+    let nextCounter = (parseInt(synced.lastNumber || "0", 10) || 0) + 1;
+    let number = previewNextNumber(synced, nextCounter);
+    const maxAttempts = 10_000;
+    let attempts = 0;
+    while (
+        isIssuedNumberTaken(number, companyId, documentType, allDocuments, excludeDocumentId)
+        && attempts < maxAttempts
+    ) {
+        nextCounter += 1;
+        number = previewNextNumber(synced, nextCounter);
+        attempts += 1;
+    }
+    if (isIssuedNumberTaken(number, companyId, documentType, allDocuments, excludeDocumentId)) {
+        return { ok: false, error: "number_collision" };
+    }
 
-    const updateResult = evolu.update("numberSeries", {
-        id: series.id,
+    return {
+        ok: true,
+        value: number,
+        seriesId: series.id,
         periodKey: synced.periodKey,
-        lastNumber: String(nextCounter),
+        nextCounter,
+    };
+}
+
+export function commitNumberSeriesCounter(
+    evolu: Evolu<InvoicingLocalSchema>,
+    allocation: Extract<NextNumberAllocation, { ok: true }>,
+): { ok: true } | { ok: false; error: string } {
+    const updateResult = evolu.update("numberSeries", {
+        id: allocation.seriesId,
+        periodKey: allocation.periodKey,
+        lastNumber: String(allocation.nextCounter),
     });
     if (!updateResult.ok) {
         return { ok: false, error: "series_update_failed" };
     }
+    return { ok: true };
+}
 
-    return { ok: true, value: number };
+export function nextNumberForIssue(
+    evolu: Evolu<InvoicingLocalSchema>,
+    companyId: CompanyId,
+    documentType: DocumentType,
+    allDocuments: EvoluDocumentRow[],
+    allSeries: EvoluNumberSeriesRow[],
+    excludeDocumentId?: DocumentId,
+): { ok: true; value: string } | { ok: false; error: string } {
+    const allocation = allocateNextNumberForIssue(
+        evolu,
+        companyId,
+        documentType,
+        allDocuments,
+        allSeries,
+        excludeDocumentId,
+    );
+    if (!allocation.ok) {
+        return allocation;
+    }
+    const committed = commitNumberSeriesCounter(evolu, allocation);
+    if (!committed.ok) {
+        return committed;
+    }
+    return { ok: true, value: allocation.value };
 }
 
 export function previewNextDocumentNumberFromSeries(

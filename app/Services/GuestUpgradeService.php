@@ -8,7 +8,6 @@ use App\Models\User;
 use App\Services\BtcPay\UserService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
 
 class GuestUpgradeService
 {
@@ -21,20 +20,6 @@ class GuestUpgradeService
      */
     public function upgrade(User $user, array $validated): User
     {
-        $method = (string) $validated['method'];
-
-        if ($method === 'lightning' && empty($user->lightning_public_key)) {
-            throw ValidationException::withMessages([
-                'method' => ['Link Lightning login first.'],
-            ]);
-        }
-
-        if ($method === 'nostr' && empty($user->nostr_public_key)) {
-            throw ValidationException::withMessages([
-                'method' => ['Link Nostr login first.'],
-            ]);
-        }
-
         $newEmail = strtolower(trim((string) $validated['email']));
         $newPassword = (string) $validated['password'];
 

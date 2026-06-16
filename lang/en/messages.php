@@ -15,6 +15,7 @@ return [
     'login_successful' => 'Login successful',
     'logout_successful' => 'Logout successful',
     'registration_successful' => 'Registration successful! Please check your email to verify your account.',
+    'seed_first_registration_required' => 'Create your account with a recovery phrase first. You can add email and password later in Account settings.',
     'compliance_registration_unavailable' => 'Registration is not available from your location or could not be completed. Please contact support if you believe this is an error.',
     'contact_inquiry_received' => 'Thank you. We received your message and will respond by email.',
     'verification_email_failed' => 'Unable to send verification email. Please verify your email address is valid and try again.',

@@ -397,7 +397,9 @@ export function useInvoiceDocument() {
       || e?.response?.data?.errors?.store_id?.[0]
       || e?.response?.data?.errors?.document?.[0]
       || (e?.message === 'validation' ? t('invoicing.company_save_validation_error') : null)
-      || (e?.message === 'issue' ? t('invoicing.issue_error') : null)
+      || (e?.message === 'issue' || e?.message === 'not_draft' || e?.message === 'series_update_failed' || e?.message === 'no_default_series' || e?.message === 'number_collision'
+        ? t('invoicing.issue_error')
+        : null)
       || t('common.error')
     );
   }
@@ -965,7 +967,8 @@ export function useInvoiceDocument() {
     if (!local) return null;
     await local.refreshAll();
     const p = payload() as DocumentSavePayload;
-    const wasDraft = !documentId.value || documentStatus.value === 'draft';
+    const isNewDocument = !documentId.value;
+    const wasDraft = isNewDocument || documentStatus.value === 'draft';
     const saveResult = local.saveLocalDocument(
       local.evolu,
       companyId.value as CompanyId,
@@ -978,24 +981,24 @@ export function useInvoiceDocument() {
       throw new Error('validation');
     }
     const docId = saveResult.value.id;
-    if (!documentId.value) {
+    if (isNewDocument) {
       await router.replace({
-        name: route.name as string,
-        params: { ...route.params, documentId: docId },
+        name: documentRoutes.value.edit,
+        params: { companyId: companyId.value, documentId: docId },
       });
       await local.refreshAll();
     }
     if (wasDraft) {
       const companyRow = local.companyRows.value.find((c) => c.id === companyId.value);
       if (!companyRow) throw new Error('company');
-      await local.refreshAll();
       const issueResult = await local.issueLocalDocumentAsync(
         local.evolu,
         docId as DocumentId,
         companyRow as import('../evolu/companyMap').EvoluCompanyRow,
-        local.documentRows.value as import('../evolu/documentMap').EvoluDocumentRow[],
       );
-      if (!issueResult.ok) throw new Error('issue');
+      if (!issueResult.ok) {
+        throw new Error(issueResult.error || 'issue');
+      }
       await local.refreshAll();
       const apiDoc = local.documentApi(docId as DocumentId);
       if (apiDoc) await applyDocument(apiDoc);

@@ -160,6 +160,7 @@ import {
 } from "@/evolu/client";
 import { insertLocalCompanyFromPayload } from "@/evolu/companyInsert";
 import { seedDefaultNumberSeries } from "@/evolu/numberSeriesCrud";
+import { getStoredAccountMnemonic, initEvoluFromAccountSeedIfNeeded } from "@/services/accountSeed";
 import type { CompanyId, ContactId, DocumentId } from "@/evolu/schema";
 
 const { t } = useI18n();
@@ -314,10 +315,16 @@ async function onCopyMnemonic(): Promise<void> {
 }
 
 async function onRestoreMnemonic(): Promise<void> {
+    const stored = getStoredAccountMnemonic();
+    if (stored) {
+        if (!window.confirm(t("evolu.restore_confirm"))) return;
+        await initEvoluFromAccountSeedIfNeeded(stored);
+        return;
+    }
     const mnemonic = window.prompt(t("evolu.prompt_mnemonic"));
     if (mnemonic == null || !mnemonic.trim()) return;
     if (!window.confirm(t("evolu.restore_confirm"))) return;
-    await evolu.restoreAppOwner(mnemonic.trim());
+    await initEvoluFromAccountSeedIfNeeded(mnemonic.trim());
 }
 
 async function onResetOwner(): Promise<void> {

@@ -9,35 +9,49 @@ export function currentPeriodKey(resetPeriod: ResetPeriod, date = new Date()): s
     return String(date.getFullYear());
 }
 
+/** True when format includes a counter token (N run of 2+ or legacy C). */
+export function formatHasCounterToken(format: string): boolean {
+    const pattern = format.toUpperCase().trim();
+    if (pattern.includes("C")) return true;
+    return /N{2,}/.test(pattern);
+}
+
 export function counterDigitsInFormat(format: string): number {
     const pattern = format.toUpperCase().trim();
-    const trailing = pattern.match(/C+$/);
-    if (trailing) return trailing[0].length;
+    const trailingN = pattern.match(/N{2,}$/);
+    if (trailingN) return trailingN[0].length;
+    const trailingC = pattern.match(/C+$/);
+    if (trailingC) return trailingC[0].length;
+    const nRuns = pattern.match(/N{2,}/g) || [];
+    if (nRuns.length > 0) {
+        return Math.max(...nRuns.map((run) => run.length));
+    }
     return Math.max(1, (pattern.match(/C/g) || []).length);
 }
 
-/** Formats a document number from pattern tokens (R/M/C runs + literal text). */
+function padComponent(value: string, length: number): string {
+    if (length <= 0) return "";
+    return value.padStart(length, "0").slice(-length);
+}
+
+/** Formats a document number from pattern tokens (Y/R/M/N/C runs + literal text). */
 export function formatDocumentNumber(pattern: string, counter: number, date = new Date()): string {
-    const p = (pattern || "RRRRCCCC").toUpperCase();
+    const p = (pattern || "YYYYNNNN").toUpperCase();
     let out = "";
     let i = 0;
     while (i < p.length) {
         const ch = p[i];
-        if (ch === "R" || ch === "M" || ch === "C") {
-            let run = 0;
-            while (i < p.length && p[i] === ch) run++, i++;
-            if (ch === "R") {
-                const y = String(date.getFullYear()).padStart(run, "0").slice(-run);
-                out += y;
-            } else if (ch === "M") {
-                const m = String(date.getMonth() + 1).padStart(run, "0").slice(-run);
-                out += m;
-            } else {
-                out += String(Math.max(0, counter)).padStart(run, "0");
-            }
+        let run = 0;
+        while (i < p.length && p[i] === ch) run++, i++;
+
+        if (ch === "M") {
+            out += padComponent(String(date.getMonth() + 1), run);
+        } else if (ch === "R" || (ch === "Y" && run >= 2)) {
+            out += padComponent(String(date.getFullYear()), run);
+        } else if (ch === "C" || (ch === "N" && run >= 2)) {
+            out += String(Math.max(0, counter)).padStart(run, "0");
         } else {
-            out += ch;
-            i++;
+            out += ch.repeat(run);
         }
     }
     return out;

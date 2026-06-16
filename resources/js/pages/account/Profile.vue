@@ -15,20 +15,19 @@
         </div>
 
         <div
-          v-if="authStore.user?.is_guest"
           class="rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-5 space-y-3"
         >
           <h4 class="text-sm font-semibold text-white">
-            {{ t("account.guest_account_title") }}
+            {{ t("account.recovery_phrase_title") }}
           </h4>
           <p class="text-sm text-gray-300">
-            {{ t("account.guest_account_backup_desc") }}
+            {{ t("account.recovery_phrase_desc") }}
           </p>
           <p
             v-if="authStore.user?.guest_recovery_enrolled"
             class="text-sm text-emerald-400"
           >
-            {{ t("account.guest_recovery_enrolled") }}
+            {{ t("account.recovery_phrase_enrolled") }}
           </p>
           <div v-if="storedGuestMnemonic" class="flex flex-wrap items-center gap-2">
             <button
@@ -36,178 +35,72 @@
               class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
               @click="showGuestSeedModal = true"
             >
-              {{ t("account.guest_reveal_seed") }}
+              {{ t("account.recovery_phrase_reveal") }}
             </button>
           </div>
-          <p v-else class="text-sm text-amber-300">
-            {{ t("account.guest_seed_unavailable_here") }}
+          <p v-else-if="authStore.user?.guest_recovery_enrolled" class="text-sm text-amber-300">
+            {{ t("account.recovery_phrase_unavailable_here") }}
           </p>
+          <button
+            v-else-if="!authStore.user?.guest_recovery_enrolled"
+            type="button"
+            class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
+            @click="showRecoveryBackupWizard = true"
+          >
+            {{ t("account.recovery_phrase_setup") }}
+          </button>
 
-          <div class="mt-2 pt-3 border-t border-indigo-400/20 space-y-3">
+          <div
+            v-if="authStore.user?.is_guest"
+            class="mt-2 pt-3 border-t border-indigo-400/20 space-y-3"
+          >
             <h5 class="text-sm font-semibold text-white">
               {{ t("account.guest_upgrade_title") }}
             </h5>
             <p class="text-xs text-gray-300">
-              {{ t("account.guest_upgrade_desc") }}
+              {{ t("account.guest_upgrade_desc_email_only") }}
             </p>
-
-            <div class="rounded-xl border border-indigo-500/20 bg-gray-900/30 p-2">
-              <div class="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  class="py-2 px-3 rounded-lg text-xs font-semibold transition-colors"
-                  :class="
-                    guestUpgradeMode === 'email'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-800 text-gray-300 hover:text-white'
-                  "
-                  @click="guestUpgradeMode = 'email'"
-                >
-                  {{ t("account.guest_upgrade_tab_email") }}
-                </button>
-                <button
-                  type="button"
-                  class="py-2 px-3 rounded-lg text-xs font-semibold transition-colors"
-                  :class="
-                    guestUpgradeMode === 'linked'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-800 text-gray-300 hover:text-white'
-                  "
-                  @click="guestUpgradeMode = 'linked'"
-                >
-                  {{ t("account.guest_upgrade_tab_linked") }}
-                </button>
-              </div>
-
-              <form
-                v-if="guestUpgradeMode === 'email'"
-                class="space-y-3 mt-3"
-                @submit.prevent="handleGuestUpgradeEmail"
+            <form class="space-y-3" @submit.prevent="handleGuestUpgradeEmail">
+              <input
+                v-model="guestUpgradeForm.email"
+                type="email"
+                required
+                class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                :placeholder="t('auth.email_placeholder')"
+              />
+              <input
+                v-model="guestUpgradeForm.password"
+                type="password"
+                required
+                class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                :placeholder="t('account.new_password')"
+              />
+              <input
+                v-model="guestUpgradeForm.password_confirmation"
+                type="password"
+                required
+                class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                :placeholder="t('account.confirm_new_password')"
+              />
+              <p
+                class="text-xs text-amber-200/90 leading-relaxed rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2"
+                role="note"
               >
-                <input
-                  v-model="guestUpgradeForm.email"
-                  type="email"
-                  required
-                  class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  :placeholder="t('auth.email_placeholder')"
-                />
-                <input
-                  v-model="guestUpgradeForm.password"
-                  type="password"
-                  required
-                  class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  :placeholder="t('account.new_password')"
-                />
-                <input
-                  v-model="guestUpgradeForm.password_confirmation"
-                  type="password"
-                  required
-                  class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  :placeholder="t('account.confirm_new_password')"
-                />
-                <p
-                  class="text-xs text-amber-200/90 leading-relaxed rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2"
-                  role="note"
-                >
-                  {{ t("account.guest_upgrade_email_verify_notice") }}
-                </p>
-                <LegalConsentFields
-                  v-model:privacy-consent="guestPrivacyConsent"
-                  v-model:terms-accepted="guestTermsAccepted"
-                  id-prefix="guest-upgrade-email"
-                />
-                <button
-                  type="submit"
-                  :disabled="guestUpgradeLoading || !guestUpgradeCanSubmit"
-                  class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-50"
-                >
-                  {{ guestUpgradeLoading ? t("auth.saving") : t("account.guest_upgrade_email_submit") }}
-                </button>
-              </form>
-
-              <form
-                v-else
-                class="space-y-3 mt-3"
-                @submit.prevent="handleGuestUpgradeLinkedSubmit"
+                {{ t("account.guest_upgrade_email_verify_notice") }}
+              </p>
+              <LegalConsentFields
+                v-model:privacy-consent="guestPrivacyConsent"
+                v-model:terms-accepted="guestTermsAccepted"
+                id-prefix="guest-upgrade-email"
+              />
+              <button
+                type="submit"
+                :disabled="guestUpgradeLoading || !guestUpgradeCanSubmit"
+                class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-50"
               >
-                <template
-                  v-if="
-                    authStore.user?.has_lightning_login ||
-                    authStore.user?.has_nostr_login
-                  "
-                >
-                  <div
-                    v-if="hasBothLinkedLogins"
-                    class="flex flex-wrap gap-4 text-xs text-gray-300"
-                  >
-                    <label class="inline-flex items-center gap-2 cursor-pointer">
-                      <input
-                        v-model="linkedUpgradeMethod"
-                        type="radio"
-                        value="lightning"
-                        class="text-indigo-500"
-                      />
-                      <span>{{ t("account.guest_upgrade_use_lightning") }}</span>
-                    </label>
-                    <label class="inline-flex items-center gap-2 cursor-pointer">
-                      <input
-                        v-model="linkedUpgradeMethod"
-                        type="radio"
-                        value="nostr"
-                        class="text-indigo-500"
-                      />
-                      <span>{{ t("account.guest_upgrade_use_nostr") }}</span>
-                    </label>
-                  </div>
-                  <input
-                    v-model="guestUpgradeForm.email"
-                    type="email"
-                    required
-                    class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    :placeholder="t('auth.email_placeholder')"
-                  />
-                  <input
-                    v-model="guestUpgradeForm.password"
-                    type="password"
-                    required
-                    class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    :placeholder="t('account.new_password')"
-                  />
-                  <input
-                    v-model="guestUpgradeForm.password_confirmation"
-                    type="password"
-                    required
-                    class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    :placeholder="t('account.confirm_new_password')"
-                  />
-                  <p
-                    class="text-xs text-amber-200/90 leading-relaxed rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2"
-                    role="note"
-                  >
-                    {{ t("account.guest_upgrade_email_verify_notice") }}
-                  </p>
-                  <LegalConsentFields
-                    v-model:privacy-consent="guestPrivacyConsent"
-                    v-model:terms-accepted="guestTermsAccepted"
-                    id-prefix="guest-upgrade-linked"
-                  />
-                  <button
-                    type="submit"
-                    :disabled="guestUpgradeLoading || !guestUpgradeCanSubmit"
-                    class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-50"
-                  >
-                    {{
-                      guestUpgradeLoading
-                        ? t("auth.saving")
-                        : t("account.guest_upgrade_linked_submit")
-                    }}
-                  </button>
-                </template>
-                <p v-else class="text-xs text-gray-400">
-                  {{ t("account.guest_upgrade_linked_empty") }}
-                </p>
-              </form>
-            </div>
+                {{ guestUpgradeLoading ? t("auth.saving") : t("account.guest_upgrade_email_submit") }}
+              </button>
+            </form>
           </div>
         </div>
 
@@ -1135,6 +1028,12 @@
           </div>
         </div>
       </div>
+
+      <GuestBackupWizardModal
+        :open="showRecoveryBackupWizard"
+        @close="showRecoveryBackupWizard = false"
+        @done="handleRecoveryEnrolled"
+      />
     </div>
   </div>
 </template>
@@ -1155,11 +1054,13 @@ import { useCurrentPlan } from "../../composables/useCurrentPlan";
 import api from "../../services/api";
 import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
 import NostrAuthModal from "../../components/auth/NostrAuthModal.vue";
+import GuestBackupWizardModal from "../../components/auth/GuestBackupWizardModal.vue";
 import LegalConsentFields from "../../components/legal/LegalConsentFields.vue";
 import {
-  clearStoredGuestMnemonic,
   getStoredGuestMnemonic,
+  storeGuestMnemonic,
 } from "../../services/guestRecovery";
+import { initEvoluFromAccountSeedIfNeeded } from "../../services/accountSeed";
 const { t, locale } = useI18n();
 const router = useRouter();
 const authStore = useAuthStore();
@@ -1215,6 +1116,7 @@ const nostrAuthEnabled = ref(false);
 const showLnurlLinkModal = ref(false);
 const showNostrLinkModal = ref(false);
 const showGuestSeedModal = ref(false);
+const showRecoveryBackupWizard = ref(false);
 const storedGuestMnemonic = ref<string | null>(null);
 const copiedSeed = ref(false);
 const guestUpgradeLoading = ref(false);
@@ -1223,25 +1125,17 @@ const guestTermsAccepted = ref(false);
 const guestUpgradeCanSubmit = computed(
   () => guestPrivacyConsent.value && guestTermsAccepted.value,
 );
-const guestUpgradeMode = ref<"email" | "linked">("email");
 const guestUpgradeForm = ref({
   email: "",
   password: "",
   password_confirmation: "",
 });
-const linkedUpgradeMethod = ref<"lightning" | "nostr">("lightning");
 const lnurlLinkUrl = ref("");
 const lnurlK1 = ref("");
 const lnurlLinkLoading = ref(false);
 const lnurlLinkError = ref("");
 const lnurlLinkPolling = ref(false);
 let linkPollingInterval: number | null = null;
-
-const hasBothLinkedLogins = computed(
-  () =>
-    !!authStore.user?.has_lightning_login &&
-    !!authStore.user?.has_nostr_login,
-);
 
 const { planCode: effectivePlanCode } = useCurrentPlan();
 
@@ -1581,6 +1475,24 @@ async function copyStoredSeed() {
   }
 }
 
+async function handleRecoveryEnrolled(payload: {
+  recoveryPublicKeyHex: string;
+  mnemonic: string;
+}) {
+  showRecoveryBackupWizard.value = false;
+  try {
+    await authStore.enrollGuestRecoveryPublicKey(payload.recoveryPublicKeyHex);
+    storeGuestMnemonic(payload.mnemonic);
+    await initEvoluFromAccountSeedIfNeeded(payload.mnemonic);
+    storedGuestMnemonic.value = payload.mnemonic;
+    flashStore.success(t("account.recovery_phrase_saved"));
+  } catch (e: any) {
+    flashStore.error(
+      e?.response?.data?.message || t("account.recovery_phrase_save_failed"),
+    );
+  }
+}
+
 async function handleGuestUpgradeEmail() {
   if (!guestUpgradeCanSubmit.value) return;
   guestUpgradeLoading.value = true;
@@ -1598,55 +1510,6 @@ async function handleGuestUpgradeEmail() {
     } else {
       await authStore.fetchUser();
     }
-    clearStoredGuestMnemonic();
-    storedGuestMnemonic.value = null;
-    guestUpgradeForm.value.password = "";
-    guestUpgradeForm.value.password_confirmation = "";
-    await router.push({ name: "account-check-email" });
-  } catch (e: any) {
-    flashStore.error(
-      e?.response?.data?.message || t("account.guest_upgrade_failed"),
-    );
-  } finally {
-    guestUpgradeLoading.value = false;
-  }
-}
-
-function resolveLinkedUpgradeMethod(): "lightning" | "nostr" {
-  const u = authStore.user;
-  if (!u?.has_lightning_login && !u?.has_nostr_login) {
-    return "lightning";
-  }
-  if (hasBothLinkedLogins.value) {
-    return linkedUpgradeMethod.value;
-  }
-  if (u.has_lightning_login) {
-    return "lightning";
-  }
-
-  return "nostr";
-}
-
-async function handleGuestUpgradeLinkedSubmit() {
-  if (!guestUpgradeCanSubmit.value) return;
-  guestUpgradeLoading.value = true;
-  try {
-    const method = resolveLinkedUpgradeMethod();
-    const response = await api.put("/user/guest/upgrade", {
-      method,
-      email: guestUpgradeForm.value.email,
-      password: guestUpgradeForm.value.password,
-      password_confirmation: guestUpgradeForm.value.password_confirmation,
-      privacy_consent: guestPrivacyConsent.value,
-      terms_accepted: guestTermsAccepted.value,
-    });
-    if (response?.data?.user) {
-      authStore.user = response.data.user;
-    } else {
-      await authStore.fetchUser();
-    }
-    clearStoredGuestMnemonic();
-    storedGuestMnemonic.value = null;
     guestUpgradeForm.value.password = "";
     guestUpgradeForm.value.password_confirmation = "";
     await router.push({ name: "account-check-email" });

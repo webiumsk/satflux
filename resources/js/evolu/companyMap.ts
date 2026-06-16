@@ -108,9 +108,9 @@ export function evoluCompanyToApi(
     row: EvoluCompanyRow,
     storeLookup?: (id: string) => { id: string; name: string; default_currency?: string } | undefined,
 ): InvoicingCompanyRecord {
-    const stores = row.linkedStoreId
-        ? [storeLookup?.(row.linkedStoreId) ?? { id: row.linkedStoreId, name: row.linkedStoreId }]
-        : [];
+    const linked = row.linkedStoreId?.trim();
+    const resolved = linked ? storeLookup?.(linked) : undefined;
+    const stores = resolved ? [resolved] : [];
 
     return {
         id: row.id,

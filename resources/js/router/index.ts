@@ -4,6 +4,9 @@ import { useAuthStore } from '../store/auth';
 import { useStoresStore } from '../store/stores';
 import api from '../services/api';
 import { updatePageMeta } from '../composables/usePageMeta';
+import { ensureEvoluBoundToAccountSeed } from '../evolu/bootstrap';
+import { getStoredAccountMnemonic } from '../services/accountSeed';
+import { isInvoicingLocalFirst } from '../evolu/flags';
 
 /** Guest sessions are PoS-oriented: block the SPA until wallet (Lightning or Cashu) is actually configured. */
 async function isGuestWalletReady(storeId: string): Promise<boolean> {
@@ -444,6 +447,15 @@ router.beforeEach(async (to, from, next) => {
         } catch (error) {
             // If fetch fails (401), user is null which is correct
         }
+    }
+
+    if (
+        authStore.isAuthenticated
+        && isInvoicingLocalFirst()
+        && getStoredAccountMnemonic()
+        && to.meta.requiresAuth
+    ) {
+        await ensureEvoluBoundToAccountSeed();
     }
 
     // Hard gate: guests cannot use the app until wallet setup is complete (Lightning connected or Cashu mint+LN address).

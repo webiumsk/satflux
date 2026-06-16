@@ -69,7 +69,7 @@
             "
             @click="authMethodTab = 'guest'"
           >
-            {{ t("auth.tab_guest") }}
+            {{ t("auth.tab_seed") }}
           </button>
           <button
             type="button"
@@ -100,7 +100,7 @@
 
         <div v-show="authMethodTab === 'guest'" class="space-y-4 mb-2">
           <p class="text-sm text-gray-300 leading-relaxed">
-            {{ t("auth.guest_mode_short_intro") }}
+            {{ t("auth.seed_mode_short_intro") }}
           </p>
           <div
             class="rounded-lg border border-amber-500/25 bg-amber-950/30 px-3 py-2.5"
@@ -419,6 +419,7 @@ import NostrAuthModal from "../../components/auth/NostrAuthModal.vue";
 import GuestBackupWizardModal from "../../components/auth/GuestBackupWizardModal.vue";
 import GuestRestoreModal from "../../components/auth/GuestRestoreModal.vue";
 import { storeGuestMnemonic } from "../../services/guestRecovery";
+import { initEvoluFromAccountSeedIfNeeded } from "../../services/accountSeed";
 
 const { t } = useI18n();
 
@@ -486,9 +487,7 @@ const lnurlAuthEnabled = computed(() => {
 });
 const nostrAuthEnabled = computed(() => nostrEnabledFromServer.value === true);
 
-const showPasswordlessTabs = computed(
-  () => lnurlAuthEnabled.value || nostrAuthEnabled.value,
-);
+const showPasswordlessTabs = computed(() => false);
 
 function applyAuthTabFromQuery() {
   const raw = route.query.tab;
@@ -559,6 +558,7 @@ async function handleGuestEnrolled(payload: {
       payload.recoveryPublicKeyHex,
     );
     storeGuestMnemonic(payload.mnemonic);
+    await initEvoluFromAccountSeedIfNeeded(payload.mnemonic);
     // Be resilient to slight response shape differences.
     let storeId = response?.store_id ?? response?.data?.store_id ?? null;
 

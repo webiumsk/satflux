@@ -68,8 +68,7 @@ class AccountController extends Controller
         ];
         $payload['has_lightning_login'] = ! empty($user->lightning_public_key);
         $payload['has_nostr_login'] = ! empty($user->nostr_public_key);
-        $payload['guest_recovery_enrolled'] = (bool) ($user->is_guest ?? false)
-            && ! empty($user->guest_recovery_public_key ?? null);
+        $payload['guest_recovery_enrolled'] = ! empty($user->guest_recovery_public_key ?? null);
 
         return response()->json($payload);
     }
@@ -283,7 +282,7 @@ class AccountController extends Controller
         }
 
         $validated = $request->validate(array_merge([
-            'method' => ['required', 'in:email,lightning,nostr'],
+            'method' => ['required', 'in:email'],
             'email' => [
                 'required',
                 'string',

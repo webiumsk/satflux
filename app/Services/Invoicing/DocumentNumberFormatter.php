@@ -6,10 +6,14 @@ use Carbon\CarbonInterface;
 use InvalidArgumentException;
 
 /**
- * Formats document numbers from patterns (R/M/C runs + literal text).
+ * Formats document numbers from patterns (Y/R/M/N/C runs + literal text).
  *
- * R = year digits, M = month digits, C = zero-padded counter.
- * Example: DELRRRRCCCC → DEL20260001, INVRRRRCCCC → INV20260066, PORRRRRCCCC → PO20260001
+ * Y = year digits (preferred), R = legacy year
+ * M = month digits
+ * N = zero-padded counter (preferred, run of 2+), C = legacy counter
+ * Single Y or N are literal characters (e.g. expense prefix N in NYYYYNNNN).
+ *
+ * Example: DELYYYYNNNN → DEL20260001, INVYYYYNNNN → INV20260066
  */
 final class DocumentNumberFormatter
 {
@@ -19,8 +23,8 @@ final class DocumentNumberFormatter
         if ($format === '' || ! preg_match('/^[A-Z0-9]+$/', $format)) {
             throw new InvalidArgumentException('Format may only contain letters A-Z and digits.');
         }
-        if (! str_contains($format, 'C')) {
-            throw new InvalidArgumentException('Format must include at least one counter (C).');
+        if (! str_contains($format, 'C') && ! preg_match('/N{2,}/', $format)) {
+            throw new InvalidArgumentException('Format must include at least one counter (N or C).');
         }
     }
 
@@ -36,22 +40,21 @@ final class DocumentNumberFormatter
 
         while ($index < $length) {
             $char = $pattern[$index];
-            if (in_array($char, ['R', 'M', 'C'], true)) {
-                $runChar = $char;
-                $runLen = 0;
-                while ($index < $length && $pattern[$index] === $runChar) {
-                    $runLen++;
-                    $index++;
-                }
-
-                $result .= match ($runChar) {
-                    'R' => $this->padComponent((string) $date->year, $runLen),
-                    'M' => $this->padComponent((string) $date->month, $runLen),
-                    'C' => str_pad((string) max(0, $counter), $runLen, '0', STR_PAD_LEFT),
-                };
-            } else {
-                $result .= $char;
+            $runChar = $char;
+            $runLen = 0;
+            while ($index < $length && $pattern[$index] === $runChar) {
+                $runLen++;
                 $index++;
+            }
+
+            if ($char === 'M') {
+                $result .= $this->padComponent((string) $date->month, $runLen);
+            } elseif ($char === 'R' || ($char === 'Y' && $runLen >= 2)) {
+                $result .= $this->padComponent((string) $date->year, $runLen);
+            } elseif ($char === 'C' || ($char === 'N' && $runLen >= 2)) {
+                $result .= str_pad((string) max(0, $counter), $runLen, '0', STR_PAD_LEFT);
+            } else {
+                $result .= str_repeat($char, $runLen);
             }
         }
 

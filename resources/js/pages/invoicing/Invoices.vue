@@ -1784,7 +1784,6 @@ async function issueDoc(d: { id: string }) {
         localDoc.evolu,
         d.id as DocumentId,
         companyRow as EvoluCompanyRow,
-        localDoc.documentRows.value as EvoluDocumentRow[],
       );
       await load();
       return;

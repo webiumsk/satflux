@@ -1,77 +1,46 @@
-import { generateMnemonic, mnemonicToSeedSync, validateMnemonic } from "@scure/bip39";
+import { mnemonicToSeedSync, validateMnemonic } from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
-import { hkdf } from "@noble/hashes/hkdf.js";
-import { sha512 } from "@noble/hashes/sha2.js";
-import * as ed25519 from "@noble/ed25519";
+import {
+    clearStoredAccountMnemonic,
+    deriveRecoveryPublicKeyHex,
+    generateAccountMnemonic24,
+    getStoredAccountMnemonic,
+    normalizeAccountMnemonic,
+    signRecoveryMessage,
+    storeAccountMnemonic,
+} from "./accountSeed";
 
-ed25519.hashes.sha512 = sha512;
-
-const HKDF_INFO = new TextEncoder().encode("satflux-guest-ed25519-v1");
-const GUEST_MNEMONIC_STORAGE_KEY = "satflux.guest.mnemonic.v1";
-
-function bytesToHex(u8: Uint8Array): string {
-    return Array.from(u8, (b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-function normalizeMnemonic(mnemonic: string): string {
-    return mnemonic
-        .trim()
-        .toLowerCase()
-        .split(/\s+/)
-        .join(" ");
-}
+export {
+    clearStoredAccountMnemonic as clearStoredGuestMnemonic,
+    getStoredAccountMnemonic as getStoredGuestMnemonic,
+    storeAccountMnemonic as storeGuestMnemonic,
+};
 
 export function generateGuestMnemonic24(): string {
-    return generateMnemonic(wordlist, 256);
+    return generateAccountMnemonic24();
 }
 
 export function guestRecoveryPublicKeyHexFromMnemonic(mnemonic: string): string {
-    const normalized = normalizeMnemonic(mnemonic);
-    if (!validateMnemonic(normalized, wordlist)) {
-        throw new Error("invalid_mnemonic");
-    }
-    const seed = mnemonicToSeedSync(normalized, "");
-    const sk = hkdf(sha512, seed, new Uint8Array(0), HKDF_INFO, 32);
-    const pk = ed25519.getPublicKey(sk);
-    return bytesToHex(pk);
+    return deriveRecoveryPublicKeyHex(mnemonic);
 }
 
 export function signGuestRecoveryMessage(mnemonic: string, messageUtf8: string): string {
-    const normalized = normalizeMnemonic(mnemonic);
-    if (!validateMnemonic(normalized, wordlist)) {
-        throw new Error("invalid_mnemonic");
-    }
-    const seed = mnemonicToSeedSync(normalized, "");
-    const sk = hkdf(sha512, seed, new Uint8Array(0), HKDF_INFO, 32);
-    const sig = ed25519.sign(new TextEncoder().encode(messageUtf8), sk);
-    return bytesToHex(sig);
+    return signRecoveryMessage(mnemonic, messageUtf8);
 }
 
 export function guestRecoveryMessage(challengeId: string, nonceHex: string): string {
     return `satflux:guest-recovery:v1|${challengeId}|${nonceHex}`;
 }
 
-export function storeGuestMnemonic(mnemonic: string): void {
-    const normalized = normalizeMnemonic(mnemonic);
-    if (!validateMnemonic(normalized, wordlist)) {
-        throw new Error("invalid_mnemonic");
-    }
-    // Keep mnemonic only for current browser session by default (avoid persistent plaintext storage).
-    sessionStorage.setItem(GUEST_MNEMONIC_STORAGE_KEY, normalized);
+// Legacy exports kept for any direct imports of normalize/validate helpers.
+export function normalizeMnemonic(mnemonic: string): string {
+    return normalizeAccountMnemonic(mnemonic);
 }
 
-export function getStoredGuestMnemonic(): string | null {
-    const raw = sessionStorage.getItem(GUEST_MNEMONIC_STORAGE_KEY);
-    if (!raw) return null;
-    const normalized = normalizeMnemonic(raw);
-    if (!validateMnemonic(normalized, wordlist)) {
-        sessionStorage.removeItem(GUEST_MNEMONIC_STORAGE_KEY);
-        return null;
-    }
-    return normalized;
+export function validateGuestMnemonic(mnemonic: string): boolean {
+    return validateMnemonic(normalizeAccountMnemonic(mnemonic), wordlist);
 }
 
-export function clearStoredGuestMnemonic(): void {
-    sessionStorage.removeItem(GUEST_MNEMONIC_STORAGE_KEY);
-    localStorage.removeItem(GUEST_MNEMONIC_STORAGE_KEY);
+export function mnemonicToSeed(mnemonic: string): Uint8Array {
+    return mnemonicToSeedSync(normalizeAccountMnemonic(mnemonic), "");
 }

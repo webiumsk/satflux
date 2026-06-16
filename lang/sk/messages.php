@@ -15,6 +15,7 @@ return [
     'login_successful' => 'Login successful',
     'logout_successful' => 'Logout successful',
     'registration_successful' => 'Registration successful! Please check your email to verify your account.',
+    'seed_first_registration_required' => 'Vytvorte si účet najprv s obnovovacou frázou. Email a heslo môžete pridať neskôr v nastaveniach účtu.',
     'compliance_registration_unavailable' => 'Registrácia z vašej lokality nie je dostupná alebo ju nebolo možné dokončiť. Ak si myslíte, že ide o chybu, kontaktujte podporu.',
     'verification_email_failed' => 'Nepodarilo sa odoslať overovací e-mail. Skontrolujte, či je vaša e-mailová adresa platná, a skúste to znova.',
     'email_verified' => 'Your email has been verified successfully. Please login to continue.',

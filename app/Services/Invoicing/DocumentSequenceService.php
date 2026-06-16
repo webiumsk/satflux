@@ -159,8 +159,22 @@ class DocumentSequenceService
     {
         $format = strtoupper(trim($format));
 
+        if (preg_match('/N{2,}$/', $format, $matches)) {
+            return strlen($matches[0]);
+        }
+
         if (preg_match('/C+$/', $format, $matches)) {
             return strlen($matches[0]);
+        }
+
+        if (preg_match_all('/N{2,}/', $format, $matches)) {
+            $max = 0;
+            foreach ($matches[0] as $run) {
+                $max = max($max, strlen($run));
+            }
+            if ($max > 0) {
+                return $max;
+            }
         }
 
         return max(1, substr_count($format, 'C'));
@@ -188,7 +202,8 @@ class DocumentSequenceService
 
     /**
      * Default number series seeded for new companies.
-     * Format tokens: R = year, M = month, C = counter. Literal prefix letters must not include R, M, or C.
+     * Format tokens: Y = year, M = month, N = counter (run of 2+). Legacy R/C still work.
+     * Single Y or N are literal characters. Literal prefix letters must not use token runs.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -210,14 +225,14 @@ class DocumentSequenceService
     protected function defaultSeriesFormatDefinitions(): array
     {
         return [
-            ['document_type' => 'invoice', 'name_key' => 'invoicing.series_default_name_invoice', 'format' => 'INVRRRRCCCC'],
-            ['document_type' => 'credit_note', 'name_key' => 'invoicing.series_default_name_credit_note', 'format' => 'CNRRRRCCCC'],
-            ['document_type' => 'proforma', 'name_key' => 'invoicing.series_default_name_proforma', 'format' => 'PFRRRRCCCC'],
-            ['document_type' => 'delivery_note', 'name_key' => 'invoicing.series_default_name_delivery_note', 'format' => 'DELRRRRCCCC'],
-            ['document_type' => 'quote', 'name_key' => 'invoicing.series_default_name_quote', 'format' => 'QTRRRRCCCC'],
-            ['document_type' => 'order_received', 'name_key' => 'invoicing.series_default_name_order_received', 'format' => 'PORRRRCCCC'],
-            ['document_type' => 'order_issued', 'name_key' => 'invoicing.series_default_name_order_issued', 'format' => 'SORRRRCCCC'],
-            ['document_type' => 'expense', 'name_key' => 'invoicing.series_default_name_expense', 'format' => 'EXPRRRRCCCC'],
+            ['document_type' => 'invoice', 'name_key' => 'invoicing.series_default_name_invoice', 'format' => 'INVYYYYNNNN'],
+            ['document_type' => 'credit_note', 'name_key' => 'invoicing.series_default_name_credit_note', 'format' => 'CNYYYYNNNN'],
+            ['document_type' => 'proforma', 'name_key' => 'invoicing.series_default_name_proforma', 'format' => 'PFYYYYNNNN'],
+            ['document_type' => 'delivery_note', 'name_key' => 'invoicing.series_default_name_delivery_note', 'format' => 'DELYYYYNNNN'],
+            ['document_type' => 'quote', 'name_key' => 'invoicing.series_default_name_quote', 'format' => 'QTYYYYNNNN'],
+            ['document_type' => 'order_received', 'name_key' => 'invoicing.series_default_name_order_received', 'format' => 'POYYYYNNNN'],
+            ['document_type' => 'order_issued', 'name_key' => 'invoicing.series_default_name_order_issued', 'format' => 'SOYYYYNNNN'],
+            ['document_type' => 'expense', 'name_key' => 'invoicing.series_default_name_expense', 'format' => 'EXPYYYYNNNN'],
         ];
     }
 

@@ -104,13 +104,13 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Business invoice PDF: session auth (direct browser GET / copy link; API /api/... is stateless without SPA headers)
-Route::middleware(['auth', RequireVerifiedEmail::class, EnsurePlanAllowsBusinessInvoicing::class, 'guest.restrict'])
+Route::middleware(['auth', RequireVerifiedEmail::class, EnsurePlanAllowsBusinessInvoicing::class])
     ->get('/invoicing/companies/{company}/documents/{businessDocument}/pdf', [BusinessDocumentController::class, 'pdf'])
     ->middleware(EnsureCompanyOwnership::class);
-Route::middleware(['auth', RequireVerifiedEmail::class, EnsurePlanAllowsBusinessInvoicing::class, 'guest.restrict'])
+Route::middleware(['auth', RequireVerifiedEmail::class, EnsurePlanAllowsBusinessInvoicing::class])
     ->get('/invoicing/companies/{company}/documents/{businessDocument}/isdoc', [BusinessDocumentController::class, 'isdoc'])
     ->middleware(EnsureCompanyOwnership::class);
-Route::middleware(['auth', RequireVerifiedEmail::class, EnsurePlanAllowsBusinessInvoicing::class, 'guest.restrict'])
+Route::middleware(['auth', RequireVerifiedEmail::class, EnsurePlanAllowsBusinessInvoicing::class])
     ->get('/invoicing/companies/{company}/documents/{businessDocument}/ubl', [BusinessDocumentController::class, 'ubl'])
     ->middleware(EnsureCompanyOwnership::class);
 

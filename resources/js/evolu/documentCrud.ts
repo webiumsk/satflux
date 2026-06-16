@@ -11,14 +11,18 @@ import {
     type EvoluDocumentLineRow,
     type EvoluDocumentRow,
 } from "./documentMap";
-import { nextNumberForIssue, syncLocalSeriesCounterFromIssuedNumber } from "./numberSeriesCrud";
+import {
+    allocateNextNumberForIssue,
+    commitNumberSeriesCounter,
+    syncLocalSeriesCounterFromIssuedNumber,
+} from "./numberSeriesCrud";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import { variableSymbolFromNumber } from "./documentNumber";
 import type { EvoluCompanyRow } from "./companyMap";
 import { logDocumentEvent } from "./documentEventLog";
-import { reserveNextDocumentNumberFromStore } from "./numberSequenceBridge";
 import { applyDocumentStockOnIssueAsync, reverseDocumentStockOnCancelAsync } from "./documentStockMovement";
 import type { DocumentType } from "./schema";
+import { allDocumentsQuery, allNumberSeriesQuery } from "./client";
 
 export type DocumentLinePayload = {
     name: string;
@@ -264,6 +268,37 @@ export function saveLocalDocument(
     return { ok: true as const, value: { id: docId } };
 }
 
+async function loadIssueContext(evolu: Evolu<InvoicingLocalSchema>): Promise<{
+    documents: EvoluDocumentRow[];
+    series: EvoluNumberSeriesRow[];
+}> {
+    const [documents, series] = await Promise.all([
+        evolu.loadQuery(allDocumentsQuery),
+        evolu.loadQuery(allNumberSeriesQuery),
+    ]);
+    return {
+        documents: documents as EvoluDocumentRow[],
+        series: series as EvoluNumberSeriesRow[],
+    };
+}
+
+async function waitForDraftDocument(
+    evolu: Evolu<InvoicingLocalSchema>,
+    documentId: DocumentId,
+): Promise<EvoluDocumentRow | null> {
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+        const documents = (await evolu.loadQuery(allDocumentsQuery)) as EvoluDocumentRow[];
+        const doc = documents.find((row) => row.id === documentId);
+        if (doc) {
+            return doc;
+        }
+        await new Promise((resolve) => {
+            setTimeout(resolve, attempt === 0 ? 0 : 40);
+        });
+    }
+    return null;
+}
+
 export function issueLocalDocument(
     evolu: Evolu<InvoicingLocalSchema>,
     documentId: DocumentId,
@@ -276,17 +311,18 @@ export function issueLocalDocument(
         return { ok: false as const, error: "not_draft" };
     }
 
-    const numberResult = nextNumberForIssue(
+    const allocation = allocateNextNumberForIssue(
         evolu,
         company.id,
         doc.documentType,
         allDocuments,
         allSeries,
+        documentId,
     );
-    if (!numberResult.ok) {
-        return numberResult;
+    if (!allocation.ok) {
+        return allocation;
     }
-    const number = numberResult.value;
+    const number = allocation.value;
     const variableSymbol = doc.variableSymbol || variableSymbolFromNumber(number);
     const quoteStatus = doc.documentType === "quote" ? "pending" : doc.quoteStatus;
 
@@ -297,9 +333,23 @@ export function issueLocalDocument(
         variableSymbol,
         quoteStatus,
     });
-    if (result.ok) {
-        logDocumentEvent(evolu, documentId, "business_document.issued", { number });
+    if (!result.ok) {
+        return result;
     }
+
+    const committed = commitNumberSeriesCounter(evolu, allocation);
+    if (!committed.ok) {
+        evolu.update("document", {
+            id: documentId,
+            status: "draft",
+            number: null,
+            variableSymbol: doc.variableSymbol,
+            quoteStatus: doc.quoteStatus,
+        });
+        return committed;
+    }
+
+    logDocumentEvent(evolu, documentId, "business_document.issued", { number });
     return result;
 }
 
@@ -317,50 +367,14 @@ export async function issueLocalDocumentAsync(
     evolu: Evolu<InvoicingLocalSchema>,
     documentId: DocumentId,
     company: EvoluCompanyRow,
-    allDocuments: EvoluDocumentRow[],
-    allSeries: EvoluNumberSeriesRow[],
 ) {
-    const doc = allDocuments.find((d) => d.id === documentId);
-    if (!doc || doc.status !== "draft") {
+    const draft = await waitForDraftDocument(evolu, documentId);
+    if (!draft || draft.status !== "draft") {
         return { ok: false as const, error: "not_draft" };
     }
 
-    const linkedStoreId = company.linkedStoreId?.trim();
-    if (linkedStoreId) {
-        const reserveResult = await reserveNextDocumentNumberFromStore(
-            linkedStoreId,
-            doc.documentType,
-        );
-        if (!reserveResult.ok) {
-            return reserveResult;
-        }
-
-        const number = reserveResult.value.number;
-        syncLocalSeriesCounterFromIssuedNumber(
-            evolu,
-            company.id,
-            doc.documentType as DocumentType,
-            number,
-            allSeries,
-        );
-
-        const variableSymbol = doc.variableSymbol || variableSymbolFromNumber(number);
-        const quoteStatus = doc.documentType === "quote" ? "pending" : doc.quoteStatus;
-        const result = evolu.update("document", {
-            id: documentId,
-            status: "issued",
-            number,
-            variableSymbol,
-            quoteStatus,
-        });
-        if (result.ok) {
-            logDocumentEvent(evolu, documentId, "business_document.issued", { number, source: "store_bridge" });
-        }
-        await finalizeIssueStock(evolu, documentId, result);
-        return result;
-    }
-
-    const result = issueLocalDocument(evolu, documentId, company, allDocuments, allSeries);
+    const { documents, series } = await loadIssueContext(evolu);
+    const result = issueLocalDocument(evolu, documentId, company, documents, series);
     await finalizeIssueStock(evolu, documentId, result);
     return result;
 }

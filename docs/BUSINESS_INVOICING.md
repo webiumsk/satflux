@@ -24,6 +24,19 @@ Entitlement is enforced from the local `subscriptions` row (`billing_phase`, `ex
 
 Existing companies above the Free limit (0) are **not** removed; the user simply cannot open the module until Pro is active again. Creating new companies is blocked when at plan limit (Pro: 2, or beta: 5).
 
+## Local-first mode and recovery phrase
+
+When `VITE_INVOICING_LOCAL_FIRST=true`, invoicing companies, contacts, and documents live in the browser (Evolu SQLite). The **same 24-word Satflux recovery phrase** is the Evolu AppOwner key (`resources/js/services/evoluOwner.ts`) - one offline backup for:
+
+- Server account restore (BTCPay store ownership via `POST /api/auth/guest/recovery`)
+- Local invoicing data on new devices (same phrase + relay sync)
+
+Legacy data created under a random pre-unification Evolu owner migrates automatically when you sign in with your recovery phrase on the original browser (any authenticated page). After migration, only the Satflux phrase is needed on new devices.
+
+**BTCPay store UUIDs** in local data (`company.linkedStoreId`, `document.storeId`) refer to server `stores.id` rows on **your** account. Importing or syncing data from another account leaves stale UUIDs; the app clears unknown store links on invoicing startup (`sanitizeLocalStoreReferences`). Re-link a store in company settings.
+
+Seed-first onboarding (`SEED_FIRST_REGISTRATION=true`) creates accounts via recovery phrase; email/password is added later in Account (guest upgrade). Guest accounts may use local-first invoicing; Pro server bridges (PDF, e-faktura, BTCPay checkout on ephemeral API) still require an active Pro subscription.
+
 ## Subscription billing company
 
 Satflux can auto-issue **paid** invoices for annual plan payments (Pro / Enterprise) into one dedicated company profile:
@@ -54,7 +67,7 @@ Buyer PII on issued documents is frozen in `buyer_snapshot` at issue. Contact de
 - `company_contacts` - customers / recipients.
 - `business_documents` + `business_document_lines` - local accounting documents (`buyer_snapshot` JSON at issue).
 - `business_recurring_profiles` + `business_recurring_profile_lines` - recurring invoice schedules (templates with placeholders).
-- `company_document_sequences` - configurable number series per document type (name, format pattern, reset period, default flag). Formats use tokens `R`/`M`/`C` (year/month/counter) plus literal prefixes (e.g. `RRRRCCCC`, `DODRRCCC`). Seeded on company create; issuing uses the default series for the document type.
+- `company_document_sequences` - configurable number series per document type (name, format pattern, reset period, default flag). Formats use tokens `Y`/`M`/`N` (year/month/counter; counter needs a run of 2+ `N`, e.g. `NNNN`) plus literal prefixes (e.g. `INVYYYYNNNN`, `DODYYCCC`). Legacy `R`/`C` patterns still work. Seeded on company create; issuing uses the default series for the document type.
 
 ## Jurisdictions
 
