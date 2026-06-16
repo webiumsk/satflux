@@ -1,6 +1,13 @@
 import type { RecurringInterval } from "./schema";
 import type { EvoluRecurringProfileRow } from "./recurringMap";
 
+export function formatLocalDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
+
 export function advanceRecurringNextDate(
     interval: RecurringInterval,
     fromDate: string,
@@ -16,7 +23,7 @@ export function advanceRecurringNextDate(
     if (issueLastDayOfMonth) {
         next.setMonth(next.getMonth() + 1, 0);
     }
-    return next.toISOString().slice(0, 10);
+    return formatLocalDate(next);
 }
 
 export function isRecurringProfileDue(
@@ -24,7 +31,7 @@ export function isRecurringProfileDue(
     nextIssueDate: string | null,
     repeatIndefinitely: boolean,
     endsAt: string | null,
-    today = new Date().toISOString().slice(0, 10),
+    today = formatLocalDate(new Date()),
 ): boolean {
     if (!isActive || !nextIssueDate) return false;
     if (nextIssueDate > today) return false;
@@ -34,7 +41,7 @@ export function isRecurringProfileDue(
 
 export function listDueRecurringProfiles(
     rows: EvoluRecurringProfileRow[],
-    today = new Date().toISOString().slice(0, 10),
+    today = formatLocalDate(new Date()),
 ): EvoluRecurringProfileRow[] {
     return rows
         .filter((row) =>

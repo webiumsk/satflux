@@ -133,6 +133,10 @@ async function submit() {
       emit('close');
       return;
     }
+    if (localFirst) {
+      error.value = t('errors.generic');
+      return;
+    }
     await api.post(`/invoicing/companies/${props.companyId}/stock-items/${props.stockItemId}/transfer`, {
       from_warehouse_id: fromId.value,
       to_warehouse_id: toId.value,

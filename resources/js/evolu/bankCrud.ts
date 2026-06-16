@@ -130,6 +130,9 @@ function applyMatch(
         matchType,
         matchedAt: new Date().toISOString(),
     });
+    if (!match.ok) {
+        return;
+    }
 
     evolu.update("bankTransaction", {
         id: transaction.id,
@@ -144,16 +147,14 @@ function applyMatch(
         AMOUNT_TOLERANCE,
     );
 
-    if (match.ok) {
-        ctx.matches.push({
-            id: match.value.id,
-            bankTransactionId: transaction.id,
-            businessDocumentId: document.id,
-            matchedAmount: matchedAmount.toFixed(2),
-            matchType,
-            matchedAt: new Date().toISOString(),
-        });
-    }
+    ctx.matches.push({
+        id: match.value.id,
+        bankTransactionId: transaction.id,
+        businessDocumentId: document.id,
+        matchedAmount: matchedAmount.toFixed(2),
+        matchType,
+        matchedAt: new Date().toISOString(),
+    });
 
     const tx = ctx.transactions.find((row) => row.id === transaction.id);
     if (tx) tx.matchStatus = "matched";
@@ -313,6 +314,8 @@ export async function importLocalBankFileAsync(
             ctx.transactions.push(row);
             created.push(row);
             imported++;
+        } else {
+            skipped++;
         }
     }
 
@@ -491,6 +494,7 @@ export function createLocalExpenseFromBankTransaction(
         matchStatus: "matched",
     });
 
+    const paidAt = expensePayload.mark_paid ? new Date().toISOString().slice(0, 10) : null;
     const expenseRow: EvoluExpenseRow = {
         id: result.value.id,
         companyId: transaction.companyId,
@@ -504,7 +508,7 @@ export function createLocalExpenseFromBankTransaction(
         issueDate: expensePayload.issue_date,
         deliveryDate: expensePayload.delivery_date ?? null,
         dueDate: expensePayload.due_date ?? null,
-        paidAt: expensePayload.mark_paid ? expensePayload.issue_date : null,
+        paidAt,
         cancelledAt: null,
         total: typeof expensePayload.total === "number"
             ? expensePayload.total.toFixed(2)

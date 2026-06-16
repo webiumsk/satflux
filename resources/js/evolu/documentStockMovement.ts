@@ -174,6 +174,15 @@ export function applyLocalDocumentIssueStock(
         );
         if (!warehouse || warehouse.deductOnIssue !== 1) continue;
 
+        const alreadyIssued = ctx.movementRows.some(
+            (movement) =>
+                movement.businessDocumentId === document.id
+                && movement.companyStockItemId === line.companyStockItemId
+                && movement.companyWarehouseId === warehouse.id
+                && movement.source === "document_issue",
+        );
+        if (alreadyIssued) continue;
+
         const quantity = parseStockQty(line.quantity);
         const delta = document.documentType === "credit_note" ? quantity : -quantity;
         applyStockDeltaForDocument(evolu, document, item, warehouse, delta, "document_issue", ctx);

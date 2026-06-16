@@ -300,7 +300,7 @@ export function matchesDocumentVariableSymbol(
     document: EvoluDocumentRow,
     vs: string | null | undefined,
 ): boolean {
-    if (!vs) return true;
+    if (!vs) return false;
     if (document.variableSymbol === vs) return true;
     const fromNumber = (document.number || "").replace(/\D/g, "");
     return fromNumber !== "" && fromNumber === vs;

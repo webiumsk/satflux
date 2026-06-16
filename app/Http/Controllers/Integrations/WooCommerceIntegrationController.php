@@ -95,6 +95,10 @@ class WooCommerceIntegrationController extends Controller
         }
 
         $document = BusinessDocument::findOrFail($documentId);
+        $company = $integration->company ?? $integration->store->company;
+        if (! $company || $document->company_id !== $company->id) {
+            abort(404);
+        }
         $document = $this->documentService->issueDocument($integration, $document);
 
         return response()->json([

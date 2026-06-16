@@ -107,7 +107,7 @@ function sqliteBool(value: 0 | 1 | null | undefined): boolean {
     return value === 1;
 }
 
-function parseTags(json: string | null): string[] {
+export function parseRecurringTags(json: string | null): string[] {
     if (!json?.trim()) return [];
     try {
         const parsed = JSON.parse(json);
@@ -115,6 +115,10 @@ function parseTags(json: string | null): string[] {
     } catch {
         return [];
     }
+}
+
+function parseTags(json: string | null): string[] {
+    return parseRecurringTags(json);
 }
 
 export function filterRecurringProfiles(
@@ -162,7 +166,9 @@ export function evoluRecurringProfileToApi(
         variable_symbol: row.variableSymbol,
         constant_symbol: row.constantSymbol,
         specific_symbol: row.specificSymbol,
-        payment_terms_days: parseInt(row.paymentTermsDays || "14", 10) || 14,
+        payment_terms_days: row.paymentTermsDays != null && row.paymentTermsDays !== ""
+            ? parseInt(row.paymentTermsDays, 10)
+            : 14,
         delivery_date_mode: row.deliveryDateMode,
         currency: row.currency || "EUR",
         discount_percent: row.discountPercent || "0",

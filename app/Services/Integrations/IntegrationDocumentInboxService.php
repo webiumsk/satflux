@@ -5,6 +5,7 @@ namespace App\Services\Integrations;
 use App\Enums\BusinessDocumentType;
 use App\Enums\IntegrationDocumentInboxStatus;
 use App\Models\Company;
+use App\Models\AuditLog;
 use App\Models\IntegrationDocumentInbox;
 use App\Models\Store;
 use App\Models\StoreIntegration;
@@ -166,6 +167,12 @@ class IntegrationDocumentInboxService
         $payload['issued_at'] = now()->toIso8601String();
         $entry->payload_json = $payload;
         $entry->save();
+
+        AuditLog::log('integration_inbox.document_number_issued', 'company', $company->id, [
+            'inbox_id' => $entry->id,
+            'document_type' => $type,
+            'number' => $number,
+        ]);
 
         return $entry->fresh();
     }

@@ -466,10 +466,12 @@ export async function cancelLocalDocumentAsync(
     documents: EvoluDocumentRow[],
 ) {
     const doc = documents.find((row) => row.id === documentId);
-    if (doc?.status === "issued") {
-        await reverseDocumentStockOnCancelAsync(evolu, documentId);
+    const result = cancelLocalDocument(evolu, documentId);
+    if (!result.ok || doc?.status !== "issued") {
+        return result;
     }
-    return cancelLocalDocument(evolu, documentId);
+    await reverseDocumentStockOnCancelAsync(evolu, documentId);
+    return result;
 }
 
 export function markLocalDocumentPaid(

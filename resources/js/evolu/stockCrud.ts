@@ -24,7 +24,7 @@ const Opt64 = maxLength(64)(NonEmptyString);
 const Opt4000 = maxLength(4000)(NonEmptyString);
 const CurrencyType = maxLength(3)(NonEmptyString);
 
-function parseOpt(value: string | null | undefined, type: ReturnType<typeof maxLength>) {
+function parseOpt(value: string | null | undefined, type: ReturnType<ReturnType<typeof maxLength>>) {
     if (value == null || value.trim() === "") return { ok: true as const, value: null };
     return type.from(value.trim());
 }
@@ -217,6 +217,8 @@ export function saveLocalStockItem(
             options.existingBalances,
             !options.itemId,
         );
+    } else if (itemId) {
+        syncBalances(evolu, companyId, itemRow, [], options.existingBalances, false);
     }
 
     return { ok: true as const, value: { id: itemId } };
@@ -263,7 +265,9 @@ export function transferLocalStock(
         balanceRows: EvoluStockBalanceRow[];
     },
 ) {
-    if (quantity <= 0) return { ok: false as const, error: "quantity" };
+    if (quantity <= 0 || !Number.isFinite(quantity)) {
+        return { ok: false as const, error: "quantity" };
+    }
     if (fromWarehouseId === toWarehouseId) return { ok: false as const, error: "same_warehouse" };
 
     const fromRow = options.balanceRows.find(

@@ -13,6 +13,7 @@ import { allDocumentsQuery } from "./client";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import { advanceRecurringNextDate } from "./recurringNextDate";
 import type { EvoluRecurringProfileLineRow, EvoluRecurringProfileRow } from "./recurringMap";
+import { parseRecurringTags } from "./recurringMap";
 import { resolveRecurringPlaceholders } from "./recurringPlaceholder";
 import type {
     CompanyId,
@@ -89,16 +90,21 @@ function syncRecurringLines(
     lines: RecurringLinePayload[],
     lineTotals: string[],
     existingLines: EvoluRecurringProfileLineRow[],
-) {
+): { ok: true } | { ok: false; error: string } {
     const existing = existingLines.filter((row) => row.recurringProfileId === profileId);
     for (const row of existing) {
-        evolu.update("recurringProfileLine", { id: row.id as RecurringProfileLineId, isDeleted: sqliteTrue });
+        const deleted = evolu.update("recurringProfileLine", {
+            id: row.id as RecurringProfileLineId,
+            isDeleted: sqliteTrue,
+        });
+        if (!deleted.ok) return deleted;
     }
 
-    lines.forEach((line, index) => {
+    for (let index = 0; index < lines.length; index += 1) {
+        const line = lines[index];
         const name = LineNameType.from(line.name.trim() || "Item");
-        if (!name.ok) return;
-        evolu.insert("recurringProfileLine", {
+        if (!name.ok) return name;
+        const inserted = evolu.insert("recurringProfileLine", {
             recurringProfileId: profileId,
             sortOrder: String(index),
             name: name.value,
@@ -110,7 +116,10 @@ function syncRecurringLines(
             taxRate: String(line.tax_rate ?? 0),
             lineTotal: lineTotals[index] ?? "0.00",
         });
-    });
+        if (!inserted.ok) return inserted;
+    }
+
+    return { ok: true };
 }
 
 export function saveLocalRecurringProfile(
@@ -201,7 +210,14 @@ export function saveLocalRecurringProfile(
         profileId = result.value.id;
     }
 
-    syncRecurringLines(evolu, profileId, payload.lines, totals.lineTotals, options.existingLines);
+    const linesResult = syncRecurringLines(
+        evolu,
+        profileId,
+        payload.lines,
+        totals.lineTotals,
+        options.existingLines,
+    );
+    if (!linesResult.ok) return linesResult;
     return { ok: true as const, value: { id: profileId } };
 }
 
@@ -294,7 +310,7 @@ export async function generateLocalRecurringDocument(
         pdf_show_payment_info: profile.pdfShowPaymentInfo === 1,
         payment_bank_enabled: profile.paymentBankEnabled !== 0,
         payment_btc_enabled: profile.paymentBtcEnabled === 1,
-        tags: profile.tagsJson ? (JSON.parse(profile.tagsJson) as string[]) : [],
+        tags: parseRecurringTags(profile.tagsJson),
         lines: documentLines,
     };
 

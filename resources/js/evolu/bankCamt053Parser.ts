@@ -92,9 +92,10 @@ function parseEntry(ntry: Element): ParsedBankRow | null {
         localNameValue(ntry, "BookgDt", "Dt") || localNameValue(ntry, "ValDt", "Dt");
     if (!booked) return null;
 
-    const bookedAt = Date.parse(booked)
-        ? new Date(booked).toISOString()
-        : `${booked}T12:00:00.000Z`;
+    const bookedAt = Number.isNaN(Date.parse(booked))
+        ? null
+        : new Date(booked).toISOString();
+    if (!bookedAt) return null;
 
     const symbols = extractSymbols(ntry);
 

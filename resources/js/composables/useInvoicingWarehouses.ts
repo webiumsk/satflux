@@ -92,7 +92,7 @@ function useLocalWarehouses(companyId: Ref<string>): UseInvoicingWarehousesResul
                 evolu.loadQuery(allCompanyStockBalancesQuery),
             ]);
             const rows = warehouseRows.value as EvoluWarehouseRow[];
-            if (!rows.some((row) => row.companyId === companyId.value)) {
+            if (companyId.value && !rows.some((row) => row.companyId === companyId.value)) {
                 ensureDefaultLocalWarehouse(evolu, companyId.value as CompanyId, rows);
                 await evolu.loadQuery(allCompanyWarehousesQuery);
             }

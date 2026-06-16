@@ -61,11 +61,14 @@ async function loadRunnerSnapshot(evolu: Evolu<InvoicingLocalSchema>): Promise<R
 }
 
 function taxOptionsForCompany(company: EvoluCompanyRow) {
-    const defaultVat = Number(company.vatRateDefault ?? 23) || 23;
+    const defaultVat = Number(company.vatRateDefault ?? 23);
     return {
         defaultVat,
         lineTaxApplies: () => company.vatPayer === 1,
-        lineTaxRate: (line: DocumentLinePayload) => Number(line.tax_rate) || defaultVat,
+        lineTaxRate: (line: DocumentLinePayload) => {
+            const rate = Number(line.tax_rate);
+            return Number.isFinite(rate) ? rate : defaultVat;
+        },
     };
 }
 

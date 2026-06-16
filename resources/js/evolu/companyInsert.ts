@@ -84,7 +84,7 @@ export function insertLocalCompanyFromPayload(
     const linkedStoreId = parseOptional(payload.store_id, Opt64);
     if (!linkedStoreId.ok) return linkedStoreId;
 
-    return evolu.insert("company", {
+    const result = evolu.insert("company", {
         legalName: legalName.value,
         tradeName: null,
         jurisdiction: payload.jurisdiction,

@@ -85,15 +85,26 @@ function useServerInvoicingBankPayments(
     const inboundEmail = ref("");
     let lastFilter = "all";
 
-    const inboundEmailAvailable = computed(() => true);
+    const inboundEmailAvailable = computed(() => inboundEmail.value.trim().length > 0);
+
+    function requireCompanyId(): string | null {
+        return companyId.value || null;
+    }
 
     async function load(matchFilter = lastFilter) {
+        const cid = requireCompanyId();
+        if (!cid) {
+            transactions.value = [];
+            summary.value = emptySummary(defaultCurrency.value);
+            loading.value = false;
+            return;
+        }
         lastFilter = matchFilter;
         loading.value = true;
         try {
             const params: Record<string, string | number> = { per_page: 50 };
             if (matchFilter !== "all") params.match_status = matchFilter;
-            const { data } = await api.get(`/invoicing/companies/${companyId.value}/bank-transactions`, {
+            const { data } = await api.get(`/invoicing/companies/${cid}/bank-transactions`, {
                 params,
             });
             transactions.value = data.data || [];
@@ -104,16 +115,26 @@ function useServerInvoicingBankPayments(
     }
 
     async function loadBatches() {
+        const cid = requireCompanyId();
+        if (!cid) {
+            batches.value = [];
+            return;
+        }
         const { data } = await api.get(
-            `/invoicing/companies/${companyId.value}/bank-transactions/batches`,
+            `/invoicing/companies/${cid}/bank-transactions/batches`,
         );
         batches.value = data.data || [];
     }
 
     async function loadInbound() {
+        const cid = requireCompanyId();
+        if (!cid) {
+            inboundEmail.value = "";
+            return;
+        }
         try {
             const { data } = await api.get(
-                `/invoicing/companies/${companyId.value}/bank-transactions/inbound-email`,
+                `/invoicing/companies/${cid}/bank-transactions/inbound-email`,
             );
             inboundEmail.value = data.data?.address || "";
         } catch {
@@ -122,11 +143,15 @@ function useServerInvoicingBankPayments(
     }
 
     async function importFile(file: File, format?: string) {
+        const cid = requireCompanyId();
+        if (!cid) {
+            return { imported: 0, auto_matched: 0 };
+        }
         const form = new FormData();
         form.append("file", file);
         if (format) form.append("format", format);
         const { data } = await api.post(
-            `/invoicing/companies/${companyId.value}/bank-transactions/import`,
+            `/invoicing/companies/${cid}/bank-transactions/import`,
             form,
             { headers: { "Content-Type": "multipart/form-data" } },
         );
@@ -137,40 +162,52 @@ function useServerInvoicingBankPayments(
     }
 
     async function autoMatchBatch(batchId: string) {
+        const cid = requireCompanyId();
+        if (!cid) return;
         await api.post(
-            `/invoicing/companies/${companyId.value}/bank-transactions/batches/${batchId}/auto-match`,
+            `/invoicing/companies/${cid}/bank-transactions/batches/${batchId}/auto-match`,
         );
     }
 
     async function fetchSuggestions(transactionId: string): Promise<BankMatchSuggestion[]> {
+        const cid = requireCompanyId();
+        if (!cid) return [];
         const { data } = await api.get(
-            `/invoicing/companies/${companyId.value}/bank-transactions/${transactionId}/suggestions`,
+            `/invoicing/companies/${cid}/bank-transactions/${transactionId}/suggestions`,
         );
         return data.data || [];
     }
 
     async function matchTransaction(transactionId: string, documentId: string) {
+        const cid = requireCompanyId();
+        if (!cid) return;
         await api.post(
-            `/invoicing/companies/${companyId.value}/bank-transactions/${transactionId}/match`,
+            `/invoicing/companies/${cid}/bank-transactions/${transactionId}/match`,
             { business_document_id: documentId },
         );
     }
 
     async function ignoreTransaction(transactionId: string) {
+        const cid = requireCompanyId();
+        if (!cid) return;
         await api.post(
-            `/invoicing/companies/${companyId.value}/bank-transactions/${transactionId}/ignore`,
+            `/invoicing/companies/${cid}/bank-transactions/${transactionId}/ignore`,
         );
     }
 
     async function unmatchTransaction(transactionId: string) {
+        const cid = requireCompanyId();
+        if (!cid) return;
         await api.post(
-            `/invoicing/companies/${companyId.value}/bank-transactions/${transactionId}/unmatch`,
+            `/invoicing/companies/${cid}/bank-transactions/${transactionId}/unmatch`,
         );
     }
 
     async function createExpenseFromTransaction(transactionId: string, draft: BankExpenseDraft) {
+        const cid = requireCompanyId();
+        if (!cid) return;
         await api.post(
-            `/invoicing/companies/${companyId.value}/bank-transactions/${transactionId}/create-expense`,
+            `/invoicing/companies/${cid}/bank-transactions/${transactionId}/create-expense`,
             {
                 title: draft.title,
                 supplier: draft.supplier || undefined,
@@ -224,21 +261,11 @@ function useLocalInvoicingBankPayments(
         loading.value = false;
     });
 
-    const bankTxRows = useQuery(allBankTransactionsQuery, {
-        promise: evolu.loadQuery(allBankTransactionsQuery),
-    });
-    const bankMatchRows = useQuery(allBankTransactionMatchesQuery, {
-        promise: evolu.loadQuery(allBankTransactionMatchesQuery),
-    });
-    const documentRows = useQuery(allDocumentsQuery, {
-        promise: evolu.loadQuery(allDocumentsQuery),
-    });
-    const expenseRows = useQuery(allExpensesQuery, {
-        promise: evolu.loadQuery(allExpensesQuery),
-    });
-    const batchRows = useQuery(allBankImportBatchesQuery, {
-        promise: evolu.loadQuery(allBankImportBatchesQuery),
-    });
+    const bankTxRows = useQuery(allBankTransactionsQuery, { promise: loadPromise });
+    const bankMatchRows = useQuery(allBankTransactionMatchesQuery, { promise: loadPromise });
+    const documentRows = useQuery(allDocumentsQuery, { promise: loadPromise });
+    const expenseRows = useQuery(allExpensesQuery, { promise: loadPromise });
+    const batchRows = useQuery(allBankImportBatchesQuery, { promise: loadPromise });
 
     const ctx = computed((): BankPaymentContext => ({
         batches: batchRows.value as BankPaymentContext["batches"],

@@ -73,7 +73,7 @@ export function useLocalRecurringProfileSupport(companyId: Ref<string>) {
 
     function profileApi(profileId: string): RecurringProfileApiRow | null {
         const row = profileRows.value.find((p) => p.id === profileId) as EvoluRecurringProfileRow | undefined;
-        if (!row) return null;
+        if (!row || row.companyId !== companyId.value) return null;
         const contact = row.contactId
             ? contactsForCompany().find((c) => c.id === row.contactId) ?? null
             : null;
@@ -93,6 +93,9 @@ export function useLocalRecurringProfileSupport(companyId: Ref<string>) {
             lineTaxRate: (line: RecurringProfileSavePayload["lines"][0]) => number;
         },
     ) {
+        if (!companyId.value) {
+            return { ok: false as const, error: "company_required" };
+        }
         return saveLocalRecurringProfile(evolu, companyId.value as CompanyId, payload, {
             profileId: options.profileId,
             defaultVat: options.defaultVat,
@@ -103,6 +106,10 @@ export function useLocalRecurringProfileSupport(companyId: Ref<string>) {
     }
 
     function deleteProfile(profileId: RecurringProfileId) {
+        const row = profileRows.value.find((p) => p.id === profileId);
+        if (!row || row.companyId !== companyId.value) {
+            return { ok: false as const, error: "not_found" };
+        }
         return deleteLocalRecurringProfile(
             evolu,
             profileId,

@@ -33,6 +33,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
@@ -337,7 +338,12 @@ class EphemeralBusinessDocumentController extends Controller
                 $request->input('body'),
             );
         } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
-            return response()->json(['message' => 'Email could not be sent: '.$e->getMessage()], 422);
+            Log::warning('Ephemeral business document email failed', [
+                'user_id' => $request->user()?->id,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return response()->json(['message' => 'Email could not be sent.'], 422);
         }
 
         return response()->json([
@@ -400,6 +406,7 @@ class EphemeralBusinessDocumentController extends Controller
         $user = $request->user();
         abort_unless($user instanceof User, 401);
 
+        // store_id is in the request body, not the route; EnsureStoreOwnership cannot be applied here.
         $store = Store::query()
             ->where('id', $request->validated('store_id'))
             ->where('user_id', $user->id)

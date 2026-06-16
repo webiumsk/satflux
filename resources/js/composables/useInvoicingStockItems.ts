@@ -182,14 +182,18 @@ export function useLocalStockItemDetail(companyId: Ref<string>) {
 
     function itemApi(itemId: string) {
         const row = (itemRows.value as EvoluStockItemRow[]).find((entry) => entry.id === itemId);
-        if (!row) return null;
+        if (!row || row.companyId !== companyId.value) return null;
         const apiRow = evoluStockItemToListRow(
             row,
             balanceRows.value as EvoluStockBalanceRow[],
             warehouseRows.value as EvoluWarehouseRow[],
         );
         const movements = (movementRows.value as EvoluStockMovementRow[])
-            .filter((entry) => entry.companyStockItemId === itemId)
+            .filter(
+                (entry) =>
+                    entry.companyStockItemId === itemId
+                    && entry.companyId === companyId.value,
+            )
             .sort((a, b) => (b.movementAt ?? "").localeCompare(a.movementAt ?? ""))
             .slice(0, 100)
             .map((entry) => {
