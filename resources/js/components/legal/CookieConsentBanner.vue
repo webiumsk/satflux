@@ -19,6 +19,12 @@
             class="text-indigo-400 hover:text-indigo-300 underline"
           >{{ t('legal.nav.privacy') }}</router-link>
         </p>
+        <p
+          v-if="localFirst"
+          class="text-sm text-gray-400 leading-relaxed mt-2"
+        >
+          {{ t('legal.cookies.local_first_notice') }}
+        </p>
         <div class="mt-4 flex flex-wrap gap-3">
           <button
             type="button"
@@ -44,9 +50,11 @@
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { hasCookieConsent, setCookieConsent } from '../../composables/useCookieConsent';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
 
 const { t } = useI18n();
 const visible = ref(false);
+const localFirst = isInvoicingLocalFirst();
 
 onMounted(() => {
   visible.value = !hasCookieConsent();

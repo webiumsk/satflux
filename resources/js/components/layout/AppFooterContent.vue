@@ -1,5 +1,8 @@
 <template>
-  <div :class="layout === 'page' ? 'text-left' : 'text-center'">
+  <div
+    class="flex flex-col gap-2"
+    :class="layout === 'page' ? 'text-left' : 'text-center'"
+  >
     <div :class="layout === 'page' ? 'mb-8' : ''">
       <div
         class="flex gap-4"
@@ -66,25 +69,65 @@
     </div>
 
     <p
-      class="text-xs text-gray-600 flex flex-wrap items-center gap-x-2 gap-y-2 leading-relaxed"
-      :class="layout === 'page' ? '' : 'justify-center'"
+      class="footer-meta text-xs text-gray-600 leading-relaxed"
+      :class="layout === 'page' ? '' : 'text-center'"
     >
-      <span class="inline-flex items-center gap-1 text-gray-600">
-        <span>{{ t('common.footer_created_with') }}</span>
+      <span class="text-gray-600">
+        {{ t('common.footer_created_with') }}
+        <a
+          href="https://www.evolu.dev"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="footer-brand-link"
+          :aria-label="t('common.footer_evolu_aria')"
+        >
+          <svg
+            viewBox="0 0 99 23"
+            width="52"
+            height="12"
+            aria-hidden="true"
+            class="footer-evolu-logo"
+          >
+            <path
+              fill="currentColor"
+              d="M10.475 2.504h8.176v5.57h-1.532q-3.993 0-5.451-1.253-1.193-1.031-1.193-3.33zM0 2.504h7.926v8.074h5.908v3.845H7.926v8.102H0zm10.46 18.622q0-3.05 3.535-4.14 1.356-.412 3.492-.412h1.164v5.98H10.46zm22.746-7.351q0-3.3 1.68-4.774 1.723-1.473 5.524-1.473h.899v5.569q0 6.85-3.919 8.78-1.37.678-3.285.678h-.899zm-3.477 8.78q-3.697 0-5.51-2.578-1.679-2.387-1.679-6.88V7.528h.899q3.8 0 5.524 1.473 1.68 1.474 1.68 4.774v8.78zM55.717 7.528h1.134q3.624 0 5.57 2.24 1.752 2.033 1.752 5.391 0 3.418-1.944 5.363-2.034 2.033-5.746 2.033h-.766zm-10.843 7.69q0-1.62.427-3.005a6.7 6.7 0 0 1 1.326-2.446q1.945-2.238 5.569-2.239h1.134v15.027h-.766q-3.713 0-5.745-2.033-1.945-1.945-1.945-5.304M68.107 0h7.926v22.555h-7.926zm22.702 7.528H99v15.027h-8.191zm-10.578 0h8.147v15.027h-1.326q-5.421 0-6.467-3.683-.354-1.194-.354-2.755z"
+            />
+          </svg>
+        </a>
+        <span class="text-gray-500" aria-hidden="true"> + </span>
+        <a
+          href="https://btcpayserver.org"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="footer-brand-link"
+          :aria-label="t('common.footer_btcpay_aria')"
+        >
+          <img
+            src="/img/btcpay.svg"
+            alt=""
+            width="12"
+            height="12"
+            class="footer-btcpay-logo"
+            aria-hidden="true"
+          />
+        </a>
+        {{ ' ' }}{{ t('common.footer_created_and') }}{{ ' ' }}
         <svg
-          class="h-[1.08em] w-[1.08em] text-rose-500 shrink-0 block translate-y-[0.03em]"
           viewBox="0 0 24 24"
+          width="12"
+          height="12"
           fill="currentColor"
-          role="img"
-          :aria-label="t('common.footer_love_aria')"
+          class="footer-heart"
+          aria-hidden="true"
         >
           <path
             d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
           />
         </svg>
+        <span class="sr-only">{{ t('common.footer_love_aria') }}</span>
       </span>
-      <span class="text-gray-600" aria-hidden="true">|</span>
-      <span class="text-gray-600 inline-flex items-center flex-wrap gap-1">
+      <span class="text-gray-600" aria-hidden="true"> | </span>
+      <span class="text-gray-600">
         {{ t('common.footer_open_source') }}
         <a
           href="https://github.com/webiumsk/Satflux/blob/master/LICENSE"
@@ -242,3 +285,49 @@ onMounted(async () => {
   }
 });
 </script>
+
+<style scoped>
+.footer-meta {
+  line-height: 1.625;
+}
+
+.footer-brand-link {
+  display: inline;
+  margin: 0 0.12rem;
+  color: rgb(107 114 128);
+  vertical-align: middle;
+  text-decoration: none;
+}
+
+.footer-brand-link:hover {
+  color: rgb(209 213 219);
+}
+
+.footer-evolu-logo,
+.footer-btcpay-logo,
+.footer-heart {
+  display: inline;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  vertical-align: -0.1em;
+}
+
+.footer-evolu-logo {
+  width: 52px;
+  height: 12px;
+}
+
+.footer-btcpay-logo {
+  width: 12px;
+  height: 12px;
+}
+
+.footer-heart {
+  width: 12px;
+  height: 12px;
+  margin-left: 0.12rem;
+  color: rgb(249 115 22);
+}
+</style>

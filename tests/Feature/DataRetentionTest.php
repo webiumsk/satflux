@@ -9,6 +9,7 @@ use App\Models\BusinessDocument;
 use App\Models\BusinessExpense;
 use App\Models\BusinessExpenseAttachment;
 use App\Models\Company;
+use App\Models\StoreIntegration;
 use App\Models\User;
 use App\Services\DataRetentionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -171,6 +172,39 @@ class DataRetentionTest extends TestCase
 
         $this->assertSame(0, $stats['cancelled_expenses_deleted']);
         $this->assertDatabaseHas('business_expenses', ['id' => $expense->id]);
+    }
+
+    #[Test]
+    public function retention_purges_closed_integration_inbox_rows(): void
+    {
+        $user = User::factory()->create();
+        $company = Company::create([
+            'user_id' => $user->id,
+            'legal_name' => 'Inbox Co',
+            'country' => 'SK',
+            'default_currency' => 'EUR',
+            'jurisdiction' => CompanyJurisdiction::EuSk,
+        ]);
+        $store = \App\Models\Store::factory()->create([
+            'user_id' => $user->id,
+            'company_id' => $company->id,
+        ]);
+        $integration = StoreIntegration::createForStore($store)['integration'];
+
+        \App\Models\IntegrationDocumentInbox::create([
+            'store_integration_id' => $integration->id,
+            'woocommerce_order_id' => 9001,
+            'evolu_document_id' => '00000000-0000-4000-8000-000000000099',
+            'payload_json' => ['buyer' => ['email' => 'buyer@example.com']],
+            'status' => \App\Enums\IntegrationDocumentInboxStatus::Dismissed,
+        ]);
+
+        config(['data_retention.integration_inbox_closed_days' => 0]);
+
+        $stats = app(DataRetentionService::class)->run(dryRun: false);
+
+        $this->assertGreaterThanOrEqual(1, $stats['integration_inbox_closed_deleted']);
+        $this->assertSame(0, \App\Models\IntegrationDocumentInbox::query()->count());
     }
 
     #[Test]

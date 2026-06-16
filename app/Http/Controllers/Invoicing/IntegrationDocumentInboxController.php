@@ -8,6 +8,7 @@ use App\Models\IntegrationDocumentInbox;
 use App\Models\Store;
 use App\Services\Integrations\IntegrationDocumentInboxService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 
 class IntegrationDocumentInboxController extends Controller
 {
@@ -29,43 +30,35 @@ class IntegrationDocumentInboxController extends Controller
         return response()->json(['data' => $items->values()]);
     }
 
-    public function dismiss(Company $company, IntegrationDocumentInbox $inbox): JsonResponse
+    public function dismiss(Company $company, IntegrationDocumentInbox $inbox): Response
     {
         $this->inboxService->assertEntryBelongsToCompany($inbox, $company);
-        $entry = $this->inboxService->dismiss($inbox);
+        $this->inboxService->dismiss($inbox);
 
-        return response()->json([
-            'data' => $this->inboxService->serializeEntry($entry),
-        ]);
+        return response()->noContent();
     }
 
-    public function dismissForStore(Store $store, IntegrationDocumentInbox $inbox): JsonResponse
+    public function dismissForStore(Store $store, IntegrationDocumentInbox $inbox): Response
     {
         $this->inboxService->assertEntryBelongsToStore($inbox, $store);
-        $entry = $this->inboxService->dismiss($inbox);
+        $this->inboxService->dismiss($inbox);
 
-        return response()->json([
-            'data' => $this->inboxService->serializeEntry($entry),
-        ]);
+        return response()->noContent();
     }
 
-    public function markImported(Company $company, IntegrationDocumentInbox $inbox): JsonResponse
+    public function markImported(Company $company, IntegrationDocumentInbox $inbox): Response
     {
         $this->inboxService->assertEntryBelongsToCompany($inbox, $company);
-        $entry = $this->inboxService->markImported($inbox);
+        $this->inboxService->markImported($inbox);
 
-        return response()->json([
-            'data' => $this->inboxService->serializeEntry($entry),
-        ]);
+        return response()->noContent();
     }
 
-    public function markImportedForStore(Store $store, IntegrationDocumentInbox $inbox): JsonResponse
+    public function markImportedForStore(Store $store, IntegrationDocumentInbox $inbox): Response
     {
         $this->inboxService->assertEntryBelongsToStore($inbox, $store);
-        $entry = $this->inboxService->markImported($inbox);
+        $this->inboxService->markImported($inbox);
 
-        return response()->json([
-            'data' => $this->inboxService->serializeEntry($entry),
-        ]);
+        return response()->noContent();
     }
 }

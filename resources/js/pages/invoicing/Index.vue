@@ -39,9 +39,10 @@
       </ul>
     </div>
 
-    <div v-if="localFirst" class="invoicing-alert-warn mb-4">
-      <p class="text-sm">{{ t('invoicing.local_first_notice') }}</p>
-    </div>
+    <p v-if="localFirst" class="text-sm text-gray-600 mb-4">
+      {{ t('invoicing.local_first_data_notice') }}
+      <router-link to="/legal/privacy" class="invoicing-link">{{ t('legal.nav.privacy') }}</router-link>.
+    </p>
 
     <div v-if="!canUse" class="invoicing-alert-warn">
       <p class="font-medium">{{ t('invoicing.pro_required') }}</p>

@@ -104,6 +104,73 @@
           </div>
         </div>
 
+        <!-- Data & privacy -->
+        <div
+          class="rounded-2xl border border-gray-700 bg-gray-800/80 p-5 space-y-3"
+        >
+          <h4 class="text-sm font-semibold text-white">
+            {{ t("account.data_privacy_title") }}
+          </h4>
+          <p class="text-sm text-gray-300">
+            {{ t("account.data_privacy_desc") }}
+          </p>
+          <router-link
+            to="/legal/privacy"
+            class="inline-flex text-sm font-medium text-indigo-400 hover:text-indigo-300 underline"
+          >
+            {{ t("account.data_privacy_link") }}
+          </router-link>
+
+          <div
+            v-if="localFirst && serverLegacyCompanies.length"
+            class="mt-4 pt-4 border-t border-gray-600 space-y-3"
+          >
+            <h5 class="text-sm font-semibold text-white">
+              {{ t("account.server_legacy_companies_title") }}
+            </h5>
+            <p class="text-xs text-gray-400">
+              {{ t("account.server_legacy_companies_desc") }}
+            </p>
+            <ul class="space-y-2">
+              <li
+                v-for="company in serverLegacyCompanies"
+                :key="company.id"
+                class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-600 bg-gray-900/50 px-3 py-2"
+              >
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-white truncate">
+                    {{ company.legal_name }}
+                  </p>
+                  <p class="text-xs text-gray-500">
+                    {{ t("account.server_legacy_companies_meta", {
+                      contacts: company.contacts_count ?? 0,
+                      documents: company.documents_count ?? 0,
+                    }) }}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="shrink-0 rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+                  :disabled="serverLegacyDeleting === company.id"
+                  @click="deleteServerLegacyCompany(company.id)"
+                >
+                  {{
+                    serverLegacyDeleting === company.id
+                      ? t("auth.saving")
+                      : t("account.server_legacy_companies_delete")
+                  }}
+                </button>
+              </li>
+            </ul>
+          </div>
+          <p
+            v-else-if="localFirst && serverLegacyLoading"
+            class="text-xs text-gray-500"
+          >
+            {{ t("common.loading") }}
+          </p>
+        </div>
+
         <!-- Profile Information -->
         <div
           class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
@@ -1061,6 +1128,7 @@ import {
   storeGuestMnemonic,
 } from "../../services/guestRecovery";
 import { initEvoluFromAccountSeedIfNeeded } from "../../services/accountSeed";
+import { isInvoicingLocalFirst } from "../../evolu/flags";
 const { t, locale } = useI18n();
 const router = useRouter();
 const authStore = useAuthStore();
@@ -1125,6 +1193,16 @@ const guestTermsAccepted = ref(false);
 const guestUpgradeCanSubmit = computed(
   () => guestPrivacyConsent.value && guestTermsAccepted.value,
 );
+const localFirst = isInvoicingLocalFirst();
+type ServerLegacyCompany = {
+  id: string;
+  legal_name: string;
+  contacts_count?: number;
+  documents_count?: number;
+};
+const serverLegacyCompanies = ref<ServerLegacyCompany[]>([]);
+const serverLegacyLoading = ref(false);
+const serverLegacyDeleting = ref<string | null>(null);
 const guestUpgradeForm = ref({
   email: "",
   password: "",
@@ -1220,7 +1298,46 @@ onMounted(async () => {
   }
 
   await loadSubscriptionDetails();
+  if (localFirst) {
+    await loadServerLegacyCompanies();
+  }
 });
+
+async function loadServerLegacyCompanies(): Promise<void> {
+  serverLegacyLoading.value = true;
+  try {
+    const response = await api.get<{ data: ServerLegacyCompany[] }>(
+      "/invoicing/companies",
+    );
+    serverLegacyCompanies.value = response.data?.data ?? [];
+  } catch {
+    serverLegacyCompanies.value = [];
+  } finally {
+    serverLegacyLoading.value = false;
+  }
+}
+
+async function deleteServerLegacyCompany(companyId: string): Promise<void> {
+  if (!window.confirm(t("account.server_legacy_companies_delete_confirm"))) {
+    return;
+  }
+  serverLegacyDeleting.value = companyId;
+  try {
+    await api.delete(`/invoicing/companies/${companyId}`);
+    serverLegacyCompanies.value = serverLegacyCompanies.value.filter(
+      (row) => row.id !== companyId,
+    );
+    flashStore.success(t("account.server_legacy_companies_deleted"));
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { message?: string } } };
+    flashStore.error(
+      err?.response?.data?.message ??
+        t("account.server_legacy_companies_delete_failed"),
+    );
+  } finally {
+    serverLegacyDeleting.value = null;
+  }
+}
 
 async function loadSubscriptionDetails() {
   loadingSubscription.value = true;

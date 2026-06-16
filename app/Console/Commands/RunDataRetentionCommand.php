@@ -11,7 +11,7 @@ class RunDataRetentionCommand extends Command
                             {--dry-run : Report counts without deleting anything}
                             {--force : Run even when DATA_RETENTION_ENABLED is false}';
 
-    protected $description = 'Purge old webhook events, audit logs, export files, stale drafts, cancelled expenses, and force-delete soft-deleted companies.';
+    protected $description = 'Purge old webhook events, audit logs, export files, stale drafts, cancelled expenses, closed integration inbox rows, and force-delete soft-deleted companies.';
 
     public function handle(DataRetentionService $retention): int
     {

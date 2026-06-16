@@ -35,10 +35,7 @@ class IntegrationDocumentInboxService
             $existing = IntegrationDocumentInbox::query()
                 ->where('store_integration_id', $integration->id)
                 ->where('woocommerce_order_id', $wcOrderId)
-                ->whereIn('status', [
-                    IntegrationDocumentInboxStatus::Pending,
-                    IntegrationDocumentInboxStatus::Imported,
-                ])
+                ->where('status', IntegrationDocumentInboxStatus::Pending)
                 ->first();
             if ($existing) {
                 return $this->serializeEntry($existing);
@@ -132,7 +129,7 @@ class IntegrationDocumentInboxService
             ->map(fn (IntegrationDocumentInbox $entry) => $this->serializeEntry($entry));
     }
 
-    public function markImported(IntegrationDocumentInbox $entry): IntegrationDocumentInbox
+    public function markImported(IntegrationDocumentInbox $entry): void
     {
         if ($entry->status !== IntegrationDocumentInboxStatus::Pending) {
             throw ValidationException::withMessages([
@@ -140,10 +137,7 @@ class IntegrationDocumentInboxService
             ]);
         }
 
-        $entry->status = IntegrationDocumentInboxStatus::Imported;
-        $entry->save();
-
-        return $entry;
+        $entry->delete();
     }
 
     public function issuePendingEntry(IntegrationDocumentInbox $entry, Company $company): IntegrationDocumentInbox
@@ -177,7 +171,7 @@ class IntegrationDocumentInboxService
         return $entry->fresh();
     }
 
-    public function dismiss(IntegrationDocumentInbox $entry): IntegrationDocumentInbox
+    public function dismiss(IntegrationDocumentInbox $entry): void
     {
         if ($entry->status !== IntegrationDocumentInboxStatus::Pending) {
             throw ValidationException::withMessages([
@@ -185,10 +179,7 @@ class IntegrationDocumentInboxService
             ]);
         }
 
-        $entry->status = IntegrationDocumentInboxStatus::Dismissed;
-        $entry->save();
-
-        return $entry;
+        $entry->delete();
     }
 
     public function assertEntryBelongsToCompany(IntegrationDocumentInbox $entry, Company $company): void

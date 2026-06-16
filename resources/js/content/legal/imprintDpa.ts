@@ -6,7 +6,7 @@ import {
 } from './operator';
 import type { LegalDocumentContent } from './types';
 
-const LAST_UPDATED = '2026-06-02';
+const LAST_UPDATED = '2026-06-15';
 const { name, jurisdiction, ein, serviceName, contactEmail, privacyEmail } = LEGAL_OPERATOR;
 const address = operatorAddressBlock();
 
@@ -126,6 +126,7 @@ const dpaBodyEn = (customerLabel: string) => [
     heading: '2. Subject matter and duration',
     paragraphs: [
       'Processing covers account, store, payment metadata, and merchant-entered customer data as configured by Customer.',
+      'Local-first business invoicing data (company profiles, contacts, invoices, and expenses) is stored on Customer devices with E2EE sync and is outside the scope of Processor storage unless Customer uses legacy server-mode invoicing or ephemeral server features.',
       'Processing lasts for the term of the main service agreement and any statutory retention period thereafter.',
     ],
   },
@@ -200,6 +201,7 @@ export const dpaSk: LegalDocumentContent = {
       heading: '2. Predmet a trvanie',
       paragraphs: [
         'Spracúvanie zahŕňa účet, obchod, metadáta platieb a údaje zákazníkov vložené obchodníkom podľa konfigurácie zákazníka.',
+        'Údaje local-first fakturácie (profily firiem, kontakty, faktúry, náklady) sa ukladajú na zariadeniach zákazníka s E2EE synchronizáciou a nespadajú do úložiska sprostredkovateľa, pokiaľ zákazník nepoužíva legacy serverový režim alebo ephemerálne serverové funkcie.',
         'Spracúvanie trvá po dobu hlavnej zmluvy a prípadného zákonného obdobia uchovávania.',
       ],
     },

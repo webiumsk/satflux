@@ -34,6 +34,9 @@ return [
     /** Cancelled business expenses (and attachment files) hard-deleted after this many days. */
     'cancelled_expenses_days' => (int) env('DATA_RETENTION_CANCELLED_EXPENSES_DAYS', 90),
 
+    /** Imported/dismissed WooCommerce inbox rows (legacy PII) deleted after this many days (0 = all closed rows). */
+    'integration_inbox_closed_days' => (int) env('DATA_RETENTION_INTEGRATION_INBOX_CLOSED_DAYS', 0),
+
     /** Remove public BTC pay token after document is marked paid. */
     'clear_payment_token_when_paid' => (bool) env('DATA_RETENTION_CLEAR_PAYMENT_TOKEN_WHEN_PAID', true),
 

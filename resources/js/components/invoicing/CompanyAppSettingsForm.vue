@@ -160,6 +160,14 @@
           {{ t('invoicing.save_my_details') }}
         </button>
         <p class="text-xs text-gray-500 mt-2">{{ t('invoicing.app_save_note') }}</p>
+        <p class="text-xs text-gray-500 mt-4">
+          <router-link
+            to="/legal/privacy"
+            class="text-indigo-600 hover:text-indigo-500 underline"
+          >
+            {{ t('invoicing.app_privacy_data_link') }}
+          </router-link>
+        </p>
         <p v-if="saveError" class="text-sm text-red-600 mt-2">{{ saveError }}</p>
       </div>
     </form>

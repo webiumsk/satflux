@@ -153,12 +153,10 @@ class IntegrationDocumentInboxTest extends TestCase
 
         $this->actingAs($this->user)
             ->postJson("/api/invoicing/companies/{$this->company->id}/integration-inbox/{$entry['inbox_id']}/dismiss")
-            ->assertOk()
-            ->assertJsonPath('data.status', 'dismissed');
+            ->assertNoContent();
 
-        $this->assertDatabaseHas('integration_document_inbox', [
+        $this->assertDatabaseMissing('integration_document_inbox', [
             'id' => $entry['inbox_id'],
-            'status' => IntegrationDocumentInboxStatus::Dismissed->value,
         ]);
 
         $this->actingAs($this->user)
@@ -212,7 +210,7 @@ class IntegrationDocumentInboxTest extends TestCase
     }
 
     #[Test]
-    public function mark_imported_updates_status(): void
+    public function mark_imported_deletes_entry(): void
     {
         $entry = IntegrationDocumentInbox::create([
             'store_integration_id' => $this->integration->id,
@@ -224,9 +222,8 @@ class IntegrationDocumentInboxTest extends TestCase
 
         app(IntegrationDocumentInboxService::class)->markImported($entry);
 
-        $this->assertDatabaseHas('integration_document_inbox', [
+        $this->assertDatabaseMissing('integration_document_inbox', [
             'id' => $entry->id,
-            'status' => IntegrationDocumentInboxStatus::Imported->value,
         ]);
     }
 }

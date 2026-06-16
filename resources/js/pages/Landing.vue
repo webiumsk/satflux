@@ -3158,6 +3158,16 @@
                 }}
               </p>
             </div>
+            <div class="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+              <h4
+                class="mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 font-semibold"
+              >
+                {{ t("landing.pricing_faq_shutdown_q") }}
+              </h4>
+              <p class="text-gray-400 text-sm">
+                {{ t("landing.pricing_faq_shutdown_a") }}
+              </p>
+            </div>
           </div>
         </div>
       </div>

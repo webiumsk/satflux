@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Enums\BusinessDocumentStatus;
+use App\Enums\IntegrationDocumentInboxStatus;
 use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\Export;
+use App\Models\IntegrationDocumentInbox;
 use App\Services\Invoicing\BankStatementImportService;
 use App\Services\Invoicing\BusinessExpenseService;
 use Carbon\Carbon;
@@ -34,6 +36,7 @@ class DataRetentionService
             'companies_force_deleted' => 0,
             'bank_import_files_deleted' => 0,
             'cancelled_expenses_deleted' => 0,
+            'integration_inbox_closed_deleted' => 0,
         ];
 
         $stats['webhook_events_deleted'] = $this->purgeWebhookEvents($dryRun);
@@ -45,6 +48,7 @@ class DataRetentionService
             ? 0
             : $this->bankImports->purgeOldImportFiles();
         $stats['cancelled_expenses_deleted'] = $this->expenseService->purgeCancelled($dryRun);
+        $stats['integration_inbox_closed_deleted'] = $this->purgeClosedIntegrationInbox($dryRun);
 
         return $stats;
     }
@@ -178,6 +182,41 @@ class DataRetentionService
         } while (true);
 
         Log::info('Data retention: draft business_documents purged', ['count' => $deleted]);
+
+        return $deleted;
+    }
+
+    protected function purgeClosedIntegrationInbox(bool $dryRun): int
+    {
+        $days = max(0, (int) config('data_retention.integration_inbox_closed_days', 0));
+        $query = IntegrationDocumentInbox::query()
+            ->whereIn('status', [
+                IntegrationDocumentInboxStatus::Imported,
+                IntegrationDocumentInboxStatus::Dismissed,
+            ]);
+
+        if ($days > 0) {
+            $cutoff = Carbon::now()->subDays($days);
+            $query->where('updated_at', '<', $cutoff);
+        }
+
+        $count = (clone $query)->count();
+        if ($count === 0 || $dryRun) {
+            return $dryRun ? $count : 0;
+        }
+
+        $deleted = 0;
+        $batch = max(1, (int) config('data_retention.batch_size', 200));
+
+        do {
+            $ids = (clone $query)->orderBy('id')->limit($batch)->pluck('id');
+            if ($ids->isEmpty()) {
+                break;
+            }
+            $deleted += IntegrationDocumentInbox::query()->whereIn('id', $ids)->delete();
+        } while (true);
+
+        Log::info('Data retention: integration_document_inbox closed rows purged', ['count' => $deleted]);
 
         return $deleted;
     }
