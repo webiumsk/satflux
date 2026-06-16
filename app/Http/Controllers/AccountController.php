@@ -282,7 +282,7 @@ class AccountController extends Controller
         }
 
         $validated = $request->validate(array_merge([
-            'method' => ['required', 'in:email'],
+            'method' => ['required', 'in:email,lightning'],
             'email' => [
                 'required',
                 'string',
@@ -292,6 +292,12 @@ class AccountController extends Controller
             ],
             'password' => ['required', 'confirmed', Password::defaults()],
         ], LegalConsent::registrationRules()));
+
+        if ($validated['method'] === 'lightning' && empty($user->lightning_public_key)) {
+            throw ValidationException::withMessages([
+                'method' => ['Lightning upgrade requires a linked lightning_public_key.'],
+            ]);
+        }
 
         $this->complianceGate->assertRegistrationAllowed(
             $request,

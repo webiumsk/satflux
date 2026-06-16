@@ -27,6 +27,10 @@ abstract class TestCase extends BaseTestCase
         config(['cache.default' => 'array']);
         config(['cache.stores.array' => ['driver' => 'array']]);
 
+        // Default to compliance disabled in the shared test environment.
+        // Individual compliance test suites explicitly enable it.
+        config(['compliance.enabled' => false]);
+
         // Override RateLimiter AFTER bootstrap to use array cache
         // This prevents Redis connection attempts during rate limiting
         // Get the existing RateLimiter to preserve configured limiters

@@ -33,6 +33,6 @@ return [
     | When true, direct email/password registration is disabled. New users start
     | with a recovery phrase (guest provisioning) and may add email later.
     */
-    'seed_first_registration' => filter_var(env('SEED_FIRST_REGISTRATION', true), FILTER_VALIDATE_BOOLEAN),
+    'seed_first_registration' => filter_var(env('SEED_FIRST_REGISTRATION', false), FILTER_VALIDATE_BOOLEAN),
 
 ];
