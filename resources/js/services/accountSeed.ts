@@ -95,7 +95,7 @@ export async function initEvoluFromAccountSeedIfNeeded(
     const { evolu } = await import("@/evolu/client");
     const { isEvoluRelaySyncPending, markEvoluRelaySyncPending, waitForInvoicingRelaySync } =
         await import("@/evolu/relaySyncWait");
-    const { restoreInvoicingSnapshot, snapshotHasInvoicingData, snapshotInvoicingData } =
+    const { restoreInvoicingSnapshotAsync, snapshotHasInvoicingData, snapshotInvoicingData } =
         await import("@/evolu/invoicingSnapshot");
 
     const owner = await evolu.appOwner;
@@ -113,7 +113,7 @@ export async function initEvoluFromAccountSeedIfNeeded(
 
     if (wrongOwner && hasData) {
         await evolu.restoreAppOwner(evoluMnemonic, { reload: false });
-        restoreInvoicingSnapshot(evolu, snapshot);
+        await restoreInvoicingSnapshotAsync(evolu, snapshot);
         markEvoluRelaySyncPending();
         evolu.reloadApp();
         return "migrated_legacy_owner";

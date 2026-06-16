@@ -141,6 +141,13 @@ export function restoreInvoicingSnapshot(
     return restoreInvoicingSnapshotDetailed(evolu, snapshot).upserted;
 }
 
+export async function restoreInvoicingSnapshotAsync(
+    evolu: Evolu<InvoicingLocalSchema>,
+    snapshot: InvoicingDataSnapshot,
+): Promise<number> {
+    return (await restoreInvoicingSnapshotDetailedAsync(evolu, snapshot)).upserted;
+}
+
 export type SnapshotRestoreFailure = {
     table: InvoicingTable;
     id: unknown;
@@ -152,6 +159,24 @@ export type SnapshotRestoreReport = {
     failed: SnapshotRestoreFailure[];
 };
 
+function upsertRowAwait(
+    evolu: Evolu<InvoicingLocalSchema>,
+    table: InvoicingTable,
+    row: Record<string, unknown>,
+): Promise<{ ok: true } | { ok: false; error: unknown }> {
+    const payload = rowForUpsert(row) as never;
+
+    return new Promise((resolve) => {
+        const result = evolu.upsert(table, payload, {
+            onComplete: () => resolve({ ok: true }),
+        });
+        if (!result.ok) {
+            resolve({ ok: false, error: result.error });
+        }
+    });
+}
+
+/** @deprecated Prefer restoreInvoicingSnapshotDetailedAsync - sync batch aborts on any invalid row. */
 export function restoreInvoicingSnapshotDetailed(
     evolu: Evolu<InvoicingLocalSchema>,
     snapshot: InvoicingDataSnapshot,
@@ -162,6 +187,25 @@ export function restoreInvoicingSnapshotDetailed(
         const rows = snapshot[table];
         for (const row of rows) {
             const result = evolu.upsert(table, rowForUpsert(row) as never);
+            if (result.ok) {
+                upserted += 1;
+            } else {
+                failed.push({ table, id: row.id ?? null, error: result.error });
+            }
+        }
+    }
+    return { upserted, failed };
+}
+
+export async function restoreInvoicingSnapshotDetailedAsync(
+    evolu: Evolu<InvoicingLocalSchema>,
+    snapshot: InvoicingDataSnapshot,
+): Promise<SnapshotRestoreReport> {
+    let upserted = 0;
+    const failed: SnapshotRestoreFailure[] = [];
+    for (const table of UPSERT_ORDER) {
+        for (const row of snapshot[table]) {
+            const result = await upsertRowAwait(evolu, table, row as Record<string, unknown>);
             if (result.ok) {
                 upserted += 1;
             } else {

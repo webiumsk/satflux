@@ -1,7 +1,7 @@
 import { maxLength, NonEmptyString, SqliteBoolean } from "@evolu/common";
 import { describe, expect, it } from "vitest";
 import { prepareServerSnapshotForEvolu } from "@/evolu/serverSnapshotPrepare";
-import { CompanyJurisdiction, DocumentType, VatStatus } from "@/evolu/schema";
+import { CompanyJurisdiction, DocumentType, VatStatus, BankImportSource } from "@/evolu/schema";
 
 const sampleCompany = {
     id: "019ec83b-9368-7183-ab36-693391827ee6",
@@ -77,5 +77,12 @@ describe("server snapshot field validation", () => {
         for (const documentType of ["expense", "order_issued", "invoice"]) {
             expect(DocumentType.from(documentType).ok).toBe(true);
         }
+    });
+
+    it("accepts bank import sources from PostgreSQL export", () => {
+        for (const source of ["csv", "camt053", "inbound_email", "manual"]) {
+            expect(BankImportSource.from(source).ok).toBe(true);
+        }
+        expect(BankImportSource.from("email").ok).toBe(false);
     });
 });

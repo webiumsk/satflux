@@ -3,7 +3,7 @@ import api from "@/services/api";
 import { getStoredAccountMnemonic, initEvoluFromAccountSeedIfNeeded } from "@/services/accountSeed";
 import { allCompaniesQuery } from "@/evolu/client";
 import {
-    restoreInvoicingSnapshotDetailed,
+    restoreInvoicingSnapshotDetailedAsync,
     snapshotHasInvoicingData,
     type InvoicingDataSnapshot,
 } from "@/evolu/invoicingSnapshot";
@@ -164,7 +164,7 @@ export async function importServerInvoicingToEvolu(
             prepareServerSnapshotForEvolu(snapshot),
         ),
     );
-    const { upserted, failed } = restoreInvoicingSnapshotDetailed(evolu, prepared);
+    const { upserted, failed } = await restoreInvoicingSnapshotDetailedAsync(evolu, prepared);
     const companyFailures = failed.filter((entry) => entry.table === "company");
 
     if (prepared.company.length > 0 && companyFailures.length >= prepared.company.length) {
@@ -183,7 +183,10 @@ export async function importServerInvoicingToEvolu(
 
     const companies = await evolu.loadQuery(allCompaniesQuery);
     if (prepared.company.length > 0 && companies.length === 0) {
-        console.error("Server migration wrote rows but company table is empty", failed.slice(0, 20));
+        console.error("Server migration wrote rows but company table is empty", {
+            companyFailures: failed.filter((entry) => entry.table === "company"),
+            otherFailures: failed.filter((entry) => entry.table !== "company").slice(0, 10),
+        });
         clearServerMigrationCompleted();
         throw new ServerMigrationError("companies_missing", "companies_missing");
     }

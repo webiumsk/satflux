@@ -53,8 +53,31 @@ function applySqliteBooleans(
     return out;
 }
 
+const BANK_IMPORT_SOURCES = new Set(["csv", "camt053", "inbound_email", "manual"]);
+
+function normalizeBankImportSource(value: unknown): string {
+    const text = emptyToNull(value);
+    if (text === "email") {
+        return "inbound_email";
+    }
+    if (text && BANK_IMPORT_SOURCES.has(text)) {
+        return text;
+    }
+    return "csv";
+}
+
+function sanitizeBankRow(table: InvoicingTable, row: Record<string, unknown>): Record<string, unknown> {
+    if (table !== "bankImportBatch" && table !== "bankTransaction") {
+        return row;
+    }
+    return {
+        ...row,
+        source: normalizeBankImportSource(row.source),
+    };
+}
+
 function sanitizeRow(table: InvoicingTable, row: Record<string, unknown>): Record<string, unknown> {
-    return applySqliteBooleans(table, nullifyEmptyStrings(row));
+    return sanitizeBankRow(table, applySqliteBooleans(table, nullifyEmptyStrings(row)));
 }
 
 /** Final coercion pass so server export rows match Evolu upsert validators. */
