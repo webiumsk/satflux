@@ -64,14 +64,8 @@
       </InvoicingAppHeader>
     </template>
 
-    <LocalFirstBridgeNotice
-      v-if="localFirst"
-      :detail="t('invoicing.local_first_pdf_email_bridge')"
-      class="mb-4"
-    />
-
     <IntegrationInboxPanel
-      v-if="localFirst && activeDocumentNav?.kind === 'invoice' && localCompanyForInbox && linkedStoreIdForInbox"
+      v-if="showIntegrationInbox && localCompanyForInbox"
       :company-id="companyId"
       :linked-store-id="linkedStoreIdForInbox"
       :company="localCompanyForInbox"
@@ -828,7 +822,7 @@ import InvoicingMobileBulkBar from '../../components/invoicing/InvoicingMobileBu
 import InvoicingMobileCard from '../../components/invoicing/InvoicingMobileCard.vue';
 import InvoicingRowActionsMenu from '../../components/invoicing/InvoicingRowActionsMenu.vue';
 import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
-import LocalFirstBridgeNotice from '../../components/invoicing/LocalFirstBridgeNotice.vue';
+import { appSettingsFromCompany } from '../../composables/useCompanyAppSettings';
 import IntegrationInboxPanel from '../../components/invoicing/IntegrationInboxPanel.vue';
 import { useInvoicingDocumentListFilters } from '../../composables/useInvoicingDocumentListFilters';
 import { useCompanyVatPolicy } from '../../composables/useCompanyVatPolicy';
@@ -921,6 +915,20 @@ const linkedStoreIdForInbox = computed(() => {
   if (!company) return null;
   return company.stores?.[0]?.id ?? null;
 });
+
+const companyRunsEshop = computed(() => {
+  const company = localCompanyForInbox.value;
+  if (!company) return false;
+  return appSettingsFromCompany(company).runs_eshop;
+});
+
+const showIntegrationInbox = computed(
+  () =>
+    localFirst &&
+    activeDocumentNav.value?.kind === 'invoice' &&
+    companyRunsEshop.value &&
+    localCompanyForInbox.value != null,
+);
 
 async function onIntegrationInboxImported(): Promise<void> {
   if (!localFirst || !localDoc || !localDocuments) return;

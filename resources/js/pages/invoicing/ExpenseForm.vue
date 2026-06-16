@@ -107,7 +107,6 @@
       </form>
 
       <ExpenseAttachmentPanel
-        v-if="!localFirst"
         allow-multiple
         :file-name="pendingAttachmentName"
         :has-file="pendingFiles.length > 0"
@@ -124,10 +123,9 @@
         @select-pending="selectPendingFile"
         @remove-pending="removePendingFile"
       />
-      <LocalFirstBridgeNotice
-        v-else
-        :detail="t('invoicing.local_first_expenses_attachments_bridge')"
-      />
+      <p v-if="localFirst" class="text-xs text-gray-500">
+        {{ t('invoicing.local_first_expenses_isdoc_bridge') }}
+      </p>
     </div>
   </InvoicingPageShell>
 </template>
@@ -140,7 +138,6 @@ import ExpenseAttachmentPanel from '../../components/invoicing/ExpenseAttachment
 import ExpenseIsdocExtractModal from '../../components/invoicing/ExpenseIsdocExtractModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
-import LocalFirstBridgeNotice from '../../components/invoicing/LocalFirstBridgeNotice.vue';
 import {
   useExpenseIsdocAttachment,
   type ExpenseImportDraft,

@@ -117,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, reactive, ref, toRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
   EXPENSE_IMPORT_FIELD_KEYS,
@@ -125,11 +125,20 @@ import {
   type ExpenseImportFieldKey,
   type ExpenseImportMapping,
 } from '../../composables/useExpenseImportFields';
+import { useInvoicingExpenses } from '../../composables/useInvoicingExpenses';
 import api from '../../services/api';
+import { useInvoicingEvolu } from '../../evolu/client';
+import {
+  downloadExpenseImportExampleCsv,
+  importLocalExpensesFromFile,
+  previewLocalExpenseImport,
+} from '../../evolu/expenseImportLocal';
+import type { CompanyId } from '../../evolu/schema';
 
 const props = defineProps<{
   open: boolean;
   companyId: string;
+  localFirst?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -138,6 +147,9 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const companyIdRef = toRef(props, 'companyId');
+const invoicingExpenses = props.localFirst ? useInvoicingExpenses(companyIdRef) : null;
+const evolu = props.localFirst ? useInvoicingEvolu() : null;
 
 type ImportSkippedError = {
   row: number;
@@ -237,6 +249,15 @@ async function loadPreview() {
   loadingPreview.value = true;
   error.value = '';
   try {
+    if (props.localFirst) {
+      const preview = await previewLocalExpenseImport(selectedFile.value);
+      headers.value = preview.headers;
+      rowCount.value = preview.row_count;
+      for (const field of EXPENSE_IMPORT_FIELD_KEYS) {
+        mapping[field] = preview.suggested_mapping[field] ?? null;
+      }
+      return;
+    }
     const { data } = await api.post(
       `/invoicing/companies/${props.companyId}/expenses/import/excel/preview`,
       buildFormData(false)
@@ -258,6 +279,10 @@ async function loadPreview() {
 
 async function downloadExample() {
   try {
+    if (props.localFirst) {
+      downloadExpenseImportExampleCsv();
+      return;
+    }
     const { data } = await api.get(`/invoicing/companies/${props.companyId}/expenses/import/excel/example`, {
       responseType: 'blob',
     });
@@ -277,6 +302,21 @@ async function submitImport() {
   importing.value = true;
   error.value = '';
   try {
+    if (props.localFirst && evolu && invoicingExpenses) {
+      const importResult = await importLocalExpensesFromFile(
+        evolu,
+        props.companyId as CompanyId,
+        selectedFile.value,
+        mapping,
+        invoicingExpenses.expenseRows.value,
+      );
+      result.value = importResult;
+      if (importResult.imported > 0) {
+        await invoicingExpenses.refresh();
+        emit('imported');
+      }
+      return;
+    }
     const { data } = await api.post(
       `/invoicing/companies/${props.companyId}/expenses/import/excel`,
       buildFormData(true)

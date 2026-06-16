@@ -12,6 +12,7 @@ import {
     allDocumentEventsQuery,
     allDocumentLinesQuery,
     allDocumentsQuery,
+    allExpenseAttachmentsQuery,
     allExpensesQuery,
     allNumberSeriesQuery,
     allRecurringProfileLinesQuery,
@@ -27,6 +28,7 @@ import type {
     DocumentId,
     DocumentLineId,
     ExpenseId,
+    ExpenseAttachmentId,
     InvoicingLocalSchema,
     NumberSeriesId,
     RecurringProfileId,
@@ -72,9 +74,24 @@ export function deleteLocalCompany(
         evolu.update("documentEvent", { id: event.id as DocumentEventId, isDeleted: sqliteTrue });
     }
 
+    const companyExpenseIds = new Set(
+        evolu
+            .getQueryRows(allExpensesQuery)
+            .filter((row) => row.companyId === companyId)
+            .map((row) => row.id),
+    );
+
     for (const expense of evolu.getQueryRows(allExpensesQuery)) {
         if (expense.companyId !== companyId) continue;
         evolu.update("expense", { id: expense.id as ExpenseId, isDeleted: sqliteTrue });
+    }
+
+    for (const attachment of evolu.getQueryRows(allExpenseAttachmentsQuery)) {
+        if (!companyExpenseIds.has(attachment.expenseId)) continue;
+        evolu.update("expenseAttachment", {
+            id: attachment.id as ExpenseAttachmentId,
+            isDeleted: sqliteTrue,
+        });
     }
 
     const companyProfileIds = new Set(

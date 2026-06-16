@@ -1,20 +1,15 @@
 <template>
   <section
-    v-if="visible"
-    class="mb-4 rounded-lg border border-amber-200 bg-amber-50/80 p-4"
+    v-if="showPanel"
+    class="mb-4 rounded-lg border border-indigo-200 bg-indigo-50/60 p-4"
   >
-    <div class="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <p class="text-sm font-medium text-amber-950">
-          {{ t('invoicing.integration_inbox_title') }}
-        </p>
-        <p class="mt-1 text-sm text-amber-900/90">
-          {{ t('invoicing.integration_inbox_detail') }}
-        </p>
-      </div>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <p class="text-sm font-medium text-indigo-950">
+        {{ t('invoicing.integration_inbox_title') }}
+      </p>
       <button
         type="button"
-        class="invoicing-btn-secondary shrink-0"
+        class="invoicing-btn-secondary shrink-0 text-sm"
         :disabled="loading"
         @click="refresh"
       >
@@ -24,11 +19,11 @@
 
     <p v-if="error" class="mt-3 text-sm text-red-700">{{ error }}</p>
 
-    <ul v-else-if="items.length" class="mt-4 space-y-3">
+    <ul v-else-if="items.length" class="mt-3 space-y-2">
       <li
         v-for="item in items"
         :key="item.inbox_id"
-        class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200 bg-white/70 px-3 py-2"
+        class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-indigo-100 bg-white px-3 py-2"
       >
         <div class="min-w-0">
           <p class="text-sm font-medium text-gray-900 truncate">
@@ -64,9 +59,6 @@
       </li>
     </ul>
 
-    <p v-else-if="!loading" class="mt-3 text-sm text-amber-900/80">
-      {{ t('invoicing.integration_inbox_empty') }}
-    </p>
   </section>
 </template>
 
@@ -101,10 +93,15 @@ const loading = ref(false);
 const error = ref('');
 const busyId = ref<string | null>(null);
 
-const visible = computed(() => props.enabled);
+const showPanel = computed(
+  () => props.enabled && (items.value.length > 0 || error.value !== ''),
+);
 
 async function refresh(): Promise<void> {
-  if (!props.enabled || !props.companyId) return;
+  if (!props.enabled || !props.companyId) {
+    items.value = [];
+    return;
+  }
   loading.value = true;
   error.value = '';
   try {

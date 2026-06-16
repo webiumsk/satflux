@@ -170,13 +170,26 @@ docker exec --user root "$PHP_CONTAINER" composer install --optimize-autoloader 
 
 # Step 4: Install/update Node dependencies and build assets
 echo -e "${YELLOW}Step 4: Building frontend assets...${NC}"
+
+# Warn when local-first flags are mismatched (paired rollout)
+_vite_lf=$(grep -E '^VITE_INVOICING_LOCAL_FIRST=' "$ENV_FILE" 2>/dev/null | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r' | xargs || true)
+_srv_lf=$(grep -E '^INVOICING_LOCAL_FIRST=' "$ENV_FILE" 2>/dev/null | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r' | xargs || true)
+if [ "$_vite_lf" = "true" ] && [ "$_srv_lf" != "true" ]; then
+    echo -e "${YELLOW}Warning: VITE_INVOICING_LOCAL_FIRST=true but INVOICING_LOCAL_FIRST is not true in $ENV_FILE${NC}"
+    echo -e "${YELLOW}  → Set both flags for production local-first (see docs/INVOICING_LOCAL_FIRST_ROLLOUT.md)${NC}"
+elif [ "$_srv_lf" = "true" ] && [ "$_vite_lf" != "true" ]; then
+    echo -e "${YELLOW}Warning: INVOICING_LOCAL_FIRST=true but VITE_INVOICING_LOCAL_FIRST is not true in $ENV_FILE${NC}"
+    echo -e "${YELLOW}  → Frontend will stay on server invoicing until VITE flag is set and assets are rebuilt${NC}"
+fi
+
 # Check if node_modules exists, if not install dependencies
 if ! docker exec "$PHP_CONTAINER" test -d node_modules; then
     docker exec --user root "$PHP_CONTAINER" npm ci
 else
     docker exec --user root "$PHP_CONTAINER" npm install
 fi
-docker exec --user root "$PHP_CONTAINER" npm run build
+# Vite bakes VITE_* at build time; pass deploy env file so flags in .env.standalone win over a stale .env on disk
+docker exec --env-file "$ENV_FILE" --user root "$PHP_CONTAINER" npm run build
 
 # Step 5: Run database migrations
 echo -e "${YELLOW}Step 5: Running database migrations...${NC}"

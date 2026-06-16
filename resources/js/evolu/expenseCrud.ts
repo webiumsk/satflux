@@ -99,13 +99,14 @@ export function insertLocalExpense(
     companyId: CompanyId,
     payload: ExpenseSavePayload,
     existingRows: EvoluExpenseRow[],
+    options?: { internalNumber?: string },
 ) {
     const mapped = mapPayloadFields(payload);
     if (!mapped.ok) return mapped;
 
-    const internalNumber = InternalNumberType.from(
-        nextLocalExpenseInternalNumber(companyId, existingRows),
-    );
+    const numberSource = options?.internalNumber?.trim()
+        || nextLocalExpenseInternalNumber(companyId, existingRows);
+    const internalNumber = InternalNumberType.from(numberSource);
     if (!internalNumber.ok) return internalNumber;
 
     const markPaid = Boolean(payload.mark_paid);

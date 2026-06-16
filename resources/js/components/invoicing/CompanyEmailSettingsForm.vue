@@ -172,6 +172,7 @@ import {
   type CompanyEmailSettingsState,
   type EmailTemplateKey,
 } from '../../composables/useCompanyEmailSettings';
+import { buildDefaultEmailTemplates } from '../../composables/companyEmailTemplateDefaults';
 import { asCompanyId } from '../../composables/useInvoicingCompany';
 import { allCompaniesDetailQuery, useInvoicingEvolu } from '../../evolu/client';
 import { evoluCompanyToApi, type EvoluCompanyRow } from '../../evolu/companyMap';
@@ -190,7 +191,7 @@ const emit = defineEmits<{
   updated: [company: Record<string, any>];
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const localFirst = isInvoicingLocalFirst();
 const evolu = localFirst ? useInvoicingEvolu() : null;
 const storesStore = useStoresStore();
@@ -208,13 +209,13 @@ const testingSmtp = ref(false);
 const smtpTestMessage = ref('');
 const smtpTestOk = ref(false);
 const selectedTemplateKey = ref<EmailTemplateKey>('invoice');
-const form = reactive<CompanyEmailSettingsState>(emailSettingsFromCompany(null));
+const form = reactive<CompanyEmailSettingsState>(emailSettingsFromCompany(null, locale.value));
 
 watch(
   selectedTemplateKey,
   (key) => {
     if (!form.templates[key]) {
-      form.templates[key] = { subject: '', body: '' };
+      form.templates[key] = buildDefaultEmailTemplates(locale.value)[key] ?? { subject: '', body: '' };
     }
   },
   { immediate: true }
@@ -231,7 +232,7 @@ const activeTemplate = computed({
 
 watch(
   () => props.company,
-  (c) => Object.assign(form, emailSettingsFromCompany(c)),
+  (c) => Object.assign(form, emailSettingsFromCompany(c, locale.value)),
   { immediate: true, deep: true }
 );
 

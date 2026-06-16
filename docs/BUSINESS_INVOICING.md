@@ -44,7 +44,11 @@ Legacy data created under a random pre-unification Evolu owner migrates automati
 5. **Legacy Evolu owner** (pre-unification random/HKDF key): sign in with your phrase on the **original** browser once; migration uploads a snapshot to the unified owner. Then use only the Satflux phrase elsewhere.
 6. **Reset browser data** on a new device is fine - sign in with the phrase again; data reloads from the E2EE relay (not from satflux servers).
 
+**Local-first expenses (phase 7):** expense rows and file attachments (PDF/images, max ~384 KB each) sync via Evolu. Excel/CSV expense import runs in the browser (`xlsx` for `.xlsx`). ISDOC field extraction, bulk PDF attachment import, Excel export, and attachment ZIP still use the ephemeral server bridge.
+
 Seed-first onboarding (`SEED_FIRST_REGISTRATION=true`) creates accounts via recovery phrase; email/password is added later in Account (guest upgrade). **Invoicing requires Pro.** Guest accounts have limited BTCPay access; upgrade Guest → Free (verified email) before purchasing Pro. Local-first data stays in the browser; Pro unlocks the module and ephemeral server bridges (PDF, e-faktura, BTCPay checkout).
+
+**Production rollout:** [INVOICING_LOCAL_FIRST_ROLLOUT.md](INVOICING_LOCAL_FIRST_ROLLOUT.md).
 
 ## Subscription billing company
 

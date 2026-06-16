@@ -1,5 +1,9 @@
 import type { ExpenseListRow } from "@/composables/useExpenseRowMeta";
 import { expenseOverdueDays } from "@/composables/useExpenseRowMeta";
+import {
+    attachmentRowToApi,
+    type EvoluExpenseAttachmentRow,
+} from "./expenseAttachmentCrud";
 import type { CompanyId, ExpenseId } from "./schema";
 
 export type EvoluExpenseRow = {
@@ -30,13 +34,18 @@ export type ExpenseApiRow = ExpenseListRow & {
     original_filename?: string | null;
 };
 
-export function evoluExpenseToApi(row: EvoluExpenseRow): ExpenseApiRow {
+export function evoluExpenseToApi(
+    row: EvoluExpenseRow,
+    attachments: EvoluExpenseAttachmentRow[] = [],
+): ExpenseApiRow {
     const today = localDateString();
     const isOverdue =
         row.status === "recorded"
         && Boolean(row.dueDate)
         && row.dueDate! < today
         && expenseOverdueDays(row.dueDate) !== null;
+
+    const apiAttachments = attachments.map(attachmentRowToApi);
 
     return {
         id: row.id,
@@ -56,14 +65,17 @@ export function evoluExpenseToApi(row: EvoluExpenseRow): ExpenseApiRow {
         internal_note: row.internalNote,
         cancelled_at: row.cancelledAt,
         is_overdue: isOverdue,
-        has_attachment: false,
-        attachments: [],
-        attachments_count: 0,
+        has_attachment: apiAttachments.length > 0,
+        attachments: apiAttachments,
+        attachments_count: apiAttachments.length,
     };
 }
 
-export function evoluExpenseToListRow(row: EvoluExpenseRow): ExpenseListRow {
-    const api = evoluExpenseToApi(row);
+export function evoluExpenseToListRow(
+    row: EvoluExpenseRow,
+    attachments: EvoluExpenseAttachmentRow[] = [],
+): ExpenseListRow {
+    const api = evoluExpenseToApi(row, attachments);
     return {
         id: api.id,
         internal_number: api.internal_number,

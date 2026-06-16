@@ -102,9 +102,9 @@
     </template>
 
     <LocalFirstBridgeNotice
-      v-if="localFirst && showLocalBridgeNotice"
+      v-if="localFirst && bridgeNoticeKey"
       class="mb-4"
-      :detail="t('invoicing.local_first_expenses_import_bridge')"
+      :detail="t(`invoicing.${bridgeNoticeKey}`)"
     />
 
     <p v-if="success" class="text-sm text-green-700 mb-4">{{ success }}</p>
@@ -172,6 +172,7 @@
     <ExpenseImportModal
       :open="showImportModal"
       :company-id="companyId"
+      :local-first="localFirst"
       @close="showImportModal = false"
       @imported="onImported"
     />
@@ -222,7 +223,7 @@ const { rememberCompany } = useInvoicingLayout();
 const { companyName } = useInvoicingCompanySummary();
 const companyId = computed(() => route.params.companyId as string);
 const invoicingExpenses = useInvoicingExpenses(companyId);
-const showLocalBridgeNotice = ref(false);
+const bridgeNoticeKey = ref<string | null>(null);
 const showImportModal = ref(false);
 const showAttachImportModal = ref(false);
 const showImportMenu = ref(false);
@@ -302,8 +303,8 @@ function changePage(p: number) {
 
 function openImport(kind: 'excel' | 'pdf') {
   showImportMenu.value = false;
-  if (localFirst) {
-    showLocalBridgeNotice.value = true;
+  if (kind === 'pdf' && localFirst) {
+    bridgeNoticeKey.value = 'local_first_expenses_pdf_import_bridge';
     return;
   }
   if (kind === 'excel') {
@@ -380,7 +381,7 @@ async function runBulk(action: string) {
   try {
     if (localFirst && invoicingExpenses.evolu) {
       if (action === 'export_xlsx' || action === 'attachments_zip') {
-        showLocalBridgeNotice.value = true;
+        bridgeNoticeKey.value = 'local_first_expenses_bulk_bridge';
         return;
       }
 
@@ -529,7 +530,7 @@ async function cancelRow(expenseId: string) {
 
 function openAttachment(expenseId: string) {
   if (localFirst) {
-    showLocalBridgeNotice.value = true;
+    goShow(expenseId);
     return;
   }
   window.open(`/api/invoicing/companies/${companyId.value}/expenses/${expenseId}/attachment`, '_blank');

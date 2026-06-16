@@ -2,7 +2,7 @@ import type { Evolu } from "@evolu/common/local-first";
 import { computed, ref, watch, type ComputedRef, type Ref } from "vue";
 import { useQuery } from "@evolu/vue";
 import api from "@/services/api";
-import { allExpensesQuery, useInvoicingEvolu } from "@/evolu/client";
+import { allExpensesQuery, allExpenseAttachmentsQuery, useInvoicingEvolu } from "@/evolu/client";
 import {
     evoluExpenseToApi,
     evoluExpenseToListRow,
@@ -11,6 +11,7 @@ import {
     type ExpenseApiRow,
     type ExpenseListFilterOptions,
 } from "@/evolu/expenseMap";
+import type { EvoluExpenseAttachmentRow } from "@/evolu/expenseAttachmentCrud";
 import { isInvoicingLocalFirst } from "@/evolu/flags";
 import type { CompanyId, InvoicingLocalSchema } from "@/evolu/schema";
 import type { ExpenseListRow } from "@/composables/useExpenseRowMeta";
@@ -67,18 +68,28 @@ function useLocalInvoicingExpenses(companyId: Ref<string>): UseInvoicingExpenses
     let lastFilters: ExpenseListFilterOptions = {};
 
     const expensesPromise = evolu.loadQuery(allExpensesQuery);
+    const attachmentsPromise = evolu.loadQuery(allExpenseAttachmentsQuery);
     const expenseRows = useQuery(allExpensesQuery, { promise: expensesPromise });
+    const attachmentRows = useQuery(allExpenseAttachmentsQuery, { promise: attachmentsPromise });
 
-    void expensesPromise.finally(() => {
+    void Promise.all([expensesPromise, attachmentsPromise]).finally(() => {
         loading.value = false;
     });
+
+    function attachmentsForExpense(expenseId: string): EvoluExpenseAttachmentRow[] {
+        return attachmentRows.value.filter(
+            (row) => row.expenseId === expenseId,
+        ) as EvoluExpenseAttachmentRow[];
+    }
 
     const expenses = computed(() => {
         const companyRows = expenseRows.value.filter(
             (row) => row.companyId === companyId.value,
         ) as EvoluExpenseRow[];
 
-        return filterLocalExpenses(companyRows, filters.value).map(evoluExpenseToListRow);
+        return filterLocalExpenses(companyRows, filters.value).map((row) =>
+            evoluExpenseToListRow(row, attachmentsForExpense(row.id)),
+        );
     });
 
     async function refresh(nextFilters: ExpenseListFilterOptions = lastFilters): Promise<void> {
@@ -86,7 +97,10 @@ function useLocalInvoicingExpenses(companyId: Ref<string>): UseInvoicingExpenses
         filters.value = nextFilters;
         loading.value = true;
         try {
-            await evolu.loadQuery(allExpensesQuery);
+            await Promise.all([
+                evolu.loadQuery(allExpensesQuery),
+                evolu.loadQuery(allExpenseAttachmentsQuery),
+            ]);
         } finally {
             loading.value = false;
         }
@@ -120,6 +134,7 @@ export function useInvoicingExpense(
     if (localFirst) {
         const evolu = useInvoicingEvolu();
         const expenseRows = useQuery(allExpensesQuery);
+        const attachmentRows = useQuery(allExpenseAttachmentsQuery);
 
         function syncExpense(): void {
             if (!expenseId.value) {
@@ -129,22 +144,28 @@ export function useInvoicingExpense(
             const row = expenseRows.value.find(
                 (e) => e.id === expenseId.value && e.companyId === (companyId.value as CompanyId),
             );
-            expense.value = row ? evoluExpenseToApi(row as EvoluExpenseRow) : null;
+            const attachments = attachmentRows.value.filter(
+                (a) => a.expenseId === expenseId.value,
+            ) as EvoluExpenseAttachmentRow[];
+            expense.value = row ? evoluExpenseToApi(row as EvoluExpenseRow, attachments) : null;
         }
 
-        watch([expenseRows, expenseId, companyId], syncExpense, { immediate: true });
+        watch([expenseRows, attachmentRows, expenseId, companyId], syncExpense, { immediate: true });
 
         async function refresh(): Promise<void> {
             loading.value = true;
             try {
-                await evolu.loadQuery(allExpensesQuery);
+                await Promise.all([
+                    evolu.loadQuery(allExpensesQuery),
+                    evolu.loadQuery(allExpenseAttachmentsQuery),
+                ]);
                 syncExpense();
             } finally {
                 loading.value = false;
             }
         }
 
-        return { localFirst, expense, loading, refresh, evolu, expenseRows };
+        return { localFirst, expense, loading, refresh, evolu, expenseRows, attachmentRows };
     }
 
     async function refresh(): Promise<void> {

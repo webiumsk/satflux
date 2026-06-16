@@ -141,9 +141,10 @@
 
             <div class="lg:w-1/2 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col min-h-[420px] lg:min-h-0">
               <ExpenseAttachmentPanel
-                v-if="!localFirst && (expense.status !== 'cancelled' || savedAttachments.length > 0)"
+                v-if="expense.status !== 'cancelled' || savedAttachments.length > 0"
                 embedded
                 fill-height
+                allow-multiple
                 :file-name="panelFileName"
                 :has-file="panelHasFile"
                 :has-pending="pendingFiles.length > 0"
@@ -161,10 +162,9 @@
                 @select-attachment="onSelectAttachment"
                 @remove-saved="onRemoveSavedAttachment"
               />
-              <LocalFirstBridgeNotice
-                v-else-if="localFirst"
-                :detail="t('invoicing.local_first_expenses_attachments_bridge')"
-              />
+              <p v-if="localFirst" class="px-4 py-2 text-xs text-gray-500 border-t border-gray-100">
+                {{ t('invoicing.local_first_expenses_isdoc_bridge') }}
+              </p>
             </div>
           </div>
 
@@ -214,7 +214,6 @@ import { useRoute, useRouter } from 'vue-router';
 import ExpenseAttachmentPanel from '../../components/invoicing/ExpenseAttachmentPanel.vue';
 import ExpenseIsdocExtractModal from '../../components/invoicing/ExpenseIsdocExtractModal.vue';
 import ExpenseShowSidebar from '../../components/invoicing/ExpenseShowSidebar.vue';
-import LocalFirstBridgeNotice from '../../components/invoicing/LocalFirstBridgeNotice.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import {
@@ -232,8 +231,14 @@ import {
   updateLocalExpense,
 } from '../../evolu/expenseCrud';
 import { filterLocalExpenses } from '../../evolu/expenseMap';
+import {
+  attachmentBlobUrl,
+  attachmentContentBlob,
+  deleteLocalExpenseAttachment,
+  type EvoluExpenseAttachmentRow,
+} from '../../evolu/expenseAttachmentCrud';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
-import type { ExpenseId } from '../../evolu/schema';
+import type { ExpenseAttachmentId, ExpenseId } from '../../evolu/schema';
 import api, { getWebBlob } from '../../services/api';
 
 type ExpenseAttachment = {
@@ -444,7 +449,8 @@ async function load() {
       expense.value = expenseResource.expense.value as Expense | null;
       noteDraft.value = expense.value?.internal_note ?? '';
       history.value = [];
-      selectedAttachmentId.value = null;
+      selectedAttachmentId.value = expense.value?.attachments?.[0]?.id ?? null;
+      await loadSavedPreview();
       return;
     }
     const [expRes, histRes] = await Promise.all([
@@ -476,6 +482,15 @@ function attachmentPreviewUrl(attachmentId?: string | null) {
   return `/api/invoicing/companies/${companyId.value}/expenses/${expenseId.value}/attachment`;
 }
 
+function localAttachmentRow(attachmentId?: string | null): EvoluExpenseAttachmentRow | null {
+  if (!attachmentId || !expenseResource.attachmentRows) return null;
+  return (
+    expenseResource.attachmentRows.value.find((row) => row.id === attachmentId) as
+      | EvoluExpenseAttachmentRow
+      | undefined
+  ) ?? null;
+}
+
 async function loadSavedPreview() {
   revokeSavedPreview();
   if (pendingAttachmentName.value) return;
@@ -484,6 +499,25 @@ async function loadSavedPreview() {
   if (!att && !expense.value?.attachment_path) return;
 
   try {
+    if (localFirst) {
+      const row = localAttachmentRow(att?.id);
+      if (!row) return;
+      const blob = attachmentContentBlob(row);
+      if (!blob) return;
+      const name = att?.original_filename || '';
+      if (name.toLowerCase().endsWith('.pdf') || blob.type === 'application/pdf') {
+        savedPreviewKind.value = 'pdf';
+      } else if (blob.type.startsWith('image/')) {
+        savedPreviewKind.value = 'image';
+      } else {
+        savedPreviewKind.value = 'other';
+      }
+      if (savedPreviewKind.value === 'pdf' || savedPreviewKind.value === 'image') {
+        savedPreviewUrl.value = URL.createObjectURL(blob);
+      }
+      return;
+    }
+
     const blob = await getWebBlob(attachmentPreviewUrl(att?.id));
     const name = att?.original_filename || expense.value?.original_filename || '';
     if (name.toLowerCase().endsWith('.pdf') || blob.type === 'application/pdf') {
@@ -503,6 +537,15 @@ async function loadSavedPreview() {
 
 function downloadAttachment() {
   const att = selectedAttachment.value;
+  if (localFirst) {
+    const row = localAttachmentRow(att?.id);
+    const url = row ? attachmentBlobUrl(row) : null;
+    if (url) {
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    }
+    return;
+  }
   window.open(attachmentPreviewUrl(att?.id), '_blank');
 }
 
@@ -516,6 +559,16 @@ function onSelectAttachment(id: string) {
 async function onRemoveSavedAttachment(id: string) {
   if (!confirm(t('invoicing.expense_attachment_remove_confirm'))) return;
   try {
+    if (localFirst && expenseResource.evolu) {
+      deleteLocalExpenseAttachment(expenseResource.evolu, id as ExpenseAttachmentId);
+      await expenseResource.refresh();
+      expense.value = expenseResource.expense.value as Expense | null;
+      if (selectedAttachmentId.value === id) {
+        selectedAttachmentId.value = expense.value?.attachments?.[0]?.id ?? null;
+      }
+      await loadSavedPreview();
+      return;
+    }
     const res = await api.delete(
       `/invoicing/companies/${companyId.value}/expenses/${expenseId.value}/attachments/${id}`,
     );

@@ -1,6 +1,10 @@
 import { computed, onUnmounted, ref, type Ref } from 'vue';
 import api from '../services/api';
 import type { IsdocExtractQuota } from '../components/invoicing/ExpenseIsdocExtractModal.vue';
+import { isInvoicingLocalFirst } from '../evolu/flags';
+import { useInvoicingEvolu } from '../evolu/client';
+import { insertLocalExpenseAttachment } from '../evolu/expenseAttachmentCrud';
+import type { ExpenseId } from '../evolu/schema';
 
 export type ExpenseImportDraft = {
   title?: string | null;
@@ -39,6 +43,8 @@ function newPendingId() {
 }
 
 export function useExpenseIsdocAttachment(companyId: Ref<string>) {
+  const localFirst = isInvoicingLocalFirst();
+  const evolu = localFirst ? useInvoicingEvolu() : null;
   const quota = ref<IsdocExtractQuota | null>(null);
   const pendingFiles = ref<PendingExpenseFile[]>([]);
   const selectedPendingId = ref<string | null>(null);
@@ -237,6 +243,22 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>) {
   }
 
   async function uploadPendingFiles(expenseId: string, fileIds: string[]) {
+    if (localFirst && evolu) {
+      for (const id of fileIds) {
+        const entry = pendingFiles.value.find((item) => item.id === id);
+        if (!entry) continue;
+        const result = await insertLocalExpenseAttachment(
+          evolu,
+          expenseId as ExpenseId,
+          entry.file,
+        );
+        if (!result.ok) {
+          throw new Error('upload_failed');
+        }
+      }
+      return;
+    }
+
     for (const id of fileIds) {
       const entry = pendingFiles.value.find((item) => item.id === id);
       if (!entry) continue;

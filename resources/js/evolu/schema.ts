@@ -29,6 +29,9 @@ export type DocumentEventId = typeof DocumentEventId.Type;
 export const ExpenseId = id("Expense");
 export type ExpenseId = typeof ExpenseId.Type;
 
+export const ExpenseAttachmentId = id("ExpenseAttachment");
+export type ExpenseAttachmentId = typeof ExpenseAttachmentId.Type;
+
 export const RecurringProfileId = id("RecurringProfile");
 export type RecurringProfileId = typeof RecurringProfileId.Type;
 
@@ -67,6 +70,8 @@ const OptionalString1000 = nullOr(maxLength(1000)(NonEmptyString));
 const OptionalString4000 = nullOr(maxLength(4000)(NonEmptyString));
 /** Compressed image data URLs (logo / signature stamp), max ~128 KB each. */
 const OptionalImageDataUrl = nullOr(maxLength(131072)(NonEmptyString));
+/** Raw base64 file payload (~384 KB decoded max). Synced via E2EE relay. */
+const OptionalAttachmentContent = nullOr(maxLength(524288)(NonEmptyString));
 const CountryCode = maxLength(2)(NonEmptyString);
 const CurrencyCode = maxLength(3)(NonEmptyString);
 const ContactName = maxLength(255)(NonEmptyString);
@@ -303,6 +308,14 @@ export const InvoicingLocalSchema = {
         total: OptionalString32,
         currency: nullOr(CurrencyCode),
         internalNote: OptionalString4000,
+    },
+    expenseAttachment: {
+        id: ExpenseAttachmentId,
+        expenseId: ExpenseId,
+        originalFilename: OptionalString255,
+        mimeType: OptionalString128,
+        sizeBytes: OptionalString32,
+        contentBase64: OptionalAttachmentContent,
     },
     recurringProfile: {
         id: RecurringProfileId,

@@ -13,6 +13,7 @@ import {
     allDocumentLinesQuery,
     allDocumentsQuery,
     allExpensesQuery,
+    allExpenseAttachmentsQuery,
     allNumberSeriesQuery,
     allRecurringProfileLinesQuery,
     allRecurringProfilesQuery,
@@ -39,6 +40,7 @@ export type InvoicingDataSnapshot = {
     documentLine: ReadonlyArray<Record<string, unknown>>;
     documentEvent: ReadonlyArray<Record<string, unknown>>;
     expense: ReadonlyArray<Record<string, unknown>>;
+    expenseAttachment: ReadonlyArray<Record<string, unknown>>;
     recurringProfile: ReadonlyArray<Record<string, unknown>>;
     recurringProfileLine: ReadonlyArray<Record<string, unknown>>;
     companyWarehouse: ReadonlyArray<Record<string, unknown>>;
@@ -58,6 +60,7 @@ const UPSERT_ORDER: InvoicingTable[] = [
     "documentLine",
     "documentEvent",
     "expense",
+    "expenseAttachment",
     "recurringProfile",
     "recurringProfileLine",
     "companyWarehouse",
@@ -80,6 +83,7 @@ export async function snapshotInvoicingData(
         documentLine,
         documentEvent,
         expense,
+        expenseAttachment,
         recurringProfile,
         recurringProfileLine,
         companyWarehouse,
@@ -97,6 +101,7 @@ export async function snapshotInvoicingData(
         evolu.loadQuery(allDocumentLinesQuery),
         evolu.loadQuery(allDocumentEventsQuery),
         evolu.loadQuery(allExpensesQuery),
+        evolu.loadQuery(allExpenseAttachmentsQuery),
         evolu.loadQuery(allRecurringProfilesQuery),
         evolu.loadQuery(allRecurringProfileLinesQuery),
         evolu.loadQuery(allCompanyWarehousesQuery),
@@ -116,6 +121,7 @@ export async function snapshotInvoicingData(
         documentLine: documentLine as ReadonlyArray<Record<string, unknown>>,
         documentEvent: documentEvent as ReadonlyArray<Record<string, unknown>>,
         expense: expense as ReadonlyArray<Record<string, unknown>>,
+        expenseAttachment: expenseAttachment as ReadonlyArray<Record<string, unknown>>,
         recurringProfile: recurringProfile as ReadonlyArray<Record<string, unknown>>,
         recurringProfileLine: recurringProfileLine as ReadonlyArray<Record<string, unknown>>,
         companyWarehouse: companyWarehouse as ReadonlyArray<Record<string, unknown>>,

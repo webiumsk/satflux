@@ -250,6 +250,23 @@ export const allExpensesQuery = evolu.createQuery((db) =>
         .orderBy("createdAt"),
 );
 
+const expenseAttachmentColumns = [
+    "id",
+    "expenseId",
+    "originalFilename",
+    "mimeType",
+    "sizeBytes",
+    "contentBase64",
+] as const;
+
+export const allExpenseAttachmentsQuery = evolu.createQuery((db) =>
+    db
+        .selectFrom("expenseAttachment")
+        .select(expenseAttachmentColumns)
+        .where("isDeleted", "is not", sqliteTrue)
+        .orderBy("createdAt"),
+);
+
 const recurringProfileColumns = [
     "id",
     "companyId",
