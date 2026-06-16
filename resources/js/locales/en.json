@@ -62,7 +62,7 @@
     "company_limit_reached": "You have reached the limit of {max} companies on your plan. Contact us for Enterprise (unlimited).",
     "upgrade_cta": "View Pro plans",
     "no_companies": "You have no company profile yet.",
-    "no_companies_restore_hint": "Sign in with your recovery phrase on the device where you created invoicing data, open Invoicing once (migration runs automatically), wait a minute, then sign in here again.",
+    "no_companies_restore_hint": "Use Import from server above if you still have legacy data on satflux, or sign in with your recovery phrase on another device where Evolu already has your companies.",
     "server_migration_title": "Legacy invoicing data on the server",
     "server_migration_detail": "After switching to local-first, your companies and documents are still in the server database. You can import them once into Evolu in this browser (E2EE, same recovery phrase).",
     "server_migration_counts": "{companies} companies, {documents} documents, {contacts} contacts, {expenses} expenses",

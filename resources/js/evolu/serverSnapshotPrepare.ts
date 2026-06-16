@@ -79,6 +79,34 @@ function normalizeCountry(value: unknown): string | null {
     return parsed.ok ? parsed.value : null;
 }
 
+const JURISDICTIONS = new Set([
+    "eu_sk",
+    "eu_cz",
+    "eu_other",
+    "us",
+    "uk",
+    "offshore",
+    "asia",
+]);
+
+function normalizeJurisdiction(value: unknown): string {
+    const text = emptyToNull(value);
+    if (text && JURISDICTIONS.has(text)) {
+        return text;
+    }
+    return "eu_sk";
+}
+
+const VAT_STATUSES = new Set(["none", "payer", "partial"]);
+
+function normalizeVatStatus(value: unknown): string {
+    const text = emptyToNull(value);
+    if (text && VAT_STATUSES.has(text)) {
+        return text;
+    }
+    return "none";
+}
+
 function normalizeDocumentTitle(row: Record<string, unknown>): string {
     const candidates = [row.title, row.number, row.documentType, "Document"];
     for (const candidate of candidates) {
@@ -124,6 +152,8 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
             const mapped = mapRowIds(row, { id: CompanyId });
             return {
                 ...mapped,
+                jurisdiction: normalizeJurisdiction(mapped.jurisdiction),
+                vatStatus: normalizeVatStatus(mapped.vatStatus),
                 country: normalizeCountry(mapped.country),
                 appSettingsJson: truncateJsonBlob(mapped.appSettingsJson),
                 emailSettingsJson: truncateJsonBlob(mapped.emailSettingsJson),

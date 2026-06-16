@@ -128,9 +128,11 @@ import { isEvoluRelaySyncPending } from '@/evolu/relaySyncWait';
 import {
   fetchServerMigrationStatus,
   importServerInvoicingToEvolu,
+  clearServerMigrationCompleted,
   isServerMigrationCompleted,
   migrationWarningsNeedUserAttention,
   serverMigrationErrorMessage,
+  shouldOfferServerMigration,
   type ServerMigrationStatus,
 } from '@/evolu/serverMigration';
 import { findDuplicateCompanyGroups } from '@/evolu/duplicateCompanies';
@@ -168,15 +170,21 @@ const companyList = computed(() => unref(companies));
 
 const showServerMigration = computed(() => {
   if (!localFirst || loading.value || isRelaySyncing.value) return false;
-  if (companyList.value.length > 0) return false;
-  if (isServerMigrationCompleted()) return false;
-  return migrationStatus.value?.available === true;
+  return shouldOfferServerMigration(companyList.value.length, migrationStatus.value);
 });
 
 async function loadMigrationStatus(): Promise<void> {
-  if (!localFirst || isServerMigrationCompleted()) return;
+  if (!localFirst) return;
+  if (companyList.value.length > 0) {
+    migrationStatus.value = null;
+    return;
+  }
   try {
-    migrationStatus.value = await fetchServerMigrationStatus();
+    const status = await fetchServerMigrationStatus();
+    migrationStatus.value = status;
+    if (shouldOfferServerMigration(0, status) && isServerMigrationCompleted()) {
+      clearServerMigrationCompleted();
+    }
   } catch {
     migrationStatus.value = null;
   }
@@ -207,7 +215,7 @@ onMounted(() => {
 });
 
 watch(companyList, (list) => {
-  if (localFirst && list.length === 0 && !isServerMigrationCompleted()) {
+  if (localFirst && list.length === 0) {
     void loadMigrationStatus();
   }
 });

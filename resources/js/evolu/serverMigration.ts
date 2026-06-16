@@ -1,15 +1,12 @@
 import type { Evolu } from "@evolu/common/local-first";
 import api from "@/services/api";
 import { ensureEvoluBoundToAccountSeed } from "@/evolu/bootstrap";
+import { allCompaniesQuery } from "@/evolu/client";
 import {
     restoreInvoicingSnapshotDetailed,
     snapshotHasInvoicingData,
     type InvoicingDataSnapshot,
 } from "@/evolu/invoicingSnapshot";
-import {
-    markEvoluRelaySyncPending,
-    waitForInvoicingRelaySync,
-} from "@/evolu/relaySyncWait";
 import type { InvoicingLocalSchema } from "@/evolu/schema";
 import { sanitizeLocalStoreReferences } from "@/evolu/sanitizeStoreReferences";
 import { prepareServerSnapshotForEvolu } from "@/evolu/serverSnapshotPrepare";
@@ -85,6 +82,14 @@ export function clearServerMigrationCompleted(): void {
     localStorage.removeItem(MIGRATION_COMPLETED_KEY);
 }
 
+/** Show server import when Evolu is empty but PostgreSQL still has legacy rows. */
+export function shouldOfferServerMigration(
+    localCompanyCount: number,
+    serverStatus: ServerMigrationStatus | null,
+): boolean {
+    return localCompanyCount === 0 && serverStatus?.available === true;
+}
+
 export async function fetchServerMigrationStatus(): Promise<ServerMigrationStatus> {
     const { data } = await api.get("/invoicing/migration/status");
     return data.data as ServerMigrationStatus;
@@ -144,27 +149,39 @@ export async function importServerInvoicingToEvolu(
 
     const prepared = prepareServerSnapshotForEvolu(snapshot);
     const { upserted, failed } = restoreInvoicingSnapshotDetailed(evolu, prepared);
-    const companyFailures = failed.filter((entry) => entry.table === "company").length;
+    const companyFailures = failed.filter((entry) => entry.table === "company");
 
-    if (prepared.company.length > 0 && companyFailures >= prepared.company.length) {
-        console.error("Server migration upsert failures", failed.slice(0, 20));
+    if (prepared.company.length > 0 && companyFailures.length >= prepared.company.length) {
+        console.error("Server migration company upsert failures", companyFailures.slice(0, 20));
+        clearServerMigrationCompleted();
         throw new ServerMigrationError("companies_missing", "companies_missing");
     }
 
     if (upserted === 0) {
         console.error("Server migration upsert failures", failed.slice(0, 20));
+        clearServerMigrationCompleted();
         throw new ServerMigrationError("upsert_failed", "upsert_failed");
     }
 
-    markEvoluRelaySyncPending();
-    await waitForInvoicingRelaySync(evolu);
     await sanitizeLocalStoreReferences(evolu, validStoreIds);
+
+    const companies = await evolu.loadQuery(allCompaniesQuery);
+    if (prepared.company.length > 0 && companies.length === 0) {
+        console.error("Server migration wrote rows but company table is empty", failed.slice(0, 20));
+        clearServerMigrationCompleted();
+        throw new ServerMigrationError("companies_missing", "companies_missing");
+    }
+
+    // Do not wait for relay merge here: an empty remote snapshot can overwrite a fresh import.
     markServerMigrationCompleted();
 
     return {
         upserted,
         warnings: meta.warnings ?? [],
-        counts: meta.counts ?? {},
+        counts: {
+            ...(meta.counts ?? {}),
+            company: companies.length,
+        },
     };
 }
 

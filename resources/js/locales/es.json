@@ -2220,7 +2220,7 @@
     "company_limit_reached": "Ha alcanzado el límite de {max} empresas en su plan. Contacte para Enterprise (ilimitado).",
     "upgrade_cta": "Ver planes Pro",
     "no_companies": "Aún no tiene un perfil de empresa.",
-    "no_companies_restore_hint": "Inicie sesión con su frase de recuperación en el dispositivo donde creó los datos, abra Facturación una vez (la migración es automática), espere un minuto e inicie sesión aquí de nuevo.",
+    "no_companies_restore_hint": "Use Importar del servidor arriba si aún tiene datos antiguos en satflux, o inicie sesión con su frase de recuperación en otro dispositivo donde Evolu ya tenga sus empresas.",
     "server_migration_title": "Datos de facturación antiguos en el servidor",
     "server_migration_detail": "Tras el cambio a local-first, sus empresas y documentos siguen en la base de datos del servidor. Puede importarlos una vez a Evolu en este navegador (E2EE, misma frase de recuperación).",
     "server_migration_counts": "{companies} empresas, {documents} documentos, {contacts} contactos, {expenses} gastos",

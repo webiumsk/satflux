@@ -62,7 +62,7 @@
     "company_limit_reached": "Dosiahli ste limit {max} firiem v pláne Pro. Pre viac firiem kontaktujte nás (Enterprise).",
     "upgrade_cta": "Zobraziť plány Pro",
     "no_companies": "Zatiaľ nemáte firemný profil.",
-    "no_companies_restore_hint": "Prihláste sa obnovovacou frázou na zariadení, kde ste vytvorili fakturačné dáta, raz otvorte Fakturáciu (migrácia prebehne automaticky), počkajte minútu a prihláste sa tu znova.",
+    "no_companies_restore_hint": "Ak máte ešte dáta na serveri, použite Import zo servera vyššie. Inak sa prihláste rovnakou obnovovacou frázou na zariadení, kde už Evolu firmy má.",
     "server_migration_title": "Na serveri máte staré fakturačné dáta",
     "server_migration_detail": "Po prepnutí na local-first sú firmy a doklady stále v databáze servera. Môžete ich jednorazovo importovať do Evolu v tomto prehliadači (E2EE, rovnaká obnovovacia fráza).",
     "server_migration_counts": "{companies} firiem, {documents} dokladov, {contacts} kontaktov, {expenses} výdavkov",
