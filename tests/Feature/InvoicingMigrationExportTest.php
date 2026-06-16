@@ -7,6 +7,8 @@ use App\Enums\BusinessDocumentType;
 use App\Enums\CompanyJurisdiction;
 use App\Models\BusinessDocument;
 use App\Models\BusinessDocumentLine;
+use App\Models\BusinessExpense;
+use App\Models\BusinessExpenseAttachment;
 use App\Models\Company;
 use App\Models\CompanyContact;
 use App\Models\CompanyDocumentSequence;
@@ -14,6 +16,7 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -64,7 +67,8 @@ class InvoicingMigrationExportTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.available', true)
             ->assertJsonPath('data.companies_count', 1)
-            ->assertJsonPath('data.contacts_count', 1);
+            ->assertJsonPath('data.contacts_count', 1)
+            ->assertJsonPath('data.attachments_on_server_count', 0);
     }
 
     #[Test]
@@ -145,6 +149,51 @@ class InvoicingMigrationExportTest extends TestCase
     {
         $response = $this->actingAs($this->proUser)
             ->getJson('/api/invoicing/migration/export');
+
+        $response->assertNotFound();
+    }
+
+    #[Test]
+    public function migration_export_attachments_returns_base64_content(): void
+    {
+        Storage::fake('local');
+        $company = $this->createCompany();
+        $expense = BusinessExpense::create([
+            'company_id' => $company->id,
+            'internal_number' => 'N20260001',
+            'issue_date' => now(),
+            'total' => 10,
+            'currency' => 'EUR',
+        ]);
+
+        $path = "companies/{$company->id}/expenses/{$expense->id}/invoice.pdf";
+        Storage::disk('local')->put($path, '%PDF-1.4 fake');
+        BusinessExpenseAttachment::create([
+            'business_expense_id' => $expense->id,
+            'disk' => 'local',
+            'path' => $path,
+            'original_filename' => 'invoice.pdf',
+            'mime' => 'application/pdf',
+            'size_bytes' => 14,
+        ]);
+
+        $response = $this->actingAs($this->proUser)
+            ->getJson('/api/invoicing/migration/export-attachments');
+
+        $response->assertOk()
+            ->assertJsonPath('meta.counts.expenseAttachment', 1)
+            ->assertJsonPath('data.expenseAttachment.0.originalFilename', 'invoice.pdf');
+
+        $content = $response->json('data.expenseAttachment.0.contentBase64');
+        $this->assertIsString($content);
+        $this->assertNotSame('', $content);
+    }
+
+    #[Test]
+    public function migration_export_attachments_is_empty_for_user_without_companies(): void
+    {
+        $response = $this->actingAs($this->proUser)
+            ->getJson('/api/invoicing/migration/export-attachments');
 
         $response->assertNotFound();
     }

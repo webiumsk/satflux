@@ -52,6 +52,26 @@ export type InvoicingDataSnapshot = {
     bankTransactionMatch: ReadonlyArray<Record<string, unknown>>;
 };
 
+export const EMPTY_INVOICING_SNAPSHOT: InvoicingDataSnapshot = {
+    company: [],
+    contact: [],
+    numberSeries: [],
+    document: [],
+    documentLine: [],
+    documentEvent: [],
+    expense: [],
+    expenseAttachment: [],
+    recurringProfile: [],
+    recurringProfileLine: [],
+    companyWarehouse: [],
+    companyStockItem: [],
+    companyStockBalance: [],
+    companyStockMovement: [],
+    bankImportBatch: [],
+    bankTransaction: [],
+    bankTransactionMatch: [],
+};
+
 const UPSERT_ORDER: InvoicingTable[] = [
     "company",
     "contact",

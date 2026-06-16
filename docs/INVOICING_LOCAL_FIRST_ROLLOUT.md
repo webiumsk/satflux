@@ -13,7 +13,7 @@ Both flags should be **on together** in production. Mismatch causes confusing be
 
 Optional:
 
-- `VITE_EVOLU_RELAY_URL` - default `wss://free.evoluhq.com` (see `resources/js/evolu/config.ts`)
+- `VITE_EVOLU_RELAY_URL` - WebSocket URL for Evolu sync/backup (default `wss://free.evoluhq.com`; see `resources/js/evolu/config.ts`). Set at **build time** with `npm run build` / `./deploy.sh`. Use a self-hosted relay in production if you do not want to depend on `free.evoluhq.com`. Empty string disables relay sync (local-only SQLite).
 - `SEED_FIRST_REGISTRATION=true` - recommended with local-first (unified 24-word recovery phrase)
 - Per-company override: `app_settings.local_first` on a `companies` row forces that company off server invoicing even when the global flag is false (legacy escape hatch)
 
@@ -35,8 +35,9 @@ Server rows are **not deleted** by the import. After verifying local data, users
 
 | Endpoint | Purpose |
 | -------- | ------- |
-| `GET /api/invoicing/migration/status` | Counts of server-side companies/contacts/documents/expenses |
-| `GET /api/invoicing/migration/export` | Full `InvoicingDataSnapshot` JSON for browser `restoreInvoicingSnapshot` (throttled 5/hour) |
+| `GET /api/invoicing/migration/status` | Counts of server-side companies/contacts/documents/expenses and expense attachments |
+| `GET /api/invoicing/migration/export` | Full `InvoicingDataSnapshot` JSON for browser `restoreInvoicingSnapshot` (throttled 5/hour; attachments and branding off by default) |
+| `GET /api/invoicing/migration/export-attachments` | Phase 2: `expenseAttachment` rows with `contentBase64` when readable (max ~384 KB each; throttled 3/hour) |
 
 CLI for support: `php artisan invoicing:export-for-evolu {email}` writes JSON to `storage/app/private/`.
 

@@ -334,6 +334,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::get('/migration/status', [InvoicingMigrationController::class, 'status']);
             Route::get('/migration/export', [InvoicingMigrationController::class, 'export'])
                 ->middleware('throttle:5,60');
+            Route::get('/migration/export-attachments', [InvoicingMigrationController::class, 'exportAttachments'])
+                ->middleware('throttle:3,60');
             Route::post('/ephemeral/pdf', [EphemeralBusinessDocumentController::class, 'pdfWithoutCompany']);
             Route::post('/ephemeral/email-preview', [EphemeralBusinessDocumentController::class, 'emailPreviewWithoutCompany']);
             Route::post('/ephemeral/send-email', [EphemeralBusinessDocumentController::class, 'sendEmailWithoutCompany']);

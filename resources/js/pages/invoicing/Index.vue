@@ -39,6 +39,32 @@
       </ul>
     </div>
 
+    <div v-if="localFirst && showServerLegacyCleanup" class="rounded-lg border border-sky-200 bg-sky-50 px-4 py-4 mb-4">
+      <p class="text-sm font-medium text-sky-950">{{ t('invoicing.server_legacy_cleanup_title') }}</p>
+      <p class="text-sm text-sky-900 mt-2">{{ t('invoicing.server_legacy_cleanup_detail') }}</p>
+      <router-link to="/account/profile" class="invoicing-link inline-block mt-3 text-sm font-medium">
+        {{ t('invoicing.server_legacy_cleanup_link') }}
+      </router-link>
+    </div>
+
+    <div v-if="localFirst && showAttachmentMigration" class="rounded-lg border border-violet-200 bg-violet-50 px-4 py-4 mb-4">
+      <p class="text-sm font-medium text-violet-950">{{ t('invoicing.server_migration_attachments_title') }}</p>
+      <p class="text-sm text-violet-900 mt-2">{{ t('invoicing.server_migration_attachments_detail') }}</p>
+      <p v-if="migrationStatus" class="text-xs text-violet-800 mt-2">
+        {{ t('invoicing.server_migration_attachments_counts', {
+          count: migrationStatus.attachments_on_server_count,
+        }) }}
+      </p>
+      <button
+        type="button"
+        class="invoicing-btn-primary mt-3"
+        :disabled="attachmentImporting || isRelaySyncing"
+        @click="runAttachmentMigration"
+      >
+        {{ attachmentImporting ? t('invoicing.server_migration_attachments_importing') : t('invoicing.server_migration_attachments_import') }}
+      </button>
+    </div>
+
     <div v-if="localFirst && showServerMigration" class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-4 mb-4">
       <p class="text-sm font-medium text-amber-950">{{ t('invoicing.server_migration_title') }}</p>
       <p class="text-sm text-amber-900 mt-2">{{ t('invoicing.server_migration_detail') }}</p>
@@ -127,11 +153,14 @@ import { useInvoicingEvolu } from '@/evolu/client';
 import { isEvoluRelaySyncPending } from '@/evolu/relaySyncWait';
 import {
   fetchServerMigrationStatus,
+  importServerAttachmentsToEvolu,
   importServerInvoicingToEvolu,
   clearServerMigrationCompleted,
   isServerMigrationCompleted,
   migrationWarningsNeedUserAttention,
   serverMigrationErrorMessage,
+  shouldOfferAttachmentMigration,
+  shouldOfferServerLegacyCleanup,
   shouldOfferServerMigration,
   type ServerMigrationStatus,
 } from '@/evolu/serverMigration';
@@ -159,6 +188,7 @@ const {
 const showUpgrade = ref(false);
 const migrationStatus = ref<ServerMigrationStatus | null>(null);
 const migrationImporting = ref(false);
+const attachmentImporting = ref(false);
 
 const relaySyncLoading = computed(() => localFirst && isEvoluRelaySyncPending() && loading.value);
 
@@ -173,16 +203,22 @@ const showServerMigration = computed(() => {
   return shouldOfferServerMigration(companyList.value.length, migrationStatus.value);
 });
 
+const showServerLegacyCleanup = computed(() => {
+  if (!localFirst || loading.value || isRelaySyncing.value || showServerMigration.value) return false;
+  return shouldOfferServerLegacyCleanup(companyList.value.length, migrationStatus.value);
+});
+
+const showAttachmentMigration = computed(() => {
+  if (!localFirst || loading.value || isRelaySyncing.value || showServerMigration.value) return false;
+  return shouldOfferAttachmentMigration(companyList.value.length, migrationStatus.value);
+});
+
 async function loadMigrationStatus(): Promise<void> {
   if (!localFirst) return;
-  if (companyList.value.length > 0) {
-    migrationStatus.value = null;
-    return;
-  }
   try {
     const status = await fetchServerMigrationStatus();
     migrationStatus.value = status;
-    if (shouldOfferServerMigration(0, status) && isServerMigrationCompleted()) {
+    if (shouldOfferServerMigration(companyList.value.length, status) && isServerMigrationCompleted()) {
       clearServerMigrationCompleted();
     }
   } catch {
@@ -210,12 +246,31 @@ async function runServerMigration(): Promise<void> {
   }
 }
 
+async function runAttachmentMigration(): Promise<void> {
+  if (attachmentImporting.value) return;
+  attachmentImporting.value = true;
+  try {
+    const result = await importServerAttachmentsToEvolu(evolu);
+    flashStore.success(t('invoicing.server_migration_attachments_success', {
+      count: result.counts.expenseAttachment ?? result.upserted,
+    }));
+    if (migrationWarningsNeedUserAttention(result.warnings)) {
+      flashStore.warning(t('invoicing.server_migration_warnings'));
+    }
+    await loadMigrationStatus();
+  } catch (error) {
+    flashStore.error(serverMigrationErrorMessage(error, t));
+  } finally {
+    attachmentImporting.value = false;
+  }
+}
+
 onMounted(() => {
   void loadMigrationStatus();
 });
 
-watch(companyList, (list) => {
-  if (localFirst && list.length === 0) {
+watch(companyList, () => {
+  if (localFirst) {
     void loadMigrationStatus();
   }
 });

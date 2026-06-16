@@ -3,6 +3,7 @@ import api from "@/services/api";
 import { getStoredAccountMnemonic, initEvoluFromAccountSeedIfNeeded } from "@/services/accountSeed";
 import { allCompaniesQuery } from "@/evolu/client";
 import {
+    EMPTY_INVOICING_SNAPSHOT,
     restoreInvoicingSnapshotDetailedAsync,
     snapshotHasInvoicingData,
     type InvoicingDataSnapshot,
@@ -20,6 +21,7 @@ export type ServerMigrationStatus = {
     contacts_count: number;
     documents_count: number;
     expenses_count: number;
+    attachments_on_server_count: number;
 };
 
 export type ServerMigrationExportMeta = {
@@ -41,7 +43,8 @@ export class ServerMigrationError extends Error {
             | "export_failed"
             | "empty_snapshot"
             | "upsert_failed"
-            | "companies_missing",
+            | "companies_missing"
+            | "attachments_empty",
         readonly status?: number,
         readonly errorId?: string,
     ) {
@@ -96,6 +99,20 @@ export async function fetchServerMigrationStatus(): Promise<ServerMigrationStatu
     return data.data as ServerMigrationStatus;
 }
 
+export function shouldOfferServerLegacyCleanup(
+    localCompanyCount: number,
+    serverStatus: ServerMigrationStatus | null,
+): boolean {
+    return localCompanyCount > 0 && serverStatus?.available === true;
+}
+
+export function shouldOfferAttachmentMigration(
+    localCompanyCount: number,
+    serverStatus: ServerMigrationStatus | null,
+): boolean {
+    return localCompanyCount > 0 && (serverStatus?.attachments_on_server_count ?? 0) > 0;
+}
+
 export async function fetchServerMigrationExport(): Promise<{
     snapshot: InvoicingDataSnapshot;
     meta: ServerMigrationExportMeta;
@@ -133,6 +150,36 @@ export async function fetchServerMigrationExport(): Promise<{
             "export_failed",
             status,
             errorId,
+        );
+    }
+}
+
+export async function fetchServerMigrationAttachmentsExport(): Promise<{
+    snapshot: Pick<InvoicingDataSnapshot, "expenseAttachment">;
+    meta: ServerMigrationExportMeta;
+}> {
+    try {
+        const { data } = await api.get("/invoicing/migration/export-attachments", {
+            timeout: 300_000,
+        });
+        return {
+            snapshot: {
+                expenseAttachment: (data.data?.expenseAttachment ?? []) as InvoicingDataSnapshot["expenseAttachment"],
+            },
+            meta: data.meta as ServerMigrationExportMeta,
+        };
+    } catch (error: unknown) {
+        const axiosError = error as {
+            response?: { status?: number; data?: { message?: string; debug?: string; error_id?: string } };
+            message?: string;
+        };
+        const status = axiosError.response?.status;
+        const body = axiosError.response?.data;
+        throw new ServerMigrationError(
+            body?.debug ?? body?.error_id ?? "export_failed",
+            "export_failed",
+            status,
+            body?.error_id,
         );
     }
 }
@@ -207,6 +254,47 @@ export async function importServerInvoicingToEvolu(
     };
 }
 
+export async function importServerAttachmentsToEvolu(
+    evolu: Evolu<InvoicingLocalSchema>,
+): Promise<ServerMigrationImportResult> {
+    const { snapshot, meta } = await fetchServerMigrationAttachmentsExport();
+    const prepared = dropRowsWithoutId(
+        sanitizeSnapshotRowsForUpsert(
+            prepareServerSnapshotForEvolu({
+                ...EMPTY_INVOICING_SNAPSHOT,
+                expenseAttachment: snapshot.expenseAttachment,
+            }),
+        ),
+    );
+    const attachments = prepared.expenseAttachment.filter(
+        (row) => typeof row.contentBase64 === "string" && row.contentBase64.length > 0,
+    );
+
+    if (attachments.length === 0) {
+        throw new ServerMigrationError("attachments_empty", "attachments_empty");
+    }
+
+    const { upserted, failed } = await restoreInvoicingSnapshotDetailedAsync(evolu, {
+        ...EMPTY_INVOICING_SNAPSHOT,
+        expenseAttachment: attachments,
+    });
+
+    if (upserted === 0) {
+        console.error("Server attachment migration upsert failures", failed.slice(0, 20));
+        throw new ServerMigrationError("upsert_failed", "upsert_failed");
+    }
+
+    if (failed.length > 0) {
+        console.warn("Server attachment migration partial upsert failures", failed.slice(0, 30));
+    }
+
+    return {
+        upserted,
+        warnings: meta.warnings ?? [],
+        counts: meta.counts ?? { expenseAttachment: upserted },
+    };
+}
+
 export function serverMigrationErrorMessage(
     error: unknown,
     t: (key: string, params?: Record<string, unknown>) => string,
@@ -238,6 +326,9 @@ export function serverMigrationErrorMessage(
         }
         if (error.code === "companies_missing" || error.code === "upsert_failed") {
             return t("invoicing.server_migration_error_upsert");
+        }
+        if (error.code === "attachments_empty") {
+            return t("invoicing.server_migration_attachments_error_empty");
         }
     }
     return t("invoicing.server_migration_error");

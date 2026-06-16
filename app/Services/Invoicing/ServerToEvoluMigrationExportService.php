@@ -141,35 +141,7 @@ class ServerToEvoluMigrationExportService
             $this->pushMappedRow($snapshot, 'expense', fn () => $this->mapExpense($expense), $expense->id);
         }
 
-        $expenseIds = $expenses->pluck('id')->all();
-        $expensesWithRowAttachments = [];
-        if ($expenseIds !== []) {
-            $attachments = $this->loadCollection('expenseAttachment', fn () => BusinessExpenseAttachment::query()
-                ->whereIn('business_expense_id', $expenseIds)
-                ->orderBy('created_at')
-                ->get());
-            foreach ($attachments as $attachment) {
-                $expensesWithRowAttachments[$attachment->business_expense_id] = true;
-                $this->pushMappedRow(
-                    $snapshot,
-                    'expenseAttachment',
-                    fn () => $this->mapExpenseAttachment($attachment),
-                    $attachment->id,
-                );
-            }
-        }
-
-        foreach ($expenses as $expense) {
-            if (isset($expensesWithRowAttachments[$expense->id])) {
-                continue;
-            }
-            $this->pushMappedRow(
-                $snapshot,
-                'expenseAttachment',
-                fn () => $this->mapLegacyExpenseAttachment($expense),
-                $expense->id,
-            );
-        }
+        $this->loadExpenseAttachmentsIntoSnapshot($snapshot, $companyIds);
 
         $profiles = $this->loadCollection('recurringProfile', fn () => BusinessRecurringProfile::query()
             ->whereIn('company_id', $companyIds)
@@ -272,12 +244,94 @@ class ServerToEvoluMigrationExportService
     }
 
     /**
+     * Export expense attachment rows only (phase 2 migration) with file content when readable.
+     *
+     * @return array{
+     *     snapshot: array{expenseAttachment: list<array<string, mixed>>},
+     *     warnings: list<string>,
+     *     counts: array<string, int>
+     * }
+     */
+    public function exportAttachmentsForUser(User $user): array
+    {
+        $this->warnings = [];
+        $this->includeAttachmentContent = true;
+        $this->includeBranding = false;
+
+        $companyIds = Company::query()
+            ->where('user_id', $user->id)
+            ->pluck('id')
+            ->all();
+
+        if ($companyIds === []) {
+            return [
+                'snapshot' => ['expenseAttachment' => []],
+                'warnings' => [],
+                'counts' => ['expenseAttachment' => 0],
+            ];
+        }
+
+        $snapshot = ['expenseAttachment' => []];
+        $this->loadExpenseAttachmentsIntoSnapshot($snapshot, $companyIds);
+
+        return [
+            'snapshot' => $snapshot,
+            'warnings' => $this->warnings,
+            'counts' => $this->countSnapshot($snapshot),
+        ];
+    }
+
+    /**
+     * @param  array<string, list<array<string, mixed>>>  $snapshot
+     * @param  list<string>  $companyIds
+     */
+    private function loadExpenseAttachmentsIntoSnapshot(array &$snapshot, array $companyIds): void
+    {
+        $expenses = $this->loadCollection('expense', fn () => BusinessExpense::query()
+            ->whereIn('company_id', $companyIds)
+            ->orderBy('issue_date')
+            ->orderBy('internal_number')
+            ->get());
+
+        $expenseIds = $expenses->pluck('id')->all();
+        $expensesWithRowAttachments = [];
+        if ($expenseIds !== []) {
+            $attachments = $this->loadCollection('expenseAttachment', fn () => BusinessExpenseAttachment::query()
+                ->whereIn('business_expense_id', $expenseIds)
+                ->orderBy('created_at')
+                ->get());
+            foreach ($attachments as $attachment) {
+                $expensesWithRowAttachments[$attachment->business_expense_id] = true;
+                $this->pushMappedRow(
+                    $snapshot,
+                    'expenseAttachment',
+                    fn () => $this->mapExpenseAttachment($attachment),
+                    $attachment->id,
+                );
+            }
+        }
+
+        foreach ($expenses as $expense) {
+            if (isset($expensesWithRowAttachments[$expense->id])) {
+                continue;
+            }
+            $this->pushMappedRow(
+                $snapshot,
+                'expenseAttachment',
+                fn () => $this->mapLegacyExpenseAttachment($expense),
+                $expense->id,
+            );
+        }
+    }
+
+    /**
      * @return array{
      *     available: bool,
      *     companies_count: int,
      *     contacts_count: int,
      *     documents_count: int,
-     *     expenses_count: int
+     *     expenses_count: int,
+     *     attachments_on_server_count: int
      * }
      */
     public function statusForUser(User $user): array
@@ -293,6 +347,7 @@ class ServerToEvoluMigrationExportService
                 'contacts_count' => 0,
                 'documents_count' => 0,
                 'expenses_count' => 0,
+                'attachments_on_server_count' => 0,
             ];
         }
 
@@ -300,12 +355,31 @@ class ServerToEvoluMigrationExportService
             ->where('user_id', $user->id)
             ->pluck('id');
 
+        $expenseIds = BusinessExpense::query()
+            ->whereIn('company_id', $companyIds)
+            ->pluck('id');
+
+        $rowAttachmentExpenseIds = BusinessExpenseAttachment::query()
+            ->whereIn('business_expense_id', $expenseIds)
+            ->distinct()
+            ->pluck('business_expense_id');
+
+        $legacyAttachmentCount = BusinessExpense::query()
+            ->whereIn('company_id', $companyIds)
+            ->whereNotNull('attachment_path')
+            ->where('attachment_path', '!=', '')
+            ->whereNotIn('id', $rowAttachmentExpenseIds)
+            ->count();
+
         return [
             'available' => true,
             'companies_count' => $companiesCount,
             'contacts_count' => CompanyContact::query()->whereIn('company_id', $companyIds)->count(),
             'documents_count' => BusinessDocument::query()->whereIn('company_id', $companyIds)->count(),
             'expenses_count' => BusinessExpense::query()->whereIn('company_id', $companyIds)->count(),
+            'attachments_on_server_count' => BusinessExpenseAttachment::query()
+                ->whereIn('business_expense_id', $expenseIds)
+                ->count() + $legacyAttachmentCount,
         ];
     }
 

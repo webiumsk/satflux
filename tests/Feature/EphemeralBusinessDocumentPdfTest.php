@@ -37,6 +37,42 @@ class EphemeralBusinessDocumentPdfTest extends TestCase
     }
 
     #[Test]
+    public function migrated_evolu_snapshot_shape_renders_ephemeral_pdf(): void
+    {
+        [$user, $company] = $this->createProUserWithCompany();
+
+        $payload = $this->ephemeralPayload();
+        $payload['company']['jurisdiction'] = 'eu_sk';
+        $payload['company']['vat_payer'] = true;
+        $payload['company']['vat_status'] = 'payer';
+        $payload['company']['app_settings'] = [
+            'show_pay_by_square' => true,
+            'rounding_method' => 'per_line',
+        ];
+        $payload['document']['status'] = 'issued';
+        $payload['document']['number'] = '20260042';
+        $payload['lines'] = [
+            [
+                'name' => 'Service',
+                'quantity' => '1',
+                'unit' => 'ks',
+                'unit_price' => '100.00',
+                'tax_rate' => '21',
+                'line_discount_percent' => '0',
+            ],
+        ];
+
+        $response = $this->actingAs($user)->postJson(
+            '/api/invoicing/ephemeral/pdf',
+            $payload,
+        );
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    #[Test]
     public function authenticated_user_can_send_ephemeral_email_with_pdf_attachment(): void
     {
         Mail::fake();
