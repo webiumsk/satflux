@@ -398,6 +398,44 @@ class SubscriptionService
     }
 
     /**
+     * Keep subscription rows aligned when an admin assigns a merchant role.
+     * API entitlements use active Pro/Enterprise subscriptions, not users.role alone.
+     */
+    public function syncSubscriptionForAdminRole(User $user, string $role): void
+    {
+        if (! in_array($role, ['free', 'pro', 'enterprise'], true)) {
+            return;
+        }
+
+        DB::transaction(function () use ($user, $role) {
+            $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
+            if (! $lockedUser) {
+                return;
+            }
+
+            if (in_array($role, ['pro', 'enterprise'], true)) {
+                $this->activateSubscription($lockedUser, $role);
+
+                return;
+            }
+
+            Subscription::query()
+                ->where('user_id', $lockedUser->id)
+                ->whereIn('status', ['active', 'grace'])
+                ->whereHas('plan', fn ($query) => $query->whereIn('code', ['pro', 'enterprise']))
+                ->lockForUpdate()
+                ->get()
+                ->each(function (Subscription $subscription) {
+                    $subscription->status = 'expired';
+                    $subscription->billing_phase = Subscription::BILLING_EXPIRED;
+                    $subscription->save();
+                });
+
+            $this->ensureFreeSubscription($lockedUser);
+        });
+    }
+
+    /**
      * Update subscription statuses for all users.
      * This should be called periodically (e.g., via a scheduled task).
      */

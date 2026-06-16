@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Services\SubscriptionService;
 use Illuminate\Console\Command;
 
 class SetUserRole extends Command
@@ -50,6 +51,8 @@ class SetUserRole extends Command
         $oldRole = $user->role ?? 'free';
         $user->role = $role;
         $user->save();
+
+        app(SubscriptionService::class)->syncSubscriptionForAdminRole($user, $role);
 
         $this->info('✓ User role updated successfully!');
         $this->line("  Email: {$user->email}");
