@@ -138,17 +138,37 @@ export function restoreInvoicingSnapshot(
     evolu: Evolu<InvoicingLocalSchema>,
     snapshot: InvoicingDataSnapshot,
 ): number {
+    return restoreInvoicingSnapshotDetailed(evolu, snapshot).upserted;
+}
+
+export type SnapshotRestoreFailure = {
+    table: InvoicingTable;
+    id: unknown;
+};
+
+export type SnapshotRestoreReport = {
+    upserted: number;
+    failed: SnapshotRestoreFailure[];
+};
+
+export function restoreInvoicingSnapshotDetailed(
+    evolu: Evolu<InvoicingLocalSchema>,
+    snapshot: InvoicingDataSnapshot,
+): SnapshotRestoreReport {
     let upserted = 0;
+    const failed: SnapshotRestoreFailure[] = [];
     for (const table of UPSERT_ORDER) {
         const rows = snapshot[table];
         for (const row of rows) {
             const result = evolu.upsert(table, rowForUpsert(row) as never);
             if (result.ok) {
                 upserted += 1;
+            } else {
+                failed.push({ table, id: row.id ?? null });
             }
         }
     }
-    return upserted;
+    return { upserted, failed };
 }
 
 export function snapshotHasInvoicingData(snapshot: InvoicingDataSnapshot): boolean {

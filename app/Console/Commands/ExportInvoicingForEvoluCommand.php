@@ -18,10 +18,9 @@ class ExportInvoicingForEvoluCommand extends Command
     public function handle(ServerToEvoluMigrationExportService $exportService): int
     {
         $identifier = trim((string) $this->argument('user'));
-        $user = User::query()
-            ->where('email', $identifier)
-            ->orWhere('id', $identifier)
-            ->first();
+        $user = str_contains($identifier, '@')
+            ? User::query()->where('email', $identifier)->first()
+            : User::query()->where('id', $identifier)->first();
 
         if (! $user) {
             $this->error("User not found: {$identifier}");

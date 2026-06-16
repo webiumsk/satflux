@@ -129,6 +129,7 @@ import {
   fetchServerMigrationStatus,
   importServerInvoicingToEvolu,
   isServerMigrationCompleted,
+  serverMigrationErrorMessage,
   type ServerMigrationStatus,
 } from '@/evolu/serverMigration';
 import { findDuplicateCompanyGroups } from '@/evolu/duplicateCompanies';
@@ -193,8 +194,8 @@ async function runServerMigration(): Promise<void> {
     }
     migrationStatus.value = null;
     await refresh();
-  } catch {
-    flashStore.error(t('invoicing.server_migration_error'));
+  } catch (error) {
+    flashStore.error(serverMigrationErrorMessage(error, t));
   } finally {
     migrationImporting.value = false;
   }

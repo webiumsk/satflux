@@ -359,7 +359,7 @@ class ServerToEvoluMigrationExportService
             'street' => $company->street,
             'city' => $company->city,
             'postalCode' => $company->postal_code,
-            'country' => $company->country,
+            'country' => $this->countryCodeOrNull($company->country),
             'stateRegion' => $company->state_region,
             'iban' => $company->iban,
             'bic' => $company->bic,
@@ -376,8 +376,8 @@ class ServerToEvoluMigrationExportService
             'website' => $company->website,
             'invoiceNumberPrefix' => $company->invoice_number_prefix,
             'linkedStoreId' => $linkedStoreId,
-            'appSettingsJson' => $this->jsonOrNull($this->appSettingsForMigration($company)),
-            'emailSettingsJson' => $this->jsonOrNull($this->emailSettingsForMigration($company)),
+            'appSettingsJson' => $this->truncateJsonBlob($this->jsonOrNull($this->appSettingsForMigration($company))),
+            'emailSettingsJson' => $this->truncateJsonBlob($this->jsonOrNull($this->emailSettingsForMigration($company))),
             'logoDataUrl' => $logoDataUrl,
             'signatureDataUrl' => $signatureDataUrl,
         ];
@@ -488,7 +488,7 @@ class ServerToEvoluMigrationExportService
             'documentType' => $document->type->value,
             'status' => $document->status->value,
             'quoteStatus' => $document->quote_status?->value,
-            'title' => $document->title ?? '',
+            'title' => $this->nonEmptyTitle($document->title, $document->number, $document->type->value),
             'number' => $document->number,
             'sourceDocumentId' => $document->source_document_id,
             'issueDate' => $this->dateStr($document->issue_date),
@@ -695,7 +695,7 @@ class ServerToEvoluMigrationExportService
             'street' => $warehouse->street,
             'city' => $warehouse->city,
             'postalCode' => $warehouse->postal_code,
-            'country' => $warehouse->country,
+            'country' => $warehouse->country ? $this->countryCodeOrNull($warehouse->country) : null,
             'notes' => $warehouse->notes,
         ];
     }
@@ -933,5 +933,44 @@ class ServerToEvoluMigrationExportService
         }
 
         return $encoded;
+    }
+
+    private function truncateJsonBlob(?string $json, int $maxLen = 4000): ?string
+    {
+        if ($json === null || $json === '') {
+            return null;
+        }
+
+        if (strlen($json) <= $maxLen) {
+            return $json;
+        }
+
+        return substr($json, 0, $maxLen);
+    }
+
+    private function nonEmptyTitle(?string $title, ?string $number, string $documentType): string
+    {
+        foreach ([$title, $number, $documentType, 'Document'] as $candidate) {
+            $text = trim((string) ($candidate ?? ''));
+            if ($text !== '') {
+                return $text;
+            }
+        }
+
+        return 'Document';
+    }
+
+    private function countryCodeOrNull(?string $country): ?string
+    {
+        $text = trim((string) ($country ?? ''));
+        if ($text === '') {
+            return null;
+        }
+
+        if (strlen($text) === 2) {
+            return strtoupper($text);
+        }
+
+        return strtoupper(substr($text, 0, 2));
     }
 }
