@@ -144,6 +144,7 @@ export function restoreInvoicingSnapshot(
 export type SnapshotRestoreFailure = {
     table: InvoicingTable;
     id: unknown;
+    error?: unknown;
 };
 
 export type SnapshotRestoreReport = {
@@ -164,7 +165,7 @@ export function restoreInvoicingSnapshotDetailed(
             if (result.ok) {
                 upserted += 1;
             } else {
-                failed.push({ table, id: row.id ?? null });
+                failed.push({ table, id: row.id ?? null, error: result.error });
             }
         }
     }

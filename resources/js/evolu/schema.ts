@@ -112,6 +112,8 @@ export const DocumentType = union(
     "credit_note",
     "delivery_note",
     "order_received",
+    "order_issued",
+    "expense",
 );
 export type DocumentType = typeof DocumentType.Type;
 

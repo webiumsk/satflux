@@ -1,6 +1,6 @@
 import type { Evolu } from "@evolu/common/local-first";
 import api from "@/services/api";
-import { ensureEvoluBoundToAccountSeed } from "@/evolu/bootstrap";
+import { getStoredAccountMnemonic, initEvoluFromAccountSeedIfNeeded } from "@/services/accountSeed";
 import { allCompaniesQuery } from "@/evolu/client";
 import {
     restoreInvoicingSnapshotDetailed,
@@ -10,6 +10,7 @@ import {
 import type { InvoicingLocalSchema } from "@/evolu/schema";
 import { sanitizeLocalStoreReferences } from "@/evolu/sanitizeStoreReferences";
 import { prepareServerSnapshotForEvolu } from "@/evolu/serverSnapshotPrepare";
+import { dropRowsWithoutId, sanitizeSnapshotRowsForUpsert } from "@/evolu/serverSnapshotSanitize";
 
 const MIGRATION_COMPLETED_KEY = "satflux.server_migration.completed.v1";
 
@@ -140,14 +141,29 @@ export async function importServerInvoicingToEvolu(
     evolu: Evolu<InvoicingLocalSchema>,
     validStoreIds: ReadonlySet<string>,
 ): Promise<ServerMigrationImportResult> {
-    await ensureEvoluBoundToAccountSeed();
+    const mnemonic = getStoredAccountMnemonic();
+    if (!mnemonic) {
+        throw new ServerMigrationError("recovery_required", "upsert_failed");
+    }
+
+    const seedResult = await initEvoluFromAccountSeedIfNeeded(mnemonic);
+    if (seedResult === "restored" || seedResult === "migrated_legacy_owner") {
+        evolu.reloadApp();
+        await new Promise((resolve) => {
+            setTimeout(resolve, 300);
+        });
+    }
 
     const { snapshot, meta } = await fetchServerMigrationExport();
     if (!snapshotHasInvoicingData(snapshot)) {
         throw new ServerMigrationError("empty_snapshot", "empty_snapshot");
     }
 
-    const prepared = prepareServerSnapshotForEvolu(snapshot);
+    const prepared = dropRowsWithoutId(
+        sanitizeSnapshotRowsForUpsert(
+            prepareServerSnapshotForEvolu(snapshot),
+        ),
+    );
     const { upserted, failed } = restoreInvoicingSnapshotDetailed(evolu, prepared);
     const companyFailures = failed.filter((entry) => entry.table === "company");
 
@@ -172,7 +188,10 @@ export async function importServerInvoicingToEvolu(
         throw new ServerMigrationError("companies_missing", "companies_missing");
     }
 
-    // Do not wait for relay merge here: an empty remote snapshot can overwrite a fresh import.
+    if (failed.length > 0) {
+        console.warn("Server migration partial upsert failures", failed.slice(0, 30));
+    }
+
     markServerMigrationCompleted();
 
     return {

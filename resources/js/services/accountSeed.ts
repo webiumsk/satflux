@@ -120,6 +120,7 @@ export async function initEvoluFromAccountSeedIfNeeded(
     }
 
     markEvoluRelaySyncPending();
-    await evolu.restoreAppOwner(evoluMnemonic, { reload: true });
+    await evolu.restoreAppOwner(evoluMnemonic, { reload: false });
+    evolu.reloadApp();
     return "restored";
 }
