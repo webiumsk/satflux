@@ -11,6 +11,7 @@ use App\Models\Company;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -24,6 +25,7 @@ class BusinessDocumentBulkService
         protected BusinessDocumentPdfService $pdfService,
         protected BusinessDocumentMarkPaidService $markPaidService,
         protected DocumentSequenceService $sequenceService,
+        protected CompanyStockMovementService $stockMovementService,
     ) {}
 
     /**
@@ -223,14 +225,30 @@ class BusinessDocumentBulkService
         $typesToSync = [];
 
         foreach ($documents as $document) {
-            if (! $document->canDelete()) {
+            $deleted = DB::transaction(function () use ($document, &$typesToSync): bool {
+                $locked = BusinessDocument::query()
+                    ->whereKey($document->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $locked || ! $locked->canDelete()) {
+                    return false;
+                }
+
+                $typesToSync[$locked->type->value] = $locked->company;
+                $this->stockMovementService->reverseDocumentCancel($locked);
+                $locked->lines()->delete();
+                $locked->delete();
+
+                return true;
+            });
+
+            if (! $deleted) {
                 $skipped++;
 
                 continue;
             }
-            $typesToSync[$document->type->value] = $document->company;
-            $document->lines()->delete();
-            $document->delete();
+
             $processed++;
         }
 
@@ -250,16 +268,40 @@ class BusinessDocumentBulkService
         $skipped = 0;
 
         foreach ($documents as $document) {
-            if (! $document->canCancel()) {
+            $cancelled = DB::transaction(function () use ($document): bool {
+                $locked = BusinessDocument::query()
+                    ->whereKey($document->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $locked || ! $locked->canCancel()) {
+                    return false;
+                }
+
+                $shouldReverseStock = in_array($locked->status, [
+                    BusinessDocumentStatus::Issued,
+                    BusinessDocumentStatus::Paid,
+                ], true);
+
+                $locked->update([
+                    'status' => BusinessDocumentStatus::Cancelled,
+                    'paid_at' => null,
+                    'amount_paid' => null,
+                ]);
+
+                if ($shouldReverseStock) {
+                    $this->stockMovementService->reverseDocumentCancel($locked);
+                }
+
+                return true;
+            });
+
+            if (! $cancelled) {
                 $skipped++;
 
                 continue;
             }
-            $document->update([
-                'status' => BusinessDocumentStatus::Cancelled,
-                'paid_at' => null,
-                'amount_paid' => null,
-            ]);
+
             $processed++;
         }
 
