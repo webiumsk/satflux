@@ -8,6 +8,7 @@ import { allDocumentEventsQuery } from '../evolu/client';
 import type { CompanyId, DocumentId } from '../evolu/schema';
 import type { DocumentSavePayload } from '../evolu/documentCrud';
 import { payloadFromApiDocument, markLocalDocumentPaid } from '../evolu/documentCrud';
+import { variableSymbolFromNumber } from '../evolu/documentNumber';
 import { documentHistoryFromEvents } from '../evolu/documentEventLog';
 import type { EvoluDocumentRow } from '../evolu/documentMap';
 import {
@@ -24,6 +25,21 @@ import { DEFAULT_INVOICE_LINE_UNIT } from './useInvoiceLineUnits';
 import { invoicingDocumentRoutes, type InvoicingDocumentRoutes } from './useInvoicingDocumentRoutes';
 import type { InvoicingDocumentKind } from './useInvoicingLayout';
 import { defaultWarehouseId, type WarehouseRow } from './useCompanyWarehouse';
+
+function parseDocumentAmountPaid(value: unknown): number | null {
+  if (value == null || value === '') {
+    return null;
+  }
+  const amount = typeof value === 'number' ? value : parseFloat(String(value));
+  return Number.isFinite(amount) ? amount : null;
+}
+
+const NEW_DOCUMENT_ROUTE_NAMES = new Set([
+  'invoicing-invoice-new',
+  'invoicing-proforma-new',
+  'invoicing-quote-new',
+  'invoicing-credit-note-new',
+]);
 
 export function useInvoiceDocument() {
   const { t, locale } = useI18n();
@@ -208,7 +224,7 @@ export function useInvoiceDocument() {
     if (isUsCompany.value) {
       return true;
     }
-    return vatPolicy.calculatesVatAmounts(company.value, selectedContact.value);
+    return vatPolicy.calculatesVatAmounts(company.value);
   }
 
   function lineTaxRate(line: InvoiceLineForm) {
@@ -364,12 +380,58 @@ export function useInvoiceDocument() {
   }
 
   function extractError(e: any) {
+    if (e instanceof Error && e.message && e.message !== 'validation' && e.message !== 'issue') {
+      return e.message;
+    }
+    const fieldErrors = e?.response?.data?.errors;
+    if (fieldErrors && typeof fieldErrors === 'object') {
+      for (const messages of Object.values(fieldErrors)) {
+        if (Array.isArray(messages) && messages[0]) {
+          return String(messages[0]);
+        }
+      }
+    }
     return (
       e?.response?.data?.message
       || e?.response?.data?.errors?.status?.[0]
       || e?.response?.data?.errors?.store_id?.[0]
+      || e?.response?.data?.errors?.document?.[0]
+      || (e?.message === 'validation' ? t('invoicing.company_save_validation_error') : null)
+      || (e?.message === 'issue' ? t('invoicing.issue_error') : null)
       || t('common.error')
     );
+  }
+
+  function existingLocalDocument() {
+    if (!local || !documentId.value) return null;
+    return (
+      local.documentRows.value.find((row) => row.id === documentId.value) as
+        | import('../evolu/documentMap').EvoluDocumentRow
+        | undefined
+    ) ?? null;
+  }
+
+  function localSaveOptions() {
+    return {
+      ...localTaxHelpers(),
+      documentId: documentId.value as DocumentId | undefined,
+      existingDocument: existingLocalDocument(),
+    };
+  }
+
+  async function persistLocalDraftBeforeIssue(): Promise<void> {
+    if (!local || !documentId.value) return;
+    await local.refreshAll();
+    const saveResult = local.saveLocalDocument(
+      local.evolu,
+      companyId.value as CompanyId,
+      payload() as DocumentSavePayload,
+      localSaveOptions(),
+    );
+    if (!saveResult.ok) {
+      throw new Error('validation');
+    }
+    await local.refreshAll();
   }
 
   async function applyDocument(d: any) {
@@ -393,7 +455,7 @@ export function useInvoiceDocument() {
     nextNumberPreview.value = '';
     paymentToken.value = d.payment_token ?? null;
     paidAt.value = d.paid_at;
-    amountPaid.value = d.amount_paid != null ? parseFloat(d.amount_paid) : null;
+    amountPaid.value = parseDocumentAmountPaid(d.amount_paid);
     bankMatch.value = d.bank_match ?? null;
     tagsInput.value = (d.tags || []).join(', ');
     Object.assign(form, {
@@ -457,16 +519,102 @@ export function useInvoiceDocument() {
         companyId.value as CompanyId,
         documentType.value,
       );
-      return;
+    } else {
+      try {
+        const res = await api.get(
+          `/invoicing/companies/${companyId.value}/number-series/preview`,
+          { params: { type: documentType.value } }
+        );
+        nextNumberPreview.value = res.data.data?.next_number ?? '';
+      } catch {
+        nextNumberPreview.value = '';
+      }
     }
-    try {
-      const res = await api.get(
-        `/invoicing/companies/${companyId.value}/number-series/preview`,
-        { params: { type: documentType.value } }
-      );
-      nextNumberPreview.value = res.data.data?.next_number ?? '';
-    } catch {
-      nextNumberPreview.value = '';
+
+    if (
+      !documentId.value
+      && documentStatus.value === 'draft'
+      && !documentNumber.value
+      && nextNumberPreview.value
+      && !form.variable_symbol.trim()
+    ) {
+      form.variable_symbol = variableSymbolFromNumber(nextNumberPreview.value);
+    }
+  }
+
+  function resetDocumentStateForNewDraft() {
+    documentStatus.value = 'draft';
+    documentNumber.value = '';
+    nextNumberPreview.value = '';
+    paidAt.value = null;
+    amountPaid.value = null;
+    bankMatch.value = null;
+    paymentToken.value = null;
+    sourceDocument.value = null;
+    finalInvoice.value = null;
+    quoteStatus.value = null;
+    resolvedQuoteStatus.value = null;
+    canDelete.value = false;
+    canCancel.value = false;
+    canUnmarkPaid.value = false;
+    tagsInput.value = '';
+    error.value = '';
+    success.value = '';
+    localBtcpayCheckoutLink.value = '';
+    localBtcpayInvoiceId.value = '';
+    stopLocalBtcpayPolling();
+
+    const today = new Date().toISOString().slice(0, 10);
+    Object.assign(form, {
+      title: '',
+      company_contact_id: '',
+      store_id: '',
+      issue_date: today,
+      delivery_date: '',
+      due_date: '',
+      variable_symbol: '',
+      constant_symbol: '',
+      specific_symbol: '',
+      currency: company.value?.default_currency || 'EUR',
+      discount_percent: 0,
+      note_above_lines: '',
+      note_footer: company.value?.legal_footer_note || '',
+      internal_note: '',
+      pdf_locale: 'sk',
+      pdf_show_signature: true,
+      pdf_show_payment_info: true,
+      payment_bank_enabled: true,
+      payment_btc_enabled: false,
+      lines: [] as InvoiceLineForm[],
+    });
+    documentType.value = resolveDocumentTypeFromRoute();
+  }
+
+  async function initNewDraft() {
+    resetDocumentStateForNewDraft();
+    form.lines.push(newLine());
+    applyPaymentDefaults();
+    applyQuoteDueDefault();
+    const app = appSettingsFromCompany(company.value);
+    if (!form.constant_symbol) form.constant_symbol = app.default_constant_symbol;
+    if (documentType.value === 'quote') {
+      form.payment_bank_enabled = false;
+      form.payment_btc_enabled = false;
+      form.pdf_show_payment_info = false;
+    } else {
+      form.payment_bank_enabled = app.show_pay_by_square;
+    }
+    await loadNextNumberPreview();
+    const numberForTitle = documentNumber.value || nextNumberPreview.value;
+    if (!form.title && numberForTitle) {
+      const prefixKey = isProforma.value
+        ? 'invoicing.proforma_title_prefix'
+        : isQuote.value
+          ? 'invoicing.quote_title_prefix'
+          : isCreditNote.value
+            ? 'invoicing.credit_note_title_prefix'
+            : 'invoicing.invoice_title_prefix';
+      form.title = `${t(prefixKey)} ${numberForTitle}`;
     }
   }
 
@@ -521,7 +669,6 @@ export function useInvoiceDocument() {
           form.payment_bank_enabled = app.show_pay_by_square;
         }
         applyQuoteDueDefault();
-        await loadNextNumberPreview();
       }
       return;
     }
@@ -546,7 +693,6 @@ export function useInvoiceDocument() {
         form.payment_bank_enabled = app.show_pay_by_square;
       }
       applyQuoteDueDefault();
-      await loadNextNumberPreview();
     }
 
     const contactsRes = await api.get(`/invoicing/companies/${companyId.value}/contacts`);
@@ -561,6 +707,26 @@ export function useInvoiceDocument() {
       await loadNextNumberPreview();
     }
   });
+
+  watch(documentId, async (id, prevId) => {
+    if (id) {
+      await reloadDocument();
+      return;
+    }
+    if (prevId) {
+      await initNewDraft();
+    }
+  });
+
+  watch(
+    () => route.name,
+    async (name, prevName) => {
+      if (!documentId.value && name && name !== prevName && NEW_DOCUMENT_ROUTE_NAMES.has(String(name))) {
+        documentType.value = resolveDocumentTypeFromRoute();
+        await initNewDraft();
+      }
+    },
+  );
 
   async function reloadDocument() {
     if (!documentId.value) return;
@@ -606,6 +772,11 @@ export function useInvoiceDocument() {
         amount_paid: amountPaid.value,
       },
       p.lines,
+      {
+        storeId: form.store_id || null,
+        evoluDocumentId: documentId.value || null,
+        btcpayCheckoutLink: localBtcpayCheckoutLink.value || null,
+      },
     );
   }
 
@@ -636,10 +807,13 @@ export function useInvoiceDocument() {
       localBtcpayInvoiceId.value = result.btcpay_invoice_id || '';
       if (localBtcpayInvoiceId.value) {
         startLocalBtcpayPolling();
+      } else if (!localBtcpayCheckoutLink.value) {
+        error.value = t('invoicing.local_first_btcpay_checkout_missing');
       }
-    } catch {
+    } catch (e: unknown) {
       localBtcpayCheckoutLink.value = '';
       localBtcpayInvoiceId.value = '';
+      error.value = extractError(e);
     } finally {
       localBtcpayCheckoutLoading.value = false;
     }
@@ -797,27 +971,33 @@ export function useInvoiceDocument() {
       companyId.value as CompanyId,
       p,
       {
-        ...localTaxHelpers(),
-        documentId: documentId.value as DocumentId | undefined,
+        ...localSaveOptions(),
       },
     );
     if (!saveResult.ok) {
       throw new Error('validation');
     }
-    let docId = saveResult.value.id;
+    const docId = saveResult.value.id;
+    if (!documentId.value) {
+      await router.replace({
+        name: route.name as string,
+        params: { ...route.params, documentId: docId },
+      });
+      await local.refreshAll();
+    }
     if (wasDraft) {
       const companyRow = local.companyRows.value.find((c) => c.id === companyId.value);
       if (!companyRow) throw new Error('company');
+      await local.refreshAll();
       const issueResult = await local.issueLocalDocumentAsync(
         local.evolu,
-        docId,
+        docId as DocumentId,
         companyRow as import('../evolu/companyMap').EvoluCompanyRow,
         local.documentRows.value as import('../evolu/documentMap').EvoluDocumentRow[],
       );
       if (!issueResult.ok) throw new Error('issue');
       await local.refreshAll();
-      docId = saveResult.value.id;
-      const apiDoc = local.documentApi(docId);
+      const apiDoc = local.documentApi(docId as DocumentId);
       if (apiDoc) await applyDocument(apiDoc);
     }
     return docId;
@@ -827,8 +1007,7 @@ export function useInvoiceDocument() {
     if (!local || !documentId.value || isLocked.value) return;
     await local.refreshAll();
     local.saveLocalDocument(local.evolu, companyId.value as CompanyId, payload() as DocumentSavePayload, {
-      ...localTaxHelpers(),
-      documentId: documentId.value as DocumentId,
+      ...localSaveOptions(),
     });
   }
 
@@ -849,6 +1028,7 @@ export function useInvoiceDocument() {
     nextNumberPreview,
     displayDocumentNumber,
     loadNextNumberPreview,
+    initNewDraft,
     paidAt,
     amountPaid,
     bankMatch,
@@ -907,6 +1087,8 @@ export function useInvoiceDocument() {
     formatContactAddress,
     saveLocalDocumentFlow,
     persistLocalPdfOptions,
+    persistLocalDraftBeforeIssue,
+    buildCurrentEphemeralSnapshot,
     localTaxHelpers,
     payloadFromApiDocument,
   };

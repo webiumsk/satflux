@@ -280,7 +280,6 @@ import api, {
   getWebBlob,
 } from '../../services/api';
 import {
-  buildEphemeralSnapshot,
   downloadEphemeralIsdoc,
   downloadEphemeralPdf,
   downloadEphemeralUbl,
@@ -340,6 +339,8 @@ const {
   localFirst,
   local,
   persistLocalPdfOptions,
+  persistLocalDraftBeforeIssue,
+  buildCurrentEphemeralSnapshot,
   localTaxHelpers,
   payloadFromApiDocument,
 } = useInvoiceDocument();
@@ -394,37 +395,6 @@ const canCreateInvoiceFromQuote = computed(
 
 const sendEmailOpen = ref(false);
 const ephemeralBridgeCompanyId = ref<string | null>(null);
-
-function buildCurrentEphemeralSnapshot() {
-  const p = payload();
-  return buildEphemeralSnapshot(
-    company.value,
-    selectedContact.value,
-    {
-      type: documentType.value,
-      status: documentStatus.value,
-      title: form.title,
-      number: documentNumber.value || displayDocumentNumber.value,
-      variable_symbol: form.variable_symbol,
-      constant_symbol: form.constant_symbol,
-      specific_symbol: form.specific_symbol,
-      issue_date: form.issue_date,
-      delivery_date: form.delivery_date,
-      due_date: form.due_date,
-      currency: form.currency,
-      note_above_lines: form.note_above_lines,
-      note_footer: form.note_footer,
-      internal_note: form.internal_note,
-      pdf_locale: form.pdf_locale,
-      pdf_show_signature: form.pdf_show_signature,
-      pdf_show_payment_info: form.pdf_show_payment_info,
-      payment_bank_enabled: form.payment_bank_enabled,
-      discount_percent: form.discount_percent,
-      amount_paid: amountPaid.value,
-    },
-    p.lines,
-  );
-}
 
 const ephemeralSnapshotForModal = computed(() => (localFirst ? buildCurrentEphemeralSnapshot() : null));
 
@@ -616,6 +586,7 @@ async function issueDocument() {
   error.value = '';
   try {
     if (localFirst && local) {
+      await persistLocalDraftBeforeIssue();
       const companyRow = local.companyRows.value.find((c) => c.id === companyId.value);
       if (!companyRow) throw new Error('company');
       const issueResult = await local.issueLocalDocumentAsync(

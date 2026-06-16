@@ -204,9 +204,16 @@ export function supportsCsvBankFile(filename: string): boolean {
     return lower.endsWith(".csv") || lower.endsWith(".txt");
 }
 
+function isAsciiText(text: string): boolean {
+    for (let i = 0; i < text.length; i++) {
+        if (text.charCodeAt(i) > 0x7f) return false;
+    }
+    return true;
+}
+
 export function parseCsvBankStatement(contents: string): ParsedBankRow[] {
     let text = contents;
-    if (!/^[\x00-\x7F]*$/.test(text)) {
+    if (!isAsciiText(text)) {
         try {
             const bytes = new Uint8Array([...text].map((c) => c.charCodeAt(0)));
             text = new TextDecoder("iso-8859-2").decode(bytes);

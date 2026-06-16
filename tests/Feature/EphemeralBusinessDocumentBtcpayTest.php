@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditLog;
 use App\Models\Store;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -50,6 +52,14 @@ class EphemeralBusinessDocumentBtcpayTest extends TestCase
             'btcpay_invoice_id' => 'btcpay-inv-ephemeral',
             'status' => 'pending',
         ]);
+
+        $auditLog = AuditLog::query()
+            ->where('user_id', $user->id)
+            ->where('action', 'business_document.ephemeral_btcpay_checkout')
+            ->first();
+        $this->assertNotNull($auditLog);
+        $this->assertSame('company', $auditLog->target_type);
+        $this->assertTrue(Str::isUuid((string) $auditLog->target_id));
     }
 
     #[Test]

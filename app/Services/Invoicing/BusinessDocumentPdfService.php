@@ -103,20 +103,8 @@ class BusinessDocumentPdfService
         }
 
         $btcPayQr = null;
-        if ($document->payment_btc_enabled && $document->store_id) {
-            $document->loadMissing(['store']);
-            if (! $document->btcpay_checkout_link) {
-                try {
-                    $this->btcPayService->syncForDocument($document, forceRefresh: true);
-                } catch (\Throwable $e) {
-                    report($e);
-                }
-            }
-
-            // QR always encodes the lazy pay link (/pay/i/…), not a Lightning invoice or BTCPay checkout URL.
-            $this->paymentTokenService->ensureForDocument($document);
-            $qrTarget = $this->paymentTokenService->payUrl($document);
-
+        if ($document->payment_btc_enabled && $document->type !== BusinessDocumentType::Quote) {
+            $qrTarget = $this->resolveBtcPayQrTarget($document);
             if ($qrTarget) {
                 $btcPayQr = $this->qrPngDataUri($qrTarget);
             }
@@ -172,6 +160,54 @@ class BusinessDocumentPdfService
         }
 
         return sys_get_temp_dir().'/'.$filename;
+    }
+
+    protected function resolveBtcPayQrTarget(BusinessDocument $document): ?string
+    {
+        if (! $document->payment_btc_enabled || ! $document->store_id) {
+            return null;
+        }
+
+        if (! $document->exists) {
+            if ($document->btcpay_checkout_link) {
+                return $document->btcpay_checkout_link;
+            }
+
+            $document->loadMissing(['store.user']);
+            $store = $document->store;
+            if (! $store) {
+                return null;
+            }
+
+            try {
+                $evoluDocumentId = $document->getAttribute('ephemeral_evolu_document_id');
+                $result = $this->btcPayService->createEphemeralCheckout(
+                    $document,
+                    $store,
+                    is_string($evoluDocumentId) && $evoluDocumentId !== '' ? $evoluDocumentId : null,
+                );
+
+                return $result['checkout_link'] ?? null;
+            } catch (\Throwable $e) {
+                report($e);
+
+                return null;
+            }
+        }
+
+        $document->loadMissing(['store']);
+        if (! $document->btcpay_checkout_link) {
+            try {
+                $this->btcPayService->syncForDocument($document, forceRefresh: true);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        // Persisted documents encode the lazy pay link (/pay/i/…), not the BTCPay checkout URL.
+        $this->paymentTokenService->ensureForDocument($document);
+
+        return $this->paymentTokenService->payUrl($document);
     }
 
     protected function qrPngDataUri(string $data, int $size = 180): ?string

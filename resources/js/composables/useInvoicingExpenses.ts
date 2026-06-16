@@ -12,7 +12,7 @@ import {
     type ExpenseListFilterOptions,
 } from "@/evolu/expenseMap";
 import { isInvoicingLocalFirst } from "@/evolu/flags";
-import type { CompanyId, ExpenseId, InvoicingLocalSchema } from "@/evolu/schema";
+import type { CompanyId, InvoicingLocalSchema } from "@/evolu/schema";
 import type { ExpenseListRow } from "@/composables/useExpenseRowMeta";
 
 export interface UseInvoicingExpensesResult {

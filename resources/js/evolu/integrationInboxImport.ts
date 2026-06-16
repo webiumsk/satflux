@@ -65,11 +65,10 @@ export async function markIntegrationInboxImported(
 
 function vatOptionsForContact(company: VatPolicyCompany, contact: VatPolicyContact | null) {
     const vatPolicy = useCompanyVatPolicy();
-    const defaultVat = vatPolicy.defaultTaxRate(company, contact ?? undefined);
+    const defaultVat = vatPolicy.defaultTaxRate(company);
     return {
         defaultVat,
-        lineTaxApplies: (_line: DocumentLinePayload) =>
-            vatPolicy.calculatesVatAmounts(company, contact),
+        lineTaxApplies: () => vatPolicy.calculatesVatAmounts(company),
         lineTaxRate: (line: DocumentLinePayload) =>
             vatPolicy.resolveLineTaxRate(company, contact, line.tax_rate ?? defaultVat),
     };

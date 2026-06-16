@@ -22,7 +22,6 @@ import {
     getLocalDocumentApi,
     issueLocalDocument,
     issueLocalDocumentAsync,
-    applyReservedNumberToLocalDocument,
     markLocalDocumentPaid,
     markLocalDocumentEmailSent,
     payloadFromApiDocument,
@@ -30,9 +29,9 @@ import {
     saveLocalDocument,
     unmarkLocalDocumentPaid,
     type DocumentLinePayload,
-    type DocumentSavePayload,
 } from "@/evolu/documentCrud";
-import { previewNextDocumentNumber } from "@/evolu/documentNumber";
+import { previewNextLocalDocumentNumber } from "@/evolu/numberSeriesCrud";
+import type { EvoluDocumentRow } from "@/evolu/documentMap";
 import type { EvoluNumberSeriesRow } from "@/evolu/numberSeriesMap";
 import type { EvoluDocumentEventRow } from "@/evolu/documentEventLog";
 import type { CompanyId, DocumentId } from "@/evolu/schema";
@@ -79,11 +78,11 @@ export function useLocalInvoiceDocumentSupport() {
     }
 
     function previewNumber(companyId: CompanyId, documentType: string) {
-        return previewNextDocumentNumber(
-            documentRows.value as Parameters<typeof previewNextDocumentNumber>[0],
+        return previewNextLocalDocumentNumber(
+            evolu,
             companyId,
-            documentType as Parameters<typeof previewNextDocumentNumber>[2],
-            null,
+            documentType as Parameters<typeof previewNextLocalDocumentNumber>[2],
+            documentRows.value as EvoluDocumentRow[],
             seriesRows.value as EvoluNumberSeriesRow[],
         );
     }
@@ -119,6 +118,15 @@ export function useLocalInvoiceDocumentSupport() {
     }
 
     async function previewNumberAsync(companyId: CompanyId, documentType: string) {
+        await Promise.all([
+            evolu.loadQuery(allNumberSeriesQuery),
+            evolu.loadQuery(allDocumentsQuery),
+        ]);
+        const localPreview = previewNumber(companyId, documentType);
+        if (localPreview) {
+            return localPreview;
+        }
+
         const companyRow = companyRows.value.find((c) => c.id === companyId) as EvoluCompanyRow | undefined;
         const linkedStoreId = companyRow?.linkedStoreId?.trim();
         if (linkedStoreId) {
@@ -126,7 +134,7 @@ export function useLocalInvoiceDocumentSupport() {
             const preview = await previewNextDocumentNumberFromStore(linkedStoreId, documentType);
             if (preview) return preview;
         }
-        return previewNumber(companyId, documentType);
+        return localPreview;
     }
 
     function documentApi(documentId: DocumentId) {

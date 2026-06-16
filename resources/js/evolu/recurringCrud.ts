@@ -69,12 +69,7 @@ export type RecurringProfileSavePayload = {
     lines: RecurringLinePayload[];
 };
 
-const Opt16 = maxLength(16)(NonEmptyString);
-const Opt32 = maxLength(32)(NonEmptyString);
-const Opt64 = maxLength(64)(NonEmptyString);
-const Opt255 = maxLength(255)(NonEmptyString);
 const Opt1000 = maxLength(1000)(NonEmptyString);
-const Opt4000 = maxLength(4000)(NonEmptyString);
 const LineNameType = maxLength(255)(NonEmptyString);
 
 function parseOpt(value: string | null | undefined, type: ReturnType<typeof maxLength>) {

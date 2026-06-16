@@ -81,7 +81,7 @@ class EphemeralEfakturaSubmissionService
 
         $this->persistSubmission($user, $bridgeCompany, $evoluDocumentId, $result);
 
-        AuditLog::log('business_document.ephemeral_efaktura_submitted', 'user', (string) $user->id, [
+        AuditLog::log('business_document.ephemeral_efaktura_submitted', 'company', (string) $bridgeCompany->id, [
             'bridge_company_id' => $bridgeCompany->id,
             'evolu_document_id' => $evoluDocumentId,
             'status' => $result->status->value,

@@ -15,7 +15,6 @@ import {
     documentAmountDue,
     evoluBankBatchToApi,
     evoluBankTxToApi,
-    filterLocalBankTransactions,
     matchesDocumentVariableSymbol,
     type EvoluBankImportBatchRow,
     type EvoluBankTransactionMatchRow,

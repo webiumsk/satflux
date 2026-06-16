@@ -661,19 +661,16 @@ class EphemeralBusinessDocumentController extends Controller
     }
 
     /**
-     * @return array{0: string, 1: string}
+     * @return array{0: ?string, 1: ?string}
      */
     protected function auditTarget(?User $user, ?Company $auditCompany, Company $snapshotCompany): array
     {
-        if ($auditCompany !== null) {
-            return ['company', $auditCompany->id];
+        $companyId = $auditCompany?->id ?? $snapshotCompany->id;
+        if (is_string($companyId) && Str::isUuid($companyId)) {
+            return ['company', $companyId];
         }
 
-        if ($snapshotCompany->exists) {
-            return ['company', $snapshotCompany->id];
-        }
-
-        return ['user', (string) ($user?->id ?? '0')];
+        return [null, null];
     }
 
     /**
@@ -760,12 +757,23 @@ class EphemeralBusinessDocumentController extends Controller
             'pdf_locale' => $documentPayload['pdf_locale'] ?? null,
             'pdf_show_signature' => (bool) ($documentPayload['pdf_show_signature'] ?? true),
             'pdf_show_payment_info' => (bool) ($documentPayload['pdf_show_payment_info'] ?? true),
-            // Explicitly disabled to keep snapshot rendering side-effect free.
-            'payment_btc_enabled' => false,
+            'payment_btc_enabled' => (bool) ($documentPayload['payment_btc_enabled'] ?? false),
             'payment_bank_enabled' => (bool) ($documentPayload['payment_bank_enabled'] ?? true),
             'amount_paid' => (float) ($documentPayload['amount_paid'] ?? 0),
             'buyer_snapshot' => $contactPayload,
         ]);
+
+        if (! empty($payload['store_id'])) {
+            $document->store_id = (string) $payload['store_id'];
+        }
+
+        if (! empty($payload['btcpay_checkout_link'])) {
+            $document->btcpay_checkout_link = (string) $payload['btcpay_checkout_link'];
+        }
+
+        if (! empty($payload['evolu_document_id'])) {
+            $document->setAttribute('ephemeral_evolu_document_id', (string) $payload['evolu_document_id']);
+        }
 
         $document->exists = false;
         $document->id = (string) Str::uuid();

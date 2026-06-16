@@ -44,6 +44,7 @@ class EphemeralBusinessDocumentPdfRequest extends FormRequest
             'company.issuer_email' => ['sometimes', 'nullable', 'email', 'max:255'],
             'company.website' => ['sometimes', 'nullable', 'string', 'max:255'],
             'company.app_settings' => ['sometimes', 'array'],
+            'company.app_settings.show_pay_by_square' => ['sometimes', 'boolean'],
             'company.app_settings.efaktura_enabled' => ['sometimes', 'boolean'],
             'company.app_settings.efaktura_auto_send' => ['sometimes', 'boolean'],
             'company.app_settings.efaktura_sapi_base_url' => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -85,8 +86,13 @@ class EphemeralBusinessDocumentPdfRequest extends FormRequest
             'document.pdf_show_signature' => ['sometimes', 'boolean'],
             'document.pdf_show_payment_info' => ['sometimes', 'boolean'],
             'document.payment_bank_enabled' => ['sometimes', 'boolean'],
+            'document.payment_btc_enabled' => ['sometimes', 'boolean'],
             'document.discount_percent' => ['sometimes', 'numeric', 'min:0', 'max:100'],
             'document.amount_paid' => ['sometimes', 'numeric', 'min:0'],
+
+            'store_id' => ['sometimes', 'nullable', 'uuid'],
+            'evolu_document_id' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'btcpay_checkout_link' => ['sometimes', 'nullable', 'string', 'max:2048'],
 
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.name' => ['required', 'string', 'max:500'],

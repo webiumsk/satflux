@@ -1244,7 +1244,7 @@ async function createInvoiceFromQuote(d: { id: string }) {
         {
           ...localDoc.saveOptions(
             Number(company?.vat_rate_default ?? 23),
-            () => vatPolicy.calculatesVatAmounts(company, contact),
+            () => vatPolicy.calculatesVatAmounts(company),
             (line) => vatPolicy.resolveLineTaxRate(company, contact, line.tax_rate),
           ),
         },
@@ -1304,7 +1304,7 @@ async function createFinalInvoice(d: { id: string }) {
         {
           ...localDoc.saveOptions(
             Number(company?.vat_rate_default ?? 23),
-            () => vatPolicy.calculatesVatAmounts(company, contact),
+            () => vatPolicy.calculatesVatAmounts(company),
             (line) => vatPolicy.resolveLineTaxRate(company, contact, line.tax_rate),
           ),
         },
@@ -1938,7 +1938,7 @@ async function duplicateDoc(d: { id: string; type?: string }) {
         p,
         localDoc.saveOptions(
           defaultVat,
-          () => vatPolicy.calculatesVatAmounts(company, contact),
+          () => vatPolicy.calculatesVatAmounts(company),
           (line) => vatPolicy.resolveLineTaxRate(company, contact, line.tax_rate),
         ),
       );

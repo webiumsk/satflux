@@ -57,9 +57,6 @@ export type DocumentSavePayload = {
     lines: DocumentLinePayload[];
 };
 
-const Opt16 = maxLength(16)(NonEmptyString);
-const Opt32 = maxLength(32)(NonEmptyString);
-const Opt64 = maxLength(64)(NonEmptyString);
 const TitleType = maxLength(1000)(NonEmptyString);
 const LineNameType = maxLength(255)(NonEmptyString);
 const CurrencyType = maxLength(3)(NonEmptyString);
@@ -108,11 +105,6 @@ export function calcDocumentTotals(
         total: fmtDec(total),
         lineTotals: lineTotals.map((v) => fmtDec(v)),
     };
-}
-
-function parseOpt(value: string | null | undefined, type: ReturnType<typeof maxLength>) {
-    if (value == null || value.trim() === "") return { ok: true as const, value: null };
-    return type.from(value.trim());
 }
 
 function buildDocumentFields(
@@ -212,6 +204,7 @@ export function saveLocalDocument(
     payload: DocumentSavePayload,
     options: {
         documentId?: DocumentId;
+        existingDocument?: EvoluDocumentRow | null;
         defaultVat: number;
         lineTaxApplies: (line: DocumentLinePayload) => boolean;
         lineTaxRate: (line: DocumentLinePayload) => number;
@@ -231,15 +224,28 @@ export function saveLocalDocument(
         options.lineTaxRate as (line: DocumentLinePayload) => number,
     );
 
+    const existing = options.existingDocument ?? null;
+    const statusForSave = existing?.status ?? "draft";
+    const numberForSave = existing?.number ?? null;
+    const quoteStatusForSave =
+        payload.type === "quote"
+            ? (existing?.quoteStatus ?? "pending")
+            : null;
+
     const fields = buildDocumentFields(
         payload,
         totals,
-        "draft",
-        payload.type === "quote" ? "pending" : null,
-        null,
-        options.sourceDocumentId ?? null,
+        statusForSave,
+        quoteStatusForSave,
+        numberForSave,
+        options.sourceDocumentId ?? existing?.sourceDocumentId ?? null,
     );
     if (!fields.ok) return fields;
+
+    if (existing) {
+        fields.value.paidAt = existing.paidAt;
+        fields.value.amountPaid = existing.amountPaid;
+    }
 
     let docId = options.documentId;
     if (docId) {

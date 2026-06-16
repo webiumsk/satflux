@@ -1173,6 +1173,7 @@
     "save_and_pdf": "Vystaviť a stiahnuť PDF",
     "draft_issue_hint": "Dokument je koncept. Vystavte ho pre priradenie čísla, PDF a úhradu.",
     "issue_success": "Dokument bol vystavený.",
+    "issue_error": "Dokument sa nepodarilo vystaviť. Skontrolujte číselnú radu a skúste znova.",
     "col_line_total_vat": "Celkom s DPH",
     "issuer_name": "Faktúru vystavil",
     "issuer_phone": "Telefón",

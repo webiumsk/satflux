@@ -8,6 +8,7 @@ import type { Evolu } from "@evolu/common/local-first";
 import type { NumberSeriesFormState } from "@/composables/useCompanyNumberSeries";
 import i18n from "@/i18n";
 import type { EvoluDocumentRow } from "./documentMap";
+import { previewNextDocumentNumber } from "./documentNumber";
 import {
     counterDigitsInFormat,
     currentPeriodKey,
@@ -62,6 +63,9 @@ function highestUsedCounter(
 
     for (const doc of documents) {
         if (doc.companyId !== companyId || doc.documentType !== documentType || !doc.number) {
+            continue;
+        }
+        if (doc.status === "draft" || doc.status === "cancelled") {
             continue;
         }
         if (doc.number.length < digitLen) continue;
@@ -336,6 +340,34 @@ export function previewNextDocumentNumberFromSeries(
     if (!series) return null;
     const synced = ensureCounterSynced(series, allDocuments);
     return previewNextNumber(synced);
+}
+
+/** Preview next number, seeding default series when missing (matches issue flow). */
+export function previewNextLocalDocumentNumber(
+    evolu: Evolu<InvoicingLocalSchema>,
+    companyId: CompanyId,
+    documentType: DocumentType,
+    allDocuments: EvoluDocumentRow[],
+    allSeries: EvoluNumberSeriesRow[],
+): string {
+    let workingSeries = allSeries;
+    let series = resolveDefaultSeries(workingSeries, companyId, documentType);
+    if (!series) {
+        const seeded = seedDefaultNumberSeries(evolu, companyId, workingSeries);
+        workingSeries = [...workingSeries, ...seeded];
+        series = resolveDefaultSeries(workingSeries, companyId, documentType);
+    }
+    if (series) {
+        const synced = ensureCounterSynced(series, allDocuments);
+        return previewNextNumber(synced);
+    }
+    return previewNextDocumentNumber(
+        allDocuments,
+        companyId,
+        documentType,
+        null,
+        workingSeries,
+    );
 }
 
 /** Bump default number series counter when historical imports use higher numbers. */

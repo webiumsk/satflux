@@ -64,7 +64,7 @@ function taxOptionsForCompany(company: EvoluCompanyRow) {
     const defaultVat = Number(company.vatRateDefault ?? 23) || 23;
     return {
         defaultVat,
-        lineTaxApplies: (_line: DocumentLinePayload) => company.vatPayer === 1,
+        lineTaxApplies: () => company.vatPayer === 1,
         lineTaxRate: (line: DocumentLinePayload) => Number(line.tax_rate) || defaultVat,
     };
 }

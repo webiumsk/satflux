@@ -273,7 +273,7 @@ const showTaxSummary = computed(() => {
   if (isUsCompany.value) {
     return true;
   }
-  return vatPolicy.calculatesVatAmounts(props.company, props.selectedContact);
+  return vatPolicy.calculatesVatAmounts(props.company);
 });
 
 const invoiceHeading = computed(() => {

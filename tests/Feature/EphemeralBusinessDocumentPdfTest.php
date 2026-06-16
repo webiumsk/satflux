@@ -128,7 +128,9 @@ class EphemeralBusinessDocumentPdfTest extends TestCase
             'jurisdiction' => CompanyJurisdiction::EuSk,
             'default_currency' => 'EUR',
             'vat_payer' => false,
+            'iban' => 'SK3112000000198742637541',
             'issuer_email' => 'issuer@satflux.test',
+            'app_settings' => ['show_pay_by_square' => true],
         ]);
 
         return [$user, $company];
@@ -147,6 +149,10 @@ class EphemeralBusinessDocumentPdfTest extends TestCase
                 'postal_code' => '81101',
                 'country' => 'SK',
                 'default_currency' => 'EUR',
+                'iban' => 'SK3112000000198742637541',
+                'app_settings' => [
+                    'show_pay_by_square' => true,
+                ],
             ],
             'contact' => [
                 'name' => 'Client Ltd',
@@ -166,6 +172,7 @@ class EphemeralBusinessDocumentPdfTest extends TestCase
                 'variable_symbol' => '20260001',
                 'discount_percent' => 0,
                 'pdf_locale' => 'sk',
+                'payment_bank_enabled' => true,
             ],
             'lines' => [
                 [

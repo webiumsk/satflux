@@ -9,6 +9,15 @@ export type EphemeralSnapshotPayload = {
     contact: Record<string, unknown> | null;
     document: Record<string, unknown>;
     lines: DocumentSavePayload["lines"];
+    store_id?: string;
+    evolu_document_id?: string;
+    btcpay_checkout_link?: string;
+};
+
+export type EphemeralSnapshotOptions = {
+    storeId?: string | null;
+    evoluDocumentId?: string | null;
+    btcpayCheckoutLink?: string | null;
 };
 
 const EPHEMERAL_PDF_PATH = "/invoicing/ephemeral/pdf";
@@ -69,6 +78,34 @@ function shouldFallbackEphemeralRoute(error: unknown): boolean {
     return status === 404 || status === 405;
 }
 
+export async function parseAxiosBlobError(error: unknown): Promise<string | null> {
+    const response = (error as { response?: { data?: unknown } })?.response;
+    if (!response?.data) return null;
+
+    if (response.data instanceof Blob) {
+        try {
+            const text = await response.data.text();
+            const parsed = JSON.parse(text) as {
+                message?: string;
+                errors?: Record<string, string[]>;
+            };
+            const firstFieldError = parsed.errors
+                ? Object.values(parsed.errors).flat().find(Boolean)
+                : undefined;
+            return parsed.message || firstFieldError || null;
+        } catch {
+            return null;
+        }
+    }
+
+    const data = response.data as { message?: string; errors?: Record<string, string[]> } | undefined;
+    if (!data) return null;
+    const firstFieldError = data.errors
+        ? Object.values(data.errors).flat().find(Boolean)
+        : undefined;
+    return data.message || firstFieldError || null;
+}
+
 async function postWithCompanyScopedFallback<T>(
     companyLessPath: string,
     companyScopedPath: string | null,
@@ -79,7 +116,19 @@ async function postWithCompanyScopedFallback<T>(
         return await api.post<T>(companyLessPath, body, config);
     } catch (error: unknown) {
         if (companyScopedPath && shouldFallbackEphemeralRoute(error)) {
-            return await api.post<T>(companyScopedPath, body, config);
+            try {
+                return await api.post<T>(companyScopedPath, body, config);
+            } catch (scopedError: unknown) {
+                const message = await parseAxiosBlobError(scopedError);
+                if (message) {
+                    throw new Error(message);
+                }
+                throw scopedError;
+            }
+        }
+        const message = await parseAxiosBlobError(error);
+        if (message) {
+            throw new Error(message);
         }
         throw error;
     }
@@ -96,14 +145,27 @@ export async function resolveEphemeralBridgeCompanyId(): Promise<string | null> 
     }
 }
 
+export function resolveEphemeralAmountPaid(value: unknown): number | undefined {
+    if (value == null || value === "") {
+        return undefined;
+    }
+    const amount = typeof value === "number" ? value : parseFloat(String(value));
+    if (!Number.isFinite(amount)) {
+        return undefined;
+    }
+    return amount;
+}
+
 export function buildEphemeralSnapshot(
     company: Record<string, unknown> | null,
     contact: Record<string, unknown> | null,
     document: Record<string, unknown>,
     lines: DocumentSavePayload["lines"],
+    options: EphemeralSnapshotOptions = {},
 ): EphemeralSnapshotPayload {
     const rawAppSettings = (company?.app_settings ?? {}) as Record<string, unknown>;
     const appSettings: Record<string, unknown> = {
+        show_pay_by_square: rawAppSettings.show_pay_by_square ?? true,
         efaktura_enabled: rawAppSettings.efaktura_enabled,
         efaktura_auto_send: rawAppSettings.efaktura_auto_send,
         efaktura_sapi_base_url: rawAppSettings.efaktura_sapi_base_url,
@@ -114,6 +176,8 @@ export function buildEphemeralSnapshot(
     if (typeof secret === "string" && secret !== "") {
         appSettings.efaktura_sapi_client_secret = secret;
     }
+
+    const amountPaid = resolveEphemeralAmountPaid(document.amount_paid);
 
     return {
         company: {
@@ -178,8 +242,9 @@ export function buildEphemeralSnapshot(
             pdf_show_signature: document.pdf_show_signature,
             pdf_show_payment_info: document.pdf_show_payment_info,
             payment_bank_enabled: document.payment_bank_enabled,
+            payment_btc_enabled: document.payment_btc_enabled,
             discount_percent: document.discount_percent,
-            amount_paid: document.amount_paid,
+            ...(amountPaid !== undefined ? { amount_paid: amountPaid } : {}),
         },
         lines: lines.map((line) => ({
             name: line.name,
@@ -190,6 +255,9 @@ export function buildEphemeralSnapshot(
             line_discount_percent: line.line_discount_percent,
             tax_rate: line.tax_rate,
         })),
+        ...(options.storeId ? { store_id: options.storeId } : {}),
+        ...(options.evoluDocumentId ? { evolu_document_id: options.evoluDocumentId } : {}),
+        ...(options.btcpayCheckoutLink ? { btcpay_checkout_link: options.btcpayCheckoutLink } : {}),
     };
 }
 
@@ -274,13 +342,21 @@ export async function fetchEphemeralBtcpayCheckout(
         },
     };
 
-    const res = await postWithCompanyScopedFallback<{ data: EphemeralBtcpayCheckoutResult }>(
-        EPHEMERAL_BTCPAY_CHECKOUT_PATH,
-        bridgeCompanyId ? companyScopedEphemeralBtcpayCheckoutPath(bridgeCompanyId) : null,
-        body,
-    );
+    try {
+        const res = await postWithCompanyScopedFallback<{ data: EphemeralBtcpayCheckoutResult }>(
+            EPHEMERAL_BTCPAY_CHECKOUT_PATH,
+            bridgeCompanyId ? companyScopedEphemeralBtcpayCheckoutPath(bridgeCompanyId) : null,
+            body,
+        );
 
-    return res.data.data;
+        return res.data.data;
+    } catch (error: unknown) {
+        const message = await parseAxiosBlobError(error);
+        if (message) {
+            throw new Error(message);
+        }
+        throw error;
+    }
 }
 
 export async function previewEphemeralEmail(
@@ -522,9 +598,12 @@ export function buildEphemeralSnapshotFromApiDocument(
         pdf_show_signature: doc.pdf_show_signature,
         pdf_show_payment_info: doc.pdf_show_payment_info,
         payment_bank_enabled: doc.payment_bank_enabled,
+        payment_btc_enabled: doc.payment_btc_enabled,
         discount_percent: doc.discount_percent,
         amount_paid: doc.amount_paid,
-    }, lines);
+    }, lines, {
+        storeId: typeof doc.store_id === 'string' ? doc.store_id : null,
+    });
 }
 
 type LocalDocSupport = ReturnType<typeof useLocalInvoiceDocumentSupport>;

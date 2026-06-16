@@ -241,7 +241,7 @@ function localSaveOptions(contactId: string | null) {
   const defaultVat = Number(company?.vat_rate_default ?? 23);
   return localDoc!.saveOptions(
     defaultVat,
-    () => vatPolicy.calculatesVatAmounts(company, contact),
+    () => vatPolicy.calculatesVatAmounts(company),
     (line) => vatPolicy.resolveLineTaxRate(company, contact, line.tax_rate),
   );
 }
