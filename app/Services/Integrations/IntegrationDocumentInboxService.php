@@ -4,8 +4,8 @@ namespace App\Services\Integrations;
 
 use App\Enums\BusinessDocumentType;
 use App\Enums\IntegrationDocumentInboxStatus;
-use App\Models\Company;
 use App\Models\AuditLog;
+use App\Models\Company;
 use App\Models\IntegrationDocumentInbox;
 use App\Models\Store;
 use App\Models\StoreIntegration;
