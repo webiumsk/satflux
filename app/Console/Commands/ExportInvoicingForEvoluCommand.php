@@ -28,7 +28,9 @@ class ExportInvoicingForEvoluCommand extends Command
             return Command::FAILURE;
         }
 
-        $result = $exportService->exportForUser($user);
+        $result = $exportService->exportForUser($user, [
+            'include_attachment_content' => true,
+        ]);
         $companies = $result['counts']['company'] ?? 0;
 
         if ($companies === 0) {

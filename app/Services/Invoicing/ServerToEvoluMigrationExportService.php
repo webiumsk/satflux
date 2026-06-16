@@ -37,20 +37,24 @@ class ServerToEvoluMigrationExportService
     /** @var list<string> */
     private array $warnings = [];
 
+    private bool $includeAttachmentContent = true;
+
     public function __construct(
         private readonly CompanyBrandingService $brandingService,
     ) {}
 
     /**
+     * @param  array{include_attachment_content?: bool}  $options
      * @return array{
      *     snapshot: array<string, list<array<string, mixed>>>,
      *     warnings: list<string>,
      *     counts: array<string, int>
      * }
      */
-    public function exportForUser(User $user): array
+    public function exportForUser(User $user, array $options = []): array
     {
         $this->warnings = [];
+        $this->includeAttachmentContent = (bool) ($options['include_attachment_content'] ?? true);
 
         $companies = Company::query()
             ->where('user_id', $user->id)
@@ -241,6 +245,10 @@ class ServerToEvoluMigrationExportService
             foreach ($matches as $match) {
                 $snapshot['bankTransactionMatch'][] = $this->mapBankTransactionMatch($match);
             }
+        }
+
+        if (! $this->includeAttachmentContent) {
+            $this->warnings[] = 'attachments_metadata_only';
         }
 
         return [
@@ -571,6 +579,17 @@ class ServerToEvoluMigrationExportService
      */
     private function mapExpenseAttachment(BusinessExpenseAttachment $attachment): ?array
     {
+        if (! $this->includeAttachmentContent) {
+            return [
+                'id' => $attachment->id,
+                'expenseId' => $attachment->business_expense_id,
+                'originalFilename' => $attachment->original_filename,
+                'mimeType' => $attachment->mime,
+                'sizeBytes' => $attachment->size_bytes !== null ? (string) $attachment->size_bytes : null,
+                'contentBase64' => null,
+            ];
+        }
+
         $payload = $this->readAttachmentBase64($attachment->disk, $attachment->path, $attachment->original_filename);
         if ($payload === null) {
             return null;
@@ -593,6 +612,17 @@ class ServerToEvoluMigrationExportService
     {
         if (! $expense->attachment_path) {
             return null;
+        }
+
+        if (! $this->includeAttachmentContent) {
+            return [
+                'id' => (string) Str::uuid(),
+                'expenseId' => $expense->id,
+                'originalFilename' => $expense->original_filename,
+                'mimeType' => $expense->attachment_mime,
+                'sizeBytes' => null,
+                'contentBase64' => null,
+            ];
         }
 
         $disk = $expense->attachment_disk ?: 'local';
@@ -623,7 +653,7 @@ class ServerToEvoluMigrationExportService
             'storeId' => $profile->store_id,
             'documentType' => $profile->document_type,
             'isActive' => $this->boolToSqlite($profile->is_active),
-            'recurrenceInterval' => $profile->recurrence_interval->value,
+            'recurrenceInterval' => $profile->recurrence_interval?->value ?? 'monthly',
             'firstIssueDate' => $this->dateStr($profile->first_issue_date),
             'nextIssueDate' => $this->dateStr($profile->next_issue_date),
             'endsAt' => $this->dateStr($profile->ends_at),

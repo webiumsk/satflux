@@ -73,13 +73,24 @@ export async function fetchServerMigrationExport(): Promise<{
     meta: ServerMigrationExportMeta;
 }> {
     try {
-        const { data } = await api.get("/invoicing/migration/export");
+        const { data } = await api.get("/invoicing/migration/export", {
+            timeout: 180_000,
+            params: { include_attachments: 0 },
+        });
         return {
             snapshot: data.data as InvoicingDataSnapshot,
             meta: data.meta as ServerMigrationExportMeta,
         };
     } catch (error: unknown) {
-        const status = (error as { response?: { status?: number } })?.response?.status;
+        const axiosError = error as {
+            response?: { status?: number; data?: { message?: string } };
+            message?: string;
+        };
+        const status = axiosError.response?.status;
+        console.error("Server migration export failed", {
+            status,
+            message: axiosError.response?.data?.message ?? axiosError.message,
+        });
         throw new ServerMigrationError("export_failed", "export_failed", status);
     }
 }
@@ -129,6 +140,12 @@ export function serverMigrationErrorMessage(
         if (error.code === "export_failed") {
             if (error.status === 429) {
                 return t("invoicing.server_migration_error_throttled");
+            }
+            if (error.status === 404) {
+                return t("invoicing.server_migration_error_empty");
+            }
+            if (error.status === 500 || error.status === 502 || error.status === 503) {
+                return t("invoicing.server_migration_error_server");
             }
             return t("invoicing.server_migration_error_export");
         }

@@ -128,6 +128,18 @@ class InvoicingMigrationExportTest extends TestCase
     }
 
     #[Test]
+    public function migration_export_excludes_attachment_content_by_default(): void
+    {
+        $company = $this->createCompany();
+
+        $response = $this->actingAs($this->proUser)
+            ->getJson('/api/invoicing/migration/export');
+
+        $response->assertOk()
+            ->assertJsonPath('meta.include_attachments', false);
+    }
+
+    #[Test]
     public function migration_export_is_empty_for_user_without_companies(): void
     {
         $response = $this->actingAs($this->proUser)
