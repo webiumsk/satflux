@@ -168,6 +168,21 @@ class BankInboundEmailTest extends TestCase
     }
 
     #[Test]
+    public function native_webhook_rejects_requests_when_secret_is_not_configured(): void
+    {
+        config(['bank_inbound.webhook_secret' => null]);
+
+        $address = $this->addressService->buildAddress($this->company);
+
+        $this->postJson('/api/webhooks/bank-inbound', [
+            'to' => $address,
+            'from' => 'notify@tatrabanka.sk',
+            'subject' => 'Obrat',
+            'body' => 'VS: 123',
+        ])->assertStatus(503);
+    }
+
+    #[Test]
     public function mailgun_webhook_imports_tatra_bank_notification_and_auto_matches_invoice(): void
     {
         config(['bank_inbound.mailgun_webhook_signing_key' => 'mailgun-test-signing-key']);

@@ -4,11 +4,14 @@ namespace Tests\Feature;
 
 use App\Enums\CompanyJurisdiction;
 use App\Enums\CompanyStockMovementSource;
+use App\Models\BusinessDocument;
 use App\Models\Company;
 use App\Models\CompanyStockItem;
+use App\Models\CompanyStockItemMovement;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Services\Invoicing\CompanyStockMovementService;
 use App\Services\Invoicing\DocumentSequenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
@@ -171,5 +174,39 @@ class CompanyStockDocumentMovementTest extends TestCase
         $issue->assertOk();
 
         $this->assertEquals(10.0, $this->stockQuantity($this->stockItem));
+    }
+
+    #[Test]
+    public function document_issue_stock_movement_is_idempotent(): void
+    {
+        $create = $this->actingAs($this->proUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents", [
+                'type' => 'invoice',
+                'currency' => 'EUR',
+                'lines' => [
+                    [
+                        'name' => 'Jablká',
+                        'quantity' => 3,
+                        'unit' => 'kg',
+                        'unit_price' => 1.5,
+                        'company_stock_item_id' => $this->stockItem->id,
+                    ],
+                ],
+            ]);
+        $create->assertCreated();
+        $documentId = $create->json('data.id');
+
+        $issue = $this->actingAs($this->proUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents/{$documentId}/issue");
+        $issue->assertOk();
+
+        $document = BusinessDocument::with(['lines', 'company'])->findOrFail($documentId);
+        app(CompanyStockMovementService::class)->applyDocumentIssue($document);
+
+        $this->assertEquals(7.0, $this->stockQuantity($this->stockItem));
+        $this->assertSame(1, CompanyStockItemMovement::query()
+            ->where('business_document_id', $documentId)
+            ->where('source', CompanyStockMovementSource::DocumentIssue)
+            ->count());
     }
 }

@@ -24,57 +24,62 @@ class BusinessDocumentIssueService
 
     public function issue(BusinessDocument $document): BusinessDocument
     {
-        if (! $document->canIssue()) {
-            throw ValidationException::withMessages([
-                'status' => ['Document cannot be issued in its current status.'],
-            ]);
-        }
-
-        $document->load(['company', 'lines', 'store', 'contact']);
-
         $issued = DB::transaction(function () use ($document) {
+            $lockedDocument = BusinessDocument::query()
+                ->whereKey($document->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $lockedDocument->load(['company', 'lines', 'store', 'contact']);
+
+            if (! $lockedDocument->canIssue()) {
+                throw ValidationException::withMessages([
+                    'status' => ['Document cannot be issued in its current status.'],
+                ]);
+            }
+
             $number = $this->sequenceService->nextNumber(
-                $document->company,
-                $document->type->value
+                $lockedDocument->company,
+                $lockedDocument->type->value
             );
 
-            $document->number = $number;
-            $document->variable_symbol = $document->variable_symbol ?: preg_replace('/\D/', '', $number);
-            $document->issue_date = $document->issue_date ?? now()->toDateString();
-            $document->status = BusinessDocumentStatus::Issued;
+            $lockedDocument->number = $number;
+            $lockedDocument->variable_symbol = $lockedDocument->variable_symbol ?: preg_replace('/\D/', '', $number);
+            $lockedDocument->issue_date = $lockedDocument->issue_date ?? now()->toDateString();
+            $lockedDocument->status = BusinessDocumentStatus::Issued;
 
-            if ($document->contact) {
-                $document->buyer_snapshot = BuyerSnapshot::fromContact($document->contact);
+            if ($lockedDocument->contact) {
+                $lockedDocument->buyer_snapshot = BuyerSnapshot::fromContact($lockedDocument->contact);
             }
 
-            if ($document->type === BusinessDocumentType::Quote) {
-                $document->quote_status = BusinessDocumentQuoteStatus::Pending;
+            if ($lockedDocument->type === BusinessDocumentType::Quote) {
+                $lockedDocument->quote_status = BusinessDocumentQuoteStatus::Pending;
             }
 
-            $document->btcpay_invoice_id = null;
-            $document->btcpay_checkout_link = null;
-            $document->btcpay_checkout_created_at = null;
-            $this->paymentTokenService->assignIfNeeded($document);
+            $lockedDocument->btcpay_invoice_id = null;
+            $lockedDocument->btcpay_checkout_link = null;
+            $lockedDocument->btcpay_checkout_created_at = null;
+            $this->paymentTokenService->assignIfNeeded($lockedDocument);
 
-            $document->save();
+            $lockedDocument->save();
 
-            if ($document->payment_btc_enabled && $document->store_id) {
+            if ($lockedDocument->payment_btc_enabled && $lockedDocument->store_id) {
                 try {
-                    $this->btcPayService->syncForDocument($document->fresh(), forceRefresh: true);
+                    $this->btcPayService->syncForDocument($lockedDocument->fresh(), forceRefresh: true);
                 } catch (\Throwable $e) {
                     report($e);
                 }
             }
 
-            AuditLog::log('business_document.issued', 'business_document', $document->id, [
-                'company_id' => $document->company_id,
-                'number' => $document->number,
+            AuditLog::log('business_document.issued', 'business_document', $lockedDocument->id, [
+                'company_id' => $lockedDocument->company_id,
+                'number' => $lockedDocument->number,
             ]);
 
-            $document = $document->fresh(['lines', 'contact', 'store', 'company']);
-            $this->stockMovementService->applyDocumentIssue($document);
+            $lockedDocument = $lockedDocument->fresh(['lines', 'contact', 'store', 'company']);
+            $this->stockMovementService->applyDocumentIssue($lockedDocument);
 
-            return $document;
+            return $lockedDocument;
         });
 
         $this->complianceSubmissionService->queueIfEligible($issued);
