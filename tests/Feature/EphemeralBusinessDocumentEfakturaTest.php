@@ -123,7 +123,7 @@ class EphemeralBusinessDocumentEfakturaTest extends TestCase
         ]);
 
         $user = $this->createProUser();
-        $auditCompany = Company::create([
+        Company::create([
             'user_id' => $user->id,
             'legal_name' => 'Audit s.r.o.',
             'jurisdiction' => 'eu_sk',
@@ -131,6 +131,7 @@ class EphemeralBusinessDocumentEfakturaTest extends TestCase
             'vat_payer' => true,
             'vat_status' => 'payer',
         ]);
+        $bridgeCompany = $this->createBridgeCompany($user);
 
         $payload = $this->ephemeralPayload();
         $payload['evolu_document_id'] = 'evolu-doc-snapshot-creds';
@@ -150,7 +151,7 @@ class EphemeralBusinessDocumentEfakturaTest extends TestCase
 
         $this->assertDatabaseHas('ephemeral_efaktura_submissions', [
             'user_id' => $user->id,
-            'bridge_company_id' => $auditCompany->id,
+            'bridge_company_id' => $bridgeCompany->id,
             'evolu_document_id' => 'evolu-doc-snapshot-creds',
         ]);
     }

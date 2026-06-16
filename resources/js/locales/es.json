@@ -3115,7 +3115,7 @@
     "filter_btn": "Filtro",
     "filter_coming_soon": "Filtros avanzados próximamente",
     "import_contacts": "Importar contactos",
-    "contact_import_intro": "Importe sus contactos fácilmente desde Excel.",
+    "contact_import_intro": "Importe sus contactos fácilmente desde un archivo CSV.",
     "contact_import_example_link": "Descargar archivo de ejemplo",
     "contact_import_drop": "Haga clic o arrastre un archivo aquí",
     "contact_import_file_invalid": "Suba un archivo CSV (.csv).",

@@ -199,18 +199,9 @@ class EphemeralBusinessDocumentController extends Controller
             (array) ($request->validated()['company'] ?? []),
         );
 
-        $auditCompany = Company::query()
-            ->where('user_id', $user->id)
-            ->orderBy('created_at')
-            ->first();
+        $bridgeCompany = $this->efakturaService->assertBridgeCompany($user);
 
-        if (! $auditCompany) {
-            throw ValidationException::withMessages([
-                'efaktura' => ['E-faktura bridge requires at least one company on your satflux account for authorization.'],
-            ]);
-        }
-
-        return $this->respondWithEfakturaSend($request, $snapshotCompany, $auditCompany);
+        return $this->respondWithEfakturaSend($request, $snapshotCompany, $bridgeCompany);
     }
 
     public function efakturaRefresh(Request $request, Company $company): JsonResponse
@@ -472,38 +463,50 @@ class EphemeralBusinessDocumentController extends Controller
             ]);
         }
 
-        $zipPath = sys_get_temp_dir().'/invoices-'.uniqid('', true).'.zip';
-
-        $zip = new ZipArchive;
-        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+        $zipPath = tempnam(sys_get_temp_dir(), 'invoices-');
+        if ($zipPath === false) {
             throw new \RuntimeException('Could not create ZIP archive.');
         }
 
-        foreach ($issued as $document) {
-            $pdf = $this->pdfService->renderBinary($document);
-            $name = 'invoice-'.($document->number ?: $document->id).'.pdf';
-            $zip->addFromString($name, $pdf);
+        try {
+            $zip = new ZipArchive;
+            if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                throw new \RuntimeException('Could not create ZIP archive.');
+            }
+
+            foreach ($issued as $document) {
+                $pdf = $this->pdfService->renderBinary($document);
+                $name = 'invoice-'.($document->number ?: $document->id).'.pdf';
+                if ($zip->addFromString($name, $pdf) === false) {
+                    throw new \RuntimeException('Could not add PDF to ZIP archive.');
+                }
+            }
+
+            if ($zip->close() !== true) {
+                throw new \RuntimeException('Could not finalize ZIP archive.');
+            }
+
+            [$auditType, $auditId] = $this->auditTarget($request->user(), $auditCompany, $snapshotCompany);
+
+            AuditLog::log('business_document.ephemeral_bulk_pdf_zip', $auditType, $auditId, [
+                'count' => $issued->count(),
+                'company_less' => $auditCompany === null,
+            ], $request->user()?->id);
+
+            $binary = file_get_contents($zipPath);
+            if ($binary === false) {
+                abort(500, 'Could not read generated ZIP archive.');
+            }
+
+            return response($binary, 200, [
+                'Content-Type' => 'application/zip',
+                'Content-Disposition' => 'attachment; filename="invoices.zip"',
+            ]);
+        } finally {
+            if (is_string($zipPath) && file_exists($zipPath)) {
+                @unlink($zipPath);
+            }
         }
-        $zip->close();
-
-        [$auditType, $auditId] = $this->auditTarget($request->user(), $auditCompany, $snapshotCompany);
-
-        AuditLog::log('business_document.ephemeral_bulk_pdf_zip', $auditType, $auditId, [
-            'count' => $issued->count(),
-            'company_less' => $auditCompany === null,
-        ], $request->user()?->id);
-
-        $binary = file_get_contents($zipPath);
-        @unlink($zipPath);
-
-        if ($binary === false) {
-            abort(500, 'Could not read generated ZIP archive.');
-        }
-
-        return response($binary, 200, [
-            'Content-Type' => 'application/zip',
-            'Content-Disposition' => 'attachment; filename="invoices.zip"',
-        ]);
     }
 
     protected function respondWithBulkPdfMerge(
