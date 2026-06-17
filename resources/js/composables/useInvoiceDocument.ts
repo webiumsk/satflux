@@ -8,7 +8,7 @@ import { allDocumentEventsQuery } from '../evolu/client';
 import type { CompanyId, DocumentId } from '../evolu/schema';
 import type { DocumentSavePayload } from '../evolu/documentCrud';
 import { payloadFromApiDocument, markLocalDocumentPaid } from '../evolu/documentCrud';
-import { variableSymbolFromNumber } from '../evolu/documentNumber';
+import { documentVariableSymbol } from '../evolu/documentNumber';
 import { documentHistoryFromEvents } from '../evolu/documentEventLog';
 import type { EvoluDocumentRow } from '../evolu/documentMap';
 import {
@@ -34,11 +34,21 @@ function parseDocumentAmountPaid(value: unknown): number | null {
   return Number.isFinite(amount) ? amount : null;
 }
 
+export type InvoicingFormDocumentType =
+  | 'invoice'
+  | 'proforma'
+  | 'quote'
+  | 'credit_note'
+  | 'delivery_note'
+  | 'order_received';
+
 const NEW_DOCUMENT_ROUTE_NAMES = new Set([
   'invoicing-invoice-new',
   'invoicing-proforma-new',
   'invoicing-quote-new',
   'invoicing-credit-note-new',
+  'invoicing-delivery-note-new',
+  'invoicing-order-new',
 ]);
 
 export function useInvoiceDocument() {
@@ -89,14 +99,16 @@ export function useInvoiceDocument() {
     () => (route.meta.documentKind as InvoicingDocumentKind | undefined) ?? 'invoice'
   );
 
-  function resolveDocumentTypeFromRoute(): 'invoice' | 'proforma' | 'quote' | 'credit_note' {
+  function resolveDocumentTypeFromRoute(): InvoicingFormDocumentType {
     if (documentKind.value === 'proforma') return 'proforma';
     if (documentKind.value === 'quote') return 'quote';
     if (documentKind.value === 'credit_note') return 'credit_note';
+    if (documentKind.value === 'delivery_note') return 'delivery_note';
+    if (documentKind.value === 'order_received') return 'order_received';
     return 'invoice';
   }
 
-  const documentType = ref<'invoice' | 'proforma' | 'quote' | 'credit_note'>(
+  const documentType = ref<InvoicingFormDocumentType>(
     resolveDocumentTypeFromRoute()
   );
 
@@ -364,6 +376,10 @@ export function useInvoiceDocument() {
     return {
       ...form,
       type: documentType.value,
+      variable_symbol: documentVariableSymbol(
+        form.variable_symbol,
+        documentNumber.value || displayDocumentNumber.value || nextNumberPreview.value,
+      ) ?? '',
       tags: parseTags(),
       lines: form.lines.map((l) => ({
         name: l.name,
@@ -444,7 +460,11 @@ export function useInvoiceDocument() {
           ? 'quote'
           : d.type === 'credit_note'
             ? 'credit_note'
-            : 'invoice';
+            : d.type === 'delivery_note'
+              ? 'delivery_note'
+              : d.type === 'order_received'
+                ? 'order_received'
+                : 'invoice';
     quoteStatus.value = d.quote_status ?? null;
     resolvedQuoteStatus.value = d.resolved_quote_status ?? d.quote_status ?? null;
     sourceDocument.value = d.source_document ?? null;
@@ -467,7 +487,7 @@ export function useInvoiceDocument() {
       issue_date: d.issue_date?.slice(0, 10) || form.issue_date,
       delivery_date: d.delivery_date?.slice(0, 10) || '',
       due_date: d.due_date?.slice(0, 10) || '',
-      variable_symbol: d.variable_symbol || '',
+      variable_symbol: documentVariableSymbol(d.variable_symbol, d.number) ?? '',
       constant_symbol: d.constant_symbol || '',
       specific_symbol: d.specific_symbol || '',
       currency: d.currency || 'EUR',
@@ -540,7 +560,7 @@ export function useInvoiceDocument() {
       && nextNumberPreview.value
       && !form.variable_symbol.trim()
     ) {
-      form.variable_symbol = variableSymbolFromNumber(nextNumberPreview.value);
+      form.variable_symbol = documentVariableSymbol(null, nextNumberPreview.value) ?? '';
     }
   }
 

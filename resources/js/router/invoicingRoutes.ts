@@ -249,6 +249,42 @@ export const invoicingRoutes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'credit_note' },
     },
     {
+        path: 'companies/:companyId/delivery-notes/new',
+        name: 'invoicing-delivery-note-new',
+        component: () => import('../pages/invoicing/InvoiceForm.vue'),
+        meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'delivery_note' },
+    },
+    {
+        path: 'companies/:companyId/delivery-notes/:documentId',
+        name: 'invoicing-delivery-note-show',
+        component: () => import('../pages/invoicing/InvoiceShow.vue'),
+        meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'delivery_note' },
+    },
+    {
+        path: 'companies/:companyId/delivery-notes/:documentId/edit',
+        name: 'invoicing-delivery-note-edit',
+        component: () => import('../pages/invoicing/InvoiceForm.vue'),
+        meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'delivery_note' },
+    },
+    {
+        path: 'companies/:companyId/orders/new',
+        name: 'invoicing-order-new',
+        component: () => import('../pages/invoicing/InvoiceForm.vue'),
+        meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'order_received' },
+    },
+    {
+        path: 'companies/:companyId/orders/:documentId',
+        name: 'invoicing-order-show',
+        component: () => import('../pages/invoicing/InvoiceShow.vue'),
+        meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'order_received' },
+    },
+    {
+        path: 'companies/:companyId/orders/:documentId/edit',
+        name: 'invoicing-order-edit',
+        component: () => import('../pages/invoicing/InvoiceForm.vue'),
+        meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'order_received' },
+    },
+    {
         path: 'companies/:companyId/invoices/new',
         name: 'invoicing-invoice-new',
         component: () => import('../pages/invoicing/InvoiceForm.vue'),

@@ -165,7 +165,7 @@
                     {{ t('invoicing.select_page', { count: contacts.length }) }}
                   </button>
                   <button type="button" class="invoicing-dropdown-item" @click="selectAllFiltered">
-                    {{ t('invoicing.select_all_filtered', { count: contacts.length }) }}
+                    {{ t('invoicing.select_all_filtered', { count: totalCount }) }}
                   </button>
                   <button
                     v-if="selectionCount > 0"
@@ -243,6 +243,54 @@
           </p>
         </InvoicingMobileCard>
       </div>
+
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-4 py-3 border-t border-gray-200 bg-gray-50">
+        <div class="flex items-center gap-2 text-sm">
+          <button
+            type="button"
+            class="px-2 py-1 rounded border border-gray-300 text-gray-600 bg-white disabled:opacity-40"
+            :disabled="currentPage <= 1"
+            @click="goPage(currentPage - 1)"
+          >
+            ‹
+          </button>
+          <button
+            v-for="p in visiblePages"
+            :key="p"
+            type="button"
+            class="min-w-[2rem] px-2 py-1 rounded text-sm"
+            :class="
+              p === currentPage
+                ? 'bg-indigo-600 text-white'
+                : 'text-gray-600 hover:bg-gray-200'
+            "
+            @click="goPage(p)"
+          >
+            {{ p }}
+          </button>
+          <button
+            type="button"
+            class="px-2 py-1 rounded border border-gray-300 text-gray-600 bg-white disabled:opacity-40"
+            :disabled="currentPage >= lastPage"
+            @click="goPage(currentPage + 1)"
+          >
+            ›
+          </button>
+          <select
+            v-model.number="perPage"
+            class="ml-2 px-2 py-1 rounded border border-gray-300 bg-white text-gray-700 text-sm"
+            @change="goPage(1)"
+          >
+            <option :value="10">10</option>
+            <option :value="20">20</option>
+            <option :value="25">25</option>
+            <option :value="50">50</option>
+          </select>
+        </div>
+        <p class="text-sm text-gray-600 text-right">
+          {{ contacts.length }} / {{ totalCount }}
+        </p>
+      </div>
     </div>
 
     <ContactImportModal
@@ -293,6 +341,8 @@ const {
   localFirst,
   contacts,
   availableLetters,
+  totalCount,
+  lastPage,
   loading,
   refresh: refreshContacts,
   evolu: evoluClient,
@@ -301,6 +351,8 @@ const {
 } = useInvoicingContacts(companyId);
 const searchQuery = ref('');
 const activeLetter = ref('all');
+const currentPage = ref(1);
+const perPage = ref(25);
 const selectedIds = ref(new Set<string>());
 const selectAllMode = ref(false);
 const showSelectMenu = ref(false);
@@ -310,8 +362,16 @@ const success = ref('');
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 const selectionCount = computed(() =>
-  selectAllMode.value ? contacts.value.length : selectedIds.value.size
+  selectAllMode.value ? totalCount.value : selectedIds.value.size
 );
+
+const visiblePages = computed(() => {
+  const pages: number[] = [];
+  const start = Math.max(1, currentPage.value - 2);
+  const end = Math.min(lastPage.value, currentPage.value + 2);
+  for (let p = start; p <= end; p++) pages.push(p);
+  return pages;
+});
 
 const mobileFilterActiveCount = computed(() => {
   let count = 0;
@@ -323,6 +383,7 @@ const mobileFilterActiveCount = computed(() => {
 function onMobileFilterClear() {
   searchQuery.value = '';
   activeLetter.value = 'all';
+  currentPage.value = 1;
   clearSelection();
   load();
 }
@@ -331,20 +392,33 @@ function onContactsImported() {
   load();
 }
 
-function listFilterParams(): Record<string, string | undefined> {
+function listFilterParams() {
   return {
     q: searchQuery.value.trim() || undefined,
     letter: activeLetter.value === 'all' ? undefined : activeLetter.value,
+    page: currentPage.value,
+    per_page: perPage.value,
   };
 }
 
+function goPage(page: number) {
+  if (page < 1 || page > lastPage.value) return;
+  currentPage.value = page;
+  clearSelection();
+  load();
+}
+
 async function load() {
+  if (currentPage.value > lastPage.value && lastPage.value > 0) {
+    currentPage.value = lastPage.value;
+  }
   await refreshContacts(listFilterParams());
 }
 
 function onSearchInput() {
   if (searchTimer) clearTimeout(searchTimer);
   searchTimer = setTimeout(() => {
+    currentPage.value = 1;
     clearSelection();
     load();
   }, 300);
@@ -353,6 +427,7 @@ function onSearchInput() {
 function setLetter(letter: string) {
   if (letter !== 'all' && !availableLetters.value.includes(letter)) return;
   activeLetter.value = letter;
+  currentPage.value = 1;
   clearSelection();
   load();
 }

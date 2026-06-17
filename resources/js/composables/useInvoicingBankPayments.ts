@@ -17,6 +17,7 @@ import {
     createLocalExpenseFromBankTransaction,
     filterLocalBankTransactions,
     ignoreLocalBankTransaction,
+    importInboundServerTransactionsAsync,
     importLocalBankFileAsync,
     loadBankPaymentContext,
     manualMatchLocalTransaction,
@@ -24,9 +25,11 @@ import {
     mapLocalBankTransactionsToApi,
     unmatchLocalBankTransaction,
     type BankPaymentContext,
+    type ServerBankTransactionRow,
 } from "@/evolu/bankCrud";
 import type { BankBatchApiRow, BankSummary, BankTxApiRow } from "@/evolu/bankMap";
 import { isInvoicingLocalFirst } from "@/evolu/flags";
+import { resolveEphemeralBridgeCompanyId } from "@/evolu/ephemeralBridge";
 import type { ExpenseSavePayload } from "@/evolu/expenseCrud";
 import type {
     BankImportBatchId,
@@ -85,7 +88,7 @@ function useServerInvoicingBankPayments(
     const inboundEmail = ref("");
     let lastFilter = "all";
 
-    const inboundEmailAvailable = computed(() => inboundEmail.value.trim().length > 0);
+    const inboundEmailAvailable = computed(() => companyId.value.trim().length > 0);
 
     function requireCompanyId(): string | null {
         return companyId.value || null;
@@ -303,12 +306,50 @@ function useLocalInvoicingBankPayments(
         ),
     );
 
-    const inboundEmailAvailable = computed(() => false);
+    const bridgeCompanyId = ref<string | null>(null);
+    const inboundEmailAvailable = computed(() => bridgeCompanyId.value !== null);
+
+    async function fetchInboundServerRows(bridgeId: string): Promise<ServerBankTransactionRow[]> {
+        const rows: ServerBankTransactionRow[] = [];
+        let page = 1;
+        let lastPage = 1;
+        do {
+            const { data } = await api.get(`/invoicing/companies/${bridgeId}/bank-transactions`, {
+                params: { source: "email", per_page: 100, page },
+            });
+            const pageRows = (data.data || []) as ServerBankTransactionRow[];
+            rows.push(...pageRows);
+            lastPage = data.meta?.last_page ?? 1;
+            page += 1;
+        } while (page <= lastPage);
+        return rows;
+    }
+
+    async function syncInboundFromBridge() {
+        const bridgeId = await resolveEphemeralBridgeCompanyId();
+        bridgeCompanyId.value = bridgeId;
+        if (!bridgeId) {
+            return;
+        }
+        try {
+            const rows = await fetchInboundServerRows(bridgeId);
+            if (rows.length > 0) {
+                await importInboundServerTransactionsAsync(
+                    evolu,
+                    companyId.value as CompanyId,
+                    rows,
+                );
+            }
+        } catch {
+            // Bridge sync is best-effort; local data remains usable.
+        }
+    }
 
     async function load(filter = matchFilter.value) {
         matchFilter.value = filter;
         loading.value = true;
         try {
+            await syncInboundFromBridge();
             await Promise.all([
                 evolu.loadQuery(allBankTransactionsQuery),
                 evolu.loadQuery(allBankTransactionMatchesQuery),
@@ -325,7 +366,7 @@ function useLocalInvoicingBankPayments(
     }
 
     async function loadInbound() {
-        // Inbound b-mail is server-only; no-op locally.
+        bridgeCompanyId.value = await resolveEphemeralBridgeCompanyId();
     }
 
     async function importFile(file: File, format?: string) {

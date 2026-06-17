@@ -85,21 +85,29 @@
             {{ importing ? t('common.loading') : t('invoicing.bank_import_submit') }}
           </button>
         </form>
-        <div v-if="inboundEmailAvailable && inboundEmail" class="text-sm border-t pt-4">
+        <div v-if="hasBankAccount" class="text-sm border-t pt-4">
           <p class="font-medium text-gray-800">{{ t('invoicing.bank_inbound_title') }}</p>
-          <p class="text-gray-600 mt-1">{{ t('invoicing.bank_inbound_help', { max: inboundMaxLength || 50 }) }}</p>
-          <div class="mt-2 flex flex-wrap items-center gap-2">
-            <code class="flex-1 min-w-0 p-2 bg-gray-100 rounded text-xs break-all">{{ inboundEmail }}</code>
-            <button type="button" class="invoicing-btn-secondary text-xs shrink-0" @click="copyInboundEmail">
-              <span aria-live="polite" aria-atomic="true">
-                {{ inboundCopied ? t('invoicing.bank_inbound_copied') : t('invoicing.bank_inbound_copy') }}
-              </span>
-            </button>
-          </div>
-          <p v-if="inboundMaxLength" class="text-gray-500 text-xs mt-1">
-            {{ t('invoicing.bank_inbound_length', { current: inboundLength, max: inboundMaxLength }) }}
+          <p v-if="bank.localFirst" class="text-gray-600 text-xs mt-1">
+            {{ t('invoicing.bank_inbound_local_first_hint') }}
           </p>
-          <p v-if="!inboundEnabled" class="text-amber-700 text-xs mt-1">{{ t('invoicing.bank_inbound_disabled') }}</p>
+          <p v-if="inboundBridgeMissing" class="text-amber-700 text-xs mt-2">
+            {{ t('invoicing.bank_inbound_bridge_missing') }}
+          </p>
+          <template v-else-if="inboundEmail">
+            <p class="text-gray-600 mt-1">{{ t('invoicing.bank_inbound_help', { max: inboundMaxLength || 50 }) }}</p>
+            <div class="mt-2 flex flex-wrap items-center gap-2">
+              <code class="flex-1 min-w-0 p-2 bg-gray-100 rounded text-xs break-all">{{ inboundEmail }}</code>
+              <button type="button" class="invoicing-btn-secondary text-xs shrink-0" @click="copyInboundEmail">
+                <span aria-live="polite" aria-atomic="true">
+                  {{ inboundCopied ? t('invoicing.bank_inbound_copied') : t('invoicing.bank_inbound_copy') }}
+                </span>
+              </button>
+            </div>
+            <p v-if="inboundMaxLength" class="text-gray-500 text-xs mt-1">
+              {{ t('invoicing.bank_inbound_length', { current: inboundLength, max: inboundMaxLength }) }}
+            </p>
+            <p v-if="!inboundEnabled" class="text-amber-700 text-xs mt-1">{{ t('invoicing.bank_inbound_disabled') }}</p>
+          </template>
         </div>
         <ul v-if="batches.length" class="text-sm space-y-2 border-t pt-4">
           <li v-for="b in batches" :key="b.id" class="flex justify-between gap-2">
@@ -406,6 +414,7 @@ import { useInvoicingBankPayments } from '../../composables/useInvoicingBankPaym
 import { invoicingDocumentRoutesForType } from '../../composables/useInvoicingDocumentRoutes';
 import { useFlashStore } from '../../store/flash';
 import api from '../../services/api';
+import { resolveEphemeralBridgeCompanyId } from '../../evolu/ephemeralBridge';
 
 type LinkedDocument = { id: string; number?: string; type?: string };
 type LinkedExpense = { id: string; internal_number: string };
@@ -439,8 +448,6 @@ const loading = bank.loading;
 const transactions = bank.transactions;
 const summary = bank.summary;
 const batches = bank.batches;
-const inboundEmailAvailable = bank.inboundEmailAvailable;
-
 const matchFilter = ref('all');
 const activeTab = ref<'transactions' | 'import'>('transactions');
 const importFile = ref<File | null>(null);
@@ -452,6 +459,11 @@ const inboundEnabled = ref(false);
 const inboundLength = ref(0);
 const inboundMaxLength = ref(0);
 const inboundCopied = ref(false);
+const inboundBridgeChecked = ref(false);
+const inboundBridgeCompanyId = ref<string | null>(null);
+const inboundBridgeMissing = computed(
+  () => bank.localFirst && inboundBridgeChecked.value && !inboundBridgeCompanyId.value,
+);
 const matchModal = ref<BankTx | null>(null);
 const suggestions = ref<{ document: { id: string; number?: string; total: string; currency: string }; reason: string }[]>([]);
 const suggestionsLoading = ref(false);
@@ -581,10 +593,27 @@ async function loadBatches() {
   await bank.loadBatches();
 }
 
+async function resolveInboundCompanyId(): Promise<string | null> {
+  if (!bank.localFirst) {
+    return companyId.value || null;
+  }
+  const bridgeId = await resolveEphemeralBridgeCompanyId();
+  inboundBridgeCompanyId.value = bridgeId;
+  inboundBridgeChecked.value = true;
+  return bridgeId;
+}
+
 async function loadInbound() {
-  if (!hasBankAccount.value || !inboundEmailAvailable.value) return;
+  if (!hasBankAccount.value) return;
+  const cid = await resolveInboundCompanyId();
+  if (!cid) {
+    inboundEmail.value = '';
+    inboundLength.value = 0;
+    inboundMaxLength.value = 0;
+    return;
+  }
   try {
-    const { data } = await api.get(`/invoicing/companies/${companyId.value}/bank-transactions/inbound-email`);
+    const { data } = await api.get(`/invoicing/companies/${cid}/bank-transactions/inbound-email`);
     inboundEmail.value = data.data?.address || '';
     inboundEnabled.value = !!data.data?.enabled;
     inboundLength.value = data.data?.length ?? inboundEmail.value.length;

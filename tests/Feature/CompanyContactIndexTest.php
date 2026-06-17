@@ -82,6 +82,8 @@ class CompanyContactIndexTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('meta.total', 2);
+        $response->assertJsonPath('meta.current_page', 1);
+        $response->assertJsonPath('meta.last_page', 1);
         $response->assertJsonFragment(['name' => 'Alpha Client']);
         $alphaRow = collect($response->json('data'))->firstWhere('id', $alpha->id);
         $this->assertSame(150.0, (float) $alphaRow['stats']['invoiced_total']);

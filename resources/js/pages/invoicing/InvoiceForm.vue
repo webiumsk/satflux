@@ -676,7 +676,11 @@ onMounted(async () => {
         ? 'quote'
         : documentKind.value === 'credit_note'
           ? 'credit_note'
-          : 'invoice';
+          : documentKind.value === 'delivery_note'
+            ? 'delivery_note'
+            : documentKind.value === 'order_received'
+              ? 'order_received'
+              : 'invoice';
   await loadCompanyAndContacts();
   if (documentId.value) {
     await reloadDocument();

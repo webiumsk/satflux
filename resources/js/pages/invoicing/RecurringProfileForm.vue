@@ -358,6 +358,7 @@ import { appSettingsFromCompany } from '../../composables/useCompanyAppSettings'
 import { companyCurrencyOptions } from '../../config/companyCurrencies';
 import {
   RECURRING_INVOICE_NUMBER_TOKEN,
+  RECURRING_VARIABLE_SYMBOL_TOKEN,
   RECURRING_PLACEHOLDER_TOKENS,
 } from '../../composables/useInvoicingPlaceholders';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
@@ -413,7 +414,7 @@ const form = reactive({
   repeat_indefinitely: true,
   issue_last_day_of_month: false,
   title: `Faktúra ${RECURRING_INVOICE_NUMBER_TOKEN}`,
-  variable_symbol: RECURRING_INVOICE_NUMBER_TOKEN,
+  variable_symbol: RECURRING_VARIABLE_SYMBOL_TOKEN,
   constant_symbol: '',
   payment_terms_days: 14,
   delivery_date_mode: 'on_issue',

@@ -1,3 +1,6 @@
+import { normalizeVariableSymbol } from "./bankSymbolNormalizer";
+import { variableSymbolFromNumber } from "./documentNumber";
+
 const MONTH_NAMES_SK: Record<number, string> = {
     1: "január",
     2: "február",
@@ -31,7 +34,9 @@ export function resolveRecurringPlaceholders(
     const nextYear = new Date(date);
     nextYear.setFullYear(nextYear.getFullYear() + 1);
 
-    const vs = variableSymbol ?? documentNumber;
+    const vs = normalizeVariableSymbol(variableSymbol)
+        ?? variableSymbolFromNumber(documentNumber)
+        ?? "";
     const month = date.getMonth() + 1;
 
     const map: Record<string, string> = {

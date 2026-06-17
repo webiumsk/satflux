@@ -1,6 +1,7 @@
 import type { DocumentType, CompanyId } from "./schema";
 import type { EvoluDocumentRow } from "./documentMap";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
+import { normalizeVariableSymbol } from "./bankSymbolNormalizer";
 import { previewNextDocumentNumberFromSeries } from "./numberSeriesCrud";
 
 const DEFAULT_PREFIX: Record<string, string> = {
@@ -61,5 +62,13 @@ export function previewNextDocumentNumber(
 
 export function variableSymbolFromNumber(number: string): string {
     const digits = number.replace(/\D/g, "");
-    return digits.slice(-10) || number.replace(/\s/g, "").slice(0, 10);
+    return digits.slice(-10);
+}
+
+/** Normalize explicit VS or derive digits-only VS from a document number. */
+export function documentVariableSymbol(
+    value: string | null | undefined,
+    fallbackNumber?: string | null,
+): string | null {
+    return normalizeVariableSymbol(value) ?? normalizeVariableSymbol(fallbackNumber);
 }

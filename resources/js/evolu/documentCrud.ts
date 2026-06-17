@@ -17,7 +17,7 @@ import {
     syncLocalSeriesCounterFromIssuedNumber,
 } from "./numberSeriesCrud";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
-import { variableSymbolFromNumber } from "./documentNumber";
+import { documentVariableSymbol } from "./documentNumber";
 import type { EvoluCompanyRow } from "./companyMap";
 import { logDocumentEvent } from "./documentEventLog";
 import { applyDocumentStockOnIssueAsync, reverseDocumentStockOnCancelAsync } from "./documentStockMovement";
@@ -146,7 +146,7 @@ function buildDocumentFields(
             issueDate: payload.issue_date || null,
             deliveryDate: payload.delivery_date || null,
             dueDate: payload.due_date || null,
-            variableSymbol: payload.variable_symbol || null,
+            variableSymbol: documentVariableSymbol(payload.variable_symbol) || null,
             constantSymbol: payload.constant_symbol || null,
             specificSymbol: payload.specific_symbol || null,
             currency: currency.value,
@@ -323,7 +323,7 @@ export function issueLocalDocument(
         return allocation;
     }
     const number = allocation.value;
-    const variableSymbol = doc.variableSymbol || variableSymbolFromNumber(number);
+    const variableSymbol = documentVariableSymbol(doc.variableSymbol, number);
     const quoteStatus = doc.documentType === "quote" ? "pending" : doc.quoteStatus;
 
     const result = evolu.update("document", {
@@ -394,7 +394,7 @@ export function applyReservedNumberToLocalDocument(
         id: documentId,
         status: "issued",
         number,
-        variableSymbol: variableSymbol || variableSymbolFromNumber(number),
+        variableSymbol: documentVariableSymbol(variableSymbol, number),
         quoteStatus,
     });
     if (result.ok) {

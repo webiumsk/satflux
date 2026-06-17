@@ -966,6 +966,8 @@
     "bank_inbound_copied": "Address copied",
     "bank_inbound_copy_failed": "Could not copy address to clipboard",
     "bank_inbound_length": "{current} / {max} characters",
+    "bank_inbound_bridge_missing": "B-mail needs a server company linked to this Evolu workspace. Open Profile → Server companies and keep at least one legacy company, or migrate b-mail settings there.",
+    "bank_inbound_local_first_hint": "The b-mail address is tied to your server company. New bank notifications are synced into this device automatically.",
     "bank_auto_match_batch": "Match by VS",
     "bank_no_transactions": "No bank transactions for this filter.",
     "bank_col_date": "Date",

@@ -2,6 +2,7 @@
 
 namespace App\Services\Invoicing;
 
+use App\Support\Invoicing\BankSymbolNormalizer;
 use App\Support\Invoicing\PlaceholderLegacyAliases;
 use Carbon\CarbonInterface;
 
@@ -43,7 +44,9 @@ final class RecurringPlaceholderResolver
 
         $prevMonth = $issueDate->copy()->subMonth();
         $number = $documentNumber ?? '';
-        $vs = $variableSymbol ?? $number;
+        $vs = BankSymbolNormalizer::variableSymbol($variableSymbol)
+            ?? BankSymbolNormalizer::variableSymbol($number)
+            ?? '';
 
         $map = PlaceholderLegacyAliases::merge([
             '#INVOICE_NUMBER#' => $number,

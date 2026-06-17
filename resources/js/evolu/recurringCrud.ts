@@ -8,7 +8,7 @@ import {
     type DocumentLinePayload,
 } from "./documentCrud";
 import type { EvoluDocumentLineRow, EvoluDocumentRow } from "./documentMap";
-import { previewNextDocumentNumber } from "./documentNumber";
+import { previewNextDocumentNumber, documentVariableSymbol } from "./documentNumber";
 import { allDocumentsQuery } from "./client";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import { advanceRecurringNextDate } from "./recurringNextDate";
@@ -262,7 +262,7 @@ export async function generateLocalRecurringDocument(
         null,
         seriesRows,
     );
-    const vsTemplate = profile.variableSymbol || "#INVOICE_NUMBER#";
+    const vsTemplate = profile.variableSymbol || "#VARIABLE_SYMBOL#";
     const dueDate = addDays(issueDate, parseInt(profile.paymentTermsDays || "14", 10) || 14);
     const deliveryDate = profile.deliveryDateMode === "on_issue" ? issueDate : "";
 
@@ -296,7 +296,10 @@ export async function generateLocalRecurringDocument(
         delivery_date: deliveryDate,
         due_date: dueDate,
         variable_symbol:
-            resolveRecurringPlaceholders(vsTemplate, issueDate, previewNumber, vsTemplate) || previewNumber,
+            documentVariableSymbol(
+                resolveRecurringPlaceholders(vsTemplate, issueDate, previewNumber, vsTemplate),
+                previewNumber,
+            ) || "",
         constant_symbol: profile.constantSymbol || "",
         specific_symbol: profile.specificSymbol || "",
         currency: profile.currency || "EUR",

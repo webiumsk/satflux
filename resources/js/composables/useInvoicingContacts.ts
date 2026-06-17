@@ -10,6 +10,8 @@ import {
     type EvoluContactRow,
 } from "@/evolu/contactMap";
 import { deleteLocalContact } from "@/evolu/contactCrud";
+import { computeContactStats } from "@/evolu/contactStatsLocal";
+import type { EvoluDocumentRow } from "@/evolu/documentMap";
 import { isInvoicingLocalFirst } from "@/evolu/flags";
 import type { CompanyId, ContactId, InvoicingLocalSchema } from "@/evolu/schema";
 import type { CompanyContactRow } from "./useCompanyContact";
@@ -17,12 +19,16 @@ import type { CompanyContactRow } from "./useCompanyContact";
 export interface ContactListFilters {
     q?: string;
     letter?: string;
+    page?: number;
+    per_page?: number;
 }
 
 export interface UseInvoicingContactsResult {
     localFirst: boolean;
     contacts: Ref<CompanyContactRow[]> | ComputedRef<CompanyContactRow[]>;
     availableLetters: Ref<string[]> | ComputedRef<string[]>;
+    totalCount: Ref<number> | ComputedRef<number>;
+    lastPage: Ref<number> | ComputedRef<number>;
     loading: Ref<boolean>;
     refresh: (filters?: ContactListFilters) => Promise<void>;
     evolu: Evolu<InvoicingLocalSchema> | null;
@@ -33,14 +39,18 @@ export interface UseInvoicingContactsResult {
 function useServerInvoicingContacts(companyId: Ref<string>): UseInvoicingContactsResult {
     const contacts = ref<CompanyContactRow[]>([]);
     const availableLetters = ref<string[]>([]);
+    const totalCount = ref(0);
+    const lastPage = ref(1);
     const loading = ref(false);
-    let lastFilters: ContactListFilters = {};
+    let lastFilters: ContactListFilters = { page: 1, per_page: 25 };
 
     async function refresh(filters: ContactListFilters = lastFilters): Promise<void> {
         lastFilters = filters;
         if (!companyId.value) {
             contacts.value = [];
             availableLetters.value = [];
+            totalCount.value = 0;
+            lastPage.value = 1;
             return;
         }
         loading.value = true;
@@ -49,10 +59,14 @@ function useServerInvoicingContacts(companyId: Ref<string>): UseInvoicingContact
                 params: {
                     q: filters.q?.trim() || undefined,
                     letter: filters.letter && filters.letter !== "all" ? filters.letter : undefined,
+                    page: filters.page ?? 1,
+                    per_page: filters.per_page ?? 25,
                 },
             });
             contacts.value = res.data.data ?? [];
             availableLetters.value = res.data.meta?.letters ?? [];
+            totalCount.value = res.data.meta?.total ?? contacts.value.length;
+            lastPage.value = res.data.meta?.last_page ?? 1;
         } finally {
             loading.value = false;
         }
@@ -62,6 +76,8 @@ function useServerInvoicingContacts(companyId: Ref<string>): UseInvoicingContact
         localFirst: false,
         contacts,
         availableLetters,
+        totalCount,
+        lastPage,
         loading,
         refresh,
         evolu: null,
@@ -73,8 +89,8 @@ function useServerInvoicingContacts(companyId: Ref<string>): UseInvoicingContact
 function useLocalInvoicingContacts(companyId: Ref<string>): UseInvoicingContactsResult {
     const evolu = useInvoicingEvolu();
     const loading = ref(true);
-    const filters = ref<ContactListFilters>({});
-    let lastFilters: ContactListFilters = {};
+    const filters = ref<ContactListFilters>({ page: 1, per_page: 25 });
+    let lastFilters: ContactListFilters = { page: 1, per_page: 25 };
 
     const contactsPromise = evolu.loadQuery(allContactsQuery);
     const documentsPromise = evolu.loadQuery(allDocumentsQuery);
@@ -85,18 +101,37 @@ function useLocalInvoicingContacts(companyId: Ref<string>): UseInvoicingContacts
         loading.value = false;
     });
 
-    const companyContacts = computed(() =>
-        contactRows.value
+    const companyContacts = computed(() => {
+        const docs = documentRows.value as EvoluDocumentRow[];
+        return contactRows.value
             .filter((row) => row.companyId === companyId.value)
-            .map((row) => evoluContactToApi(row as EvoluContactRow)),
-    );
+            .map((row) => {
+                const apiRow = evoluContactToApi(row as EvoluContactRow);
+                apiRow.stats = computeContactStats(row.id, docs);
+                return apiRow;
+            });
+    });
 
-    const contacts = computed(() =>
+    const filteredContacts = computed(() =>
         filterContacts(companyContacts.value, {
             q: filters.value.q,
             letter: filters.value.letter,
         }),
     );
+
+    const totalCount = computed(() => filteredContacts.value.length);
+
+    const lastPage = computed(() => {
+        const perPage = filters.value.per_page ?? 25;
+        return Math.max(1, Math.ceil(filteredContacts.value.length / perPage));
+    });
+
+    const contacts = computed(() => {
+        const perPage = filters.value.per_page ?? 25;
+        const page = Math.min(filters.value.page ?? 1, lastPage.value);
+        const start = (page - 1) * perPage;
+        return filteredContacts.value.slice(start, start + perPage);
+    });
 
     const availableLetters = computed(() => availableContactLetters(companyContacts.value));
 
@@ -118,6 +153,8 @@ function useLocalInvoicingContacts(companyId: Ref<string>): UseInvoicingContacts
         localFirst: true,
         contacts,
         availableLetters,
+        totalCount,
+        lastPage,
         loading,
         refresh,
         evolu,
@@ -144,6 +181,7 @@ export function useInvoicingContact(
     if (localFirst) {
         const evolu = useInvoicingEvolu();
         const contactRows = useQuery(allContactsQuery);
+        const documentRows = useQuery(allDocumentsQuery);
 
         function syncContact(): void {
             if (!contactId.value) {
@@ -153,15 +191,27 @@ export function useInvoicingContact(
             const row = contactRows.value.find(
                 (c) => c.id === contactId.value && c.companyId === (companyId.value as CompanyId),
             );
-            contact.value = row ? evoluContactToApi(row as EvoluContactRow) : null;
+            if (!row) {
+                contact.value = null;
+                return;
+            }
+            const apiRow = evoluContactToApi(row as EvoluContactRow);
+            apiRow.stats = computeContactStats(
+                row.id,
+                documentRows.value as EvoluDocumentRow[],
+            );
+            contact.value = apiRow;
         }
 
-        watch([contactRows, contactId, companyId], syncContact, { immediate: true });
+        watch([contactRows, documentRows, contactId, companyId], syncContact, { immediate: true });
 
         async function refresh(): Promise<void> {
             loading.value = true;
             try {
-                await evolu.loadQuery(allContactsQuery);
+                await Promise.all([
+                    evolu.loadQuery(allContactsQuery),
+                    evolu.loadQuery(allDocumentsQuery),
+                ]);
                 syncContact();
             } finally {
                 loading.value = false;

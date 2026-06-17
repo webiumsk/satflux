@@ -335,6 +335,144 @@ export async function importLocalBankFileAsync(
     return { imported, auto_matched: autoMatched, skipped_duplicates: skipped };
 }
 
+export type ServerBankTransactionRow = {
+    booked_at: string;
+    amount: string;
+    currency: string;
+    direction: string;
+    variable_symbol?: string | null;
+    constant_symbol?: string | null;
+    specific_symbol?: string | null;
+    counterparty_name?: string | null;
+    counterparty_iban?: string | null;
+    reference?: string | null;
+    bank_transaction_id?: string | null;
+    dedupe_hash?: string | null;
+};
+
+/** Import b-mail transactions fetched from the server bridge company into Evolu. */
+export async function importInboundServerTransactionsAsync(
+    evolu: Evolu<InvoicingLocalSchema>,
+    companyId: CompanyId,
+    rows: ServerBankTransactionRow[],
+): Promise<{ imported: number; auto_matched: number }> {
+    if (rows.length === 0) {
+        return { imported: 0, auto_matched: 0 };
+    }
+
+    const ctx = await loadBankPaymentContext(evolu);
+    const batchResult = evolu.insert("bankImportBatch", {
+        companyId,
+        source: "inbound_email",
+        filename: "b-mail-sync",
+        rowCount: String(rows.length),
+        importedCount: "0",
+        skippedDuplicates: "0",
+        autoMatchedCount: "0",
+    });
+
+    if (!batchResult.ok) {
+        return { imported: 0, auto_matched: 0 };
+    }
+
+    const batchId = batchResult.value.id as BankImportBatchId;
+    let imported = 0;
+    let skipped = 0;
+    let autoMatched = 0;
+    const created: EvoluBankTransactionRow[] = [];
+
+    for (const row of rows) {
+        const bookedAt = row.booked_at?.includes("T")
+            ? row.booked_at
+            : `${row.booked_at}T12:00:00`;
+        const amount = Math.abs(parseFloat(row.amount || "0"));
+        const currency = (row.currency || "EUR").toUpperCase();
+        const direction = row.direction === "debit" ? "debit" : "credit";
+        const dedupeHash = row.dedupe_hash?.trim()
+            || await bankTransactionDedupeHash(companyId, {
+                bookedAt,
+                amount,
+                currency,
+                direction,
+                variableSymbol: row.variable_symbol,
+                reference: row.reference,
+                bankTransactionId: row.bank_transaction_id,
+            });
+
+        const duplicate = ctx.transactions.some(
+            (existing) => existing.companyId === companyId && existing.dedupeHash === dedupeHash,
+        );
+        if (duplicate) {
+            skipped++;
+            continue;
+        }
+
+        const insertResult = evolu.insert("bankTransaction", {
+            companyId,
+            bankImportBatchId: batchId,
+            bookedAt,
+            amount: amount.toFixed(2),
+            currency,
+            direction,
+            matchStatus: "unmatched",
+            businessExpenseId: null,
+            variableSymbol: row.variable_symbol ?? null,
+            constantSymbol: row.constant_symbol ?? null,
+            specificSymbol: row.specific_symbol ?? null,
+            counterpartyName: row.counterparty_name ?? null,
+            counterpartyIban: row.counterparty_iban ?? null,
+            reference: row.reference ?? null,
+            bankTransactionId: row.bank_transaction_id ?? null,
+            dedupeHash,
+            source: "inbound_email",
+        });
+
+        if (!insertResult.ok) {
+            skipped++;
+            continue;
+        }
+
+        const createdRow: EvoluBankTransactionRow = {
+            id: insertResult.value.id,
+            companyId,
+            bankImportBatchId: batchId,
+            bookedAt,
+            amount: amount.toFixed(2),
+            currency,
+            direction,
+            matchStatus: "unmatched",
+            businessExpenseId: null,
+            variableSymbol: row.variable_symbol ?? null,
+            constantSymbol: row.constant_symbol ?? null,
+            specificSymbol: row.specific_symbol ?? null,
+            counterpartyName: row.counterparty_name ?? null,
+            counterpartyIban: row.counterparty_iban ?? null,
+            reference: row.reference ?? null,
+            bankTransactionId: row.bank_transaction_id ?? null,
+            dedupeHash,
+            source: "inbound_email",
+        };
+        ctx.transactions.push(createdRow);
+        created.push(createdRow);
+        imported++;
+    }
+
+    for (const transaction of created) {
+        if (tryAutoMatchTransaction(evolu, transaction, ctx)) {
+            autoMatched++;
+        }
+    }
+
+    evolu.update("bankImportBatch", {
+        id: batchId,
+        importedCount: String(imported),
+        skippedDuplicates: String(skipped),
+        autoMatchedCount: String(autoMatched),
+    });
+
+    return { imported, auto_matched: autoMatched };
+}
+
 export async function autoMatchLocalBatchAsync(
     evolu: Evolu<InvoicingLocalSchema>,
     batchId: BankImportBatchId,

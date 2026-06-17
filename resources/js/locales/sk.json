@@ -966,6 +966,8 @@
     "bank_inbound_copied": "Adresa skopírovaná",
     "bank_inbound_copy_failed": "Adresu sa nepodarilo skopírovať do schránky",
     "bank_inbound_length": "{current} / {max} znakov",
+    "bank_inbound_bridge_missing": "B-mail vyžaduje prepojenú serverovú firmu v tomto Evolu workspace. Otvorte Profil → Serverové firmy a ponechajte aspoň jednu legacy firmu.",
+    "bank_inbound_local_first_hint": "B-mail adresa je viazaná na serverovú firmu. Nové bankové notifikácie sa do tohto zariadenia synchronizujú automaticky.",
     "bank_auto_match_batch": "Spáruj podľa VS",
     "bank_no_transactions": "Žiadne bankové pohyby pre tento filter.",
     "bank_col_date": "Dátum",

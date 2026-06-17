@@ -3124,6 +3124,8 @@
     "bank_inbound_copied": "Dirección copiada al portapapeles",
     "bank_inbound_copy_failed": "No se pudo copiar la dirección al portapapeles",
     "bank_inbound_length": "{current} / {max} caracteres",
+    "bank_inbound_bridge_missing": "El b-mail requiere una empresa del servidor vinculada a este workspace Evolu. Abra Perfil → Empresas del servidor y conserve al menos una empresa legacy.",
+    "bank_inbound_local_first_hint": "La dirección b-mail está vinculada a la empresa del servidor. Las nuevas notificaciones bancarias se sincronizan automáticamente en este dispositivo.",
     "bank_auto_match_batch": "Emparejar por VS",
     "bank_no_transactions": "No hay movimientos para este filtro.",
     "bank_col_date": "Fecha",
