@@ -168,7 +168,7 @@ class AppService
                     $performRequestMethod->setAccessible(true);
                     $responseObj = $performRequestMethod->invoke($this->client, 'POST', $endpoint, ['json' => $requestBody]);
 
-                    if (!$responseObj->successful()) {
+                    if (! $responseObj->successful()) {
                         // Let BtcPayClient handle the error by calling post normally
                         $response = $this->client->post($endpoint, $requestBody);
                     } else {
@@ -202,7 +202,7 @@ class AppService
                     }
 
                     // If no Location header but response has id, use it
-                    if (isset($response['id']) && !empty($response['id'])) {
+                    if (isset($response['id']) && ! empty($response['id'])) {
                         Log::info('Using app ID from response body', [
                             'store_id' => $storeId,
                             'app_id' => $response['id'],
@@ -213,7 +213,7 @@ class AppService
 
                     // If response doesn't have ID (even if not empty), try to fetch from apps list
                     // This is important for crowdfunds where BTCPay might not return ID in response
-                    if (empty($response) || !isset($response['id']) || empty($response['id'])) {
+                    if (empty($response) || ! isset($response['id']) || empty($response['id'])) {
                         Log::info('BTCPay app creation response missing ID, fetching apps list', [
                             'store_id' => $storeId,
                             'app_type' => $appType,
@@ -226,7 +226,7 @@ class AppService
 
                         // Fetch apps list to find the newly created app
                         $apps = $this->listApps($storeId, $userApiKey);
-                        $appName = $requestBody['appName'] ?? $requestBody['name'] ?? 'New ' . $appType;
+                        $appName = $requestBody['appName'] ?? $requestBody['name'] ?? 'New '.$appType;
 
                         // Find app with matching name and type (most recent)
                         $matchingApps = array_filter($apps, function ($app) use ($appType, $appName) {
@@ -238,7 +238,7 @@ class AppService
                             return $nameMatches && $typeMatches;
                         });
 
-                        if (!empty($matchingApps)) {
+                        if (! empty($matchingApps)) {
                             // Sort by created date (most recent first) to get the newly created app
                             usort($matchingApps, function ($a, $b) {
                                 $aCreated = $a['created'] ?? $a['createdTime'] ?? 0;
@@ -512,7 +512,7 @@ class AppService
                 // Handle sounds separately - only keep one sound URL
                 if (isset($config['sounds'])) {
                     $sounds = $config['sounds'];
-                    if (is_array($sounds) && !empty($sounds)) {
+                    if (is_array($sounds) && ! empty($sounds)) {
                         // Keep only the first sound (doublekill.wav)
                         $filteredSounds = array_filter($sounds, function ($sound) {
                             return strpos($sound, 'doublekill.wav') !== false;
@@ -566,7 +566,7 @@ class AppService
                 // If resetEveryAmount is set (not 0), startDate is required by BTCPay API
                 // Set default startDate to current time if not provided
                 $hasResetEveryAmount = isset($filteredConfig['resetEveryAmount']) && $filteredConfig['resetEveryAmount'] != 0;
-                if ($hasResetEveryAmount && !isset($filteredConfig['startDate'])) {
+                if ($hasResetEveryAmount && ! isset($filteredConfig['startDate'])) {
                     $filteredConfig['startDate'] = (int) time(); // Use current timestamp as default
                     Log::warning('startDate was required but missing, using current timestamp', [
                         'resetEveryAmount' => $filteredConfig['resetEveryAmount'] ?? null,
@@ -621,7 +621,7 @@ class AppService
                 ];
 
                 foreach ($fieldMapping as $ourField => $btcpayField) {
-                    if (array_key_exists($ourField, $config) && !isset($filteredConfig[$btcpayField])) {
+                    if (array_key_exists($ourField, $config) && ! isset($filteredConfig[$btcpayField])) {
                         $value = $config[$ourField];
                         if ($value !== null) {
                             // Special handling for makePublic -> enabled
@@ -670,7 +670,7 @@ class AppService
                 // This check runs after all config processing, right before sending to BTCPay
                 if ($appType && strtolower($appType) === 'crowdfund' && $appId) {
                     // Force id to be correct - if it's wrong or missing, fix it
-                    if (!isset($filteredConfig['id']) || $filteredConfig['id'] !== $appId) {
+                    if (! isset($filteredConfig['id']) || $filteredConfig['id'] !== $appId) {
                         Log::error('CRITICAL: Crowdfund id was wrong or missing in filteredConfig - fixing it!', [
                             'appId_parameter' => $appId,
                             'filteredConfig_id' => $filteredConfig['id'] ?? 'MISSING',
@@ -754,7 +754,7 @@ class AppService
 
                 // If resetEveryAmount > 0 and resetEvery is not 'Never', ensure startDate is set
                 if ($resetEveryAmount > 0 && $resetEvery !== 'Never' && $resetEvery !== null) {
-                    if (!isset($filteredConfig['startDate']) || $filteredConfig['startDate'] === null) {
+                    if (! isset($filteredConfig['startDate']) || $filteredConfig['startDate'] === null) {
                         // Set default startDate to current timestamp if missing
                         $filteredConfig['startDate'] = now()->timestamp;
                         Log::info('Auto-setting startDate for recurring goal', [
@@ -777,7 +777,7 @@ class AppService
                         }
                     } elseif (
                         array_key_exists('requestContributorData', $config['checkout'])
-                        && !(bool) $config['checkout']['requestContributorData']
+                        && ! (bool) $config['checkout']['requestContributorData']
                     ) {
                         $filteredConfig['formId'] = null;
                     }
@@ -944,7 +944,7 @@ class AppService
                 'method' => 'PUT',
                 'endpoints' => $endpoints,
                 'full_urls' => array_map(function ($ep) use ($baseUrl, $storeId, $appId) {
-                    return rtrim($baseUrl, '/') . str_replace(['{$storeId}', '{$appId}'], [$storeId, $appId], $ep);
+                    return rtrim($baseUrl, '/').str_replace(['{$storeId}', '{$appId}'], [$storeId, $appId], $ep);
                 }, $endpoints),
                 'original_config_keys' => array_keys($config),
                 'filtered_config' => $filteredConfig,
@@ -1121,7 +1121,7 @@ class AppService
                 'app_type' => $appType,
                 'endpoints' => $endpoints,
                 'full_urls' => array_map(function ($ep) use ($baseUrl, $appId) {
-                    return rtrim($baseUrl, '/') . str_replace('{$appId}', $appId, $ep);
+                    return rtrim($baseUrl, '/').str_replace('{$appId}', $appId, $ep);
                 }, $endpoints),
             ]);
 
@@ -1194,14 +1194,14 @@ class AppService
      */
     private static function normalizeBtcPayAppItemPriceTypes($node)
     {
-        if (!is_array($node)) {
+        if (! is_array($node)) {
             return $node;
         }
         if (isset($node['priceType'])) {
             $pt = $node['priceType'];
             if ($pt === 'Free' || $pt === 'free') {
                 $node['priceType'] = 'Fixed';
-                if (!array_key_exists('price', $node) || $node['price'] === null || $node['price'] === '') {
+                if (! array_key_exists('price', $node) || $node['price'] === null || $node['price'] === '') {
                     $node['price'] = '0';
                 }
             }

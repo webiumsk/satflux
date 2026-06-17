@@ -146,7 +146,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
         }
 
         $plan = $this->currentSubscriptionPlan();
-        if (!$plan) {
+        if (! $plan) {
             return 1; // No plan = Free tier
         }
 
@@ -176,7 +176,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
         }
 
         $plan = $this->currentSubscriptionPlan();
-        if (!$plan) {
+        if (! $plan) {
             return 1; // fallback for free / no plan
         }
 
@@ -223,11 +223,11 @@ class User extends Authenticatable implements MustVerifyEmailContract
         }
 
         $subscription = $this->currentSubscription();
-        if (!$subscription || $subscription->isExpired()) {
+        if (! $subscription || $subscription->isExpired()) {
             return false;
         }
 
-        if (!$subscription->isActive() && !$subscription->isInGracePeriod()) {
+        if (! $subscription->isActive() && ! $subscription->isInGracePeriod()) {
             return false;
         }
 
@@ -311,7 +311,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
         }
 
         $latestPaid = $this->subscriptions()
-            ->whereHas('plan', fn($query) => $query->whereIn('code', ['pro', 'enterprise']))
+            ->whereHas('plan', fn ($query) => $query->whereIn('code', ['pro', 'enterprise']))
             ->orderByDesc('expires_at')
             ->first();
 
@@ -368,7 +368,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     {
         $subscription = $this->currentSubscription();
 
-        return !$subscription || $subscription->isExpired();
+        return ! $subscription || $subscription->isExpired();
     }
 
     /**
@@ -386,7 +386,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
      */
     public function hasVerifiedEmail(): bool
     {
-        return !is_null($this->email_verified_at);
+        return ! is_null($this->email_verified_at);
     }
 
     /**
@@ -394,7 +394,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
      */
     public function sendEmailVerificationNotification(): void
     {
-        if (!$this->email) {
+        if (! $this->email) {
             return;
         }
 
@@ -417,7 +417,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
      */
     public function getBtcPayApiKeyOrFail(): string
     {
-        if (!$this->btcpay_api_key) {
+        if (! $this->btcpay_api_key) {
             abort(500, 'BTCPay API key not configured. Please contact support.');
         }
 

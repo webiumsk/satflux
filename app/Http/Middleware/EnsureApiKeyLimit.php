@@ -25,7 +25,7 @@ class EnsureApiKeyLimit
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             abort(401, 'Unauthenticated');
         }
 
@@ -35,7 +35,7 @@ class EnsureApiKeyLimit
         }
 
         $store = $request->route('store');
-        if (!$store instanceof Store) {
+        if (! $store instanceof Store) {
             return $next($request);
         }
 

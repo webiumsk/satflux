@@ -17,8 +17,7 @@ class InvoiceController extends Controller
     public function __construct(
         protected InvoiceService $invoiceService,
         protected SubscriptionService $subscriptionService
-    ) {
-    }
+    ) {}
 
     /**
      * List invoices for a store with optional filters.
@@ -52,7 +51,7 @@ class InvoiceController extends Controller
         }
 
         if ($request->filled('date_to')) {
-            $filters['endDate'] = strtotime($request->date_to . ' 23:59:59');
+            $filters['endDate'] = strtotime($request->date_to.' 23:59:59');
         }
 
         // Pagination
@@ -97,7 +96,7 @@ class InvoiceController extends Controller
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Failed to load invoices: ' . $e->getMessage(),
+                'message' => 'Failed to load invoices: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -112,7 +111,7 @@ class InvoiceController extends Controller
         $store = $request->route('store');
         $format = $request->query('format', 'csv');
 
-        if ($format === 'xlsx' && !$this->subscriptionService->canUseXlsxExport($request->user())) {
+        if ($format === 'xlsx' && ! $this->subscriptionService->canUseXlsxExport($request->user())) {
             return response()->json([
                 'message' => 'XLSX export is available in PRO and above. Please upgrade.',
             ], 403);
@@ -131,7 +130,7 @@ class InvoiceController extends Controller
             }
         }
         if ($request->has('date_to') && $request->date_to) {
-            $dateTo = strtotime($request->date_to . ' 23:59:59');
+            $dateTo = strtotime($request->date_to.' 23:59:59');
             if ($dateTo !== false) {
                 $filters['endDate'] = $dateTo;
             }
@@ -182,7 +181,7 @@ class InvoiceController extends Controller
             ], 202);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Failed to export invoices: ' . $e->getMessage(),
+                'message' => 'Failed to export invoices: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -192,7 +191,7 @@ class InvoiceController extends Controller
      */
     protected function streamCsvExport($store, array $filters, string $userApiKey): StreamedResponse
     {
-        $filename = 'invoices-' . date('Y-m-d_His') . '.csv';
+        $filename = 'invoices-'.date('Y-m-d_His').'.csv';
 
         return new StreamedResponse(function () use ($store, $filters, $userApiKey) {
             $handle = fopen('php://output', 'w');
@@ -235,7 +234,7 @@ class InvoiceController extends Controller
                 $invoices = $response['data'] ?? $response;
 
                 // Ensure it's an array
-                if (!is_array($invoices)) {
+                if (! is_array($invoices)) {
                     $invoices = [];
                 }
 
@@ -298,7 +297,7 @@ class InvoiceController extends Controller
             fclose($handle);
         }, 200, [
             'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
     }
 
@@ -307,7 +306,7 @@ class InvoiceController extends Controller
      */
     protected function streamXlsxExport($store, array $filters, string $userApiKey): StreamedResponse
     {
-        $filename = 'invoices-' . date('Y-m-d_His') . '.xlsx';
+        $filename = 'invoices-'.date('Y-m-d_His').'.xlsx';
 
         return new StreamedResponse(function () use ($store, $filters, $userApiKey) {
             $spreadsheet = new Spreadsheet;
@@ -348,7 +347,7 @@ class InvoiceController extends Controller
                     $userApiKey
                 );
                 $invoices = $response['data'] ?? $response;
-                if (!is_array($invoices)) {
+                if (! is_array($invoices)) {
                     $invoices = [];
                 }
 
@@ -388,7 +387,7 @@ class InvoiceController extends Controller
                         $invoice['buyer']['buyerEmail'] ?? '',
                         $invoice['metadata']['orderId'] ?? '',
                         $invoice['checkoutLink'] ?? '',
-                    ], null, 'A' . $row);
+                    ], null, 'A'.$row);
                     $row++;
                 }
 
@@ -399,7 +398,7 @@ class InvoiceController extends Controller
             $writer->save('php://output');
         }, 200, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
     }
 
@@ -413,7 +412,7 @@ class InvoiceController extends Controller
             return ['pos' => '', 'tax' => '', 'tip' => '', 'discount' => ''];
         }
         $data = is_string($posData) ? json_decode($posData, true) : $posData;
-        if (!is_array($data)) {
+        if (! is_array($data)) {
             return ['pos' => '', 'tax' => '', 'tip' => '', 'discount' => ''];
         }
         $posLabel = '';
