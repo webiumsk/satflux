@@ -24,47 +24,49 @@
             </h4>
             <GuestUpgradeForm id-prefix="guest-upgrade-email" />
           </div>
+        </div>
 
-          <div class="pt-4 border-t border-indigo-400/20 space-y-3">
-            <h4 class="text-sm font-semibold text-white">
-              {{ t("account.recovery_phrase_title") }}
-            </h4>
-            <p class="text-sm text-gray-300">
-              {{ t("account.recovery_phrase_desc") }}
-            </p>
-            <p
-              v-if="authStore.user?.guest_recovery_enrolled"
-              class="text-sm text-emerald-400"
-            >
-              {{ t("account.recovery_phrase_enrolled") }}
-            </p>
-            <div
-              v-if="storedGuestMnemonic"
-              class="flex flex-wrap items-center gap-2"
-            >
-              <button
-                type="button"
-                class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
-                @click="showGuestSeedModal = true"
-              >
-                {{ t("account.recovery_phrase_reveal") }}
-              </button>
-            </div>
-            <p
-              v-else-if="authStore.user?.guest_recovery_enrolled"
-              class="text-sm text-amber-300"
-            >
-              {{ t("account.recovery_phrase_unavailable_here") }}
-            </p>
+        <div
+          class="rounded-2xl border border-gray-700 bg-gray-800/80 p-5 space-y-3"
+        >
+          <h4 class="text-sm font-semibold text-white">
+            {{ t("account.recovery_phrase_title") }}
+          </h4>
+          <p class="text-sm text-gray-300">
+            {{ t("account.recovery_phrase_desc") }}
+          </p>
+          <p
+            v-if="authStore.user?.guest_recovery_enrolled"
+            class="text-sm text-emerald-400"
+          >
+            {{ t("account.recovery_phrase_enrolled") }}
+          </p>
+          <div
+            v-if="storedGuestMnemonic"
+            class="flex flex-wrap items-center gap-2"
+          >
             <button
-              v-else-if="!authStore.user?.guest_recovery_enrolled"
               type="button"
               class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
-              @click="showRecoveryBackupWizard = true"
+              @click="showGuestSeedModal = true"
             >
-              {{ t("account.recovery_phrase_setup") }}
+              {{ t("account.recovery_phrase_reveal") }}
             </button>
           </div>
+          <p
+            v-else-if="authStore.user?.guest_recovery_enrolled"
+            class="text-sm text-amber-300"
+          >
+            {{ t("account.recovery_phrase_unavailable_here") }}
+          </p>
+          <button
+            v-else
+            type="button"
+            class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
+            @click="showRecoveryBackupWizard = true"
+          >
+            {{ t("account.recovery_phrase_setup") }}
+          </button>
         </div>
 
         <!-- Data & privacy -->
@@ -968,7 +970,7 @@
         >
           <div class="flex items-center justify-between mb-4">
             <h5 class="text-lg font-bold text-white">
-              {{ t("account.guest_seed_modal_title") }}
+              {{ t("account.recovery_phrase_title") }}
             </h5>
             <button
               type="button"

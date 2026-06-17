@@ -1,7 +1,7 @@
 <template>
-  <InvoicingIndex v-if="!localFirst" />
+  <InvoicingIndex v-if="!localFirst" embedded />
   <EvoluProvider v-else-if="ready && evolu" :evolu="evolu">
-    <InvoicingIndex />
+    <InvoicingIndex embedded />
   </EvoluProvider>
   <div v-else class="py-12 flex justify-center text-sm text-gray-400">
     {{ t('invoicing.relay_sync_loading') }}

@@ -1,5 +1,5 @@
 <template>
-  <div class="invoicing-page">
+  <div class="invoicing-page" :class="{ 'invoicing-page--embedded': embedded }">
     <div class="sticky mb-4 top-0 z-20 shadow-sm bg-gray-100">
       <slot name="header" />
       <InvoicingDocumentSubNav v-if="isDocumentsArea" />
@@ -42,8 +42,10 @@ withDefaults(
     title?: string;
     subtitle?: string;
     contentClass?: string;
+    /** Dashboard embed: natural height; parent page scrolls (no nested scrollport). */
+    embedded?: boolean;
   }>(),
-  { contentClass: 'py-6' }
+  { contentClass: 'py-6', embedded: false }
 );
 
 const route = useRoute();

@@ -2,6 +2,7 @@
   <InvoicingPageShell
     :title="t('invoicing.title')"
     :subtitle="t('invoicing.subtitle')"
+    :embedded="embedded"
   >
     <template #actions>
       <button
@@ -168,6 +169,13 @@ import { findDuplicateCompanyGroups } from '@/evolu/duplicateCompanies';
 import { useAuthStore } from '../../store/auth';
 import { useFlashStore } from '@/store/flash';
 import UpgradeModal from '../../components/stores/UpgradeModal.vue';
+
+withDefaults(
+  defineProps<{
+    embedded?: boolean;
+  }>(),
+  { embedded: false },
+);
 
 const { t } = useI18n();
 const router = useRouter();

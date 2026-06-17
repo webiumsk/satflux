@@ -30,47 +30,21 @@
       <div
         class="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-8 shadow-xl space-y-4"
       >
-        <p class="text-sm text-gray-300 leading-relaxed">
-          {{ t("auth.seed_mode_short_intro") }}
-        </p>
-        <div
-          class="rounded-lg border border-amber-500/25 bg-amber-950/30 px-3 py-2.5"
-          role="note"
-        >
-          <p class="text-xs font-semibold text-amber-200/95 mb-1">
-            {{ t("auth.seed_mode_limits_heading") }}
-          </p>
-          <p class="text-xs text-amber-100/85 leading-relaxed">
-            {{ t("auth.seed_mode_limitations") }}
-          </p>
-        </div>
-        <div
-          class="rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/15 to-purple-500/15 p-4 space-y-3 shadow-inner"
-        >
-          <button
-            type="button"
-            :disabled="guestLoading"
-            class="w-full inline-flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-gray-800"
-            @click="showGuestBackupWizard = true"
-          >
-            {{
-              guestLoading
-                ? t("auth.starting_guest_session")
-                : t("auth.create_with_recovery_phrase")
-            }}
-          </button>
-          <button
-            type="button"
-            class="w-full font-medium text-indigo-200 hover:text-white text-sm focus:outline-none focus:underline rounded"
-            @click="showGuestRestoreModal = true"
-          >
-            {{ t("auth.restore_with_recovery_phrase") }}
-          </button>
-        </div>
-        <p class="text-center text-sm text-gray-400">
+        <AuthSeedGuestPanel
+          variant="register"
+          :primary-label="
+            guestLoading
+              ? t('auth.starting_guest_session')
+              : t('auth.create_with_recovery_phrase')
+          "
+          :primary-disabled="guestLoading"
+          @primary="showGuestBackupWizard = true"
+          @secondary="showGuestRestoreModal = true"
+        />
+        <p class="text-center text-sm text-gray-400 pt-1">
           {{ t("auth.already_have_email_account") }}
           <router-link
-            :to="{ path: '/login', query: { tab: 'email' } }"
+            to="/login"
             class="font-medium text-indigo-400 hover:text-indigo-300"
           >
             {{ t("auth.sign_in") }}
@@ -98,6 +72,7 @@ import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import GuestBackupWizardModal from "../../components/auth/GuestBackupWizardModal.vue";
 import GuestRestoreModal from "../../components/auth/GuestRestoreModal.vue";
+import AuthSeedGuestPanel from "../../components/auth/AuthSeedGuestPanel.vue";
 import { useAuthStore } from "../../store/auth";
 import { useStoresStore } from "../../store/stores";
 import { useFlashStore } from "../../store/flash";

@@ -1373,6 +1373,7 @@
     "nostr_extension_required": "Nostr rozšírenie nebolo nájdené. Nainštalujte Alby, nos2x alebo podobné.",
     "nostr_confirm_reveal": "Potvrdiť cez Nostr",
     "continue_without_registration": "Pokračovať bez registrácie",
+    "register_short": "Registrácia",
     "starting_guest_session": "Spúšťa sa hosťovská relácia...",
     "tab_guest": "Bez účtu",
     "tab_seed": "Obnovovacia fráza",

@@ -1,8 +1,16 @@
 /* Light Superfaktúra-style theme for /invoicing/* */
 
 .invoicing-page {
-  @apply min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-gray-100 text-gray-900;
+  @apply bg-gray-100 text-gray-900;
+}
+
+.invoicing-page:not(.invoicing-page--embedded) {
+  @apply min-h-0 flex-1 overflow-y-auto overscroll-y-contain;
   @apply max-md:overflow-visible;
+}
+
+.invoicing-page--embedded {
+  @apply block w-full overflow-visible;
 }
 
 /* Legacy aliases - prefer INVOICING_CONTAINER_CLASS in composable */

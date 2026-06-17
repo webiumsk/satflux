@@ -98,61 +98,12 @@
           </button>
         </div>
 
-        <div v-show="authMethodTab === 'guest'" class="space-y-4 mb-2">
-          <p class="text-sm text-gray-300 leading-relaxed">
-            {{ t("auth.seed_mode_short_intro") }}
-          </p>
-          <div
-            class="rounded-lg border border-amber-500/25 bg-amber-950/30 px-3 py-2.5"
-            role="note"
-          >
-            <p class="text-xs font-semibold text-amber-200/95 mb-1">
-              {{ t("auth.guest_mode_limits_heading") }}
-            </p>
-            <p class="text-xs text-amber-100/85 leading-relaxed">
-              {{ t("auth.guest_mode_limitations") }}
-            </p>
-          </div>
-          <div
-            class="rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/15 to-purple-500/15 p-4 space-y-3 shadow-inner"
-          >
-            <button
-              type="button"
-              :disabled="guestLoading"
-              class="w-full inline-flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-gray-800"
-              @click="showGuestBackupWizard = true"
-            >
-              <svg
-                class="w-4 h-4 shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
-              {{
-                guestLoading
-                  ? t("auth.starting_guest_session")
-                  : t("auth.continue_without_registration")
-              }}
-            </button>
-            <p class="text-xs text-indigo-100/90 text-center">
-              {{ t("auth.guest_cta_hint") }}
-            </p>
-            <button
-              type="button"
-              class="w-full font-medium text-indigo-200 hover:text-white text-sm focus:outline-none focus:underline rounded"
-              @click="showGuestRestoreModal = true"
-            >
-              {{ t("auth.restore_guest_session") }}
-            </button>
-          </div>
+        <div v-show="authMethodTab === 'guest'" class="mb-2">
+          <AuthSeedGuestPanel
+            variant="login"
+            :primary-label="t('auth.restore_guest_session')"
+            @primary="showGuestRestoreModal = true"
+          />
         </div>
 
         <form
@@ -299,11 +250,6 @@
       </div>
     </div>
 
-    <GuestBackupWizardModal
-      :open="showGuestBackupWizard"
-      @close="showGuestBackupWizard = false"
-      @done="handleGuestEnrolled"
-    />
     <GuestRestoreModal
       :open="showGuestRestoreModal"
       @close="showGuestRestoreModal = false"
@@ -417,10 +363,8 @@ import { useFlashStore } from "../../store/flash";
 import api from "../../services/api";
 import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
 import NostrAuthModal from "../../components/auth/NostrAuthModal.vue";
-import GuestBackupWizardModal from "../../components/auth/GuestBackupWizardModal.vue";
 import GuestRestoreModal from "../../components/auth/GuestRestoreModal.vue";
-import { storeGuestMnemonic } from "../../services/guestRecovery";
-import { initEvoluFromAccountSeedIfNeeded } from "../../services/accountSeed";
+import AuthSeedGuestPanel from "../../components/auth/AuthSeedGuestPanel.vue";
 
 const { t } = useI18n();
 
@@ -453,9 +397,7 @@ const form = ref({
 });
 
 const loading = ref(false);
-const guestLoading = ref(false);
 const authMethodTab = ref<"guest" | "email" | "other">("guest");
-const showGuestBackupWizard = ref(false);
 const showGuestRestoreModal = ref(false);
 
 const showLnurlModal = ref(false);
@@ -552,49 +494,6 @@ function redirectAfterGuestRestore(payload: { store_id?: string | null }) {
     }
     router.replace("/stores/create");
   });
-}
-
-async function handleGuestEnrolled(payload: {
-  recoveryPublicKeyHex: string;
-  mnemonic: string;
-}) {
-  showGuestBackupWizard.value = false;
-  guestLoading.value = true;
-  try {
-    const response = await authStore.continueAsGuest(
-      payload.recoveryPublicKeyHex,
-    );
-    storeGuestMnemonic(payload.mnemonic);
-    await initEvoluFromAccountSeedIfNeeded(payload.mnemonic);
-    // Be resilient to slight response shape differences.
-    let storeId = response?.store_id ?? response?.data?.store_id ?? null;
-
-    if (!storeId) {
-      try {
-        const storesRes = await api.get("/stores");
-        const firstStoreId = storesRes?.data?.data?.[0]?.id;
-        storeId =
-          typeof firstStoreId === "string" || typeof firstStoreId === "number"
-            ? String(firstStoreId)
-            : null;
-      } catch {
-        storeId = null;
-      }
-    }
-
-    if (storeId) {
-      router.replace(`/stores/${storeId}/wallet-connection`);
-      return;
-    }
-
-    router.replace("/stores/create");
-  } catch (err: any) {
-    flashStore.error(
-      err.response?.data?.message || "Unable to start guest session.",
-    );
-  } finally {
-    guestLoading.value = false;
-  }
 }
 
 async function fetchAuthChallengeAndOpen(): Promise<boolean> {

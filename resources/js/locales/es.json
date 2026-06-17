@@ -127,6 +127,7 @@
     "nostr_extension_required": "No se encontró extensión Nostr. Instala Alby, nos2x o similar.",
     "nostr_confirm_reveal": "Confirmar con Nostr",
     "continue_without_registration": "Continuar sin registro",
+    "register_short": "Registro",
     "starting_guest_session": "Iniciando sesión de invitado...",
     "tab_guest": "Invitado",
     "tab_seed": "Frase de recuperación",

@@ -86,8 +86,8 @@
       <DashboardInvoicingFeaturesAside />
     </div>
 
-    <!-- Pro: full invoicing index -->
-    <div v-else class="rounded-2xl overflow-hidden border border-gray-700 bg-white">
+    <!-- Pro: full invoicing index (page scroll, no nested scrollport) -->
+    <div v-else class="rounded-2xl border border-gray-700 bg-white overflow-hidden">
       <DashboardInvoicingTabProShell />
     </div>
 
