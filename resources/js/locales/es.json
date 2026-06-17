@@ -1322,7 +1322,7 @@
     "recovery_phrase_saved": "Frase de recuperación vinculada a su cuenta.",
     "recovery_phrase_save_failed": "No se pudo guardar la frase de recuperación.",
     "guest_upgrade_desc_email_only": "Añada email y contraseña para la suscripción y notificaciones. El inicio de sesión con frase sigue funcionando.",
-    "guest_upgrade_email_placeholder": "your@email.tld",
+    "guest_upgrade_email_placeholder": "your{'@'}email.tld",
     "guest_upgrade_modal_intro": "Para usar {feature}, actualice su cuenta de invitado con correo y contraseña.",
     "guest_account_backup_desc": "Guarda una frase de recuperación de 24 palabras para iniciar sesión en otro navegador o dispositivo. Satflux no guarda tu frase.",
     "guest_recovery_enrolled": "La frase de recuperación está vinculada a esta cuenta de invitado.",

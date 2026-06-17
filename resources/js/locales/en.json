@@ -2190,7 +2190,7 @@
     "recovery_phrase_saved": "Recovery phrase linked to your account.",
     "recovery_phrase_save_failed": "Could not save recovery phrase.",
     "guest_upgrade_desc_email_only": "Add email and password for subscription billing and email notifications. Your recovery phrase still works for sign-in.",
-    "guest_upgrade_email_placeholder": "your@email.tld",
+    "guest_upgrade_email_placeholder": "your{'@'}email.tld",
     "guest_upgrade_modal_intro": "To use {feature}, upgrade your guest account with email and password.",
     "guest_account_backup_desc": "Save a 24-word recovery phrase to sign in on another browser or device. Satflux never stores your phrase.",
     "guest_recovery_enrolled": "Recovery phrase is linked to this guest account.",

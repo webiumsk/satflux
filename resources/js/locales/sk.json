@@ -2191,7 +2191,7 @@
     "recovery_phrase_saved": "Obnovovacia fráza bola uložená.",
     "recovery_phrase_save_failed": "Nepodarilo sa uložiť obnovovaciu frázu.",
     "guest_upgrade_desc_email_only": "Pridajte email a heslo pre predplatné a notifikácie. Prihlásenie frázou naďalej funguje.",
-    "guest_upgrade_email_placeholder": "your@email.tld",
+    "guest_upgrade_email_placeholder": "your{'@'}email.tld",
     "guest_upgrade_modal_intro": "Na použitie funkcie {feature} upgradujte hosťovský účet e-mailom a heslom.",
     "guest_account_backup_desc": "Uložte si 24-slovnú obnovovaciu frázu, aby ste sa vedeli prihlásiť v inom prehliadači alebo zariadení. Satflux vašu frázu neukladá.",
     "guest_recovery_enrolled": "Obnovovacia fráza je naviazaná na tento hosťovský účet.",
