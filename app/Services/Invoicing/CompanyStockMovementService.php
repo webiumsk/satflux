@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\CompanyStockItem;
 use App\Models\CompanyStockItemMovement;
 use App\Models\CompanyWarehouse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class CompanyStockMovementService
@@ -31,6 +32,16 @@ class CompanyStockMovementService
         $movements = [];
 
         DB::transaction(function () use ($document, &$movements) {
+            $alreadyApplied = CompanyStockItemMovement::query()
+                ->where('business_document_id', $document->id)
+                ->where('source', CompanyStockMovementSource::DocumentIssue)
+                ->lockForUpdate()
+                ->exists();
+
+            if ($alreadyApplied) {
+                return;
+            }
+
             foreach ($document->lines as $line) {
                 if (! $line->company_stock_item_id) {
                     continue;
@@ -73,6 +84,36 @@ class CompanyStockMovementService
     /**
      * @return list<CompanyStockItemMovement>
      */
+    public function rebuildDocumentIssue(BusinessDocument $document): array
+    {
+        if (! in_array($document->type, [BusinessDocumentType::Invoice, BusinessDocumentType::CreditNote, BusinessDocumentType::DeliveryNote], true)) {
+            return [];
+        }
+
+        $movements = [];
+
+        DB::transaction(function () use ($document, &$movements) {
+            $movements = array_merge(
+                $movements,
+                $this->reverseIssueMovements(
+                    $document,
+                    CompanyStockMovementSource::DocumentAdjustment,
+                    deleteIssueMovements: true,
+                ),
+            );
+
+            $movements = array_merge(
+                $movements,
+                $this->applyDocumentIssue($document->fresh(['lines', 'company'])),
+            );
+        });
+
+        return $movements;
+    }
+
+    /**
+     * @return list<CompanyStockItemMovement>
+     */
     public function reverseDocumentCancel(BusinessDocument $document): array
     {
         if (! in_array($document->type, [BusinessDocumentType::Invoice, BusinessDocumentType::CreditNote, BusinessDocumentType::DeliveryNote], true)) {
@@ -95,43 +136,10 @@ class CompanyStockMovementService
                 return;
             }
 
-            $issueMovements = CompanyStockItemMovement::query()
-                ->where('business_document_id', $document->id)
-                ->where('source', CompanyStockMovementSource::DocumentIssue)
-                ->get();
-
-            if ($issueMovements->isEmpty()) {
-                return;
-            }
-
-            foreach ($issueMovements as $issueMovement) {
-                $item = CompanyStockItem::query()
-                    ->where('id', $issueMovement->company_stock_item_id)
-                    ->lockForUpdate()
-                    ->first();
-
-                if (! $item || ! $item->track_inventory || ! $issueMovement->company_warehouse_id) {
-                    continue;
-                }
-
-                $warehouse = CompanyWarehouse::query()
-                    ->where('id', $issueMovement->company_warehouse_id)
-                    ->lockForUpdate()
-                    ->first();
-
-                if (! $warehouse) {
-                    continue;
-                }
-
-                $movements[] = $this->applyDelta(
-                    $item,
-                    $warehouse,
-                    -((float) $issueMovement->quantity_delta),
-                    CompanyStockMovementSource::DocumentCancel,
-                    note: null,
-                    document: $document,
-                );
-            }
+            $movements = $this->reverseIssueMovements(
+                $document,
+                CompanyStockMovementSource::DocumentCancel,
+            );
         });
 
         return $movements;
@@ -265,6 +273,65 @@ class CompanyStockMovementService
             'document_type' => $document?->type?->value,
             'created_at' => now(),
         ]);
+    }
+
+    /**
+     * @return list<CompanyStockItemMovement>
+     */
+    protected function reverseIssueMovements(
+        BusinessDocument $document,
+        CompanyStockMovementSource $source,
+        bool $deleteIssueMovements = false,
+    ): array {
+        /** @var Collection<int, CompanyStockItemMovement> $issueMovements */
+        $issueMovements = CompanyStockItemMovement::query()
+            ->where('business_document_id', $document->id)
+            ->where('source', CompanyStockMovementSource::DocumentIssue)
+            ->lockForUpdate()
+            ->get();
+
+        if ($issueMovements->isEmpty()) {
+            return [];
+        }
+
+        $movements = [];
+
+        foreach ($issueMovements as $issueMovement) {
+            $item = CompanyStockItem::query()
+                ->where('id', $issueMovement->company_stock_item_id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $item || ! $issueMovement->company_warehouse_id) {
+                continue;
+            }
+
+            $warehouse = CompanyWarehouse::query()
+                ->where('id', $issueMovement->company_warehouse_id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $warehouse) {
+                continue;
+            }
+
+            $movements[] = $this->applyDelta(
+                $item,
+                $warehouse,
+                -((float) $issueMovement->quantity_delta),
+                $source,
+                note: null,
+                document: $document,
+            );
+        }
+
+        if ($deleteIssueMovements) {
+            CompanyStockItemMovement::query()
+                ->whereIn('id', $issueMovements->pluck('id'))
+                ->delete();
+        }
+
+        return $movements;
     }
 
     protected function resolveWarehouseForLine(Company $company, ?string $warehouseId): CompanyWarehouse

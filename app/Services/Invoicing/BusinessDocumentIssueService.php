@@ -24,15 +24,20 @@ class BusinessDocumentIssueService
 
     public function issue(BusinessDocument $document): BusinessDocument
     {
-        if (! $document->canIssue()) {
-            throw ValidationException::withMessages([
-                'status' => ['Document cannot be issued in its current status.'],
-            ]);
-        }
-
-        $document->load(['company', 'lines', 'store', 'contact']);
-
         $issued = DB::transaction(function () use ($document) {
+            $document = BusinessDocument::query()
+                ->whereKey($document->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! $document->canIssue()) {
+                throw ValidationException::withMessages([
+                    'status' => ['Document cannot be issued in its current status.'],
+                ]);
+            }
+
+            $document->load(['company', 'lines', 'store', 'contact']);
+
             $number = $this->sequenceService->nextNumber(
                 $document->company,
                 $document->type->value

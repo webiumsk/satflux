@@ -11,6 +11,7 @@ use App\Models\Company;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -24,6 +25,7 @@ class BusinessDocumentBulkService
         protected BusinessDocumentPdfService $pdfService,
         protected BusinessDocumentMarkPaidService $markPaidService,
         protected DocumentSequenceService $sequenceService,
+        protected CompanyStockMovementService $stockMovementService,
     ) {}
 
     /**
@@ -229,8 +231,17 @@ class BusinessDocumentBulkService
                 continue;
             }
             $typesToSync[$document->type->value] = $document->company;
-            $document->lines()->delete();
-            $document->delete();
+            DB::transaction(function () use ($document) {
+                if (in_array($document->status, [
+                    BusinessDocumentStatus::Issued,
+                    BusinessDocumentStatus::Paid,
+                ], true)) {
+                    $this->stockMovementService->reverseDocumentCancel($document->fresh(['lines']));
+                }
+
+                $document->lines()->delete();
+                $document->delete();
+            });
             $processed++;
         }
 
@@ -255,11 +266,15 @@ class BusinessDocumentBulkService
 
                 continue;
             }
-            $document->update([
-                'status' => BusinessDocumentStatus::Cancelled,
-                'paid_at' => null,
-                'amount_paid' => null,
-            ]);
+            DB::transaction(function () use ($document) {
+                $document->update([
+                    'status' => BusinessDocumentStatus::Cancelled,
+                    'paid_at' => null,
+                    'amount_paid' => null,
+                ]);
+
+                $this->stockMovementService->reverseDocumentCancel($document->fresh(['lines']));
+            });
             $processed++;
         }
 

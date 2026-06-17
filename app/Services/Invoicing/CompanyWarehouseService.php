@@ -109,6 +109,12 @@ class CompanyWarehouseService
             ]);
         }
 
+        if ($warehouse->movements()->exists()) {
+            throw ValidationException::withMessages([
+                'warehouse' => ['Warehouse has stock movement history and cannot be deleted. Deactivate it instead.'],
+            ]);
+        }
+
         $wasDefault = $warehouse->is_default;
         $warehouse->delete();
 
