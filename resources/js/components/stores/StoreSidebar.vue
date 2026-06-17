@@ -724,6 +724,10 @@ const authUser = computed(() => {
 
 const isGuestUser = computed(() => !!(authUser.value as { is_guest?: boolean } | null)?.is_guest);
 
+const skipRaffleAvailabilityProbe = computed(
+  () => !authUser.value || isGuestUser.value,
+);
+
 /** True when user has Pro-level access; null while auth user is not loaded (avoid flashing PRO badges). */
 const isProOrAdminUser = computed((): boolean | null => {
   const u = authUser.value;
@@ -747,7 +751,7 @@ const showMobileMenu = ref(false);
 
 const storeIdForRaffle = computed(() => props.store?.id);
 const { openGuestUpgradeModal } = useGuestUpgradeModal();
-const { available: raffleAvailability } = useRaffleAvailability(storeIdForRaffle);
+const { available: raffleAvailability } = useRaffleAvailability(storeIdForRaffle, skipRaffleAvailabilityProbe);
 
 const raffleAvailable = computed(() => raffleAvailability.value === true);
 const showRaffleNav = computed(() => raffleAvailable.value || isGuestUser.value);
