@@ -253,7 +253,7 @@
               type="button"
               class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-left text-gray-400 opacity-85 hover:opacity-100 border border-amber-500/20 cursor-pointer"
               :title="t('stores.guest_nav_locked_hint')"
-              @click="goAccountUpgrade(); showMobileMenu = false"
+              @click="openGuestUpgradeForFeature('stores.ln_address')"
             >
               <span class="flex items-center min-w-0">
                 <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -295,7 +295,7 @@
               data-onboarding="pos-1"
               class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-left text-gray-400 opacity-85 hover:opacity-100 border border-amber-500/20 cursor-pointer"
               :title="t('stores.guest_pos_limit_hint')"
-              @click="goAccountUpgrade(); showMobileMenu = false"
+              @click="openGuestUpgradeForFeature('stores.point_of_sale')"
             >
               <span class="flex items-center min-w-0">
                 <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -357,7 +357,7 @@
               type="button"
               class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-left text-gray-400 opacity-85 hover:opacity-100 border border-amber-500/20 cursor-pointer"
               :title="t('stores.guest_nav_locked_hint')"
-              @click="goAccountUpgrade(); showMobileMenu = false"
+              @click="openGuestUpgradeForFeature('stores.crowdfund')"
             >
               <span class="flex items-center min-w-0">
                 <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -418,7 +418,7 @@
               type="button"
               class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-left text-gray-400 opacity-85 hover:opacity-100 border border-amber-500/20 cursor-pointer"
               :title="t('stores.guest_nav_locked_hint')"
-              @click="goAccountUpgrade(); showMobileMenu = false"
+              @click="openGuestUpgradeForFeature('stores.pay_button')"
             >
               <span class="flex items-center min-w-0">
                 <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -448,14 +448,14 @@
             </component>
           </div>
 
-          <!-- Raffles (BTCPay plugin; shown after availability probe) -->
-          <div v-if="raffleAvailable" class="mb-2">
+          <!-- Raffles (BTCPay plugin; shown after availability probe, always for guests) -->
+          <div v-if="showRaffleNav" class="mb-2">
             <button
               v-if="isGuestUser"
               type="button"
               class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-left text-gray-400 opacity-85 hover:opacity-100 border border-amber-500/20 cursor-pointer"
               :title="t('stores.guest_nav_locked_hint')"
-              @click="goAccountUpgrade(); showMobileMenu = false"
+              @click="openGuestUpgradeForFeature('apps.raffles')"
             >
               <span class="flex items-center min-w-0">
                 <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -498,7 +498,7 @@
               type="button"
               class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-left text-gray-400 opacity-85 hover:opacity-100 border border-amber-500/20 cursor-pointer"
               :title="t('stores.guest_nav_locked_hint')"
-              @click="goAccountUpgrade(); showMobileMenu = false"
+              @click="openGuestUpgradeForFeature('apps.tickets')"
             >
               <span class="flex items-center min-w-0">
                 <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -539,7 +539,7 @@
               type="button"
               class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-left text-gray-400 opacity-85 hover:opacity-100 border border-amber-500/20 cursor-pointer"
               :title="t('stores.guest_nav_locked_hint')"
-              @click="goAccountUpgrade(); showMobileMenu = false"
+              @click="openGuestUpgradeForFeature('stores.eshop_integration')"
             >
               <span class="flex items-center min-w-0">
                 <svg class="w-5 h-5 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -580,7 +580,7 @@
               type="button"
               class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-left text-gray-400 opacity-85 hover:opacity-100 border border-amber-500/20 cursor-pointer"
               :title="t('stores.guest_nav_locked_hint')"
-              @click="goAccountUpgrade(); showMobileMenu = false"
+              @click="openGuestUpgradeForFeature('stores.stripe')"
             >
               <span class="flex items-center min-w-0">
                 <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -621,7 +621,7 @@
               type="button"
               class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-left text-gray-400 opacity-85 hover:opacity-100 border border-amber-500/20 cursor-pointer"
               :title="t('stores.guest_nav_locked_hint')"
-              @click="goAccountUpgrade(); showMobileMenu = false"
+              @click="openGuestUpgradeForFeature('stores.archived_apps')"
             >
               <span class="text-red-400/80">{{ archivedAppsCount }} {{ t('stores.archived') }}</span>
               <span class="text-[10px] uppercase tracking-wide text-amber-400/90 shrink-0">{{ t('stores.guest_nav_locked_short') }}</span>
@@ -679,6 +679,7 @@ import { useAccountLimits } from '../../composables/useAccountLimits';
 import { useAuthStore } from '../../store/auth';
 import { useOnboardingStore } from '../../store/onboarding';
 import { useRaffleAvailability } from '../../composables/useRaffleAvailability';
+import { useGuestUpgradeModal } from '../../composables/useGuestUpgradeModal';
 import ProPlanBadge from './ProPlanBadge.vue';
 
 const { t } = useI18n();
@@ -745,9 +746,11 @@ const showStoreDropdown = ref(false);
 const showMobileMenu = ref(false);
 
 const storeIdForRaffle = computed(() => props.store?.id);
+const { openGuestUpgradeModal } = useGuestUpgradeModal();
 const { available: raffleAvailability } = useRaffleAvailability(storeIdForRaffle);
-const raffleAvailable = computed(() => raffleAvailability.value === true);
 
+const raffleAvailable = computed(() => raffleAvailability.value === true);
+const showRaffleNav = computed(() => raffleAvailable.value || isGuestUser.value);
 const allStores = computed(() => storesStore.stores);
 const activeStores = computed(() => allStores.value.filter((s: any) => !s.archived));
 const archivedStores = computed(() => allStores.value.filter((s: any) => s.archived));
@@ -878,21 +881,17 @@ function selectStore(storeId: string) {
   }
 }
 
-function goAccountUpgrade() {
+function openGuestUpgradeForFeature(labelKey: string) {
   showStoreDropdown.value = false;
   showMobileMenu.value = false;
-  if (isInertia) {
-    inertiaRouter.visit('/account');
-  } else if (vueRouter) {
-    vueRouter.push({ name: 'account' });
-  }
+  openGuestUpgradeModal(labelKey);
 }
 
 function createStore() {
   showStoreDropdown.value = false;
   showMobileMenu.value = false;
   if (isGuestUser.value && activeStores.value.length >= 1) {
-    goAccountUpgrade();
+    openGuestUpgradeForFeature('header.stores');
     return;
   }
   if (isInertia) {
@@ -923,7 +922,7 @@ const guestPosCreateLocked = computed(() => isGuestUser.value && guestActivePosC
 function handleSectionClick(section: string) {
   showMobileMenu.value = false;
   if (isGuestUser.value && section === 'reports') {
-    goAccountUpgrade();
+    openGuestUpgradeForFeature('stores.reports');
     return;
   }
   emit('show-section', section);
@@ -932,7 +931,7 @@ function handleSectionClick(section: string) {
 function handleReportsClick() {
   showMobileMenu.value = false;
   if (isGuestUser.value) {
-    goAccountUpgrade();
+    openGuestUpgradeForFeature('stores.reports');
     return;
   }
   emit('show-section', 'reports');

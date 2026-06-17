@@ -43,7 +43,7 @@
                 type="button"
                 class="inline-flex items-center px-4 py-2 border border-amber-500/30 text-sm font-medium rounded-xl text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 transition-colors"
                 :title="t('stores.guest_pos_limit_hint')"
-                @click="router.push({ name: 'account' })"
+                @click="openGuestUpgradeModal('stores.point_of_sale')"
               >
                 {{ t("stores.guest_nav_locked_short") }}
               </button>
@@ -153,7 +153,7 @@
                 type="button"
                 class="inline-flex items-center px-4 py-2 border border-amber-500/30 text-sm font-medium rounded-xl text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 transition-colors"
                 :title="t('stores.guest_pos_limit_hint')"
-                @click="router.push({ name: 'account' })"
+                @click="openGuestUpgradeModal('stores.point_of_sale')"
               >
                 {{ t("stores.guest_nav_locked_short") }}
               </button>
@@ -328,6 +328,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAppsStore } from "../../store/apps";
 import { useAuthStore } from "../../store/auth";
+import { useGuestUpgradeModal } from "../../composables/useGuestUpgradeModal";
 import StoreSidebar from "../../components/stores/StoreSidebar.vue";
 import AppScrollPane from "../../components/layout/AppScrollPane.vue";
 import ArchivedStoreBanner from "../../components/stores/ArchivedStoreBanner.vue";
@@ -339,6 +340,7 @@ const route = useRoute();
 const router = useRouter();
 const appsStore = useAppsStore();
 const authStore = useAuthStore();
+const { openGuestUpgradeModal } = useGuestUpgradeModal();
 
 const storeId = computed(() => {
   const id = route.params.id;
@@ -381,7 +383,7 @@ function onAppRowClick(app: { id: string; app_type?: string }) {
   const id = storeId.value;
   if (!id) return;
   if (isGuestUser.value && !isPointOfSaleAppType(app.app_type)) {
-    router.push({ name: "account" });
+    openGuestUpgradeModal("apps.title");
     return;
   }
   router.push(`/stores/${id}/apps/${app.id}`);
@@ -433,7 +435,8 @@ function handleShowSection(section: string) {
 
 async function ensureGuestNotOnArchivedApps() {
   if (isGuestUser.value && showArchived.value) {
-    await router.replace({ name: "account" });
+    openGuestUpgradeModal("stores.archived_apps");
+    await router.replace({ name: "stores-apps", params: { id: storeId.value } });
   }
 }
 

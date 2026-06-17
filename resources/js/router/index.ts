@@ -7,6 +7,9 @@ import { updatePageMeta } from '../composables/usePageMeta';
 import { ensureEvoluBoundToAccountSeed } from '../evolu/bootstrap';
 import { getStoredAccountMnemonic } from '../services/accountSeed';
 import { isInvoicingLocalFirst } from '../evolu/flags';
+import { useGuestUpgradeModal } from '../composables/useGuestUpgradeModal';
+
+const { openGuestUpgradeModal } = useGuestUpgradeModal();
 
 /** Guest sessions are PoS-oriented: block the SPA until wallet (Lightning or Cashu) is actually configured. */
 async function isGuestWalletReady(storeId: string): Promise<boolean> {
@@ -501,6 +504,24 @@ router.beforeEach(async (to, from, next) => {
                 return;
             }
         }
+    }
+
+    if (
+        authStore.user?.is_guest
+        && (to.path.startsWith('/invoicing') || to.name?.toString().startsWith('invoicing'))
+    ) {
+        openGuestUpgradeModal('header.invoicing');
+        if (from.name) {
+            next(false);
+        } else {
+            const primaryStoreId = await resolveGuestPrimaryStoreId();
+            if (primaryStoreId) {
+                next({ name: 'stores-show', params: { id: primaryStoreId } });
+            } else {
+                next({ name: 'home' });
+            }
+        }
+        return;
     }
 
     if (to.meta.requiresAuth && !authStore.isAuthenticated) {

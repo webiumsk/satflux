@@ -1,0 +1,80 @@
+import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
+import { useAuthStore } from '../store/auth';
+import { useFlashStore } from '../store/flash';
+import api from '../services/api';
+
+export function useGuestUpgradeSubmit() {
+  const { t } = useI18n();
+  const router = useRouter();
+  const authStore = useAuthStore();
+  const flashStore = useFlashStore();
+
+  const loading = ref(false);
+  const privacyConsent = ref(false);
+  const termsAccepted = ref(false);
+  const form = ref({
+    email: '',
+    password: '',
+    password_confirmation: '',
+  });
+
+  const canSubmit = computed(
+    () => privacyConsent.value && termsAccepted.value,
+  );
+
+  function resetSensitiveFields() {
+    form.value.password = '';
+    form.value.password_confirmation = '';
+    privacyConsent.value = false;
+    termsAccepted.value = false;
+  }
+
+  function resetForm() {
+    form.value = { email: '', password: '', password_confirmation: '' };
+    resetSensitiveFields();
+  }
+
+  async function submit(): Promise<boolean> {
+    if (!canSubmit.value) return false;
+    loading.value = true;
+    try {
+      const response = await api.put('/user/guest/upgrade', {
+        method: 'email',
+        email: form.value.email,
+        password: form.value.password,
+        password_confirmation: form.value.password_confirmation,
+        privacy_consent: privacyConsent.value,
+        terms_accepted: termsAccepted.value,
+      });
+      if (response?.data?.user) {
+        authStore.user = response.data.user;
+      } else {
+        await authStore.fetchUser();
+      }
+      resetSensitiveFields();
+      await router.push({ name: 'account-check-email' });
+      return true;
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      flashStore.error(
+        err?.response?.data?.message || t('account.guest_upgrade_failed'),
+      );
+      return false;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  return {
+    loading,
+    privacyConsent,
+    termsAccepted,
+    form,
+    canSubmit,
+    resetForm,
+    resetSensitiveFields,
+    submit,
+  };
+}

@@ -22,6 +22,7 @@
       </div>
     </main>
     <OnboardingTour />
+    <GuestUpgradeModal />
   </div>
 </template>
 
@@ -30,6 +31,7 @@ import AppHeader from './AppHeader.vue';
 import AppFooter from './AppFooter.vue';
 import AppMobileBottomNav from './AppMobileBottomNav.vue';
 import OnboardingTour from '../OnboardingTour.vue';
+import GuestUpgradeModal from '../account/GuestUpgradeModal.vue';
 import { useAppLayoutScroll } from '../../composables/useAppLayoutScroll';
 
 const { layoutScrollMobile, isInvoicingRoute } = useAppLayoutScroll();

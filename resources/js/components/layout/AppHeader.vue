@@ -85,6 +85,7 @@
                   ? 'text-white bg-indigo-600/20 text-indigo-300'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               "
+              @click="onInvoicingNavClick"
             >
               <svg
                 class="w-4 h-4 shrink-0"
@@ -474,7 +475,7 @@
             :is="isInertia ? Link : RouterLink"
             :href="isInertia ? '/invoicing' : undefined"
             :to="!isInertia ? '/invoicing' : undefined"
-            @click="closeMobileMenu"
+            @click="onInvoicingNavClick"
             class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors"
             :class="
               isActive('/invoicing')
@@ -681,6 +682,7 @@ import { Link, router as inertiaRouter, usePage } from "@inertiajs/vue3";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
 import { useBusinessInvoicing } from "../../composables/useBusinessInvoicing";
+import { useGuestUpgradeModal } from "../../composables/useGuestUpgradeModal";
 import LanguageSwitcher from "../LanguageSwitcher.vue";
 import api from "../../services/api";
 import { getEcho } from "../../echo";
@@ -693,6 +695,7 @@ const page = isInertia ? usePage() : null;
 
 const authStore = useAuthStore();
 const { canUse: canBusinessInvoicing } = useBusinessInvoicing();
+const { openGuestUpgradeModal } = useGuestUpgradeModal();
 const showUserMenu = ref(false);
 const showMobileMenu = ref(false);
 const supportCount = ref(0);
@@ -730,6 +733,13 @@ const closeUserMenu = () => {
 const closeMobileMenu = () => {
   showMobileMenu.value = false;
 };
+
+function onInvoicingNavClick(event: MouseEvent) {
+  closeMobileMenu();
+  if (!authStore.user?.is_guest) return;
+  event.preventDefault();
+  openGuestUpgradeModal("header.invoicing");
+}
 
 const handleUserButtonClick = () => {
   // Desktop only: toggle dropdown
