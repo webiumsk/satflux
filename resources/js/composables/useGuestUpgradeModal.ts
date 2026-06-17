@@ -1,4 +1,4 @@
-import { ref, readonly } from 'vue';
+import { ref } from 'vue';
 
 const open = ref(false);
 const featureLabelKey = ref<string | null>(null);
@@ -15,8 +15,8 @@ export function useGuestUpgradeModal() {
   }
 
   return {
-    open: readonly(open),
-    featureLabelKey: readonly(featureLabelKey),
+    open,
+    featureLabelKey,
     openGuestUpgradeModal,
     closeGuestUpgradeModal,
   };
