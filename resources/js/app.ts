@@ -5,13 +5,14 @@ import '@fontsource/outfit/700.css';
 import '../css/app.css';
 import './styles/invoicing-theme.css';
 
-import { createApp, h } from 'vue';
+import { createApp, h, Fragment } from 'vue';
 import { createPinia } from 'pinia';
 import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import router from './router';
 import i18n, { initLocaleFromBackend, preloadActiveLocale } from './i18n';
 import App from './App.vue';
+import GuestUpgradeModal from './components/account/GuestUpgradeModal.vue';
 
 const el = document.getElementById('app');
 const isInertia = el?.hasAttribute('data-page');
@@ -33,7 +34,12 @@ function mountInertia(): void {
                 import.meta.glob('./pages/**/*.vue'),
             ),
         setup({ el: mountEl, App: InertiaApp, props, plugin }) {
-            const app = createApp({ render: () => h(InertiaApp, props) });
+            const app = createApp({
+                render: () => h(Fragment, null, [
+                    h(InertiaApp, props),
+                    h(GuestUpgradeModal),
+                ]),
+            });
             app.use(plugin);
             app.use(createPinia());
             app.use(i18n);

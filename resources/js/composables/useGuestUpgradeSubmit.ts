@@ -1,13 +1,15 @@
 import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../store/auth';
 import { useFlashStore } from '../store/flash';
 import api from '../services/api';
 
+function redirectToEmailVerification(): void {
+  window.location.assign('/account/check-email');
+}
+
 export function useGuestUpgradeSubmit() {
   const { t } = useI18n();
-  const router = useRouter();
   const authStore = useAuthStore();
   const flashStore = useFlashStore();
 
@@ -54,7 +56,7 @@ export function useGuestUpgradeSubmit() {
         await authStore.fetchUser();
       }
       resetSensitiveFields();
-      await router.push({ name: 'account-check-email' });
+      redirectToEmailVerification();
       return true;
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
