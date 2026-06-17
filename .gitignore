@@ -26,6 +26,9 @@ yarn-error.log
 /.vscode
 /.claude
 
+# graphify knowledge graph (generated locally; rebuild with `graphify .` or `graphify update .`)
+/graphify-out/
+
 # Log files (these change frequently and should not be committed)
 /storage/logs/*.log
 !/storage/logs/.gitkeep

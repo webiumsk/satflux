@@ -1,0 +1,40 @@
+---
+description: graphify knowledge graph - use before codebase exploration
+alwaysApply: true
+---
+
+# graphify (satflux)
+
+Knowledge graph at `graphify-out/` (local only, gitignored). Build once: `graphify .` from repo root. Incremental after code edits: `graphify update .` (AST-only, no LLM cost).
+
+## Mandatory workflow
+
+Before **Read**, **Grep**, **Glob**, or exploratory **Bash** on this codebase:
+
+1. Run one graphify command from repo root (cwd must contain `graphify-out/graph.json`):
+   - `graphify query "<question>"` - architecture, data flow, "how does X work?", "what calls Y?"
+   - `graphify path "<symbol A>" "<symbol B>"` - shortest dependency path
+   - `graphify explain "<concept>"` - neighborhood of a node
+2. Use graph output to pick **which files** to open - then Read/Grep only those paths.
+3. When spawning subagents for exploration, include this rule in the prompt and require `graphify query` first.
+
+Skip graphify only when:
+- `graphify-out/graph.json` is missing (tell user to run `graphify .`)
+- You already ran graphify this turn for the same question
+- Task is a single known file edit with no exploration (e.g. fix typo at given line)
+
+## satflux examples
+
+```
+graphify query "How does EnsureStoreOwnership enforce store isolation?"
+graphify path "TicketController" "BtcPayClient"
+graphify explain "BusinessDocumentController"
+graphify query "WooCommerce connect flow and store_integrations"
+```
+
+Broad orientation: skim `graphify-out/GRAPH_REPORT.md` (God Nodes, Surprising Connections) - not the full 1900 lines.
+
+## After you change code
+
+- PHP/TS/Vue edits: `graphify update .` before ending a substantive task (keeps AST edges current).
+- New docs or large refactors: full `graphify .` if cross-file INFERRED edges matter.

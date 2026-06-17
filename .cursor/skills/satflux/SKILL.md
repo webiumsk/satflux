@@ -14,6 +14,16 @@ description: >-
 
 For full command and file layout detail, read [CLAUDE.md](../../../CLAUDE.md) at the repo root.
 
+## Codebase map (graphify)
+
+This repo has a local graphify graph (`graphify-out/`, gitignored). **Before exploring** controllers, services, composables, or cross-module flows, run from repo root:
+
+- `graphify query "<question>"` - start here for architecture questions
+- `graphify path "<A>" "<B>"` - trace dependencies between symbols
+- `graphify explain "<name>"` - related nodes for one concept
+
+Then open only the files graphify surfaces. After code changes: `graphify update .`. See `.cursor/rules/graphify.mdc`.
+
 ## Commands
 
 | Area | Command |
