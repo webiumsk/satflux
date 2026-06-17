@@ -4,10 +4,10 @@ Enable Evolu-based invoicing (companies, contacts, documents, expenses in the br
 
 ## What changes
 
-| Layer | Flag | Effect |
-| ----- | ---- | ------ |
+| Layer                 | Flag                              | Effect                                                                                                          |
+| --------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | Frontend (build-time) | `VITE_INVOICING_LOCAL_FIRST=true` | SPA reads/writes invoicing via Evolu SQLite + E2EE relay; server invoicing CRUD APIs are bypassed for core data |
-| Backend (runtime) | `INVOICING_LOCAL_FIRST=true` | `Company::usesServerInvoicing()` returns false globally; WooCommerce inbox routing uses local-first paths |
+| Backend (runtime)     | `INVOICING_LOCAL_FIRST=true`      | `Company::usesServerInvoicing()` returns false globally; WooCommerce inbox routing uses local-first paths       |
 
 Both flags should be **on together** in production. Mismatch causes confusing behaviour (e.g. WooCommerce hooks still writing server rows while the UI shows Evolu).
 
@@ -33,11 +33,11 @@ Server rows are **not deleted** by the import. After verifying local data, users
 
 ### Migration API (Pro, authenticated)
 
-| Endpoint | Purpose |
-| -------- | ------- |
-| `GET /api/invoicing/migration/status` | Counts of server-side companies/contacts/documents/expenses and expense attachments |
-| `GET /api/invoicing/migration/export` | Full `InvoicingDataSnapshot` JSON for browser `restoreInvoicingSnapshot` (throttled 5/hour; attachments and branding off by default) |
-| `GET /api/invoicing/migration/export-attachments` | Phase 2: `expenseAttachment` rows with `contentBase64` when readable (max ~384 KB each; throttled 3/hour) |
+| Endpoint                                          | Purpose                                                                                                                              |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/invoicing/migration/status`             | Counts of server-side companies/contacts/documents/expenses and expense attachments                                                  |
+| `GET /api/invoicing/migration/export`             | Full `InvoicingDataSnapshot` JSON for browser `restoreInvoicingSnapshot` (throttled 5/hour; attachments and branding off by default) |
+| `GET /api/invoicing/migration/export-attachments` | Phase 2: `expenseAttachment` rows with `contentBase64` when readable (max ~384 KB each; throttled 3/hour)                            |
 
 CLI for support: `php artisan invoicing:export-for-evolu {email}` writes JSON to `storage/app/private/`.
 
@@ -47,7 +47,7 @@ CLI for support: `php artisan invoicing:export-for-evolu {email}` writes JSON to
 - **Free** (verified email) - can buy Pro.
 - **Pro** - unlocks Invoicing UI and ephemeral server bridges (PDF render, ISDOC extract, e-faktura, BTCPay checkout, bulk PDF import).
 
-Local-first data stays in the browser; Pro unlocks the module and bridges.
+Local-first data stays in the browser; PRO unlocks the module and bridges.
 
 ### 3. Relay and backup
 
@@ -57,7 +57,7 @@ Local-first data stays in the browser; Pro unlocks the module and bridges.
 
 ### 4. Still server-side (ephemeral bridge)
 
-These need Pro and hit Laravel briefly; data is not stored server-side long-term:
+These need PRO and hit Laravel briefly; data is not stored server-side long-term:
 
 - PDF generation and e-mail send for invoices
 - ISDOC field extraction from expense PDFs
@@ -126,13 +126,13 @@ Server PostgreSQL invoicing data from before rollout is **unchanged** (not delet
 
 ## Troubleshooting
 
-| Symptom | Likely cause | Fix |
-| ------- | ------------ | --- |
-| Invoicing still uses server API | Old JS bundle | Redeploy with `VITE_INVOICING_LOCAL_FIRST=true` and hard-refresh browser |
-| Empty company list after login | Relay sync not finished or wrong phrase | Wait on index; confirm same recovery phrase; see multi-device runbook |
-| Duplicate companies | Created company before sync completed | Delete duplicate in Company settings - Danger zone |
-| WooCommerce creates server documents | `INVOICING_LOCAL_FIRST` false on server | Set server flag + `optimize:clear` |
-| Flags mismatch warning during deploy | Only one of the paired flags set | Align both flags in env file |
+| Symptom                              | Likely cause                            | Fix                                                                      |
+| ------------------------------------ | --------------------------------------- | ------------------------------------------------------------------------ |
+| Invoicing still uses server API      | Old JS bundle                           | Redeploy with `VITE_INVOICING_LOCAL_FIRST=true` and hard-refresh browser |
+| Empty company list after login       | Relay sync not finished or wrong phrase | Wait on index; confirm same recovery phrase; see multi-device runbook    |
+| Duplicate companies                  | Created company before sync completed   | Delete duplicate in Company settings - Danger zone                       |
+| WooCommerce creates server documents | `INVOICING_LOCAL_FIRST` false on server | Set server flag + `optimize:clear`                                       |
+| Flags mismatch warning during deploy | Only one of the paired flags set        | Align both flags in env file                                             |
 
 ## Related docs
 

@@ -28,7 +28,7 @@ Route::get('/export-files/{path}', function (Request $request, string $path) {
     return (new ServeFile($disk, is_array($config) ? $config : [], app()->isProduction()))($request, $path);
 })->where('path', '.*');
 
-// Must use the "public" disk (storage/app/public). "local" points at app/private — wrong for /storage/products/… uploads.
+// Must use the "public" disk (storage/app/public). "local" points at app/private - wrong for /storage/products/… uploads.
 Route::get('/storage/{path}', function (Request $request, string $path) {
     $disk = 'public';
     $config = config("filesystems.disks.{$disk}");
@@ -41,22 +41,22 @@ Route::get('/og-image.webp', [OgImageController::class, 'generate']);
 
 // SEO: robots.txt with dynamic sitemap URL
 Route::get('/robots.txt', function () {
-    $sitemapUrl = rtrim(config('app.url'), '/').'/sitemap.xml';
+    $sitemapUrl = rtrim(config('app.url'), '/') . '/sitemap.xml';
     $content = "User-agent: *\n"
-        ."Allow: /\n"
-        ."Allow: /documentation\n"
-        ."Allow: /documentation/*\n"
-        ."Allow: /faq\n"
-        ."Allow: /support\n"
-        ."Allow: /login\n"
-        ."Allow: /register\n"
-        ."Allow: /password\n"
-        ."Disallow: /stores\n"
-        ."Disallow: /account\n"
-        ."Disallow: /admin\n"
-        ."Disallow: /dashboard\n"
-        ."Disallow: /api/\n\n"
-        ."Sitemap: {$sitemapUrl}\n";
+        . "Allow: /\n"
+        . "Allow: /documentation\n"
+        . "Allow: /documentation/*\n"
+        . "Allow: /faq\n"
+        . "Allow: /support\n"
+        . "Allow: /login\n"
+        . "Allow: /register\n"
+        . "Allow: /password\n"
+        . "Disallow: /stores\n"
+        . "Disallow: /account\n"
+        . "Disallow: /admin\n"
+        . "Disallow: /dashboard\n"
+        . "Disallow: /api/\n\n"
+        . "Sitemap: {$sitemapUrl}\n";
 
     return response($content, 200, ['Content-Type' => 'text/plain']);
 });
@@ -80,7 +80,7 @@ Route::middleware(['throttle:password-reset'])->group(function () {
 // Named route for password reset email link (Laravel ResetPassword notification calls route('password.reset'))
 Route::get('/reset-password/{token}', function (Request $request, string $token) {
     $email = $request->query('email', '');
-    $url = rtrim(config('app.url'), '/').'/password/reset?token='.urlencode($token).'&email='.urlencode($email);
+    $url = rtrim(config('app.url'), '/') . '/password/reset?token=' . urlencode($token) . '&email=' . urlencode($email);
 
     return redirect($url);
 })->name('password.reset');
@@ -135,7 +135,7 @@ Route::middleware(['auth'])->group(function () {
 // Use APP_URL + request URI so the redirect has the correct host/port (e.g. localhost:8080).
 Route::get('/{any}', function (Request $request) {
     if ($request->header('X-Inertia')) {
-        $location = rtrim(config('app.url', $request->getSchemeAndHttpHost()), '/').'/'.ltrim($request->getRequestUri(), '/');
+        $location = rtrim(config('app.url', $request->getSchemeAndHttpHost()), '/') . '/' . ltrim($request->getRequestUri(), '/');
 
         return response('', 409)->header('X-Inertia-Location', $location);
     }

@@ -17,7 +17,8 @@ class DashboardController extends Controller
     public function __construct(
         protected StoreService $storeService,
         protected StoreInvoiceStatsService $storeInvoiceStatsService
-    ) {}
+    ) {
+    }
 
     /**
      * Get dashboard data.
@@ -85,9 +86,9 @@ class DashboardController extends Controller
         if ($request->boolean('refresh')) {
             Cache::forget('btcpay:http_ping');
         }
-        $btcpayPing = Cache::remember('btcpay:http_ping', 30, fn () => $this->measureBtcpayPing());
+        $btcpayPing = Cache::remember('btcpay:http_ping', 30, fn() => $this->measureBtcpayPing());
 
-        $cacheKey = 'dashboard:user:'.$user->id.':total_revenue_v2';
+        $cacheKey = 'dashboard:user:' . $user->id . ':total_revenue_v2';
         if ($request->boolean('refresh')) {
             Cache::forget($cacheKey);
             /** @var Store $store */
@@ -97,7 +98,7 @@ class DashboardController extends Controller
         }
         $revenueData = Cache::remember($cacheKey, 3600, function () use ($storeIds) {
             $byCurrency = [];
-            if (! empty($storeIds)) {
+            if (!empty($storeIds)) {
                 $orders = PosOrder::whereIn('store_id', $storeIds)
                     ->where('status', PosOrder::STATUS_PAID)
                     ->get(['amount', 'currency', 'store_id', 'btcpay_invoice_id', 'paid_method']);
@@ -144,11 +145,11 @@ class DashboardController extends Controller
         });
 
         $totalRevenueByCurrency = $revenueData;
-        $availableCurrencies = array_keys(array_filter($totalRevenueByCurrency, fn ($v) => $v > 0));
+        $availableCurrencies = array_keys(array_filter($totalRevenueByCurrency, fn($v) => $v > 0));
         if ($availableCurrencies === []) {
             $availableCurrencies = ['sats'];
         }
-        if (! in_array('sats', $availableCurrencies, true)) {
+        if (!in_array('sats', $availableCurrencies, true)) {
             $availableCurrencies = array_merge(['sats'], $availableCurrencies);
         }
 
@@ -175,7 +176,7 @@ class DashboardController extends Controller
             return ['http_status' => null, 'state' => 'unknown'];
         }
 
-        $url = $base.'/api/v1/users/me';
+        $url = $base . '/api/v1/users/me';
 
         try {
             $response = Http::timeout(5)
@@ -211,7 +212,7 @@ class DashboardController extends Controller
     /**
      * Dashboard stats (sales by store and by payment method).
      * Returns per_store with pos (PoS orders) and invoices by_source (BTCPay: LN, Pay Button, Tickets, etc.).
-     * Top-level sales_7d/sales_30d = combined all stores, all methods. Pro + admin/support only.
+     * Top-level sales_7d/sales_30d = combined all stores, all methods. PRO + admin/support only.
      */
     public function stats(Request $request)
     {
@@ -227,7 +228,7 @@ class DashboardController extends Controller
                 $this->storeInvoiceStatsService->forgetStoreCaches($store);
             }
         }
-        $stores = $storesCollection->map(fn ($s) => ['id' => $s->id, 'name' => $s->name])->values()->all();
+        $stores = $storesCollection->map(fn($s) => ['id' => $s->id, 'name' => $s->name])->values()->all();
 
         $plan = $user->currentSubscriptionPlan();
         $planCode = $plan ? strtolower($plan->code ?? '') : 'free';

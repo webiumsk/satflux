@@ -64,7 +64,7 @@
             {{
               (cashuForm.trusted_mint_urls || "").trim()
                 ? t("stores.cashu_summary_configured")
-                : "—"
+                : "-"
             }}
           </p>
         </div>
@@ -74,11 +74,7 @@
             >{{ t("stores.cashu_max_melt_fee_sats_label") }}</span
           >
           <p class="text-gray-200">
-            {{
-              cashuMaxMeltSatsDisplay === ""
-                ? "—"
-                : cashuMaxMeltSatsDisplay
-            }}
+            {{ cashuMaxMeltSatsDisplay === "" ? "-" : cashuMaxMeltSatsDisplay }}
           </p>
         </div>
         <div>
@@ -89,7 +85,7 @@
           <p class="text-gray-200">
             {{
               cashuMaxMeltPercentDisplay === ""
-                ? "—"
+                ? "-"
                 : cashuMaxMeltPercentDisplay
             }}
           </p>
@@ -389,7 +385,9 @@
             class="block w-full rounded-xl border border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-3 font-mono"
             :placeholder="t('stores.cashu_trusted_mint_urls_placeholder')"
           />
-          <p class="mt-2 text-sm text-gray-500 leading-relaxed whitespace-pre-line">
+          <p
+            class="mt-2 text-sm text-gray-500 leading-relaxed whitespace-pre-line"
+          >
             {{ t("stores.cashu_trusted_mint_urls_hint") }}
           </p>
           <p
@@ -2139,7 +2137,8 @@ async function fetchCashuSettings() {
     cashuOriginal.mint_url = cashuForm.mint_url;
     cashuOriginal.lightning_address = cashuForm.lightning_address;
     cashuOriginal.trusted_mint_urls = cashuForm.trusted_mint_urls;
-    cashuOriginal.max_melt_fee_reserve_sats = cashuForm.max_melt_fee_reserve_sats;
+    cashuOriginal.max_melt_fee_reserve_sats =
+      cashuForm.max_melt_fee_reserve_sats;
     cashuOriginal.max_melt_fee_reserve_percent_of_minted =
       cashuForm.max_melt_fee_reserve_percent_of_minted;
 
@@ -2211,7 +2210,8 @@ async function handleSaveCashu() {
     cashuOriginal.mint_url = cashuForm.mint_url;
     cashuOriginal.lightning_address = cashuForm.lightning_address;
     cashuOriginal.trusted_mint_urls = cashuForm.trusted_mint_urls;
-    cashuOriginal.max_melt_fee_reserve_sats = cashuForm.max_melt_fee_reserve_sats;
+    cashuOriginal.max_melt_fee_reserve_sats =
+      cashuForm.max_melt_fee_reserve_sats;
     cashuOriginal.max_melt_fee_reserve_percent_of_minted =
       cashuForm.max_melt_fee_reserve_percent_of_minted;
 

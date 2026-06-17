@@ -6,19 +6,33 @@
     aria-modal="true"
     @click.self="$emit('close')"
   >
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
-      <div class="px-5 py-3 bg-slate-800 text-white flex items-center justify-between shrink-0">
-        <h2 class="text-lg font-semibold">{{ t('invoicing.stock_import_title') }}</h2>
-        <button type="button" class="text-white/80 hover:text-white text-2xl leading-none" @click="$emit('close')">
+    <div
+      class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden"
+    >
+      <div
+        class="px-5 py-3 bg-slate-800 text-white flex items-center justify-between shrink-0"
+      >
+        <h2 class="text-lg font-semibold">
+          {{ t("invoicing.stock_import_title") }}
+        </h2>
+        <button
+          type="button"
+          class="text-white/80 hover:text-white text-2xl leading-none"
+          @click="$emit('close')"
+        >
           ×
         </button>
       </div>
 
       <div class="p-5 space-y-4 overflow-y-auto">
         <p class="text-sm text-gray-700">
-          {{ t('invoicing.stock_import_intro') }}
-          <button type="button" class="text-indigo-600 hover:underline" @click="downloadExample">
-            {{ t('invoicing.stock_import_example_link') }}
+          {{ t("invoicing.stock_import_intro") }}
+          <button
+            type="button"
+            class="text-indigo-600 hover:underline"
+            @click="downloadExample"
+          >
+            {{ t("invoicing.stock_import_example_link") }}
           </button>
         </p>
 
@@ -35,7 +49,11 @@
           @drop.prevent="onDrop"
         >
           <label class="invoicing-btn-primary cursor-pointer">
-            {{ loadingPreview ? t('common.loading') : t('invoicing.stock_import_drop') }}
+            {{
+              loadingPreview
+                ? t("common.loading")
+                : t("invoicing.stock_import_drop")
+            }}
             <input
               ref="fileInput"
               type="file"
@@ -45,15 +63,26 @@
               @change="onFileChange"
             />
           </label>
-          <p v-if="selectedFile" class="mt-3 text-xs text-gray-600 truncate max-w-full" :title="selectedFile.name">
+          <p
+            v-if="selectedFile"
+            class="mt-3 text-xs text-gray-600 truncate max-w-full"
+            :title="selectedFile.name"
+          >
             {{ selectedFile.name }}
           </p>
         </div>
 
-        <div v-if="headers.length" class="space-y-3 rounded-lg border border-gray-200 p-4">
+        <div
+          v-if="headers.length"
+          class="space-y-3 rounded-lg border border-gray-200 p-4"
+        >
           <div>
-            <h3 class="font-semibold text-gray-800">{{ t('invoicing.stock_import_mapping_title') }}</h3>
-            <p class="text-sm text-gray-600 mt-1">{{ t('invoicing.stock_import_mapping_hint') }}</p>
+            <h3 class="font-semibold text-gray-800">
+              {{ t("invoicing.stock_import_mapping_title") }}
+            </h3>
+            <p class="text-sm text-gray-600 mt-1">
+              {{ t("invoicing.stock_import_mapping_hint") }}
+            </p>
           </div>
 
           <div class="space-y-2 max-h-[320px] overflow-auto pr-1">
@@ -67,49 +96,75 @@
                 <span v-if="isRequired(field)" class="text-red-500">*</span>
               </span>
               <select v-model="mapping[field]" class="invoicing-sf-input">
-                <option :value="null">—</option>
-                <option v-for="(header, idx) in headers" :key="idx" :value="idx">
-                  {{ header || t('invoicing.import_column', { n: idx + 1 }) }}
+                <option :value="null">-</option>
+                <option
+                  v-for="(header, idx) in headers"
+                  :key="idx"
+                  :value="idx"
+                >
+                  {{ header || t("invoicing.import_column", { n: idx + 1 }) }}
                 </option>
               </select>
             </div>
           </div>
 
           <p v-if="rowCount" class="text-xs text-gray-500">
-            {{ t('invoicing.stock_import_row_count', { count: rowCount }) }}
+            {{ t("invoicing.stock_import_row_count", { count: rowCount }) }}
           </p>
         </div>
 
         <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
 
-        <div v-if="result" class="text-sm space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+        <div
+          v-if="result"
+          class="text-sm space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3"
+        >
           <p class="text-green-700 font-medium">
             {{
-              t('invoicing.stock_import_result', {
+              t("invoicing.stock_import_result", {
                 imported: result.imported,
                 updated: result.updated,
                 skipped: result.skipped,
               })
             }}
           </p>
-          <ul v-if="result.errors.length" class="text-amber-800 space-y-1 max-h-32 overflow-auto">
+          <ul
+            v-if="result.errors.length"
+            class="text-amber-800 space-y-1 max-h-32 overflow-auto"
+          >
             <li v-for="(err, idx) in result.errors" :key="idx">
-              {{ t('invoicing.stock_import_row_error', { row: err.row, message: err.message }) }}
+              {{
+                t("invoicing.stock_import_row_error", {
+                  row: err.row,
+                  message: err.message,
+                })
+              }}
             </li>
           </ul>
         </div>
 
         <div class="flex flex-wrap justify-end gap-3 pt-2">
-          <button type="button" class="invoicing-btn-secondary" :disabled="importing" @click="$emit('close')">
-            {{ result ? t('common.close') : t('common.cancel') }}
+          <button
+            type="button"
+            class="invoicing-btn-secondary"
+            :disabled="importing"
+            @click="$emit('close')"
+          >
+            {{ result ? t("common.close") : t("common.cancel") }}
           </button>
           <button
             type="button"
             class="invoicing-btn-primary"
-            :disabled="!selectedFile || importing || loadingPreview || !mappingReady"
+            :disabled="
+              !selectedFile || importing || loadingPreview || !mappingReady
+            "
             @click="submitImport"
           >
-            {{ importing ? t('common.loading') : t('invoicing.stock_import_submit') }}
+            {{
+              importing
+                ? t("common.loading")
+                : t("invoicing.stock_import_submit")
+            }}
           </button>
         </div>
       </div>
@@ -118,15 +173,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { computed, reactive, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import {
   REQUIRED_STOCK_IMPORT_FIELDS,
   STOCK_IMPORT_FIELD_KEYS,
   type StockImportFieldKey,
   type StockImportMapping,
-} from '../../composables/useStockImportFields';
-import api from '../../services/api';
+} from "../../composables/useStockImportFields";
+import api from "../../services/api";
 
 const props = defineProps<{
   open: boolean;
@@ -141,12 +196,12 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
-const ACCEPTED_EXTENSIONS = ['.xlsx', '.xls', '.csv'];
+const ACCEPTED_EXTENSIONS = [".xlsx", ".xls", ".csv"];
 const ACCEPTED_MIME_TYPES = new Set([
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-excel',
-  'text/csv',
-  'text/plain',
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "text/csv",
+  "text/plain",
 ]);
 
 const dragOver = ref(false);
@@ -156,7 +211,7 @@ const mapping = reactive<StockImportMapping>({});
 const rowCount = ref(0);
 const loadingPreview = ref(false);
 const importing = ref(false);
-const error = ref('');
+const error = ref("");
 const result = ref<{
   imported: number;
   updated: number;
@@ -166,7 +221,9 @@ const result = ref<{
 const fileInput = ref<HTMLInputElement | null>(null);
 
 const mappingReady = computed(() =>
-  REQUIRED_STOCK_IMPORT_FIELDS.every((field) => mapping[field] !== null && mapping[field] !== undefined)
+  REQUIRED_STOCK_IMPORT_FIELDS.every(
+    (field) => mapping[field] !== null && mapping[field] !== undefined,
+  ),
 );
 
 watch(
@@ -175,7 +232,7 @@ watch(
     if (isOpen) {
       resetState();
     }
-  }
+  },
 );
 
 function clearPreview() {
@@ -191,10 +248,10 @@ function resetState() {
   clearPreview();
   loadingPreview.value = false;
   importing.value = false;
-  error.value = '';
+  error.value = "";
   result.value = null;
   dragOver.value = false;
-  if (fileInput.value) fileInput.value.value = '';
+  if (fileInput.value) fileInput.value.value = "";
 }
 
 function isRequired(field: StockImportFieldKey) {
@@ -208,7 +265,7 @@ function onDragLeave() {
 function isAcceptedImportFile(file: File): boolean {
   const name = file.name.toLowerCase();
   const byExtension = ACCEPTED_EXTENSIONS.some((ext) => name.endsWith(ext));
-  const byMime = file.type === '' || ACCEPTED_MIME_TYPES.has(file.type);
+  const byMime = file.type === "" || ACCEPTED_MIME_TYPES.has(file.type);
 
   return byExtension && byMime;
 }
@@ -217,25 +274,25 @@ function pickFile(file: File | undefined) {
   if (!file) return;
 
   if (file.size > MAX_FILE_BYTES) {
-    error.value = t('invoicing.stock_import_file_too_large');
+    error.value = t("invoicing.stock_import_file_too_large");
     selectedFile.value = null;
     result.value = null;
     clearPreview();
-    if (fileInput.value) fileInput.value.value = '';
+    if (fileInput.value) fileInput.value.value = "";
     return;
   }
 
   if (!isAcceptedImportFile(file)) {
-    error.value = t('invoicing.stock_import_file_invalid');
+    error.value = t("invoicing.stock_import_file_invalid");
     selectedFile.value = null;
     result.value = null;
     clearPreview();
-    if (fileInput.value) fileInput.value.value = '';
+    if (fileInput.value) fileInput.value.value = "";
     return;
   }
 
   selectedFile.value = file;
-  error.value = '';
+  error.value = "";
   result.value = null;
   void loadPreview();
 }
@@ -252,19 +309,19 @@ function onFileChange(e: Event) {
 
 function buildFormData(includeMapping: boolean) {
   const form = new FormData();
-  if (selectedFile.value) form.append('file', selectedFile.value);
-  if (includeMapping) form.append('mapping', JSON.stringify(mapping));
+  if (selectedFile.value) form.append("file", selectedFile.value);
+  if (includeMapping) form.append("mapping", JSON.stringify(mapping));
   return form;
 }
 
 async function loadPreview() {
   if (!selectedFile.value) return;
   loadingPreview.value = true;
-  error.value = '';
+  error.value = "";
   try {
     const { data } = await api.post(
       `/invoicing/companies/${props.companyId}/stock-items/import/preview`,
-      buildFormData(false)
+      buildFormData(false),
     );
     headers.value = data.data.headers ?? [];
     rowCount.value = data.data.row_count ?? 0;
@@ -273,7 +330,7 @@ async function loadPreview() {
       mapping[field] = suggested[field] ?? null;
     }
   } catch (e: any) {
-    error.value = e?.response?.data?.message || t('errors.generic');
+    error.value = e?.response?.data?.message || t("errors.generic");
     headers.value = [];
     rowCount.value = 0;
   } finally {
@@ -283,35 +340,38 @@ async function loadPreview() {
 
 async function downloadExample() {
   try {
-    const { data } = await api.get(`/invoicing/companies/${props.companyId}/stock-items/import/example`, {
-      responseType: 'blob',
-    });
+    const { data } = await api.get(
+      `/invoicing/companies/${props.companyId}/stock-items/import/example`,
+      {
+        responseType: "blob",
+      },
+    );
     const url = URL.createObjectURL(data);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = 'stock_import_example.xlsx';
+    a.download = "stock_import_example.xlsx";
     a.click();
     URL.revokeObjectURL(url);
   } catch {
-    error.value = t('errors.generic');
+    error.value = t("errors.generic");
   }
 }
 
 async function submitImport() {
   if (!selectedFile.value || !mappingReady.value) return;
   importing.value = true;
-  error.value = '';
+  error.value = "";
   try {
     const { data } = await api.post(
       `/invoicing/companies/${props.companyId}/stock-items/import`,
-      buildFormData(true)
+      buildFormData(true),
     );
     result.value = data.data;
     if (data.data.imported > 0 || data.data.updated > 0) {
-      emit('imported');
+      emit("imported");
     }
   } catch (e: any) {
-    error.value = e?.response?.data?.message || t('errors.generic');
+    error.value = e?.response?.data?.message || t("errors.generic");
   } finally {
     importing.value = false;
   }

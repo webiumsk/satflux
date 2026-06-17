@@ -89,10 +89,10 @@
             </router-link>
             <a
               v-if="authStore.isAuthenticated"
-              href="/stores"
+              href="/dashboard"
               class="inline-flex items-center px-3.5 py-2 rounded-lg text-sm font-semibold text-indigo-100 bg-indigo-600/25 border border-indigo-500/45 hover:bg-indigo-600/40 hover:text-white hover:border-indigo-400/60 transition-all shadow-sm shadow-indigo-950/40"
             >
-              {{ t("header.my_stores") }}
+              {{ t("header.dashboard") }}
             </a>
           </nav>
         </div>
@@ -317,11 +317,11 @@
           </router-link>
           <a
             v-if="authStore.isAuthenticated"
-            href="/stores"
+            href="/dashboard"
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-xl text-base font-semibold text-indigo-100 bg-indigo-600/25 border border-indigo-500/45 hover:bg-indigo-600/40 hover:text-white transition-colors shadow-sm shadow-indigo-950/40"
           >
-            {{ t("header.my_stores") }}
+            {{ t("header.dashboard") }}
           </a>
 
           <!-- Auth Links (Logged Out) -->
@@ -341,23 +341,6 @@
               {{ t("header.start_for_free") }}
             </router-link>
           </div>
-
-          <!-- Logged In Links -->
-          <template v-else>
-            <div class="border-t border-gray-800 my-4"></div>
-            <a
-              href="/dashboard"
-              @click="closeMobileMenu"
-              class="flex items-center px-4 py-3 rounded-xl text-base font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
-            >
-              <div
-                class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold mr-3"
-              >
-                {{ userInitials }}
-              </div>
-              {{ t("header.dashboard") }}
-            </a>
-          </template>
         </nav>
       </div>
 

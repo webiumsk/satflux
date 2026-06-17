@@ -161,7 +161,9 @@
               </div>
 
               <!-- Description & Event Image -->
-              <div class="grid grid-cols-1 md:grid-cols-[1fr,auto] gap-6 md:items-start">
+              <div
+                class="grid grid-cols-1 md:grid-cols-[1fr,auto] gap-6 md:items-start"
+              >
                 <div class="min-w-0">
                   <label class="block text-sm font-medium text-gray-300 mb-1">{{
                     t("tickets.description")
@@ -417,11 +419,7 @@
                     <option value="">
                       {{ t("tickets.raffle_bundle_select_placeholder") }}
                     </option>
-                    <option
-                      v-for="r in openRaffles"
-                      :key="r.id"
-                      :value="r.id"
-                    >
+                    <option v-for="r in openRaffles" :key="r.id" :value="r.id">
                       {{ r.name }}
                     </option>
                   </select>
@@ -504,7 +502,8 @@
                     <p class="mt-1 text-xs text-gray-500">
                       {{ t("tickets.email_placeholders_hint_prefix") }}
                       <code class="text-gray-400" v-pre
-                        >{{Name}}, {{Email}}, {{Title}}, {{Location}}, {{Description}}, {{EventDate}}, {{Currency}}</code
+                        >{{ Name }}, {{ Email }}, {{ Title }}, {{ Location }},
+                        {{ Description }}, {{ EventDate }}, {{ Currency }}</code
                       >.
                       {{ t("tickets.email_placeholders_hint_suffix") }}
                     </p>
@@ -1622,7 +1621,9 @@
                                 :disabled="resendingTicketId === ticket.id"
                                 :title="t('tickets.resend_ticket_email')"
                                 class="p-1.5 rounded-lg text-indigo-400 hover:bg-indigo-500/10 disabled:opacity-50 transition-colors"
-                                @click="handleResendTicketEmail(event.id, ticket)"
+                                @click="
+                                  handleResendTicketEmail(event.id, ticket)
+                                "
                               >
                                 <svg
                                   v-if="resendingTicketId !== ticket.id"
@@ -1983,7 +1984,9 @@ async function onEventImageChange(e: Event) {
     } catch (err: any) {
       imagePreview.value = null;
       showError(
-        err?.response?.data?.message || err?.message || "Failed to upload image",
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to upload image",
       );
     } finally {
       uploadingImage.value = false;
@@ -2188,7 +2191,7 @@ async function handleSubmitEvent() {
             formData,
           );
         } catch {
-          // Logo upload failed but event was created — not a fatal error
+          // Logo upload failed but event was created - not a fatal error
         } finally {
           uploadingImage.value = false;
           pendingImageFile.value = null;
@@ -2252,8 +2255,9 @@ async function handleToggleEvent(event: TicketEvent) {
     const toggled = await ticketsStore.toggleEvent(props.store.id, event.id);
     // Determine new state from response; fall back to optimistic flip when plugin returns empty (204)
     const newState: "Active" | "Disabled" =
-      toggled?.eventState ?? (event.eventState === "Active" ? "Disabled" : "Active");
-    // Update in-place — do NOT call loadEvents() because most plugin builds omit
+      toggled?.eventState ??
+      (event.eventState === "Active" ? "Disabled" : "Active");
+    // Update in-place - do NOT call loadEvents() because most plugin builds omit
     // disabled events from the list endpoint even when includeInactive=true is sent,
     // which would cause the event to disappear right after being disabled.
     const idx = events.value.findIndex((e) => e.id === event.id);
@@ -2446,9 +2450,7 @@ async function handleResendTicketEmail(eventId: string, ticket: Ticket) {
     const message =
       e.response?.status === 422
         ? e.response?.data?.message || t("tickets.resend_smtp_not_configured")
-        : e.response?.data?.message ||
-          e.message ||
-          t("tickets.resend_failed");
+        : e.response?.data?.message || e.message || t("tickets.resend_failed");
     showError(message);
   } finally {
     resendingTicketId.value = null;

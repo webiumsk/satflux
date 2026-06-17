@@ -38,7 +38,10 @@
             >
               {{ t("account.recovery_phrase_enrolled") }}
             </p>
-            <div v-if="storedGuestMnemonic" class="flex flex-wrap items-center gap-2">
+            <div
+              v-if="storedGuestMnemonic"
+              class="flex flex-wrap items-center gap-2"
+            >
               <button
                 type="button"
                 class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
@@ -47,7 +50,10 @@
                 {{ t("account.recovery_phrase_reveal") }}
               </button>
             </div>
-            <p v-else-if="authStore.user?.guest_recovery_enrolled" class="text-sm text-amber-300">
+            <p
+              v-else-if="authStore.user?.guest_recovery_enrolled"
+              class="text-sm text-amber-300"
+            >
               {{ t("account.recovery_phrase_unavailable_here") }}
             </p>
             <button
@@ -99,10 +105,12 @@
                     {{ company.legal_name }}
                   </p>
                   <p class="text-xs text-gray-500">
-                    {{ t("account.server_legacy_companies_meta", {
-                      contacts: company.contacts_count ?? 0,
-                      documents: company.documents_count ?? 0,
-                    }) }}
+                    {{
+                      t("account.server_legacy_companies_meta", {
+                        contacts: company.contacts_count ?? 0,
+                        documents: company.documents_count ?? 0,
+                      })
+                    }}
                   </p>
                 </div>
                 <button
@@ -363,7 +371,10 @@
                   </h5>
                   <p class="text-gray-400 mt-2">{{ currentPlanDescription }}</p>
                   <div
-                    v-if="subscriptionBilling?.isTrial && subscriptionBilling?.trialEndsAt"
+                    v-if="
+                      subscriptionBilling?.isTrial &&
+                      subscriptionBilling?.trialEndsAt
+                    "
                     class="text-sm text-gray-400 mt-2"
                   >
                     {{
@@ -384,7 +395,9 @@
                   </div>
                 </div>
                 <div class="mt-4 md:mt-0 md:text-right">
-                  <div class="text-3xl font-bold text-white flex items-baseline justify-end flex-wrap gap-x-2">
+                  <div
+                    class="text-3xl font-bold text-white flex items-baseline justify-end flex-wrap gap-x-2"
+                  >
                     <span
                       v-if="isProPlan && proHasMonthlyDiscount(pricing.pro)"
                       class="text-lg font-normal text-gray-500 line-through"
@@ -443,7 +456,9 @@
                   :disabled="payingNow"
                   @click="handlePayNow"
                 >
-                  {{ payingNow ? t("account.processing") : t("account.pay_now") }}
+                  {{
+                    payingNow ? t("account.processing") : t("account.pay_now")
+                  }}
                 </button>
               </div>
 
@@ -527,7 +542,10 @@
                     </div>
                   </div>
                   <div
-                    v-if="subscriptionBilling && subscriptionBilling.planPriceSats > 0"
+                    v-if="
+                      subscriptionBilling &&
+                      subscriptionBilling.planPriceSats > 0
+                    "
                     class="rounded-lg border border-gray-600/80 bg-gray-900/40 p-4 space-y-2"
                   >
                     <div class="flex items-center justify-between text-sm">
@@ -638,7 +656,9 @@
                 >
                   {{ t("account.credit_history") }}
                 </h6>
-                <div class="overflow-x-auto rounded-lg border border-gray-600/80">
+                <div
+                  class="overflow-x-auto rounded-lg border border-gray-600/80"
+                >
                   <table class="min-w-full text-sm">
                     <thead class="bg-gray-900/60 text-gray-400">
                       <tr>
@@ -706,7 +726,7 @@
                       : 'grid grid-cols-1 gap-6'
                   "
                 >
-                  <!-- Pro Plan Card -->
+                  <!-- PRO Plan Card -->
                   <div
                     v-if="showProUpgrade"
                     class="border border-gray-600 rounded-xl p-6 bg-gray-800/80 hover:border-indigo-500 transition-colors relative group"
@@ -943,7 +963,9 @@
         class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
         @click.self="showGuestSeedModal = false"
       >
-        <div class="bg-gray-800 rounded-2xl border border-gray-700 max-w-2xl w-full p-6">
+        <div
+          class="bg-gray-800 rounded-2xl border border-gray-700 max-w-2xl w-full p-6"
+        >
           <div class="flex items-center justify-between mb-4">
             <h5 class="text-lg font-bold text-white">
               {{ t("account.guest_seed_modal_title") }}
@@ -971,7 +993,11 @@
               class="px-4 py-2 border border-gray-600 rounded-lg text-sm text-gray-300 hover:bg-gray-700"
               @click="copyStoredSeed"
             >
-              {{ copiedSeed ? t("auth.guest_backup_copied") : t("auth.guest_backup_copy") }}
+              {{
+                copiedSeed
+                  ? t("auth.guest_backup_copied")
+                  : t("auth.guest_backup_copy")
+              }}
             </button>
             <button
               type="button"
@@ -1089,8 +1115,11 @@ const { t, locale } = useI18n();
 const authStore = useAuthStore();
 const flashStore = useFlashStore();
 const { pricing, formatSats, load: loadPricing } = usePricing();
-const { planFeatures, isInvoicingFeature, load: loadPlanFeatures } =
-  usePlanFeatures();
+const {
+  planFeatures,
+  isInvoicingFeature,
+  load: loadPlanFeatures,
+} = usePlanFeatures();
 
 const profileForm = ref({
   name: "",

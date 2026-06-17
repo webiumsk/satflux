@@ -15,20 +15,8 @@
         <span class="mobile-nav-item__label">{{ t('header.stores') }}</span>
       </RouterLink>
 
-      <button
-        v-if="isGuestUser"
-        type="button"
-        class="mobile-nav-item"
-        @click="openGuestUpgradeModal('header.invoicing')"
-      >
-        <svg class="mobile-nav-item__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        <span class="mobile-nav-item__label">{{ t('header.invoicing') }}</span>
-      </button>
       <RouterLink
-        v-else
-        to="/invoicing"
+        :to="dashboardInvoicingTabRoute"
         class="mobile-nav-item"
         :class="{ 'mobile-nav-item--active': isInvoicingActive }"
       >
@@ -78,22 +66,24 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
-import { useAuthStore } from '../../store/auth';
-import { useGuestUpgradeModal } from '../../composables/useGuestUpgradeModal';
+import {
+  dashboardInvoicingTabRoute,
+  isDashboardInvoicingTabActive,
+  isInvoicingNavActive,
+} from '../../utils/dashboardInvoicingTab';
 
 const { t } = useI18n();
 const route = useRoute();
-const authStore = useAuthStore();
-const { openGuestUpgradeModal } = useGuestUpgradeModal();
-
-const isGuestUser = computed(() => !!authStore.user?.is_guest);
 
 const isStoresActive = computed(
   () => route.path === '/stores' || /^\/stores\/[^/]+/.test(route.path),
 );
-const isInvoicingActive = computed(() => route.path.startsWith('/invoicing'));
+const isInvoicingActive = computed(() =>
+  isInvoicingNavActive(route.path, route.query.tab),
+);
 const isDashboardActive = computed(
-  () => route.path === '/dashboard' || route.name === 'home',
+  () => (route.path === '/dashboard' || route.name === 'home')
+    && !isDashboardInvoicingTabActive(route.path, route.query.tab),
 );
 const isProfileActive = computed(() => route.path.startsWith('/account'));
 const isInfoActive = computed(() => route.path.startsWith('/info'));

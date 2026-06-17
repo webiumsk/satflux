@@ -23,7 +23,10 @@
     <p class="text-gray-400 mt-4">{{ t("common.loading") }}</p>
   </div>
 
-  <div v-else-if="settingsLoadError" class="text-center py-12 max-w-lg mx-auto px-4">
+  <div
+    v-else-if="settingsLoadError"
+    class="text-center py-12 max-w-lg mx-auto px-4"
+  >
     <p class="text-red-400">{{ t("stores.settings_load_failed") }}</p>
     <button
       type="button"
@@ -214,7 +217,7 @@
     </div>
   </div>
 
-  <!-- Upgrade to Pro Modal -->
+  <!-- Upgrade to PRO Modal -->
   <UpgradeModal
     :show="showUpgradeModal"
     :message="t('stores.pos_advanced_options_pro_only')"
@@ -309,7 +312,11 @@
             :disabled="deletingStore || deleteStoreConfirmText !== 'DELETE'"
             class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {{ deletingStore ? t("stores.settings_delete_deleting") : t("stores.settings_delete_store") }}
+            {{
+              deletingStore
+                ? t("stores.settings_delete_deleting")
+                : t("stores.settings_delete_store")
+            }}
           </button>
           <button
             type="button"

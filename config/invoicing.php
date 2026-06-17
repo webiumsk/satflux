@@ -24,9 +24,9 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Beta override for Pro company limit
+    | Beta override for PRO company limit
     |--------------------------------------------------------------------------
-    | When set (e.g. 5), Pro users can create up to this many invoicing companies
+    | When set (e.g. 5), PRO users can create up to this many invoicing companies
     | instead of the plan's max_companies in the database. Leave empty in production.
     */
 
@@ -69,7 +69,7 @@ return [
         'company_id' => env('SUBSCRIPTION_BILLING_COMPANY_ID'),
         'eur_currency' => 'EUR',
         'line_names' => [
-            'pro' => 'Satflux Pro - ročné predplatné',
+            'pro' => 'Satflux PRO - ročné predplatné',
             'enterprise' => 'Satflux Enterprise - ročné predplatné',
         ],
     ],

@@ -9,7 +9,7 @@
 #   3. Mount in docker-compose (prod.conf already includes btcpay-public.conf):
 #        - ./docker/nginx/btcpay-public.conf:/etc/nginx/conf.d/btcpay-public.conf:ro
 #
-# Greenfield API (/api/v1/...) is called server-side via BTCPAY_BASE_URL — configure that
+# Greenfield API (/api/v1/...) is called server-side via BTCPAY_BASE_URL - configure that
 # separately (may be the same public URL or an internal Docker hostname).
 #
 # Use exact /raffle and prefix /raffle/ so /raffles (Satflux list) is not proxied.

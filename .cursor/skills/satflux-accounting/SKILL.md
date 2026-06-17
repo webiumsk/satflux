@@ -13,23 +13,23 @@ description: >-
 
 ## Operator model
 
-| Entity | Role | Typical use in satflux |
-|--------|------|------------------------|
-| **Webium LLC** (Wyoming, US) | Operator of satflux.io; governing law in Terms | 30 N Gould St Ste N, Sheridan, WY 82801; EIN 61-2348057 |
-| **EU/SK company** (merchant or billing) | VAT-registered seller to EU B2C/B2B | `jurisdiction: eu_sk` / `eu_cz` / `eu_other`; DPH on invoices when configured |
+| Entity                                  | Role                                           | Typical use in satflux                                                        |
+| --------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------- |
+| **Webium LLC** (Wyoming, US)            | Operator of satflux.io; governing law in Terms | 30 N Gould St Ste N, Sheridan, WY 82801; EIN 61-2348057                       |
+| **EU/SK company** (merchant or billing) | VAT-registered seller to EU B2C/B2B            | `jurisdiction: eu_sk` / `eu_cz` / `eu_other`; DPH on invoices when configured |
 
 See `docs/SUBSCRIPTION_IMPLEMENTATION.md` - EU entity for EU B2C DPH; US LLC issues **sales tax** (manual rate), not SK/EU VAT on satflux subscriptions.
 
 ## Product map (business invoicing)
 
-| Feature | Code / docs | Compliance note |
-|---------|-------------|-----------------|
-| Company jurisdictions | `companies.jurisdiction` | `eu_sk`, `eu_cz`, `eu_other`, `us` |
-| Pay by Square QR | `PayBySquareGenerator`, EU PDF template | SK/CZ bank standard; not a substitute for e-fakturácia |
-| Variable symbol | EU documents | Pairing with `BANK_PAYMENT_MATCHING.md` |
-| BTC pay link | `payment_token`, `/pay/i/{token}` | Payment metadata only; not tax document |
-| Subscription auto-invoice | `SubscriptionBillingInvoiceService`, `SUBSCRIPTION_BILLING_COMPANY_ID` | EUR from sats at settlement; one doc per BTCPay invoice id |
-| ISDOC / e-fakturácia | Roadmap (`docs/BUSINESS_INVOICING.md` phases) | Do not claim full SK/CZ government integration until shipped |
+| Feature                   | Code / docs                                                            | Compliance note                                              |
+| ------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Company jurisdictions     | `companies.jurisdiction`                                               | `eu_sk`, `eu_cz`, `eu_other`, `us`                           |
+| Pay by Square QR          | `PayBySquareGenerator`, EU PDF template                                | SK/CZ bank standard; not a substitute for e-fakturácia       |
+| Variable symbol           | EU documents                                                           | Pairing with `BANK_PAYMENT_MATCHING.md`                      |
+| BTC pay link              | `payment_token`, `/pay/i/{token}`                                      | Payment metadata only; not tax document                      |
+| Subscription auto-invoice | `SubscriptionBillingInvoiceService`, `SUBSCRIPTION_BILLING_COMPANY_ID` | EUR from sats at settlement; one doc per BTCPay invoice id   |
+| ISDOC / e-fakturácia      | Roadmap (`docs/BUSINESS_INVOICING.md` phases)                          | Do not claim full SK/CZ government integration until shipped |
 
 ## US LLC selling to EU (checklist for copy and billing)
 
@@ -64,7 +64,7 @@ Keep comparison disclaimer; avoid absolute legal claims ("fully compliant") unle
 
 ## Questions to ask the user (accounting tasks)
 
-- Which entity invoices satflux Pro today - Webium LLC or EU subsidiary?
+- Which entity invoices satflux PRO today - Webium LLC or EU subsidiary?
 - VAT OSS registered? Which member states?
 - For SK/CZ merchants: target is PDF + Pay by Square only, or e-fakturácia integration next?
 - DPA needed for Enterprise B2B customers?

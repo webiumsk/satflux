@@ -3,7 +3,7 @@ import { useAuthStore, type User } from '../store/auth';
 
 export type PlanCode = 'free' | 'pro' | 'enterprise';
 
-/** Resolve effective plan from role, subscription plan, and Pro feature flags. */
+/** Resolve effective plan from role, subscription plan, and PRO feature flags. */
 export function resolvePlanCode(user: User | null | undefined): PlanCode {
   if (!user) {
     return 'free';

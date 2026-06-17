@@ -61,8 +61,8 @@ return [
     'lightning_address_limit_reached' => 'You have reached the maximum number of Lightning Addresses (:max) for your :plan plan. Please upgrade to add more addresses.',
 
     // Tickets (events limit)
-    'tickets_event_limit_free' => 'En el plan gratuito puedes tener como máximo :max evento por tienda. Actualiza a Pro para eventos ilimitados.',
-    'raffles_limit_free' => 'En el plan gratuito puedes tener como máximo :max rifa por tienda. Actualiza a Pro para rifas ilimitadas.',
+    'tickets_event_limit_free' => 'En el plan gratuito puedes tener como máximo :max evento por tienda. Actualiza a PRO para eventos ilimitados.',
+    'raffles_limit_free' => 'En el plan gratuito puedes tener como máximo :max rifa por tienda. Actualiza a PRO para rifas ilimitadas.',
     'raffles_quota_verification_failed' => 'No se pudo verificar el límite de rifas en BTCPay. Inténtalo de nuevo.',
     'raffles_cannot_delete' => 'Esta rifa solo se puede eliminar en borrador o cuando está completada.',
     'tickets_bundled_raffle_required' => 'Selecciona una rifa abierta cuando incluyas entradas de rifa por admisión.',

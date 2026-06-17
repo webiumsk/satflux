@@ -24,7 +24,8 @@ class WooCommerceDocumentService
         protected BusinessDocumentIssueService $issueService,
         protected SubscriptionService $subscriptionService,
         protected IntegrationDocumentInboxService $inboxService,
-    ) {}
+    ) {
+    }
 
     /**
      * @return array<string, mixed>
@@ -69,7 +70,7 @@ class WooCommerceDocumentService
                 ->first();
         }
 
-        if (! $contact) {
+        if (!$contact) {
             $contact = new CompanyContact(['company_id' => $company->id]);
         }
 
@@ -98,9 +99,9 @@ class WooCommerceDocumentService
         $store = $integration->store;
         $user = $store->user;
 
-        if (! $this->subscriptionService->canUseBusinessInvoicing($user)) {
+        if (!$this->subscriptionService->canUseBusinessInvoicing($user)) {
             throw ValidationException::withMessages([
-                'plan' => ['Business invoicing requires a Pro plan.'],
+                'plan' => ['Business invoicing requires a PRO plan.'],
             ]);
         }
 
@@ -114,7 +115,7 @@ class WooCommerceDocumentService
         if ($wcOrderId > 0) {
             $existing = BusinessDocument::query()
                 ->where('company_id', $company->id)
-                ->where('internal_note', 'like', '%woocommerce_order_id='.$wcOrderId.'%')
+                ->where('internal_note', 'like', '%woocommerce_order_id=' . $wcOrderId . '%')
                 ->where('status', '!=', BusinessDocumentStatus::Cancelled)
                 ->first();
             if ($existing) {
@@ -123,7 +124,7 @@ class WooCommerceDocumentService
         }
 
         $type = BusinessDocumentType::tryFrom((string) ($payload['type'] ?? 'invoice')) ?? BusinessDocumentType::Invoice;
-        if (! $type->isMvpEnabled()) {
+        if (!$type->isMvpEnabled()) {
             throw ValidationException::withMessages(['type' => ['Document type not supported.']]);
         }
 
@@ -143,16 +144,16 @@ class WooCommerceDocumentService
             'delivery_date' => now()->toDateString(),
             'payment_btc_enabled' => (bool) $store->company_id,
             'payment_bank_enabled' => true,
-            'internal_note' => $wcOrderId > 0 ? 'woocommerce_order_id='.$wcOrderId : null,
-            'note_above_lines' => $wcOrderId > 0 ? 'WooCommerce order #'.$wcOrderId : null,
-            'tags' => $wcOrderId > 0 ? ['woocommerce', 'wc_order:'.$wcOrderId] : ['woocommerce'],
+            'internal_note' => $wcOrderId > 0 ? 'woocommerce_order_id=' . $wcOrderId : null,
+            'note_above_lines' => $wcOrderId > 0 ? 'WooCommerce order #' . $wcOrderId : null,
+            'tags' => $wcOrderId > 0 ? ['woocommerce', 'wc_order:' . $wcOrderId] : ['woocommerce'],
         ]);
 
         $document->setRelation('company', $company);
         $lines = is_array($payload['lines'] ?? null) ? $payload['lines'] : [];
         $normalized = [];
         foreach ($lines as $line) {
-            if (! is_array($line)) {
+            if (!is_array($line)) {
                 continue;
             }
             $normalized[] = [
@@ -204,7 +205,7 @@ class WooCommerceDocumentService
             'inbox_id' => $entry->id,
             'evolu_document_id' => $entry->evolu_document_id,
             'number' => $payload['number'] ?? null,
-            'status' => ! empty($payload['number']) ? 'issued' : $entry->status->value,
+            'status' => !empty($payload['number']) ? 'issued' : $entry->status->value,
             'woocommerce_order_id' => $entry->woocommerce_order_id,
             'currency' => (string) ($payload['currency'] ?? 'EUR'),
             'payment_token' => null,
@@ -228,7 +229,7 @@ class WooCommerceDocumentService
             return true;
         }
 
-        return ! $company->usesServerInvoicing();
+        return !$company->usesServerInvoicing();
     }
 
     /**
@@ -236,9 +237,9 @@ class WooCommerceDocumentService
      */
     public function serializeDocument(BusinessDocument $document): array
     {
-        $pdfUrl = URL::to('/invoicing/companies/'.$document->company_id.'/documents/'.$document->id.'/pdf');
+        $pdfUrl = URL::to('/invoicing/companies/' . $document->company_id . '/documents/' . $document->id . '/pdf');
         $payUrl = $document->payment_token
-            ? URL::to('/pay/i/'.$document->payment_token)
+            ? URL::to('/pay/i/' . $document->payment_token)
             : null;
 
         return [
@@ -256,7 +257,7 @@ class WooCommerceDocumentService
     protected function resolveCompany(StoreIntegration $integration): Company
     {
         $company = $integration->company ?? $integration->store->company;
-        if (! $company) {
+        if (!$company) {
             throw ValidationException::withMessages([
                 'company' => ['Link a company to this store in Satflux invoicing settings.'],
             ]);

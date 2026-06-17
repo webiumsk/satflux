@@ -69,21 +69,39 @@
     </div>
 
     <p
-      class="footer-meta text-xs text-gray-600 leading-relaxed"
+      class="footer-meta text-xs text-gray-600 leading-relaxed flex items-center gap-2 justify-center"
       :class="layout === 'page' ? '' : 'text-center'"
     >
       <span class="text-gray-600">
-        {{ t('common.footer_created_with') }}
+        <span class="text-gray-500 align-middle pr-1" aria-hidden="true">{{ t('common.footer_created_with') }}</span>
+        
+        <a
+          href="https://btcpayserver.org"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="footer-brand-link align-middle"
+          :aria-label="t('common.footer_btcpay_aria')"
+        >
+          <img
+            src="/img/btcpay.svg"
+            alt=""
+            width="12"
+            height="12"
+            class="footer-btcpay-logo align-middle"
+            aria-hidden="true"
+          />
+        </a>
+        <span class="text-gray-500 align-middle pr-1" aria-hidden="true"> + </span>
         <a
           href="https://www.evolu.dev"
           target="_blank"
           rel="noopener noreferrer"
-          class="footer-brand-link"
+          class="footer-brand-link align-middle"
           :aria-label="t('common.footer_evolu_aria')"
         >
           <svg
             viewBox="0 0 99 23"
-            width="52"
+            width="48"
             height="12"
             aria-hidden="true"
             class="footer-evolu-logo"
@@ -94,24 +112,7 @@
             />
           </svg>
         </a>
-        <span class="text-gray-500" aria-hidden="true"> + </span>
-        <a
-          href="https://btcpayserver.org"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="footer-brand-link"
-          :aria-label="t('common.footer_btcpay_aria')"
-        >
-          <img
-            src="/img/btcpay.svg"
-            alt=""
-            width="12"
-            height="12"
-            class="footer-btcpay-logo"
-            aria-hidden="true"
-          />
-        </a>
-        {{ ' ' }}{{ t('common.footer_created_and') }}{{ ' ' }}
+        <span class="text-gray-500 align-middle px-1" aria-hidden="true">{{ ' ' }}{{ t('common.footer_created_and') }}{{ ' ' }}</span>
         <svg
           viewBox="0 0 24 24"
           width="12"
@@ -127,7 +128,7 @@
         <span class="sr-only">{{ t('common.footer_love_aria') }}</span>
       </span>
       <span class="text-gray-600" aria-hidden="true"> | </span>
-      <span class="text-gray-600">
+      <span class="text-gray-500">
         {{ t('common.footer_open_source') }}
         <a
           href="https://github.com/webiumsk/Satflux/blob/master/LICENSE"
@@ -311,7 +312,16 @@ onMounted(async () => {
   height: auto;
   max-width: none;
   max-height: none;
-  vertical-align: -0.1em;
+  vertical-align: -0.12em;
+}
+
+.footer-btcpay-logo {
+  margin-right: 2px;
+  vertical-align: -0.24em;
+}
+.footer-heart {
+  vertical-align: -0.36em;
+  margin-left: 4px;
 }
 
 .footer-evolu-logo {
@@ -320,14 +330,15 @@ onMounted(async () => {
 }
 
 .footer-btcpay-logo {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
 }
 
 .footer-heart {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   margin-left: 0.12rem;
+  margin-right: 2px;
   color: rgb(249 115 22);
 }
 </style>

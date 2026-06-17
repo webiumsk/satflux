@@ -62,8 +62,8 @@ return [
     'lightning_address_limit_reached' => 'You have reached the maximum number of Lightning Addresses (:max) for your :plan plan. Please upgrade to add more addresses.',
 
     // Tickets (events limit)
-    'tickets_event_limit_free' => 'Ticket events are limited to :max per store on the Free plan. Upgrade to Pro for unlimited events.',
-    'raffles_limit_free' => 'Raffles are limited to :max per store on the Free plan. Upgrade to Pro for unlimited raffles.',
+    'tickets_event_limit_free' => 'Ticket events are limited to :max per store on the Free plan. Upgrade to PRO for unlimited events.',
+    'raffles_limit_free' => 'Raffles are limited to :max per store on the Free plan. Upgrade to PRO for unlimited raffles.',
     'raffles_quota_verification_failed' => 'Could not verify raffle limit with BTCPay. Please try again.',
     'raffles_cannot_delete' => 'This raffle can only be deleted when it is a draft or completed.',
     'tickets_bundled_raffle_required' => 'Select an open raffle when including raffle tickets per admission.',
@@ -146,6 +146,6 @@ return [
     'faq_marked_helpful' => 'Thank you for your feedback!',
 
     // Business invoicing
-    'business_invoicing_available_in_pro' => 'Business invoicing is available on the Pro plan. Please upgrade to create invoices.',
+    'business_invoicing_available_in_pro' => 'Business invoicing is available on the PRO plan. Please upgrade to create invoices.',
     'company_limit_reached' => 'You have reached the maximum number of companies (:max) for your plan.',
 ];

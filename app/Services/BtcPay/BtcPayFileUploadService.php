@@ -10,13 +10,14 @@ use Illuminate\Support\Str;
 
 /**
  * Uploads files via Greenfield POST /api/v1/files so blobs live on BTCPay Server
- * (same durability as store logos / ticket images — survives Satflux redeploys).
+ * (same durability as store logos / ticket images - survives Satflux redeploys).
  */
 class BtcPayFileUploadService
 {
     public function __construct(
         protected BtcPayClient $btcPayClient
-    ) {}
+    ) {
+    }
 
     /**
      * @return array{id: string, storage_name: string, url: string, image_url: string}
@@ -37,13 +38,13 @@ class BtcPayFileUploadService
             $originalName = $file->getClientOriginalName();
             $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION) ?: 'jpg');
             $baseName = Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) ?: 'image';
-            $storageName = $id.'-'.$baseName.'.'.$ext;
+            $storageName = $id . '-' . $baseName . '.' . $ext;
         }
 
         $baseUrl = rtrim((string) config('services.btcpay.base_url', ''), '/');
         $displayUrl = $url;
         if (empty($displayUrl) || (is_string($displayUrl) && str_starts_with($displayUrl, 'fileid:'))) {
-            $displayUrl = $baseUrl.'/LocalStorage/'.$storageName;
+            $displayUrl = $baseUrl . '/LocalStorage/' . $storageName;
         }
 
         return [
@@ -68,7 +69,7 @@ class BtcPayFileUploadService
             $isPermissionDenied = $e->getStatusCode() === 403
                 || stripos($e->getMessage(), 'Insufficient API Permissions') !== false
                 || stripos($e->getMessage(), 'canmodifyserversettings') !== false;
-            if (! $isPermissionDenied) {
+            if (!$isPermissionDenied) {
                 throw $e;
             }
             Log::info('BTCPay Files: user API key lacks permission, using server key', [

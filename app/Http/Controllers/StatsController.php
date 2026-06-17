@@ -14,7 +14,8 @@ class StatsController extends Controller
     public function __construct(
         protected StatsService $statsService,
         protected SubscriptionService $subscriptionService
-    ) {}
+    ) {
+    }
 
     /**
      * Basic stats for one store (all plans).
@@ -22,7 +23,7 @@ class StatsController extends Controller
     public function store(Request $request, \App\Models\Store $store)
     {
         $user = $request->user();
-        if ($store->user_id !== $user->id && ! $user->isSupport()) {
+        if ($store->user_id !== $user->id && !$user->isSupport()) {
             abort(403);
         }
 
@@ -32,12 +33,12 @@ class StatsController extends Controller
     }
 
     /**
-     * Advanced stats (per store, per PoS, overall). Pro only.
+     * Advanced stats (per store, per PoS, overall). PRO only.
      */
     public function advanced(Request $request)
     {
         $user = $request->user();
-        if (! $this->subscriptionService->canViewAdvancedStats($user)) {
+        if (!$this->subscriptionService->canViewAdvancedStats($user)) {
             return response()->json([
                 'message' => 'Advanced statistics are available on Pro. Please upgrade.',
             ], 403);

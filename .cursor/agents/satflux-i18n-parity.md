@@ -20,7 +20,7 @@ Ensure all locale files define the **same nested key paths** and that there are 
 ## Method
 
 1. Load all `*.json` files in `resources/js/locales/` (at least `en.json`, `sk.json`, `es.json`).
-2. Parse JSON and build a **flat list of dot-path keys** for nested objects (e.g. `landing.hero.title`). Treat arrays as leaf values unless the project consistently uses array indices as stable paths — for Satflux, mirror how existing keys are structured.
+2. Parse JSON and build a **flat list of dot-path keys** for nested objects (e.g. `landing.hero.title`). Treat arrays as leaf values unless the project consistently uses array indices as stable paths - for Satflux, mirror how existing keys are structured.
 3. Compute set differences:
    - keys only in EN
    - keys only in SK
@@ -33,14 +33,17 @@ Ensure all locale files define the **same nested key paths** and that there are 
 ## Satflux i18n parity
 
 ### Missing keys (must fix for parity)
+
 - **In sk.json:** ...
 - **In es.json:** ...
 - **In en.json:** ...
 
 ### Extra/orphan keys (present in one locale only)
+
 - ...
 
 ### Notes
+
 - ...
 ```
 

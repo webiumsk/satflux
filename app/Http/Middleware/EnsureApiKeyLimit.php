@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
  * Middleware to ensure store doesn't exceed API key limit (per store).
  *
  * - Only ACTIVE keys count; revoked keys do not count.
- * - Limit is per store: Free = 1 active key per store, Pro = 3 per store.
+ * - Limit is per store: Free = 1 active key per store, PRO = 3 per store.
  * - Admin/Support have full access (can create keys regardless of limit).
  */
 class EnsureApiKeyLimit
@@ -25,7 +25,7 @@ class EnsureApiKeyLimit
     {
         $user = $request->user();
 
-        if (! $user) {
+        if (!$user) {
             abort(401, 'Unauthenticated');
         }
 
@@ -35,7 +35,7 @@ class EnsureApiKeyLimit
         }
 
         $store = $request->route('store');
-        if (! $store instanceof Store) {
+        if (!$store instanceof Store) {
             return $next($request);
         }
 

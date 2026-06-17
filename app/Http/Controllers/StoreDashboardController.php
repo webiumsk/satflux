@@ -22,7 +22,8 @@ class StoreDashboardController extends Controller
         protected InvoiceSourceService $invoiceSourceService,
         protected StoreInvoiceStatsService $storeInvoiceStatsService,
         protected SubscriptionService $subscriptionService
-    ) {}
+    ) {
+    }
 
     /**
      * Get dashboard data for a store.
@@ -59,11 +60,11 @@ class StoreDashboardController extends Controller
                 }
                 foreach ($allInvoices as $invoice) {
                     $status = $invoice['status'] ?? null;
-                    if (! in_array($status, ['Settled', 'Complete'], true)) {
+                    if (!in_array($status, ['Settled', 'Complete'], true)) {
                         continue;
                     }
                     $source = $this->invoiceSourceService->detectSource($invoice);
-                    if (! isset($invoicesBySource[$source])) {
+                    if (!isset($invoicesBySource[$source])) {
                         $invoicesBySource[$source] = [];
                     }
                     $invoicesBySource[$source][] = $invoice;
@@ -105,7 +106,7 @@ class StoreDashboardController extends Controller
                 foreach ($allInvoices as $invoice) {
                     $status = $invoice['status'] ?? null;
                     $createdTime = $invoice['createdTime'] ?? null;
-                    if (! in_array($status, ['Settled', 'Complete'], true) || ! $createdTime) {
+                    if (!in_array($status, ['Settled', 'Complete'], true) || !$createdTime) {
                         continue;
                     }
                     $invoiceDate = \Carbon\Carbon::parse($createdTime)->startOfDay();
@@ -135,12 +136,12 @@ class StoreDashboardController extends Controller
                         }
                     }
                 }
-                uasort($itemCounts, fn ($a, $b) => $b['count'] <=> $a['count']);
+                uasort($itemCounts, fn($a, $b) => $b['count'] <=> $a['count']);
                 $topItems = array_slice(array_map(function ($name, $data) {
                     return ['name' => $name, 'count' => $data['count'], 'total' => $data['total'], 'currency' => $data['currency']];
                 }, array_keys($itemCounts), $itemCounts), 0, 5);
 
-                // Per-source aggregates (for Pro filter and dashboard)
+                // Per-source aggregates (for PRO filter and dashboard)
                 $bySource = [];
                 foreach (InvoiceSourceService::SOURCES as $sourceKey) {
                     $sourceInvoices = $invoicesBySource[$sourceKey] ?? [];
@@ -167,7 +168,7 @@ class StoreDashboardController extends Controller
                     if (is_array($btcpayApps)) {
                         foreach ($btcpayApps as $btcpayApp) {
                             $btcpayAppId = $btcpayApp['id'] ?? null;
-                            if (! $btcpayAppId) {
+                            if (!$btcpayAppId) {
                                 continue;
                             }
 
@@ -336,7 +337,7 @@ class StoreDashboardController extends Controller
         do {
             $result = $this->invoiceService->listInvoices($btcpayStoreId, [], $skip, $take, $apiKey);
             $chunk = $result['data'] ?? $result;
-            if (! is_array($chunk)) {
+            if (!is_array($chunk)) {
                 break;
             }
             foreach ($chunk as $inv) {
@@ -398,7 +399,7 @@ class StoreDashboardController extends Controller
         $total30d = 0;
         foreach ($invoices as $inv) {
             $createdTime = $inv['createdTime'] ?? null;
-            if (! $createdTime) {
+            if (!$createdTime) {
                 continue;
             }
             $invoiceDate = \Carbon\Carbon::parse($createdTime)->startOfDay();
@@ -423,7 +424,7 @@ class StoreDashboardController extends Controller
                 $itemCounts[$itemName]['total'] += $amount;
             }
         }
-        uasort($itemCounts, fn ($a, $b) => $b['count'] <=> $a['count']);
+        uasort($itemCounts, fn($a, $b) => $b['count'] <=> $a['count']);
         $topItems = array_slice(array_map(function ($name, $data) {
             return ['name' => $name, 'count' => $data['count'], 'total' => $data['total'], 'currency' => $data['currency']];
         }, array_keys($itemCounts), $itemCounts), 0, 5);

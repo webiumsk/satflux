@@ -485,7 +485,7 @@
               </transition>
             </div>
 
-            <!-- SK only: hero intro video — poster + play; iframe loads on click (no YT chrome until play) -->
+            <!-- SK only: hero intro video - poster + play; iframe loads on click (no YT chrome until play) -->
             <div
               v-if="locale === 'sk'"
               class="mt-8 w-full max-w-md lg:max-w-none"
@@ -503,7 +503,15 @@
                   class="absolute inset-0 h-full w-full"
                   :src="heroSkYoutubeEmbedUrl"
                   :title="t('landing.hero_sk_video_iframe_title')"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allow="
+                    accelerometer;
+                    autoplay;
+                    clipboard-write;
+                    encrypted-media;
+                    gyroscope;
+                    picture-in-picture;
+                    web-share;
+                  "
                   referrerpolicy="strict-origin-when-cross-origin"
                   allowfullscreen
                 />
@@ -544,7 +552,7 @@
             </div>
           </div>
 
-          <!-- Dots, CTAs, trust — full width under copy + visual columns -->
+          <!-- Dots, CTAs, trust - full width under copy + visual columns -->
           <div
             class="order-3 col-span-full flex w-full flex-col items-center gap-4 sm:gap-5 pt-6 lg:pt-8"
           >
@@ -1175,7 +1183,7 @@
           <!-- Crowdfund (coming soon) -->
           <div
             class="relative bg-gradient-to-br from-gray-800/90 to-gray-900 rounded-3xl p-8 border border-dashed border-violet-500/35 shadow-xl overflow-hidden group transition-all duration-300 hover:-translate-y-1 hover:border-violet-400/45 hover:shadow-2xl hover:shadow-violet-950/25"
-          >            
+          >
             <div
               class="absolute inset-0 bg-violet-600/[0.04] pointer-events-none"
             ></div>
@@ -1209,7 +1217,6 @@
             </div>
           </div>
         </div>
-
       </div>
     </section>
 
@@ -1920,13 +1927,17 @@
                 <div
                   class="w-full max-w-md rounded-2xl border border-violet-500/30 bg-gray-800 p-6 shadow-xl shadow-violet-950/20 transform group-hover:scale-105 transition-transform duration-500"
                 >
-                  <p class="text-xs font-medium uppercase tracking-wider text-violet-300/80 mb-2">
+                  <p
+                    class="text-xs font-medium uppercase tracking-wider text-violet-300/80 mb-2"
+                  >
                     {{ t("landing.step5_goal_label") }}
                   </p>
                   <p class="text-lg font-bold text-white mb-4">
                     {{ t("landing.step5_goal_amount") }}
                   </p>
-                  <div class="h-3 w-full rounded-full bg-gray-700 overflow-hidden mb-2">
+                  <div
+                    class="h-3 w-full rounded-full bg-gray-700 overflow-hidden mb-2"
+                  >
                     <div
                       class="h-full w-[64%] rounded-full bg-gradient-to-r from-violet-500 to-indigo-500"
                     />
@@ -2511,9 +2522,7 @@
               <div
                 class="md:w-5/12 flex justify-start pl-16 md:justify-end pr-8 md:pr-16 order-2 md:order-1"
               >
-                <LandingRafflePresenterPreview
-                  class="group-hover:scale-105"
-                />
+                <LandingRafflePresenterPreview class="group-hover:scale-105" />
               </div>
 
               <div
@@ -2875,7 +2884,7 @@
             </router-link>
           </div>
 
-          <!-- Pro Plan (Highlighted) -->
+          <!-- PRO Plan (Highlighted) -->
           <div
             class="bg-gray-800 rounded-2xl p-8 border-2 border-indigo-500 shadow-2xl relative transform md:scale-[1.02] z-10"
           >
@@ -3205,8 +3214,11 @@ const {
   displayLightningDomain,
 } = useBtcPayUrl();
 const { pricing, formatSats, load: loadPricing } = usePricing();
-const { planFeatures, invoicingHighlightKeys, load: loadPlanFeatures } =
-  usePlanFeatures();
+const {
+  planFeatures,
+  invoicingHighlightKeys,
+  load: loadPlanFeatures,
+} = usePlanFeatures();
 
 const proInvoicingFeatures = computed(() =>
   planFeatures.value.pro.feature_keys.filter((key: string) =>
@@ -3315,8 +3327,8 @@ let hashAnchorElements: HTMLAnchorElement[] = [];
 onMounted(() => {
   void nextTick().then(() => {
     requestAnimationFrame(() => {
-      document.getElementById('landing-shell')?.remove();
-      document.getElementById('app')?.classList.remove('sf-app-pending');
+      document.getElementById("landing-shell")?.remove();
+      document.getElementById("app")?.classList.remove("sf-app-pending");
     });
   });
 
@@ -3325,7 +3337,7 @@ onMounted(() => {
     void authStore.fetchUser();
   };
 
-  if ('requestIdleCallback' in window) {
+  if ("requestIdleCallback" in window) {
     requestIdleCallback(loadDeferred);
   } else {
     setTimeout(loadDeferred, 0);
@@ -3340,7 +3352,9 @@ onMounted(() => {
     }, 100);
   }
 
-  hashAnchorElements = [...document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]')];
+  hashAnchorElements = [
+    ...document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]'),
+  ];
   hashAnchorElements.forEach((anchor) => {
     anchor.addEventListener("click", handleHashAnchorClick);
   });
@@ -3354,7 +3368,7 @@ onBeforeUnmount(() => {
 });
 
 async function handleUpgrade(plan: string) {
-  // Both Pro and Enterprise can use the same checkout flow now
+  // Both PRO and Enterprise can use the same checkout flow now
   subscribing.value = true;
   subscribeError.value = "";
 

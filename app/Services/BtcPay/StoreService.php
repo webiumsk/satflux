@@ -269,7 +269,7 @@ class StoreService
             try {
                 $this->client->delete("/api/v1/stores/{$storeId}/logo");
             } catch (BtcPayException $e) {
-                // No uploaded logo blob (e.g. only external logoUrl) — still clear logoUrl on the store below
+                // No uploaded logo blob (e.g. only external logoUrl) - still clear logoUrl on the store below
                 if ($e->getStatusCode() !== 404) {
                     throw $e;
                 }
