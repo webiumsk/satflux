@@ -5,6 +5,7 @@ namespace App\Http\Requests\Invoicing;
 use App\Enums\BusinessDocumentStatus;
 use App\Enums\BusinessDocumentType;
 use App\Enums\CompanyJurisdiction;
+use App\Support\Invoicing\IsoCountryCode;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -13,6 +14,32 @@ class EphemeralBusinessDocumentBulkRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $company = $this->input('company');
+        if (is_array($company) && array_key_exists('country', $company)) {
+            $company['country'] = IsoCountryCode::normalize($company['country']);
+            $this->merge(['company' => $company]);
+        }
+
+        $documents = $this->input('documents');
+        if (! is_array($documents)) {
+            return;
+        }
+
+        foreach ($documents as $index => $document) {
+            if (! is_array($document)) {
+                continue;
+            }
+            $contact = $document['contact'] ?? null;
+            if (is_array($contact) && array_key_exists('country', $contact)) {
+                $documents[$index]['contact']['country'] = IsoCountryCode::normalize($contact['country']);
+            }
+        }
+
+        $this->merge(['documents' => $documents]);
     }
 
     public function rules(): array

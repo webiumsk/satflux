@@ -22,6 +22,7 @@ use App\Models\User;
 use App\Support\Invoicing\CompanyAppSettings;
 use App\Support\Invoicing\CompanyEfakturaSettings;
 use App\Support\Invoicing\CompanyEmailSettings;
+use App\Support\Invoicing\IsoCountryCode;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
@@ -597,7 +598,7 @@ class ServerToEvoluMigrationExportService
             'city' => $contact->city,
             'postalCode' => $contact->postal_code,
             'stateRegion' => $contact->state_region,
-            'country' => $contact->country,
+            'country' => IsoCountryCode::normalize($contact->country),
             'bankAccount' => $contact->bank_account,
             'bankCode' => $contact->bank_code,
             'iban' => $contact->iban,
@@ -605,7 +606,7 @@ class ServerToEvoluMigrationExportService
             'deliveryStreet' => $contact->delivery_street,
             'deliveryPostalCode' => $contact->delivery_postal_code,
             'deliveryCity' => $contact->delivery_city,
-            'deliveryCountry' => $contact->delivery_country,
+            'deliveryCountry' => IsoCountryCode::normalize($contact->delivery_country),
             'defaultPaymentTermsDays' => $contact->default_payment_terms_days !== null
                 ? (string) $contact->default_payment_terms_days
                 : null,
@@ -1148,15 +1149,6 @@ class ServerToEvoluMigrationExportService
 
     private function countryCodeOrNull(?string $country): ?string
     {
-        $text = trim((string) ($country ?? ''));
-        if ($text === '') {
-            return null;
-        }
-
-        if (strlen($text) === 2) {
-            return strtoupper($text);
-        }
-
-        return strtoupper(substr($text, 0, 2));
+        return IsoCountryCode::normalize($country);
     }
 }

@@ -1,4 +1,5 @@
 import type { CompanyId } from "./schema";
+import { normalizeIsoCountryCode } from "@/utils/isoCountryCode";
 
 /** Company shape expected by invoicing Vue components (server API compatible). */
 export type InvoicingCompanyRecord = {
@@ -126,7 +127,7 @@ export function evoluCompanyToApi(
         city: row.city,
         postal_code: row.postalCode,
         state_region: row.stateRegion,
-        country: row.country,
+        country: normalizeIsoCountryCode(row.country),
         iban: row.iban,
         bic: row.bic,
         bank_name: row.bankName,

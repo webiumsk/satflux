@@ -1,4 +1,5 @@
 import api from "@/services/api";
+import { normalizeIsoCountryCode } from "@/utils/isoCountryCode";
 import type { DocumentSavePayload } from "./documentCrud";
 import type { DocumentId } from "./schema";
 import type { useLocalInvoiceDocumentSupport } from "@/composables/useLocalInvoiceDocument";
@@ -189,7 +190,7 @@ export function buildEphemeralSnapshot(
             street: company?.street,
             city: company?.city,
             postal_code: company?.postal_code,
-            country: company?.country,
+            country: normalizeIsoCountryCode(company?.country as string | null | undefined),
             state_region: company?.state_region,
             iban: company?.iban,
             bic: company?.bic,
@@ -220,7 +221,7 @@ export function buildEphemeralSnapshot(
                   city: contact.city,
                   postal_code: contact.postal_code,
                   state_region: contact.state_region,
-                  country: contact.country,
+                  country: normalizeIsoCountryCode(contact.country as string | null | undefined),
               }
             : null,
         document: {

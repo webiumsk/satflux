@@ -1,5 +1,6 @@
 import { booleanToSqliteBoolean } from "@evolu/common";
 import type { CompanyContactRow, ContactFormState } from "@/composables/useCompanyContact";
+import { normalizeIsoCountryCode } from "@/utils/isoCountryCode";
 import type { ContactId, CompanyId } from "./schema";
 
 export type EvoluContactRow = {
@@ -61,7 +62,7 @@ export function evoluContactToApi(row: EvoluContactRow): CompanyContactRow {
         city: row.city,
         postal_code: row.postalCode,
         state_region: row.stateRegion,
-        country: row.country,
+        country: normalizeIsoCountryCode(row.country),
         bank_account: row.bankAccount,
         bank_code: row.bankCode,
         iban: row.iban,
@@ -69,7 +70,7 @@ export function evoluContactToApi(row: EvoluContactRow): CompanyContactRow {
         delivery_street: row.deliveryStreet,
         delivery_postal_code: row.deliveryPostalCode,
         delivery_city: row.deliveryCity,
-        delivery_country: row.deliveryCountry,
+        delivery_country: normalizeIsoCountryCode(row.deliveryCountry),
         default_payment_terms_days: (() => {
             if (!row.defaultPaymentTermsDays) return null;
             const days = Number(row.defaultPaymentTermsDays);
@@ -106,7 +107,7 @@ export function contactPayloadFromForm(
         city: form.city.trim() || null,
         postalCode: form.postal_code.trim() || null,
         stateRegion: form.state_region.trim() || null,
-        country: form.country.trim() || null,
+        country: normalizeIsoCountryCode(form.country.trim()),
         bankAccount: form.bank_account.trim() || null,
         bankCode: form.bank_code.trim() || null,
         iban: form.iban.trim() || null,
@@ -114,7 +115,9 @@ export function contactPayloadFromForm(
         deliveryStreet: includeDelivery ? form.delivery_street.trim() || null : null,
         deliveryPostalCode: includeDelivery ? form.delivery_postal_code.trim() || null : null,
         deliveryCity: includeDelivery ? form.delivery_city.trim() || null : null,
-        deliveryCountry: includeDelivery ? form.delivery_country.trim() || null : null,
+        deliveryCountry: includeDelivery
+            ? normalizeIsoCountryCode(form.delivery_country.trim())
+            : null,
         defaultPaymentTermsDays:
             form.default_payment_terms_days != null
                 ? String(form.default_payment_terms_days)

@@ -1,5 +1,6 @@
 import { createIdFromString, maxLength, NonEmptyString } from "@evolu/common";
 import type { InvoicingDataSnapshot } from "./invoicingSnapshot";
+import { normalizeIsoCountryCode } from "@/utils/isoCountryCode";
 import {
     BankImportBatchId,
     BankTransactionId,
@@ -22,7 +23,6 @@ import {
 
 const Opt4000 = maxLength(4000)(NonEmptyString);
 const TitleType = maxLength(1000)(NonEmptyString);
-const CountryType = maxLength(2)(NonEmptyString);
 
 type BrandedIdType = {
     from: (value: string) => { ok: boolean; value?: string };
@@ -72,11 +72,7 @@ function truncateJsonBlob(value: unknown, maxLen = 4000): string | null {
 }
 
 function normalizeCountry(value: unknown): string | null {
-    const text = emptyToNull(value);
-    if (!text) return null;
-    const code = text.length === 2 ? text.toUpperCase() : text.slice(0, 2).toUpperCase();
-    const parsed = CountryType.from(code);
-    return parsed.ok ? parsed.value : null;
+    return normalizeIsoCountryCode(typeof value === "string" ? value : null);
 }
 
 const JURISDICTIONS = new Set([

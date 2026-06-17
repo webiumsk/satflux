@@ -6,6 +6,8 @@ class EphemeralBusinessDocumentEmailRequest extends EphemeralBusinessDocumentPdf
 {
     protected function prepareForValidation(): void
     {
+        parent::prepareForValidation();
+
         foreach (['to', 'cc', 'bcc'] as $field) {
             $value = $this->input($field);
             if (is_string($value)) {

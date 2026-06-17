@@ -73,6 +73,22 @@ class EphemeralBusinessDocumentPdfTest extends TestCase
     }
 
     #[Test]
+    public function ephemeral_pdf_accepts_contact_country_name_and_normalizes_to_iso_code(): void
+    {
+        [$user, $company] = $this->createProUserWithCompany();
+        $payload = $this->ephemeralPayload();
+        $payload['contact']['country'] = 'Slovensko';
+
+        $response = $this->actingAs($user)->postJson(
+            "/api/invoicing/companies/{$company->id}/documents/ephemeral/pdf",
+            $payload,
+        );
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/pdf');
+    }
+
+    #[Test]
     public function authenticated_user_can_send_ephemeral_email_with_pdf_attachment(): void
     {
         Mail::fake();
