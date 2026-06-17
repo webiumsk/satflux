@@ -1,23 +1,15 @@
-import { ref } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useGuestUpgradeStore } from '../store/guestUpgrade';
 
-const open = ref(false);
-const featureLabelKey = ref<string | null>(null);
-
+/** Pinia-backed modal state (safe across Vite production chunks). */
 export function useGuestUpgradeModal() {
-  function openGuestUpgradeModal(labelKey?: string) {
-    featureLabelKey.value = labelKey ?? null;
-    open.value = true;
-  }
+    const store = useGuestUpgradeStore();
+    const { open, featureLabelKey } = storeToRefs(store);
 
-  function closeGuestUpgradeModal() {
-    open.value = false;
-    featureLabelKey.value = null;
-  }
-
-  return {
-    open,
-    featureLabelKey,
-    openGuestUpgradeModal,
-    closeGuestUpgradeModal,
-  };
+    return {
+        open,
+        featureLabelKey,
+        openGuestUpgradeModal: store.openGuestUpgradeModal,
+        closeGuestUpgradeModal: store.closeGuestUpgradeModal,
+    };
 }
