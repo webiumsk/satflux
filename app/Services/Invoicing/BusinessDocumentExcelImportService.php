@@ -11,6 +11,7 @@ use App\Models\Company;
 use App\Models\CompanyContact;
 use App\Support\Invoicing\BusinessDocumentImportFields;
 use App\Support\Invoicing\BuyerSnapshot;
+use App\Support\Invoicing\ImportDateParser;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -242,8 +243,9 @@ class BusinessDocumentExcelImportService
     ): array {
         $invoiceNumber = $this->cell($row, $mapping['invoice_number']);
         $clientName = $this->cell($row, $mapping['client_name']);
-        $issueDate = $this->parseDate($this->cell($row, $mapping['issue_date']));
-        $dueDate = $this->parseDate($this->cell($row, $mapping['due_date']));
+        $dateParser = new ImportDateParser((string) ($options['date_format'] ?? 'auto'));
+        $issueDate = $dateParser->parse($this->cell($row, $mapping['issue_date']));
+        $dueDate = $dateParser->parse($this->cell($row, $mapping['due_date']));
         $amount = $this->parseAmount($this->cell($row, $mapping['amount']));
 
         if ($invoiceNumber === null || $invoiceNumber === '') {
@@ -273,7 +275,7 @@ class BusinessDocumentExcelImportService
             throw new \InvalidArgumentException('Invoice number already exists: '.$invoiceNumber);
         }
 
-        $paidAt = $this->parseDate($this->cell($row, $mapping['paid_at']));
+        $paidAt = $dateParser->parse($this->cell($row, $mapping['paid_at']));
 
         return [
             'invoice_number' => $invoiceNumber,
@@ -319,6 +321,8 @@ class BusinessDocumentExcelImportService
             'tax_rate' => 0,
         ]];
 
+        $dateParser = new ImportDateParser((string) ($options['date_format'] ?? 'auto'));
+
         $document = new BusinessDocument([
             'company_id' => $company->id,
             'company_contact_id' => $contact?->id,
@@ -330,7 +334,7 @@ class BusinessDocumentExcelImportService
             'constant_symbol' => $this->cell($row, $mapping['constant_symbol']),
             'specific_symbol' => $this->cell($row, $mapping['specific_symbol']),
             'issue_date' => $data['issue_date'],
-            'delivery_date' => $this->parseDate($this->cell($row, $mapping['delivery_date'])),
+            'delivery_date' => $dateParser->parse($this->cell($row, $mapping['delivery_date'])),
             'due_date' => $data['due_date'],
             'currency' => $data['currency'],
             'note_footer' => $company->legal_footer_note,
@@ -515,23 +519,6 @@ class BusinessDocumentExcelImportService
         }
 
         return null;
-    }
-
-    protected function parseDate(?string $value): ?Carbon
-    {
-        if ($value === null || $value === '') {
-            return null;
-        }
-
-        try {
-            if (preg_match('/^\d+(\.\d+)?$/', $value)) {
-                return Carbon::createFromTimestampUTC(((int) $value - 25569) * 86400)->startOfDay();
-            }
-
-            return Carbon::parse($value)->startOfDay();
-        } catch (\Throwable) {
-            return null;
-        }
     }
 
     protected function parseAmount(?string $value): ?float

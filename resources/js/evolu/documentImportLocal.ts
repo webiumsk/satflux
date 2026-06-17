@@ -27,6 +27,10 @@ import { syncNumberSeriesCounterFromDocuments } from "./numberSeriesCrud";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import type { CompanyId, ContactId, DocumentId, InvoicingLocalSchema } from "./schema";
 import { stripUtf8Bom } from "./contactImportLocal";
+import { parseImportDate, type ImportDateFormat } from "./importDateParse";
+import { parseSpreadsheetFile } from "./spreadsheetParse";
+
+export type { ImportDateFormat };
 
 export { downloadCsvBlob };
 
@@ -94,6 +98,7 @@ export type DocumentImportOptions = {
     defaultCurrency: string;
     noteFooter: string | null;
     company: VatPolicyCompany;
+    dateFormat?: ImportDateFormat;
     defaultVat?: number;
     lineTaxApplies?: (line: DocumentLinePayload) => boolean;
     lineTaxRate?: (line: DocumentLinePayload) => number;
@@ -115,9 +120,9 @@ const HEADER_ALIASES: Record<DocumentImportFieldKey, string[]> = {
     variable_symbol: ["variabilny symbol", "variable symbol", "vs"],
     constant_symbol: ["konstantny symbol", "constant symbol", "ks"],
     specific_symbol: ["specificky symbol", "specific symbol", "ss"],
-    issue_date: ["vytvorene", "datum vystavenia", "issue date", "created", "datum vytvorenia"],
-    delivery_date: ["datum dodania", "delivery date"],
-    due_date: ["datum splatnosti", "due date", "splatnost"],
+    issue_date: ["vytvorene", "datum vystavenia", "vystavenia", "issue date", "created", "datum vytvorenia", "datum vyst"],
+    delivery_date: ["datum dodania", "delivery date", "dodania"],
+    due_date: ["datum splatnosti", "splatnosti", "due date", "splatnost"],
     client_registration_number: ["ico klienta", "ico", "registration number", "ic"],
     client_tax_id: ["dic klienta", "dic", "tax id"],
     client_vat_id: ["ic dph klienta", "ic dph", "vat id", "dph"],
@@ -188,9 +193,26 @@ export function normalizeDocumentMapping(mapping: DocumentImportMapping): Docume
     return normalized;
 }
 
-export function isDocumentImportCsvFile(file: File): boolean {
+export function isDocumentImportSpreadsheetFile(file: File): boolean {
     const name = file.name.toLowerCase();
-    return name.endsWith(".csv") || file.type === "text/csv";
+    return (
+        name.endsWith(".csv")
+        || name.endsWith(".xlsx")
+        || name.endsWith(".xls")
+        || file.type === "text/csv"
+        || file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        || file.type === "application/vnd.ms-excel"
+    );
+}
+
+/** @deprecated Use isDocumentImportSpreadsheetFile */
+export function isDocumentImportCsvFile(file: File): boolean {
+    return isDocumentImportSpreadsheetFile(file);
+}
+
+export async function parseDocumentImportFile(file: File): Promise<{ headers: string[]; rows: string[][] }> {
+    const parsed = await parseSpreadsheetFile(file);
+    return { headers: parsed.headers, rows: parsed.rows };
 }
 
 export async function readDocumentImportCsvFile(file: File): Promise<string> {
@@ -297,18 +319,8 @@ function expandCountry(value: string): string {
     }
 }
 
-function parseDate(value: string | null): string | null {
-    if (value == null || value === "") return null;
-
-    if (/^\d+(\.\d+)?$/.test(value)) {
-        const serial = Number.parseInt(value, 10);
-        const utcMs = (serial - 25569) * 86400 * 1000;
-        return new Date(utcMs).toISOString().slice(0, 10);
-    }
-
-    const parsed = Date.parse(value);
-    if (Number.isNaN(parsed)) return null;
-    return new Date(parsed).toISOString().slice(0, 10);
+function parseDate(value: string | null, dateFormat: ImportDateFormat): string | null {
+    return parseImportDate(value, dateFormat);
 }
 
 function parseAmount(value: string | null): number | null {
@@ -382,11 +394,12 @@ function rowToInvoiceData(
     defaultCurrency: string,
     existingNumbers: Set<string>,
     validateOnly: boolean,
+    dateFormat: ImportDateFormat,
 ): ParsedInvoiceRow {
     const invoiceNumber = cell(row, mapping, "invoice_number");
     const clientName = cell(row, mapping, "client_name");
-    const issueDate = parseDate(cell(row, mapping, "issue_date"));
-    const dueDate = parseDate(cell(row, mapping, "due_date"));
+    const issueDate = parseDate(cell(row, mapping, "issue_date"), dateFormat);
+    const dueDate = parseDate(cell(row, mapping, "due_date"), dateFormat);
     const amount = parseAmount(cell(row, mapping, "amount"));
 
     if (invoiceNumber == null || invoiceNumber === "") {
@@ -409,7 +422,7 @@ function rowToInvoiceData(
         throw new Error(`Invoice number already exists: ${invoiceNumber}`);
     }
 
-    const paidAt = parseDate(cell(row, mapping, "paid_at"));
+    const paidAt = parseDate(cell(row, mapping, "paid_at"), dateFormat);
     const variableSymbol =
         cell(row, mapping, "variable_symbol") ?? variableSymbolFromNumber(invoiceNumber);
 
@@ -420,7 +433,7 @@ function rowToInvoiceData(
         specific_symbol: cell(row, mapping, "specific_symbol"),
         client_name: clientName.trim(),
         issue_date: issueDate,
-        delivery_date: parseDate(cell(row, mapping, "delivery_date")),
+        delivery_date: parseDate(cell(row, mapping, "delivery_date"), dateFormat),
         due_date: dueDate,
         amount,
         currency: (cell(row, mapping, "currency") ?? defaultCurrency).toUpperCase(),
@@ -679,28 +692,33 @@ function existingInvoiceNumbers(
     return numbers;
 }
 
-export function previewDocumentImportCsv(
-    csvText: string,
+export function previewDocumentImport(
+    headers: string[],
+    rows: string[][],
     mapping?: DocumentImportMapping,
-    options?: { defaultCurrency?: string; includePreview?: boolean },
+    options?: {
+        defaultCurrency?: string;
+        includePreview?: boolean;
+        dateFormat?: ImportDateFormat;
+    },
 ): DocumentImportPreviewResult {
-    const parsed = parseDocumentImportCsv(csvText);
-    const suggested = normalizeDocumentMapping(mapping ?? suggestDocumentMapping(parsed.headers));
+    const suggested = normalizeDocumentMapping(mapping ?? suggestDocumentMapping(headers));
     const defaultCurrency = options?.defaultCurrency ?? "EUR";
+    const dateFormat = options?.dateFormat ?? "dmy_dot";
 
     const result: DocumentImportPreviewResult = {
-        headers: parsed.headers,
+        headers,
         suggested_mapping: suggested,
-        row_count: parsed.rows.length,
+        row_count: rows.length,
     };
 
     if (options?.includePreview) {
         const preview: DocumentImportPreviewRow[] = [];
-        for (const [index, row] of parsed.rows.slice(0, 10).entries()) {
+        for (const [index, row] of rows.slice(0, 10).entries()) {
             const rowNumber = index + 2;
             if (isEmptyRow(row)) continue;
             try {
-                const data = rowToInvoiceData(row, suggested, defaultCurrency, new Set(), true);
+                const data = rowToInvoiceData(row, suggested, defaultCurrency, new Set(), true, dateFormat);
                 preview.push({
                     row: rowNumber,
                     invoice_number: data.invoice_number,
@@ -724,6 +742,19 @@ export function previewDocumentImportCsv(
     return result;
 }
 
+export function previewDocumentImportCsv(
+    csvText: string,
+    mapping?: DocumentImportMapping,
+    options?: {
+        defaultCurrency?: string;
+        includePreview?: boolean;
+        dateFormat?: ImportDateFormat;
+    },
+): DocumentImportPreviewResult {
+    const parsed = parseDocumentImportCsv(csvText);
+    return previewDocumentImport(parsed.headers, parsed.rows, mapping, options);
+}
+
 export function importDocumentImportCsv(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
@@ -732,6 +763,7 @@ export function importDocumentImportCsv(
     options: DocumentImportOptions,
 ): DocumentImportResult {
     const normalizedMapping = normalizeDocumentMapping(mapping);
+    const dateFormat = options.dateFormat ?? "dmy_dot";
     const documents = evolu.getQueryRows(allDocumentsQuery) as EvoluDocumentRow[];
     let contacts = evolu.getQueryRows(allContactsQuery) as EvoluContactRow[];
     const series = evolu.getQueryRows(allNumberSeriesQuery) as EvoluNumberSeriesRow[];
@@ -770,6 +802,7 @@ export function importDocumentImportCsv(
                 options.defaultCurrency,
                 knownNumbers,
                 false,
+                dateFormat,
             );
 
             const contactResult = resolveLocalContact(

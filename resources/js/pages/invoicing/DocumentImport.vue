@@ -53,13 +53,21 @@
       <div class="invoicing-card-pad space-y-4">
         <p class="text-sm text-gray-600">
           {{ t('invoicing.import_files_hint') }}
-          <span v-if="localFirst" class="block mt-1 text-xs text-amber-800">
-            {{ t('invoicing.local_first_document_import_csv') }}
-          </span>
           <button type="button" class="text-indigo-600 hover:underline" @click="downloadExample">
             {{ t('invoicing.import_example_link') }}
           </button>
         </p>
+
+        <div>
+          <label class="invoicing-sf-label">{{ t('invoicing.import_date_format') }}</label>
+          <select v-model="dateFormat" class="invoicing-sf-input max-w-md">
+            <option value="dmy_dot">{{ t('invoicing.import_date_format_dmy_dot') }}</option>
+            <option value="ymd_dash">{{ t('invoicing.import_date_format_ymd_dash') }}</option>
+            <option value="mdy_slash">{{ t('invoicing.import_date_format_mdy_slash') }}</option>
+            <option value="auto">{{ t('invoicing.import_date_format_auto') }}</option>
+          </select>
+          <p class="text-xs text-gray-500 mt-1">{{ t('invoicing.import_date_format_hint') }}</p>
+        </div>
 
         <div
           class="rounded-lg border-2 border-dashed border-indigo-300 bg-indigo-50/30 p-8 text-center"
@@ -256,11 +264,11 @@ import {
   buildDocumentImportExampleCsvBlob,
   downloadCsvBlob,
   importDocumentImportCsv,
-  isDocumentImportCsvFile,
-  parseDocumentImportCsv,
-  previewDocumentImportCsv,
-  readDocumentImportCsvFile,
+  isDocumentImportSpreadsheetFile,
+  parseDocumentImportFile,
+  previewDocumentImport,
   type DocumentImportPreviewRow,
+  type ImportDateFormat,
 } from '../../evolu/documentImportLocal';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
 import type { CompanyId } from '../../evolu/schema';
@@ -287,6 +295,7 @@ const oneRowPerInvoice = ref(true);
 const createContacts = ref(true);
 const lineName = ref('Imported item');
 const lineDescription = ref('');
+const dateFormat = ref<ImportDateFormat>('auto');
 const loading = ref(false);
 const importing = ref(false);
 const error = ref('');
@@ -383,7 +392,6 @@ function pickFile(file: File | undefined) {
   rowCount.value = 0;
   importResult.value = null;
   importDone.value = false;
-  step.value = 1;
   for (const field of DOCUMENT_IMPORT_FIELD_KEYS) {
     mapping[field] = null;
   }
@@ -407,7 +415,18 @@ function buildFormData(includeMapping: boolean) {
   form.append('line_name', lineName.value);
   if (lineDescription.value) form.append('line_description', lineDescription.value);
   form.append('create_contacts', createContacts.value ? '1' : '0');
+  form.append('date_format', dateFormat.value);
   return form;
+}
+
+async function loadSpreadsheetFromFile(file: File) {
+  if (localFirst) {
+    const parsed = await parseDocumentImportFile(file);
+    csvRows.value = parsed.rows;
+    headers.value = parsed.headers;
+    return parsed;
+  }
+  return null;
 }
 
 async function loadPreview() {
@@ -416,21 +435,20 @@ async function loadPreview() {
   error.value = '';
   try {
     if (localFirst) {
-      if (!isDocumentImportCsvFile(selectedFile.value)) {
-        error.value = t('invoicing.local_first_document_import_csv');
+      if (!isDocumentImportSpreadsheetFile(selectedFile.value)) {
+        error.value = t('invoicing.import_file_invalid');
         headers.value = [];
         rowCount.value = 0;
         csvRows.value = [];
         return;
       }
-      const text = await readDocumentImportCsvFile(selectedFile.value);
-      const parsed = parseDocumentImportCsv(text);
-      csvRows.value = parsed.rows;
+      const parsed = await loadSpreadsheetFromFile(selectedFile.value);
+      if (!parsed) return;
       const company = localCompanyApi();
-      const preview = previewDocumentImportCsv(text, undefined, {
+      const preview = previewDocumentImport(parsed.headers, parsed.rows, undefined, {
         defaultCurrency: company?.default_currency ?? 'EUR',
+        dateFormat: dateFormat.value,
       });
-      headers.value = preview.headers;
       rowCount.value = preview.row_count;
       for (const field of DOCUMENT_IMPORT_FIELD_KEYS) {
         mapping[field] = preview.suggested_mapping[field] ?? null;
@@ -462,17 +480,18 @@ async function goToConfirm() {
   error.value = '';
   try {
     if (localFirst) {
-      if (!isDocumentImportCsvFile(selectedFile.value)) {
-        error.value = t('invoicing.local_first_document_import_csv');
+      if (!isDocumentImportSpreadsheetFile(selectedFile.value)) {
+        error.value = t('invoicing.import_file_invalid');
         return;
       }
-      const text = await readDocumentImportCsvFile(selectedFile.value);
-      const parsed = parseDocumentImportCsv(text);
-      csvRows.value = parsed.rows;
+      if (!csvRows.value.length) {
+        await loadSpreadsheetFromFile(selectedFile.value);
+      }
       const company = localCompanyApi();
-      const preview = previewDocumentImportCsv(text, mapping, {
+      const preview = previewDocumentImport(headers.value, csvRows.value, mapping, {
         defaultCurrency: company?.default_currency ?? 'EUR',
         includePreview: true,
+        dateFormat: dateFormat.value,
       });
       previewRows.value = preview.preview ?? [];
       rowCount.value = preview.row_count;
@@ -501,13 +520,12 @@ async function runImport() {
   importResult.value = null;
   try {
     if (localFirst && evolu) {
-      if (!isDocumentImportCsvFile(selectedFile.value)) {
-        error.value = t('invoicing.local_first_document_import_csv');
+      if (!isDocumentImportSpreadsheetFile(selectedFile.value)) {
+        error.value = t('invoicing.import_file_invalid');
         return;
       }
       if (!csvRows.value.length) {
-        const text = await readDocumentImportCsvFile(selectedFile.value);
-        csvRows.value = parseDocumentImportCsv(text).rows;
+        await loadSpreadsheetFromFile(selectedFile.value);
       }
       await ensureLocalQueriesLoaded();
       const company = localCompanyApi();
@@ -523,6 +541,7 @@ async function runImport() {
           defaultCurrency: company?.default_currency ?? 'EUR',
           noteFooter: company?.legal_footer_note ?? null,
           company,
+          dateFormat: dateFormat.value,
         },
       );
       importResult.value = {

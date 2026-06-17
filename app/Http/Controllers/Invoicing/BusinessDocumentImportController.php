@@ -8,6 +8,7 @@ use App\Services\Invoicing\BusinessDocumentExcelImportService;
 use App\Support\Invoicing\BusinessDocumentImportFields;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BusinessDocumentImportController extends Controller
@@ -36,6 +37,7 @@ class BusinessDocumentImportController extends Controller
             'line_name' => ['nullable', 'string', 'max:255'],
             'line_description' => ['nullable', 'string', 'max:5000'],
             'create_contacts' => ['nullable', 'boolean'],
+            'date_format' => ['nullable', 'string', Rule::in(['auto', 'dmy_dot', 'ymd_dash', 'mdy_slash'])],
         ]);
 
         $mapping = $this->decodeMapping($validated['mapping'] ?? null);
@@ -43,6 +45,7 @@ class BusinessDocumentImportController extends Controller
             'line_name' => $validated['line_name'] ?? null,
             'line_description' => $validated['line_description'] ?? null,
             'create_contacts' => $request->boolean('create_contacts', true),
+            'date_format' => $validated['date_format'] ?? 'auto',
         ];
 
         try {
@@ -62,6 +65,7 @@ class BusinessDocumentImportController extends Controller
             'line_name' => ['nullable', 'string', 'max:255'],
             'line_description' => ['nullable', 'string', 'max:5000'],
             'create_contacts' => ['nullable', 'boolean'],
+            'date_format' => ['nullable', 'string', Rule::in(['auto', 'dmy_dot', 'ymd_dash', 'mdy_slash'])],
         ]);
 
         $mapping = $this->decodeMapping($validated['mapping']);
@@ -73,6 +77,7 @@ class BusinessDocumentImportController extends Controller
             'line_name' => $validated['line_name'] ?? null,
             'line_description' => $validated['line_description'] ?? null,
             'create_contacts' => $request->boolean('create_contacts', true),
+            'date_format' => $validated['date_format'] ?? 'auto',
         ];
 
         try {
