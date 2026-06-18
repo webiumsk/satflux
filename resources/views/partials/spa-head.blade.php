@@ -31,3 +31,11 @@
 <meta name="satflux-matomo-url" content="{{ rtrim((string) config('services.matomo.url'), '/') }}">
 <meta name="satflux-matomo-site-id" content="{{ config('services.matomo.site_id') }}">
 @endif
+
+@if(config('services.chorala.project_key'))
+<meta name="satflux-chorala-key" content="{{ config('services.chorala.project_key') }}">
+<meta name="satflux-chorala-widget-url" content="{{ config('services.chorala.widget_url') }}">
+@if(filter_var(env('CHORALA_USE_PROXY', app()->environment('local')), FILTER_VALIDATE_BOOLEAN))
+<meta name="satflux-chorala-use-proxy" content="true">
+@endif
+@endif

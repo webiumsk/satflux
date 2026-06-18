@@ -16,6 +16,10 @@ function scheduleAnalyticsLoad(): void {
     void import('./services/analytics').then(({ loadAnalyticsIfConsented }) => loadAnalyticsIfConsented());
 }
 
+function scheduleChoralaLoad(): void {
+    void import('./services/chorala').then(({ initChorala }) => initChorala());
+}
+
 function mountPublicSpa(): void {
     const app = createApp(AppPublic);
     app.use(createPinia());
@@ -33,9 +37,15 @@ function mountPublicSpa(): void {
         }
 
         if ('requestIdleCallback' in window) {
-            requestIdleCallback(() => scheduleAnalyticsLoad());
+            requestIdleCallback(() => {
+                scheduleAnalyticsLoad();
+                scheduleChoralaLoad();
+            });
         } else {
-            setTimeout(scheduleAnalyticsLoad, 2000);
+            setTimeout(() => {
+                scheduleAnalyticsLoad();
+                scheduleChoralaLoad();
+            }, 2000);
         }
     });
 }

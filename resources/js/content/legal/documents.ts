@@ -201,6 +201,7 @@ const privacyEn: LegalDocumentContent = {
       paragraphs: [
         'We use essential cookies for authentication (Laravel session, CSRF) and optional preferences (e.g. language).',
         'We do not use third-party advertising cookies on the authenticated app. Public pages may use privacy-friendly analytics if enabled.',
+        'When the Chorala feedback widget is enabled, it may set a functional cookie to attribute votes and submissions to your session.',
       ],
     },
     {
@@ -403,6 +404,7 @@ const privacySk: LegalDocumentContent = {
       paragraphs: [
         'Používame nevyhnutné cookies pre autentifikáciu (Laravel session, CSRF) a voliteľné preferencie (napr. jazyk).',
         'V prihlásenej aplikácii nepoužívame reklamné cookies tretích strán. Verejné stránky môžu používať privacy-friendly analytiku, ak je zapnutá.',
+        'Ak je zapnutý feedback widget Chorala, môže nastaviť funkčný cookie na priradenie hlasov a podnetov k vašej relácii.',
       ],
     },
     {
