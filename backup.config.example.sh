@@ -12,8 +12,6 @@ RETENTION_WEEKS=4
 BACKUP_REDIS=false
 BACKUP_FILES=true
 BACKUP_ENV=true
-BACKUP_EVOLU_RELAY=true
-EVOLU_RELAY_VOLUME="satflux_standalone_evolu_relay_data"
 
 # Optional: upload completed backups (requires AWS CLI credentials in the environment)
 # Leave empty to skip remote upload.

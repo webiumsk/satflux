@@ -7,23 +7,15 @@
 # - localhost:80 = HTTP only (dev/test, žiadne SSL)
 # - satflux.io = HTTPS s automatickým Let's Encrypt (produkcia)
 {$SITE_ADDRESS:localhost:80} {
+    # Bind 0.0.0.0 pre prístup z hosta v Dockeri
     bind 0.0.0.0
 
-    # Static assets and PHP/HTML via nginx. Use HTTP/1.1 to upstream and do not request
-    # gzip from nginx (Accept-Encoding: gzip) - avoids intermittent empty GET bodies.
-    reverse_proxy nginx:80 {
-        flush_interval -1
-        transport http {
-            compression off
-            versions 1.1
-        }
-    }
+    # Proxy na nginx (ktorý spracuje PHP cez PHP-FPM)
+    reverse_proxy nginx:80
 
+    # Logovanie (stdout = Docker-friendly)
     log {
         output stdout
         format console
     }
 }
-
-# Evolu E2EE relay (local-first invoicing sync). See docker/caddy/Caddyfile.relay
-import Caddyfile.relay
