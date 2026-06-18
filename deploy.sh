@@ -238,6 +238,19 @@ docker exec --user root "$PHP_CONTAINER" chmod -R 775 /var/www/storage /var/www/
 
 # Step 7: Restart relevant containers
 echo -e "${YELLOW}Step 7: Restarting containers...${NC}"
+
+if grep -q "caddy:" "$COMPOSE_FILE"; then
+    echo -e "${YELLOW}Validating Caddy config...${NC}"
+    docker run --rm \
+        -v "$(pwd)/docker/caddy:/etc/caddy:ro" \
+        -e "SITE_ADDRESS=$(grep -E '^SITE_ADDRESS=' "$ENV_FILE" 2>/dev/null | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r' | xargs || echo localhost:80)" \
+        caddy:alpine caddy validate --config /etc/caddy/Caddyfile || {
+            echo -e "${RED}Caddy config invalid - fix docker/caddy/Caddyfile* before restart${NC}"
+            exit 1
+        }
+    echo -e "${GREEN}✓ Caddy config valid${NC}"
+fi
+
 RESTART_SERVICES="php nginx"
 if grep -q "caddy:" "$COMPOSE_FILE"; then
     RESTART_SERVICES="$RESTART_SERVICES caddy"

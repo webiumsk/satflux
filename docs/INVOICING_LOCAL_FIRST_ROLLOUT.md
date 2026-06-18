@@ -154,6 +154,7 @@ Server PostgreSQL invoicing data from before rollout is **unchanged** (not delet
 | WooCommerce creates server documents | `INVOICING_LOCAL_FIRST` false on server | Set server flag + `optimize:clear`                                       |
 | Flags mismatch warning during deploy | Only one of the paired flags set        | Align both flags in env file                                             |
 | Relay WS fails on primary only       | DNS/TLS/Caddy for `RELAY_SITE_ADDRESS`  | Check `docker/caddy/Caddyfile.relay`, Caddy logs, A record               |
+| Site down (521/501) after relay deploy | Caddy `import Caddyfile.relay` without mount | Mount `./docker/caddy:/etc/caddy:ro`; `docker compose restart caddy` |
 | Only one WS connection in DevTools   | Old JS bundle or missing secondary env  | Rebuild with `VITE_EVOLU_RELAY_URL_SECONDARY`; hard-refresh browser      |
 
 ## Related docs
