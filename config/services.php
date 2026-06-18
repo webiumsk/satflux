@@ -75,6 +75,12 @@ return [
         'site_id' => env('MATOMO_SITE_ID'),
     ],
 
+    'chorala' => [
+        'project_key' => env('CHORALA_PROJECT_KEY'),
+        'widget_url' => rtrim((string) env('CHORALA_WIDGET_URL', 'https://chorala.com'), '/'),
+        'end_user_jwt_secret' => env('CHORALA_END_USER_JWT_SECRET'),
+    ],
+
     'discord' => [
         'support_webhook_url' => env('SUPPORT_DISCORD_WEBHOOK_URL'),
     ],

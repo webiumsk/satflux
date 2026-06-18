@@ -59,6 +59,7 @@ if (isInertia) {
 }
 
 void import('./services/analytics').then(({ loadAnalyticsIfConsented }) => loadAnalyticsIfConsented());
+void import('./services/chorala').then(({ initChorala }) => initChorala());
 void initLocaleFromBackend();
 
 

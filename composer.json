@@ -8,6 +8,7 @@
         "php": "^8.3",
         "adawolfa/isdoc": "^1.5",
         "dompdf/dompdf": "^3.1",
+        "firebase/php-jwt": "^7.1",
         "galbar/jsonpath": "^2.1",
         "geoip2/geoip2": "^3.0",
         "inertiajs/inertia-laravel": "^2.0",

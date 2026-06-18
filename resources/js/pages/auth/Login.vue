@@ -365,6 +365,7 @@ import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
 import NostrAuthModal from "../../components/auth/NostrAuthModal.vue";
 import GuestRestoreModal from "../../components/auth/GuestRestoreModal.vue";
 import AuthSeedGuestPanel from "../../components/auth/AuthSeedGuestPanel.vue";
+import { isPublicMarketingPath, navigateToAppPath } from "../../utils/publicMarketingRoutes";
 
 const { t } = useI18n();
 
@@ -460,6 +461,15 @@ watch(
   () => applyAuthTabFromQuery(),
 );
 
+function redirectAfterAuth(target?: string | null) {
+  const path = target && target.trim() !== "" ? target : "/dashboard";
+  if (!isPublicMarketingPath(path)) {
+    navigateToAppPath(path);
+    return;
+  }
+  router.push(path);
+}
+
 async function handleLogin() {
   loading.value = true;
 
@@ -469,9 +479,9 @@ async function handleLogin() {
       form.value.password,
       form.value.remember,
     );
-    // Redirect to dashboard after login
+    // Redirect to app bundle after login (public SPA cannot host /dashboard).
     const redirect = router.currentRoute.value.query.redirect as string;
-    router.push(redirect || "/dashboard");
+    redirectAfterAuth(redirect);
   } catch (err: any) {
     flashStore.error(
       err.response?.data?.message || "Login failed. Please try again.",
@@ -581,7 +591,7 @@ function startPolling(k1: string) {
         stopPolling();
         closeLnurlModal();
         await authStore.fetchUser();
-        router.push("/dashboard");
+        redirectAfterAuth("/dashboard");
       } else if (
         status === "pending_email" &&
         (user_id || payload.k1 || lnurlK1.value)

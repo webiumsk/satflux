@@ -15,6 +15,8 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\NostrAuthController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\CashuController;
+use App\Http\Controllers\ChoralaController;
+use App\Http\Controllers\ChoralaProxyController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\EshopIntegrationController;
@@ -290,10 +292,16 @@ Route::get('/nostr-auth/enabled', [NostrAuthController::class, 'enabled']);
 Route::get('/nostr-auth/challenge-status/{id}', [NostrAuthController::class, 'challengeStatus'])
     ->middleware(['throttle:60,1']);
 
+// Chorala widget public API proxy (localhost / dev - avoids cross-origin CORS to chorala.com)
+Route::any('/chorala-proxy/v1/{path}', [ChoralaProxyController::class, 'forward'])
+    ->where('path', '.*')
+    ->middleware(['throttle:60,1']);
+
 // Authenticated routes (email must be verified - classic registration and API use)
 Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-user'])->group(function () {
     // User/Account routes
     Route::get('/user', [AccountController::class, 'user']);
+    Route::get('/chorala/widget-token', [ChoralaController::class, 'widgetToken']);
     Route::post('/lnurl-auth/link-challenge', [LnurlAuthController::class, 'linkChallenge']);
     Route::post('/lnurl-auth/reveal-confirm-challenge', [LnurlAuthController::class, 'revealConfirmChallenge']);
     Route::post('/nostr-auth/link-challenge', [NostrAuthController::class, 'linkChallenge']);
