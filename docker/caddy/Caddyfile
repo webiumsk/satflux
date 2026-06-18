@@ -10,7 +10,14 @@
     # Bind 0.0.0.0 pre prístup z hosta v Dockeri
     bind 0.0.0.0
 
-    # Proxy na nginx (ktorý spracuje PHP cez PHP-FPM)
+    # Vite build - serve directly from disk (same ./public mount as nginx). Avoids flaky
+    # empty responses when proxying static files through Caddy -> nginx.
+    handle /build/* {
+        root * /srv/public
+        file_server
+    }
+
+    # Proxy na nginx (PHP cez PHP-FPM, HTML, API)
     reverse_proxy nginx:80
 
     # Logovanie (stdout = Docker-friendly)
