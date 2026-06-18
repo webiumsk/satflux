@@ -158,6 +158,48 @@ verify_nginx_asset_bytes() {
     [ "$empty" -eq 0 ]
 }
 
+caddy_tls_asset_bytes() {
+    local host=$1 asset=$2
+    curl -s --http1.1 --max-time 8 --resolve "${host}:443:127.0.0.1" -k \
+        "https://${host}/build/assets/${asset}" 2>/dev/null | wc -c | tr -d ' '
+}
+
+# Caddy may return empty responses while TLS listeners reload after restart; wait for stability.
+wait_for_caddy_tls_ready() {
+    local host=$1 asset=$2 min_bytes=$3
+    local max_wait=${4:-60}
+    local consecutive=0 elapsed=0 sz
+    echo -e "${YELLOW}Waiting for Caddy TLS (post-restart reload)...${NC}"
+    while [ "$elapsed" -lt "$max_wait" ]; do
+        sz=$(caddy_tls_asset_bytes "$host" "$asset")
+        if [ "${sz:-0}" -ge "$min_bytes" ]; then
+            consecutive=$((consecutive + 1))
+            if [ "$consecutive" -ge 3 ]; then
+                echo -e "${GREEN}✓ Caddy TLS ready${NC}"
+                return 0
+            fi
+        else
+            consecutive=0
+        fi
+        sleep 1
+        elapsed=$((elapsed + 1))
+    done
+    return 1
+}
+
+verify_caddy_tls_asset_bytes() {
+    local host=$1 asset=$2 min_bytes=$3
+    local empty=0 i sz
+    for i in 1 2 3 4 5; do
+        sz=$(caddy_tls_asset_bytes "$host" "$asset")
+        if [ "${sz:-0}" -lt "$min_bytes" ]; then
+            empty=$((empty + 1))
+        fi
+        sleep 0.5
+    done
+    [ "$empty" -eq 0 ]
+}
+
 echo -e "${GREEN}Starting satflux deployment...${NC}"
 
 # Check if env file exists
@@ -385,6 +427,7 @@ if grep -q "caddy:" "$COMPOSE_FILE"; then
         docker logs "$CADDY_CONTAINER" 2>&1 | tail -20
         exit 1
     }
+    sleep 3
 fi
 
 # Step 8: Verify deployment
@@ -425,16 +468,13 @@ echo -e "${GREEN}✓ nginx serves /build/assets/$_public_js reliably (5/5)${NC}"
 _site_address=$(grep -E '^SITE_ADDRESS=' "$ENV_FILE" 2>/dev/null | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r' | xargs || true)
 _site_host="${_site_address%%:*}"
 if [ -n "$_site_host" ] && [ "$_site_host" != "localhost" ] && grep -q "caddy:" "$COMPOSE_FILE"; then
-    _caddy_empty=0
-    for _i in 1 2 3 4 5; do
-        _caddy_sz=$(curl -s --http1.1 --max-time 8 --resolve "${_site_host}:443:127.0.0.1" -k \
-            "https://${_site_host}/build/assets/${_public_js}" 2>/dev/null | wc -c | tr -d ' ')
-        if [ "${_caddy_sz:-0}" -lt 100 ]; then
-            _caddy_empty=$((_caddy_empty + 1))
-        fi
-    done
-    if [ "$_caddy_empty" -gt 0 ]; then
-        echo -e "${RED}✗ Caddy/TLS returned empty entry JS ${_caddy_empty}/5 times${NC}"
+    if ! wait_for_caddy_tls_ready "$_site_host" "$_public_js" 100 60; then
+        echo -e "${RED}✗ Caddy/TLS did not become ready within 60s${NC}"
+        docker logs "$CADDY_CONTAINER" 2>&1 | tail -20
+        exit 1
+    fi
+    if ! verify_caddy_tls_asset_bytes "$_site_host" "$_public_js" 100; then
+        echo -e "${RED}✗ Caddy/TLS returned empty entry JS after ready - check Caddy/nginx proxy${NC}"
         docker logs "$CADDY_CONTAINER" 2>&1 | tail -20
         exit 1
     fi
