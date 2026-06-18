@@ -83,10 +83,8 @@ describe("server migration import", () => {
         markServerMigrationCompleted();
         (api.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
             data: {
-                data: {
-                    snapshot: snapshotWithCompany,
-                    meta: { warnings: [], counts: { company: 1 } },
-                },
+                data: snapshotWithCompany,
+                meta: { warnings: [], counts: { company: 1 } },
             },
         });
         (restoreInvoicingSnapshotDetailedAsync as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
