@@ -2,7 +2,9 @@
 # Manual: set RELAY_SITE_ADDRESS=relay.satflux.io and add a DNS A record to this VPS.
 
 relay.satflux.io {
-    reverse_proxy evolu-relay:4000
+    reverse_proxy evolu-relay:4000 {
+        flush_interval -1
+    }
     log {
         output stdout
         format console

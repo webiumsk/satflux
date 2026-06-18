@@ -61,7 +61,9 @@ if [ -n "$RELAY_SITE_ADDRESS" ]; then
     echo -e "${YELLOW}Evolu relay Caddy site: ${RELAY_SITE_ADDRESS}${NC}"
     cat > docker/caddy/Caddyfile.relay <<EOF
 ${RELAY_SITE_ADDRESS} {
-    reverse_proxy evolu-relay:4000
+    reverse_proxy evolu-relay:4000 {
+        flush_interval -1
+    }
     log {
         output stdout
         format console
@@ -337,6 +339,24 @@ if [ -n "$_public_js" ]; then
             exit 1
         fi
         echo -e "${GREEN}✓ nginx serves /build/assets/$_public_js reliably (5/5)${NC}"
+    fi
+fi
+
+if [ -n "$RELAY_SITE_ADDRESS" ]; then
+    if ! $DC_CMD ps --status running 2>/dev/null | grep -q evolu-relay; then
+        echo -e "${RED}Error: evolu-relay is not running but RELAY_SITE_ADDRESS=${RELAY_SITE_ADDRESS}${NC}"
+        exit 1
+    fi
+    _relay_ws=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 --http1.1 \
+        -H "Connection: Upgrade" -H "Upgrade: websocket" \
+        -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+        "https://${RELAY_SITE_ADDRESS}/" 2>/dev/null || echo "000")
+    if [ "$_relay_ws" = "101" ]; then
+        echo -e "${GREEN}✓ Evolu relay WSS https://${RELAY_SITE_ADDRESS}/ (HTTP 101)${NC}"
+    else
+        echo -e "${RED}Error: Evolu relay WSS returned HTTP ${_relay_ws} (expected 101)${NC}"
+        echo -e "${YELLOW}  → cat docker/caddy/Caddyfile.relay ; docker logs satflux_evolu_relay_standalone --tail 20${NC}"
+        exit 1
     fi
 fi
 
