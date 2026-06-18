@@ -222,9 +222,19 @@ if [ "${_build_js_count:-0}" -lt 1 ]; then
     echo -e "${RED}Error: no JS assets in public/build/assets after npm run build${NC}"
     exit 1
 fi
+_zero_js_count=$(docker exec "$PHP_CONTAINER" sh -c 'find /var/www/public/build/assets -name "*.js" -size 0 2>/dev/null | wc -l' | tr -d ' ')
+if [ "${_zero_js_count:-0}" -gt 0 ]; then
+    echo -e "${RED}Error: found ${_zero_js_count} empty .js files in public/build/assets${NC}"
+    exit 1
+fi
 echo -e "${GREEN}✓ Vite build OK (${_build_js_count} JS assets)${NC}"
 docker exec --user root "$PHP_CONTAINER" chmod -R a+rX /var/www/public/build
 docker exec --user root "$PHP_CONTAINER" chown -R www-data:www-data /var/www/public/build 2>/dev/null || true
+
+# Blade @vite() hashes must match manifest immediately after build
+echo -e "${YELLOW}Refreshing compiled views (@vite asset hashes)...${NC}"
+docker exec --user root "$PHP_CONTAINER" php artisan view:clear
+docker exec --user root "$PHP_CONTAINER" php artisan view:cache
 
 # Step 5: Run database migrations
 echo -e "${YELLOW}Step 5: Running database migrations...${NC}"
@@ -305,18 +315,33 @@ echo ""
 
 # Verify Vite entry asset is non-empty inside nginx mount (catches sendfile/gzip regressions)
 _public_js=$(docker exec "$PHP_CONTAINER" node -p "require('/var/www/public/build/manifest.json')['resources/js/public.ts'].file.split('/').pop()" 2>/dev/null || true)
+NGINX_CONTAINER="${NGINX_CONTAINER:-satflux_nginx_standalone}"
 if [ -n "$_public_js" ]; then
     _public_bytes=$(docker exec "$PHP_CONTAINER" stat -c%s "/var/www/public/build/assets/$_public_js" 2>/dev/null || echo 0)
     if [ "${_public_bytes:-0}" -lt 100 ]; then
-        echo -e "${RED}Warning: public/build/assets/$_public_js is only ${_public_bytes} bytes - frontend may be broken${NC}"
+        echo -e "${RED}Error: public/build/assets/$_public_js is only ${_public_bytes} bytes${NC}"
+        exit 1
     else
-        echo -e "${GREEN}✓ Entry asset $_public_js (${_public_bytes} bytes)${NC}"
+        echo -e "${GREEN}✓ Entry asset $_public_js (${_public_bytes} bytes on disk)${NC}"
+    fi
+    if docker ps --format '{{.Names}}' | grep -q "^${NGINX_CONTAINER}$"; then
+        _nginx_empty=0
+        for _i in 1 2 3 4 5; do
+            _nginx_sz=$(docker exec "$NGINX_CONTAINER" wget -qO- "http://127.0.0.1/build/assets/$_public_js" 2>/dev/null | wc -c | tr -d ' ')
+            if [ "${_nginx_sz:-0}" -lt 100 ]; then
+                _nginx_empty=$((_nginx_empty + 1))
+            fi
+        done
+        if [ "$_nginx_empty" -gt 0 ]; then
+            echo -e "${RED}Error: nginx returned empty entry JS ${_nginx_empty}/5 times - check docker/nginx/prod.conf /build/ block${NC}"
+            exit 1
+        fi
+        echo -e "${GREEN}✓ nginx serves /build/assets/$_public_js reliably (5/5)${NC}"
     fi
 fi
 
 echo ""
 echo "Next steps:"
-echo "1. Cloudflare: Purge Everything (or enable Development Mode 3h) - stale empty JS responses may be cached"
-echo "2. Verify the application is accessible at your domain (hard refresh / incognito)"
-echo "3. Check logs if needed: docker compose -f $COMPOSE_FILE --project-name $PROJECT_NAME logs -f"
-echo "4. Monitor application for any issues"
+echo "1. Cloudflare: Purge Everything (required once after this fix - CF cached empty JS bodies from broken deploys)"
+echo "2. Verify: curl -s --http1.1 https://YOUR_DOMAIN/build/assets/$_public_js | wc -c  (must match disk size)"
+echo "3. Hard refresh / incognito in browser"

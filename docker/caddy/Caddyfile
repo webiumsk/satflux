@@ -7,20 +7,18 @@
 # - localhost:80 = HTTP only (dev/test, žiadne SSL)
 # - satflux.io = HTTPS s automatickým Let's Encrypt (produkcia)
 {$SITE_ADDRESS:localhost:80} {
-    # Bind 0.0.0.0 pre prístup z hosta v Dockeri
     bind 0.0.0.0
 
-    # Vite build - serve directly from disk (same ./public mount as nginx). Avoids flaky
-    # empty responses when proxying static files through Caddy -> nginx.
-    handle /build/* {
-        root * /srv/public
-        file_server
+    # Static assets and PHP/HTML via nginx. Use HTTP/1.1 to upstream and do not request
+    # gzip from nginx (Accept-Encoding: gzip) - avoids intermittent empty GET bodies.
+    reverse_proxy nginx:80 {
+        flush_interval -1
+        transport http {
+            compression off
+            versions 1.1
+        }
     }
 
-    # Proxy na nginx (PHP cez PHP-FPM, HTML, API)
-    reverse_proxy nginx:80
-
-    # Logovanie (stdout = Docker-friendly)
     log {
         output stdout
         format console

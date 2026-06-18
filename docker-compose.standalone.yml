@@ -17,7 +17,6 @@ services:
       - "${STANDALONE_HTTPS_PORT:-443}:443"
     volumes:
       - ./docker/caddy:/etc/caddy:ro
-      - ./public:/srv/public:ro
       - satflux_caddy_data:/data
       - satflux_caddy_config:/config
     environment:
