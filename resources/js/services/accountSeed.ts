@@ -12,6 +12,7 @@ ed25519.hashes.sha512 = sha512;
 
 const RECOVERY_HKDF_INFO = new TextEncoder().encode("satflux-guest-ed25519-v1");
 const ACCOUNT_MNEMONIC_STORAGE_KEY = "satflux.account.mnemonic.v1";
+const PERSISTENT_ACCOUNT_MNEMONIC_KEY = "satflux.account.mnemonic.persistent.v1";
 const LEGACY_GUEST_MNEMONIC_STORAGE_KEY = "satflux.guest.mnemonic.v1";
 
 function bytesToHex(u8: Uint8Array): string {
@@ -61,6 +62,33 @@ export function storeAccountMnemonic(mnemonic: string): void {
     }
     sessionStorage.setItem(ACCOUNT_MNEMONIC_STORAGE_KEY, normalized);
     sessionStorage.removeItem(LEGACY_GUEST_MNEMONIC_STORAGE_KEY);
+    try {
+        localStorage.setItem(PERSISTENT_ACCOUNT_MNEMONIC_KEY, normalized);
+    } catch {
+        // Quota or private mode - session-only is still enough for this tab.
+    }
+}
+
+/** Restore session mnemonic after a new tab opened while the Laravel session cookie is still valid. */
+export function hydrateAccountMnemonicSession(): void {
+    if (getStoredAccountMnemonic()) {
+        return;
+    }
+    try {
+        const persisted = localStorage.getItem(PERSISTENT_ACCOUNT_MNEMONIC_KEY);
+        if (!persisted) {
+            return;
+        }
+        const normalized = normalizeAccountMnemonic(persisted);
+        if (!validateMnemonic(normalized, wordlist)) {
+            localStorage.removeItem(PERSISTENT_ACCOUNT_MNEMONIC_KEY);
+            return;
+        }
+        sessionStorage.setItem(ACCOUNT_MNEMONIC_STORAGE_KEY, normalized);
+        sessionStorage.removeItem(LEGACY_GUEST_MNEMONIC_STORAGE_KEY);
+    } catch {
+        // Storage unavailable.
+    }
 }
 
 export function getStoredAccountMnemonic(): string | null {
@@ -74,12 +102,25 @@ export function getStoredAccountMnemonic(): string | null {
         sessionStorage.removeItem(LEGACY_GUEST_MNEMONIC_STORAGE_KEY);
         return legacy;
     }
+    try {
+        const persisted = localStorage.getItem(PERSISTENT_ACCOUNT_MNEMONIC_KEY);
+        if (persisted && validateMnemonic(normalizeAccountMnemonic(persisted), wordlist)) {
+            return normalizeAccountMnemonic(persisted);
+        }
+    } catch {
+        // Storage unavailable.
+    }
     return null;
 }
 
 export function clearStoredAccountMnemonic(): void {
     sessionStorage.removeItem(ACCOUNT_MNEMONIC_STORAGE_KEY);
     sessionStorage.removeItem(LEGACY_GUEST_MNEMONIC_STORAGE_KEY);
+    try {
+        localStorage.removeItem(PERSISTENT_ACCOUNT_MNEMONIC_KEY);
+    } catch {
+        // Storage unavailable.
+    }
 }
 
 export type EvoluAccountSeedInitResult =

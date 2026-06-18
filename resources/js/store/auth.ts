@@ -4,9 +4,11 @@ import api from '../services/api';
 import { ensureCsrfCookie } from '../services/csrf';
 import { useStoresStore } from './stores';
 import {
+    clearStoredGuestMnemonic,
     getStoredGuestMnemonic,
     guestRecoveryMessage,
     guestRecoveryPublicKeyHexFromMnemonic,
+    hydrateAccountMnemonicSession,
     signGuestRecoveryMessage,
     storeGuestMnemonic,
 } from '../services/guestRecovery';
@@ -78,6 +80,7 @@ export const useAuthStore = defineStore('auth', () => {
     async function fetchUser() {
         try {
             await ensureCsrfCookie();
+            hydrateAccountMnemonicSession();
             const response = await api.get('/user');
             const previousUserId = user.value?.id ?? null;
             user.value = response.data;
@@ -141,7 +144,11 @@ export const useAuthStore = defineStore('auth', () => {
                 remember,
             });
             user.value = response.data.user;
+            hydrateAccountMnemonicSession();
             scheduleChoralaSync();
+            if (getStoredGuestMnemonic() && isInvoicingLocalFirst()) {
+                void ensureEvoluBoundToAccountSeed();
+            }
             return response.data;
         } finally {
             loading.value = false;
@@ -239,6 +246,7 @@ export const useAuthStore = defineStore('auth', () => {
             await api.post('/auth/logout');
         } finally {
             clearLocalAuthAndTenantState();
+            clearStoredGuestMnemonic();
             scheduleChoralaSync();
         }
     }

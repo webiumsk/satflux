@@ -16,6 +16,7 @@ export interface UseInvoicingCompaniesResult {
     companies: Ref<InvoicingCompanyListItem[]> | ComputedRef<InvoicingCompanyListItem[]>;
     loading: Ref<boolean>;
     forbidden: Ref<boolean>;
+    loadError: Ref<boolean>;
     refresh: () => Promise<void>;
 }
 
@@ -23,6 +24,7 @@ function useServerInvoicingCompanies(): UseInvoicingCompaniesResult {
     const companies = ref<InvoicingCompanyListItem[]>([]);
     const loading = ref(false);
     const forbidden = ref(false);
+    const loadError = ref(false);
 
     async function refresh(): Promise<void> {
         loading.value = true;
@@ -49,6 +51,7 @@ function useServerInvoicingCompanies(): UseInvoicingCompaniesResult {
         companies,
         loading,
         forbidden,
+        loadError,
         refresh,
     };
 }

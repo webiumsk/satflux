@@ -100,6 +100,19 @@
       </button>
     </div>
 
+    <div v-else-if="loadError" class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-8 text-center mb-4">
+      <p class="text-sm font-medium text-amber-950">{{ t('invoicing.local_db_load_failed_title') }}</p>
+      <p class="text-sm text-amber-900 mt-2 max-w-md mx-auto">{{ t('invoicing.local_db_load_failed_detail') }}</p>
+      <div class="flex flex-wrap items-center justify-center gap-3 mt-4">
+        <button type="button" class="invoicing-btn-primary" @click="retryCompaniesLoad">
+          {{ t('invoicing.local_db_retry') }}
+        </button>
+        <button type="button" class="invoicing-link text-sm font-medium" @click="reloadPage">
+          {{ t('invoicing.evolu_reload_page') }}
+        </button>
+      </div>
+    </div>
+
     <div v-else-if="loading" class="invoicing-muted py-8">
       {{ relaySyncLoading ? t('invoicing.relay_sync_loading') : t('common.loading') }}
     </div>
@@ -190,6 +203,7 @@ const {
   companies,
   loading,
   forbidden,
+  loadError,
   refresh,
 } = useInvoicingCompanies();
 
@@ -207,17 +221,17 @@ watch(forbidden, (isForbidden) => {
 const companyList = computed(() => unref(companies));
 
 const showServerMigration = computed(() => {
-  if (!localFirst || loading.value || isRelaySyncing.value) return false;
+  if (!localFirst || loading.value || loadError.value || isRelaySyncing.value) return false;
   return shouldOfferServerMigration(companyList.value.length, migrationStatus.value);
 });
 
 const showServerLegacyCleanup = computed(() => {
-  if (!localFirst || loading.value || isRelaySyncing.value || showServerMigration.value) return false;
+  if (!localFirst || loading.value || loadError.value || isRelaySyncing.value || showServerMigration.value) return false;
   return shouldOfferServerLegacyCleanup(companyList.value.length, migrationStatus.value);
 });
 
 const showAttachmentMigration = computed(() => {
-  if (!localFirst || loading.value || isRelaySyncing.value || showServerMigration.value) return false;
+  if (!localFirst || loading.value || loadError.value || isRelaySyncing.value || showServerMigration.value) return false;
   return shouldOfferAttachmentMigration(companyList.value.length, migrationStatus.value);
 });
 
@@ -313,5 +327,13 @@ function openCompany(c: { id: string }): void {
 function onAddCompany(): void {
   if (isRelaySyncing.value) return;
   router.push({ name: 'invoicing-company-new' });
+}
+
+function retryCompaniesLoad(): void {
+  void refresh();
+}
+
+function reloadPage(): void {
+  window.location.reload();
 }
 </script>

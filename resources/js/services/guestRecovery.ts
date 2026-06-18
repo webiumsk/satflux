@@ -5,6 +5,7 @@ import {
     deriveRecoveryPublicKeyHex,
     generateAccountMnemonic24,
     getStoredAccountMnemonic,
+    hydrateAccountMnemonicSession,
     normalizeAccountMnemonic,
     signRecoveryMessage,
     storeAccountMnemonic,
@@ -13,6 +14,7 @@ import {
 export {
     clearStoredAccountMnemonic as clearStoredGuestMnemonic,
     getStoredAccountMnemonic as getStoredGuestMnemonic,
+    hydrateAccountMnemonicSession,
     storeAccountMnemonic as storeGuestMnemonic,
 };
 

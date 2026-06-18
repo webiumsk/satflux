@@ -5,6 +5,7 @@ import {
     allDocumentsQuery,
     useInvoicingEvolu,
 } from "@/evolu/client";
+import { loadEvoluQueryWithTimeout } from "@/evolu/queryLoad";
 import { isEvoluRelaySyncPending, waitForInvoicingRelaySync } from "@/evolu/relaySyncWait";
 import type { CompanyId } from "@/evolu/schema";
 import type { InvoicingCompanyListItem, UseInvoicingCompaniesResult } from "./useInvoicingCompanies";
@@ -23,14 +24,22 @@ function mapEvoluCompanies(
     }));
 }
 
+async function loadCompanyQueries(evolu: ReturnType<typeof useInvoicingEvolu>): Promise<void> {
+    await Promise.all([
+        loadEvoluQueryWithTimeout(evolu, allCompaniesQuery),
+        loadEvoluQueryWithTimeout(evolu, allDocumentsQuery),
+    ]);
+}
+
 /** Local-first company list (requires EvoluProvider). */
 export function useLocalInvoicingCompanies(): UseInvoicingCompaniesResult {
     const evolu = useInvoicingEvolu();
     const loading = ref(true);
     const forbidden = ref(false);
+    const loadError = ref(false);
 
-    const companiesPromise = evolu.loadQuery(allCompaniesQuery);
-    const documentsPromise = evolu.loadQuery(allDocumentsQuery);
+    const companiesPromise = loadEvoluQueryWithTimeout(evolu, allCompaniesQuery);
+    const documentsPromise = loadEvoluQueryWithTimeout(evolu, allDocumentsQuery);
 
     const companyRows = useQuery(allCompaniesQuery, { promise: companiesPromise });
     const documentRows = useQuery(allDocumentsQuery, { promise: documentsPromise });
@@ -40,11 +49,10 @@ export function useLocalInvoicingCompanies(): UseInvoicingCompaniesResult {
             await Promise.all([companiesPromise, documentsPromise]);
             if (isEvoluRelaySyncPending()) {
                 await waitForInvoicingRelaySync(evolu);
-                await Promise.all([
-                    evolu.loadQuery(allCompaniesQuery),
-                    evolu.loadQuery(allDocumentsQuery),
-                ]);
+                await loadCompanyQueries(evolu);
             }
+        } catch {
+            loadError.value = true;
         } finally {
             loading.value = false;
         }
@@ -56,11 +64,11 @@ export function useLocalInvoicingCompanies(): UseInvoicingCompaniesResult {
 
     async function refresh(): Promise<void> {
         loading.value = true;
+        loadError.value = false;
         try {
-            await Promise.all([
-                evolu.loadQuery(allCompaniesQuery),
-                evolu.loadQuery(allDocumentsQuery),
-            ]);
+            await loadCompanyQueries(evolu);
+        } catch {
+            loadError.value = true;
         } finally {
             loading.value = false;
         }
@@ -71,6 +79,7 @@ export function useLocalInvoicingCompanies(): UseInvoicingCompaniesResult {
         companies,
         loading,
         forbidden,
+        loadError,
         refresh,
     };
 }

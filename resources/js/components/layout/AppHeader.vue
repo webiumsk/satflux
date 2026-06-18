@@ -775,10 +775,20 @@ const loadSupportCount = async () => {
 };
 
 const loadMessageCount = async () => {
+  if (!authStore.user) {
+    messageCount.value = 0;
+    return;
+  }
+
   try {
     const response = await api.get("/messages/count");
     messageCount.value = response.data.data?.unread ?? 0;
-  } catch (error) {
+  } catch (error: unknown) {
+    const status = (error as { response?: { status?: number } })?.response?.status;
+    if (status === 401 || status === 403) {
+      messageCount.value = 0;
+      return;
+    }
     console.error("Failed to load message count:", error);
     messageCount.value = 0;
   }
