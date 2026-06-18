@@ -10,19 +10,7 @@
     # Bind 0.0.0.0 pre prístup z hosta v Dockeri
     bind 0.0.0.0
 
-    # Cloudflare compresses for clients; double-encoding (nginx gzip + Caddy encode) caused
-    # intermittent empty JS bodies (200, content-length 0) on /build/assets/*.js.
-    encode off
-
-    # Vite build assets: no extra encoding on the hop to nginx
-    @build path /build/*
-    handle @build {
-        reverse_proxy nginx:80 {
-            flush_interval -1
-        }
-    }
-
-    # Proxy on nginx (PHP cez PHP-FPM)
+    # Proxy na nginx (ktorý spracuje PHP cez PHP-FPM)
     reverse_proxy nginx:80
 
     # Logovanie (stdout = Docker-friendly)
