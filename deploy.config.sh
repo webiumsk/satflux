@@ -13,3 +13,19 @@ COMPOSE_FILE="docker-compose.standalone.yml"
 PROJECT_NAME="satflux_standalone"
 ENV_FILE=".env.standalone"
 PHP_CONTAINER="satflux_php_standalone"
+NGINX_CONTAINER="satflux_nginx_standalone"
+CADDY_CONTAINER="satflux_caddy_standalone"
+EVOLU_RELAY_CONTAINER="satflux_evolu_relay_standalone"
+
+# Fixed container_name values from docker-compose.standalone.yml (must match compose file).
+STANDALONE_CONTAINER_NAMES=(
+    satflux_caddy_standalone
+    satflux_nginx_standalone
+    satflux_php_standalone
+    satflux_reverb_standalone
+    satflux_queue_standalone
+    satflux_scheduler_standalone
+    satflux_postgres_standalone
+    satflux_redis_standalone
+    satflux_evolu_relay_standalone
+)

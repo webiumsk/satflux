@@ -40,6 +40,124 @@ PHP_CONTAINER="${PHP_CONTAINER:-satflux_php_standalone}"
 # Define the base docker compose command
 DC_CMD="docker compose -f $COMPOSE_FILE --env-file $ENV_FILE --project-name $PROJECT_NAME"
 
+NGINX_CONTAINER="${NGINX_CONTAINER:-satflux_nginx_standalone}"
+CADDY_CONTAINER="${CADDY_CONTAINER:-satflux_caddy_standalone}"
+EVOLU_RELAY_CONTAINER="${EVOLU_RELAY_CONTAINER:-satflux_evolu_relay_standalone}"
+
+# Remove fixed-name containers owned by a different compose project (e.g. bare `docker compose up` without --project-name).
+remove_conflicting_compose_containers() {
+    local names=("$@")
+    local c proj
+    for c in "${names[@]}"; do
+        if ! docker inspect "$c" >/dev/null 2>&1; then
+            continue
+        fi
+        proj=$(docker inspect "$c" --format '{{index .Config.Labels "com.docker.compose.project"}}' 2>/dev/null || true)
+        if [ -n "$proj" ] && [ "$proj" != "$PROJECT_NAME" ]; then
+            echo -e "${YELLOW}Removing $c (compose project '$proj', expected '$PROJECT_NAME')${NC}"
+            docker rm -f "$c" 2>/dev/null || true
+        fi
+    done
+}
+
+write_evolu_relay_caddyfile() {
+    RELAY_SITE_ADDRESS=$(grep -E '^RELAY_SITE_ADDRESS=' "$ENV_FILE" 2>/dev/null | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r' | xargs || true)
+    if [ -n "$RELAY_SITE_ADDRESS" ]; then
+        echo -e "${YELLOW}Evolu relay Caddy site: ${RELAY_SITE_ADDRESS}${NC}"
+        cat > docker/caddy/Caddyfile.relay <<EOF
+${RELAY_SITE_ADDRESS} {
+    reverse_proxy evolu-relay:4000 {
+        flush_interval -1
+    }
+    log {
+        output stdout
+        format console
+    }
+}
+EOF
+    else
+        echo -e "${YELLOW}Warning: RELAY_SITE_ADDRESS not set - Evolu relay will not get a Caddy TLS site${NC}"
+        cat > docker/caddy/Caddyfile.relay <<'EOF'
+# Evolu relay TLS site disabled (set RELAY_SITE_ADDRESS in deploy env file).
+EOF
+    fi
+}
+
+ensure_compose_stack() {
+    echo -e "${YELLOW}Ensuring Docker Compose stack ($COMPOSE_FILE, project $PROJECT_NAME)...${NC}"
+    local -a container_names
+    if [ "${#STANDALONE_CONTAINER_NAMES[@]}" -gt 0 ]; then
+        container_names=("${STANDALONE_CONTAINER_NAMES[@]}")
+    else
+        container_names=(
+            satflux_caddy_standalone satflux_nginx_standalone satflux_php_standalone
+            satflux_reverb_standalone satflux_queue_standalone satflux_scheduler_standalone
+            satflux_postgres_standalone satflux_redis_standalone satflux_evolu_relay_standalone
+        )
+    fi
+    if [ "$COMPOSE_FILE" = "docker-compose.standalone.yml" ]; then
+        remove_conflicting_compose_containers "${container_names[@]}"
+    fi
+    if ! $DC_CMD up -d --remove-orphans; then
+        echo -e "${YELLOW}Retrying after removing conflicting containers...${NC}"
+        if [ "$COMPOSE_FILE" = "docker-compose.prod.yml" ]; then
+            docker rm -f satflux_redis_prod satflux_postgres_prod satflux_php_prod satflux_nginx_prod satflux_reverb_prod 2>/dev/null || true
+        else
+            for c in "${container_names[@]}"; do
+                docker rm -f "$c" 2>/dev/null || true
+            done
+        fi
+        $DC_CMD up -d --remove-orphans
+    fi
+    if grep -q "evolu-relay:" "$COMPOSE_FILE"; then
+        $DC_CMD up -d evolu-relay
+    fi
+}
+
+wait_for_container_running() {
+    local name=$1
+    local max=${2:-30}
+    local i
+    for i in $(seq 1 "$max"); do
+        if docker ps --format "{{.Names}}" | grep -q "^${name}$"; then
+            if docker inspect "$name" --format '{{.State.Status}}' 2>/dev/null | grep -q "running"; then
+                return 0
+            fi
+        fi
+        sleep 1
+    done
+    return 1
+}
+
+wait_for_container_healthy() {
+    local name=$1
+    local max=${2:-30}
+    local i status
+    for i in $(seq 1 "$max"); do
+        status=$(docker inspect "$name" --format '{{.State.Health.Status}}' 2>/dev/null || echo "none")
+        if [ "$status" = "healthy" ] || [ "$status" = "none" ]; then
+            if docker inspect "$name" --format '{{.State.Status}}' 2>/dev/null | grep -q "running"; then
+                return 0
+            fi
+        fi
+        sleep 2
+    done
+    return 1
+}
+
+verify_nginx_asset_bytes() {
+    local asset=$1
+    local min_bytes=${2:-100}
+    local empty=0 i sz
+    for i in 1 2 3 4 5; do
+        sz=$(docker exec "$NGINX_CONTAINER" wget -qO- "http://127.0.0.1/build/assets/${asset}" 2>/dev/null | wc -c | tr -d ' ')
+        if [ "${sz:-0}" -lt "$min_bytes" ]; then
+            empty=$((empty + 1))
+        fi
+    done
+    [ "$empty" -eq 0 ]
+}
+
 echo -e "${GREEN}Starting satflux deployment...${NC}"
 
 # Check if env file exists
@@ -53,29 +171,6 @@ fi
 if [ ! -f "$COMPOSE_FILE" ]; then
     echo -e "${RED}Error: $COMPOSE_FILE not found!${NC}"
     exit 1
-fi
-
-# Evolu relay: generate Caddy TLS site block when RELAY_SITE_ADDRESS is set
-RELAY_SITE_ADDRESS=$(grep -E '^RELAY_SITE_ADDRESS=' "$ENV_FILE" 2>/dev/null | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r' | xargs || true)
-if [ -n "$RELAY_SITE_ADDRESS" ]; then
-    echo -e "${YELLOW}Evolu relay Caddy site: ${RELAY_SITE_ADDRESS}${NC}"
-    cat > docker/caddy/Caddyfile.relay <<EOF
-${RELAY_SITE_ADDRESS} {
-    reverse_proxy evolu-relay:4000 {
-        flush_interval -1
-    }
-    log {
-        output stdout
-        format console
-    }
-}
-EOF
-else
-    echo -e "${YELLOW}Warning: RELAY_SITE_ADDRESS not set - Evolu relay will not get a Caddy TLS site${NC}"
-    echo -e "${YELLOW}  → Add RELAY_SITE_ADDRESS=relay.satflux.io to $ENV_FILE and redeploy${NC}"
-    cat > docker/caddy/Caddyfile.relay <<'EOF'
-# Evolu relay TLS site disabled (set RELAY_SITE_ADDRESS in deploy env file).
-EOF
 fi
 
 # Step 1: Pull latest changes
@@ -135,26 +230,14 @@ fi
 
 echo -e "${GREEN}✓ Git pull completed → deployed branch: $BRANCH${NC}"
 
+write_evolu_relay_caddyfile
+
 # Step 2a: Build PHP image (picks up Dockerfile changes like new extensions)
 echo -e "${YELLOW}Step 2a: Building PHP image...${NC}"
 $DC_CMD build php
 
 # Step 2: Ensuring containers are running
-echo -e "${YELLOW}Step 2: Ensuring containers are running ($COMPOSE_FILE)...${NC}"
-# Use --force-recreate to avoid "container name already in use" when run from different project context
-$DC_CMD up -d --force-recreate 2>/dev/null || {
-    echo -e "${YELLOW}Retrying after removing orphaned containers...${NC}"
-    if [ "$COMPOSE_FILE" = "docker-compose.prod.yml" ]; then
-        for c in satflux_redis_prod satflux_postgres_prod satflux_php_prod satflux_nginx_prod satflux_reverb_prod; do
-            docker rm -f "$c" 2>/dev/null || true
-        done
-    else
-        for c in satflux_caddy_standalone satflux_nginx_standalone satflux_php_standalone satflux_reverb_standalone satflux_queue_standalone satflux_scheduler_standalone satflux_postgres_standalone satflux_redis_standalone satflux_evolu_relay_standalone; do
-            docker rm -f "$c" 2>/dev/null || true
-        done
-    fi
-    $DC_CMD up -d
-}
+ensure_compose_stack
 
 # Wait for services to be healthy
 echo -e "${YELLOW}Waiting for services to be healthy...${NC}"
@@ -162,22 +245,24 @@ sleep 10
 
 # Wait for PHP container to be ready
 echo -e "${YELLOW}Waiting for PHP container to be ready...${NC}"
-for i in {1..30}; do
-    # Check if container exists and is running
-    if docker ps --format "{{.Names}}" | grep -q "^${PHP_CONTAINER}$"; then
-        if docker inspect "$PHP_CONTAINER" --format '{{.State.Status}}' | grep -q "running"; then
-            echo -e "${GREEN}✓ PHP container is running${NC}"
-            break
-        fi
-    fi
-    if [ $i -eq 30 ]; then
-        echo -e "${RED}✗ PHP container failed to start!${NC}"
-        $DC_CMD ps
-        docker logs "$PHP_CONTAINER" 2>&1 | tail -20
+if ! wait_for_container_running "$PHP_CONTAINER" 30; then
+    echo -e "${RED}✗ PHP container failed to start!${NC}"
+    $DC_CMD ps
+    docker logs "$PHP_CONTAINER" 2>&1 | tail -20
+    exit 1
+fi
+echo -e "${GREEN}✓ PHP container is running${NC}"
+
+if grep -q "evolu-relay:" "$COMPOSE_FILE"; then
+    echo -e "${YELLOW}Waiting for evolu-relay...${NC}"
+    if ! wait_for_container_running "$EVOLU_RELAY_CONTAINER" 30; then
+        echo -e "${RED}✗ evolu-relay failed to start!${NC}"
+        $DC_CMD ps evolu-relay
+        docker logs "$EVOLU_RELAY_CONTAINER" 2>&1 | tail -20
         exit 1
     fi
-    sleep 1
-done
+    echo -e "${GREEN}✓ evolu-relay is running${NC}"
+fi
 
 # Ensure storage and bootstrap/cache exist and are writable by www-data (queue/scheduler/reverb start early and need this)
 echo -e "${YELLOW}Preparing storage and cache directories...${NC}"
@@ -264,14 +349,15 @@ docker exec --user root "$PHP_CONTAINER" mkdir -p /var/www/storage/framework/vie
 docker exec --user root "$PHP_CONTAINER" chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 docker exec --user root "$PHP_CONTAINER" chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
-# Step 7: Restart relevant containers
+# Step 7: Restart relevant containers (relay before caddy; caddy last)
 echo -e "${YELLOW}Step 7: Restarting containers...${NC}"
 
 if grep -q "caddy:" "$COMPOSE_FILE"; then
     echo -e "${YELLOW}Validating Caddy config...${NC}"
+    _site_address=$(grep -E '^SITE_ADDRESS=' "$ENV_FILE" 2>/dev/null | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r' | xargs || echo localhost:80)
     docker run --rm \
         -v "$(pwd)/docker/caddy:/etc/caddy:ro" \
-        -e "SITE_ADDRESS=$(grep -E '^SITE_ADDRESS=' "$ENV_FILE" 2>/dev/null | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r' | xargs || echo localhost:80)" \
+        -e "SITE_ADDRESS=${_site_address}" \
         caddy:alpine caddy validate --config /etc/caddy/Caddyfile || {
             echo -e "${RED}Caddy config invalid - fix docker/caddy/Caddyfile* before restart${NC}"
             exit 1
@@ -279,89 +365,107 @@ if grep -q "caddy:" "$COMPOSE_FILE"; then
     echo -e "${GREEN}✓ Caddy config valid${NC}"
 fi
 
-RESTART_SERVICES="php nginx"
-if grep -q "caddy:" "$COMPOSE_FILE"; then
-    RESTART_SERVICES="$RESTART_SERVICES caddy"
-fi
-if grep -q "reverb:" "$COMPOSE_FILE"; then
-    RESTART_SERVICES="$RESTART_SERVICES reverb queue scheduler"
-fi
 if grep -q "evolu-relay:" "$COMPOSE_FILE"; then
-    RESTART_SERVICES="$RESTART_SERVICES evolu-relay"
+    $DC_CMD restart evolu-relay
+    wait_for_container_running "$EVOLU_RELAY_CONTAINER" 30 || {
+        echo -e "${RED}✗ evolu-relay failed after restart${NC}"
+        docker logs "$EVOLU_RELAY_CONTAINER" 2>&1 | tail -20
+        exit 1
+    }
 fi
-$DC_CMD restart $RESTART_SERVICES
+
+$DC_CMD restart php nginx
+if grep -q "reverb:" "$COMPOSE_FILE"; then
+    $DC_CMD restart reverb queue scheduler
+fi
+if grep -q "caddy:" "$COMPOSE_FILE"; then
+    $DC_CMD restart caddy
+    wait_for_container_running "$CADDY_CONTAINER" 30 || {
+        echo -e "${RED}✗ caddy failed after restart${NC}"
+        docker logs "$CADDY_CONTAINER" 2>&1 | tail -20
+        exit 1
+    }
+fi
 
 # Step 8: Verify deployment
 echo -e "${YELLOW}Step 8: Verifying deployment...${NC}"
-sleep 3
+if ! wait_for_container_healthy "$NGINX_CONTAINER" 30; then
+    echo -e "${RED}✗ nginx failed to become healthy${NC}"
+    docker logs "$NGINX_CONTAINER" 2>&1 | tail -20
+    exit 1
+fi
+sleep 2
 
-# Check if containers are running
-if $DC_CMD ps | grep -q "Up"; then
-    echo -e "${GREEN}✓ Containers are running${NC}"
-else
+if ! $DC_CMD ps --status running 2>/dev/null | grep -qE 'Up|running'; then
     echo -e "${RED}✗ Some containers are not running!${NC}"
     $DC_CMD ps
     exit 1
 fi
+echo -e "${GREEN}✓ Containers are running${NC}"
 
-# Health check
-if [ "$COMPOSE_FILE" = "docker-compose.standalone.yml" ] || grep -q "caddy:" "$COMPOSE_FILE"; then
-    echo -e "${YELLOW}Checking health via local proxy...${NC}"
-    # Add health check logic here if needed
-else
-    echo -e "${YELLOW}Note: Health check skipped (using external reverse proxy)${NC}"
+_public_js=$(docker exec "$PHP_CONTAINER" node -p "require('/var/www/public/build/manifest.json')['resources/js/public.ts'].file.split('/').pop()" 2>/dev/null || true)
+if [ -z "$_public_js" ]; then
+    echo -e "${RED}✗ Could not resolve Vite entry from manifest.json${NC}"
+    exit 1
+fi
+
+_public_bytes=$(docker exec "$PHP_CONTAINER" stat -c%s "/var/www/public/build/assets/$_public_js" 2>/dev/null || echo 0)
+if [ "${_public_bytes:-0}" -lt 100 ]; then
+    echo -e "${RED}✗ public/build/assets/$_public_js is only ${_public_bytes} bytes on disk${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Entry asset $_public_js (${_public_bytes} bytes on disk)${NC}"
+
+if ! verify_nginx_asset_bytes "$_public_js" 100; then
+    echo -e "${RED}✗ nginx returned empty entry JS - check docker/nginx/prod.conf /build/ block${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ nginx serves /build/assets/$_public_js reliably (5/5)${NC}"
+
+_site_address=$(grep -E '^SITE_ADDRESS=' "$ENV_FILE" 2>/dev/null | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r' | xargs || true)
+_site_host="${_site_address%%:*}"
+if [ -n "$_site_host" ] && [ "$_site_host" != "localhost" ] && grep -q "caddy:" "$COMPOSE_FILE"; then
+    _caddy_empty=0
+    for _i in 1 2 3 4 5; do
+        _caddy_sz=$(curl -s --http1.1 --max-time 8 --resolve "${_site_host}:443:127.0.0.1" -k \
+            "https://${_site_host}/build/assets/${_public_js}" 2>/dev/null | wc -c | tr -d ' ')
+        if [ "${_caddy_sz:-0}" -lt 100 ]; then
+            _caddy_empty=$((_caddy_empty + 1))
+        fi
+    done
+    if [ "$_caddy_empty" -gt 0 ]; then
+        echo -e "${RED}✗ Caddy/TLS returned empty entry JS ${_caddy_empty}/5 times${NC}"
+        docker logs "$CADDY_CONTAINER" 2>&1 | tail -20
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Caddy serves /build/assets/$_public_js over TLS reliably (5/5)${NC}"
+fi
+
+RELAY_SITE_ADDRESS=$(grep -E '^RELAY_SITE_ADDRESS=' "$ENV_FILE" 2>/dev/null | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r' | xargs || true)
+if [ -n "$RELAY_SITE_ADDRESS" ]; then
+    if ! wait_for_container_running "$EVOLU_RELAY_CONTAINER" 10; then
+        echo -e "${RED}✗ evolu-relay is not running (RELAY_SITE_ADDRESS=${RELAY_SITE_ADDRESS})${NC}"
+        exit 1
+    fi
+    _relay_ok=0
+    for _i in 1 2 3; do
+        _relay_ws=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 --http1.1 \
+            -H "Connection: Upgrade" -H "Upgrade: websocket" \
+            -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+            "https://${RELAY_SITE_ADDRESS}/" 2>/dev/null || echo "000")
+        if [ "$_relay_ws" = "101" ]; then
+            _relay_ok=1
+            break
+        fi
+        sleep 2
+    done
+    if [ "$_relay_ok" -ne 1 ]; then
+        echo -e "${RED}✗ Evolu relay WSS returned HTTP ${_relay_ws} (expected 101)${NC}"
+        docker logs "$EVOLU_RELAY_CONTAINER" 2>&1 | tail -20
+        docker logs "$CADDY_CONTAINER" 2>&1 | tail -10
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Evolu relay WSS https://${RELAY_SITE_ADDRESS}/ (HTTP 101)${NC}"
 fi
 
 echo -e "${GREEN}Deployment completed successfully!${NC}"
-echo ""
-
-# Verify Vite entry asset is non-empty inside nginx mount (catches sendfile/gzip regressions)
-_public_js=$(docker exec "$PHP_CONTAINER" node -p "require('/var/www/public/build/manifest.json')['resources/js/public.ts'].file.split('/').pop()" 2>/dev/null || true)
-NGINX_CONTAINER="${NGINX_CONTAINER:-satflux_nginx_standalone}"
-if [ -n "$_public_js" ]; then
-    _public_bytes=$(docker exec "$PHP_CONTAINER" stat -c%s "/var/www/public/build/assets/$_public_js" 2>/dev/null || echo 0)
-    if [ "${_public_bytes:-0}" -lt 100 ]; then
-        echo -e "${RED}Error: public/build/assets/$_public_js is only ${_public_bytes} bytes${NC}"
-        exit 1
-    else
-        echo -e "${GREEN}✓ Entry asset $_public_js (${_public_bytes} bytes on disk)${NC}"
-    fi
-    if docker ps --format '{{.Names}}' | grep -q "^${NGINX_CONTAINER}$"; then
-        _nginx_empty=0
-        for _i in 1 2 3 4 5; do
-            _nginx_sz=$(docker exec "$NGINX_CONTAINER" wget -qO- "http://127.0.0.1/build/assets/$_public_js" 2>/dev/null | wc -c | tr -d ' ')
-            if [ "${_nginx_sz:-0}" -lt 100 ]; then
-                _nginx_empty=$((_nginx_empty + 1))
-            fi
-        done
-        if [ "$_nginx_empty" -gt 0 ]; then
-            echo -e "${RED}Error: nginx returned empty entry JS ${_nginx_empty}/5 times - check docker/nginx/prod.conf /build/ block${NC}"
-            exit 1
-        fi
-        echo -e "${GREEN}✓ nginx serves /build/assets/$_public_js reliably (5/5)${NC}"
-    fi
-fi
-
-if [ -n "$RELAY_SITE_ADDRESS" ]; then
-    if ! $DC_CMD ps --status running 2>/dev/null | grep -q evolu-relay; then
-        echo -e "${RED}Error: evolu-relay is not running but RELAY_SITE_ADDRESS=${RELAY_SITE_ADDRESS}${NC}"
-        exit 1
-    fi
-    _relay_ws=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 --http1.1 \
-        -H "Connection: Upgrade" -H "Upgrade: websocket" \
-        -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
-        "https://${RELAY_SITE_ADDRESS}/" 2>/dev/null || echo "000")
-    if [ "$_relay_ws" = "101" ]; then
-        echo -e "${GREEN}✓ Evolu relay WSS https://${RELAY_SITE_ADDRESS}/ (HTTP 101)${NC}"
-    else
-        echo -e "${RED}Error: Evolu relay WSS returned HTTP ${_relay_ws} (expected 101)${NC}"
-        echo -e "${YELLOW}  → cat docker/caddy/Caddyfile.relay ; docker logs satflux_evolu_relay_standalone --tail 20${NC}"
-        exit 1
-    fi
-fi
-
-echo ""
-echo "Next steps:"
-echo "1. Cloudflare: Purge Everything (required once after this fix - CF cached empty JS bodies from broken deploys)"
-echo "2. Verify: curl -s --http1.1 https://YOUR_DOMAIN/build/assets/$_public_js | wc -c  (must match disk size)"
-echo "3. Hard refresh / incognito in browser"
