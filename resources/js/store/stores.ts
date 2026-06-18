@@ -72,13 +72,15 @@ export const useStoresStore = defineStore('stores', () => {
     const apps = ref<any[]>([]);
     const loading = ref(false);
 
-    async function fetchStores() {
+    async function fetchStores(): Promise<boolean> {
         loading.value = true;
         try {
             const response = await api.get('/stores');
             stores.value = response.data.data || [];
+            return true;
         } catch (error: any) {
             stores.value = [];
+            return false;
         } finally {
             loading.value = false;
         }

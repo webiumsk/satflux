@@ -13,9 +13,12 @@ export function useLocalStoreSanitizer() {
     const storesStore = useStoresStore();
     const flashStore = useFlashStore();
 
-    async function ensureStoresLoaded(): Promise<ReadonlySet<string>> {
+    async function ensureStoresLoaded(): Promise<ReadonlySet<string> | null> {
         if (!storesStore.stores.length) {
-            await storesStore.fetchStores();
+            const loaded = await storesStore.fetchStores();
+            if (!loaded) {
+                return null;
+            }
         }
         return new Set(storesStore.stores.map((store) => store.id));
     }
@@ -26,6 +29,9 @@ export function useLocalStoreSanitizer() {
         }
 
         const validStoreIds = await ensureStoresLoaded();
+        if (!validStoreIds) {
+            return;
+        }
         const result = await sanitizeLocalStoreReferences(evolu, validStoreIds);
         sanitizedForSession.value = true;
 

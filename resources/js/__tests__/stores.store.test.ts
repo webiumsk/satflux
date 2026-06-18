@@ -25,6 +25,20 @@ describe('useStoresStore', () => {
         expect(store.currentStore).toBeNull();
     });
 
+    it('reports whether the store list was loaded successfully', async () => {
+        const mockStore = { id: 'abc-123', name: 'Test Store', wallet_type: null, created_at: '', updated_at: '' };
+        (api.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ data: { data: [mockStore] } });
+
+        const storeModule = useStoresStore();
+        await expect(storeModule.fetchStores()).resolves.toBe(true);
+        expect(storeModule.stores).toEqual([mockStore]);
+
+        (api.get as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('network'));
+
+        await expect(storeModule.fetchStores()).resolves.toBe(false);
+        expect(storeModule.stores).toEqual([]);
+    });
+
     it('fetchStore sets currentStore on success', async () => {
         const mockStore = { id: 'abc-123', name: 'Test Store', wallet_type: null, created_at: '', updated_at: '' };
         (api.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ data: { data: mockStore } });

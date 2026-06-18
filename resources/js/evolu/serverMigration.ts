@@ -226,6 +226,12 @@ export async function importServerInvoicingToEvolu(
         throw new ServerMigrationError("upsert_failed", "upsert_failed");
     }
 
+    if (failed.length > 0) {
+        console.error("Server migration partial upsert failures", failed.slice(0, 30));
+        clearServerMigrationCompleted();
+        throw new ServerMigrationError("upsert_failed", "upsert_failed");
+    }
+
     await sanitizeLocalStoreReferences(evolu, validStoreIds);
 
     const companies = await evolu.loadQuery(allCompaniesQuery);
@@ -236,10 +242,6 @@ export async function importServerInvoicingToEvolu(
         });
         clearServerMigrationCompleted();
         throw new ServerMigrationError("companies_missing", "companies_missing");
-    }
-
-    if (failed.length > 0) {
-        console.warn("Server migration partial upsert failures", failed.slice(0, 30));
     }
 
     markServerMigrationCompleted();
