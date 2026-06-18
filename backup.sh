@@ -74,6 +74,8 @@ REMOTE_RETENTION_DAYS="${REMOTE_RETENTION_DAYS:-30}"
 BACKUP_REDIS="${BACKUP_REDIS:-false}"
 BACKUP_FILES="${BACKUP_FILES:-true}"
 BACKUP_ENV="${BACKUP_ENV:-true}"
+BACKUP_EVOLU_RELAY="${BACKUP_EVOLU_RELAY:-true}"
+EVOLU_RELAY_VOLUME="${EVOLU_RELAY_VOLUME:-satflux_standalone_evolu_relay_data}"
 
 # Get database credentials from environment
 # ENV_FILE may be set by backup.config.sh; else .env.standalone or .env
@@ -328,6 +330,38 @@ if [ "$BACKUP_FILES" = "true" ]; then
     trap - EXIT
 else
     log_info "Files backup skipped (BACKUP_FILES=false)"
+fi
+
+# 2b. Evolu relay volume (encrypted sync blobs; optional)
+if [ "$BACKUP_EVOLU_RELAY" = "true" ]; then
+    echo -e "${YELLOW}[2b/4] Creating Evolu relay volume backup...${NC}"
+    EVOLU_RELAY_BACKUP_FILE="$BACKUP_DIR/evolu-relay/${BACKUP_PREFIX}.tar.gz"
+    mkdir -p "$BACKUP_DIR/evolu-relay"
+
+    if docker volume inspect "$EVOLU_RELAY_VOLUME" >/dev/null 2>&1; then
+        docker run --rm \
+            -v "${EVOLU_RELAY_VOLUME}:/data:ro" \
+            -v "$(pwd)/$BACKUP_DIR/evolu-relay:/backup" \
+            alpine:3.20 \
+            sh -c "tar czf /backup/$(basename "$EVOLU_RELAY_BACKUP_FILE") -C /data ." || {
+                log_error "Evolu relay volume backup failed!"
+                exit 1
+            }
+
+        if verify_backup "$EVOLU_RELAY_BACKUP_FILE"; then
+            EVOLU_RELAY_SIZE=$(du -h "$EVOLU_RELAY_BACKUP_FILE" | cut -f1)
+            EVOLU_RELAY_CHECKSUM=$(calculate_checksum "$EVOLU_RELAY_BACKUP_FILE")
+            COMPONENTS+=("evolu-relay")
+            echo -e "${GREEN}✓ Evolu relay backup created: $EVOLU_RELAY_BACKUP_FILE ($EVOLU_RELAY_SIZE)${NC}"
+        else
+            log_error "Evolu relay backup verification failed!"
+            exit 1
+        fi
+    else
+        log_info "Evolu relay volume not found ($EVOLU_RELAY_VOLUME) - skipping"
+    fi
+else
+    log_info "Evolu relay backup skipped (BACKUP_EVOLU_RELAY=false)"
 fi
 
 # 3. Redis Backup (optional)

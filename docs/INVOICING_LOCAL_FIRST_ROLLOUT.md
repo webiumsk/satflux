@@ -13,7 +13,10 @@ Both flags should be **on together** in production. Mismatch causes confusing be
 
 Optional:
 
-- `VITE_EVOLU_RELAY_URL` - WebSocket URL for Evolu sync/backup (default `wss://free.evoluhq.com`; see `resources/js/evolu/config.ts`). Set at **build time** with `npm run build` / `./deploy.sh`. Use a self-hosted relay in production if you do not want to depend on `free.evoluhq.com`. Empty string disables relay sync (local-only SQLite).
+- `VITE_EVOLU_RELAY_URL` - primary WebSocket relay (build-time). Production: `wss://relay.satflux.io` (self-hosted).
+- `VITE_EVOLU_RELAY_URL_SECONDARY` - secondary relay for resilience (default `wss://free.evoluhq.com` when unset). Set to empty string to disable.
+- `RELAY_SITE_ADDRESS` - Caddy TLS hostname for the Evolu relay container in the standalone stack (e.g. `relay.satflux.io`). `deploy.sh` writes `docker/caddy/Caddyfile.relay` from this value.
+- Empty primary + empty secondary = local-only SQLite (no multi-device sync).
 - `SEED_FIRST_REGISTRATION=true` - recommended with local-first (unified 24-word recovery phrase)
 - Per-company override: `app_settings.local_first` on a `companies` row forces that company off server invoicing even when the global flag is false (legacy escape hatch)
 
@@ -51,7 +54,10 @@ Local-first data stays in the browser; PRO unlocks the module and bridges.
 
 ### 3. Relay and backup
 
-- Sync uses WebSocket to the Evolu relay (default `wss://free.evoluhq.com`).
+- **Dual-relay (recommended):** primary `wss://relay.satflux.io` (self-hosted on the standalone stack) + secondary `wss://free.evoluhq.com`.
+- Sync uses WebSocket from the **browser** directly to relay hosts (not through Laravel).
+- Relay stores **E2EE encrypted blobs** only; satflux PHP never sees plaintext invoicing data.
+- Backup the Docker volume `evolu_relay_data` via `./backup.sh` (`BACKUP_EVOLU_RELAY=true` by default).
 - Users must keep the **same 24-word recovery phrase** on every device.
 - See [BUSINESS_INVOICING.md - Multi-device sync](BUSINESS_INVOICING.md#multi-device-sync-runbook).
 
@@ -76,12 +82,16 @@ In `.env.standalone` (or your deploy `ENV_FILE`):
 VITE_INVOICING_LOCAL_FIRST=true
 INVOICING_LOCAL_FIRST=true
 
+# Dual-relay (recommended production)
+VITE_EVOLU_RELAY_URL=wss://relay.satflux.io
+VITE_EVOLU_RELAY_URL_SECONDARY=wss://free.evoluhq.com
+RELAY_SITE_ADDRESS=relay.satflux.io
+
 # Recommended with local-first onboarding
 SEED_FIRST_REGISTRATION=true
-
-# Optional: self-hosted relay instead of free.evoluhq.com
-# VITE_EVOLU_RELAY_URL=wss://relay.yourdomain.example
 ```
+
+DNS: add an **A** record `relay.satflux.io` → same VPS IP as the main site. `deploy.sh` generates the Caddy TLS block from `RELAY_SITE_ADDRESS`.
 
 Do **not** commit production `.env` files. Back up the file before editing.
 
@@ -108,11 +118,21 @@ docker compose -f docker-compose.standalone.yml --env-file .env.standalone exec 
 3. **Pro user** - open Invoicing: companies load from Evolu; create company works after relay sync settles.
 4. **Recovery phrase** - sign out, restore with phrase on a second browser profile: companies appear after sync (wait up to ~45 s).
 5. **WooCommerce** (if used) - create document with `INVOICING_LOCAL_FIRST=true` routes to inbox integration, not legacy `BusinessDocument` rows.
-6. **Relay** - browser Network tab: WebSocket to `wss://free.evoluhq.com` (or your `VITE_EVOLU_RELAY_URL`) connects without errors.
+6. **Dual relay** - DevTools → Network → WS: **two** WebSocket connections when Invoicing opens (`wss://relay.satflux.io` and `wss://free.evoluhq.com`, or your configured URLs).
+7. **Relay container** - `docker ps` shows `satflux_evolu_relay_standalone` healthy; Caddy serves TLS on `RELAY_SITE_ADDRESS`.
+8. **Failover** - stop the primary relay container (`docker stop satflux_evolu_relay_standalone`); create/sync should still work via secondary after refresh (then start primary again).
 
 ### D. Reverse proxy / CSP
 
-No extra nginx rules are required for the Evolu relay (browser connects outbound to `wss://free.evoluhq.com`). If you add a strict Content-Security-Policy, allow `connect-src` to your relay host.
+Browsers connect **outbound** to relay hosts. Caddy on satflux.io terminates TLS for `RELAY_SITE_ADDRESS` and reverse-proxies WebSocket to `evolu-relay:4000`.
+
+If you add a strict `Content-Security-Policy`, allow:
+
+```
+connect-src 'self' wss://relay.satflux.io wss://free.evoluhq.com ...
+```
+
+(Replace with your relay hostname(s).)
 
 Satflux Reverb (`wss://your-domain/...`) is separate from Evolu relay.
 
@@ -133,6 +153,8 @@ Server PostgreSQL invoicing data from before rollout is **unchanged** (not delet
 | Duplicate companies                  | Created company before sync completed   | Delete duplicate in Company settings - Danger zone                       |
 | WooCommerce creates server documents | `INVOICING_LOCAL_FIRST` false on server | Set server flag + `optimize:clear`                                       |
 | Flags mismatch warning during deploy | Only one of the paired flags set        | Align both flags in env file                                             |
+| Relay WS fails on primary only       | DNS/TLS/Caddy for `RELAY_SITE_ADDRESS`  | Check `docker/caddy/Caddyfile.relay`, Caddy logs, A record               |
+| Only one WS connection in DevTools   | Old JS bundle or missing secondary env  | Rebuild with `VITE_EVOLU_RELAY_URL_SECONDARY`; hard-refresh browser      |
 
 ## Related docs
 

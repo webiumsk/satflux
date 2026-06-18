@@ -21,12 +21,34 @@ services:
       - satflux_caddy_config:/config
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-localhost:80}
+      RELAY_SITE_ADDRESS: ${RELAY_SITE_ADDRESS:-}
       ACME_EMAIL: ${ACME_EMAIL:-admin@localhost}
     networks:
       - satflux
     depends_on:
       nginx:
         condition: service_healthy
+      evolu-relay:
+        condition: service_started
+
+  evolu-relay:
+    image: evoluhq/relay:latest
+    container_name: satflux_evolu_relay_standalone
+    restart: unless-stopped
+    volumes:
+      - evolu_relay_data:/app/data
+    networks:
+      - satflux
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"const net=require('net');const s=net.connect(4000,'127.0.0.1',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   nginx:
     image: nginx:alpine
@@ -209,6 +231,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  evolu_relay_data:
   satflux_caddy_data:
   satflux_caddy_config:
 

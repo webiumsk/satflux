@@ -3,6 +3,7 @@
 #
 # Set in .env.standalone:
 #   SITE_ADDRESS=satflux.io          # For HTTPS (Let's Encrypt)
+#   RELAY_SITE_ADDRESS=relay.satflux.io  # Evolu E2EE relay (DNS A record, optional)
 #   SITE_ADDRESS=localhost:80        # For HTTP only (dev/test)
 #   ACME_EMAIL=admin@example.com
 #   STANDALONE_HTTP_PORT=80

@@ -55,6 +55,25 @@ if [ ! -f "$COMPOSE_FILE" ]; then
     exit 1
 fi
 
+# Evolu relay: generate Caddy TLS site block when RELAY_SITE_ADDRESS is set
+RELAY_SITE_ADDRESS=$(grep -E '^RELAY_SITE_ADDRESS=' "$ENV_FILE" 2>/dev/null | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r' | xargs || true)
+if [ -n "$RELAY_SITE_ADDRESS" ]; then
+    echo -e "${YELLOW}Evolu relay Caddy site: ${RELAY_SITE_ADDRESS}${NC}"
+    cat > docker/caddy/Caddyfile.relay <<EOF
+${RELAY_SITE_ADDRESS} {
+    reverse_proxy evolu-relay:4000
+    log {
+        output stdout
+        format console
+    }
+}
+EOF
+else
+    cat > docker/caddy/Caddyfile.relay <<'EOF'
+# Evolu relay TLS site disabled (set RELAY_SITE_ADDRESS in deploy env file).
+EOF
+fi
+
 # Step 1: Pull latest changes
 echo -e "${YELLOW}Step 1: Pulling latest changes from Git...${NC}"
 if [ -n "$DEPLOY_BRANCH" ]; then
@@ -126,7 +145,7 @@ $DC_CMD up -d --force-recreate 2>/dev/null || {
             docker rm -f "$c" 2>/dev/null || true
         done
     else
-        for c in satflux_caddy_standalone satflux_nginx_standalone satflux_php_standalone satflux_reverb_standalone satflux_queue_standalone satflux_scheduler_standalone satflux_postgres_standalone satflux_redis_standalone; do
+        for c in satflux_caddy_standalone satflux_nginx_standalone satflux_php_standalone satflux_reverb_standalone satflux_queue_standalone satflux_scheduler_standalone satflux_postgres_standalone satflux_redis_standalone satflux_evolu_relay_standalone; do
             docker rm -f "$c" 2>/dev/null || true
         done
     fi
@@ -225,6 +244,9 @@ if grep -q "caddy:" "$COMPOSE_FILE"; then
 fi
 if grep -q "reverb:" "$COMPOSE_FILE"; then
     RESTART_SERVICES="$RESTART_SERVICES reverb queue scheduler"
+fi
+if grep -q "evolu-relay:" "$COMPOSE_FILE"; then
+    RESTART_SERVICES="$RESTART_SERVICES evolu-relay"
 fi
 $DC_CMD restart $RESTART_SERVICES
 

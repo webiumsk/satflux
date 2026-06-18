@@ -19,3 +19,6 @@
         format console
     }
 }
+
+# Evolu E2EE relay (local-first invoicing sync). See docker/caddy/Caddyfile.relay
+import Caddyfile.relay
