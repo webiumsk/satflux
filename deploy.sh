@@ -302,7 +302,21 @@ fi
 
 echo -e "${GREEN}Deployment completed successfully!${NC}"
 echo ""
+
+# Verify Vite entry asset is non-empty inside nginx mount (catches sendfile/gzip regressions)
+_public_js=$(docker exec "$PHP_CONTAINER" node -p "require('/var/www/public/build/manifest.json')['resources/js/public.ts'].file.split('/').pop()" 2>/dev/null || true)
+if [ -n "$_public_js" ]; then
+    _public_bytes=$(docker exec "$PHP_CONTAINER" stat -c%s "/var/www/public/build/assets/$_public_js" 2>/dev/null || echo 0)
+    if [ "${_public_bytes:-0}" -lt 100 ]; then
+        echo -e "${RED}Warning: public/build/assets/$_public_js is only ${_public_bytes} bytes - frontend may be broken${NC}"
+    else
+        echo -e "${GREEN}✓ Entry asset $_public_js (${_public_bytes} bytes)${NC}"
+    fi
+fi
+
+echo ""
 echo "Next steps:"
-echo "1. Verify the application is accessible at your domain"
-echo "2. Check logs if needed: docker compose -f $COMPOSE_FILE --project-name $PROJECT_NAME logs -f"
-echo "3. Monitor application for any issues"
+echo "1. Cloudflare: Purge Everything (or enable Development Mode 3h) - stale empty JS responses may be cached"
+echo "2. Verify the application is accessible at your domain (hard refresh / incognito)"
+echo "3. Check logs if needed: docker compose -f $COMPOSE_FILE --project-name $PROJECT_NAME logs -f"
+echo "4. Monitor application for any issues"
