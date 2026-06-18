@@ -13,6 +13,10 @@ import {
 import { isInvoicingLocalFirst } from '../evolu/flags';
 import { ensureEvoluBoundToAccountSeed } from '../evolu/bootstrap';
 
+function scheduleChoralaSync(): void {
+    void import('../services/chorala').then(({ syncChoralaIdentity }) => syncChoralaIdentity());
+}
+
 export interface User {
     id: number;
     email: string;
@@ -75,7 +79,11 @@ export const useAuthStore = defineStore('auth', () => {
         try {
             await ensureCsrfCookie();
             const response = await api.get('/user');
+            const previousUserId = user.value?.id ?? null;
             user.value = response.data;
+            if ((user.value?.id ?? null) !== previousUserId) {
+                scheduleChoralaSync();
+            }
             const mnemonic = getStoredGuestMnemonic();
             if (mnemonic && isInvoicingLocalFirst()) {
                 void ensureEvoluBoundToAccountSeed();
@@ -84,6 +92,7 @@ export const useAuthStore = defineStore('auth', () => {
             const status = error?.response?.status ?? error?.status;
             if (status === 401 || status === 403) {
                 user.value = null;
+                scheduleChoralaSync();
                 await tryAutoRestoreGuestFromStoredSeed();
                 return;
             }
@@ -110,6 +119,7 @@ export const useAuthStore = defineStore('auth', () => {
             });
             user.value = response.data.user;
             await syncAccountSeedAfterAuth(mnemonic);
+            scheduleChoralaSync();
             const storesStore = useStoresStore();
             await storesStore.fetchStores();
         } catch {
@@ -131,6 +141,7 @@ export const useAuthStore = defineStore('auth', () => {
                 remember,
             });
             user.value = response.data.user;
+            scheduleChoralaSync();
             return response.data;
         } finally {
             loading.value = false;
@@ -173,6 +184,7 @@ export const useAuthStore = defineStore('auth', () => {
                     : {}),
             });
             user.value = response.data.user;
+            scheduleChoralaSync();
             return response.data;
         } finally {
             loading.value = false;
@@ -189,6 +201,7 @@ export const useAuthStore = defineStore('auth', () => {
             });
             if (response.data?.user) {
                 user.value = response.data.user;
+                scheduleChoralaSync();
             }
             return response.data;
         } finally {
@@ -212,6 +225,7 @@ export const useAuthStore = defineStore('auth', () => {
             });
             user.value = response.data.user;
             await syncAccountSeedAfterAuth(mnemonic);
+            scheduleChoralaSync();
             const storesStore = useStoresStore();
             await storesStore.fetchStores();
             return response.data;
@@ -225,6 +239,7 @@ export const useAuthStore = defineStore('auth', () => {
             await api.post('/auth/logout');
         } finally {
             clearLocalAuthAndTenantState();
+            scheduleChoralaSync();
         }
     }
 

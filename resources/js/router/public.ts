@@ -104,8 +104,8 @@ const router = createRouter({
     ],
 });
 
-router.beforeEach((to, _from, next) => {
-    runPublicRouteGuard(to, next);
+router.beforeEach(async (to, _from, next) => {
+    await runPublicRouteGuard(to, next);
 });
 
 router.afterEach((to) => {

@@ -5,18 +5,12 @@ import { useAuthStore } from '../store/auth';
 declare global {
     interface Window {
         Chorala?: ((command: string, ...args: unknown[]) => void) & { q?: unknown[][] };
-        choralaSettings?: {
-            projectKey?: string;
-            appVersion?: string;
-            locale?: string;
-            apiUrl?: string;
-            user?: { jwt?: string };
-        };
     }
 }
 
 let choralaLoaded = false;
 let choralaScriptLoading: Promise<void> | null = null;
+let lastSyncedUserId: string | null = null;
 
 function getChoralaConfig(): { key: string; widgetUrl: string } | null {
     const key = document.querySelector('meta[name="satflux-chorala-key"]')?.getAttribute('content')?.trim();
@@ -60,21 +54,16 @@ function getAppVersion(): string | undefined {
     return undefined;
 }
 
-function buildInitOptions(config: { key: string }, jwt?: string) {
+function queueChoralaInit(config: { key: string }): void {
     const appVersion = getAppVersion();
     const apiUrl = getChoralaApiUrl();
 
-    return {
+    const initOptions = {
         projectKey: config.key,
         locale: i18n.global.locale.value,
         ...(appVersion ? { appVersion } : {}),
         ...(apiUrl ? { apiUrl } : {}),
-        ...(jwt ? { user: { jwt } } : {}),
     };
-}
-
-function queueChoralaInit(config: { key: string }, jwt?: string): void {
-    const initOptions = buildInitOptions(config, jwt);
 
     if (typeof window.Chorala !== 'function') {
         const queue: unknown[][] = [];
@@ -87,7 +76,15 @@ function queueChoralaInit(config: { key: string }, jwt?: string): void {
     window.Chorala('init', initOptions);
 }
 
-function loadChoralaScript(config: { key: string; widgetUrl: string }, jwt?: string): Promise<void> {
+function clearChoralaIdentity(): void {
+    if (!choralaLoaded || typeof window.Chorala !== 'function') {
+        return;
+    }
+
+    window.Chorala('identify', {});
+}
+
+function loadChoralaScript(config: { key: string; widgetUrl: string }): Promise<void> {
     if (choralaLoaded) {
         return Promise.resolve();
     }
@@ -97,7 +94,7 @@ function loadChoralaScript(config: { key: string; widgetUrl: string }, jwt?: str
     }
 
     choralaScriptLoading = new Promise((resolve, reject) => {
-        queueChoralaInit(config, jwt);
+        queueChoralaInit(config);
 
         const script = document.createElement('script');
         script.async = true;
@@ -119,14 +116,14 @@ function loadChoralaScript(config: { key: string; widgetUrl: string }, jwt?: str
     return choralaScriptLoading;
 }
 
-export async function loadChoralaWidget(jwt?: string): Promise<void> {
+export async function loadChoralaWidget(): Promise<void> {
     const config = getChoralaConfig();
     if (!config) {
         return;
     }
 
     try {
-        await loadChoralaScript(config, jwt);
+        await loadChoralaScript(config);
     } catch (error) {
         if (import.meta.env.DEV) {
             console.warn('[chorala] Widget script failed to load.', error);
@@ -134,46 +131,53 @@ export async function loadChoralaWidget(jwt?: string): Promise<void> {
     }
 }
 
-export async function identifyChoralaUser(): Promise<void> {
+/** Sync Chorala SSO once per user id. Never embeds JWT in the initial widget init. */
+export async function syncChoralaIdentity(): Promise<void> {
     const config = getChoralaConfig();
     if (!config) {
         return;
     }
 
     const authStore = useAuthStore();
-    if (!authStore.user) {
+    const userId = authStore.user ? String(authStore.user.id) : null;
+
+    if (userId === lastSyncedUserId) {
         return;
     }
 
-    try {
-        const response = await api.get<{ jwt: string }>('/chorala/widget-token');
-        const jwt = response.data?.jwt;
-        if (!jwt) {
-            return;
-        }
-
-        if (choralaLoaded && typeof window.Chorala === 'function') {
-            window.Chorala('identify', { jwt });
-            return;
-        }
-
-        await loadChoralaWidget(jwt);
-    } catch (error) {
-        if (import.meta.env.DEV) {
-            console.warn('[chorala] SSO identify failed; loading anonymous widget.', error);
-        }
-        if (!choralaLoaded) {
-            await loadChoralaWidget();
-        }
-    }
-}
-
-export async function initChorala(): Promise<void> {
-    const authStore = useAuthStore();
-    if (authStore.user) {
-        await identifyChoralaUser();
+    if (!userId) {
+        lastSyncedUserId = null;
+        clearChoralaIdentity();
         return;
     }
 
     await loadChoralaWidget();
+
+    try {
+        const response = await api.get<{ jwt: string }>('/chorala/widget-token');
+        const jwt = response.data?.jwt?.trim();
+        if (!jwt) {
+            lastSyncedUserId = null;
+            clearChoralaIdentity();
+            return;
+        }
+
+        if (typeof window.Chorala === 'function') {
+            window.Chorala('identify', { jwt });
+            lastSyncedUserId = userId;
+        }
+    } catch {
+        lastSyncedUserId = null;
+        clearChoralaIdentity();
+    }
+}
+
+export async function initChorala(): Promise<void> {
+    await loadChoralaWidget();
+    await syncChoralaIdentity();
+}
+
+/** @deprecated Use syncChoralaIdentity() */
+export async function identifyChoralaUser(): Promise<void> {
+    await syncChoralaIdentity();
 }

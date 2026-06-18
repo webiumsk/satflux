@@ -3,12 +3,11 @@ import { isPublicMarketingPath, navigateToAppPath } from '../utils/publicMarketi
 
 /**
  * Shared navigation guard logic for public marketing SPA.
- * Does not block render on auth API calls.
  */
-export function runPublicRouteGuard(
+export async function runPublicRouteGuard(
     to: { meta: Record<string, unknown>; name?: string | symbol | null; fullPath: string; path: string },
     next: (value?: unknown) => void,
-): void {
+): Promise<void> {
     if (!isPublicMarketingPath(to.path)) {
         navigateToAppPath(to.fullPath);
         return;
@@ -22,7 +21,11 @@ export function runPublicRouteGuard(
         && to.name !== 'register'
         && to.name !== 'password-reset'
     ) {
-        void authStore.fetchUser();
+        try {
+            await authStore.fetchUser();
+        } catch {
+            // Unauthenticated visitors stay on public routes.
+        }
     }
 
     if (to.meta.public) {
@@ -31,7 +34,10 @@ export function runPublicRouteGuard(
     }
 
     if (to.meta.requiresGuest && authStore.isAuthenticated) {
-        navigateToAppPath('/dashboard');
+        const redirect = typeof to.query.redirect === 'string' && to.query.redirect.trim() !== ''
+            ? to.query.redirect
+            : '/dashboard';
+        navigateToAppPath(redirect);
         return;
     }
 

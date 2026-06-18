@@ -15,26 +15,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { computed } from "vue";
 import { useRoute } from "vue-router";
 import AppLayout from "./components/layout/AppLayout.vue";
 import GuestUpgradeModal from "./components/account/GuestUpgradeModal.vue";
 import FlashMessage from "./components/ui/FlashMessage.vue";
 import CookieConsentBanner from "./components/legal/CookieConsentBanner.vue";
 import { useAppLayoutScroll } from "./composables/useAppLayoutScroll";
-import { useAuthStore } from "./store/auth";
-import { identifyChoralaUser } from "./services/chorala";
 
 const route = useRoute();
-const authStore = useAuthStore();
 const { layoutScrollMobile } = useAppLayoutScroll();
-
-watch(
-  () => authStore.user,
-  () => {
-    void identifyChoralaUser();
-  },
-);
 
 const needsLayout = computed(() => {
   return route.meta.requiresAuth === true && !route.meta.public;
