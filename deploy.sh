@@ -69,6 +69,8 @@ ${RELAY_SITE_ADDRESS} {
 }
 EOF
 else
+    echo -e "${YELLOW}Warning: RELAY_SITE_ADDRESS not set - Evolu relay will not get a Caddy TLS site${NC}"
+    echo -e "${YELLOW}  → Add RELAY_SITE_ADDRESS=relay.satflux.io to $ENV_FILE and redeploy${NC}"
     cat > docker/caddy/Caddyfile.relay <<'EOF'
 # Evolu relay TLS site disabled (set RELAY_SITE_ADDRESS in deploy env file).
 EOF
@@ -209,6 +211,20 @@ else
 fi
 # Vite bakes VITE_* at build time; pass deploy env file so flags in .env.standalone win over a stale .env on disk
 docker exec --env-file "$ENV_FILE" --user root "$PHP_CONTAINER" npm run build
+
+echo -e "${YELLOW}Verifying Vite build output...${NC}"
+docker exec "$PHP_CONTAINER" test -s /var/www/public/build/manifest.json || {
+    echo -e "${RED}Error: public/build/manifest.json missing after npm run build${NC}"
+    exit 1
+}
+_build_js_count=$(docker exec "$PHP_CONTAINER" sh -c 'find /var/www/public/build/assets -name "*.js" -size +0 2>/dev/null | wc -l' | tr -d ' ')
+if [ "${_build_js_count:-0}" -lt 1 ]; then
+    echo -e "${RED}Error: no JS assets in public/build/assets after npm run build${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Vite build OK (${_build_js_count} JS assets)${NC}"
+docker exec --user root "$PHP_CONTAINER" chmod -R a+rX /var/www/public/build
+docker exec --user root "$PHP_CONTAINER" chown -R www-data:www-data /var/www/public/build 2>/dev/null || true
 
 # Step 5: Run database migrations
 echo -e "${YELLOW}Step 5: Running database migrations...${NC}"
