@@ -3389,7 +3389,7 @@
       "submit": "Send message",
       "sending": "Sending...",
       "success": "Thank you. We received your message.",
-      "error": "Could not send your message. Please try again or email hello@satflux.io.",
+      "error": "Could not send your message. Please try again or email hello{'@'}satflux.io.",
       "enterprise_title": "Contact us about Enterprise",
       "enterprise_subject": "Enterprise plan inquiry",
       "support_title": "Contact support",

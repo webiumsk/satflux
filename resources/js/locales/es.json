@@ -2110,7 +2110,7 @@
       "submit": "Enviar mensaje",
       "sending": "Enviando...",
       "success": "Gracias. Hemos recibido su mensaje.",
-      "error": "No se pudo enviar el mensaje. Inténtelo de nuevo o escriba a hello@satflux.io.",
+      "error": "No se pudo enviar el mensaje. Inténtelo de nuevo o escriba a hello{'@'}satflux.io.",
       "enterprise_title": "Contacto Enterprise",
       "enterprise_subject": "Consulta plan Enterprise",
       "support_title": "Contactar soporte",
