@@ -79,6 +79,7 @@ return [
         'project_key' => env('CHORALA_PROJECT_KEY'),
         'widget_url' => rtrim((string) env('CHORALA_WIDGET_URL', 'https://chorala.com'), '/'),
         'end_user_jwt_secret' => env('CHORALA_END_USER_JWT_SECRET'),
+        'use_proxy' => filter_var(env('CHORALA_USE_PROXY', env('APP_ENV') === 'local'), FILTER_VALIDATE_BOOLEAN),
     ],
 
     'discord' => [

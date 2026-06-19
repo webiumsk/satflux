@@ -35,7 +35,7 @@
 @if(config('services.chorala.project_key'))
 <meta name="satflux-chorala-key" content="{{ config('services.chorala.project_key') }}">
 <meta name="satflux-chorala-widget-url" content="{{ config('services.chorala.widget_url') }}">
-@if(filter_var(env('CHORALA_USE_PROXY', app()->environment('local')), FILTER_VALIDATE_BOOLEAN))
+@if(config('services.chorala.use_proxy'))
 <meta name="satflux-chorala-use-proxy" content="true">
 @endif
 @endif

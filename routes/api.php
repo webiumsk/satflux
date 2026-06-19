@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\DocumentationCategoryController;
 use App\Http\Controllers\Admin\DocumentationImageController;
 use App\Http\Controllers\Admin\FaqCategoryController;
 use App\Http\Controllers\Admin\FaqItemController;
+use App\Http\Controllers\Admin\PlatformSettingsController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AppController;
 use App\Http\Controllers\Auth\EmailVerificationController;
@@ -902,6 +903,9 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             ->middleware(AuditLog::class.':admin.user.updated');
         Route::delete('/admin/users/{user}', [AdminController::class, 'destroy'])
             ->middleware(AuditLog::class.':admin.user.deleted');
+        Route::get('/admin/platform-settings', [PlatformSettingsController::class, 'show']);
+        Route::patch('/admin/platform-settings', [PlatformSettingsController::class, 'update'])
+            ->middleware(['throttle:30,1', AuditLog::class.':platform_settings.updated']);
     });
 });
 

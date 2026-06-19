@@ -8,6 +8,35 @@
           {{ t("admin.dashboard.title") }}
         </h1>
         <p class="text-gray-400 mt-1">{{ t("admin.dashboard.description") }}</p>
+
+        <nav
+          v-if="userRole === 'admin'"
+          class="mt-5 flex flex-wrap gap-2"
+          :aria-label="t('admin.dashboard.admin_nav_label')"
+        >
+          <router-link
+            to="/admin/users"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors"
+            :class="
+              $route.name === 'admin-users' || $route.name === 'admin-user-detail'
+                ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-200'
+                : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-600 hover:text-white'
+            "
+          >
+            {{ t("admin.dashboard.user_management") }}
+          </router-link>
+          <router-link
+            to="/admin/settings"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors"
+            :class="
+              $route.name === 'admin-platform-settings'
+                ? 'bg-amber-600/20 border-amber-500/40 text-amber-200'
+                : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-600 hover:text-white'
+            "
+          >
+            {{ t("admin.dashboard.platform_settings") }}
+          </router-link>
+        </nav>
       </div>
 
       <!-- Platform Overview (Admin only) -->
@@ -676,6 +705,59 @@
             {{ t("admin.dashboard.user_management_desc") }}
           </p>
           <span class="text-sm text-indigo-400 font-medium">{{
+            t("admin.dashboard.view_section")
+          }}</span>
+        </div>
+
+        <!-- Platform Settings (Admin only) -->
+        <div
+          v-if="userRole === 'admin'"
+          class="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-amber-500/50 transition-all group cursor-pointer"
+          @click="$router.push('/admin/settings')"
+        >
+          <div class="flex items-start justify-between mb-4">
+            <div class="p-3 bg-amber-500/10 rounded-lg">
+              <svg
+                class="w-6 h-6 text-amber-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+            </div>
+            <svg
+              class="w-5 h-5 text-gray-400 group-hover:text-amber-400 transition-colors"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold text-white mb-2">
+            {{ t("admin.dashboard.platform_settings") }}
+          </h3>
+          <p class="text-gray-400 text-sm mb-4">
+            {{ t("admin.dashboard.platform_settings_desc") }}
+          </p>
+          <span class="text-sm text-amber-400 font-medium">{{
             t("admin.dashboard.view_section")
           }}</span>
         </div>

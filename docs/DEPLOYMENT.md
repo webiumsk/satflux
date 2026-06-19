@@ -77,6 +77,19 @@ To enable Evolu-based invoicing on production, set **both** `VITE_INVOICING_LOCA
 
 Full rollout steps, rollback, and verification: [INVOICING_LOCAL_FIRST_ROLLOUT.md](INVOICING_LOCAL_FIRST_ROLLOUT.md).
 
+### Platform Settings (runtime config in admin)
+
+Most non-infra toggles (auth, BTCPay public URLs, subscription IDs, e-faktura, guest purge, compliance, data retention, integrations, export TTL) live in the database and are editable at **Admin → Platform Settings** (`/admin/settings`, role `admin` only).
+
+After first deploy with the `platform_settings` migration:
+
+```bash
+docker compose -f docker-compose.standalone.yml --env-file .env.standalone exec php php artisan migrate
+docker compose -f docker-compose.standalone.yml --env-file .env.standalone exec php php artisan platform-settings:import-env --file=.env.standalone
+```
+
+Then remove imported keys from `.env.standalone` (keep infra, secrets, and `VITE_*`). Changes via the admin UI apply immediately (Redis cache ~60s); no `optimize:clear` needed for runtime toggles. **`VITE_INVOICING_LOCAL_FIRST` still requires `./deploy.sh`** to rebuild the frontend bundle.
+
 ## BTCPay Raffle public URLs (`/raffle/...`)
 
 The panel builds buyer and presenter links from **`BTCPAY_PUBLIC_URL`** (or `BTCPAY_BASE_URL` if unset), exposed to the SPA as `GET /api/config` → `btcpay_base_url`.

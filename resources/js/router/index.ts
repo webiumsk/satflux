@@ -361,6 +361,12 @@ const router = createRouter({
             meta: { requiresAuth: true, requiresAdmin: true },
         },
         {
+            path: '/admin/settings',
+            name: 'admin-platform-settings',
+            component: () => import('../pages/admin/PlatformSettings.vue'),
+            meta: { requiresAuth: true, requiresAdmin: true },
+        },
+        {
             path: '/documentation',
             name: 'documentation',
             component: () => import('../pages/documentation/Index.vue'),

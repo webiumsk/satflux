@@ -138,7 +138,7 @@ class GenerateXlsxExport implements ShouldQueue
             $writer = new Xlsx($spreadsheet);
             $writer->save($fullPath);
 
-            $ttl = (int) env('EXPORT_SIGNED_URL_TTL', 3600);
+            $ttl = (int) config('exports.signed_url_ttl', 3600);
             $signedUrl = $disk->temporaryUrl(
                 $filePath,
                 now()->addSeconds($ttl)

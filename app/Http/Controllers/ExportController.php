@@ -79,7 +79,7 @@ class ExportController extends Controller
         }
 
         // Regenerate signed URL if expired
-        $ttl = (int) env('EXPORT_SIGNED_URL_TTL', 3600);
+        $ttl = (int) config('exports.signed_url_ttl', 3600);
         $signedUrl = \Illuminate\Support\Facades\Storage::disk('exports')->temporaryUrl(
             $export->file_path,
             now()->addSeconds($ttl)
