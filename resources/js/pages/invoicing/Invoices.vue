@@ -1366,7 +1366,13 @@ async function refreshListFromRelay(): Promise<void> {
       return;
     }
     if (result.timedOut) {
-      notifySaveFailed(t("invoicing.relay_sync_refresh_no_changes"));
+      notifySaveFailed(
+        t(
+          showIntegrationInbox.value
+            ? 'invoicing.relay_sync_pull_no_changes'
+            : 'invoicing.relay_sync_refresh_no_changes',
+        ),
+      );
       return;
     }
     notifySaved("invoicing.relay_sync_refresh_up_to_date");

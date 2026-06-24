@@ -41,6 +41,33 @@
       <p class="text-xs text-emerald-800 mt-1">
         {{ t('invoicing.relay_sync_relay_host', { host: relayBuildInfo.url }) }}
       </p>
+      <p class="text-xs text-emerald-800 mt-2">{{ t('invoicing.relay_sync_push_pull_hint') }}</p>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          class="invoicing-btn-secondary text-sm"
+          :disabled="relayPushBusy || isRelaySyncing"
+          @click="runPushToRelay"
+        >
+          {{
+            relayPushBusy
+              ? t('invoicing.relay_sync_push_in_progress')
+              : t('invoicing.relay_sync_push')
+          }}
+        </button>
+        <button
+          type="button"
+          class="invoicing-btn-secondary text-sm"
+          :disabled="relayPullBusy || isRelaySyncing"
+          @click="runPullFromRelay"
+        >
+          {{
+            relayPullBusy
+              ? t('invoicing.relay_sync_refresh_in_progress')
+              : t('invoicing.relay_sync_pull')
+          }}
+        </button>
+      </div>
     </div>
 
     <div v-if="localFirst && duplicateCompanyGroups.length" class="invoicing-alert-warn mb-4">
@@ -228,8 +255,10 @@ const router = useRouter();
 const authStore = useAuthStore();
 const flashStore = useFlashStore();
 const { canUse } = useBusinessInvoicing();
-const { isRelaySyncing, localFirst } = useInvoicingRelaySync();
+const { isRelaySyncing, localFirst, pushToRelay, refreshFromRelay } = useInvoicingRelaySync();
 const relayBuildInfo = getEvoluRelayBuildInfo();
+const relayPushBusy = ref(false);
+const relayPullBusy = ref(false);
 const evolu = useInvoicingEvolu();
 const { ensureStoresLoaded } = useLocalStoreSanitizer();
 
@@ -280,6 +309,51 @@ async function loadMigrationStatus(): Promise<void> {
     }
   } catch {
     migrationStatus.value = null;
+  }
+}
+
+async function runPushToRelay(): Promise<void> {
+  if (relayPushBusy.value) return;
+  relayPushBusy.value = true;
+  try {
+    const result = await pushToRelay();
+    if (result.relayDisabled) {
+      flashStore.error(t('invoicing.relay_sync_relay_disabled'));
+      return;
+    }
+    if (result.ownerStatus === 'no_phrase') {
+      flashStore.error(t('invoicing.relay_sync_no_phrase'));
+      return;
+    }
+    if (result.ownerStatus === 'owner_mismatch') {
+      flashStore.error(t('invoicing.relay_sync_owner_mismatch'));
+      return;
+    }
+    if (result.ok) {
+      flashStore.success(t('invoicing.relay_sync_push_ok', { count: result.upserted }));
+    } else {
+      flashStore.warning(t('invoicing.relay_sync_push_failed'));
+    }
+  } finally {
+    relayPushBusy.value = false;
+  }
+}
+
+async function runPullFromRelay(): Promise<void> {
+  if (relayPullBusy.value) return;
+  relayPullBusy.value = true;
+  try {
+    const result = await refreshFromRelay();
+    if (result.changed) {
+      flashStore.success(t('invoicing.relay_sync_pull_ok'));
+    } else if (result.timedOut) {
+      flashStore.warning(t('invoicing.relay_sync_pull_no_changes'));
+    } else {
+      flashStore.success(t('invoicing.relay_sync_refresh_up_to_date'));
+    }
+    await refresh();
+  } finally {
+    relayPullBusy.value = false;
   }
 }
 

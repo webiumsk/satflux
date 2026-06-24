@@ -5,9 +5,11 @@ import { isInvoicingLocalFirst } from "@/evolu/flags";
 import {
     isEvoluRelaySyncPending,
     pullInvoicingFromRelay,
-    refreshInvoicingLocalQueries,
+    pushInvoicingToRelay,
+    refreshAllInvoicingLocalQueries,
     type PullInvoicingFromRelayOptions,
     type PullInvoicingFromRelayResult,
+    type PushInvoicingToRelayResult,
     waitForInvoicingDataSettled,
     waitForInvoicingRelaySync,
 } from "@/evolu/relaySyncWait";
@@ -40,7 +42,7 @@ export function useInvoicingRelaySync(options?: UseInvoicingRelaySyncOptions) {
                     await waitForInvoicingDataSettled(evolu);
                 } else if (options?.refreshOnMount) {
                     await pullInvoicingFromRelay(evolu, { timeoutMs: 20_000 });
-                    await refreshInvoicingLocalQueries(evolu);
+                    await refreshAllInvoicingLocalQueries(evolu);
                 }
             } finally {
                 blockingWait.value = false;
@@ -83,12 +85,25 @@ export function useInvoicingRelaySync(options?: UseInvoicingRelaySyncOptions) {
         });
     }
 
+    async function pushToRelay(): Promise<PushInvoicingToRelayResult> {
+        if (!evolu) {
+            return {
+                ownerStatus: "ok",
+                upserted: 0,
+                ok: false,
+            };
+        }
+        await ensureEvoluBoundToAccountSeed();
+        return pushInvoicingToRelay(evolu, { timeoutMs: 30_000 });
+    }
+
     return {
         localFirst,
         isRelaySyncing,
         isRelaySettling: computed(() => localFirst && blockingWait.value),
         refreshFromRelay,
+        pushToRelay,
     };
 }
 
-export type { PullInvoicingFromRelayResult };
+export type { PullInvoicingFromRelayResult, PushInvoicingToRelayResult };

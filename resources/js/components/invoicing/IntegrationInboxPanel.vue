@@ -19,7 +19,11 @@
 
     <p v-if="error" class="mt-3 text-sm text-red-700">{{ error }}</p>
 
-    <ul v-else-if="items.length" class="mt-3 space-y-2">
+    <p v-if="items.length" class="mt-3 text-xs text-indigo-900">
+      {{ t('invoicing.integration_inbox_relay_hint') }}
+    </p>
+
+    <ul v-if="items.length" class="mt-3 space-y-2">
       <li
         v-for="item in items"
         :key="item.inbox_id"

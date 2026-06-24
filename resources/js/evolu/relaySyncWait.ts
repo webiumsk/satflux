@@ -353,3 +353,63 @@ export async function waitForInvoicingDataSettled(
         await sleep(pollMs);
     }
 }
+
+export type PushInvoicingToRelayOptions = {
+    timeoutMs?: number;
+    companyId?: string;
+};
+
+export type PushInvoicingToRelayResult = {
+    ownerStatus: InvoicingRelayOwnerStatus;
+    relayDisabled?: boolean;
+    upserted: number;
+    ok: boolean;
+};
+
+/**
+ * Re-upsert local invoicing rows so Evolu sends CRDT updates to the relay.
+ * Use on the device where data was created before relay worked (legacy local-only rows).
+ */
+export async function pushInvoicingToRelay(
+    evolu: Evolu<InvoicingLocalSchema>,
+    options?: PushInvoicingToRelayOptions,
+): Promise<PushInvoicingToRelayResult> {
+    if (!isEvoluRelayConfigured()) {
+        return {
+            ownerStatus: "ok",
+            relayDisabled: true,
+            upserted: 0,
+            ok: false,
+        };
+    }
+
+    const ownerStatus = await checkInvoicingRelayOwner(evolu);
+    if (ownerStatus !== "ok") {
+        return { ownerStatus, upserted: 0, ok: false };
+    }
+
+    const { filterInvoicingSnapshotByCompany } = await import("./invoicingRelayFingerprintCore");
+    const { restoreInvoicingSnapshotDetailedAsync, snapshotInvoicingData } = await import(
+        "./invoicingSnapshot"
+    );
+
+    await refreshEvoluRelaySubscription(evolu);
+    await sleep(2_000);
+
+    const snapshot = await snapshotInvoicingData(evolu);
+    const scoped = options?.companyId
+        ? filterInvoicingSnapshotByCompany(snapshot, options.companyId)
+        : snapshot;
+
+    const report = await restoreInvoicingSnapshotDetailedAsync(evolu, scoped);
+    await waitForInvoicingDataSettled(evolu, {
+        timeoutMs: options?.timeoutMs ?? 20_000,
+        minWaitMs: 3_000,
+    });
+
+    return {
+        ownerStatus: "ok",
+        upserted: report.upserted,
+        ok: report.upserted > 0 || report.failed.length === 0,
+    };
+}
