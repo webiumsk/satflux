@@ -147,6 +147,8 @@
     "integration_inbox_dismiss": "Skryť",
     "integration_inbox_empty": "Žiadne čakajúce WooCommerce objednávky.",
     "integration_inbox_import_failed": "Objednávku sa nepodarilo importovať. Skontrolujte údaje odberateľa a skúste znova.",
+    "integration_inbox_import_contact_failed": "Nepodarilo sa vytvoriť kontakt z údajov odberateľa. Skontrolujte meno a e-mail na objednávke.",
+    "integration_inbox_import_lines_failed": "Objednávka nemá žiadne riadky na import faktúry.",
     "integration_inbox_deeplink_title": "WooCommerce inbox",
     "integration_inbox_deeplink_loading": "Otváram WooCommerce inbox…",
     "integration_inbox_deeplink_failed": "WooCommerce inbox sa nepodarilo otvoriť. Prihláste sa do Satflux a v nastaveniach firmy prepojte store.",

@@ -13,6 +13,7 @@ import {
     type DocumentSavePayload,
 } from "./documentCrud";
 import type { CompanyId, ContactId, DocumentId, DocumentType, InvoicingLocalSchema } from "./schema";
+import type { EvoluDocumentRow } from "./documentMap";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import { allNumberSeriesQuery } from "./client";
 
@@ -75,12 +76,14 @@ function vatOptionsForContact(company: VatPolicyCompany, contact: VatPolicyConta
 }
 
 function buyerToContactForm(buyer: Record<string, unknown>): ContactFormState {
-    const email = String(buyer.email ?? "").trim();
+    const emailRaw = String(buyer.email ?? "").trim();
+    const email = emailRaw.includes("@") ? emailRaw : "";
     const name = String(buyer.name ?? "").trim();
+    const company = String(buyer.company ?? "").trim();
 
     return {
         ...emptyContactForm(),
-        name: name || email || "WooCommerce buyer",
+        name: name || company || email || "WooCommerce buyer",
         email,
         registration_number: String(buyer.ico ?? ""),
         tax_id: String(buyer.dic ?? ""),
@@ -88,7 +91,7 @@ function buyerToContactForm(buyer: Record<string, unknown>): ContactFormState {
         street: String(buyer.street ?? ""),
         city: String(buyer.city ?? ""),
         postal_code: String(buyer.zip ?? ""),
-        country: String(buyer.country ?? ""),
+        country: String(buyer.country ?? "").trim().slice(0, 2).toUpperCase(),
     };
 }
 
@@ -164,6 +167,18 @@ function resolveLocalContactId(
     return { ok: true, contactId: inserted.value.id as ContactId };
 }
 
+function resolveStoreIdForApi(
+    linkedStoreId: string | null | undefined,
+    payload: Record<string, unknown>,
+): string | null {
+    const linked = typeof linkedStoreId === "string" ? linkedStoreId.trim() : "";
+    if (linked) {
+        return linked;
+    }
+    const fromPayload = String(payload.store_id ?? "").trim();
+    return fromPayload || null;
+}
+
 export async function importIntegrationInboxEntry(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: string,
@@ -172,8 +187,11 @@ export async function importIntegrationInboxEntry(
     linkedStoreId?: string | null,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
     const typedCompanyId = companyId as CompanyId;
-    const contacts = (await evolu.loadQuery(allContactsQuery)) as EvoluContactRow[];
-    const existingLines = await evolu.loadQuery(allDocumentLinesQuery);
+    const [contacts, existingLines, existingDocuments] = await Promise.all([
+        evolu.loadQuery(allContactsQuery) as Promise<EvoluContactRow[]>,
+        evolu.loadQuery(allDocumentLinesQuery),
+        evolu.loadQuery(allDocumentsQuery) as Promise<EvoluDocumentRow[]>,
+    ]);
 
     const buyer = (entry.payload.buyer ?? {}) as Record<string, unknown>;
     const contactResult = resolveLocalContactId(typedCompanyId, contacts, buyer, evolu);
@@ -183,8 +201,15 @@ export async function importIntegrationInboxEntry(
 
     const vat = vatOptionsForContact(company, { country: buyer.country as string | null });
     const documentPayload = payloadToDocumentSave(entry.payload, contactResult.contactId);
+    const preassignedId = String(entry.evolu_document_id ?? "").trim() as DocumentId;
+    const existingDocument =
+        preassignedId !== ""
+            ? existingDocuments.find((row) => row.id === preassignedId) ?? null
+            : null;
+
     const saveResult = saveLocalDocument(evolu, typedCompanyId, documentPayload, {
-        documentId: entry.evolu_document_id as DocumentId,
+        documentId: existingDocument ? preassignedId : undefined,
+        existingDocument,
         ...vat,
         existingLines,
     });
@@ -193,13 +218,14 @@ export async function importIntegrationInboxEntry(
         return { ok: false, error: String(saveResult.error ?? "save_failed") };
     }
 
+    const savedDocumentId = saveResult.value.id;
     const reservedNumber = String(entry.payload.number ?? "").trim();
     if (reservedNumber) {
         const allSeries = (await evolu.loadQuery(allNumberSeriesQuery)) as EvoluNumberSeriesRow[];
         const documentType = String(entry.payload.type ?? "invoice") as DocumentType;
         const applyResult = await applyReservedNumberToLocalDocumentAsync(
             evolu,
-            entry.evolu_document_id as DocumentId,
+            savedDocumentId,
             typedCompanyId,
             documentType,
             reservedNumber,
@@ -211,7 +237,8 @@ export async function importIntegrationInboxEntry(
         }
     }
 
-    await markIntegrationInboxImported(companyId, entry.inbox_id, linkedStoreId);
+    const storeIdForApi = resolveStoreIdForApi(linkedStoreId, entry.payload);
+    await markIntegrationInboxImported(companyId, entry.inbox_id, storeIdForApi);
     await Promise.all([
         evolu.loadQuery(allContactsQuery),
         evolu.loadQuery(allDocumentLinesQuery),

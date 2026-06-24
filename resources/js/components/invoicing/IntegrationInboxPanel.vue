@@ -97,6 +97,17 @@ const showPanel = computed(
   () => props.enabled && (items.value.length > 0 || error.value !== ''),
 );
 
+function mapImportError(code: string): string {
+  switch (code) {
+    case 'contact_create_failed':
+      return t('invoicing.integration_inbox_import_contact_failed');
+    case 'lines_required':
+      return t('invoicing.integration_inbox_import_lines_failed');
+    default:
+      return t('invoicing.integration_inbox_import_failed');
+  }
+}
+
 async function refresh(): Promise<void> {
   if (!props.enabled || !props.companyId) {
     items.value = [];
@@ -126,7 +137,7 @@ async function importItem(item: IntegrationInboxEntry): Promise<void> {
       props.linkedStoreId,
     );
     if (!result.ok) {
-      error.value = t('invoicing.integration_inbox_import_failed');
+      error.value = mapImportError(result.error);
       return;
     }
     items.value = items.value.filter((row) => row.inbox_id !== item.inbox_id);

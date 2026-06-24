@@ -147,6 +147,8 @@
     "integration_inbox_dismiss": "Dismiss",
     "integration_inbox_empty": "No pending WooCommerce orders.",
     "integration_inbox_import_failed": "Could not import the order. Check buyer details and try again.",
+    "integration_inbox_import_contact_failed": "Could not create a contact from the WooCommerce buyer. Check name and email on the order.",
+    "integration_inbox_import_lines_failed": "The WooCommerce order has no invoice lines to import.",
     "integration_inbox_deeplink_title": "WooCommerce inbox",
     "integration_inbox_deeplink_loading": "Opening WooCommerce inbox…",
     "integration_inbox_deeplink_failed": "Could not open the WooCommerce inbox. Sign in to Satflux and link your store to a company in Invoicing settings.",

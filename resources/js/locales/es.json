@@ -2331,6 +2331,8 @@
     "integration_inbox_dismiss": "Descartar",
     "integration_inbox_empty": "No hay pedidos WooCommerce pendientes.",
     "integration_inbox_import_failed": "No se pudo importar el pedido. Revise los datos del comprador e inténtelo de nuevo.",
+    "integration_inbox_import_contact_failed": "No se pudo crear el contacto del comprador. Revise nombre y correo en el pedido.",
+    "integration_inbox_import_lines_failed": "El pedido no tiene líneas para importar a la factura.",
     "integration_inbox_deeplink_title": "Bandeja WooCommerce",
     "integration_inbox_deeplink_loading": "Abriendo la bandeja WooCommerce…",
     "integration_inbox_deeplink_failed": "No se pudo abrir la bandeja WooCommerce. Inicie sesión en Satflux y vincule la tienda a una empresa en facturación.",
