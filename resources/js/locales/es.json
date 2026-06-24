@@ -2292,6 +2292,7 @@
     "relay_sync_refresh_no_changes": "No hay datos nuevos desde la sincronización (documentos, contactos, gastos, stock, ajustes). Compruebe la misma frase de recuperación en ambos dispositivos. Use Fusionar duplicados si hay empresas duplicadas.",
     "relay_sync_refresh_failed": "No se pudieron actualizar los datos desde la sincronización. Inténtelo de nuevo en un momento.",
     "relay_sync_no_phrase": "No hay frase de recuperación en este navegador. Restáurela en el perfil de la cuenta o la sincronización entre dispositivos no funcionará.",
+    "relay_sync_relay_disabled": "La sincronización entre navegadores no está activa en esta compilación (falta la URL del relay). Contacte con soporte o use el mismo navegador.",
     "relay_sync_owner_mismatch": "La base de datos local no coincide con su frase de recuperación. Cierre sesión, restaure la frase e inténtelo de nuevo.",
     "relay_sync_company_mismatch": "La sincronización trajo documentos bajo otro perfil de empresa. Abra el inicio de facturación y use Fusionar duplicados, luego actualice de nuevo.",
     "relay_sync_other_document_type": "La sincronización trajo documentos nuevos de esta empresa en otra lista (p. ej. proforma). Abra la pestaña correspondiente (Proforma / Facturas).",

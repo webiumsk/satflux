@@ -1343,6 +1343,10 @@ async function refreshListFromRelay(): Promise<void> {
       notifySaveFailed(t("invoicing.relay_sync_no_phrase"));
       return;
     }
+    if (result.relayDisabled) {
+      notifySaveFailed(t("invoicing.relay_sync_relay_disabled"));
+      return;
+    }
     if (result.ownerStatus === "owner_mismatch") {
       notifySaveFailed(t("invoicing.relay_sync_owner_mismatch"));
       return;

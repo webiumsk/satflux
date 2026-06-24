@@ -4,6 +4,11 @@ import type { InvoicingLocalSchema } from "./schema";
 import { getStoredAccountMnemonic } from "@/services/accountSeed";
 import { isTargetEvoluOwner } from "@/services/evoluOwner";
 import {
+    isEvoluRelayConfigured,
+    ensureEvoluRelaySubscription,
+    refreshEvoluRelaySubscription,
+} from "./evoluRelaySubscription";
+import {
     loadInvoicingRelayFingerprint,
     refreshAllInvoicingLocalQueries,
 } from "./invoicingRelayFingerprint";
@@ -17,6 +22,8 @@ export type PullInvoicingFromRelayResult = {
     changed: boolean;
     documentCount: number;
     timedOut: boolean;
+    /** Build has no VITE_EVOLU_RELAY_URL - sync cannot cross browsers. */
+    relayDisabled?: boolean;
     /** Documents synced for this account but under another company row (duplicate companies). */
     syncedElsewhere?: boolean;
     /** New rows synced for this company but another document type (e.g. proforma while on invoice list). */
@@ -74,6 +81,8 @@ export type PullInvoicingFromRelayOptions = {
     companyId?: string;
     /** Document count for the active list tab in the result message. */
     documentType?: string;
+    /** Wait after re-subscribing on the relay before polling (ms). */
+    subscriptionWarmupMs?: number;
 };
 
 type RelayDocumentRow = {
@@ -124,6 +133,16 @@ export async function pullInvoicingFromRelay(
     evolu: Evolu<InvoicingLocalSchema>,
     options?: PullInvoicingFromRelayOptions,
 ): Promise<PullInvoicingFromRelayResult> {
+    if (!isEvoluRelayConfigured()) {
+        return {
+            ownerStatus: "ok",
+            changed: false,
+            documentCount: 0,
+            timedOut: false,
+            relayDisabled: true,
+        };
+    }
+
     const ownerStatus = await checkInvoicingRelayOwner(evolu);
     if (ownerStatus !== "ok") {
         return {
@@ -142,6 +161,9 @@ export async function pullInvoicingFromRelay(
         documentType: options?.documentType,
     };
     const deadline = Date.now() + timeoutMs;
+
+    await refreshEvoluRelaySubscription(evolu);
+    await sleep(options?.subscriptionWarmupMs ?? 1_500);
 
     const baselineCompanyFingerprint = await loadInvoicingRelayFingerprint(evolu, companyId);
     const baselineListFingerprint = await loadDocumentListFingerprint(evolu, listFilter);
@@ -252,6 +274,8 @@ export async function waitForInvoicingRelaySync(
     const minWaitMs = options?.minWaitMs ?? 5_000;
     const deadline = Date.now() + timeoutMs;
     const startedAt = Date.now();
+
+    await refreshEvoluRelaySubscription(evolu);
 
     let lastFingerprint = "";
     let stable = 0;

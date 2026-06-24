@@ -100,6 +100,7 @@
     "relay_sync_refresh_no_changes": "Žiadne nové dáta zo synchronizácie (doklady, kontakty, náklady, sklad, nastavenia). Skontrolujte rovnakú recovery frázu na oboch zariadeniach. Pri duplicitných firmách použite „Zlúčiť duplicity“.",
     "relay_sync_refresh_failed": "Nepodarilo sa obnoviť dáta zo synchronizácie. Skúste znova o chvíľu.",
     "relay_sync_no_phrase": "V tomto prehliadači nie je uložená recovery fráza. Obnovte ju v Profile účtu, inak synchronizácia medzi zariadeniami nefunguje.",
+    "relay_sync_relay_disabled": "Synchronizácia medzi prehliadačmi nie je v tomto build-e zapnutá (chýba relay URL). Kontaktujte podporu alebo použite ten istý prehliadač.",
     "relay_sync_owner_mismatch": "Lokálna databáza nezodpovedá recovery fráze. Odhláste sa, obnovte frázu a skúste znova.",
     "relay_sync_company_mismatch": "Synchronizácia priniesla doklady pod iným profilom firmy. Otvorte úvod fakturácie a použite „Zlúčiť duplicity“, potom obnovte znova.",
     "relay_sync_other_document_type": "Synchronizácia priniesla nové doklady tejto firmy v inom zozname (napr. zálohová faktúra). Otvorte príslušnú záložku (Zálohové faktúry / Faktúry).",

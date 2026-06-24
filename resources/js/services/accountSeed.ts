@@ -137,6 +137,8 @@ export type EvoluAccountSeedInitResult =
     | "migrated_legacy_owner"
     | "relay_synced";
 
+const PENDING_OWNER_MIGRATION_SNAPSHOT_KEY = "satflux.evolu.pending_owner_migration_snapshot.v1";
+
 export async function initEvoluFromAccountSeedIfNeeded(
     mnemonic: string,
 ): Promise<EvoluAccountSeedInitResult> {
@@ -144,11 +146,34 @@ export async function initEvoluFromAccountSeedIfNeeded(
     const { evolu } = await import("@/evolu/client");
     const { isEvoluRelaySyncPending, markEvoluRelaySyncPending, waitForInvoicingRelaySync } =
         await import("@/evolu/relaySyncWait");
-    const { restoreInvoicingSnapshotAsync, snapshotHasInvoicingData, snapshotInvoicingData } =
-        await import("@/evolu/invoicingSnapshot");
+    const { ensureEvoluRelaySubscription } = await import("@/evolu/evoluRelaySubscription");
+    const {
+        restoreInvoicingSnapshotAsync,
+        snapshotHasInvoicingData,
+        snapshotInvoicingData,
+    } = await import("@/evolu/invoicingSnapshot");
+    type InvoicingDataSnapshot = Awaited<ReturnType<typeof snapshotInvoicingData>>;
+
+    const pendingSnapshotRaw = sessionStorage.getItem(PENDING_OWNER_MIGRATION_SNAPSHOT_KEY);
+    if (pendingSnapshotRaw) {
+        sessionStorage.removeItem(PENDING_OWNER_MIGRATION_SNAPSHOT_KEY);
+        try {
+            const pendingSnapshot = JSON.parse(pendingSnapshotRaw) as InvoicingDataSnapshot;
+            if (snapshotHasInvoicingData(pendingSnapshot)) {
+                markEvoluRelaySyncPending();
+                await restoreInvoicingSnapshotAsync(evolu, pendingSnapshot);
+                await ensureEvoluRelaySubscription(evolu);
+                await waitForInvoicingRelaySync(evolu);
+                return "migrated_legacy_owner";
+            }
+        } catch {
+            // Corrupt pending snapshot - continue with normal init.
+        }
+    }
 
     const owner = await evolu.appOwner;
     if (isTargetEvoluOwner(owner.mnemonic, mnemonic)) {
+        await ensureEvoluRelaySubscription(evolu);
         if (isEvoluRelaySyncPending()) {
             const synced = await waitForInvoicingRelaySync(evolu);
             return synced ? "relay_synced" : "already_synced";
@@ -161,15 +186,13 @@ export async function initEvoluFromAccountSeedIfNeeded(
     const wrongOwner = owner.mnemonic != null && owner.mnemonic !== evoluMnemonic;
 
     if (wrongOwner && hasData) {
-        await evolu.restoreAppOwner(evoluMnemonic, { reload: false });
-        await restoreInvoicingSnapshotAsync(evolu, snapshot);
+        sessionStorage.setItem(PENDING_OWNER_MIGRATION_SNAPSHOT_KEY, JSON.stringify(snapshot));
         markEvoluRelaySyncPending();
-        evolu.reloadApp();
+        await evolu.restoreAppOwner(evoluMnemonic, { reload: true });
         return "migrated_legacy_owner";
     }
 
     markEvoluRelaySyncPending();
-    await evolu.restoreAppOwner(evoluMnemonic, { reload: false });
-    evolu.reloadApp();
+    await evolu.restoreAppOwner(evoluMnemonic, { reload: true });
     return "restored";
 }

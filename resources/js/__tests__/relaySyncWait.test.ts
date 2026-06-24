@@ -42,6 +42,12 @@ vi.mock("@/evolu/invoicingRelayFingerprint", () => ({
     loadInvoicingRelayFingerprint: vi.fn(),
 }));
 
+vi.mock("@/evolu/evoluRelaySubscription", () => ({
+    isEvoluRelayConfigured: vi.fn(() => true),
+    ensureEvoluRelaySubscription: vi.fn(async () => true),
+    refreshEvoluRelaySubscription: vi.fn(async () => true),
+}));
+
 import { getStoredAccountMnemonic } from "@/services/accountSeed";
 import { isTargetEvoluOwner } from "@/services/evoluOwner";
 import {
@@ -120,7 +126,8 @@ describe("pullInvoicingFromRelay", () => {
         const result = await pullInvoicingFromRelay(evolu, {
             companyId: "company-1",
             pollMs: 1,
-            timeoutMs: 500,
+            timeoutMs: 5_000,
+            subscriptionWarmupMs: 0,
         });
 
         expect(result.ownerStatus).toBe("ok");
@@ -140,7 +147,8 @@ describe("pullInvoicingFromRelay", () => {
         const result = await pullInvoicingFromRelay(evolu, {
             companyId: "company-1",
             pollMs: 1,
-            timeoutMs: 20,
+            timeoutMs: 50,
+            subscriptionWarmupMs: 0,
         });
 
         expect(result.changed).toBe(false);
@@ -173,7 +181,8 @@ describe("pullInvoicingFromRelay", () => {
             companyId: "company-1",
             documentType: "invoice",
             pollMs: 1,
-            timeoutMs: 500,
+            timeoutMs: 5_000,
+            subscriptionWarmupMs: 0,
         });
 
         expect(result.changed).toBe(true);
@@ -199,7 +208,8 @@ describe("pullInvoicingFromRelay", () => {
         const result = await pullInvoicingFromRelay(evolu, {
             companyId: "company-a",
             pollMs: 1,
-            timeoutMs: 20,
+            timeoutMs: 50,
+            subscriptionWarmupMs: 0,
         });
 
         expect(result.changed).toBe(true);
