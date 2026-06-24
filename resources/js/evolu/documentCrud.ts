@@ -15,6 +15,7 @@ import {
     allocateNextNumberForIssue,
     commitNumberSeriesCounter,
     syncLocalSeriesCounterFromIssuedNumber,
+    syncNumberSeriesCounterFromDocuments,
 } from "./numberSeriesCrud";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import { documentVariableSymbol } from "./documentNumber";
@@ -463,6 +464,31 @@ export function deleteLocalDocument(evolu: Evolu<InvoicingLocalSchema>, document
     if (result.ok) {
         logDocumentEvent(evolu, documentId, "business_document.deleted");
     }
+    return result;
+}
+
+export async function deleteLocalDocumentAsync(
+    evolu: Evolu<InvoicingLocalSchema>,
+    documentId: DocumentId,
+    documents: EvoluDocumentRow[],
+    allSeries: EvoluNumberSeriesRow[],
+) {
+    const doc = documents.find((row) => row.id === documentId);
+    const result = deleteLocalDocument(evolu, documentId);
+    if (!result.ok || !doc) {
+        return result;
+    }
+    if (doc.status === "draft" || doc.status === "cancelled" || !doc.number) {
+        return result;
+    }
+    const remaining = documents.filter((row) => row.id !== documentId);
+    syncNumberSeriesCounterFromDocuments(
+        evolu,
+        doc.companyId,
+        doc.documentType,
+        remaining,
+        allSeries,
+    );
     return result;
 }
 

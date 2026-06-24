@@ -1154,7 +1154,7 @@ import { useInvoicingDocumentsLocal } from "../../composables/useInvoicingDocume
 import { isInvoicingLocalFirst } from "../../evolu/flags";
 import { useLocalInvoiceDocumentSupport } from "../../composables/useLocalInvoiceDocument";
 import {
-  deleteLocalDocument,
+  deleteLocalDocumentAsync,
   cancelLocalDocumentAsync,
   markLocalDocumentPaid,
   unmarkLocalDocumentPaid,
@@ -1164,6 +1164,7 @@ import {
 import type { CompanyId, DocumentId } from "../../evolu/schema";
 import type { EvoluCompanyRow } from "../../evolu/companyMap";
 import type { EvoluDocumentRow } from "../../evolu/documentMap";
+import type { EvoluNumberSeriesRow } from "../../evolu/numberSeriesMap";
 import CreditNotePickInvoiceModal from "../../components/invoicing/CreditNotePickInvoiceModal.vue";
 import CreditNoteStartModal from "../../components/invoicing/CreditNoteStartModal.vue";
 import SendDocumentEmailModal from "../../components/invoicing/SendDocumentEmailModal.vue";
@@ -1238,9 +1239,12 @@ const localCompanyForInbox = computed(() => {
 });
 
 const linkedStoreIdForInbox = computed(() => {
-  const company = localCompanyForInbox.value;
-  if (!company) return null;
-  return company.stores?.[0]?.id ?? null;
+  if (!localFirst || !localDoc) return null;
+  const row = localDoc.companyRows.value.find((c) => c.id === companyId.value);
+  const fromRow =
+    typeof row?.linkedStoreId === "string" ? row.linkedStoreId.trim() : "";
+  if (fromRow) return fromRow;
+  return localCompanyForInbox.value?.stores?.[0]?.id ?? null;
 });
 
 const companyRunsEshop = computed(() => {
@@ -1919,7 +1923,12 @@ async function runBulkLocal(action: string) {
   }
 
   if (action === "delete") {
-    const result = bulkDeleteLocal(localDoc.evolu, targets, allDocuments);
+    const result = bulkDeleteLocal(
+      localDoc.evolu,
+      targets,
+      allDocuments,
+      localDoc.seriesRows.value as EvoluNumberSeriesRow[],
+    );
     success.value = t("invoicing.bulk_result", {
       processed: result.processed,
       skipped: result.skipped,
@@ -2431,7 +2440,12 @@ async function deleteDoc(d: {
   actionId.value = d.id;
   try {
     if (localFirst && localDoc) {
-      deleteLocalDocument(localDoc.evolu, d.id as DocumentId);
+      await deleteLocalDocumentAsync(
+        localDoc.evolu,
+        d.id as DocumentId,
+        localDoc.documentRows.value as EvoluDocumentRow[],
+        localDoc.seriesRows.value as EvoluNumberSeriesRow[],
+      );
       await load();
       return;
     }

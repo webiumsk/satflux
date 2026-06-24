@@ -7,12 +7,14 @@ import {
     deleteLocalDocument,
     markLocalDocumentPaid,
 } from "./documentCrud";
+import { syncNumberSeriesCounterFromDocuments } from "./numberSeriesCrud";
 import {
     filterLocalDocumentRows,
     type LocalDocumentFilterOptions,
 } from "./documentListFilters";
 import type { EvoluDocumentRow } from "./documentMap";
-import type { CompanyId, InvoicingLocalSchema } from "./schema";
+import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
+import type { CompanyId, DocumentId, DocumentType, InvoicingLocalSchema } from "./schema";
 
 export type BulkResult = {
     processed: number;
@@ -118,17 +120,45 @@ export function bulkDeleteLocal(
     evolu: Evolu<InvoicingLocalSchema>,
     rows: EvoluDocumentRow[],
     allDocuments: EvoluDocumentRow[],
+    allSeries?: EvoluNumberSeriesRow[],
 ): BulkResult {
     let processed = 0;
     let skipped = 0;
+    const deletedIds = new Set<DocumentId>();
+    const issuedDeletes: EvoluDocumentRow[] = [];
 
     for (const row of rows) {
         if (!canDeleteLocalDocument(row, allDocuments)) {
             skipped++;
             continue;
         }
-        deleteLocalDocument(evolu, row.id);
+        const result = deleteLocalDocument(evolu, row.id);
+        if (!result.ok) {
+            skipped++;
+            continue;
+        }
+        deletedIds.add(row.id);
+        if (row.status !== "draft" && row.status !== "cancelled" && row.number) {
+            issuedDeletes.push(row);
+        }
         processed++;
+    }
+
+    if (allSeries && issuedDeletes.length > 0) {
+        const remaining = allDocuments.filter((row) => !deletedIds.has(row.id));
+        const synced = new Set<string>();
+        for (const row of issuedDeletes) {
+            const key = `${row.companyId}:${row.documentType}`;
+            if (synced.has(key)) continue;
+            synced.add(key);
+            syncNumberSeriesCounterFromDocuments(
+                evolu,
+                row.companyId,
+                row.documentType as DocumentType,
+                remaining,
+                allSeries,
+            );
+        }
     }
 
     return { processed, skipped };

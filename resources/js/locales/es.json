@@ -2335,6 +2335,7 @@
     "integration_inbox_import_lines_failed": "El pedido no tiene líneas para importar a la factura.",
     "integration_inbox_deeplink_title": "Bandeja WooCommerce",
     "integration_inbox_deeplink_loading": "Abriendo la bandeja WooCommerce…",
+    "integration_inbox_store_required": "Vincule una tienda Satflux a esta empresa en ajustes de facturación antes de usar la bandeja WooCommerce.",
     "integration_inbox_deeplink_failed": "No se pudo abrir la bandeja WooCommerce. Inicie sesión en Satflux y vincule la tienda a una empresa en facturación.",
     "invoices_short": "facturas",
     "company_form_title": "Nueva empresa",

@@ -20,6 +20,9 @@ import type { EvoluCompanyRow } from "./companyMap";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import { allNumberSeriesQuery } from "./client";
 import { isPaidWooCommercePayload } from "./integrationInboxPaid";
+import { resolveIntegrationInboxBasePath } from "./integrationInboxPaths";
+
+export { IntegrationInboxPathError } from "./integrationInboxPaths";
 
 export type IntegrationInboxEntry = {
     inbox_id: string;
@@ -37,11 +40,7 @@ export type IntegrationInboxEntry = {
 };
 
 function integrationInboxBasePath(companyId: string, linkedStoreId?: string | null): string {
-    if (linkedStoreId) {
-        return `/invoicing/stores/${linkedStoreId}/integration-inbox`;
-    }
-
-    return `/invoicing/companies/${companyId}/integration-inbox`;
+    return resolveIntegrationInboxBasePath(companyId, linkedStoreId);
 }
 
 export async function fetchIntegrationInbox(

@@ -744,7 +744,12 @@ async function deleteDoc() {
       : t('invoicing.confirm_delete');
   if (!window.confirm(msg)) return;
   if (localFirst && local) {
-    local.deleteLocalDocument(local.evolu, documentId.value as import('../../evolu/schema').DocumentId);
+    await local.deleteLocalDocumentAsync(
+      local.evolu,
+      documentId.value as import('../../evolu/schema').DocumentId,
+      local.documentRows.value as import('../../evolu/documentMap').EvoluDocumentRow[],
+      local.seriesRows.value as import('../../evolu/numberSeriesMap').EvoluNumberSeriesRow[],
+    );
     router.push({ name: documentRoutes.value.list, params: { companyId: companyId.value } });
     return;
   }

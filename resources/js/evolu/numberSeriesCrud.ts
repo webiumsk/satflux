@@ -104,7 +104,7 @@ function ensureCounterSynced(
         documents,
     );
     const current = parseInt(synced.lastNumber || "0", 10) || 0;
-    if (fromDocuments > current) {
+    if (fromDocuments !== current) {
         return { ...synced, lastNumber: String(fromDocuments) };
     }
     return synced;

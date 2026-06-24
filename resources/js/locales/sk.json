@@ -151,6 +151,7 @@
     "integration_inbox_import_lines_failed": "Objednávka nemá žiadne riadky na import faktúry.",
     "integration_inbox_deeplink_title": "WooCommerce inbox",
     "integration_inbox_deeplink_loading": "Otváram WooCommerce inbox…",
+    "integration_inbox_store_required": "Pred použitím WooCommerce inboxu prepojte Satflux store s firmou v nastaveniach fakturácie.",
     "integration_inbox_deeplink_failed": "WooCommerce inbox sa nepodarilo otvoriť. Prihláste sa do Satflux a v nastaveniach firmy prepojte store.",
     "invoices_short": "faktúr",
     "company_form_title": "Nová firma",

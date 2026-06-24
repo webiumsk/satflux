@@ -151,6 +151,7 @@
     "integration_inbox_import_lines_failed": "The WooCommerce order has no invoice lines to import.",
     "integration_inbox_deeplink_title": "WooCommerce inbox",
     "integration_inbox_deeplink_loading": "Opening WooCommerce inbox…",
+    "integration_inbox_store_required": "Link a Satflux store to this company in Invoicing settings before using the WooCommerce inbox.",
     "integration_inbox_deeplink_failed": "Could not open the WooCommerce inbox. Sign in to Satflux and link your store to a company in Invoicing settings.",
     "invoices_short": "invoices",
     "company_form_title": "New company",

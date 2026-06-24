@@ -71,6 +71,7 @@ import {
   dismissIntegrationInboxItem,
   fetchIntegrationInbox,
   importIntegrationInboxEntry,
+  IntegrationInboxPathError,
   type IntegrationInboxEntry,
 } from '@/evolu/integrationInboxImport';
 
@@ -118,6 +119,10 @@ async function refresh(): Promise<void> {
   try {
     items.value = await fetchIntegrationInbox(props.companyId, props.linkedStoreId);
   } catch (e: unknown) {
+    if (e instanceof IntegrationInboxPathError && e.code === 'store_required') {
+      error.value = t('invoicing.integration_inbox_store_required');
+      return;
+    }
     const err = e as { response?: { data?: { message?: string } } };
     error.value = err?.response?.data?.message || t('errors.generic');
   } finally {
@@ -143,6 +148,10 @@ async function importItem(item: IntegrationInboxEntry): Promise<void> {
     items.value = items.value.filter((row) => row.inbox_id !== item.inbox_id);
     emit('imported');
   } catch (e: unknown) {
+    if (e instanceof IntegrationInboxPathError && e.code === 'store_required') {
+      error.value = t('invoicing.integration_inbox_store_required');
+      return;
+    }
     const err = e as { response?: { data?: { message?: string } } };
     error.value = err?.response?.data?.message || t('errors.generic');
   } finally {
@@ -157,6 +166,10 @@ async function dismissItem(item: IntegrationInboxEntry): Promise<void> {
     await dismissIntegrationInboxItem(props.companyId, item.inbox_id, props.linkedStoreId);
     items.value = items.value.filter((row) => row.inbox_id !== item.inbox_id);
   } catch (e: unknown) {
+    if (e instanceof IntegrationInboxPathError && e.code === 'store_required') {
+      error.value = t('invoicing.integration_inbox_store_required');
+      return;
+    }
     const err = e as { response?: { data?: { message?: string } } };
     error.value = err?.response?.data?.message || t('errors.generic');
   } finally {
