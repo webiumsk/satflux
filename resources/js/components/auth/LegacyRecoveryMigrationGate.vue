@@ -9,9 +9,9 @@
 
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
-import GuestBackupWizardModal from "./auth/GuestBackupWizardModal.vue";
-import { useAuthStore } from "../store/auth";
-import { useFlashStore } from "../store/flash";
+import GuestBackupWizardModal from "./GuestBackupWizardModal.vue";
+import { useAuthStore } from "../../store/auth";
+import { useFlashStore } from "../../store/flash";
 
 const { t } = useI18n();
 const authStore = useAuthStore();
