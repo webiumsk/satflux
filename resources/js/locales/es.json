@@ -2293,6 +2293,7 @@
     "relay_sync_refresh_failed": "No se pudieron actualizar los datos desde la sincronización. Inténtelo de nuevo en un momento.",
     "relay_sync_no_phrase": "No hay frase de recuperación en este navegador. Restáurela en el perfil de la cuenta o la sincronización entre dispositivos no funcionará.",
     "relay_sync_owner_mismatch": "La base de datos local no coincide con su frase de recuperación. Cierre sesión, restaure la frase e inténtelo de nuevo.",
+    "relay_sync_company_mismatch": "La sincronización trajo documentos bajo otro perfil de empresa. Abra el inicio de facturación y use Fusionar duplicados, luego actualice de nuevo.",
     "settings_saved": "Ajustes guardados.",
     "series_saved": "Serie numérica guardada.",
     "changes_saved": "Cambios guardados.",

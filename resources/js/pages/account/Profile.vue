@@ -41,32 +41,32 @@
           >
             {{ t("account.recovery_phrase_enrolled") }}
           </p>
-          <div
-            v-if="storedGuestMnemonic"
-            class="flex flex-wrap items-center gap-2"
-          >
-            <button
-              type="button"
-              class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
-              @click="showGuestSeedModal = true"
+          <template v-if="authStore.user?.guest_recovery_enrolled">
+            <div
+              v-if="storedGuestMnemonic"
+              class="flex flex-wrap items-center gap-2"
             >
-              {{ t("account.recovery_phrase_reveal") }}
-            </button>
-          </div>
-          <p
-            v-else-if="authStore.user?.guest_recovery_enrolled"
-            class="text-sm text-amber-300"
-          >
-            {{ t("account.recovery_phrase_unavailable_here") }}
-          </p>
-          <button
-            v-if="authStore.user?.guest_recovery_enrolled && !storedGuestMnemonic"
-            type="button"
-            class="inline-flex items-center px-4 py-2 border border-amber-400/60 rounded-lg text-sm font-medium text-amber-100 hover:bg-amber-500/10"
-            @click="showRestoreOnDeviceModal = true"
-          >
-            {{ t("account.recovery_phrase_restore_on_device") }}
-          </button>
+              <button
+                type="button"
+                class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
+                @click="showGuestSeedModal = true"
+              >
+                {{ t("account.recovery_phrase_reveal") }}
+              </button>
+            </div>
+            <template v-else>
+              <p class="text-sm text-amber-300">
+                {{ t("account.recovery_phrase_unavailable_here") }}
+              </p>
+              <button
+                type="button"
+                class="inline-flex items-center px-4 py-2 border border-amber-400/60 rounded-lg text-sm font-medium text-amber-100 hover:bg-amber-500/10"
+                @click="showRestoreOnDeviceModal = true"
+              >
+                {{ t("account.recovery_phrase_restore_on_device") }}
+              </button>
+            </template>
+          </template>
           <button
             v-else
             type="button"

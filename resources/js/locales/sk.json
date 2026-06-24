@@ -101,6 +101,7 @@
     "relay_sync_refresh_failed": "Nepodarilo sa obnoviť dáta zo synchronizácie. Skúste znova o chvíľu.",
     "relay_sync_no_phrase": "V tomto prehliadači nie je uložená recovery fráza. Obnovte ju v Profile účtu, inak synchronizácia medzi zariadeniami nefunguje.",
     "relay_sync_owner_mismatch": "Lokálna databáza nezodpovedá recovery fráze. Odhláste sa, obnovte frázu a skúste znova.",
+    "relay_sync_company_mismatch": "Synchronizácia priniesla doklady pod iným profilom firmy. Otvorte úvod fakturácie a použite „Zlúčiť duplicity“, potom obnovte znova.",
     "settings_saved": "Nastavenia boli uložené.",
     "series_saved": "Číselník bol uložený.",
     "changes_saved": "Zmeny boli uložené.",

@@ -213,7 +213,6 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
             withCompanyFk(
                 mapRowIds(row, {
                     id: ContactId,
-                    fields: { companyId: CompanyId },
                 }),
                 companyIdByServerUuid,
             ),
@@ -222,7 +221,6 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
             withCompanyFk(
                 mapRowIds(row, {
                     id: NumberSeriesId,
-                    fields: { companyId: CompanyId },
                 }),
                 companyIdByServerUuid,
             ),
@@ -232,7 +230,6 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
                 mapRowIds(row, {
                     id: DocumentId,
                     fields: {
-                        companyId: CompanyId,
                         contactId: ContactId,
                         sourceDocumentId: DocumentId,
                     },
@@ -264,7 +261,6 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
             const mapped = withCompanyFk(
                 mapRowIds(row, {
                     id: ExpenseId,
-                    fields: { companyId: CompanyId },
                 }),
                 companyIdByServerUuid,
             );
@@ -282,7 +278,6 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
                 mapRowIds(row, {
                     id: RecurringProfileId,
                     fields: {
-                        companyId: CompanyId,
                         contactId: ContactId,
                         lastGeneratedDocumentId: DocumentId,
                     },
@@ -305,7 +300,6 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
                 mapRowIds(row, {
                     id: WarehouseId,
                     fields: {
-                        companyId: CompanyId,
                         companyContactId: ContactId,
                     },
                 }),
@@ -317,7 +311,6 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
             withCompanyFk(
                 mapRowIds(row, {
                     id: StockItemId,
-                    fields: { companyId: CompanyId },
                 }),
                 companyIdByServerUuid,
             ),
@@ -327,7 +320,6 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
                 mapRowIds(row, {
                     id: StockBalanceId,
                     fields: {
-                        companyId: CompanyId,
                         companyWarehouseId: WarehouseId,
                         companyStockItemId: StockItemId,
                     },
@@ -340,7 +332,6 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
                 mapRowIds(row, {
                     id: StockMovementId,
                     fields: {
-                        companyId: CompanyId,
                         companyStockItemId: StockItemId,
                         companyWarehouseId: WarehouseId,
                         businessDocumentId: DocumentId,
@@ -353,7 +344,6 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
             withCompanyFk(
                 mapRowIds(row, {
                     id: BankImportBatchId,
-                    fields: { companyId: CompanyId },
                 }),
                 companyIdByServerUuid,
             ),
@@ -363,7 +353,6 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
                 mapRowIds(row, {
                     id: BankTransactionId,
                     fields: {
-                        companyId: CompanyId,
                         bankImportBatchId: BankImportBatchId,
                         businessExpenseId: ExpenseId,
                     },

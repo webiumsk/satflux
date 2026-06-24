@@ -6,6 +6,7 @@ import {
     isEvoluRelaySyncPending,
     pullInvoicingFromRelay,
     refreshInvoicingLocalQueries,
+    type PullInvoicingFromRelayOptions,
     type PullInvoicingFromRelayResult,
     waitForInvoicingDataSettled,
     waitForInvoicingRelaySync,
@@ -59,7 +60,9 @@ export function useInvoicingRelaySync(options?: UseInvoicingRelaySyncOptions) {
         () => localFirst && (pending.value || blockingWait.value),
     );
 
-    async function refreshFromRelay(companyId?: string): Promise<PullInvoicingFromRelayResult> {
+    async function refreshFromRelay(
+        options?: string | PullInvoicingFromRelayOptions,
+    ): Promise<PullInvoicingFromRelayResult> {
         if (!evolu) {
             return {
                 ownerStatus: "ok",
@@ -69,7 +72,14 @@ export function useInvoicingRelaySync(options?: UseInvoicingRelaySyncOptions) {
             };
         }
         await ensureEvoluBoundToAccountSeed();
-        return pullInvoicingFromRelay(evolu, { companyId });
+        const resolved =
+            typeof options === "string"
+                ? { companyId: options }
+                : (options ?? {});
+        return pullInvoicingFromRelay(evolu, {
+            timeoutMs: 45_000,
+            ...resolved,
+        });
     }
 
     return {

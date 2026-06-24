@@ -14,6 +14,10 @@ import {
     allRecurringProfilesQuery,
 } from "./client";
 import { findDuplicateCompanyGroups } from "./duplicateCompanies";
+import {
+    countCompanyInvoicesForList,
+    countIssuedDocumentsForCompany,
+} from "./companyInvoiceCount";
 import type {
     BankImportBatchId,
     BankTransactionId,
@@ -42,31 +46,23 @@ export type MergeDuplicateCompaniesResult = {
     removedCompanies: number;
 };
 
-function issuedDocumentCount(
-    companyId: string,
-    documents: ReadonlyArray<{ companyId: CompanyId; status: string }>,
-): number {
-    return documents.filter(
-        (doc) => doc.companyId === companyId && doc.status === "issued",
-    ).length;
-}
-
-function totalDocumentCount(
-    companyId: string,
-    documents: ReadonlyArray<{ companyId: CompanyId }>,
-): number {
-    return documents.filter((doc) => doc.companyId === companyId).length;
-}
-
 function pickCanonicalCompanyId<T extends { id: string }>(
     group: readonly T[],
-    documents: ReadonlyArray<{ companyId: CompanyId; status: string }>,
+    documents: ReadonlyArray<{ companyId: CompanyId; documentType: string; status: string }>,
 ): string {
     return [...group].sort((a, b) => {
+        const invoiceDiff =
+            countCompanyInvoicesForList(documents, b.id as CompanyId)
+            - countCompanyInvoicesForList(documents, a.id as CompanyId);
+        if (invoiceDiff !== 0) return invoiceDiff;
         const issuedDiff =
-            issuedDocumentCount(b.id, documents) - issuedDocumentCount(a.id, documents);
+            countIssuedDocumentsForCompany(documents, b.id as CompanyId)
+            - countIssuedDocumentsForCompany(documents, a.id as CompanyId);
         if (issuedDiff !== 0) return issuedDiff;
-        return totalDocumentCount(b.id, documents) - totalDocumentCount(a.id, documents);
+        return (
+            documents.filter((doc) => doc.companyId === b.id).length
+            - documents.filter((doc) => doc.companyId === a.id).length
+        );
     })[0]?.id ?? group[0]?.id ?? "";
 }
 

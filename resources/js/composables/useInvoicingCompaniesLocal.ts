@@ -13,18 +13,17 @@ import {
 } from "@/evolu/relaySyncWait";
 import type { CompanyId } from "@/evolu/schema";
 import type { InvoicingCompanyListItem, UseInvoicingCompaniesResult } from "./useInvoicingCompanies";
+import { countCompanyInvoicesForList } from "@/evolu/companyInvoiceCount";
 
 function mapEvoluCompanies(
     rows: ReadonlyArray<{ id: CompanyId; legalName: string; tradeName: string | null }>,
-    documentRows: ReadonlyArray<{ companyId: CompanyId; status: string }>,
+    documentRows: ReadonlyArray<{ companyId: CompanyId; documentType: string; status: string }>,
 ): InvoicingCompanyListItem[] {
     return rows.map((row) => ({
         id: row.id,
         legal_name: row.legalName,
         trade_name: row.tradeName,
-        documents_count: documentRows.filter(
-            (doc) => doc.companyId === row.id && doc.status === "issued",
-        ).length,
+        documents_count: countCompanyInvoicesForList(documentRows, row.id),
     }));
 }
 

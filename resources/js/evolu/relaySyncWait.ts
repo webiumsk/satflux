@@ -13,6 +13,8 @@ export type PullInvoicingFromRelayResult = {
     changed: boolean;
     documentCount: number;
     timedOut: boolean;
+    /** Documents synced for this account but under another company row (duplicate companies). */
+    syncedElsewhere?: boolean;
 };
 
 export function markEvoluRelaySyncPending(): void {
@@ -65,20 +67,55 @@ export async function checkInvoicingRelayOwner(
 
 async function countDocumentsForCompany(
     evolu: Evolu<InvoicingLocalSchema>,
-    companyId?: string,
+    options?: Pick<PullInvoicingFromRelayOptions, "companyId" | "documentType">,
 ): Promise<number> {
-    const docs = await evolu.loadQuery(allDocumentsQuery);
-    if (!companyId) {
-        return docs.length;
-    }
-    return docs.filter((row) => row.companyId === companyId).length;
+    const docs = (await evolu.loadQuery(allDocumentsQuery)) as RelayDocumentRow[];
+    return filterRelayDocuments(docs, options).length;
 }
 
 export type PullInvoicingFromRelayOptions = {
     timeoutMs?: number;
     pollMs?: number;
     companyId?: string;
+    /** When set, only rows of this document type are compared (e.g. proforma vs invoice lists). */
+    documentType?: string;
 };
+
+type RelayDocumentRow = {
+    id: string;
+    companyId?: string | null;
+    documentType?: string | null;
+};
+
+function filterRelayDocuments(
+    docs: RelayDocumentRow[],
+    options?: Pick<PullInvoicingFromRelayOptions, "companyId" | "documentType">,
+): RelayDocumentRow[] {
+    return docs.filter((row) => {
+        if (options?.companyId && row.companyId !== options.companyId) {
+            return false;
+        }
+        if (options?.documentType && row.documentType !== options.documentType) {
+            return false;
+        }
+        return true;
+    });
+}
+
+function documentFingerprint(docs: RelayDocumentRow[]): string {
+    return docs
+        .map((row) => String(row.id))
+        .sort()
+        .join("|");
+}
+
+async function loadDocumentFingerprint(
+    evolu: Evolu<InvoicingLocalSchema>,
+    options?: Pick<PullInvoicingFromRelayOptions, "companyId" | "documentType">,
+): Promise<string> {
+    const docs = (await evolu.loadQuery(allDocumentsQuery)) as RelayDocumentRow[];
+    return documentFingerprint(filterRelayDocuments(docs, options));
+}
 
 /**
  * Poll local Evolu until relay merges change document rows (or timeout).
@@ -100,46 +137,71 @@ export async function pullInvoicingFromRelay(
 
     const timeoutMs = options?.timeoutMs ?? 25_000;
     const pollMs = options?.pollMs ?? 600;
-    const companyId = options?.companyId;
+    const filter = {
+        companyId: options?.companyId,
+        documentType: options?.documentType,
+    };
     const deadline = Date.now() + timeoutMs;
 
-    const baseline = await countDocumentsForCompany(evolu, companyId);
-    let lastCount = baseline;
+    const baselineFingerprint = await loadDocumentFingerprint(evolu, filter);
+    const baselineAllFingerprint = filter.companyId
+        ? await loadDocumentFingerprint(evolu, { documentType: filter.documentType })
+        : baselineFingerprint;
+    let lastFingerprint = baselineFingerprint;
     let stableAfterChange = 0;
 
     while (Date.now() < deadline) {
         await sleep(pollMs);
         await refreshInvoicingLocalQueries(evolu);
-        const count = await countDocumentsForCompany(evolu, companyId);
+        const fingerprint = await loadDocumentFingerprint(evolu, filter);
 
-        if (count !== baseline) {
-            if (count === lastCount) {
+        if (fingerprint !== baselineFingerprint) {
+            if (fingerprint === lastFingerprint) {
                 stableAfterChange += 1;
                 if (stableAfterChange >= 2) {
+                    const documentCount = await countDocumentsForCompany(evolu, filter);
                     return {
                         ownerStatus: "ok",
                         changed: true,
-                        documentCount: count,
+                        documentCount,
                         timedOut: false,
                     };
                 }
             } else {
-                lastCount = count;
+                lastFingerprint = fingerprint;
                 stableAfterChange = 0;
             }
             continue;
         }
 
-        lastCount = count;
+        lastFingerprint = fingerprint;
         stableAfterChange = 0;
     }
 
-    const finalCount = await countDocumentsForCompany(evolu, companyId);
+    const finalFingerprint = await loadDocumentFingerprint(evolu, filter);
+    const finalCount = await countDocumentsForCompany(evolu, filter);
+    const changed = finalFingerprint !== baselineFingerprint;
+
+    if (!changed && filter.companyId) {
+        const finalAllFingerprint = await loadDocumentFingerprint(evolu, {
+            documentType: filter.documentType,
+        });
+        if (finalAllFingerprint !== baselineAllFingerprint) {
+            return {
+                ownerStatus: "ok",
+                changed: true,
+                documentCount: finalCount,
+                timedOut: false,
+                syncedElsewhere: true,
+            };
+        }
+    }
+
     return {
         ownerStatus: "ok",
-        changed: finalCount !== baseline,
+        changed,
         documentCount: finalCount,
-        timedOut: finalCount === baseline,
+        timedOut: !changed,
     };
 }
 

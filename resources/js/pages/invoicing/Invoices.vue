@@ -1330,7 +1330,13 @@ async function refreshListFromRelay(): Promise<void> {
   relayRefreshing.value = true;
   error.value = "";
   try {
-    const result = await refreshFromRelay(companyId.value);
+    const result = await refreshFromRelay({
+      companyId: companyId.value,
+      documentType:
+        activeDocumentNav.value.kind === "drafts"
+          ? undefined
+          : activeDocumentNav.value.apiType,
+    });
     await load();
 
     if (result.ownerStatus === "no_phrase") {
@@ -1339,6 +1345,10 @@ async function refreshListFromRelay(): Promise<void> {
     }
     if (result.ownerStatus === "owner_mismatch") {
       notifySaveFailed(t("invoicing.relay_sync_owner_mismatch"));
+      return;
+    }
+    if (result.syncedElsewhere) {
+      notifySaveFailed(t("invoicing.relay_sync_company_mismatch"));
       return;
     }
     if (result.changed) {
