@@ -38,6 +38,8 @@
             v-else-if="activeDocumentNav?.mvpEnabled"
             :to="newDocumentLink"
             class="invoicing-btn-primary w-full text-center"
+            :class="{ 'pointer-events-none opacity-60': isRelaySyncing }"
+            @click="guardRelaySync"
           >
             + {{ newDocumentLabel() }}
           </RouterLink>
@@ -47,7 +49,9 @@
             v-if="activeDocumentNav?.mvpEnabled && !isCreditNoteList"
             :to="newDocumentLink"
             class="invoicing-mobile-icon-btn"
+            :class="{ 'pointer-events-none opacity-60': isRelaySyncing }"
             :title="newDocumentLabel()"
+            @click="guardRelaySync"
           >
             <InvoicingIcons name="plus" />
           </RouterLink>
@@ -72,9 +76,14 @@
       :company-id="companyId"
       :linked-store-id="linkedStoreIdForInbox"
       :company="localCompanyForInbox"
-      enabled
+      :enabled="!isRelaySyncing"
       @imported="onIntegrationInboxImported"
     />
+  </div>
+
+  <div v-if="localFirst && isRelaySyncing" class="invoicing-alert-warn mb-4">
+    <p class="text-sm font-medium">{{ t('invoicing.relay_sync_loading') }}</p>
+    <p class="text-sm mt-2 opacity-90">{{ t('invoicing.relay_sync_documents_detail') }}</p>
   </div>
 
     <template #subheader>
@@ -104,6 +113,8 @@
             v-else-if="activeDocumentNav?.mvpEnabled"
             :to="newDocumentLink"
             class="invoicing-btn-primary shrink-0"
+            :class="{ 'pointer-events-none opacity-60': isRelaySyncing }"
+            @click="guardRelaySync"
           >
             + {{ newDocumentLabel() }}
           </RouterLink>
@@ -1188,6 +1199,7 @@ import {
   localBulkFilterOptions,
   resolveBulkTargets,
 } from "../../evolu/documentBulkLocal";
+import { useInvoicingRelaySync } from "../../composables/useInvoicingRelaySync";
 import { useInvoicingLayout } from "../../composables/useInvoicingLayout";
 import { invoicingDocumentRoutesForType } from "../../composables/useInvoicingDocumentRoutes";
 
@@ -1215,6 +1227,7 @@ const {
 } = useInvoicingLayout();
 
 const localFirst = isInvoicingLocalFirst();
+const { isRelaySyncing } = useInvoicingRelaySync({ settleOnMount: true });
 const contactFilterId = computed(() => {
   const id = route.query.contact_id;
   return typeof id === "string" && id ? id : undefined;
@@ -1284,6 +1297,12 @@ function scrollToIntegrationInbox(): void {
       block: "start",
     });
   });
+}
+
+function guardRelaySync(event: Event): void {
+  if (!isRelaySyncing.value) return;
+  event.preventDefault();
+  error.value = t("invoicing.relay_sync_wait_hint");
 }
 
 watch(showIntegrationInbox, (visible) => {
@@ -2210,6 +2229,10 @@ function onAdvancedApply() {
 }
 
 async function issueDoc(d: { id: string }) {
+  if (localFirst && isRelaySyncing.value) {
+    error.value = t("invoicing.relay_sync_wait_hint");
+    return;
+  }
   actionId.value = d.id;
   try {
     if (localFirst && localDoc) {

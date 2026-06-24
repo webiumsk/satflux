@@ -340,6 +340,7 @@ import {
 import { isInvoicingLocalFirst } from "../../evolu/flags";
 import type { ExpenseAttachmentId, ExpenseId } from "../../evolu/schema";
 import api, { getWebBlob } from "../../services/api";
+import { useInvoicingSaveFeedback } from "../../composables/useInvoicingSaveFeedback";
 
 type ExpenseAttachment = {
   id: string;
@@ -377,6 +378,7 @@ type HistoryRow = {
 };
 
 const { t } = useI18n();
+const { notifySaved } = useInvoicingSaveFeedback();
 const route = useRoute();
 const router = useRouter();
 const { companyId, rememberCompany } = useInvoicingLayout();
@@ -773,6 +775,7 @@ async function saveNote() {
       );
       await expenseResource.refresh();
       expense.value = expenseResource.expense.value as Expense | null;
+      notifySaved('invoicing.changes_saved');
       return;
     }
     const res = await api.patch(
@@ -782,6 +785,7 @@ async function saveNote() {
       },
     );
     expense.value = res.data.data;
+    notifySaved('invoicing.changes_saved');
   } finally {
     noteSaving.value = false;
   }

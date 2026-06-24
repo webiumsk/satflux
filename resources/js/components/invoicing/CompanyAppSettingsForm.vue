@@ -189,6 +189,7 @@ import { isInvoicingLocalFirst } from '../../evolu/flags';
 import { updateLocalAppSettings } from '../../evolu/companySettingsCrud';
 import api from '../../services/api';
 import { useStoresStore } from '../../store/stores';
+import { useInvoicingSaveFeedback } from '../../composables/useInvoicingSaveFeedback';
 import CompanyAppTabsNav from './CompanyAppTabsNav.vue';
 
 const props = defineProps<{
@@ -201,6 +202,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const { notifySaved } = useInvoicingSaveFeedback();
 const localFirst = isInvoicingLocalFirst();
 const evolu = localFirst ? useInvoicingEvolu() : null;
 const storesStore = useStoresStore();
@@ -268,11 +270,13 @@ async function save() {
         return;
       }
       emitUpdatedFromEvoluRow();
+      notifySaved();
       return;
     }
 
     const res = await api.patch(`/invoicing/companies/${props.companyId}/app-settings`, payload);
     emit('updated', res.data.data);
+    notifySaved();
   } catch (e: any) {
     saveError.value = e?.response?.data?.message ?? t('common.error_generic');
   } finally {

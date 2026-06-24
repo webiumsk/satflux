@@ -53,7 +53,7 @@ export function localizedDefaultSeries(
 const NameType = maxLength(255)(NonEmptyString);
 const FormatType = maxLength(64)(NonEmptyString);
 
-function highestUsedCounter(
+export function highestIssuedDocumentCounter(
     companyId: CompanyId,
     documentType: DocumentType,
     format: string,
@@ -97,7 +97,7 @@ function ensureCounterSynced(
     date = new Date(),
 ): EvoluNumberSeriesRow {
     const synced = syncPeriodFields(series, date);
-    const fromDocuments = highestUsedCounter(
+    const fromDocuments = highestIssuedDocumentCounter(
         synced.companyId,
         synced.documentType,
         synced.format,

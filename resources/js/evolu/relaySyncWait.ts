@@ -1,5 +1,5 @@
 import type { Evolu } from "@evolu/common/local-first";
-import { allCompaniesQuery } from "./client";
+import { allCompaniesQuery, allDocumentsQuery } from "./client";
 import type { InvoicingLocalSchema } from "./schema";
 
 const EVOLU_RELAY_PENDING_KEY = "satflux.evolu.relay_pending.v1";
@@ -78,4 +78,47 @@ export async function waitForInvoicingRelayData(
     options?: WaitForInvoicingRelaySyncOptions,
 ): Promise<boolean> {
     return waitForInvoicingRelaySync(evolu, options);
+}
+
+export type WaitForInvoicingDataSettledOptions = {
+    timeoutMs?: number;
+    pollMs?: number;
+    stablePolls?: number;
+    minWaitMs?: number;
+};
+
+/**
+ * Poll document count until stable so relay merges finish before issue/list actions.
+ */
+export async function waitForInvoicingDataSettled(
+    evolu: Evolu<InvoicingLocalSchema>,
+    options?: WaitForInvoicingDataSettledOptions,
+): Promise<void> {
+    const timeoutMs = options?.timeoutMs ?? 12_000;
+    const pollMs = options?.pollMs ?? 500;
+    const stablePolls = options?.stablePolls ?? 3;
+    const minWaitMs = options?.minWaitMs ?? 1_500;
+    const deadline = Date.now() + timeoutMs;
+    const startedAt = Date.now();
+
+    let lastCount = -1;
+    let stable = 0;
+
+    while (Date.now() < deadline) {
+        const documents = await evolu.loadQuery(allDocumentsQuery);
+        const count = documents.length;
+
+        if (count === lastCount) {
+            stable += 1;
+            const elapsed = Date.now() - startedAt;
+            if (stable >= stablePolls && elapsed >= minWaitMs) {
+                return;
+            }
+        } else {
+            lastCount = count;
+            stable = 0;
+        }
+
+        await sleep(pollMs);
+    }
 }

@@ -16,9 +16,9 @@ class DocumentSequenceService
         protected DocumentNumberFormatter $formatter,
     ) {}
 
-    public function nextNumber(Company $company, string $documentType): string
+    public function nextNumber(Company $company, string $documentType, ?int $localHighCounter = null): string
     {
-        return DB::transaction(function () use ($company, $documentType) {
+        return DB::transaction(function () use ($company, $documentType, $localHighCounter) {
             $series = $this->resolveSeriesForIssue($company, $documentType);
 
             $series = CompanyDocumentSequence::query()
@@ -28,6 +28,7 @@ class DocumentSequenceService
 
             $this->syncPeriod($series);
             $this->ensureCounterSynced($series);
+            $this->applyLocalHighCounter($series, $localHighCounter);
 
             $series->last_number = (int) $series->last_number + 1;
             $series->save();
@@ -39,14 +40,18 @@ class DocumentSequenceService
         });
     }
 
-    public function previewNext(CompanyDocumentSequence $series, ?int $counterOverride = null): string
+    public function lastIssuedCounter(Company $company, string $documentType): int
     {
-        $counter = $counterOverride ?? ($this->effectiveLastNumber($series) + 1);
+        $series = CompanyDocumentSequence::query()
+            ->where('company_id', $company->id)
+            ->where('document_type', $documentType)
+            ->where('is_default', true)
+            ->first();
 
-        return $this->formatter->format($series->format, $counter);
+        return $series ? (int) $series->last_number : 0;
     }
 
-    public function previewNextNumber(Company $company, string $documentType): string
+    public function previewNextCounter(Company $company, string $documentType, ?int $localHighCounter = null): int
     {
         $series = CompanyDocumentSequence::query()
             ->where('company_id', $company->id)
@@ -71,8 +76,61 @@ class DocumentSequenceService
         }
 
         $this->ensureCounterSynced($series);
+        $this->applyLocalHighCounter($series, $localHighCounter);
+
+        return $this->effectiveLastNumber($series->fresh()) + 1;
+    }
+
+    public function previewNext(CompanyDocumentSequence $series, ?int $counterOverride = null): string
+    {
+        $counter = $counterOverride ?? ($this->effectiveLastNumber($series) + 1);
+
+        return $this->formatter->format($series->format, $counter);
+    }
+
+    public function previewNextNumber(Company $company, string $documentType, ?int $localHighCounter = null): string
+    {
+        $series = CompanyDocumentSequence::query()
+            ->where('company_id', $company->id)
+            ->where('document_type', $documentType)
+            ->where('is_default', true)
+            ->first();
+
+        if (! $series) {
+            $this->seedDefaultsForCompany($company);
+
+            $series = CompanyDocumentSequence::query()
+                ->where('company_id', $company->id)
+                ->where('document_type', $documentType)
+                ->where('is_default', true)
+                ->first();
+        }
+
+        if (! $series) {
+            throw ValidationException::withMessages([
+                'number_series' => ['No default number series found for this document type.'],
+            ]);
+        }
+
+        $this->ensureCounterSynced($series);
+        $this->applyLocalHighCounter($series, $localHighCounter);
 
         return $this->previewNext($series->fresh());
+    }
+
+    /**
+     * Align server counter with the highest issued number known to local-first clients (Evolu).
+     */
+    protected function applyLocalHighCounter(CompanyDocumentSequence $series, ?int $localHighCounter): void
+    {
+        if ($localHighCounter === null || $localHighCounter < 0) {
+            return;
+        }
+
+        if ($localHighCounter > (int) $series->last_number) {
+            $series->last_number = $localHighCounter;
+            $series->save();
+        }
     }
 
     protected function ensureCounterSynced(CompanyDocumentSequence $series): void

@@ -180,6 +180,7 @@ import { isInvoicingLocalFirst } from '../../evolu/flags';
 import { updateLocalEmailSettings } from '../../evolu/companySettingsCrud';
 import api from '../../services/api';
 import { useStoresStore } from '../../store/stores';
+import { useInvoicingSaveFeedback } from '../../composables/useInvoicingSaveFeedback';
 import CompanyAppTabsNav from './CompanyAppTabsNav.vue';
 
 const props = defineProps<{
@@ -192,6 +193,7 @@ const emit = defineEmits<{
 }>();
 
 const { t, locale } = useI18n();
+const { notifySaved } = useInvoicingSaveFeedback();
 const localFirst = isInvoicingLocalFirst();
 const evolu = localFirst ? useInvoicingEvolu() : null;
 const storesStore = useStoresStore();
@@ -293,6 +295,7 @@ async function saveAll() {
           form.smtp.password_set = updated.email_settings.smtp.password_set;
         }
       }
+      notifySaved();
       return;
     }
 
@@ -302,6 +305,7 @@ async function saveAll() {
     if (res.data.data.email_settings?.smtp) {
       form.smtp.password_set = res.data.data.email_settings.smtp.password_set;
     }
+    notifySaved();
   } catch (e: any) {
     saveError.value = e?.response?.data?.message ?? t('common.error_generic');
   } finally {

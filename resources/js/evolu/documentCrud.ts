@@ -17,6 +17,10 @@ import {
     syncLocalSeriesCounterFromIssuedNumber,
     syncNumberSeriesCounterFromDocuments,
 } from "./numberSeriesCrud";
+import {
+    localHighCounterForStoreBridge,
+    reserveNextDocumentNumberFromStore,
+} from "./numberSequenceBridge";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import { documentVariableSymbol } from "./documentNumber";
 import type { EvoluCompanyRow } from "./companyMap";
@@ -375,6 +379,36 @@ export async function issueLocalDocumentAsync(
     }
 
     const { documents, series } = await loadIssueContext(evolu);
+    const linkedStoreId = company.linkedStoreId?.trim() ?? "";
+    if (linkedStoreId) {
+        const localHigh = localHighCounterForStoreBridge(
+            company.id,
+            draft.documentType,
+            documents,
+            series,
+        );
+        const reserved = await reserveNextDocumentNumberFromStore(
+            linkedStoreId,
+            draft.documentType,
+            undefined,
+            localHigh,
+            series,
+            company.id,
+        );
+        if (reserved.ok) {
+            const result = await applyReservedNumberToLocalDocumentAsync(
+                evolu,
+                documentId,
+                company.id,
+                draft.documentType,
+                reserved.value.number,
+                series,
+                draft.variableSymbol,
+            );
+            return result;
+        }
+    }
+
     const result = issueLocalDocument(evolu, documentId, company, documents, series);
     await finalizeIssueStock(evolu, documentId, result);
     return result;

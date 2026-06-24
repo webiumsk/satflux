@@ -137,6 +137,7 @@ import { updateLocalEfakturaSettings } from '../../evolu/companySettingsCrud';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
 import api from '../../services/api';
 import { useStoresStore } from '../../store/stores';
+import { useInvoicingSaveFeedback } from '../../composables/useInvoicingSaveFeedback';
 import {
   efakturaSecretIsSet,
   efakturaSettingsFromCompany,
@@ -153,6 +154,7 @@ const emit = defineEmits<{
 }>();
 
 const { t, locale } = useI18n();
+const { notifySaved } = useInvoicingSaveFeedback();
 const localFirst = isInvoicingLocalFirst();
 const evolu = localFirst ? useInvoicingEvolu() : null;
 const storesStore = useStoresStore();
@@ -272,6 +274,7 @@ async function save() {
           }),
         );
       }
+      notifySaved();
       return;
     }
 
@@ -279,6 +282,7 @@ async function save() {
     emit('updated', res.data.data);
     form.efaktura_sapi_client_secret = '';
     secretSet.value = efakturaSecretIsSet(res.data.data);
+    notifySaved();
   } catch (e: any) {
     saveError.value = e?.response?.data?.message ?? t('common.error_generic');
   } finally {

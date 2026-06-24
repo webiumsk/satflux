@@ -32,6 +32,10 @@ import {
     type DocumentLinePayload,
 } from "@/evolu/documentCrud";
 import { previewNextLocalDocumentNumber } from "@/evolu/numberSeriesCrud";
+import {
+    localHighCounterForStoreBridge,
+    previewNextDocumentNumberFromStore,
+} from "@/evolu/numberSequenceBridge";
 import type { EvoluDocumentRow } from "@/evolu/documentMap";
 import type { EvoluNumberSeriesRow } from "@/evolu/numberSeriesMap";
 import type { EvoluDocumentEventRow } from "@/evolu/documentEventLog";
@@ -114,7 +118,33 @@ export function useLocalInvoiceDocumentSupport() {
         await Promise.all([
             evolu.loadQuery(allNumberSeriesQuery),
             evolu.loadQuery(allDocumentsQuery),
+            evolu.loadQuery(allCompaniesDetailQuery),
         ]);
+        const documents = documentRows.value as EvoluDocumentRow[];
+        const series = seriesRows.value as EvoluNumberSeriesRow[];
+        const companyRow = companyRows.value.find((c) => c.id === companyId) as
+            | EvoluCompanyRow
+            | undefined;
+        const linkedStoreId = companyRow?.linkedStoreId?.trim() ?? "";
+        if (linkedStoreId) {
+            const localHigh = localHighCounterForStoreBridge(
+                companyId,
+                documentType as Parameters<typeof localHighCounterForStoreBridge>[1],
+                documents,
+                series,
+            );
+            const fromStore = await previewNextDocumentNumberFromStore(
+                linkedStoreId,
+                documentType,
+                undefined,
+                localHigh,
+                series,
+                companyId,
+            );
+            if (fromStore) {
+                return fromStore;
+            }
+        }
         return previewNumber(companyId, documentType);
     }
 

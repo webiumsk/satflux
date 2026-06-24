@@ -20,12 +20,32 @@ class StoreDocumentSequenceController extends Controller
     public function preview(Request $request, Store $store): JsonResponse
     {
         $company = $this->resolveLinkedCompany($store);
-        $type = $request->string('type', 'invoice')->toString();
+        $validated = $request->validate([
+            'type' => ['sometimes', 'string', Rule::in([
+                'invoice',
+                'credit_note',
+                'proforma',
+                'delivery_note',
+                'quote',
+                'order_received',
+            ])],
+            'local_high_counter' => ['sometimes', 'integer', 'min:0', 'max:99999999'],
+        ]);
+        $type = $validated['type'] ?? 'invoice';
 
         return response()->json([
             'data' => [
                 'document_type' => $type,
-                'next_number' => $this->sequenceService->previewNextNumber($company, $type),
+                'next_number' => $this->sequenceService->previewNextNumber(
+                    $company,
+                    $type,
+                    $validated['local_high_counter'] ?? null,
+                ),
+                'next_counter' => $this->sequenceService->previewNextCounter(
+                    $company,
+                    $type,
+                    $validated['local_high_counter'] ?? null,
+                ),
             ],
         ]);
     }
@@ -42,14 +62,23 @@ class StoreDocumentSequenceController extends Controller
                 'quote',
                 'order_received',
             ])],
+            'local_high_counter' => ['sometimes', 'integer', 'min:0', 'max:99999999'],
         ]);
 
-        $number = $this->sequenceService->nextNumber($company, $validated['document_type']);
+        $number = $this->sequenceService->nextNumber(
+            $company,
+            $validated['document_type'],
+            $validated['local_high_counter'] ?? null,
+        );
 
         return response()->json([
             'data' => [
                 'document_type' => $validated['document_type'],
                 'number' => $number,
+                'counter' => $this->sequenceService->lastIssuedCounter(
+                    $company,
+                    $validated['document_type'],
+                ),
             ],
         ]);
     }

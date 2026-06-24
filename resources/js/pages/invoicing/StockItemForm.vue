@@ -330,8 +330,10 @@ import type {
 } from "../../evolu/stockMap";
 import type { StockItemSavePayload } from "../../evolu/stockMap";
 import api from "../../services/api";
+import { useInvoicingSaveFeedback } from "../../composables/useInvoicingSaveFeedback";
 
 const { t, locale } = useI18n();
+const { notifySaved } = useInvoicingSaveFeedback();
 const router = useRouter();
 const localFirst = isInvoicingLocalFirst();
 const { companyId, itemId, isNew } = useStockItemPage();
@@ -476,6 +478,7 @@ async function save() {
         await router.push(stockEditTo(result.value.id));
       } else {
         await loadItem();
+        notifySaved("invoicing.changes_saved");
       }
       return;
     }
@@ -492,6 +495,7 @@ async function save() {
         payload,
       );
       await loadItem();
+      notifySaved("invoicing.changes_saved");
     }
   } catch (e: any) {
     error.value = e?.response?.data?.message || t("errors.generic");

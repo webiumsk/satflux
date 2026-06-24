@@ -239,6 +239,28 @@ class IntegrationDocumentInboxTest extends TestCase
     }
 
     #[Test]
+    public function store_reserve_honors_local_high_counter_from_evolu_clients(): void
+    {
+        $sequenceService = app(\App\Services\Invoicing\DocumentSequenceService::class);
+        $sequenceService->seedDefaultsForCompany($this->company);
+
+        $this->actingAs($this->user)
+            ->postJson("/api/invoicing/stores/{$this->store->id}/number-series/reserve", [
+                'document_type' => 'invoice',
+                'local_high_counter' => 65,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.number', 'INV20260066')
+            ->assertJsonPath('data.counter', 66);
+
+        $this->actingAs($this->user)
+            ->getJson("/api/invoicing/stores/{$this->store->id}/number-series/preview?type=invoice&local_high_counter=66")
+            ->assertOk()
+            ->assertJsonPath('data.next_number', 'INV20260067')
+            ->assertJsonPath('data.next_counter', 67);
+    }
+
+    #[Test]
     public function mark_imported_deletes_entry(): void
     {
         $entry = IntegrationDocumentInbox::create([

@@ -7,6 +7,13 @@
       />
       <InvoicingDocumentSubNav />
     </div>
+    <div
+      v-if="localFirst && isRelaySyncing"
+      class="invoicing-alert-warn mx-auto max-w-7xl px-4 py-3 mt-2"
+    >
+      <p class="text-sm font-medium">{{ t('invoicing.relay_sync_loading') }}</p>
+      <p class="text-sm mt-1 opacity-90">{{ t('invoicing.relay_sync_documents_detail') }}</p>
+    </div>
     <div class="invoicing-toolbar">
       <div class="md:hidden max-w-7xl mx-auto px-4 w-full py-2 invoicing-mobile-toolbar">
         <RouterLink :to="{ name: documentRoutes.list, params: { companyId } }" class="invoicing-mobile-icon-btn shrink-0">
@@ -226,13 +233,13 @@
         :can-pdf="documentStatus !== 'draft'"
         :can-eu-export="supportsEuExport && documentStatus !== 'draft'"
         :can-send-email="documentStatus !== 'draft' && documentStatus !== 'cancelled'"
-        :can-issue="documentStatus === 'draft'"
+        :can-issue="documentStatus === 'draft' && !isRelaySyncing"
         :show-create-final-invoice="canCreateFinalInvoice"
         :show-approve-quote="canApproveQuote"
         :show-reject-quote="canRejectQuote"
         :show-create-invoice-from-quote="canCreateInvoiceFromQuote"
         :can-mark-paid="!isQuote && !isCreditNote && (documentStatus === 'issued' || documentStatus === 'draft')"
-        :busy="saving"
+        :busy="saving || isRelaySyncing"
         :paid-at="paidAt"
         :amount-paid="amountPaid"
         :bank-match="bankMatch"
@@ -267,6 +274,7 @@ import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue'
 import InvoiceEfakturaPanel from '../../components/invoicing/InvoiceEfakturaPanel.vue';
 import InvoiceFormSidebar from '../../components/invoicing/InvoiceFormSidebar.vue';
 import SendDocumentEmailModal from '../../components/invoicing/SendDocumentEmailModal.vue';
+import { useInvoicingRelaySync } from '../../composables/useInvoicingRelaySync';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import InvoiceLivePreview from '../../components/invoicing/InvoiceLivePreview.vue';
 import { useEfakturaFeature } from '../../composables/useEfakturaFeature';
@@ -344,6 +352,8 @@ const {
   localTaxHelpers,
   payloadFromApiDocument,
 } = useInvoiceDocument();
+
+const { isRelaySyncing } = useInvoicingRelaySync({ settleOnMount: true });
 
 const paidViaBtcpay = computed(
   () =>
@@ -582,6 +592,10 @@ async function duplicateCurrent() {
 
 async function issueDocument() {
   if (!documentId.value) return;
+  if (localFirst && isRelaySyncing.value) {
+    error.value = t('invoicing.relay_sync_wait_hint');
+    return;
+  }
   saving.value = true;
   error.value = '';
   try {

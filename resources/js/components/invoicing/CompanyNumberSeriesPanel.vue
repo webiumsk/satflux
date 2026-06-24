@@ -147,6 +147,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useQuery } from '@evolu/vue';
 import api from '../../services/api';
+import { useInvoicingSaveFeedback } from '../../composables/useInvoicingSaveFeedback';
 import CompanyAppTabsNav from './CompanyAppTabsNav.vue';
 import {
   DOCUMENT_TYPE_OPTIONS,
@@ -174,6 +175,7 @@ import type { CompanyId, NumberSeriesId } from '../../evolu/schema';
 const props = defineProps<{ companyId: string }>();
 
 const { t } = useI18n();
+const { notifySaved } = useInvoicingSaveFeedback();
 const localFirst = isInvoicingLocalFirst();
 const evolu = localFirst ? useInvoicingEvolu() : null;
 const seriesRows = localFirst ? useQuery(allNumberSeriesQuery) : ref([]);
@@ -328,6 +330,7 @@ async function saveModalLocal() {
     }
     closeModal();
     await loadLocal();
+    notifySaved('invoicing.series_saved');
   } finally {
     saving.value = false;
   }
@@ -348,6 +351,7 @@ async function saveModalServer() {
     }
     closeModal();
     await loadServer();
+    notifySaved('invoicing.series_saved');
   } catch (e: any) {
     saveError.value = e?.response?.data?.message ?? t('common.error_generic');
   } finally {
@@ -373,12 +377,14 @@ async function removeLocal(row: NumberSeriesRow) {
     return;
   }
   await loadLocal();
+  notifySaved('invoicing.series_saved');
 }
 
 async function removeServer(row: NumberSeriesRow) {
   try {
     await api.delete(`/invoicing/companies/${props.companyId}/number-series/${row.id}`);
     await loadServer();
+    notifySaved('invoicing.series_saved');
   } catch (e: any) {
     saveError.value = e?.response?.data?.message ?? t('common.error_generic');
   }

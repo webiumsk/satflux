@@ -7,12 +7,7 @@ import {
 import type { CompanyId, DocumentId, InvoicingLocalSchema, RecurringProfileId } from "./schema";
 import type { EvoluCompanyRow } from "./companyMap";
 
-export function isKnownStoreId(storeId: string | null | undefined, validStoreIds: ReadonlySet<string>): boolean {
-    if (!storeId?.trim()) {
-        return false;
-    }
-    return validStoreIds.has(storeId.trim());
-}
+export { isKnownStoreId } from "./storeIdUtils";
 
 export type SanitizeStoreReferencesResult = {
     clearedCompanyLinks: number;

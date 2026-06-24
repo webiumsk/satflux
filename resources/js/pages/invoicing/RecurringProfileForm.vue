@@ -353,6 +353,7 @@ import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vu
 import { DEFAULT_INVOICE_LINE_UNIT } from '../../composables/useInvoiceLineUnits';
 import { useLocalRecurringProfileSupport } from '../../composables/useLocalRecurringProfile';
 import api from '../../services/api';
+import { useInvoicingSaveFeedback } from '../../composables/useInvoicingSaveFeedback';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import { appSettingsFromCompany } from '../../composables/useCompanyAppSettings';
 import { companyCurrencyOptions } from '../../config/companyCurrencies';
@@ -366,6 +367,7 @@ import type { RecurringProfileId } from '../../evolu/schema';
 import type { RecurringProfileSavePayload } from '../../evolu/recurringCrud';
 
 const { t, locale } = useI18n();
+const { notifySaved } = useInvoicingSaveFeedback();
 const route = useRoute();
 const router = useRouter();
 const { companyId, rememberCompany } = useInvoicingLayout();
@@ -741,6 +743,7 @@ async function save() {
           return;
         }
         await loadProfile();
+        notifySaved('invoicing.changes_saved');
       }
       return;
     }
@@ -759,6 +762,7 @@ async function save() {
         serverPayload()
       );
       await loadProfile();
+      notifySaved('invoicing.changes_saved');
     }
   } catch (e: any) {
     error.value = e?.response?.data?.message || t('common.error');

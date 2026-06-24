@@ -501,6 +501,8 @@ import {
   allRecurringProfilesQuery,
 } from '../../evolu/client';
 
+import { useInvoicingSaveFeedback } from '../../composables/useInvoicingSaveFeedback';
+
 const props = defineProps<{
   companyId: string;
   company: Record<string, any> | null;
@@ -512,6 +514,7 @@ const emit = defineEmits<{
 }>();
 
 const { t, te } = useI18n();
+const { notifySaved } = useInvoicingSaveFeedback();
 const router = useRouter();
 const storesStore = useStoresStore();
 const localFirst = computed(() => props.localFirst ?? isInvoicingLocalFirst());
@@ -882,6 +885,7 @@ async function saveContact() {
         },
       );
       emit('updated', row);
+      notifySaved();
       return;
     }
 
@@ -901,6 +905,7 @@ async function saveContact() {
       savedLinkedStoreId.value = linkedStoreId.value;
     }
     emit('updated', payload);
+    notifySaved();
   } catch (e: any) {
     saveError.value = extractSaveError(e);
   } finally {
@@ -953,11 +958,13 @@ async function saveBank() {
           bic: payload.bic,
         });
       }
+      notifySaved();
       return;
     }
 
     const res = await api.patch(`/invoicing/companies/${props.companyId}`, payload);
     emit('updated', res.data.data);
+    notifySaved();
   } catch (e: any) {
     saveError.value = extractSaveError(e);
   } finally {
@@ -982,6 +989,7 @@ async function uploadLogo(e: Event) {
       if (props.company) {
         emit('updated', { ...props.company, logo_url: dataUrl });
       }
+      notifySaved();
       return;
     }
 
@@ -989,6 +997,7 @@ async function uploadLogo(e: Event) {
     fd.append('image', file);
     const res = await api.post(`/invoicing/companies/${props.companyId}/branding/logo`, fd);
     emit('updated', res.data.data);
+    notifySaved();
   } catch (err: any) {
     saveError.value = err?.message || err?.response?.data?.message || t('common.error');
   } finally {
@@ -1014,6 +1023,7 @@ async function uploadSignature(e: Event) {
       if (props.company) {
         emit('updated', { ...props.company, signature_stamp_url: dataUrl });
       }
+      notifySaved();
       return;
     }
 
@@ -1021,6 +1031,7 @@ async function uploadSignature(e: Event) {
     fd.append('image', file);
     const res = await api.post(`/invoicing/companies/${props.companyId}/branding/signature-stamp`, fd);
     emit('updated', res.data.data);
+    notifySaved();
   } catch (err: any) {
     saveError.value = err?.message || err?.response?.data?.message || t('common.error');
   } finally {
@@ -1043,11 +1054,13 @@ async function removeLogo() {
       if (props.company) {
         emit('updated', { ...props.company, logo_url: null });
       }
+      notifySaved();
       return;
     }
 
     const res = await api.delete(`/invoicing/companies/${props.companyId}/branding/logo`);
     emit('updated', res.data.data);
+    notifySaved();
   } catch (err: any) {
     saveError.value = err?.response?.data?.message || t('common.error');
   } finally {
@@ -1069,11 +1082,13 @@ async function removeSignature() {
       if (props.company) {
         emit('updated', { ...props.company, signature_stamp_url: null });
       }
+      notifySaved();
       return;
     }
 
     const res = await api.delete(`/invoicing/companies/${props.companyId}/branding/signature-stamp`);
     emit('updated', res.data.data);
+    notifySaved();
   } catch (err: any) {
     saveError.value = err?.response?.data?.message || t('common.error');
   } finally {
