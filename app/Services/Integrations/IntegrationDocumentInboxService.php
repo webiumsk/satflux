@@ -81,6 +81,26 @@ class IntegrationDocumentInboxService
             'tags' => $wcOrderId ? ['woocommerce', 'wc_order:'.$wcOrderId] : ['woocommerce'],
         ];
 
+        foreach ([
+            'payment_method',
+            'is_paid',
+            'paid_at',
+            'order_total',
+            'discount_percent',
+            'btcpay_invoice_id',
+        ] as $passthroughKey) {
+            if (array_key_exists($passthroughKey, $payload)) {
+                $documentPayload[$passthroughKey] = $payload[$passthroughKey];
+            }
+        }
+
+        if (! isset($documentPayload['is_paid']) && isset($payload['payment_method'])) {
+            $method = strtolower((string) $payload['payment_method']);
+            if (str_contains($method, 'btcpay') || str_contains($method, 'satflux') || str_contains($method, 'bitcoin') || str_contains($method, 'satoshi')) {
+                $documentPayload['is_paid'] = true;
+            }
+        }
+
         $entry = IntegrationDocumentInbox::create([
             'store_integration_id' => $integration->id,
             'woocommerce_order_id' => $wcOrderId,

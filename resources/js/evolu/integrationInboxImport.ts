@@ -3,17 +3,20 @@ import api from "@/services/api";
 import { emptyContactForm, type ContactFormState } from "@/composables/useCompanyContact";
 import type { VatPolicyCompany, VatPolicyContact } from "@/composables/useCompanyVatPolicy";
 import { useCompanyVatPolicy } from "@/composables/useCompanyVatPolicy";
-import { allContactsQuery, allDocumentLinesQuery, allDocumentsQuery } from "./client";
-import { insertLocalContactFromForm } from "./contactCrud";
+import { allContactsQuery, allDocumentLinesQuery, allDocumentsQuery, allCompaniesQuery } from "./client";
+import { insertLocalContactFromForm, updateLocalContactFromForm } from "./contactCrud";
 import type { EvoluContactRow } from "./contactMap";
 import {
     saveLocalDocument,
     applyReservedNumberToLocalDocumentAsync,
+    issueLocalDocumentAsync,
+    markLocalDocumentPaidWithAmount,
     type DocumentLinePayload,
     type DocumentSavePayload,
 } from "./documentCrud";
 import type { CompanyId, ContactId, DocumentId, DocumentType, InvoicingLocalSchema } from "./schema";
 import type { EvoluDocumentRow } from "./documentMap";
+import type { EvoluCompanyRow } from "./companyMap";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import { allNumberSeriesQuery } from "./client";
 
@@ -127,7 +130,7 @@ function payloadToDocumentSave(
         constant_symbol: "",
         specific_symbol: "",
         currency: String(payload.currency ?? "EUR"),
-        discount_percent: 0,
+        discount_percent: Number(payload.discount_percent) || 0,
         note_above_lines: String(payload.note_above_lines ?? ""),
         note_footer: "",
         internal_note: String(payload.internal_note ?? ""),
@@ -147,7 +150,8 @@ function resolveLocalContactId(
     buyer: Record<string, unknown>,
     evolu: Evolu<InvoicingLocalSchema>,
 ): { ok: true; contactId: ContactId } | { ok: false; error: string } {
-    const email = String(buyer.email ?? "").trim().toLowerCase();
+    const form = buyerToContactForm(buyer);
+    const email = form.email.trim().toLowerCase();
     const existing = contacts.find(
         (contact) =>
             contact.companyId === companyId &&
@@ -155,16 +159,50 @@ function resolveLocalContactId(
             String(contact.email ?? "").trim().toLowerCase() === email,
     );
     if (existing) {
+        const updated = updateLocalContactFromForm(evolu, existing.id as ContactId, form, false);
+        if (!updated.ok) {
+            return { ok: false, error: "contact_create_failed" };
+        }
         return { ok: true, contactId: existing.id as ContactId };
     }
 
-    const form = buyerToContactForm(buyer);
     const inserted = insertLocalContactFromForm(evolu, companyId, form, false);
     if (!inserted.ok) {
         return { ok: false, error: "contact_create_failed" };
     }
 
     return { ok: true, contactId: inserted.value.id as ContactId };
+}
+
+import { isPaidWooCommercePayload } from "./integrationInboxPaid";
+    evolu: Evolu<InvoicingLocalSchema>,
+    companyId: CompanyId,
+    documentId: DocumentId,
+    payload: Record<string, unknown>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+    const companies = (await evolu.loadQuery(allCompaniesQuery)) as EvoluCompanyRow[];
+    const companyRow = companies.find((row) => row.id === companyId);
+    if (!companyRow) {
+        return { ok: false, error: "company_not_found" };
+    }
+
+    const issueResult = await issueLocalDocumentAsync(evolu, documentId, companyRow);
+    if (!issueResult.ok) {
+        return { ok: false, error: String(issueResult.error ?? "issue_failed") };
+    }
+
+    const documents = (await evolu.loadQuery(allDocumentsQuery)) as EvoluDocumentRow[];
+    const doc = documents.find((row) => row.id === documentId);
+    const docTotal = parseFloat(doc?.total ?? "0");
+    const orderTotal = Number(payload.order_total);
+    const paidAmount = Number.isFinite(orderTotal) && orderTotal > 0 ? orderTotal : docTotal;
+
+    const markResult = markLocalDocumentPaidWithAmount(evolu, documentId, documents, paidAmount);
+    if (!markResult.ok) {
+        return { ok: false, error: String(markResult.error ?? "mark_paid_failed") };
+    }
+
+    return { ok: true };
 }
 
 function resolveStoreIdForApi(
@@ -234,6 +272,16 @@ export async function importIntegrationInboxEntry(
         );
         if (!applyResult.ok) {
             return { ok: false, error: String(applyResult.error ?? "issue_failed") };
+        }
+    } else if (isPaidWooCommercePayload(entry.payload)) {
+        const settleResult = await settleImportedPaidDocument(
+            evolu,
+            typedCompanyId,
+            savedDocumentId,
+            entry.payload,
+        );
+        if (!settleResult.ok) {
+            return settleResult;
         }
     }
 

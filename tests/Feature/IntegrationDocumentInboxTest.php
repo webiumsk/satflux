@@ -118,6 +118,35 @@ class IntegrationDocumentInboxTest extends TestCase
     }
 
     #[Test]
+    public function woo_enqueue_preserves_payment_metadata(): void
+    {
+        config(['invoicing.woocommerce_inbox_mode' => true]);
+
+        $payload = array_merge($this->samplePayload(3003), [
+            'payment_method' => 'satflux_bitcoin',
+            'is_paid' => true,
+            'paid_at' => '2026-06-24T18:01:00+00:00',
+            'order_total' => 0.18,
+            'discount_percent' => 10.0,
+            'btcpay_invoice_id' => 'EP3HaqUX43q2Fv3yvhq1po',
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$this->integrationToken)
+            ->postJson('/api/integrations/woocommerce/documents', $payload);
+
+        $response->assertCreated();
+
+        $entry = IntegrationDocumentInbox::query()->where('woocommerce_order_id', 3003)->firstOrFail();
+        $stored = is_array($entry->payload_json) ? $entry->payload_json : [];
+
+        $this->assertSame('satflux_bitcoin', $stored['payment_method'] ?? null);
+        $this->assertTrue($stored['is_paid'] ?? false);
+        $this->assertSame(0.18, $stored['order_total'] ?? null);
+        $this->assertSame(10.0, (float) ($stored['discount_percent'] ?? 0));
+        $this->assertSame('EP3HaqUX43q2Fv3yvhq1po', $stored['btcpay_invoice_id'] ?? null);
+    }
+
+    #[Test]
     public function user_can_list_pending_inbox_items_for_store(): void
     {
         $service = app(IntegrationDocumentInboxService::class);
