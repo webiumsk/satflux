@@ -19,6 +19,7 @@ import type { EvoluDocumentRow } from "./documentMap";
 import type { EvoluCompanyRow } from "./companyMap";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import { allNumberSeriesQuery } from "./client";
+import { isPaidWooCommercePayload } from "./integrationInboxPaid";
 
 export type IntegrationInboxEntry = {
     inbox_id: string;
@@ -174,7 +175,7 @@ function resolveLocalContactId(
     return { ok: true, contactId: inserted.value.id as ContactId };
 }
 
-import { isPaidWooCommercePayload } from "./integrationInboxPaid";
+async function settleImportedPaidDocument(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
     documentId: DocumentId,
