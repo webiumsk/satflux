@@ -32,12 +32,32 @@
       <p class="text-sm text-emerald-900">{{ t('invoicing.relay_sync_ready') }}</p>
     </div>
 
-    <div v-if="localFirst && duplicateCompanyNames.length" class="invoicing-alert-warn mb-4">
+    <div v-if="localFirst && duplicateCompanyGroups.length" class="invoicing-alert-warn mb-4">
       <p class="text-sm font-medium">{{ t('invoicing.duplicate_companies_title') }}</p>
       <p class="text-sm mt-2 opacity-90">{{ t('invoicing.duplicate_companies_detail') }}</p>
-      <ul class="text-sm mt-2 list-disc list-inside opacity-90">
-        <li v-for="name in duplicateCompanyNames" :key="name">{{ name }}</li>
+      <ul class="text-sm mt-3 space-y-2 opacity-90">
+        <li v-for="group in duplicateCompanyGroups" :key="group.key">
+          <span class="font-medium">{{ group.label }}</span>
+          <ul class="list-disc list-inside mt-1">
+            <li v-for="company in group.companies" :key="company.id">
+              {{ company.trade_name || company.legal_name }}
+              · {{ company.documents_count ?? 0 }} {{ t('invoicing.invoices_short') }}
+            </li>
+          </ul>
+        </li>
       </ul>
+      <button
+        type="button"
+        class="invoicing-btn-primary mt-4"
+        :disabled="mergeRunning || isRelaySyncing"
+        @click="runMergeDuplicates"
+      >
+        {{
+          mergeRunning
+            ? t('invoicing.duplicate_companies_merging')
+            : t('invoicing.duplicate_companies_merge')
+        }}
+      </button>
     </div>
 
     <div v-if="localFirst && showServerLegacyCleanup" class="rounded-lg border border-sky-200 bg-sky-50 px-4 py-4 mb-4">
@@ -178,7 +198,8 @@ import {
   shouldOfferServerMigration,
   type ServerMigrationStatus,
 } from '@/evolu/serverMigration';
-import { findDuplicateCompanyGroups } from '@/evolu/duplicateCompanies';
+import { findDuplicateCompanyGroups, normalizeCompanyIdentityKey } from '@/evolu/duplicateCompanies';
+import { mergeDuplicateCompaniesLocal } from '@/evolu/companyMergeLocal';
 import { useAuthStore } from '../../store/auth';
 import { useFlashStore } from '@/store/flash';
 import UpgradeModal from '../../components/stores/UpgradeModal.vue';
@@ -211,6 +232,7 @@ const showUpgrade = ref(false);
 const migrationStatus = ref<ServerMigrationStatus | null>(null);
 const migrationImporting = ref(false);
 const attachmentImporting = ref(false);
+const mergeRunning = ref(false);
 
 const relaySyncLoading = computed(() => localFirst && isEvoluRelaySyncPending() && loading.value);
 
@@ -297,14 +319,45 @@ watch(companyList, () => {
   }
 });
 
-const duplicateCompanyNames = computed(() => {
+const duplicateCompanyGroups = computed(() => {
   if (!localFirst) return [];
   const groups = findDuplicateCompanyGroups(companyList.value);
   return groups.map((group) => {
     const row = group[0] as InvoicingCompanyListItem | undefined;
-    return row?.trade_name || row?.legal_name || '';
-  }).filter(Boolean);
+    const label = row?.trade_name || row?.legal_name || '';
+    const key = row
+      ? normalizeCompanyIdentityKey(row.legal_name, row.registration_number ?? null)
+      : label;
+    return {
+      key,
+      label,
+      companies: group as InvoicingCompanyListItem[],
+    };
+  });
 });
+
+async function runMergeDuplicates(): Promise<void> {
+  if (mergeRunning.value || !localFirst) return;
+  mergeRunning.value = true;
+  try {
+    const result = await mergeDuplicateCompaniesLocal(evolu, companyList.value);
+    if (result.removedCompanies === 0) {
+      flashStore.warning(t('invoicing.duplicate_companies_merge_none'));
+    } else {
+      flashStore.success(
+        t('invoicing.duplicate_companies_merge_success', {
+          groups: result.mergedGroups,
+          removed: result.removedCompanies,
+        }),
+      );
+    }
+    await refresh();
+  } catch {
+    flashStore.error(t('invoicing.duplicate_companies_merge_failed'));
+  } finally {
+    mergeRunning.value = false;
+  }
+}
 
 const companyLimitMax = computed(() => {
   const plan = authStore.user?.plan;

@@ -25,6 +25,8 @@ export interface User {
     is_guest?: boolean;
     allows_satflux_email_changes?: boolean;
     guest_recovery_enrolled?: boolean;
+    requires_recovery_migration?: boolean;
+    can_use_password_login?: boolean;
     email_verified_at?: string;
     role?: string;
     name?: string;
@@ -60,12 +62,20 @@ export const useAuthStore = defineStore('auth', () => {
 
     const isAuthenticated = computed(() => user.value !== null);
 
+    const requiresRecoveryMigration = computed(
+        () => user.value?.requires_recovery_migration === true,
+    );
+
     /** Drop in-memory user + tenant store selection (same as logout’s local cleanup; no API call). */
     function clearLocalAuthAndTenantState() {
         user.value = null;
         const storesStore = useStoresStore();
         storesStore.stores = [];
         storesStore.currentStore = null;
+    }
+
+    function normalizeUserPayload(data: User): User {
+        return { ...data };
     }
 
     async function syncAccountSeedAfterAuth(mnemonic: string): Promise<void> {
@@ -83,7 +93,7 @@ export const useAuthStore = defineStore('auth', () => {
             hydrateAccountMnemonicSession();
             const response = await api.get('/user');
             const previousUserId = user.value?.id ?? null;
-            user.value = response.data;
+            user.value = normalizeUserPayload(response.data);
             if ((user.value?.id ?? null) !== previousUserId) {
                 scheduleChoralaSync();
             }
@@ -143,13 +153,32 @@ export const useAuthStore = defineStore('auth', () => {
                 password,
                 remember,
             });
-            user.value = response.data.user;
+            user.value = normalizeUserPayload({
+                ...response.data.user,
+                requires_recovery_migration:
+                    response.data.requires_recovery_migration ??
+                    response.data.user?.requires_recovery_migration,
+            });
             hydrateAccountMnemonicSession();
             scheduleChoralaSync();
             if (getStoredGuestMnemonic() && isInvoicingLocalFirst()) {
                 void ensureEvoluBoundToAccountSeed();
             }
             return response.data;
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    async function completeLegacyRecoveryMigration(payload: {
+        recoveryPublicKeyHex: string;
+        mnemonic: string;
+    }) {
+        loading.value = true;
+        try {
+            await enrollGuestRecoveryPublicKey(payload.recoveryPublicKeyHex);
+            await syncAccountSeedAfterAuth(payload.mnemonic);
+            await fetchUser();
         } finally {
             loading.value = false;
         }
@@ -255,8 +284,10 @@ export const useAuthStore = defineStore('auth', () => {
         user,
         loading,
         isAuthenticated,
+        requiresRecoveryMigration,
         fetchUser,
         login,
+        completeLegacyRecoveryMigration,
         register,
         continueAsGuest,
         enrollGuestRecoveryPublicKey,

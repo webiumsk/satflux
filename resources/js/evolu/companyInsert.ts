@@ -17,6 +17,7 @@ import {
     parseRequired,
 } from "./parseUtils";
 import type { InvoicingLocalSchema } from "./schema";
+import { stableCompanyIdFromIdentity } from "./companyStableId";
 
 /** Payload aligned with CompanyForm save() / StoreCompanyRequest. */
 export interface LocalCompanyCreatePayload {
@@ -84,7 +85,16 @@ export function insertLocalCompanyFromPayload(
     const linkedStoreId = parseOptional(payload.store_id, Opt64);
     if (!linkedStoreId.ok) return linkedStoreId;
 
-    const result = evolu.insert("company", {
+    const stableId = stableCompanyIdFromIdentity(
+        legalName.value,
+        registrationNumber.value,
+    );
+    if (!stableId) {
+        return { ok: false as const, error: "invalid_company_id" };
+    }
+
+    const result = evolu.upsert("company", {
+        id: stableId,
         legalName: legalName.value,
         tradeName: null,
         jurisdiction: payload.jurisdiction,

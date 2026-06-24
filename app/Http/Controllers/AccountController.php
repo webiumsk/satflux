@@ -69,6 +69,8 @@ class AccountController extends Controller
         $payload['has_lightning_login'] = ! empty($user->lightning_public_key);
         $payload['has_nostr_login'] = ! empty($user->nostr_public_key);
         $payload['guest_recovery_enrolled'] = ! empty($user->guest_recovery_public_key ?? null);
+        $payload['requires_recovery_migration'] = $user->requiresRecoveryMigration();
+        $payload['can_use_password_login'] = $user->canUsePasswordLogin();
 
         return response()->json($payload);
     }
@@ -267,8 +269,8 @@ class AccountController extends Controller
     /**
      * Upgrade a guest account to a regular (non-guest) identity.
      *
-     * Every upgrade path requires a real email and password (same as normal registration).
-     * Lightning/Nostr paths additionally require that login method to already be linked.
+     * Guest → Free: real email + verification. Password optional when upgrade_email_only.
+     * Lightning path additionally requires that login method to already be linked.
      */
     public function upgradeGuest(Request $request)
     {
@@ -281,6 +283,8 @@ class AccountController extends Controller
             $request->merge(['email' => strtolower(trim($request->input('email')))]);
         }
 
+        $emailOnlyUpgrade = (bool) config('guest.upgrade_email_only');
+
         $validated = $request->validate(array_merge([
             'method' => ['required', 'in:email,lightning'],
             'email' => [
@@ -290,7 +294,9 @@ class AccountController extends Controller
                 'max:255',
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
-            'password' => ['required', 'confirmed', Password::defaults()],
+            'password' => $emailOnlyUpgrade
+                ? ['nullable', 'confirmed', Password::defaults()]
+                : ['required', 'confirmed', Password::defaults()],
         ], LegalConsent::registrationRules()));
 
         if ($validated['method'] === 'lightning' && empty($user->lightning_public_key)) {

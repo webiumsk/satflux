@@ -408,6 +408,30 @@ class User extends Authenticatable implements MustVerifyEmailContract
         return (string) ($this->email ?? '');
     }
 
+    public function hasRecoveryPhraseEnrolled(): bool
+    {
+        return ! empty($this->guest_recovery_public_key);
+    }
+
+    /** Legacy email/password account that must enroll a recovery phrase (seed-first rollout). */
+    public function requiresRecoveryMigration(): bool
+    {
+        if (! config('guest.seed_first_registration')) {
+            return false;
+        }
+
+        if ((bool) ($this->is_guest ?? false)) {
+            return false;
+        }
+
+        return ! $this->hasRecoveryPhraseEnrolled();
+    }
+
+    public function canUsePasswordLogin(): bool
+    {
+        return ! $this->hasRecoveryPhraseEnrolled();
+    }
+
     /**
      * Get BTCPay API key or throw exception.
      *

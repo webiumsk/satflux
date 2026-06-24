@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\BtcPay\UserService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class GuestUpgradeService
 {
@@ -21,11 +22,14 @@ class GuestUpgradeService
     public function upgrade(User $user, array $validated): User
     {
         $newEmail = strtolower(trim((string) $validated['email']));
-        $newPassword = (string) $validated['password'];
+        $plainPassword = isset($validated['password']) ? trim((string) $validated['password']) : '';
+        $passwordHash = $plainPassword !== ''
+            ? Hash::make($plainPassword)
+            : Hash::make(Str::random(64));
 
         $user->forceFill([
             'email' => $newEmail,
-            'password' => Hash::make($newPassword),
+            'password' => $passwordHash,
             'email_verified_at' => null,
             'is_guest' => false,
             'allows_satflux_email_changes' => true,

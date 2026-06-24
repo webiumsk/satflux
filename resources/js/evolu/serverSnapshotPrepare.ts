@@ -1,5 +1,6 @@
 import { createIdFromString, maxLength, NonEmptyString } from "@evolu/common";
 import type { InvoicingDataSnapshot } from "./invoicingSnapshot";
+import { stableCompanyIdFromIdentity } from "./companyStableId";
 import { normalizeIsoCountryCode } from "@/utils/isoCountryCode";
 import {
     BankImportBatchId,
@@ -138,14 +139,67 @@ function mapRowIds(
     return out;
 }
 
+function buildCompanyIdByServerUuid(
+    companies: InvoicingDataSnapshot["company"],
+): Map<string, string> {
+    const map = new Map<string, string>();
+    for (const row of companies) {
+        if (!isServerUuid(row.id)) {
+            continue;
+        }
+        const legalName = emptyToNull(row.legalName) ?? "";
+        const reg = emptyToNull(row.registrationNumber);
+        const stableId =
+            stableCompanyIdFromIdentity(legalName, reg)
+            ?? evoluIdFromServerUuid(CompanyId, row.id);
+        if (stableId) {
+            map.set(row.id.trim().toLowerCase(), stableId);
+        }
+    }
+    return map;
+}
+
+function remapCompanyFk(
+    value: unknown,
+    companyIdByServerUuid: Map<string, string>,
+): string | null | undefined {
+    if (value == null || value === "") {
+        return null;
+    }
+    if (typeof value === "string" && isServerUuid(value)) {
+        return companyIdByServerUuid.get(value.trim().toLowerCase())
+            ?? mapUuidField(CompanyId, value)
+            ?? null;
+    }
+    return typeof value === "string" ? value : null;
+}
+
+function withCompanyFk(
+    mapped: Record<string, unknown>,
+    companyIdByServerUuid: Map<string, string>,
+): Record<string, unknown> {
+    if ("companyId" in mapped) {
+        mapped.companyId = remapCompanyFk(mapped.companyId, companyIdByServerUuid);
+    }
+    return mapped;
+}
+
 /**
  * Server export uses Laravel UUID strings; Evolu requires branded Base64Url ids.
  * Remap ids + FKs and coerce values to match local schema validators.
  */
 export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): InvoicingDataSnapshot {
+    const companyIdByServerUuid = buildCompanyIdByServerUuid(snapshot.company);
+
     return {
         company: snapshot.company.map((row) => {
             const mapped = mapRowIds(row, { id: CompanyId });
+            const legalName = emptyToNull(mapped.legalName) ?? "";
+            const reg = emptyToNull(mapped.registrationNumber);
+            const stableId = stableCompanyIdFromIdentity(legalName, reg);
+            if (stableId) {
+                mapped.id = stableId;
+            }
             return {
                 ...mapped,
                 jurisdiction: normalizeJurisdiction(mapped.jurisdiction),
@@ -156,26 +210,35 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
             };
         }),
         contact: snapshot.contact.map((row) =>
-            mapRowIds(row, {
-                id: ContactId,
-                fields: { companyId: CompanyId },
-            }),
+            withCompanyFk(
+                mapRowIds(row, {
+                    id: ContactId,
+                    fields: { companyId: CompanyId },
+                }),
+                companyIdByServerUuid,
+            ),
         ),
         numberSeries: snapshot.numberSeries.map((row) =>
-            mapRowIds(row, {
-                id: NumberSeriesId,
-                fields: { companyId: CompanyId },
-            }),
+            withCompanyFk(
+                mapRowIds(row, {
+                    id: NumberSeriesId,
+                    fields: { companyId: CompanyId },
+                }),
+                companyIdByServerUuid,
+            ),
         ),
         document: snapshot.document.map((row) => {
-            const mapped = mapRowIds(row, {
-                id: DocumentId,
-                fields: {
-                    companyId: CompanyId,
-                    contactId: ContactId,
-                    sourceDocumentId: DocumentId,
-                },
-            });
+            const mapped = withCompanyFk(
+                mapRowIds(row, {
+                    id: DocumentId,
+                    fields: {
+                        companyId: CompanyId,
+                        contactId: ContactId,
+                        sourceDocumentId: DocumentId,
+                    },
+                }),
+                companyIdByServerUuid,
+            );
             return {
                 ...mapped,
                 title: normalizeDocumentTitle(mapped),
@@ -198,10 +261,13 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
             }),
         ),
         expense: snapshot.expense.map((row) => {
-            const mapped = mapRowIds(row, {
-                id: ExpenseId,
-                fields: { companyId: CompanyId },
-            });
+            const mapped = withCompanyFk(
+                mapRowIds(row, {
+                    id: ExpenseId,
+                    fields: { companyId: CompanyId },
+                }),
+                companyIdByServerUuid,
+            );
             const internalNumber = emptyToNull(mapped.internalNumber) ?? "1";
             return { ...mapped, internalNumber };
         }),
@@ -212,14 +278,17 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
             }),
         ),
         recurringProfile: snapshot.recurringProfile.map((row) => {
-            const mapped = mapRowIds(row, {
-                id: RecurringProfileId,
-                fields: {
-                    companyId: CompanyId,
-                    contactId: ContactId,
-                    lastGeneratedDocumentId: DocumentId,
-                },
-            });
+            const mapped = withCompanyFk(
+                mapRowIds(row, {
+                    id: RecurringProfileId,
+                    fields: {
+                        companyId: CompanyId,
+                        contactId: ContactId,
+                        lastGeneratedDocumentId: DocumentId,
+                    },
+                }),
+                companyIdByServerUuid,
+            );
             return {
                 ...mapped,
                 documentType: normalizeRecurringDocumentType(mapped.documentType),
@@ -232,57 +301,75 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
             }),
         ),
         companyWarehouse: snapshot.companyWarehouse.map((row) => {
-            const mapped = mapRowIds(row, {
-                id: WarehouseId,
-                fields: {
-                    companyId: CompanyId,
-                    companyContactId: ContactId,
-                },
-            });
+            const mapped = withCompanyFk(
+                mapRowIds(row, {
+                    id: WarehouseId,
+                    fields: {
+                        companyId: CompanyId,
+                        companyContactId: ContactId,
+                    },
+                }),
+                companyIdByServerUuid,
+            );
             return { ...mapped, country: normalizeCountry(mapped.country) };
         }),
         companyStockItem: snapshot.companyStockItem.map((row) =>
-            mapRowIds(row, {
-                id: StockItemId,
-                fields: { companyId: CompanyId },
-            }),
+            withCompanyFk(
+                mapRowIds(row, {
+                    id: StockItemId,
+                    fields: { companyId: CompanyId },
+                }),
+                companyIdByServerUuid,
+            ),
         ),
         companyStockBalance: snapshot.companyStockBalance.map((row) =>
-            mapRowIds(row, {
-                id: StockBalanceId,
-                fields: {
-                    companyId: CompanyId,
-                    companyWarehouseId: WarehouseId,
-                    companyStockItemId: StockItemId,
-                },
-            }),
+            withCompanyFk(
+                mapRowIds(row, {
+                    id: StockBalanceId,
+                    fields: {
+                        companyId: CompanyId,
+                        companyWarehouseId: WarehouseId,
+                        companyStockItemId: StockItemId,
+                    },
+                }),
+                companyIdByServerUuid,
+            ),
         ),
         companyStockMovement: snapshot.companyStockMovement.map((row) =>
-            mapRowIds(row, {
-                id: StockMovementId,
-                fields: {
-                    companyId: CompanyId,
-                    companyStockItemId: StockItemId,
-                    companyWarehouseId: WarehouseId,
-                    businessDocumentId: DocumentId,
-                },
-            }),
+            withCompanyFk(
+                mapRowIds(row, {
+                    id: StockMovementId,
+                    fields: {
+                        companyId: CompanyId,
+                        companyStockItemId: StockItemId,
+                        companyWarehouseId: WarehouseId,
+                        businessDocumentId: DocumentId,
+                    },
+                }),
+                companyIdByServerUuid,
+            ),
         ),
         bankImportBatch: snapshot.bankImportBatch.map((row) =>
-            mapRowIds(row, {
-                id: BankImportBatchId,
-                fields: { companyId: CompanyId },
-            }),
+            withCompanyFk(
+                mapRowIds(row, {
+                    id: BankImportBatchId,
+                    fields: { companyId: CompanyId },
+                }),
+                companyIdByServerUuid,
+            ),
         ),
         bankTransaction: snapshot.bankTransaction.map((row) =>
-            mapRowIds(row, {
-                id: BankTransactionId,
-                fields: {
-                    companyId: CompanyId,
-                    bankImportBatchId: BankImportBatchId,
-                    businessExpenseId: ExpenseId,
-                },
-            }),
+            withCompanyFk(
+                mapRowIds(row, {
+                    id: BankTransactionId,
+                    fields: {
+                        companyId: CompanyId,
+                        bankImportBatchId: BankImportBatchId,
+                        businessExpenseId: ExpenseId,
+                    },
+                }),
+                companyIdByServerUuid,
+            ),
         ),
         bankTransactionMatch: snapshot.bankTransactionMatch.map((row) =>
             mapRowIds(row, {

@@ -2,9 +2,12 @@
   <div
     v-if="open"
     class="fixed z-50 inset-0 overflow-y-auto"
-    @click.self="$emit('close')"
+    @click.self="onBackdropClick"
   >
-    <div class="fixed inset-0 bg-gray-900/90 backdrop-blur-sm" @click.self="$emit('close')" />
+    <div
+      class="fixed inset-0 bg-gray-900/90 backdrop-blur-sm"
+      @click.self="onBackdropClick"
+    />
     <div class="flex min-h-full items-center justify-center p-4">
       <div
         class="relative w-full max-w-lg rounded-2xl border border-gray-700 bg-gray-800 shadow-xl"
@@ -14,9 +17,16 @@
         <div class="p-6 sm:p-8 space-y-6">
           <div class="flex justify-between items-start gap-4">
             <h3 class="text-lg font-bold text-white">
-              {{ step === 0 ? t("auth.guest_backup_title") : step === 1 ? t("auth.guest_backup_words_title") : t("auth.guest_backup_confirm_title") }}
+              {{
+                step === 0
+                  ? introTitle
+                  : step === 1
+                    ? t("auth.guest_backup_words_title")
+                    : t("auth.guest_backup_confirm_title")
+              }}
             </h3>
             <button
+              v-if="!mandatory"
               type="button"
               class="text-gray-400 hover:text-white text-sm"
               @click="$emit('close')"
@@ -27,7 +37,7 @@
 
           <template v-if="step === 0">
             <p class="text-sm text-gray-300 leading-relaxed">
-              {{ t("auth.guest_backup_intro") }}
+              {{ introBody }}
             </p>
             <button
               type="button"
@@ -90,14 +100,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   generateGuestMnemonic24,
   guestRecoveryPublicKeyHexFromMnemonic,
 } from "../../services/guestRecovery";
 
-const props = defineProps<{ open: boolean }>();
+const props = withDefaults(
+  defineProps<{
+    open: boolean;
+    mandatory?: boolean;
+    variant?: "register" | "legacy-migration";
+  }>(),
+  {
+    mandatory: false,
+    variant: "register",
+  },
+);
 
 const emit = defineEmits<{
   close: [];
@@ -111,6 +131,24 @@ const mnemonic = ref("");
 const words = ref<string[]>([]);
 const confirmedSaved = ref(false);
 const copied = ref(false);
+
+const introTitle = computed(() =>
+  props.variant === "legacy-migration"
+    ? t("account.legacy_recovery_migration_title")
+    : t("auth.guest_backup_title"),
+);
+
+const introBody = computed(() =>
+  props.variant === "legacy-migration"
+    ? t("account.legacy_recovery_migration_intro")
+    : t("auth.guest_backup_intro"),
+);
+
+function onBackdropClick(): void {
+  if (!props.mandatory) {
+    emit("close");
+  }
+}
 
 function reset() {
   step.value = 0;
@@ -151,9 +189,13 @@ function finish() {
   try {
     const recoveryPublicKeyHex = guestRecoveryPublicKeyHexFromMnemonic(mnemonic.value);
     emit("done", { recoveryPublicKeyHex, mnemonic: mnemonic.value });
-    emit("close");
+    if (!props.mandatory) {
+      emit("close");
+    }
   } catch {
-    emit("close");
+    if (!props.mandatory) {
+      emit("close");
+    }
   }
 }
 </script>

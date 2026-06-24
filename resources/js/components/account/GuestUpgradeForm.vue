@@ -14,22 +14,24 @@
       class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
       :placeholder="t('account.guest_upgrade_email_placeholder')"
     />
-    <input
-      v-model="form.password"
-      type="password"
-      required
-      autocomplete="new-password"
-      class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-      :placeholder="t('account.new_password')"
-    />
-    <input
-      v-model="form.password_confirmation"
-      type="password"
-      required
-      autocomplete="new-password"
-      class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-      :placeholder="t('account.confirm_new_password')"
-    />
+    <template v-if="!emailOnly">
+      <input
+        v-model="form.password"
+        type="password"
+        required
+        autocomplete="new-password"
+        class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        :placeholder="t('account.new_password')"
+      />
+      <input
+        v-model="form.password_confirmation"
+        type="password"
+        required
+        autocomplete="new-password"
+        class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        :placeholder="t('account.confirm_new_password')"
+      />
+    </template>
     <p
       class="text-xs text-amber-200/90 leading-relaxed rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2"
       role="note"
@@ -115,6 +117,7 @@ const emit = defineEmits<{
 
 const { t, te } = useI18n();
 const {
+  emailOnly,
   loading,
   privacyConsent,
   termsAccepted,

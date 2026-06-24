@@ -44,7 +44,7 @@
         <p class="text-center text-sm text-gray-400 pt-1">
           {{ t("auth.already_have_email_account") }}
           <router-link
-            to="/login"
+            to="/login?legacy=1"
             class="font-medium text-indigo-400 hover:text-indigo-300"
           >
             {{ t("auth.sign_in") }}

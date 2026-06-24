@@ -35,4 +35,17 @@ return [
     */
     'seed_first_registration' => filter_var(env('SEED_FIRST_REGISTRATION', false), FILTER_VALIDATE_BOOLEAN),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Guest upgrade without password
+    |--------------------------------------------------------------------------
+    |
+    | When true (default follows seed_first_registration), Guest → Free upgrade
+    | requires only a real email + verification; password is not collected.
+    */
+    'upgrade_email_only' => filter_var(
+        env('GUEST_UPGRADE_EMAIL_ONLY', env('SEED_FIRST_REGISTRATION', false)),
+        FILTER_VALIDATE_BOOLEAN,
+    ),
+
 ];

@@ -60,6 +60,14 @@
             {{ t("account.recovery_phrase_unavailable_here") }}
           </p>
           <button
+            v-if="authStore.user?.guest_recovery_enrolled && !storedGuestMnemonic"
+            type="button"
+            class="inline-flex items-center px-4 py-2 border border-amber-400/60 rounded-lg text-sm font-medium text-amber-100 hover:bg-amber-500/10"
+            @click="showRestoreOnDeviceModal = true"
+          >
+            {{ t("account.recovery_phrase_restore_on_device") }}
+          </button>
+          <button
             v-else
             type="button"
             class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
@@ -1012,6 +1020,54 @@
         </div>
       </div>
 
+      <div
+        v-if="showRestoreOnDeviceModal"
+        class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+        @click.self="showRestoreOnDeviceModal = false"
+      >
+        <div
+          class="bg-gray-800 rounded-2xl border border-gray-700 max-w-lg w-full p-6 space-y-4"
+        >
+          <h5 class="text-lg font-bold text-white">
+            {{ t("account.recovery_phrase_restore_on_device") }}
+          </h5>
+          <p class="text-sm text-gray-300">
+            {{ t("account.recovery_phrase_restore_on_device_detail") }}
+          </p>
+          <textarea
+            v-model="restoreOnDeviceInput"
+            rows="4"
+            class="w-full rounded-xl border border-gray-600 bg-gray-900/80 px-4 py-3 text-sm text-gray-200"
+            :placeholder="t('auth.guest_restore_placeholder')"
+            autocomplete="off"
+          />
+          <p v-if="restoreOnDeviceError" class="text-sm text-red-400">
+            {{ restoreOnDeviceError }}
+          </p>
+          <div class="flex justify-end gap-2">
+            <button
+              type="button"
+              class="px-4 py-2 border border-gray-600 rounded-lg text-sm text-gray-300 hover:bg-gray-700"
+              @click="showRestoreOnDeviceModal = false"
+            >
+              {{ t("common.cancel") }}
+            </button>
+            <button
+              type="button"
+              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm text-white disabled:opacity-50"
+              :disabled="restoreOnDeviceLoading"
+              @click="submitRestoreOnDevice"
+            >
+              {{
+                restoreOnDeviceLoading
+                  ? t("common.loading")
+                  : t("account.recovery_phrase_restore_on_device_submit")
+              }}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Add Credit Modal -->
       <div
         v-if="showAddCreditModal"
@@ -1092,6 +1148,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed, onUnmounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
 import { useFlashStore } from "../../store/flash";
@@ -1111,9 +1168,11 @@ import {
   getStoredGuestMnemonic,
   storeGuestMnemonic,
 } from "../../services/guestRecovery";
-import { initEvoluFromAccountSeedIfNeeded } from "../../services/accountSeed";
+import { initEvoluFromAccountSeedIfNeeded, bindRecoveryPhraseOnThisDevice } from "../../services/accountSeed";
 import { isInvoicingLocalFirst } from "../../evolu/flags";
 const { t, locale } = useI18n();
+const route = useRoute();
+const router = useRouter();
 const authStore = useAuthStore();
 const flashStore = useFlashStore();
 const { pricing, formatSats, load: loadPricing } = usePricing();
@@ -1171,6 +1230,10 @@ const showLnurlLinkModal = ref(false);
 const showNostrLinkModal = ref(false);
 const showGuestSeedModal = ref(false);
 const showRecoveryBackupWizard = ref(false);
+const showRestoreOnDeviceModal = ref(false);
+const restoreOnDeviceInput = ref("");
+const restoreOnDeviceLoading = ref(false);
+const restoreOnDeviceError = ref("");
 const storedGuestMnemonic = ref<string | null>(null);
 const copiedSeed = ref(false);
 const localFirst = isInvoicingLocalFirst();
@@ -1274,6 +1337,11 @@ onMounted(async () => {
   await loadSubscriptionDetails();
   if (localFirst) {
     await loadServerLegacyCompanies();
+  }
+  if (route.query.restore_phrase === "1" && !storedGuestMnemonic.value) {
+    showRestoreOnDeviceModal.value = true;
+    flashStore.warning(t("account.recovery_phrase_required_for_invoicing"));
+    void router.replace({ query: { ...route.query, restore_phrase: undefined } });
   }
 });
 
@@ -1581,6 +1649,26 @@ async function handleRecoveryEnrolled(payload: {
     flashStore.error(
       e?.response?.data?.message || t("account.recovery_phrase_save_failed"),
     );
+  }
+}
+
+async function submitRestoreOnDevice(): Promise<void> {
+  restoreOnDeviceError.value = "";
+  restoreOnDeviceLoading.value = true;
+  try {
+    const result = await bindRecoveryPhraseOnThisDevice(restoreOnDeviceInput.value);
+    storedGuestMnemonic.value = getStoredGuestMnemonic();
+    showRestoreOnDeviceModal.value = false;
+    restoreOnDeviceInput.value = "";
+    if (result === "restored" || result === "migrated_legacy_owner") {
+      const { evolu } = await import("@/evolu/client");
+      evolu.reloadApp();
+    }
+    flashStore.success(t("account.recovery_phrase_restore_on_device_success"));
+  } catch {
+    restoreOnDeviceError.value = t("account.recovery_phrase_restore_on_device_failed");
+  } finally {
+    restoreOnDeviceLoading.value = false;
   }
 }
 

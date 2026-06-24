@@ -452,6 +452,16 @@ router.beforeEach(async (to, from, next) => {
     if (
         authStore.isAuthenticated
         && isInvoicingLocalFirst()
+        && !getStoredAccountMnemonic()
+        && (to.path.startsWith('/invoicing') || String(to.name ?? '').startsWith('invoicing'))
+    ) {
+        next({ name: 'account', query: { restore_phrase: '1' } });
+        return;
+    }
+
+    if (
+        authStore.isAuthenticated
+        && isInvoicingLocalFirst()
         && getStoredAccountMnemonic()
         && to.meta.requiresAuth
     ) {

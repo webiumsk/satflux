@@ -123,6 +123,14 @@ export function clearStoredAccountMnemonic(): void {
     }
 }
 
+/** Store recovery phrase on this browser and bind Evolu (logged-in users, new device). */
+export async function bindRecoveryPhraseOnThisDevice(
+    mnemonic: string,
+): Promise<EvoluAccountSeedInitResult> {
+    storeAccountMnemonic(mnemonic);
+    return initEvoluFromAccountSeedIfNeeded(mnemonic);
+}
+
 export type EvoluAccountSeedInitResult =
     | "restored"
     | "already_synced"

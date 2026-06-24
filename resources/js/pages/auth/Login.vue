@@ -24,7 +24,11 @@
           {{ t("auth.welcome_back") }}
         </h2>
         <p class="mt-2 text-center text-sm text-gray-400">
-          {{ t("auth.sign_in_to_account") }}
+          {{
+            seedFirst
+              ? t("auth.seed_first_login_subtitle")
+              : t("auth.sign_in_to_account")
+          }}
         </p>
       </div>
 
@@ -56,6 +60,7 @@
         </div>
 
         <div
+          v-if="!seedFirst"
           class="grid gap-1 mb-6 rounded-xl border border-gray-600 p-1"
           :class="showPasswordlessTabs ? 'grid-cols-3' : 'grid-cols-2'"
         >
@@ -98,19 +103,43 @@
           </button>
         </div>
 
-        <div v-show="authMethodTab === 'guest'" class="mb-2">
+        <div v-show="showSeedPanel" class="mb-2">
           <AuthSeedGuestPanel
             variant="login"
             :primary-label="t('auth.restore_guest_session')"
             @primary="showGuestRestoreModal = true"
           />
+          <p v-if="seedFirst" class="text-center text-sm text-gray-400 mt-4">
+            <button
+              type="button"
+              class="font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+              @click="showLegacyEmailLogin = true"
+            >
+              {{ t("auth.legacy_email_login_link") }}
+            </button>
+          </p>
         </div>
 
         <form
-          v-show="authMethodTab === 'email'"
+          v-show="showEmailForm"
           class="space-y-6"
           @submit.prevent="handleLogin"
         >
+          <p
+            v-if="seedFirst"
+            class="text-xs text-amber-200/90 leading-relaxed rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2"
+            role="note"
+          >
+            {{ t("auth.legacy_email_login_notice") }}
+          </p>
+          <button
+            v-if="seedFirst"
+            type="button"
+            class="text-sm text-gray-400 hover:text-white transition-colors"
+            @click="showLegacyEmailLogin = false"
+          >
+            {{ t("auth.back_to_recovery_phrase") }}
+          </button>
           <div>
             <label
               for="email"
@@ -366,6 +395,7 @@ import NostrAuthModal from "../../components/auth/NostrAuthModal.vue";
 import GuestRestoreModal from "../../components/auth/GuestRestoreModal.vue";
 import AuthSeedGuestPanel from "../../components/auth/AuthSeedGuestPanel.vue";
 import { isPublicMarketingPath, navigateToAppPath } from "../../utils/publicMarketingRoutes";
+import { isSeedFirstRegistration } from "../../config/auth";
 
 const { t } = useI18n();
 
@@ -398,8 +428,22 @@ const form = ref({
 });
 
 const loading = ref(false);
+const seedFirst = computed(() => isSeedFirstRegistration());
 const authMethodTab = ref<"guest" | "email" | "other">("guest");
+const showLegacyEmailLogin = ref(false);
 const showGuestRestoreModal = ref(false);
+
+const showSeedPanel = computed(
+  () =>
+    authMethodTab.value === "guest" &&
+    (!seedFirst.value || !showLegacyEmailLogin.value),
+);
+
+const showEmailForm = computed(
+  () =>
+    authMethodTab.value === "email" ||
+    (seedFirst.value && showLegacyEmailLogin.value),
+);
 
 const showLnurlModal = ref(false);
 const showNostrModal = ref(false);
@@ -434,11 +478,20 @@ const nostrAuthEnabled = computed(() => nostrEnabledFromServer.value === true);
 const showPasswordlessTabs = computed(() => false);
 
 function applyAuthTabFromQuery() {
+  const legacyRaw = route.query.legacy;
+  const legacy = Array.isArray(legacyRaw) ? legacyRaw[0] : legacyRaw;
+  if (legacy === "1" || legacy === "true") {
+    showLegacyEmailLogin.value = true;
+  }
+
   const raw = route.query.tab;
   const q = Array.isArray(raw) ? raw[0] : raw;
   if (!q || typeof q !== "string") return;
   if (q === "email") {
     authMethodTab.value = "email";
+    if (seedFirst.value) {
+      showLegacyEmailLogin.value = true;
+    }
     return;
   }
   if (q === "guest") {
