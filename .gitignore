@@ -5,6 +5,7 @@
 /storage/*.key
 /vendor
 /.composer
+/composer-setup.php
 /backups
 .env
 .env.backup

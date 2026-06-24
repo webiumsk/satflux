@@ -236,6 +236,7 @@ Route::post('/webhooks/bank-inbound', [\App\Http\Controllers\Invoicing\BankInbou
 Route::middleware(['throttle:10,1'])->group(function () {
     Route::post('/public/eshop/connect', [EshopIntegrationController::class, 'connect']);
     Route::get('/public/eshop/token/{token}', [EshopIntegrationController::class, 'getToken']);
+    Route::get('/integrations/woocommerce/oauth-exchange', [\App\Http\Controllers\Integrations\WooCommerceConnectController::class, 'exchangeConnectCode']);
 });
 
 // WooCommerce plugin integration API (Bearer integration token)

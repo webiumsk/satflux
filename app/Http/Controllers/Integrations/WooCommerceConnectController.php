@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Store;
 use App\Models\StoreIntegration;
 use App\Services\SubscriptionService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -96,6 +98,25 @@ class WooCommerceConnectController extends Controller
         return $this->redirectToReturnUrl($returnUrl, $store, $request->user(), $returnSatfluxStoreId);
     }
 
+    /**
+     * One-time exchange for WooCommerce OAuth connect (avoids long query strings).
+     * GET /api/integrations/woocommerce/oauth-exchange?code=...
+     */
+    public function exchangeConnectCode(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'code' => ['required', 'string', 'size:64'],
+        ]);
+
+        $cacheKey = 'woocommerce_connect_'.$validated['code'];
+        $payload = Cache::pull($cacheKey);
+        if (! is_array($payload)) {
+            return response()->json(['message' => 'Connect code invalid or expired'], 404);
+        }
+
+        return response()->json(['data' => $payload]);
+    }
+
     private function redirectToReturnUrl(string $returnUrl, Store $store, $user, bool $includeSatfluxStoreId = false): \Illuminate\Http\RedirectResponse
     {
         $btcpayUrl = rtrim((string) config('services.btcpay.base_url'), '/');
@@ -109,8 +130,7 @@ class WooCommerceConnectController extends Controller
         $credentials = StoreIntegration::createForStore($store, $webhookUrl);
         $invoicingEnabled = $store->company_id && $this->subscriptionService->canUseBusinessInvoicing($user);
 
-        $params = [
-            'satflux_return' => '1',
+        $payload = [
             'btcpay_url' => $btcpayUrl,
             'api_key' => $apiKey,
             'store_id' => $store->btcpay_store_id,
@@ -120,16 +140,22 @@ class WooCommerceConnectController extends Controller
         ];
 
         if ($includeSatfluxStoreId) {
-            $params['satflux_store_id'] = $store->id;
+            $payload['satflux_store_id'] = $store->id;
         }
         if ($store->company_id) {
-            $params['satflux_company_id'] = $store->company_id;
+            $payload['satflux_company_id'] = $store->company_id;
         }
 
-        $queryString = http_build_query($params);
+        $code = bin2hex(random_bytes(32));
+        Cache::put('woocommerce_connect_'.$code, $payload, now()->addMinutes(10));
+
+        $queryString = http_build_query([
+            'satflux_return' => '1',
+            'satflux_connect_code' => $code,
+        ]);
         $separator = str_contains($returnUrl, '?') ? '&' : '?';
 
-        Log::info('WooCommerce connect: redirecting to return_url', [
+        Log::info('WooCommerce connect: redirecting to return_url with connect code', [
             'user_id' => $user->id,
             'store_id' => $store->id,
         ]);
