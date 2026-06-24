@@ -181,6 +181,11 @@ elif [ "$_srv_lf" = "true" ] && [ "$_vite_lf" != "true" ]; then
     echo -e "${YELLOW}Warning: INVOICING_LOCAL_FIRST=true but VITE_INVOICING_LOCAL_FIRST is not true in $ENV_FILE${NC}"
     echo -e "${YELLOW}  → Frontend will stay on server invoicing until VITE flag is set and assets are rebuilt${NC}"
 fi
+_vite_relay=$(grep -E '^VITE_EVOLU_RELAY_URL=' "$ENV_FILE" 2>/dev/null | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r' | xargs || true)
+if [ "$_vite_lf" = "true" ] && [ -z "$_vite_relay" ]; then
+    echo -e "${YELLOW}Warning: VITE_EVOLU_RELAY_URL is empty in $ENV_FILE${NC}"
+    echo -e "${YELLOW}  → Cross-browser Evolu sync is disabled until relay URL is set and npm run build runs again${NC}"
+fi
 
 # Check if node_modules exists, if not install dependencies
 if ! docker exec "$PHP_CONTAINER" test -d node_modules; then

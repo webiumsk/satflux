@@ -28,8 +28,19 @@
       <p class="text-sm mt-2 opacity-90">{{ t('invoicing.relay_sync_wait_detail') }}</p>
     </div>
 
+    <div
+      v-else-if="localFirst && !loading && companyList.length > 0 && !relayBuildInfo.enabled"
+      class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 mb-4"
+    >
+      <p class="text-sm font-medium text-red-950">{{ t('invoicing.relay_sync_build_disabled_title') }}</p>
+      <p class="text-sm text-red-900 mt-2">{{ t('invoicing.relay_sync_build_disabled_detail') }}</p>
+    </div>
+
     <div v-else-if="localFirst && !loading && companyList.length > 0" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 mb-4">
       <p class="text-sm text-emerald-900">{{ t('invoicing.relay_sync_ready') }}</p>
+      <p class="text-xs text-emerald-800 mt-1">
+        {{ t('invoicing.relay_sync_relay_host', { host: relayBuildInfo.url }) }}
+      </p>
     </div>
 
     <div v-if="localFirst && duplicateCompanyGroups.length" class="invoicing-alert-warn mb-4">
@@ -184,6 +195,7 @@ import type { InvoicingCompanyListItem } from '../../composables/useInvoicingCom
 import { useInvoicingRelaySync } from '@/composables/useInvoicingRelaySync';
 import { useLocalStoreSanitizer } from '@/composables/useLocalStoreSanitizer';
 import { useInvoicingEvolu } from '@/evolu/client';
+import { getEvoluRelayBuildInfo } from '@/evolu/config';
 import { isEvoluRelaySyncPending } from '@/evolu/relaySyncWait';
 import {
   fetchServerMigrationStatus,
@@ -217,6 +229,7 @@ const authStore = useAuthStore();
 const flashStore = useFlashStore();
 const { canUse } = useBusinessInvoicing();
 const { isRelaySyncing, localFirst } = useInvoicingRelaySync();
+const relayBuildInfo = getEvoluRelayBuildInfo();
 const evolu = useInvoicingEvolu();
 const { ensureStoresLoaded } = useLocalStoreSanitizer();
 

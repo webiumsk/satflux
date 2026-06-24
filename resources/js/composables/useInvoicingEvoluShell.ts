@@ -2,6 +2,7 @@ import { shallowRef } from "vue";
 import type { Evolu } from "@evolu/common/local-first";
 import { ensureEvoluBoundToAccountSeed } from "@/evolu/bootstrap";
 import { isInvoicingLocalFirst } from "@/evolu/flags";
+import { ensureEvoluRelaySubscription } from "@/evolu/evoluRelaySubscription";
 import type { InvoicingLocalSchema } from "@/evolu/schema";
 
 type AfterReadyHook = (evolu: Evolu<InvoicingLocalSchema>) => Promise<void>;
@@ -35,6 +36,7 @@ export function useInvoicingEvoluShell(afterReady?: AfterReadyHook) {
             }
 
             evolu.value = mod.evolu;
+            await ensureEvoluRelaySubscription(mod.evolu);
             ready.value = true;
             await afterReady?.(mod.evolu);
         } catch {

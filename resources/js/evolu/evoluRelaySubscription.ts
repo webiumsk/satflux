@@ -1,11 +1,11 @@
 import type { Evolu } from "@evolu/common/local-first";
-import { evoluTransports } from "./config";
+import { isEvoluRelayEnabledInBuild } from "./config";
 import type { InvoicingLocalSchema } from "./schema";
 
 let activeUnuseOwner: (() => void) | null = null;
 
 export function isEvoluRelayConfigured(): boolean {
-    return evoluTransports().length > 0;
+    return isEvoluRelayEnabledInBuild();
 }
 
 /**

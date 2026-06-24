@@ -3,10 +3,10 @@ import type { Evolu } from "@evolu/common/local-first";
 import type { InvoicingLocalSchema } from "@/evolu/schema";
 
 vi.mock("@/evolu/config", () => ({
-    evoluTransports: vi.fn(() => [{ type: "WebSocket", url: "wss://relay.example.com" }]),
+    isEvoluRelayEnabledInBuild: vi.fn(() => true),
 }));
 
-import { evoluTransports } from "@/evolu/config";
+import { isEvoluRelayEnabledInBuild } from "@/evolu/config";
 import {
     ensureEvoluRelaySubscription,
     isEvoluRelayConfigured,
@@ -17,9 +17,7 @@ import {
 describe("evoluRelaySubscription", () => {
     beforeEach(() => {
         releaseEvoluRelaySubscription();
-        vi.mocked(evoluTransports).mockReturnValue([
-            { type: "WebSocket", url: "wss://relay.example.com" },
-        ]);
+        vi.mocked(isEvoluRelayEnabledInBuild).mockReturnValue(true);
     });
 
     it("registers app owner once", async () => {
@@ -57,7 +55,7 @@ describe("evoluRelaySubscription", () => {
     });
 
     it("returns false when relay URL is empty", async () => {
-        vi.mocked(evoluTransports).mockReturnValue([]);
+        vi.mocked(isEvoluRelayEnabledInBuild).mockReturnValue(false);
         const evolu = {
             appOwner: Promise.resolve({ id: "owner-1", writeKey: new Uint8Array([1]) }),
             useOwner: vi.fn(),
