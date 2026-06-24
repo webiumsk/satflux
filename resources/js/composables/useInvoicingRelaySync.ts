@@ -39,6 +39,7 @@ export function useInvoicingRelaySync(options?: UseInvoicingRelaySyncOptions) {
                     await waitForInvoicingRelaySync(evolu);
                     await waitForInvoicingDataSettled(evolu);
                 } else if (options?.refreshOnMount) {
+                    await pullInvoicingFromRelay(evolu, { timeoutMs: 20_000 });
                     await refreshInvoicingLocalQueries(evolu);
                 }
             } finally {

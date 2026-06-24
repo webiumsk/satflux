@@ -1351,6 +1351,10 @@ async function refreshListFromRelay(): Promise<void> {
       notifySaveFailed(t("invoicing.relay_sync_company_mismatch"));
       return;
     }
+    if (result.syncedOtherDocumentType) {
+      notifySaved("invoicing.relay_sync_other_document_type");
+      return;
+    }
     if (result.changed) {
       notifySaved("invoicing.relay_sync_refresh_ok", {
         count: result.documentCount,

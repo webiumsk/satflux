@@ -1,8 +1,12 @@
 import type { Evolu } from "@evolu/common/local-first";
-import { allCompaniesQuery, allDocumentsQuery, allNumberSeriesQuery } from "./client";
+import { allCompaniesQuery, allDocumentsQuery } from "./client";
 import type { InvoicingLocalSchema } from "./schema";
 import { getStoredAccountMnemonic } from "@/services/accountSeed";
 import { isTargetEvoluOwner } from "@/services/evoluOwner";
+import {
+    loadInvoicingRelayFingerprint,
+    refreshAllInvoicingLocalQueries,
+} from "./invoicingRelayFingerprint";
 
 const EVOLU_RELAY_PENDING_KEY = "satflux.evolu.relay_pending.v1";
 
@@ -15,6 +19,8 @@ export type PullInvoicingFromRelayResult = {
     timedOut: boolean;
     /** Documents synced for this account but under another company row (duplicate companies). */
     syncedElsewhere?: boolean;
+    /** New rows synced for this company but another document type (e.g. proforma while on invoice list). */
+    syncedOtherDocumentType?: boolean;
 };
 
 export function markEvoluRelaySyncPending(): void {
@@ -35,7 +41,6 @@ export function isEvoluRelaySyncPending(): boolean {
         clearEvoluRelaySyncPending();
         return false;
     }
-    // Stale flag from an interrupted restore - do not block invoicing forever.
     if (Date.now() - started > 120_000) {
         clearEvoluRelaySyncPending();
         return false;
@@ -43,16 +48,14 @@ export function isEvoluRelaySyncPending(): boolean {
     return true;
 }
 
-/** Reload local Evolu queries (picks up relay merges already applied in SQLite). */
+/** @deprecated Use refreshAllInvoicingLocalQueries */
 export async function refreshInvoicingLocalQueries(
     evolu: Evolu<InvoicingLocalSchema>,
 ): Promise<void> {
-    await Promise.all([
-        evolu.loadQuery(allCompaniesQuery),
-        evolu.loadQuery(allDocumentsQuery),
-        evolu.loadQuery(allNumberSeriesQuery),
-    ]);
+    await refreshAllInvoicingLocalQueries(evolu);
 }
+
+export { refreshAllInvoicingLocalQueries };
 
 export async function checkInvoicingRelayOwner(
     evolu: Evolu<InvoicingLocalSchema>,
@@ -65,19 +68,11 @@ export async function checkInvoicingRelayOwner(
     return isTargetEvoluOwner(owner.mnemonic, mnemonic) ? "ok" : "owner_mismatch";
 }
 
-async function countDocumentsForCompany(
-    evolu: Evolu<InvoicingLocalSchema>,
-    options?: Pick<PullInvoicingFromRelayOptions, "companyId" | "documentType">,
-): Promise<number> {
-    const docs = (await evolu.loadQuery(allDocumentsQuery)) as RelayDocumentRow[];
-    return filterRelayDocuments(docs, options).length;
-}
-
 export type PullInvoicingFromRelayOptions = {
     timeoutMs?: number;
     pollMs?: number;
     companyId?: string;
-    /** When set, only rows of this document type are compared (e.g. proforma vs invoice lists). */
+    /** Document count for the active list tab in the result message. */
     documentType?: string;
 };
 
@@ -102,24 +97,28 @@ function filterRelayDocuments(
     });
 }
 
-function documentFingerprint(docs: RelayDocumentRow[]): string {
-    return docs
+async function countDocumentsForCompany(
+    evolu: Evolu<InvoicingLocalSchema>,
+    options?: Pick<PullInvoicingFromRelayOptions, "companyId" | "documentType">,
+): Promise<number> {
+    const docs = (await evolu.loadQuery(allDocumentsQuery)) as RelayDocumentRow[];
+    return filterRelayDocuments(docs, options).length;
+}
+
+async function loadDocumentListFingerprint(
+    evolu: Evolu<InvoicingLocalSchema>,
+    options?: Pick<PullInvoicingFromRelayOptions, "companyId" | "documentType">,
+): Promise<string> {
+    const docs = (await evolu.loadQuery(allDocumentsQuery)) as RelayDocumentRow[];
+    return filterRelayDocuments(docs, options)
         .map((row) => String(row.id))
         .sort()
         .join("|");
 }
 
-async function loadDocumentFingerprint(
-    evolu: Evolu<InvoicingLocalSchema>,
-    options?: Pick<PullInvoicingFromRelayOptions, "companyId" | "documentType">,
-): Promise<string> {
-    const docs = (await evolu.loadQuery(allDocumentsQuery)) as RelayDocumentRow[];
-    return documentFingerprint(filterRelayDocuments(docs, options));
-}
-
 /**
- * Poll local Evolu until relay merges change document rows (or timeout).
- * loadQuery alone does not fetch from the network - this waits for background sync.
+ * Poll local Evolu until relay merges change any invoicing rows (or timeout).
+ * Relay itself syncs the full CRDT database; this waits for merges in SQLite.
  */
 export async function pullInvoicingFromRelay(
     evolu: Evolu<InvoicingLocalSchema>,
@@ -137,71 +136,95 @@ export async function pullInvoicingFromRelay(
 
     const timeoutMs = options?.timeoutMs ?? 25_000;
     const pollMs = options?.pollMs ?? 600;
-    const filter = {
-        companyId: options?.companyId,
+    const companyId = options?.companyId;
+    const listFilter = {
+        companyId,
         documentType: options?.documentType,
     };
     const deadline = Date.now() + timeoutMs;
 
-    const baselineFingerprint = await loadDocumentFingerprint(evolu, filter);
-    const baselineAllFingerprint = filter.companyId
-        ? await loadDocumentFingerprint(evolu, { documentType: filter.documentType })
-        : baselineFingerprint;
-    let lastFingerprint = baselineFingerprint;
+    const baselineCompanyFingerprint = await loadInvoicingRelayFingerprint(evolu, companyId);
+    const baselineListFingerprint = await loadDocumentListFingerprint(evolu, listFilter);
+    const baselineGlobalFingerprint = await loadInvoicingRelayFingerprint(evolu);
+    let lastFingerprint = baselineCompanyFingerprint;
     let stableAfterChange = 0;
 
     while (Date.now() < deadline) {
         await sleep(pollMs);
-        await refreshInvoicingLocalQueries(evolu);
-        const fingerprint = await loadDocumentFingerprint(evolu, filter);
+        await refreshAllInvoicingLocalQueries(evolu);
+        const companyFingerprint = await loadInvoicingRelayFingerprint(evolu, companyId);
 
-        if (fingerprint !== baselineFingerprint) {
-            if (fingerprint === lastFingerprint) {
+        if (companyFingerprint !== baselineCompanyFingerprint) {
+            if (companyFingerprint === lastFingerprint) {
                 stableAfterChange += 1;
                 if (stableAfterChange >= 2) {
-                    const documentCount = await countDocumentsForCompany(evolu, filter);
-                    return {
-                        ownerStatus: "ok",
-                        changed: true,
-                        documentCount,
-                        timedOut: false,
-                    };
+                    return buildPullResult(evolu, {
+                        listFilter,
+                        baselineCompanyFingerprint,
+                        baselineListFingerprint,
+                    });
                 }
             } else {
-                lastFingerprint = fingerprint;
+                lastFingerprint = companyFingerprint;
                 stableAfterChange = 0;
             }
             continue;
         }
 
-        lastFingerprint = fingerprint;
+        lastFingerprint = companyFingerprint;
         stableAfterChange = 0;
     }
 
-    const finalFingerprint = await loadDocumentFingerprint(evolu, filter);
-    const finalCount = await countDocumentsForCompany(evolu, filter);
-    const changed = finalFingerprint !== baselineFingerprint;
+    const finalCompanyFingerprint = await loadInvoicingRelayFingerprint(evolu, companyId);
+    const companyChanged = finalCompanyFingerprint !== baselineCompanyFingerprint;
 
-    if (!changed && filter.companyId) {
-        const finalAllFingerprint = await loadDocumentFingerprint(evolu, {
-            documentType: filter.documentType,
+    if (companyChanged) {
+        return buildPullResult(evolu, {
+            listFilter,
+            baselineCompanyFingerprint,
+            baselineListFingerprint,
         });
-        if (finalAllFingerprint !== baselineAllFingerprint) {
-            return {
-                ownerStatus: "ok",
-                changed: true,
-                documentCount: finalCount,
-                timedOut: false,
-                syncedElsewhere: true,
-            };
-        }
+    }
+
+    const finalGlobalFingerprint = await loadInvoicingRelayFingerprint(evolu);
+    if (companyId && finalGlobalFingerprint !== baselineGlobalFingerprint) {
+        return {
+            ownerStatus: "ok",
+            changed: true,
+            documentCount: await countDocumentsForCompany(evolu, listFilter),
+            timedOut: false,
+            syncedElsewhere: true,
+        };
     }
 
     return {
         ownerStatus: "ok",
-        changed,
-        documentCount: finalCount,
-        timedOut: !changed,
+        changed: false,
+        documentCount: await countDocumentsForCompany(evolu, listFilter),
+        timedOut: true,
+    };
+}
+
+async function buildPullResult(
+    evolu: Evolu<InvoicingLocalSchema>,
+    args: {
+        listFilter: Pick<PullInvoicingFromRelayOptions, "companyId" | "documentType">;
+        baselineCompanyFingerprint: string;
+        baselineListFingerprint: string;
+    },
+): Promise<PullInvoicingFromRelayResult> {
+    const companyFingerprint = await loadInvoicingRelayFingerprint(evolu, args.listFilter.companyId);
+    const listFingerprint = await loadDocumentListFingerprint(evolu, args.listFilter);
+    const companyChanged = companyFingerprint !== args.baselineCompanyFingerprint;
+    const listChanged = listFingerprint !== args.baselineListFingerprint;
+
+    return {
+        ownerStatus: "ok",
+        changed: companyChanged,
+        documentCount: await countDocumentsForCompany(evolu, args.listFilter),
+        timedOut: false,
+        syncedOtherDocumentType:
+            companyChanged && !listChanged && Boolean(args.listFilter.documentType),
     };
 }
 
@@ -214,16 +237,11 @@ function sleep(ms: number): Promise<void> {
 export type WaitForInvoicingRelaySyncOptions = {
     timeoutMs?: number;
     pollMs?: number;
-    /** Consecutive polls with unchanged company count before treating sync as settled. */
     stablePolls?: number;
-    /** Minimum wait after restore so relay can push remote rows even when local DB is non-empty. */
     minWaitMs?: number;
 };
 
-/**
- * Poll local Evolu DB until company count stabilizes (relay merge finished) or timeout.
- * Used after phrase restore / legacy owner migration so all browsers converge before UI actions.
- */
+/** After phrase restore: wait until full invoicing fingerprint stabilizes. */
 export async function waitForInvoicingRelaySync(
     evolu: Evolu<InvoicingLocalSchema>,
     options?: WaitForInvoicingRelaySyncOptions,
@@ -235,22 +253,23 @@ export async function waitForInvoicingRelaySync(
     const deadline = Date.now() + timeoutMs;
     const startedAt = Date.now();
 
-    let lastCount = -1;
+    let lastFingerprint = "";
     let stable = 0;
 
     while (Date.now() < deadline) {
-        const companies = await evolu.loadQuery(allCompaniesQuery);
-        const count = companies.length;
+        await refreshAllInvoicingLocalQueries(evolu);
+        const fingerprint = await loadInvoicingRelayFingerprint(evolu);
 
-        if (count === lastCount) {
+        if (fingerprint === lastFingerprint) {
             stable += 1;
             const elapsed = Date.now() - startedAt;
             if (stable >= stablePolls && elapsed >= minWaitMs) {
                 clearEvoluRelaySyncPending();
-                return count > 0;
+                const companies = await evolu.loadQuery(allCompaniesQuery);
+                return companies.length > 0;
             }
         } else {
-            lastCount = count;
+            lastFingerprint = fingerprint;
             stable = 0;
         }
 
@@ -258,10 +277,11 @@ export async function waitForInvoicingRelaySync(
     }
 
     clearEvoluRelaySyncPending();
-    return lastCount > 0;
+    const companies = await evolu.loadQuery(allCompaniesQuery);
+    return companies.length > 0;
 }
 
-/** @deprecated Use waitForInvoicingRelaySync - kept for imports that expect the old name. */
+/** @deprecated Use waitForInvoicingRelaySync */
 export async function waitForInvoicingRelayData(
     evolu: Evolu<InvoicingLocalSchema>,
     options?: WaitForInvoicingRelaySyncOptions,
@@ -276,9 +296,7 @@ export type WaitForInvoicingDataSettledOptions = {
     minWaitMs?: number;
 };
 
-/**
- * Poll document count until stable so relay merges finish before issue/list actions.
- */
+/** Wait until full invoicing data stops changing (post-import / post-mutation). */
 export async function waitForInvoicingDataSettled(
     evolu: Evolu<InvoicingLocalSchema>,
     options?: WaitForInvoicingDataSettledOptions,
@@ -290,21 +308,21 @@ export async function waitForInvoicingDataSettled(
     const deadline = Date.now() + timeoutMs;
     const startedAt = Date.now();
 
-    let lastCount = -1;
+    let lastFingerprint = "";
     let stable = 0;
 
     while (Date.now() < deadline) {
-        const documents = await evolu.loadQuery(allDocumentsQuery);
-        const count = documents.length;
+        await refreshAllInvoicingLocalQueries(evolu);
+        const fingerprint = await loadInvoicingRelayFingerprint(evolu);
 
-        if (count === lastCount) {
+        if (fingerprint === lastFingerprint) {
             stable += 1;
             const elapsed = Date.now() - startedAt;
             if (stable >= stablePolls && elapsed >= minWaitMs) {
                 return;
             }
         } else {
-            lastCount = count;
+            lastFingerprint = fingerprint;
             stable = 0;
         }
 

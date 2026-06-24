@@ -72,8 +72,11 @@ import {
   fetchIntegrationInbox,
   importIntegrationInboxEntry,
   IntegrationInboxPathError,
+  reconcileIntegrationInboxWithLocalDocuments,
   type IntegrationInboxEntry,
 } from '@/evolu/integrationInboxImport';
+import { ensureEvoluBoundToAccountSeed } from '@/evolu/bootstrap';
+import { pullInvoicingFromRelay } from '@/evolu/relaySyncWait';
 
 const props = defineProps<{
   companyId: string;
@@ -117,7 +120,18 @@ async function refresh(): Promise<void> {
   loading.value = true;
   error.value = '';
   try {
-    items.value = await fetchIntegrationInbox(props.companyId, props.linkedStoreId);
+    await ensureEvoluBoundToAccountSeed();
+    await pullInvoicingFromRelay(evolu, {
+      companyId: props.companyId,
+      timeoutMs: 20_000,
+    });
+    const fetched = await fetchIntegrationInbox(props.companyId, props.linkedStoreId);
+    items.value = await reconcileIntegrationInboxWithLocalDocuments(
+      evolu,
+      props.companyId,
+      fetched,
+      props.linkedStoreId,
+    );
   } catch (e: unknown) {
     if (e instanceof IntegrationInboxPathError && e.code === 'store_required') {
       error.value = t('invoicing.integration_inbox_store_required');

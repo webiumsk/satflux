@@ -258,7 +258,11 @@ export function saveLocalDocument(
 
     let docId = options.documentId;
     if (docId) {
-        const result = evolu.update("document", { id: docId, ...fields.value });
+        const result = evolu.upsert("document", {
+            id: docId,
+            companyId,
+            ...fields.value,
+        });
         if (!result.ok) return result;
     } else {
         const result = evolu.insert("document", {

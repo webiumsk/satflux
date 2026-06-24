@@ -21,6 +21,11 @@ import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import { allNumberSeriesQuery } from "./client";
 import { isPaidWooCommercePayload } from "./integrationInboxPaid";
 import { resolveIntegrationInboxBasePath } from "./integrationInboxPaths";
+import {
+    findLocalDocumentForInboxEntry,
+    stableDocumentIdFromInboxUuid,
+} from "./inboxDocumentStableId";
+import { waitForInvoicingDataSettled } from "./relaySyncWait";
 
 export { IntegrationInboxPathError } from "./integrationInboxPaths";
 
@@ -49,6 +54,33 @@ export async function fetchIntegrationInbox(
 ): Promise<IntegrationInboxEntry[]> {
     const { data } = await api.get(integrationInboxBasePath(companyId, linkedStoreId));
     return (data.data ?? []) as IntegrationInboxEntry[];
+}
+
+/** Drop inbox rows already present locally (relay import on another device) and clear them on the server. */
+export async function reconcileIntegrationInboxWithLocalDocuments(
+    evolu: Evolu<InvoicingLocalSchema>,
+    companyId: string,
+    entries: IntegrationInboxEntry[],
+    linkedStoreId?: string | null,
+): Promise<IntegrationInboxEntry[]> {
+    const typedCompanyId = companyId as CompanyId;
+    const documents = (await evolu.loadQuery(allDocumentsQuery)) as EvoluDocumentRow[];
+    const remaining: IntegrationInboxEntry[] = [];
+
+    for (const entry of entries) {
+        const existing = findLocalDocumentForInboxEntry(documents, typedCompanyId, entry);
+        if (!existing) {
+            remaining.push(entry);
+            continue;
+        }
+        try {
+            await markIntegrationInboxImported(companyId, entry.inbox_id, linkedStoreId);
+        } catch {
+            // Server inbox may already be cleared; still hide locally.
+        }
+    }
+
+    return remaining;
 }
 
 export async function dismissIntegrationInboxItem(
@@ -231,6 +263,22 @@ export async function importIntegrationInboxEntry(
         evolu.loadQuery(allDocumentsQuery) as Promise<EvoluDocumentRow[]>,
     ]);
 
+    const alreadyImported = findLocalDocumentForInboxEntry(
+        existingDocuments,
+        typedCompanyId,
+        entry,
+    );
+    if (alreadyImported) {
+        const storeIdForApi = resolveStoreIdForApi(linkedStoreId, entry.payload);
+        await markIntegrationInboxImported(companyId, entry.inbox_id, storeIdForApi);
+        return { ok: true };
+    }
+
+    const stableDocumentId = stableDocumentIdFromInboxUuid(entry.evolu_document_id);
+    if (!stableDocumentId) {
+        return { ok: false, error: "invalid_inbox_document_id" };
+    }
+
     const buyer = (entry.payload.buyer ?? {}) as Record<string, unknown>;
     const contactResult = resolveLocalContactId(typedCompanyId, contacts, buyer, evolu);
     if (!contactResult.ok) {
@@ -239,14 +287,11 @@ export async function importIntegrationInboxEntry(
 
     const vat = vatOptionsForContact(company, { country: buyer.country as string | null });
     const documentPayload = payloadToDocumentSave(entry.payload, contactResult.contactId);
-    const preassignedId = String(entry.evolu_document_id ?? "").trim() as DocumentId;
     const existingDocument =
-        preassignedId !== ""
-            ? existingDocuments.find((row) => row.id === preassignedId) ?? null
-            : null;
+        existingDocuments.find((row) => row.id === stableDocumentId) ?? null;
 
     const saveResult = saveLocalDocument(evolu, typedCompanyId, documentPayload, {
-        documentId: existingDocument ? preassignedId : undefined,
+        documentId: stableDocumentId,
         existingDocument,
         ...vat,
         existingLines,
@@ -293,6 +338,7 @@ export async function importIntegrationInboxEntry(
         evolu.loadQuery(allDocumentsQuery),
         evolu.loadQuery(allNumberSeriesQuery),
     ]);
+    await waitForInvoicingDataSettled(evolu, { minWaitMs: 1500, timeoutMs: 8000 });
 
     return { ok: true };
 }
