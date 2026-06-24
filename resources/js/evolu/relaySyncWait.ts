@@ -1,5 +1,5 @@
 import type { Evolu } from "@evolu/common/local-first";
-import { allCompaniesQuery, allDocumentsQuery } from "./client";
+import { allCompaniesQuery, allDocumentsQuery, allNumberSeriesQuery } from "./client";
 import type { InvoicingLocalSchema } from "./schema";
 
 const EVOLU_RELAY_PENDING_KEY = "satflux.evolu.relay_pending.v1";

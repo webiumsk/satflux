@@ -94,6 +94,7 @@
     "relay_sync_empty_hint": "If you restored your recovery phrase on another device, wait here until your companies appear. Do not create a new profile yet.",
     "relay_sync_documents_detail": "Wait until documents sync from the relay before issuing, importing, or creating a new invoice. This keeps numbers and lists consistent across browsers.",
     "relay_sync_refresh": "Refresh from sync",
+    "relay_sync_refresh_failed": "Could not refresh data from sync. Try again in a moment.",
     "settings_saved": "Settings saved.",
     "series_saved": "Number series saved.",
     "changes_saved": "Changes saved.",

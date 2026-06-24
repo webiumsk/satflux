@@ -1319,8 +1319,17 @@ function guardRelaySync(event: Event): void {
 }
 
 async function refreshListFromRelay(): Promise<void> {
-  await refreshFromRelay();
-  await load();
+  error.value = "";
+  try {
+    await refreshFromRelay();
+    await load();
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } }; message?: string };
+    error.value =
+      err?.response?.data?.message ||
+      err?.message ||
+      t("invoicing.relay_sync_refresh_failed");
+  }
 }
 
 watch(showIntegrationInbox, (visible) => {
@@ -2162,7 +2171,6 @@ async function load() {
   error.value = "";
   try {
     if (localFirst && localDocuments) {
-      await refreshFromRelay();
       const nav = activeDocumentNav.value;
       await localDocuments.refresh({
         apiType: nav.kind === "drafts" ? undefined : nav.apiType,
@@ -2195,8 +2203,9 @@ async function load() {
     totalCount.value = docsRes.data.total ?? documents.value.length;
     currentPage.value = docsRes.data.current_page ?? 1;
     lastPage.value = docsRes.data.last_page ?? 1;
-  } catch (e: any) {
-    error.value = e?.response?.data?.message || t("common.error");
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } }; message?: string };
+    error.value = err?.response?.data?.message || err?.message || t("common.error");
   } finally {
     loading.value = false;
   }
