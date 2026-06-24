@@ -353,7 +353,7 @@ const {
   payloadFromApiDocument,
 } = useInvoiceDocument();
 
-const { isRelaySyncing } = useInvoicingRelaySync({ settleOnMount: true });
+const { isRelaySyncing } = useInvoicingRelaySync({ refreshOnMount: true });
 
 const paidViaBtcpay = computed(
   () =>

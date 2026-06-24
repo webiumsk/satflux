@@ -13,7 +13,32 @@ export function clearEvoluRelaySyncPending(): void {
 }
 
 export function isEvoluRelaySyncPending(): boolean {
-    return sessionStorage.getItem(EVOLU_RELAY_PENDING_KEY) != null;
+    const raw = sessionStorage.getItem(EVOLU_RELAY_PENDING_KEY);
+    if (raw == null) {
+        return false;
+    }
+    const started = parseInt(raw, 10);
+    if (!Number.isFinite(started)) {
+        clearEvoluRelaySyncPending();
+        return false;
+    }
+    // Stale flag from an interrupted restore - do not block invoicing forever.
+    if (Date.now() - started > 120_000) {
+        clearEvoluRelaySyncPending();
+        return false;
+    }
+    return true;
+}
+
+/** Reload local Evolu queries (picks up relay merges already applied in SQLite). */
+export async function refreshInvoicingLocalQueries(
+    evolu: Evolu<InvoicingLocalSchema>,
+): Promise<void> {
+    await Promise.all([
+        evolu.loadQuery(allCompaniesQuery),
+        evolu.loadQuery(allDocumentsQuery),
+        evolu.loadQuery(allNumberSeriesQuery),
+    ]);
 }
 
 function sleep(ms: number): Promise<void> {

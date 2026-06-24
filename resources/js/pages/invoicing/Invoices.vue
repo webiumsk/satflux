@@ -85,6 +85,19 @@
     <p class="text-sm font-medium">{{ t('invoicing.relay_sync_loading') }}</p>
     <p class="text-sm mt-2 opacity-90">{{ t('invoicing.relay_sync_documents_detail') }}</p>
   </div>
+  <div
+    v-else-if="localFirst"
+    class="mb-4 flex flex-wrap items-center justify-end gap-2"
+  >
+    <button
+      type="button"
+      class="invoicing-btn-secondary text-sm"
+      :disabled="loading"
+      @click="refreshListFromRelay"
+    >
+      {{ t('invoicing.relay_sync_refresh') }}
+    </button>
+  </div>
 
     <template #subheader>
       <InvoicingDocumentFilterBar
@@ -1227,7 +1240,7 @@ const {
 } = useInvoicingLayout();
 
 const localFirst = isInvoicingLocalFirst();
-const { isRelaySyncing } = useInvoicingRelaySync({ settleOnMount: true });
+const { isRelaySyncing, refreshFromRelay } = useInvoicingRelaySync({ refreshOnMount: true });
 const contactFilterId = computed(() => {
   const id = route.query.contact_id;
   return typeof id === "string" && id ? id : undefined;
@@ -1303,6 +1316,11 @@ function guardRelaySync(event: Event): void {
   if (!isRelaySyncing.value) return;
   event.preventDefault();
   error.value = t("invoicing.relay_sync_wait_hint");
+}
+
+async function refreshListFromRelay(): Promise<void> {
+  await refreshFromRelay();
+  await load();
 }
 
 watch(showIntegrationInbox, (visible) => {
@@ -2144,6 +2162,7 @@ async function load() {
   error.value = "";
   try {
     if (localFirst && localDocuments) {
+      await refreshFromRelay();
       const nav = activeDocumentNav.value;
       await localDocuments.refresh({
         apiType: nav.kind === "drafts" ? undefined : nav.apiType,

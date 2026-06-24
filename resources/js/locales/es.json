@@ -2277,6 +2277,7 @@
     "relay_sync_ready": "La sincronización E2EE está al día en este dispositivo.",
     "relay_sync_empty_hint": "Si restauró su frase en otro dispositivo, espere aquí hasta que aparezcan las empresas. No cree un perfil nuevo todavía.",
     "relay_sync_documents_detail": "Espere a que los documentos se sincronicen desde el relay antes de emitir, importar o crear una factura nueva. Así la numeración y el listado coinciden en todos los navegadores.",
+    "relay_sync_refresh": "Actualizar desde sincronización",
     "settings_saved": "Ajustes guardados.",
     "series_saved": "Serie numérica guardada.",
     "changes_saved": "Cambios guardados.",

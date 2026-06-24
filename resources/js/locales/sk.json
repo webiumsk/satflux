@@ -93,6 +93,7 @@
     "relay_sync_ready": "E2EE synchronizácia je na tomto zariadení aktuálna.",
     "relay_sync_empty_hint": "Ak ste obnovili frázu na inom zariadení, počkajte, kým sa tu zobrazia firmy. Zatiaľ nevytvárajte nový profil.",
     "relay_sync_documents_detail": "Počkajte na synchronizáciu dokladov z relay pred vydaním, importom alebo vytvorením novej faktúry. Zoznam aj číslovanie budú zhodné vo všetkých prehliadačoch.",
+    "relay_sync_refresh": "Obnoviť zo synchronizácie",
     "settings_saved": "Nastavenia boli uložené.",
     "series_saved": "Číselník bol uložený.",
     "changes_saved": "Zmeny boli uložené.",
