@@ -40,6 +40,8 @@ class WooCommerceIntegrationTest extends TestCase
             ->getJson('/api/integrations/woocommerce/connection')
             ->assertOk()
             ->assertJsonPath('data.store.id', $store->id)
-            ->assertJsonPath('data.company.id', $company->id);
+            ->assertJsonPath('data.company.id', $company->id)
+            ->assertJsonPath('data.integration_inbox_path', '/invoicing/stores/'.$store->id.'/integration-inbox')
+            ->assertJsonPath('data.inbox_mode', false);
     }
 }

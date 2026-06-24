@@ -64,14 +64,18 @@
       </InvoicingAppHeader>
     </template>
 
+  <div
+    v-if="showIntegrationInbox && localCompanyForInbox"
+    id="woocommerce-integration-inbox"
+  >
     <IntegrationInboxPanel
-      v-if="showIntegrationInbox && localCompanyForInbox"
       :company-id="companyId"
       :linked-store-id="linkedStoreIdForInbox"
       :company="localCompanyForInbox"
       enabled
       @imported="onIntegrationInboxImported"
     />
+  </div>
 
     <template #subheader>
       <InvoicingDocumentFilterBar
@@ -1131,7 +1135,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import InvoicingAppHeader from "../../components/invoicing/InvoicingAppHeader.vue";
@@ -1265,6 +1269,24 @@ async function onIntegrationInboxImported(): Promise<void> {
     contactId: contactFilterId.value,
   });
 }
+
+function scrollToIntegrationInbox(): void {
+  if (route.query.integration_inbox !== "1") {
+    return;
+  }
+  void nextTick(() => {
+    document.getElementById("woocommerce-integration-inbox")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  });
+}
+
+watch(showIntegrationInbox, (visible) => {
+  if (visible) {
+    scrollToIntegrationInbox();
+  }
+});
 
 const supportsEuExport = computed(() => {
   const j = localCompanyJurisdiction.value;
@@ -2477,6 +2499,7 @@ watch(
 onMounted(() => {
   rememberCompany(companyId.value);
   load();
+  scrollToIntegrationInbox();
 });
 </script>
 

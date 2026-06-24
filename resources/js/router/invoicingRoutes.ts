@@ -111,6 +111,18 @@ export const invoicingRoutes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
     },
     {
+        path: 'stores/:storeId/integration-inbox',
+        name: 'invoicing-store-integration-inbox',
+        component: () => import('../pages/invoicing/IntegrationInboxLanding.vue'),
+        meta: { requiresAuth: true, titleKey: 'invoicing.integration_inbox_deeplink_title' },
+    },
+    {
+        path: 'companies/:companyId/integration-inbox',
+        name: 'invoicing-company-integration-inbox',
+        component: () => import('../pages/invoicing/IntegrationInboxLanding.vue'),
+        meta: { requiresAuth: true, titleKey: 'invoicing.integration_inbox_deeplink_title' },
+    },
+    {
         path: 'companies/:companyId/invoices',
         name: 'invoicing-invoices',
         component: () => import('../pages/invoicing/Invoices.vue'),

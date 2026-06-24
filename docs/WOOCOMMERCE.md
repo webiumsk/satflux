@@ -30,7 +30,7 @@ Auth: `Authorization: Bearer {integration_token}`
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/integrations/woocommerce/connection` | Test + store/company info |
+| GET | `/api/integrations/woocommerce/connection` | Test + store/company info, inbox deep link paths |
 | POST | `/api/integrations/woocommerce/contacts/upsert` | Upsert buyer contact |
 | POST | `/api/integrations/woocommerce/documents` | Create draft from WC order |
 | POST | `/api/integrations/woocommerce/documents/{id}/issue` | Issue document |
@@ -51,6 +51,22 @@ Payload: `{ "event": "document.paid", "document_id", "woocommerce_order_id", ...
 BTCPay payment webhooks for shop orders use:
 
 `{site}/wp-json/satflux/v1/webhook` (event `InvoiceSettled`)
+
+## Integration inbox (local-first)
+
+WooCommerce orders can enqueue to `integration_document_inbox` instead of server `business_documents`.
+
+**Merchant UI:** Invoicing → company → **Invoices** → WooCommerce inbox panel (requires `runs_eshop` in company app settings and linked store).
+
+**Deep link from WooCommerce plugin:**
+
+`https://satflux.io/invoicing/stores/{satflux_store_uuid}/integration-inbox`
+
+- `{satflux_store_uuid}` is `stores.id` (Laravel UUID), **not** the BTCPay store id.
+- Legacy links with BTCPay store id still resolve via `GET /api/invoicing/integration-inbox/deeplink?store=...`.
+- The SPA landing route redirects to the invoice list and scrolls to the inbox panel.
+
+**Connect callback** must include `satflux_store_id` (`return_satflux_store_id=1` on connect URL). Plugin should persist `data.store.id` from `GET /api/integrations/woocommerce/connection` after connect.
 
 ## Data model
 

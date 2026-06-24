@@ -470,6 +470,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::post('/companies/{company}/recurring-profiles/{recurringProfile}/generate', [\App\Http\Controllers\Invoicing\BusinessRecurringProfileController::class, 'generateNow'])
                 ->middleware(EnsureCompanyOwnership::class);
 
+            Route::get('/integration-inbox/deeplink', [IntegrationDocumentInboxController::class, 'resolveDeepLink']);
+
             Route::get('/companies/{company}/integration-inbox', [IntegrationDocumentInboxController::class, 'index'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/integration-inbox/{inbox}/dismiss', [IntegrationDocumentInboxController::class, 'dismiss'])

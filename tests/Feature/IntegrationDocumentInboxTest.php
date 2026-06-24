@@ -226,4 +226,36 @@ class IntegrationDocumentInboxTest extends TestCase
             'id' => $entry->id,
         ]);
     }
+
+    #[Test]
+    public function deeplink_resolves_satflux_store_uuid(): void
+    {
+        $this->actingAs($this->user)
+            ->getJson('/api/invoicing/integration-inbox/deeplink?store='.$this->store->id)
+            ->assertOk()
+            ->assertJsonPath('data.store_id', $this->store->id)
+            ->assertJsonPath('data.company_id', $this->company->id)
+            ->assertJsonPath('data.integration_inbox_path', '/invoicing/stores/'.$this->store->id.'/integration-inbox')
+            ->assertJsonPath('data.invoices_path', '/invoicing/companies/'.$this->company->id.'/invoices');
+    }
+
+    #[Test]
+    public function deeplink_resolves_btcpay_store_id(): void
+    {
+        $this->actingAs($this->user)
+            ->getJson('/api/invoicing/integration-inbox/deeplink?store='.$this->store->btcpay_store_id)
+            ->assertOk()
+            ->assertJsonPath('data.store_id', $this->store->id)
+            ->assertJsonPath('data.btcpay_store_id', $this->store->btcpay_store_id);
+    }
+
+    #[Test]
+    public function deeplink_resolves_company_uuid(): void
+    {
+        $this->actingAs($this->user)
+            ->getJson('/api/invoicing/integration-inbox/deeplink?company='.$this->company->id)
+            ->assertOk()
+            ->assertJsonPath('data.store_id', $this->store->id)
+            ->assertJsonPath('data.company_id', $this->company->id);
+    }
 }

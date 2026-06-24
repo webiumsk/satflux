@@ -35,16 +35,26 @@ class WooCommerceDocumentService
         $user = $store->user;
         $company = $integration->company ?? $store->company;
 
+        $inboxMode = $company && $this->shouldUseInbox($company);
+
         return [
             'store' => [
                 'id' => $store->id,
                 'name' => $store->name,
+                'btcpay_store_id' => $store->btcpay_store_id,
             ],
             'company' => $company ? [
                 'id' => $company->id,
                 'name' => $company->legal_name,
             ] : null,
             'invoicing_enabled' => $company && $this->subscriptionService->canUseBusinessInvoicing($user),
+            'inbox_mode' => $inboxMode,
+            'local_first' => (bool) config('invoicing.local_first', false),
+            'uses_server_invoicing' => $company ? $company->usesServerInvoicing() : null,
+            'integration_inbox_path' => '/invoicing/stores/'.$store->id.'/integration-inbox',
+            'invoices_path' => $company
+                ? '/invoicing/companies/'.$company->id.'/invoices'
+                : null,
         ];
     }
 

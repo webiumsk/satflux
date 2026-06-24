@@ -7,14 +7,33 @@ use App\Models\Company;
 use App\Models\IntegrationDocumentInbox;
 use App\Models\Store;
 use App\Services\Integrations\IntegrationDocumentInboxService;
+use App\Services\Integrations\IntegrationInboxDeepLinkService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class IntegrationDocumentInboxController extends Controller
 {
     public function __construct(
         protected IntegrationDocumentInboxService $inboxService,
+        protected IntegrationInboxDeepLinkService $deepLinkService,
     ) {}
+
+    public function resolveDeepLink(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'store' => ['nullable', 'string', 'max:128'],
+            'company' => ['nullable', 'string', 'uuid'],
+        ]);
+
+        $data = $this->deepLinkService->resolve(
+            $request->user(),
+            $validated['store'] ?? null,
+            $validated['company'] ?? null,
+        );
+
+        return response()->json(['data' => $data]);
+    }
 
     public function index(Company $company): JsonResponse
     {
