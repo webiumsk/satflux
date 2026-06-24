@@ -6,8 +6,11 @@ export function useInvoicingSaveFeedback() {
     const flash = useFlashStore();
     const { t } = useI18n();
 
-    function notifySaved(messageKey = "invoicing.settings_saved") {
-        flash.success(t(messageKey));
+    function notifySaved(
+        messageKey = "invoicing.settings_saved",
+        params?: Record<string, unknown>,
+    ) {
+        flash.success(t(messageKey, params ?? {}));
     }
 
     function notifySaveFailed(message?: string) {

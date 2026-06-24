@@ -1,9 +1,12 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
+import { ensureEvoluBoundToAccountSeed } from "@/evolu/bootstrap";
 import { useInvoicingEvolu } from "@/evolu/client";
 import { isInvoicingLocalFirst } from "@/evolu/flags";
 import {
     isEvoluRelaySyncPending,
+    pullInvoicingFromRelay,
     refreshInvoicingLocalQueries,
+    type PullInvoicingFromRelayResult,
     waitForInvoicingDataSettled,
     waitForInvoicingRelaySync,
 } from "@/evolu/relaySyncWait";
@@ -56,9 +59,17 @@ export function useInvoicingRelaySync(options?: UseInvoicingRelaySyncOptions) {
         () => localFirst && (pending.value || blockingWait.value),
     );
 
-    async function refreshFromRelay(): Promise<void> {
-        if (!evolu) return;
-        await refreshInvoicingLocalQueries(evolu);
+    async function refreshFromRelay(companyId?: string): Promise<PullInvoicingFromRelayResult> {
+        if (!evolu) {
+            return {
+                ownerStatus: "ok",
+                changed: false,
+                documentCount: 0,
+                timedOut: false,
+            };
+        }
+        await ensureEvoluBoundToAccountSeed();
+        return pullInvoicingFromRelay(evolu, { companyId });
     }
 
     return {
@@ -68,3 +79,5 @@ export function useInvoicingRelaySync(options?: UseInvoicingRelaySyncOptions) {
         refreshFromRelay,
     };
 }
+
+export type { PullInvoicingFromRelayResult };

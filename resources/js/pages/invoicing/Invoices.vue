@@ -92,10 +92,14 @@
     <button
       type="button"
       class="invoicing-btn-secondary text-sm"
-      :disabled="loading"
+      :disabled="loading || relayRefreshing"
       @click="refreshListFromRelay"
     >
-      {{ t('invoicing.relay_sync_refresh') }}
+      {{
+        relayRefreshing
+          ? t('invoicing.relay_sync_refresh_in_progress')
+          : t('invoicing.relay_sync_refresh')
+      }}
     </button>
   </div>
 
@@ -1213,6 +1217,7 @@ import {
   resolveBulkTargets,
 } from "../../evolu/documentBulkLocal";
 import { useInvoicingRelaySync } from "../../composables/useInvoicingRelaySync";
+import { useInvoicingSaveFeedback } from "../../composables/useInvoicingSaveFeedback";
 import { useInvoicingLayout } from "../../composables/useInvoicingLayout";
 import { invoicingDocumentRoutesForType } from "../../composables/useInvoicingDocumentRoutes";
 
@@ -1241,6 +1246,8 @@ const {
 
 const localFirst = isInvoicingLocalFirst();
 const { isRelaySyncing, refreshFromRelay } = useInvoicingRelaySync({ refreshOnMount: true });
+const { notifySaved, notifySaveFailed } = useInvoicingSaveFeedback();
+const relayRefreshing = ref(false);
 const contactFilterId = computed(() => {
   const id = route.query.contact_id;
   return typeof id === "string" && id ? id : undefined;
@@ -1319,16 +1326,42 @@ function guardRelaySync(event: Event): void {
 }
 
 async function refreshListFromRelay(): Promise<void> {
+  if (relayRefreshing.value) return;
+  relayRefreshing.value = true;
   error.value = "";
   try {
-    await refreshFromRelay();
+    const result = await refreshFromRelay(companyId.value);
     await load();
+
+    if (result.ownerStatus === "no_phrase") {
+      notifySaveFailed(t("invoicing.relay_sync_no_phrase"));
+      return;
+    }
+    if (result.ownerStatus === "owner_mismatch") {
+      notifySaveFailed(t("invoicing.relay_sync_owner_mismatch"));
+      return;
+    }
+    if (result.changed) {
+      notifySaved("invoicing.relay_sync_refresh_ok", {
+        count: result.documentCount,
+      });
+      return;
+    }
+    if (result.timedOut) {
+      notifySaveFailed(t("invoicing.relay_sync_refresh_no_changes"));
+      return;
+    }
+    notifySaved("invoicing.relay_sync_refresh_up_to_date");
   } catch (e: unknown) {
     const err = e as { response?: { data?: { message?: string } }; message?: string };
-    error.value =
+    const message =
       err?.response?.data?.message ||
       err?.message ||
       t("invoicing.relay_sync_refresh_failed");
+    error.value = message;
+    notifySaveFailed(message);
+  } finally {
+    relayRefreshing.value = false;
   }
 }
 

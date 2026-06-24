@@ -1,8 +1,19 @@
 import type { Evolu } from "@evolu/common/local-first";
 import { allCompaniesQuery, allDocumentsQuery, allNumberSeriesQuery } from "./client";
 import type { InvoicingLocalSchema } from "./schema";
+import { getStoredAccountMnemonic } from "@/services/accountSeed";
+import { isTargetEvoluOwner } from "@/services/evoluOwner";
 
 const EVOLU_RELAY_PENDING_KEY = "satflux.evolu.relay_pending.v1";
+
+export type InvoicingRelayOwnerStatus = "ok" | "no_phrase" | "owner_mismatch";
+
+export type PullInvoicingFromRelayResult = {
+    ownerStatus: InvoicingRelayOwnerStatus;
+    changed: boolean;
+    documentCount: number;
+    timedOut: boolean;
+};
 
 export function markEvoluRelaySyncPending(): void {
     sessionStorage.setItem(EVOLU_RELAY_PENDING_KEY, String(Date.now()));
@@ -39,6 +50,97 @@ export async function refreshInvoicingLocalQueries(
         evolu.loadQuery(allDocumentsQuery),
         evolu.loadQuery(allNumberSeriesQuery),
     ]);
+}
+
+export async function checkInvoicingRelayOwner(
+    evolu: Evolu<InvoicingLocalSchema>,
+): Promise<InvoicingRelayOwnerStatus> {
+    const mnemonic = getStoredAccountMnemonic();
+    if (!mnemonic) {
+        return "no_phrase";
+    }
+    const owner = await evolu.appOwner;
+    return isTargetEvoluOwner(owner.mnemonic, mnemonic) ? "ok" : "owner_mismatch";
+}
+
+async function countDocumentsForCompany(
+    evolu: Evolu<InvoicingLocalSchema>,
+    companyId?: string,
+): Promise<number> {
+    const docs = await evolu.loadQuery(allDocumentsQuery);
+    if (!companyId) {
+        return docs.length;
+    }
+    return docs.filter((row) => row.companyId === companyId).length;
+}
+
+export type PullInvoicingFromRelayOptions = {
+    timeoutMs?: number;
+    pollMs?: number;
+    companyId?: string;
+};
+
+/**
+ * Poll local Evolu until relay merges change document rows (or timeout).
+ * loadQuery alone does not fetch from the network - this waits for background sync.
+ */
+export async function pullInvoicingFromRelay(
+    evolu: Evolu<InvoicingLocalSchema>,
+    options?: PullInvoicingFromRelayOptions,
+): Promise<PullInvoicingFromRelayResult> {
+    const ownerStatus = await checkInvoicingRelayOwner(evolu);
+    if (ownerStatus !== "ok") {
+        return {
+            ownerStatus,
+            changed: false,
+            documentCount: 0,
+            timedOut: false,
+        };
+    }
+
+    const timeoutMs = options?.timeoutMs ?? 25_000;
+    const pollMs = options?.pollMs ?? 600;
+    const companyId = options?.companyId;
+    const deadline = Date.now() + timeoutMs;
+
+    const baseline = await countDocumentsForCompany(evolu, companyId);
+    let lastCount = baseline;
+    let stableAfterChange = 0;
+
+    while (Date.now() < deadline) {
+        await sleep(pollMs);
+        await refreshInvoicingLocalQueries(evolu);
+        const count = await countDocumentsForCompany(evolu, companyId);
+
+        if (count !== baseline) {
+            if (count === lastCount) {
+                stableAfterChange += 1;
+                if (stableAfterChange >= 2) {
+                    return {
+                        ownerStatus: "ok",
+                        changed: true,
+                        documentCount: count,
+                        timedOut: false,
+                    };
+                }
+            } else {
+                lastCount = count;
+                stableAfterChange = 0;
+            }
+            continue;
+        }
+
+        lastCount = count;
+        stableAfterChange = 0;
+    }
+
+    const finalCount = await countDocumentsForCompany(evolu, companyId);
+    return {
+        ownerStatus: "ok",
+        changed: finalCount !== baseline,
+        documentCount: finalCount,
+        timedOut: finalCount === baseline,
+    };
 }
 
 function sleep(ms: number): Promise<void> {
