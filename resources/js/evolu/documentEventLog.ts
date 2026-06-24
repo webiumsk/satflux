@@ -4,6 +4,9 @@ import type { DocumentId, InvoicingLocalSchema } from "./schema";
 
 const ActionType = maxLength(128)(NonEmptyString);
 
+/** Internal audit row for forced relay upload - hidden from invoice history UI. */
+export const RELAY_SYNC_EVENT_ACTION = "relay_sync";
+
 export type EvoluDocumentEventRow = {
     id: string;
     documentId: string;
@@ -41,6 +44,7 @@ export function logDocumentEvent(
 
 export function documentHistoryFromEvents(events: EvoluDocumentEventRow[]): DocumentHistoryEntry[] {
     return [...events]
+        .filter((event) => event.action !== RELAY_SYNC_EVENT_ACTION)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 50)
         .map((event) => ({

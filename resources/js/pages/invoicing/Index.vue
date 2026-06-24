@@ -41,6 +41,9 @@
       <p class="text-xs text-emerald-800 mt-1">
         {{ t('invoicing.relay_sync_relay_host', { host: relayBuildInfo.url }) }}
       </p>
+      <p v-if="relayOwnerHint" class="text-xs text-emerald-800 mt-1 font-mono">
+        {{ t('invoicing.relay_sync_owner_hint', { owner: relayOwnerHint }) }}
+      </p>
       <p class="text-xs text-emerald-800 mt-2">{{ t('invoicing.relay_sync_push_pull_hint') }}</p>
       <div class="mt-3 flex flex-wrap gap-2">
         <button
@@ -223,6 +226,7 @@ import { useInvoicingRelaySync } from '@/composables/useInvoicingRelaySync';
 import { useLocalStoreSanitizer } from '@/composables/useLocalStoreSanitizer';
 import { useInvoicingEvolu } from '@/evolu/client';
 import { getEvoluRelayBuildInfo } from '@/evolu/config';
+import { readEvoluOwnerHint } from '@/evolu/relayPushMutations';
 import { isEvoluRelaySyncPending } from '@/evolu/relaySyncWait';
 import {
   fetchServerMigrationStatus,
@@ -259,6 +263,7 @@ const { isRelaySyncing, localFirst, pushToRelay, refreshFromRelay } = useInvoici
 const relayBuildInfo = getEvoluRelayBuildInfo();
 const relayPushBusy = ref(false);
 const relayPullBusy = ref(false);
+const relayOwnerHint = ref('');
 const evolu = useInvoicingEvolu();
 const { ensureStoresLoaded } = useLocalStoreSanitizer();
 
@@ -330,7 +335,15 @@ async function runPushToRelay(): Promise<void> {
       return;
     }
     if (result.ok) {
-      flashStore.success(t('invoicing.relay_sync_push_ok', { count: result.upserted }));
+      flashStore.success(
+        t('invoicing.relay_sync_push_ok', {
+          companies: result.companiesUpdated,
+          events: result.syncEvents,
+          owner: result.ownerHint,
+        }),
+      );
+    } else if (result.evoluError) {
+      flashStore.error(t('invoicing.relay_sync_push_evolu_error', { error: result.evoluError }));
     } else {
       flashStore.warning(t('invoicing.relay_sync_push_failed'));
     }
@@ -352,6 +365,9 @@ async function runPullFromRelay(): Promise<void> {
       flashStore.success(t('invoicing.relay_sync_refresh_up_to_date'));
     }
     await refresh();
+    if (localFirst) {
+      relayOwnerHint.value = await readEvoluOwnerHint(evolu);
+    }
   } finally {
     relayPullBusy.value = false;
   }
@@ -398,6 +414,11 @@ async function runAttachmentMigration(): Promise<void> {
 
 onMounted(() => {
   void loadMigrationStatus();
+  if (localFirst) {
+    void readEvoluOwnerHint(evolu).then((hint) => {
+      relayOwnerHint.value = hint;
+    });
+  }
 });
 
 watch(companyList, () => {

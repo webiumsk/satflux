@@ -12,6 +12,10 @@ import {
     loadInvoicingRelayFingerprint,
     refreshAllInvoicingLocalQueries,
 } from "./invoicingRelayFingerprint";
+import {
+    readEvoluErrorMessage,
+    readEvoluOwnerHint,
+} from "./relayPushMutations";
 
 const EVOLU_RELAY_PENDING_KEY = "satflux.evolu.relay_pending.v1";
 
@@ -163,7 +167,7 @@ export async function pullInvoicingFromRelay(
     const deadline = Date.now() + timeoutMs;
 
     await refreshEvoluRelaySubscription(evolu);
-    await sleep(options?.subscriptionWarmupMs ?? 1_500);
+    await sleep(options?.subscriptionWarmupMs ?? 10_000);
 
     const baselineCompanyFingerprint = await loadInvoicingRelayFingerprint(evolu, companyId);
     const baselineListFingerprint = await loadDocumentListFingerprint(evolu, listFilter);
@@ -362,13 +366,18 @@ export type PushInvoicingToRelayOptions = {
 export type PushInvoicingToRelayResult = {
     ownerStatus: InvoicingRelayOwnerStatus;
     relayDisabled?: boolean;
-    upserted: number;
+    /** Company rows touched. */
+    companiesUpdated: number;
+    /** Internal relay_sync document events inserted. */
+    syncEvents: number;
+    ownerHint: string;
+    evoluError: string | null;
     ok: boolean;
 };
 
 /**
- * Re-upsert local invoicing rows so Evolu sends CRDT updates to the relay.
- * Use on the device where data was created before relay worked (legacy local-only rows).
+ * Force outbound CRDT mutations while relay WebSocket is subscribed.
+ * Legacy rows created offline are also uploaded via subscribe sync during warmup.
  */
 export async function pushInvoicingToRelay(
     evolu: Evolu<InvoicingLocalSchema>,
@@ -378,38 +387,52 @@ export async function pushInvoicingToRelay(
         return {
             ownerStatus: "ok",
             relayDisabled: true,
-            upserted: 0,
+            companiesUpdated: 0,
+            syncEvents: 0,
+            ownerHint: "",
+            evoluError: null,
             ok: false,
         };
     }
 
     const ownerStatus = await checkInvoicingRelayOwner(evolu);
+    const ownerHint = ownerStatus === "ok" ? await readEvoluOwnerHint(evolu) : "";
     if (ownerStatus !== "ok") {
-        return { ownerStatus, upserted: 0, ok: false };
+        return {
+            ownerStatus,
+            companiesUpdated: 0,
+            syncEvents: 0,
+            ownerHint,
+            evoluError: null,
+            ok: false,
+        };
     }
 
-    const { filterInvoicingSnapshotByCompany } = await import("./invoicingRelayFingerprintCore");
-    const { restoreInvoicingSnapshotDetailedAsync, snapshotInvoicingData } = await import(
-        "./invoicingSnapshot"
-    );
+    const { bumpCompaniesForRelayPush, bumpDocumentsForRelayPush, RELAY_CONNECTION_WARMUP_MS } =
+        await import("./relayPushMutations");
 
     await refreshEvoluRelaySubscription(evolu);
-    await sleep(2_000);
+    await sleep(RELAY_CONNECTION_WARMUP_MS);
 
-    const snapshot = await snapshotInvoicingData(evolu);
-    const scoped = options?.companyId
-        ? filterInvoicingSnapshotByCompany(snapshot, options.companyId)
-        : snapshot;
+    const companiesUpdated = await bumpCompaniesForRelayPush(evolu, options?.companyId);
+    const syncEvents = await bumpDocumentsForRelayPush(evolu, options?.companyId);
 
-    const report = await restoreInvoicingSnapshotDetailedAsync(evolu, scoped);
     await waitForInvoicingDataSettled(evolu, {
-        timeoutMs: options?.timeoutMs ?? 20_000,
-        minWaitMs: 3_000,
+        timeoutMs: options?.timeoutMs ?? 35_000,
+        minWaitMs: 8_000,
     });
+
+    await refreshEvoluRelaySubscription(evolu);
+    await sleep(5_000);
+
+    const evoluError = readEvoluErrorMessage(evolu);
 
     return {
         ownerStatus: "ok",
-        upserted: report.upserted,
-        ok: report.upserted > 0 || report.failed.length === 0,
+        companiesUpdated,
+        syncEvents,
+        ownerHint,
+        evoluError,
+        ok: (companiesUpdated > 0 || syncEvents > 0) && !evoluError,
     };
 }

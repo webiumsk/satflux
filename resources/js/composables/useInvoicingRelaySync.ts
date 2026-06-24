@@ -80,7 +80,8 @@ export function useInvoicingRelaySync(options?: UseInvoicingRelaySyncOptions) {
                 ? { companyId: options }
                 : (options ?? {});
         return pullInvoicingFromRelay(evolu, {
-            timeoutMs: 45_000,
+            timeoutMs: 60_000,
+            subscriptionWarmupMs: 10_000,
             ...resolved,
         });
     }
@@ -89,12 +90,15 @@ export function useInvoicingRelaySync(options?: UseInvoicingRelaySyncOptions) {
         if (!evolu) {
             return {
                 ownerStatus: "ok",
-                upserted: 0,
+                companiesUpdated: 0,
+                syncEvents: 0,
+                ownerHint: "",
+                evoluError: null,
                 ok: false,
             };
         }
         await ensureEvoluBoundToAccountSeed();
-        return pushInvoicingToRelay(evolu, { timeoutMs: 30_000 });
+        return pushInvoicingToRelay(evolu, { timeoutMs: 45_000 });
     }
 
     return {
