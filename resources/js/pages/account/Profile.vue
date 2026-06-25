@@ -1355,7 +1355,6 @@ import { isInvoicingLocalFirst } from "../../evolu/flags";
 import { getEvoluRelayBuildInfo } from "../../evolu/config";
 import { getEvoluRelayRuntimeInfo } from "../../services/evoluRelayPreference";
 import { refreshEvoluRelaySubscription } from "../../evolu/evoluRelaySubscription";
-import { useInvoicingEvolu } from "../../evolu/client";
 import { ensureEvoluBoundToAccountSeed } from "../../evolu/bootstrap";
 import {
   formatByteSize,
@@ -1441,7 +1440,6 @@ const relayBuildDefault = computed(() => {
   return build.enabled ? build.url : "";
 });
 const activeRelayUrl = computed(() => getEvoluRelayRuntimeInfo().url);
-const invoicingEvolu = localFirst ? useInvoicingEvolu() : null;
 const evoluLocalStats = ref<InvoicingLocalStats | null>(null);
 const evoluRelayUsage = ref<EvoluRelayUsageResponse | null>(null);
 const evoluStatsLoading = ref(false);
@@ -1906,8 +1904,9 @@ async function saveEvoluRelayUrl(): Promise<void> {
     });
     await authStore.fetchUser();
     evoluRelayForm.value.url = authStore.user?.evolu_relay_url ?? "";
-    if (invoicingEvolu) {
-      await refreshEvoluRelaySubscription(invoicingEvolu);
+    if (localFirst) {
+      const { evolu } = await import("@/evolu/client");
+      await refreshEvoluRelaySubscription(evolu);
     }
     flashStore.success(t("account.evolu_relay_saved"));
     void refreshEvoluStats();
@@ -1946,7 +1945,7 @@ function formatStatsIso(iso: string): string {
 }
 
 async function refreshEvoluStats(): Promise<void> {
-  if (!localFirst || !invoicingEvolu || evoluStatsNeedPhrase.value) {
+  if (!localFirst || evoluStatsNeedPhrase.value) {
     evoluLocalStats.value = null;
     evoluRelayUsage.value = null;
     evoluRelayUsageChecked.value = false;
@@ -1957,7 +1956,8 @@ async function refreshEvoluStats(): Promise<void> {
   evoluRelayUsageChecked.value = false;
   try {
     await ensureEvoluBoundToAccountSeed();
-    const stats = await loadInvoicingLocalStats(invoicingEvolu, { includeDbExport: true });
+    const { evolu } = await import("@/evolu/client");
+    const stats = await loadInvoicingLocalStats(evolu, { includeDbExport: true });
     evoluLocalStats.value = stats;
 
     const relayUrl = activeRelayUrl.value;
