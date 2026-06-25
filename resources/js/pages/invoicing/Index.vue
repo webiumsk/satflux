@@ -5,6 +5,12 @@
     :embedded="embedded"
   >
     <template #actions>
+      <InvoicingRelaySyncStatusButton
+        v-if="showRelaySyncStatusIcon && relaySyncStatusLevel"
+        :level="relaySyncStatusLevel"
+        :spinning="isRelaySyncing"
+        @click="showRelaySyncModal = true"
+      />
       <button
         v-if="canUse && canCreateCompany"
         type="button"
@@ -22,71 +28,6 @@
         {{ t('invoicing.company_limit_reached', { max: companyLimitMax }) }}
       </p>
     </template>
-
-    <div v-if="localFirst && isRelaySyncing" class="invoicing-alert-warn mb-4">
-      <p class="text-sm font-medium">{{ t('invoicing.relay_sync_loading') }}</p>
-      <p class="text-sm mt-2 opacity-90">{{ t('invoicing.relay_sync_wait_detail') }}</p>
-    </div>
-
-    <div
-      v-else-if="localFirst && !loading && companyList.length > 0 && !relayRuntimeInfo.enabled"
-      class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 mb-4"
-    >
-      <p class="text-sm font-medium text-red-950">{{ t('invoicing.relay_sync_build_disabled_title') }}</p>
-      <p class="text-sm text-red-900 mt-2">{{ t('invoicing.relay_sync_build_disabled_detail') }}</p>
-    </div>
-
-    <div v-else-if="localFirst && !loading && companyList.length > 0" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 mb-4">
-      <p class="text-sm text-emerald-900">{{ t('invoicing.relay_sync_ready') }}</p>
-      <p class="text-xs text-emerald-800 mt-1">
-        {{ t('invoicing.relay_sync_relay_host', { host: relayRuntimeInfo.url }) }}
-      </p>
-      <p v-if="relayRuntimeInfo.source === 'profile'" class="text-xs text-emerald-700 mt-1">
-        {{ t('invoicing.relay_sync_relay_from_profile') }}
-      </p>
-      <p v-if="relayOwnerHint" class="text-xs text-emerald-800 mt-1 font-mono">
-        {{ t('invoicing.relay_sync_owner_hint', { owner: relayOwnerHint }) }}
-      </p>
-      <p class="text-xs text-emerald-800 mt-2">{{ t('invoicing.relay_sync_push_pull_hint') }}</p>
-      <div class="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          class="invoicing-btn-secondary text-sm"
-          :disabled="relayPushBusy || isRelaySyncing"
-          @click="runPushToRelay"
-        >
-          {{
-            relayPushBusy
-              ? t('invoicing.relay_sync_push_in_progress')
-              : t('invoicing.relay_sync_push')
-          }}
-        </button>
-        <button
-          type="button"
-          class="invoicing-btn-secondary text-sm"
-          :disabled="relayPullBusy || isRelaySyncing"
-          @click="runPullFromRelay"
-        >
-          {{
-            relayPullBusy
-              ? t('invoicing.relay_sync_refresh_in_progress')
-              : t('invoicing.relay_sync_pull')
-          }}
-        </button>
-        <button
-          type="button"
-          class="invoicing-btn-secondary text-sm"
-          :disabled="relayForcePushBusy || isRelaySyncing"
-          @click="runForcePushToRelay"
-        >
-          {{
-            relayForcePushBusy
-              ? t('invoicing.relay_sync_force_push_in_progress')
-              : t('invoicing.relay_sync_force_push')
-          }}
-        </button>
-      </div>
-    </div>
 
     <div v-if="localFirst && duplicateCompanyGroups.length" class="invoicing-alert-warn mb-4">
       <p class="text-sm font-medium">{{ t('invoicing.duplicate_companies_title') }}</p>
@@ -114,14 +55,6 @@
             : t('invoicing.duplicate_companies_merge')
         }}
       </button>
-    </div>
-
-    <div v-if="localFirst && showServerLegacyCleanup" class="rounded-lg border border-sky-200 bg-sky-50 px-4 py-4 mb-4">
-      <p class="text-sm font-medium text-sky-950">{{ t('invoicing.server_legacy_cleanup_title') }}</p>
-      <p class="text-sm text-sky-900 mt-2">{{ t('invoicing.server_legacy_cleanup_detail') }}</p>
-      <router-link to="/account/profile" class="invoicing-link inline-block mt-3 text-sm font-medium">
-        {{ t('invoicing.server_legacy_cleanup_link') }}
-      </router-link>
     </div>
 
     <div v-if="localFirst && showAttachmentMigration" class="rounded-lg border border-violet-200 bg-violet-50 px-4 py-4 mb-4">
@@ -163,11 +96,6 @@
       </button>
     </div>
 
-    <p v-if="localFirst && !showServerMigration" class="text-sm text-gray-600 mb-4">
-      {{ t('invoicing.local_first_data_notice') }}
-      <router-link to="/legal/privacy" class="invoicing-link">{{ t('legal.nav.privacy') }}</router-link>.
-    </p>
-
     <div v-if="!canUse" class="invoicing-alert-warn">
       <p class="font-medium">{{ t('invoicing.pro_required') }}</p>
       <p class="text-sm mt-2 opacity-90">{{ t('invoicing.pro_required_detail') }}</p>
@@ -189,9 +117,10 @@
       </div>
     </div>
 
-    <div v-else-if="loading" class="invoicing-muted py-8">
-      {{ relaySyncLoading ? t('invoicing.relay_sync_loading') : t('common.loading') }}
-    </div>
+    <InvoicingLoadingState
+      v-else-if="loading"
+      :message="relaySyncLoading ? t('invoicing.relay_sync_loading') : t('common.loading')"
+    />
 
     <div v-else-if="companyList.length === 0" class="invoicing-card-pad text-center">
       <p class="text-gray-700">{{ t('invoicing.no_companies') }}</p>
@@ -226,6 +155,23 @@
     </ul>
 
     <UpgradeModal :show="showUpgrade" @close="showUpgrade = false" />
+
+    <InvoicingRelaySyncModal
+      :open="showRelaySyncModal"
+      :relay-enabled="relayRuntimeInfo.enabled"
+      :relay-url="relayRuntimeInfo.url"
+      :relay-from-profile="relayRuntimeInfo.source === 'profile'"
+      :relay-owner-hint="relayOwnerHint"
+      :is-relay-syncing="isRelaySyncing"
+      :show-server-legacy-cleanup="showServerLegacyCleanup"
+      :relay-push-busy="relayPushBusy"
+      :relay-pull-busy="relayPullBusy"
+      :relay-force-push-busy="relayForcePushBusy"
+      @close="showRelaySyncModal = false"
+      @push="runPushToRelay"
+      @pull="runPullFromRelay"
+      @force-push="runForcePushToRelay"
+    />
   </InvoicingPageShell>
 </template>
 
@@ -234,6 +180,11 @@ import { computed, onMounted, ref, unref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
+import InvoicingLoadingState from '../../components/invoicing/ui/InvoicingLoadingState.vue';
+import InvoicingRelaySyncModal from '../../components/invoicing/InvoicingRelaySyncModal.vue';
+import InvoicingRelaySyncStatusButton, {
+  type RelaySyncStatusLevel,
+} from '../../components/invoicing/InvoicingRelaySyncStatusButton.vue';
 import { useBusinessInvoicing } from '../../composables/useBusinessInvoicing';
 import { useInvoicingCompanies } from '../../composables/useInvoicingCompanies';
 import type { InvoicingCompanyListItem } from '../../composables/useInvoicingCompanies';
@@ -292,6 +243,7 @@ const {
 } = useInvoicingCompanies();
 
 const showUpgrade = ref(false);
+const showRelaySyncModal = ref(false);
 const migrationStatus = ref<ServerMigrationStatus | null>(null);
 const migrationImporting = ref(false);
 const attachmentImporting = ref(false);
@@ -304,6 +256,25 @@ watch(forbidden, (isForbidden) => {
 });
 
 const companyList = computed(() => unref(companies));
+
+const showRelaySyncStatusIcon = computed(
+  () => localFirst && canUse && !loading.value && !loadError.value,
+);
+
+const relaySyncStatusLevel = computed((): RelaySyncStatusLevel | null => {
+  if (!localFirst) return null;
+  if (!relayRuntimeInfo.value.enabled) return 'red';
+  if (isRelaySyncing.value) return 'orange';
+  if (
+    showServerMigration.value ||
+    showAttachmentMigration.value ||
+    duplicateCompanyGroups.value.length > 0 ||
+    showServerLegacyCleanup.value
+  ) {
+    return 'orange';
+  }
+  return 'green';
+});
 
 const showServerMigration = computed(() => {
   if (!localFirst || loading.value || loadError.value || isRelaySyncing.value) return false;
