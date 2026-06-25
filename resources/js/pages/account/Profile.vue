@@ -26,6 +26,32 @@
           </div>
         </div>
 
+        <nav
+          class="flex border-b border-gray-700 -mx-1 overflow-x-auto"
+          :aria-label="t('account.tabs_aria')"
+        >
+          <button
+            v-for="tab in visibleProfileTabs"
+            :key="tab.id"
+            type="button"
+            :class="[
+              'px-4 sm:px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex items-center gap-2',
+              activeTab === tab.id
+                ? 'border-indigo-500 text-indigo-400'
+                : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600',
+            ]"
+            @click="setProfileTab(tab.id)"
+          >
+            {{ t(tab.labelKey) }}
+            <span
+              v-if="tab.badge"
+              class="inline-flex h-2 w-2 rounded-full bg-amber-400"
+              :title="t('account.tab_sync_badge_hint')"
+            />
+          </button>
+        </nav>
+
+        <div v-show="activeTab === 'sync'" class="space-y-6">
         <div
           class="rounded-2xl border border-gray-700 bg-gray-800/80 p-5 space-y-3"
         >
@@ -255,7 +281,20 @@
               {{ t("account.evolu_stats_need_phrase") }}
             </p>
           </div>
+
+          <p class="text-xs text-gray-500">
+            {{ t("account.evolu_sync_invoicing_hint") }}
+            <router-link
+              :to="dashboardInvoicingTabPath"
+              class="text-indigo-400 hover:text-indigo-300 underline"
+            >
+              {{ t("account.evolu_sync_invoicing_link") }}
+            </router-link>
+          </p>
         </div>
+        </div>
+
+        <div v-show="activeTab === 'data'" class="space-y-6">
         <div
           class="rounded-2xl border border-gray-700 bg-gray-800/80 p-5 space-y-3"
         >
@@ -323,7 +362,9 @@
             {{ t("common.loading") }}
           </p>
         </div>
+        </div>
 
+        <div v-show="activeTab === 'account'" class="space-y-6">
         <!-- Profile Information -->
         <div
           class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
@@ -494,6 +535,98 @@
           </div>
         </div>
 
+        <!-- Change Password -->
+        <div
+          v-if="authStore.user?.can_use_password_login !== false"
+          class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
+        >
+          <div class="px-6 py-8 sm:p-10">
+            <h4 class="text-lg font-semibold text-white mb-6 flex items-center">
+              <svg
+                class="w-5 h-5 mr-2 text-indigo-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
+              </svg>
+              {{ t("account.password_settings") }}
+            </h4>
+            <form @submit.prevent="handleUpdatePassword">
+              <div class="space-y-6">
+                <div>
+                  <label
+                    for="current_password"
+                    class="block text-sm font-medium text-gray-300"
+                    >{{ t("account.current_password") }}</label
+                  >
+                  <div class="mt-1">
+                    <input
+                      id="current_password"
+                      v-model="passwordForm.current_password"
+                      type="password"
+                      required
+                      class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label
+                    for="password"
+                    class="block text-sm font-medium text-gray-300"
+                    >{{ t("account.new_password") }}</label
+                  >
+                  <div class="mt-1">
+                    <input
+                      id="password"
+                      v-model="passwordForm.password"
+                      type="password"
+                      required
+                      class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label
+                    for="password_confirmation"
+                    class="block text-sm font-medium text-gray-300"
+                    >{{ t("account.confirm_new_password") }}</label
+                  >
+                  <div class="mt-1">
+                    <input
+                      id="password_confirmation"
+                      v-model="passwordForm.password_confirmation"
+                      type="password"
+                      required
+                      class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div class="mt-8 flex justify-end">
+                <button
+                  type="submit"
+                  :disabled="passwordLoading"
+                  class="inline-flex justify-center py-2.5 px-6 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20"
+                >
+                  {{
+                    passwordLoading
+                      ? t("auth.saving")
+                      : t("account.update_password")
+                  }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+        </div>
+
+        <div v-show="activeTab === 'billing'" class="space-y-6">
         <!-- Subscription Plan -->
         <div
           class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
@@ -1032,94 +1165,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Change Password -->
-        <div
-          class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
-        >
-          <div class="px-6 py-8 sm:p-10">
-            <h4 class="text-lg font-semibold text-white mb-6 flex items-center">
-              <svg
-                class="w-5 h-5 mr-2 text-indigo-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                />
-              </svg>
-              {{ t("account.password_settings") }}
-            </h4>
-            <form @submit.prevent="handleUpdatePassword">
-              <div class="space-y-6">
-                <div>
-                  <label
-                    for="current_password"
-                    class="block text-sm font-medium text-gray-300"
-                    >{{ t("account.current_password") }}</label
-                  >
-                  <div class="mt-1">
-                    <input
-                      id="current_password"
-                      v-model="passwordForm.current_password"
-                      type="password"
-                      required
-                      class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label
-                    for="password"
-                    class="block text-sm font-medium text-gray-300"
-                    >{{ t("account.new_password") }}</label
-                  >
-                  <div class="mt-1">
-                    <input
-                      id="password"
-                      v-model="passwordForm.password"
-                      type="password"
-                      required
-                      class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label
-                    for="password_confirmation"
-                    class="block text-sm font-medium text-gray-300"
-                    >{{ t("account.confirm_new_password") }}</label
-                  >
-                  <div class="mt-1">
-                    <input
-                      id="password_confirmation"
-                      v-model="passwordForm.password_confirmation"
-                      type="password"
-                      required
-                      class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div class="mt-8 flex justify-end">
-                <button
-                  type="submit"
-                  :disabled="passwordLoading"
-                  class="inline-flex justify-center py-2.5 px-6 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20"
-                >
-                  {{
-                    passwordLoading
-                      ? t("auth.saving")
-                      : t("account.update_password")
-                  }}
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
       </div>
 
@@ -1325,7 +1370,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, onUnmounted } from "vue";
+import { ref, onMounted, computed, onUnmounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
@@ -1366,6 +1411,7 @@ import {
   relayUsagePercent,
   type EvoluRelayUsageResponse,
 } from "../../services/evoluRelayUsageApi";
+import { dashboardInvoicingTabPath } from "../../utils/dashboardInvoicingTab";
 const { t, locale } = useI18n();
 const route = useRoute();
 const router = useRouter();
@@ -1433,6 +1479,42 @@ const restoreOnDeviceError = ref("");
 const storedGuestMnemonic = ref<string | null>(null);
 const copiedSeed = ref(false);
 const localFirst = isInvoicingLocalFirst();
+
+type ProfileTab = "account" | "sync" | "billing" | "data";
+
+function parseProfileTab(value: unknown): ProfileTab {
+  if (value === "sync" && localFirst) {
+    return "sync";
+  }
+  if (value === "billing") {
+    return "billing";
+  }
+  if (value === "data") {
+    return "data";
+  }
+  return "account";
+}
+
+const activeTab = ref<ProfileTab>(parseProfileTab(route.query.tab));
+
+watch(
+  () => route.query.tab,
+  (q) => {
+    activeTab.value = parseProfileTab(q);
+  },
+);
+
+function setProfileTab(tab: ProfileTab) {
+  activeTab.value = tab;
+  const query =
+    tab === "account"
+      ? Object.fromEntries(
+          Object.entries(route.query).filter(([key]) => key !== "tab"),
+        )
+      : { ...route.query, tab };
+  void router.replace({ path: route.path, query });
+}
+
 const evoluRelayForm = ref({ url: "" });
 const evoluRelaySaving = ref(false);
 const relayBuildDefault = computed(() => {
@@ -1447,6 +1529,42 @@ const evoluRelayUsageChecked = ref(false);
 const evoluStatsNeedPhrase = computed(
   () => localFirst && !getStoredAccountMnemonic(),
 );
+
+const syncTabBadge = computed(() => {
+  if (!localFirst) {
+    return false;
+  }
+  if (evoluStatsNeedPhrase.value) {
+    return true;
+  }
+  const relayError = evoluLocalStats.value?.relayError;
+  return typeof relayError === "string" && relayError.length > 0;
+});
+
+const visibleProfileTabs = computed(() => {
+  const tabs: { id: ProfileTab; labelKey: string; badge?: boolean }[] = [
+    { id: "account", labelKey: "account.tab_account" },
+  ];
+  if (localFirst) {
+    tabs.push({
+      id: "sync",
+      labelKey: "account.tab_sync",
+      badge: syncTabBadge.value,
+    });
+  }
+  tabs.push(
+    { id: "billing", labelKey: "account.tab_billing" },
+    { id: "data", labelKey: "account.tab_data" },
+  );
+  return tabs;
+});
+
+watch(activeTab, (tab) => {
+  if (tab === "sync" && localFirst) {
+    void refreshEvoluStats();
+  }
+});
+
 const documentTypeSummary = computed(() => {
   const byType = evoluLocalStats.value?.counts.documentByType;
   if (!byType) {
@@ -1562,9 +1680,14 @@ onMounted(async () => {
     void refreshEvoluStats();
   }
   if (route.query.restore_phrase === "1" && !storedGuestMnemonic.value) {
+    if (localFirst) {
+      setProfileTab("sync");
+    }
     showRestoreOnDeviceModal.value = true;
     flashStore.warning(t("account.recovery_phrase_required_for_invoicing"));
-    void router.replace({ query: { ...route.query, restore_phrase: undefined } });
+    void router.replace({
+      query: { ...route.query, restore_phrase: undefined },
+    });
   }
 });
 
