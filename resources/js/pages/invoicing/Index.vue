@@ -29,7 +29,7 @@
     </div>
 
     <div
-      v-else-if="localFirst && !loading && companyList.length > 0 && !relayBuildInfo.enabled"
+      v-else-if="localFirst && !loading && companyList.length > 0 && !relayRuntimeInfo.enabled"
       class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 mb-4"
     >
       <p class="text-sm font-medium text-red-950">{{ t('invoicing.relay_sync_build_disabled_title') }}</p>
@@ -39,7 +39,10 @@
     <div v-else-if="localFirst && !loading && companyList.length > 0" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 mb-4">
       <p class="text-sm text-emerald-900">{{ t('invoicing.relay_sync_ready') }}</p>
       <p class="text-xs text-emerald-800 mt-1">
-        {{ t('invoicing.relay_sync_relay_host', { host: relayBuildInfo.url }) }}
+        {{ t('invoicing.relay_sync_relay_host', { host: relayRuntimeInfo.url }) }}
+      </p>
+      <p v-if="relayRuntimeInfo.source === 'profile'" class="text-xs text-emerald-700 mt-1">
+        {{ t('invoicing.relay_sync_relay_from_profile') }}
       </p>
       <p v-if="relayOwnerHint" class="text-xs text-emerald-800 mt-1 font-mono">
         {{ t('invoicing.relay_sync_owner_hint', { owner: relayOwnerHint }) }}
@@ -68,6 +71,18 @@
             relayPullBusy
               ? t('invoicing.relay_sync_refresh_in_progress')
               : t('invoicing.relay_sync_pull')
+          }}
+        </button>
+        <button
+          type="button"
+          class="invoicing-btn-secondary text-sm"
+          :disabled="relayForcePushBusy || isRelaySyncing"
+          @click="runForcePushToRelay"
+        >
+          {{
+            relayForcePushBusy
+              ? t('invoicing.relay_sync_force_push_in_progress')
+              : t('invoicing.relay_sync_force_push')
           }}
         </button>
       </div>
@@ -225,7 +240,7 @@ import type { InvoicingCompanyListItem } from '../../composables/useInvoicingCom
 import { useInvoicingRelaySync } from '@/composables/useInvoicingRelaySync';
 import { useLocalStoreSanitizer } from '@/composables/useLocalStoreSanitizer';
 import { useInvoicingEvolu } from '@/evolu/client';
-import { getEvoluRelayBuildInfo } from '@/evolu/config';
+import { getEvoluRelayRuntimeInfo } from '@/services/evoluRelayPreference';
 import { readEvoluOwnerHint } from '@/evolu/relayPushMutations';
 import { isEvoluRelaySyncPending } from '@/evolu/relaySyncWait';
 import {
@@ -260,9 +275,10 @@ const authStore = useAuthStore();
 const flashStore = useFlashStore();
 const { canUse } = useBusinessInvoicing();
 const { isRelaySyncing, localFirst, pushToRelay, refreshFromRelay } = useInvoicingRelaySync();
-const relayBuildInfo = getEvoluRelayBuildInfo();
+const relayRuntimeInfo = computed(() => getEvoluRelayRuntimeInfo());
 const relayPushBusy = ref(false);
 const relayPullBusy = ref(false);
+const relayForcePushBusy = ref(false);
 const relayOwnerHint = ref('');
 const evolu = useInvoicingEvolu();
 const { ensureStoresLoaded } = useLocalStoreSanitizer();
@@ -321,7 +337,26 @@ async function runPushToRelay(): Promise<void> {
   if (relayPushBusy.value) return;
   relayPushBusy.value = true;
   try {
-    const result = await pushToRelay();
+    await finishPush(await pushToRelay());
+  } finally {
+    relayPushBusy.value = false;
+  }
+}
+
+async function runForcePushToRelay(): Promise<void> {
+  if (relayForcePushBusy.value) return;
+  relayForcePushBusy.value = true;
+  try {
+    await finishPush(await pushToRelay({ force: true }), true);
+  } finally {
+    relayForcePushBusy.value = false;
+  }
+}
+
+async function finishPush(
+  result: Awaited<ReturnType<typeof pushToRelay>>,
+  force = false,
+): Promise<void> {
     if (result.relayDisabled) {
       flashStore.error(t('invoicing.relay_sync_relay_disabled'));
       return;
@@ -336,20 +371,27 @@ async function runPushToRelay(): Promise<void> {
     }
     if (result.ok) {
       flashStore.success(
-        t('invoicing.relay_sync_push_ok', {
-          companies: result.companiesUpdated,
-          events: result.syncEvents,
-          owner: result.ownerHint,
-        }),
+        force
+          ? t('invoicing.relay_sync_force_push_ok', {
+              rows: result.rowsForceTouched ?? 0,
+              owner: result.ownerHint,
+            })
+          : t('invoicing.relay_sync_push_ok', {
+              companies: result.companiesUpdated,
+              events: result.syncEvents,
+              owner: result.ownerHint,
+            }),
       );
     } else if (result.evoluError) {
       flashStore.error(t('invoicing.relay_sync_push_evolu_error', { error: result.evoluError }));
     } else {
-      flashStore.warning(t('invoicing.relay_sync_push_failed'));
+      flashStore.warning(
+        force ? t('invoicing.relay_sync_force_push_failed') : t('invoicing.relay_sync_push_failed'),
+      );
     }
-  } finally {
-    relayPushBusy.value = false;
-  }
+    if (localFirst) {
+      relayOwnerHint.value = await readEvoluOwnerHint(evolu);
+    }
 }
 
 async function runPullFromRelay(): Promise<void> {

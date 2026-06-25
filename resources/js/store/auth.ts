@@ -53,6 +53,7 @@ export interface User {
     };
     has_lightning_login?: boolean;
     has_nostr_login?: boolean;
+    evolu_relay_url?: string | null;
 }
 
 export const useAuthStore = defineStore('auth', () => {

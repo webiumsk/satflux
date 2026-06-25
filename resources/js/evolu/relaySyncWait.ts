@@ -361,6 +361,8 @@ export async function waitForInvoicingDataSettled(
 export type PushInvoicingToRelayOptions = {
     timeoutMs?: number;
     companyId?: string;
+    /** Re-mutate every invoicing row (for relay migration / missed legacy upload). */
+    force?: boolean;
 };
 
 export type PushInvoicingToRelayResult = {
@@ -370,9 +372,12 @@ export type PushInvoicingToRelayResult = {
     companiesUpdated: number;
     /** Internal relay_sync document events inserted. */
     syncEvents: number;
+    /** Rows re-mutated during force push (all tables). */
+    rowsForceTouched?: number;
     ownerHint: string;
     evoluError: string | null;
     ok: boolean;
+    force?: boolean;
 };
 
 /**
@@ -410,20 +415,30 @@ export async function pushInvoicingToRelay(
 
     const { bumpCompaniesForRelayPush, bumpDocumentsForRelayPush, RELAY_CONNECTION_WARMUP_MS } =
         await import("./relayPushMutations");
+    const { forceTouchAllInvoicingRowsForRelay, RELAY_FORCE_CONNECTION_WARMUP_MS } =
+        await import("./relayForcePushMutations");
+
+    const force = options?.force === true;
+    const warmupMs = force ? RELAY_FORCE_CONNECTION_WARMUP_MS : RELAY_CONNECTION_WARMUP_MS;
 
     await refreshEvoluRelaySubscription(evolu);
-    await sleep(RELAY_CONNECTION_WARMUP_MS);
+    await sleep(warmupMs);
+
+    let rowsForceTouched = 0;
+    if (force) {
+        rowsForceTouched = await forceTouchAllInvoicingRowsForRelay(evolu, options?.companyId);
+    }
 
     const companiesUpdated = await bumpCompaniesForRelayPush(evolu, options?.companyId);
     const syncEvents = await bumpDocumentsForRelayPush(evolu, options?.companyId);
 
     await waitForInvoicingDataSettled(evolu, {
-        timeoutMs: options?.timeoutMs ?? 35_000,
-        minWaitMs: 8_000,
+        timeoutMs: options?.timeoutMs ?? (force ? 120_000 : 35_000),
+        minWaitMs: force ? 20_000 : 8_000,
     });
 
     await refreshEvoluRelaySubscription(evolu);
-    await sleep(5_000);
+    await sleep(force ? 10_000 : 5_000);
 
     const evoluError = readEvoluErrorMessage(evolu);
 
@@ -431,8 +446,13 @@ export async function pushInvoicingToRelay(
         ownerStatus: "ok",
         companiesUpdated,
         syncEvents,
+        rowsForceTouched: force ? rowsForceTouched : undefined,
         ownerHint,
         evoluError,
-        ok: (companiesUpdated > 0 || syncEvents > 0) && !evoluError,
+        ok:
+            (force
+                ? rowsForceTouched > 0
+                : companiesUpdated > 0 || syncEvents > 0) && !evoluError,
+        force,
     };
 }

@@ -1,26 +1,32 @@
 import type { Evolu } from "@evolu/common/local-first";
+import { getResolvedEvoluRelayUrl, isEvoluRelayConfiguredAtRuntime } from "@/services/evoluRelayPreference";
 import { isEvoluRelayEnabledInBuild } from "./config";
 import type { InvoicingLocalSchema } from "./schema";
+import { createSyncOwnerForRelay } from "./evoluRelayOwner";
 
 let activeUnuseOwner: (() => void) | null = null;
 
+/** @deprecated Use isEvoluRelayConfiguredAtRuntime - respects profile relay URL. */
 export function isEvoluRelayConfigured(): boolean {
-    return isEvoluRelayEnabledInBuild();
+    if (isEvoluRelayConfiguredAtRuntime()) {
+        return true;
+    }
+    return isEvoluRelayEnabledInBuild() && getResolvedEvoluRelayUrl().length > 0;
 }
 
 /**
  * Keep the app owner subscribed on the Evolu relay WebSocket.
- * Worker init calls useOwner once; this mirrors it on the client and allows refresh.
+ * Uses per-owner transports so profile relay URL overrides build default.
  */
 export async function ensureEvoluRelaySubscription(
     evolu: Evolu<InvoicingLocalSchema>,
 ): Promise<boolean> {
-    if (!isEvoluRelayConfigured()) {
+    if (!isEvoluRelayConfiguredAtRuntime()) {
         return false;
     }
 
-    const owner = await evolu.appOwner;
-    if (!owner?.writeKey) {
+    const owner = await createSyncOwnerForRelay(evolu);
+    if (!owner.writeKey) {
         return false;
     }
 
@@ -35,7 +41,7 @@ export async function ensureEvoluRelaySubscription(
 export async function refreshEvoluRelaySubscription(
     evolu: Evolu<InvoicingLocalSchema>,
 ): Promise<boolean> {
-    if (!isEvoluRelayConfigured()) {
+    if (!isEvoluRelayConfiguredAtRuntime()) {
         return false;
     }
 

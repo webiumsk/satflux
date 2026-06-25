@@ -77,7 +77,185 @@
           </button>
         </div>
 
-        <!-- Data & privacy -->
+        <div
+          v-if="localFirst"
+          class="rounded-2xl border border-gray-700 bg-gray-800/80 p-5 space-y-3"
+        >
+          <h4 class="text-sm font-semibold text-white">
+            {{ t("account.evolu_relay_title") }}
+          </h4>
+          <p class="text-sm text-gray-300">
+            {{ t("account.evolu_relay_desc") }}
+          </p>
+          <p class="text-xs text-gray-400">
+            {{ t("account.evolu_relay_active", { url: activeRelayUrl }) }}
+          </p>
+          <p v-if="relayBuildDefault" class="text-xs text-gray-500">
+            {{ t("account.evolu_relay_build_default", { url: relayBuildDefault }) }}
+          </p>
+          <label class="block text-sm text-gray-300">
+            <span class="mb-1 block">{{ t("account.evolu_relay_url_label") }}</span>
+            <input
+              v-model="evoluRelayForm.url"
+              type="url"
+              class="w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white"
+              :placeholder="t('account.evolu_relay_url_placeholder')"
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </label>
+          <div class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20 disabled:opacity-50"
+              :disabled="evoluRelaySaving"
+              @click="saveEvoluRelayUrl"
+            >
+              {{
+                evoluRelaySaving
+                  ? t("account.evolu_relay_saving")
+                  : t("account.evolu_relay_save")
+              }}
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center px-4 py-2 border border-gray-500 rounded-lg text-sm font-medium text-gray-200 hover:bg-gray-700/50 disabled:opacity-50"
+              :disabled="evoluRelaySaving"
+              @click="clearEvoluRelayUrl"
+            >
+              {{ t("account.evolu_relay_clear") }}
+            </button>
+          </div>
+
+          <div class="mt-4 border-t border-gray-600 pt-4 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h5 class="text-sm font-semibold text-white">
+                {{ t("account.evolu_stats_title") }}
+              </h5>
+              <button
+                type="button"
+                class="text-xs font-medium text-indigo-300 hover:text-indigo-200 disabled:opacity-50"
+                :disabled="evoluStatsLoading"
+                @click="refreshEvoluStats"
+              >
+                {{
+                  evoluStatsLoading
+                    ? t("account.evolu_stats_loading")
+                    : t("account.evolu_stats_refresh")
+                }}
+              </button>
+            </div>
+            <p class="text-xs text-gray-400">
+              {{ t("account.evolu_stats_desc") }}
+            </p>
+
+            <template v-if="evoluLocalStats">
+              <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <div>
+                  <dt class="text-gray-500">{{ t("account.evolu_stats_owner_id") }}</dt>
+                  <dd class="font-mono text-gray-200">{{ evoluLocalStats.ownerIdShort }}</dd>
+                </div>
+                <div v-if="evoluLocalStats.localDbBytes != null">
+                  <dt class="text-gray-500">{{ t("account.evolu_stats_local_db") }}</dt>
+                  <dd class="text-gray-200">{{ formatByteSize(evoluLocalStats.localDbBytes) }}</dd>
+                </div>
+                <div>
+                  <dt class="text-gray-500">{{ t("account.evolu_stats_companies") }}</dt>
+                  <dd class="text-gray-200">{{ evoluLocalStats.counts.company }}</dd>
+                </div>
+                <div>
+                  <dt class="text-gray-500">{{ t("account.evolu_stats_contacts") }}</dt>
+                  <dd class="text-gray-200">{{ evoluLocalStats.counts.contact }}</dd>
+                </div>
+                <div>
+                  <dt class="text-gray-500">{{ t("account.evolu_stats_documents") }}</dt>
+                  <dd class="text-gray-200">
+                    {{ evoluLocalStats.counts.document }}
+                    <span v-if="documentTypeSummary" class="text-gray-500 text-xs">
+                      ({{ documentTypeSummary }})
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-gray-500">{{ t("account.evolu_stats_expenses") }}</dt>
+                  <dd class="text-gray-200">{{ evoluLocalStats.counts.expense }}</dd>
+                </div>
+                <div v-if="evoluLocalStats.lastRelayPushAt">
+                  <dt class="text-gray-500">{{ t("account.evolu_stats_last_push") }}</dt>
+                  <dd class="text-gray-200">{{ formatStatsTime(evoluLocalStats.lastRelayPushAt) }}</dd>
+                </div>
+                <div v-if="evoluLocalStats.lastForceRelayPushAt">
+                  <dt class="text-gray-500">{{ t("account.evolu_stats_last_force_push") }}</dt>
+                  <dd class="text-gray-200">{{ formatStatsTime(evoluLocalStats.lastForceRelayPushAt) }}</dd>
+                </div>
+              </dl>
+
+              <ul
+                v-if="evoluLocalStats.companies.length"
+                class="rounded-lg border border-gray-600 bg-gray-900/40 divide-y divide-gray-700 text-sm"
+              >
+                <li
+                  v-for="row in evoluLocalStats.companies"
+                  :key="row.id"
+                  class="flex flex-wrap justify-between gap-2 px-3 py-2"
+                >
+                  <span class="text-gray-200 truncate">{{ row.name }}</span>
+                  <span class="text-gray-500 text-xs shrink-0">
+                    {{
+                      t("account.evolu_stats_company_row", {
+                        invoices: row.invoices,
+                        documents: row.documents,
+                        contacts: row.contacts,
+                      })
+                    }}
+                  </span>
+                </li>
+              </ul>
+
+              <p v-if="evoluLocalStats.relayError" class="text-xs text-amber-300">
+                {{ t("account.evolu_stats_relay_error", { error: evoluLocalStats.relayError }) }}
+              </p>
+
+              <div
+                v-if="evoluRelayUsage"
+                class="rounded-lg border border-emerald-700/40 bg-emerald-950/30 px-3 py-2 text-sm space-y-1"
+              >
+                <p class="text-emerald-200 font-medium">{{ t("account.evolu_relay_usage_title") }}</p>
+                <p class="text-emerald-100/90 text-xs">
+                  {{
+                    t("account.evolu_relay_usage_size", {
+                      used: formatByteSize(evoluRelayUsage.storedBytes),
+                      quota: formatByteSize(evoluRelayUsage.quotaBytes),
+                      percent: relayUsagePercent(
+                        evoluRelayUsage.storedBytes,
+                        evoluRelayUsage.quotaBytes,
+                      ),
+                    })
+                  }}
+                </p>
+                <p
+                  v-if="evoluRelayUsage.lastActivityAt"
+                  class="text-emerald-100/80 text-xs"
+                >
+                  {{
+                    t("account.evolu_relay_usage_last_activity", {
+                      time: formatStatsIso(evoluRelayUsage.lastActivityAt),
+                    })
+                  }}
+                </p>
+              </div>
+              <p v-else-if="evoluRelayUsageChecked" class="text-xs text-gray-500">
+                {{ t("account.evolu_relay_usage_unavailable") }}
+              </p>
+            </template>
+            <p v-else-if="evoluStatsLoading" class="text-xs text-gray-500">
+              {{ t("account.evolu_stats_loading") }}
+            </p>
+            <p v-else-if="evoluStatsNeedPhrase" class="text-xs text-amber-300">
+              {{ t("account.evolu_stats_need_phrase") }}
+            </p>
+          </div>
+        </div>
         <div
           class="rounded-2xl border border-gray-700 bg-gray-800/80 p-5 space-y-3"
         >
@@ -1168,8 +1346,27 @@ import {
   getStoredGuestMnemonic,
   storeGuestMnemonic,
 } from "../../services/guestRecovery";
-import { initEvoluFromAccountSeedIfNeeded, bindRecoveryPhraseOnThisDevice } from "../../services/accountSeed";
+import {
+  initEvoluFromAccountSeedIfNeeded,
+  bindRecoveryPhraseOnThisDevice,
+  getStoredAccountMnemonic,
+} from "../../services/accountSeed";
 import { isInvoicingLocalFirst } from "../../evolu/flags";
+import { getEvoluRelayBuildInfo } from "../../evolu/config";
+import { getEvoluRelayRuntimeInfo } from "../../services/evoluRelayPreference";
+import { refreshEvoluRelaySubscription } from "../../evolu/evoluRelaySubscription";
+import { useInvoicingEvolu } from "../../evolu/client";
+import { ensureEvoluBoundToAccountSeed } from "../../evolu/bootstrap";
+import {
+  formatByteSize,
+  loadInvoicingLocalStats,
+  type InvoicingLocalStats,
+} from "../../evolu/invoicingLocalStats";
+import {
+  fetchEvoluRelayUsage,
+  relayUsagePercent,
+  type EvoluRelayUsageResponse,
+} from "../../services/evoluRelayUsageApi";
 const { t, locale } = useI18n();
 const route = useRoute();
 const router = useRouter();
@@ -1237,6 +1434,32 @@ const restoreOnDeviceError = ref("");
 const storedGuestMnemonic = ref<string | null>(null);
 const copiedSeed = ref(false);
 const localFirst = isInvoicingLocalFirst();
+const evoluRelayForm = ref({ url: "" });
+const evoluRelaySaving = ref(false);
+const relayBuildDefault = computed(() => {
+  const build = getEvoluRelayBuildInfo();
+  return build.enabled ? build.url : "";
+});
+const activeRelayUrl = computed(() => getEvoluRelayRuntimeInfo().url);
+const invoicingEvolu = localFirst ? useInvoicingEvolu() : null;
+const evoluLocalStats = ref<InvoicingLocalStats | null>(null);
+const evoluRelayUsage = ref<EvoluRelayUsageResponse | null>(null);
+const evoluStatsLoading = ref(false);
+const evoluRelayUsageChecked = ref(false);
+const evoluStatsNeedPhrase = computed(
+  () => localFirst && !getStoredAccountMnemonic(),
+);
+const documentTypeSummary = computed(() => {
+  const byType = evoluLocalStats.value?.counts.documentByType;
+  if (!byType) {
+    return "";
+  }
+  const parts = Object.entries(byType)
+    .filter(([, count]) => count > 0)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([type, count]) => `${type}: ${count}`);
+  return parts.join(", ");
+});
 type ServerLegacyCompany = {
   id: string;
   legal_name: string;
@@ -1320,6 +1543,7 @@ onMounted(async () => {
   storedGuestMnemonic.value = getStoredGuestMnemonic();
   if (authStore.user) {
     profileForm.value.name = authStore.user.name || "";
+    evoluRelayForm.value.url = authStore.user.evolu_relay_url ?? "";
   }
 
   try {
@@ -1337,6 +1561,7 @@ onMounted(async () => {
   await loadSubscriptionDetails();
   if (localFirst) {
     await loadServerLegacyCompanies();
+    void refreshEvoluStats();
   }
   if (route.query.restore_phrase === "1" && !storedGuestMnemonic.value) {
     showRestoreOnDeviceModal.value = true;
@@ -1669,6 +1894,85 @@ async function submitRestoreOnDevice(): Promise<void> {
     restoreOnDeviceError.value = t("account.recovery_phrase_restore_on_device_failed");
   } finally {
     restoreOnDeviceLoading.value = false;
+  }
+}
+
+async function saveEvoluRelayUrl(): Promise<void> {
+  evoluRelaySaving.value = true;
+  try {
+    const url = evoluRelayForm.value.url.trim();
+    await api.put("/user", {
+      evolu_relay_url: url !== "" ? url : null,
+    });
+    await authStore.fetchUser();
+    evoluRelayForm.value.url = authStore.user?.evolu_relay_url ?? "";
+    if (invoicingEvolu) {
+      await refreshEvoluRelaySubscription(invoicingEvolu);
+    }
+    flashStore.success(t("account.evolu_relay_saved"));
+    void refreshEvoluStats();
+  } catch {
+    flashStore.error(t("account.evolu_relay_save_failed"));
+  } finally {
+    evoluRelaySaving.value = false;
+  }
+}
+
+async function clearEvoluRelayUrl(): Promise<void> {
+  evoluRelayForm.value.url = "";
+  await saveEvoluRelayUrl();
+}
+
+function formatStatsTime(ms: number): string {
+  try {
+    return new Intl.DateTimeFormat(locale.value, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(ms));
+  } catch {
+    return new Date(ms).toISOString();
+  }
+}
+
+function formatStatsIso(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat(locale.value, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+async function refreshEvoluStats(): Promise<void> {
+  if (!localFirst || !invoicingEvolu || evoluStatsNeedPhrase.value) {
+    evoluLocalStats.value = null;
+    evoluRelayUsage.value = null;
+    evoluRelayUsageChecked.value = false;
+    return;
+  }
+
+  evoluStatsLoading.value = true;
+  evoluRelayUsageChecked.value = false;
+  try {
+    await ensureEvoluBoundToAccountSeed();
+    const stats = await loadInvoicingLocalStats(invoicingEvolu, { includeDbExport: true });
+    evoluLocalStats.value = stats;
+
+    const relayUrl = activeRelayUrl.value;
+    if (relayUrl && stats.ownerId) {
+      evoluRelayUsage.value = await fetchEvoluRelayUsage(relayUrl, stats.ownerId);
+    } else {
+      evoluRelayUsage.value = null;
+    }
+    evoluRelayUsageChecked.value = true;
+  } catch {
+    evoluLocalStats.value = null;
+    evoluRelayUsage.value = null;
+    evoluRelayUsageChecked.value = true;
+  } finally {
+    evoluStatsLoading.value = false;
   }
 }
 

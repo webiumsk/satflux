@@ -239,7 +239,13 @@ class AccountController extends Controller
     {
         $validated = $request->validate([
             'name' => ['nullable', 'string', 'max:255'],
+            'evolu_relay_url' => ['nullable', 'string', 'max:512', 'regex:/^wss:\/\/.+/i'],
         ]);
+
+        if (array_key_exists('evolu_relay_url', $validated)) {
+            $url = trim((string) ($validated['evolu_relay_url'] ?? ''));
+            $validated['evolu_relay_url'] = $url !== '' ? $url : null;
+        }
 
         $request->user()->update($validated);
 

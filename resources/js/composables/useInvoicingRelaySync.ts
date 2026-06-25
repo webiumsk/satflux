@@ -86,7 +86,7 @@ export function useInvoicingRelaySync(options?: UseInvoicingRelaySyncOptions) {
         });
     }
 
-    async function pushToRelay(): Promise<PushInvoicingToRelayResult> {
+    async function pushToRelay(options?: { force?: boolean }): Promise<PushInvoicingToRelayResult> {
         if (!evolu) {
             return {
                 ownerStatus: "ok",
@@ -98,7 +98,10 @@ export function useInvoicingRelaySync(options?: UseInvoicingRelaySyncOptions) {
             };
         }
         await ensureEvoluBoundToAccountSeed();
-        return pushInvoicingToRelay(evolu, { timeoutMs: 45_000 });
+        return pushInvoicingToRelay(evolu, {
+            timeoutMs: options?.force ? 150_000 : 45_000,
+            force: options?.force,
+        });
     }
 
     return {

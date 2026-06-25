@@ -36,6 +36,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
         'trial_consumed_at',
         'is_guest',
         'allows_satflux_email_changes',
+        'evolu_relay_url',
         'guest_recovery_public_key',
         'guest_recovery_enrolled_at',
         'privacy_consent_at',
