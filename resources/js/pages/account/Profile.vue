@@ -46,63 +46,12 @@
             <span
               v-if="tab.badge"
               class="inline-flex h-2 w-2 rounded-full bg-amber-400"
-              :title="t('account.tab_sync_badge_hint')"
+              :title="t(tab.badgeHintKey ?? 'account.tab_sync_badge_hint')"
             />
           </button>
         </nav>
 
         <div v-show="activeTab === 'sync'" class="space-y-6">
-        <div
-          class="rounded-2xl border border-gray-700 bg-gray-800/80 p-5 space-y-3"
-        >
-          <h4 class="text-sm font-semibold text-white">
-            {{ t("account.recovery_phrase_title") }}
-          </h4>
-          <p class="text-sm text-gray-300">
-            {{ t("account.recovery_phrase_desc") }}
-          </p>
-          <p
-            v-if="authStore.user?.guest_recovery_enrolled"
-            class="text-sm text-emerald-400"
-          >
-            {{ t("account.recovery_phrase_enrolled") }}
-          </p>
-          <template v-if="authStore.user?.guest_recovery_enrolled">
-            <div
-              v-if="storedGuestMnemonic"
-              class="flex flex-wrap items-center gap-2"
-            >
-              <button
-                type="button"
-                class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
-                @click="showGuestSeedModal = true"
-              >
-                {{ t("account.recovery_phrase_reveal") }}
-              </button>
-            </div>
-            <template v-else>
-              <p class="text-sm text-amber-300">
-                {{ t("account.recovery_phrase_unavailable_here") }}
-              </p>
-              <button
-                type="button"
-                class="inline-flex items-center px-4 py-2 border border-amber-400/60 rounded-lg text-sm font-medium text-amber-100 hover:bg-amber-500/10"
-                @click="showRestoreOnDeviceModal = true"
-              >
-                {{ t("account.recovery_phrase_restore_on_device") }}
-              </button>
-            </template>
-          </template>
-          <button
-            v-else
-            type="button"
-            class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
-            @click="showRecoveryBackupWizard = true"
-          >
-            {{ t("account.recovery_phrase_setup") }}
-          </button>
-        </div>
-
         <div
           v-if="localFirst"
           class="rounded-2xl border border-gray-700 bg-gray-800/80 p-5 space-y-3"
@@ -438,101 +387,55 @@
           </div>
         </div>
 
-        <!-- Login methods (Lightning + Nostr) -->
         <div
-          v-if="lnurlAuthEnabled || nostrAuthEnabled"
-          class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
+          class="rounded-2xl border border-gray-700 bg-gray-800/80 p-5 space-y-3"
         >
-          <div class="px-6 py-8 sm:p-10">
-            <h4 class="text-lg font-semibold text-white mb-6 flex items-center">
-              <svg
-                class="w-5 h-5 mr-2 text-indigo-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+          <h4 class="text-sm font-semibold text-white">
+            {{ t("account.recovery_phrase_title") }}
+          </h4>
+          <p class="text-sm text-gray-300">
+            {{ t("account.recovery_phrase_desc") }}
+          </p>
+          <p
+            v-if="authStore.user?.guest_recovery_enrolled"
+            class="text-sm text-emerald-400"
+          >
+            {{ t("account.recovery_phrase_enrolled") }}
+          </p>
+          <template v-if="authStore.user?.guest_recovery_enrolled">
+            <div
+              v-if="storedGuestMnemonic"
+              class="flex flex-wrap items-center gap-2"
+            >
+              <button
+                type="button"
+                class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
+                @click="showGuestSeedModal = true"
               >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                />
-              </svg>
-              {{ t("account.login_methods") }}
-            </h4>
-            <div class="space-y-4">
-              <p class="text-sm text-gray-400">
-                {{ t("account.login_methods_desc") }}
-              </p>
-              <div
-                v-if="lnurlAuthEnabled"
-                class="flex items-center justify-between gap-2"
-              >
-                <div
-                  v-if="authStore.user?.has_lightning_login"
-                  class="flex items-center gap-2 text-green-400"
-                >
-                  <svg
-                    class="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <span>{{ t("account.lightning_login_enabled") }}</span>
-                </div>
-                <button
-                  v-else
-                  type="button"
-                  :disabled="lnurlLinkLoading"
-                  @click="handleAddLightningLogin"
-                  class="inline-flex items-center px-4 py-2 border border-indigo-500 rounded-lg text-sm font-medium text-indigo-400 hover:bg-indigo-500/10 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
-                >
-                  <span v-if="lnurlLinkLoading">{{ t("common.loading") }}</span>
-                  <span v-else>{{ t("account.add_lightning_login") }}</span>
-                </button>
-              </div>
-              <div
-                v-if="nostrAuthEnabled"
-                class="flex items-center justify-between gap-2"
-              >
-                <div
-                  v-if="authStore.user?.has_nostr_login"
-                  class="flex items-center gap-2 text-green-400"
-                >
-                  <svg
-                    class="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <span>{{ t("account.nostr_login_enabled") }}</span>
-                </div>
-                <button
-                  v-else
-                  type="button"
-                  @click="showNostrLinkModal = true"
-                  class="inline-flex items-center px-4 py-2 border border-amber-500/50 rounded-lg text-sm font-medium text-amber-400 hover:bg-amber-500/10 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                >
-                  <span class="mr-1">🟠</span>
-                  {{ t("account.add_nostr_login") }}
-                </button>
-              </div>
+                {{ t("account.recovery_phrase_reveal") }}
+              </button>
             </div>
-          </div>
+            <template v-else>
+              <p class="text-sm text-amber-300">
+                {{ t("account.recovery_phrase_unavailable_here") }}
+              </p>
+              <button
+                type="button"
+                class="inline-flex items-center px-4 py-2 border border-amber-400/60 rounded-lg text-sm font-medium text-amber-100 hover:bg-amber-500/10"
+                @click="showRestoreOnDeviceModal = true"
+              >
+                {{ t("account.recovery_phrase_restore_on_device") }}
+              </button>
+            </template>
+          </template>
+          <button
+            v-else
+            type="button"
+            class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
+            @click="showRecoveryBackupWizard = true"
+          >
+            {{ t("account.recovery_phrase_setup") }}
+          </button>
         </div>
 
         <!-- Change Password -->
@@ -1168,29 +1071,6 @@
         </div>
       </div>
 
-      <!-- Add Lightning Login Modal -->
-      <LnurlQrModal
-        :open="showLnurlLinkModal"
-        :title="t('account.add_lightning_login')"
-        :lnurl="lnurlLinkUrl"
-        :error="lnurlLinkError"
-        :polling="lnurlLinkPolling"
-        :expires-in-seconds="300"
-        @close="closeLnurlLinkModal"
-        @regenerate="requestNewLinkChallenge"
-      />
-
-      <NostrAuthModal
-        :open="showNostrLinkModal"
-        mode="link"
-        @close="showNostrLinkModal = false"
-        @success="
-          showNostrLinkModal = false;
-          authStore.fetchUser();
-          flashStore.success(t('account.nostr_login_added'));
-        "
-      />
-
       <div
         v-if="showGuestSeedModal"
         class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
@@ -1370,7 +1250,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, onUnmounted, watch } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
@@ -1383,8 +1263,6 @@ import {
 import { usePlanFeatures } from "../../composables/usePlanFeatures";
 import { useCurrentPlan } from "../../composables/useCurrentPlan";
 import api from "../../services/api";
-import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
-import NostrAuthModal from "../../components/auth/NostrAuthModal.vue";
 import GuestBackupWizardModal from "../../components/auth/GuestBackupWizardModal.vue";
 import GuestUpgradeForm from "../../components/account/GuestUpgradeForm.vue";
 import {
@@ -1466,10 +1344,6 @@ const addingCredit = ref(false);
 const payingNow = ref(false);
 const loadingSubscription = ref(false);
 
-const lnurlAuthEnabled = ref(false);
-const nostrAuthEnabled = ref(false);
-const showLnurlLinkModal = ref(false);
-const showNostrLinkModal = ref(false);
 const showGuestSeedModal = ref(false);
 const showRecoveryBackupWizard = ref(false);
 const showRestoreOnDeviceModal = ref(false);
@@ -1530,26 +1404,41 @@ const evoluStatsNeedPhrase = computed(
   () => localFirst && !getStoredAccountMnemonic(),
 );
 
+const accountTabBadge = computed(() => {
+  if (!authStore.user?.guest_recovery_enrolled) {
+    return true;
+  }
+  return !storedGuestMnemonic.value && !getStoredAccountMnemonic();
+});
+
 const syncTabBadge = computed(() => {
   if (!localFirst) {
     return false;
-  }
-  if (evoluStatsNeedPhrase.value) {
-    return true;
   }
   const relayError = evoluLocalStats.value?.relayError;
   return typeof relayError === "string" && relayError.length > 0;
 });
 
 const visibleProfileTabs = computed(() => {
-  const tabs: { id: ProfileTab; labelKey: string; badge?: boolean }[] = [
-    { id: "account", labelKey: "account.tab_account" },
+  const tabs: {
+    id: ProfileTab;
+    labelKey: string;
+    badge?: boolean;
+    badgeHintKey?: string;
+  }[] = [
+    {
+      id: "account",
+      labelKey: "account.tab_account",
+      badge: accountTabBadge.value,
+      badgeHintKey: "account.tab_account_badge_hint",
+    },
   ];
   if (localFirst) {
     tabs.push({
       id: "sync",
       labelKey: "account.tab_sync",
       badge: syncTabBadge.value,
+      badgeHintKey: "account.tab_sync_badge_hint",
     });
   }
   tabs.push(
@@ -1585,12 +1474,6 @@ type ServerLegacyCompany = {
 const serverLegacyCompanies = ref<ServerLegacyCompany[]>([]);
 const serverLegacyLoading = ref(false);
 const serverLegacyDeleting = ref<string | null>(null);
-const lnurlLinkUrl = ref("");
-const lnurlK1 = ref("");
-const lnurlLinkLoading = ref(false);
-const lnurlLinkError = ref("");
-const lnurlLinkPolling = ref(false);
-let linkPollingInterval: number | null = null;
 
 const { planCode: effectivePlanCode } = useCurrentPlan();
 
@@ -1662,27 +1545,13 @@ onMounted(async () => {
     evoluRelayForm.value.url = authStore.user.evolu_relay_url ?? "";
   }
 
-  try {
-    const [lnurlRes, nostrRes] = await Promise.all([
-      api.get<{ enabled: boolean }>("/lnurl-auth/enabled"),
-      api.get<{ enabled: boolean }>("/nostr-auth/enabled"),
-    ]);
-    lnurlAuthEnabled.value = lnurlRes.data?.enabled === true;
-    nostrAuthEnabled.value = nostrRes.data?.enabled === true;
-  } catch {
-    lnurlAuthEnabled.value = false;
-    nostrAuthEnabled.value = false;
-  }
-
   await loadSubscriptionDetails();
   if (localFirst) {
     await loadServerLegacyCompanies();
     void refreshEvoluStats();
   }
   if (route.query.restore_phrase === "1" && !storedGuestMnemonic.value) {
-    if (localFirst) {
-      setProfileTab("sync");
-    }
+    setProfileTab("account");
     showRestoreOnDeviceModal.value = true;
     flashStore.warning(t("account.recovery_phrase_required_for_invoicing"));
     void router.replace({
@@ -1859,113 +1728,6 @@ async function upgradePlan(plan: string) {
     upgrading.value = false;
   }
 }
-
-function stopLinkPolling() {
-  if (linkPollingInterval != null) {
-    window.clearInterval(linkPollingInterval);
-    linkPollingInterval = null;
-  }
-  lnurlLinkPolling.value = false;
-}
-
-function closeLnurlLinkModal() {
-  stopLinkPolling();
-  showLnurlLinkModal.value = false;
-  lnurlK1.value = "";
-  lnurlLinkUrl.value = "";
-  lnurlLinkError.value = "";
-}
-
-async function fetchLinkChallengeAndOpen() {
-  const response = await api.post("/lnurl-auth/link-challenge");
-  const raw = response.data ?? {};
-  const data =
-    typeof raw === "object" && raw !== null && "data" in raw
-      ? (raw as { data: { k1?: string; lnurl?: string } }).data
-      : raw;
-  const k1 = data?.k1 ?? (data as { K1?: string })?.K1;
-  const lnurl =
-    data?.lnurl ?? (data as { lnurlAuthUrl?: string })?.lnurlAuthUrl;
-  if (!k1 || !lnurl) {
-    lnurlLinkError.value = t("auth.error_occurred");
-    return false;
-  }
-  lnurlK1.value = k1;
-  lnurlLinkUrl.value = lnurl;
-  showLnurlLinkModal.value = true;
-  startLinkPolling(k1);
-  return true;
-}
-
-async function handleAddLightningLogin() {
-  lnurlLinkLoading.value = true;
-  lnurlLinkError.value = "";
-  try {
-    await fetchLinkChallengeAndOpen();
-  } catch (err: any) {
-    lnurlLinkError.value =
-      err.response?.data?.error || t("auth.error_occurred");
-  } finally {
-    lnurlLinkLoading.value = false;
-  }
-}
-
-async function requestNewLinkChallenge() {
-  lnurlLinkError.value = "";
-  stopLinkPolling();
-  try {
-    const ok = await fetchLinkChallengeAndOpen();
-    if (!ok) lnurlLinkError.value = t("auth.error_occurred");
-  } catch (err: any) {
-    lnurlLinkError.value =
-      err.response?.data?.error || t("auth.error_occurred");
-  }
-}
-
-function startLinkPolling(k1: string) {
-  lnurlLinkPolling.value = true;
-  const startTime = Date.now();
-  const timeout = 300000;
-  const doPoll = async () => {
-    if (Date.now() - startTime > timeout) {
-      lnurlLinkError.value = t("account.challenge_expired");
-      closeLnurlLinkModal();
-      return;
-    }
-    try {
-      const res = await api.get(
-        `/lnurl-auth/challenge-status/${k1}?_=${Date.now()}`,
-      );
-      const raw = res.data ?? {};
-      const data =
-        typeof raw === "object" && raw !== null && "data" in raw
-          ? (raw as { data: { status?: string } }).data
-          : raw;
-      const status = (data as { status?: string })?.status;
-      if (status === "linked") {
-        stopLinkPolling();
-        closeLnurlLinkModal();
-        await authStore.fetchUser();
-        alert(t("account.lightning_login_added"));
-      } else if (status === "expired") {
-        lnurlLinkError.value = t("account.challenge_expired");
-        closeLnurlLinkModal();
-      } else if (status === "error") {
-        lnurlLinkError.value =
-          (data as { message?: string }).message || t("auth.error_occurred");
-        closeLnurlLinkModal();
-      }
-    } catch (err: any) {
-      if (err.response?.status === 403) closeLnurlLinkModal();
-    }
-  };
-  doPoll();
-  linkPollingInterval = window.setInterval(doPoll, 1000);
-}
-
-onUnmounted(() => {
-  stopLinkPolling();
-});
 
 async function copyStoredSeed() {
   if (!storedGuestMnemonic.value) return;
