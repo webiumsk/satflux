@@ -9,6 +9,8 @@
     </div>
   </AppLayout>
   <router-view v-else />
+  <GuestUpgradeModal />
+  <LegacyRecoveryMigrationGate />
   <FlashMessage />
   <CookieConsentBanner />
 </template>
@@ -17,6 +19,8 @@
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 import AppLayout from "./components/layout/AppLayout.vue";
+import GuestUpgradeModal from "./components/account/GuestUpgradeModal.vue";
+import LegacyRecoveryMigrationGate from "./components/auth/LegacyRecoveryMigrationGate.vue";
 import FlashMessage from "./components/ui/FlashMessage.vue";
 import CookieConsentBanner from "./components/legal/CookieConsentBanner.vue";
 import { useAppLayoutScroll } from "./composables/useAppLayoutScroll";

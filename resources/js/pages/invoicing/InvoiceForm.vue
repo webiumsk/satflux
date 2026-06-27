@@ -453,7 +453,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import ContactCreateModal from '../../components/invoicing/ContactCreateModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoiceLineUnitSelect from '../../components/invoicing/InvoiceLineUnitSelect.vue';
@@ -463,6 +463,10 @@ import type { InvoiceLineForm } from '../../components/invoicing/InvoiceLivePrev
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import api, { businessDocumentPdfPath, getWebBlob } from '../../services/api';
+import {
+  downloadEphemeralPdf,
+  resolveEphemeralBridgeCompanyId,
+} from '../../evolu/ephemeralBridge';
 import { companyCurrencyOptions } from '../../config/companyCurrencies';
 import { appSettingsFromCompany } from '../../composables/useCompanyAppSettings';
 import { useInvoiceDocument } from '../../composables/useInvoiceDocument';
@@ -492,6 +496,7 @@ const {
   extractError,
   loadCompanyAndContacts,
   reloadDocument,
+  initNewDraft,
   contactShowTo,
   formatContactAddress,
   route,
@@ -508,6 +513,9 @@ const {
   showLineTaxColumn,
   warehouses,
   defaultWarehouseIdValue,
+  localFirst,
+  saveLocalDocumentFlow,
+  buildCurrentEphemeralSnapshot,
 } = useInvoiceDocument();
 
 const { rememberCompany } = useInvoicingLayout();
@@ -640,6 +648,27 @@ async function save(downloadPdf: boolean) {
   saving.value = true;
   error.value = '';
   try {
+    if (localFirst) {
+      const docId = await saveLocalDocumentFlow();
+      if (!docId) {
+        error.value = t('invoicing.company_save_validation_error');
+        return;
+      }
+      if (downloadPdf) {
+        const bridgeCompanyId = await resolveEphemeralBridgeCompanyId();
+        await downloadEphemeralPdf(
+          buildCurrentEphemeralSnapshot(),
+          `invoice-${docId}.pdf`,
+          bridgeCompanyId,
+        );
+      }
+      router.push({
+        name: documentRoutes.value.show,
+        params: { companyId: companyId.value, documentId: docId },
+      });
+      return;
+    }
+
     const wasDraft = isNew.value || documentStatus.value === 'draft';
     let docId = documentId.value;
     if (!isNew.value && docId) {
@@ -674,10 +703,6 @@ async function save(downloadPdf: boolean) {
   }
 }
 
-watch(documentId, async () => {
-  if (documentId.value) await reloadDocument();
-});
-
 onMounted(async () => {
   rememberCompany(companyId.value);
   documentType.value =
@@ -687,12 +712,16 @@ onMounted(async () => {
         ? 'quote'
         : documentKind.value === 'credit_note'
           ? 'credit_note'
-          : 'invoice';
+          : documentKind.value === 'delivery_note'
+            ? 'delivery_note'
+            : documentKind.value === 'order_received'
+              ? 'order_received'
+              : 'invoice';
   await loadCompanyAndContacts();
   if (documentId.value) {
     await reloadDocument();
   } else {
-    form.lines.push(newLine());
+    await initNewDraft();
     const prefill = route.query.contact as string | undefined;
     if (prefill && contacts.value.some((c) => c.id === prefill)) {
       form.company_contact_id = prefill;

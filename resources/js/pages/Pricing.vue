@@ -59,7 +59,7 @@
           </span>
         </div>
 
-        <!-- Pro -->
+        <!-- PRO -->
         <div
           class="rounded-2xl border-2 border-indigo-500 bg-gray-900/80 p-8 flex flex-col relative"
         >

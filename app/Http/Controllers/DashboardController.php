@@ -211,7 +211,7 @@ class DashboardController extends Controller
     /**
      * Dashboard stats (sales by store and by payment method).
      * Returns per_store with pos (PoS orders) and invoices by_source (BTCPay: LN, Pay Button, Tickets, etc.).
-     * Top-level sales_7d/sales_30d = combined all stores, all methods. Pro + admin/support only.
+     * Top-level sales_7d/sales_30d = combined all stores, all methods. PRO + admin/support only.
      */
     public function stats(Request $request)
     {

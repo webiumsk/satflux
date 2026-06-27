@@ -1,3 +1,8 @@
+import {
+  buildDefaultEmailTemplates,
+  mergeEmailTemplates,
+} from './companyEmailTemplateDefaults';
+
 export type EmailTemplate = { subject: string; body: string };
 
 export type EmailSmtpState = {
@@ -78,7 +83,7 @@ export const EMAIL_PLACEHOLDERS = [
   { token: '#QR#', key: 'invoicing.email_ph_qr' },
 ] as const;
 
-export function defaultEmailSettings(): CompanyEmailSettingsState {
+export function defaultEmailSettings(locale = 'en'): CompanyEmailSettingsState {
   return {
     delivery_method: 'system',
     smtp: {
@@ -90,24 +95,19 @@ export function defaultEmailSettings(): CompanyEmailSettingsState {
       encryption: 'tls',
       use_smtp_email_as_from: true,
     },
-    templates: {},
+    templates: buildDefaultEmailTemplates(locale),
   };
 }
 
-export function emailSettingsFromCompany(company: Record<string, unknown> | null): CompanyEmailSettingsState {
+export function emailSettingsFromCompany(
+  company: Record<string, unknown> | null,
+  locale = 'en',
+): CompanyEmailSettingsState {
   const raw = (company?.email_settings ?? {}) as Partial<CompanyEmailSettingsState>;
-  const base = defaultEmailSettings();
+  const base = defaultEmailSettings(locale);
   const smtp = { ...base.smtp, ...(raw.smtp ?? {}) };
   smtp.password = '';
-  const templates: Record<string, EmailTemplate> = { ...base.templates };
-  if (raw.templates) {
-    for (const [k, v] of Object.entries(raw.templates)) {
-      templates[k] = {
-        subject: (v as EmailTemplate)?.subject ?? '',
-        body: (v as EmailTemplate)?.body ?? '',
-      };
-    }
-  }
+  const templates = mergeEmailTemplates(raw.templates, locale);
   return {
     delivery_method: raw.delivery_method ?? base.delivery_method,
     smtp,

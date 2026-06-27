@@ -27,6 +27,11 @@ class BusinessDocumentPaymentTokenService
         }
 
         $this->assignIfNeeded($document);
+
+        if (! $document->exists) {
+            return;
+        }
+
         if ($document->isDirty('payment_token')) {
             $document->save();
         }

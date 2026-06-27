@@ -16,7 +16,7 @@
       </RouterLink>
 
       <RouterLink
-        to="/invoicing"
+        :to="dashboardInvoicingTabRoute"
         class="mobile-nav-item"
         :class="{ 'mobile-nav-item--active': isInvoicingActive }"
       >
@@ -66,6 +66,11 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
+import {
+  dashboardInvoicingTabRoute,
+  isDashboardInvoicingTabActive,
+  isInvoicingNavActive,
+} from '../../utils/dashboardInvoicingTab';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -73,9 +78,12 @@ const route = useRoute();
 const isStoresActive = computed(
   () => route.path === '/stores' || /^\/stores\/[^/]+/.test(route.path),
 );
-const isInvoicingActive = computed(() => route.path.startsWith('/invoicing'));
+const isInvoicingActive = computed(() =>
+  isInvoicingNavActive(route.path, route.query.tab),
+);
 const isDashboardActive = computed(
-  () => route.path === '/dashboard' || route.name === 'home',
+  () => (route.path === '/dashboard' || route.name === 'home')
+    && !isDashboardInvoicingTabActive(route.path, route.query.tab),
 );
 const isProfileActive = computed(() => route.path.startsWith('/account'));
 const isInfoActive = computed(() => route.path.startsWith('/info'));

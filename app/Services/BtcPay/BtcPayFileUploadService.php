@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 
 /**
  * Uploads files via Greenfield POST /api/v1/files so blobs live on BTCPay Server
- * (same durability as store logos / ticket images — survives Satflux redeploys).
+ * (same durability as store logos / ticket images - survives Satflux redeploys).
  */
 class BtcPayFileUploadService
 {

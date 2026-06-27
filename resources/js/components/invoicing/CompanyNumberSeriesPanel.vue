@@ -21,7 +21,7 @@
           <tbody>
             <tr
               v-for="row in series"
-              :key="row.id"
+              :key="String(row.id)"
               class="border-t border-gray-100 hover:bg-indigo-50/40"
             >
               <td class="px-4 py-3 font-medium text-gray-900">
@@ -37,19 +37,23 @@
                 <div class="flex gap-1">
                   <button
                     type="button"
-                    class="invoicing-btn-secondary px-2 py-1.5"
+                    class="row-action-btn"
                     :title="t('common.edit')"
                     @click="openEdit(row)"
                   >
-                    ✎
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
                   </button>
                   <button
                     type="button"
-                    class="invoicing-btn-secondary px-2 py-1.5 text-red-700"
+                    class="row-action-btn row-action-btn--danger"
                     :title="t('common.delete')"
                     @click="remove(row)"
                   >
-                    🗑
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
                   </button>
                 </div>
               </td>
@@ -91,7 +95,7 @@
         <div>
           <label class="invoicing-sf-label">{{ t('invoicing.series_field_type') }} *</label>
           <select v-model="form.document_type" class="invoicing-sf-input" required>
-            <option v-for="opt in DOCUMENT_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
+            <option v-for="opt in documentTypeOptions" :key="opt.value" :value="opt.value">
               {{ t(opt.labelKey) }}
             </option>
           </select>
@@ -139,9 +143,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useQuery } from '@evolu/vue';
 import api from '../../services/api';
+import { useInvoicingSaveFeedback } from '../../composables/useInvoicingSaveFeedback';
 import CompanyAppTabsNav from './CompanyAppTabsNav.vue';
 import {
   DOCUMENT_TYPE_OPTIONS,
@@ -150,22 +156,55 @@ import {
   seriesToForm,
   type NumberSeriesRow,
 } from '../../composables/useCompanyNumberSeries';
+import { allNumberSeriesQuery, useInvoicingEvolu } from '../../evolu/client';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
+import {
+  createNumberSeries,
+  deleteNumberSeries,
+  seedDefaultNumberSeries,
+  localizedDefaultSeries,
+  updateNumberSeries,
+} from '../../evolu/numberSeriesCrud';
+import { previewNextNumber } from '../../evolu/numberSeriesFormat';
+import {
+  evoluNumberSeriesToApi,
+  type EvoluNumberSeriesRow,
+} from '../../evolu/numberSeriesMap';
+import type { CompanyId, NumberSeriesId } from '../../evolu/schema';
 
 const props = defineProps<{ companyId: string }>();
 
 const { t } = useI18n();
+const { notifySaved } = useInvoicingSaveFeedback();
+const localFirst = isInvoicingLocalFirst();
+const evolu = localFirst ? useInvoicingEvolu() : null;
+const seriesRows = localFirst ? useQuery(allNumberSeriesQuery) : ref([]);
 
 const series = ref<NumberSeriesRow[]>([]);
 const loading = ref(true);
 const saving = ref(false);
 const saveError = ref('');
 const modalOpen = ref(false);
-const editingId = ref<number | null>(null);
+const editingId = ref<number | string | null>(null);
 const form = reactive(emptySeriesForm());
+
+const documentTypeOptions = computed(() =>
+  localFirst
+    ? DOCUMENT_TYPE_OPTIONS.filter((opt) => opt.value !== 'order_issued')
+    : DOCUMENT_TYPE_OPTIONS,
+);
 
 const nextPreview = computed(() => {
   const counter = Math.max(0, Number(form.last_number) || 0) + 1;
-  return previewFormat(form.format, counter);
+  return previewNextNumber(
+    {
+      format: form.format,
+      resetPeriod: form.reset_period,
+      periodKey: null,
+      lastNumber: String(Math.max(0, Number(form.last_number) || 0)),
+    },
+    counter,
+  );
 });
 
 function documentTypeLabel(type: string) {
@@ -179,35 +218,45 @@ function periodLabel(period: string) {
   return t('invoicing.series_period_yearly');
 }
 
-/** Client-side preview (same rules as backend). */
-function previewFormat(pattern: string, counter: number) {
-  const p = (pattern || 'RRRRCCCC').toUpperCase();
-  const now = new Date();
-  let out = '';
-  let i = 0;
-  while (i < p.length) {
-    const ch = p[i];
-    if (ch === 'R' || ch === 'M' || ch === 'C') {
-      let run = 0;
-      while (i < p.length && p[i] === ch) run++, i++;
-      if (ch === 'R') {
-        const y = String(now.getFullYear()).padStart(run, '0').slice(-run);
-        out += y;
-      } else if (ch === 'M') {
-        const m = String(now.getMonth() + 1).padStart(run, '0').slice(-run);
-        out += m;
-      } else {
-        out += String(counter).padStart(run, '0');
-      }
-    } else {
-      out += ch;
-      i++;
-    }
-  }
-  return out;
+function localSeriesRows(): EvoluNumberSeriesRow[] {
+  return (seriesRows.value as EvoluNumberSeriesRow[]).filter(
+    (row) => row.companyId === props.companyId,
+  );
 }
 
-async function load() {
+function syncLocalSeriesList() {
+  series.value = localSeriesRows()
+    .map(evoluNumberSeriesToApi)
+    .sort((a, b) => {
+      const typeCmp = a.document_type.localeCompare(b.document_type);
+      if (typeCmp !== 0) return typeCmp;
+      if (a.is_default !== b.is_default) return a.is_default ? -1 : 1;
+      return a.name.localeCompare(b.name, 'sk');
+    });
+}
+
+async function loadLocal() {
+  if (!evolu) return;
+  loading.value = true;
+  saveError.value = '';
+  try {
+    await evolu.loadQuery(allNumberSeriesQuery);
+    if (localSeriesRows().length === 0) {
+      seedDefaultNumberSeries(
+        evolu,
+        props.companyId as CompanyId,
+        seriesRows.value as EvoluNumberSeriesRow[],
+        localizedDefaultSeries(t),
+      );
+      await evolu.loadQuery(allNumberSeriesQuery);
+    }
+    syncLocalSeriesList();
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function loadServer() {
   loading.value = true;
   saveError.value = '';
   try {
@@ -218,6 +267,11 @@ async function load() {
   } finally {
     loading.value = false;
   }
+}
+
+async function load() {
+  if (localFirst) await loadLocal();
+  else await loadServer();
 }
 
 function openCreate() {
@@ -237,18 +291,67 @@ function closeModal() {
   editingId.value = null;
 }
 
-async function saveModal() {
+async function saveModalLocal() {
+  if (!evolu) return;
+  saving.value = true;
+  saveError.value = '';
+  const payload = { ...form, format: form.format.toUpperCase() };
+  try {
+    const rows = localSeriesRows();
+    if (editingId.value) {
+      const existing = rows.find((row) => row.id === editingId.value);
+      if (!existing) {
+        saveError.value = t('common.error_generic');
+        return;
+      }
+      const result = updateNumberSeries(
+        evolu,
+        editingId.value as NumberSeriesId,
+        props.companyId as CompanyId,
+        rows,
+        payload,
+        existing,
+      );
+      if (!result.ok) {
+        saveError.value = t('common.error_generic');
+        return;
+      }
+    } else {
+      const result = createNumberSeries(
+        evolu,
+        props.companyId as CompanyId,
+        rows,
+        payload,
+      );
+      if (!result.ok) {
+        saveError.value = t('common.error_generic');
+        return;
+      }
+    }
+    closeModal();
+    await loadLocal();
+    notifySaved('invoicing.series_saved');
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function saveModalServer() {
   saving.value = true;
   saveError.value = '';
   const payload = { ...form, format: form.format.toUpperCase() };
   try {
     if (editingId.value) {
-      await api.patch(`/invoicing/companies/${props.companyId}/number-series/${editingId.value}`, payload);
+      await api.patch(
+        `/invoicing/companies/${props.companyId}/number-series/${editingId.value}`,
+        payload,
+      );
     } else {
       await api.post(`/invoicing/companies/${props.companyId}/number-series`, payload);
     }
     closeModal();
-    await load();
+    await loadServer();
+    notifySaved('invoicing.series_saved');
   } catch (e: any) {
     saveError.value = e?.response?.data?.message ?? t('common.error_generic');
   } finally {
@@ -256,15 +359,56 @@ async function saveModal() {
   }
 }
 
-async function remove(row: NumberSeriesRow) {
-  if (!window.confirm(t('invoicing.series_confirm_delete', { name: row.name }))) return;
+async function saveModal() {
+  if (localFirst) await saveModalLocal();
+  else await saveModalServer();
+}
+
+async function removeLocal(row: NumberSeriesRow) {
+  if (!evolu) return;
+  const result = deleteNumberSeries(
+    evolu,
+    row.id as NumberSeriesId,
+    props.companyId as CompanyId,
+    localSeriesRows(),
+  );
+  if (!result.ok) {
+    saveError.value = t('common.error_generic');
+    return;
+  }
+  await loadLocal();
+  notifySaved('invoicing.series_saved');
+}
+
+async function removeServer(row: NumberSeriesRow) {
   try {
     await api.delete(`/invoicing/companies/${props.companyId}/number-series/${row.id}`);
-    await load();
+    await loadServer();
+    notifySaved('invoicing.series_saved');
   } catch (e: any) {
     saveError.value = e?.response?.data?.message ?? t('common.error_generic');
   }
 }
 
+async function remove(row: NumberSeriesRow) {
+  if (!window.confirm(t('invoicing.series_confirm_delete', { name: row.name }))) return;
+  if (localFirst) await removeLocal(row);
+  else await removeServer(row);
+}
+
+if (localFirst) {
+  watch(seriesRows, syncLocalSeriesList, { deep: true });
+}
+
 onMounted(load);
 </script>
+
+<style scoped>
+.row-action-btn {
+  @apply p-2 text-black/90 hover:text-white hover:bg-indigo-500/80 rounded transition-colors inline-flex items-center justify-center;
+}
+
+.row-action-btn--danger {
+  @apply hover:bg-red-500/80;
+}
+</style>

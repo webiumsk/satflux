@@ -1,0 +1,15 @@
+---
+description: V texte používaj ASCII mínus namiesto em dash (—)
+alwaysApply: true
+---
+
+# Pomlčka v texte (satflux)
+
+Pri písaní a úpravách v tomto repozitári (Markdown, komentáre, UI copy v `locales/`, dokumentácia):
+
+- **Pomlčka:** používaj ASCII `-` (mínus/hyphen), nie typografický em dash `—` (U+2014).
+- Formát: medzery okolo pomlčky: `slovo - slovo`.
+- Príklad: `E2EE - End-to-End Encryption`, nie `E2EE — End-to-End Encryption`.
+- Výnimka: ponechaj `—` len ak je súčasť originálneho citátu, URL alebo cudzieho názvu.
+
+Pri úpravách existujúceho obsahu nahraď `—` za `-` (vrátane dvojitých `——` v komentároch → `--`).

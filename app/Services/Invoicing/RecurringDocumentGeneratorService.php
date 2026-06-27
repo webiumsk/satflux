@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\BusinessDocumentLine;
 use App\Models\BusinessRecurringProfile;
+use App\Support\Invoicing\BankSymbolNormalizer;
 use Carbon\Carbon;
 
 class RecurringDocumentGeneratorService
@@ -56,7 +57,7 @@ class RecurringDocumentGeneratorService
             : BusinessDocumentType::Invoice;
 
         $previewNumber = $this->sequenceService->previewNextNumber($profile->company, $docType->value);
-        $vsTemplate = $profile->variable_symbol ?: '#INVOICE_NUMBER#';
+        $vsTemplate = $profile->variable_symbol ?: '#VARIABLE_SYMBOL#';
 
         $issueDateStr = $issueDate->toDateString();
         $dueDate = $issueDate->copy()->addDays($profile->payment_terms_days)->toDateString();
@@ -72,7 +73,9 @@ class RecurringDocumentGeneratorService
             'type' => $docType,
             'status' => BusinessDocumentStatus::Draft,
             'title' => $this->placeholders->resolve($profile->title, $issueDate, $previewNumber, $vsTemplate),
-            'variable_symbol' => $this->placeholders->resolve($vsTemplate, $issueDate, $previewNumber, $vsTemplate),
+            'variable_symbol' => BankSymbolNormalizer::variableSymbol(
+                $this->placeholders->resolve($vsTemplate, $issueDate, $previewNumber, $vsTemplate)
+            ) ?? BankSymbolNormalizer::variableSymbol($previewNumber),
             'constant_symbol' => $profile->constant_symbol,
             'specific_symbol' => $profile->specific_symbol,
             'issue_date' => $issueDateStr,

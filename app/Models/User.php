@@ -36,6 +36,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
         'trial_consumed_at',
         'is_guest',
         'allows_satflux_email_changes',
+        'evolu_relay_url',
         'guest_recovery_public_key',
         'guest_recovery_enrolled_at',
         'privacy_consent_at',
@@ -110,7 +111,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     }
 
     /**
-     * Check if user has a Pro plan.
+     * Check if user has a PRO plan.
      */
     public function isPro(): bool
     {
@@ -206,7 +207,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     }
 
     /**
-     * True when the user has an active (or paid grace) Pro / Enterprise entitlement.
+     * True when the user has an active (or paid grace) PRO / Enterprise entitlement.
      */
     public function hasActivePaidSubscription(): bool
     {
@@ -214,7 +215,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     }
 
     /**
-     * Active Pro / Enterprise entitlement (trial, paid, or paid grace). Not expired.
+     * Active PRO / Enterprise entitlement (trial, paid, or paid grace). Not expired.
      */
     public function hasActiveProEntitlement(): bool
     {
@@ -406,6 +407,30 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function getEmailForVerification(): string
     {
         return (string) ($this->email ?? '');
+    }
+
+    public function hasRecoveryPhraseEnrolled(): bool
+    {
+        return ! empty($this->guest_recovery_public_key);
+    }
+
+    /** Legacy email/password account that must enroll a recovery phrase (seed-first rollout). */
+    public function requiresRecoveryMigration(): bool
+    {
+        if (! config('guest.seed_first_registration')) {
+            return false;
+        }
+
+        if ((bool) ($this->is_guest ?? false)) {
+            return false;
+        }
+
+        return ! $this->hasRecoveryPhraseEnrolled();
+    }
+
+    public function canUsePasswordLogin(): bool
+    {
+        return ! $this->hasRecoveryPhraseEnrolled();
     }
 
     /**

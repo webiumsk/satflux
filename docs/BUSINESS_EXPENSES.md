@@ -8,7 +8,7 @@ Table `business_expenses` (per company):
 
 | Field | Purpose |
 |-------|---------|
-| `internal_number` | Satflux sequence (`expense`, default format `NRRRRCCCC`) |
+| `internal_number` | Satflux sequence (`expense`, default format `EXPYYYYNNNN`) |
 | `external_number` | Supplier invoice / receipt number |
 | `title` | Short label |
 | `variable_symbol`, `constant_symbol`, `specific_symbol` | Payment symbols (SK bank) |

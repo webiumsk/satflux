@@ -21,6 +21,12 @@ class RegisterController extends Controller
      */
     public function register(Request $request)
     {
+        if (config('guest.seed_first_registration')) {
+            return response()->json([
+                'message' => __('messages.seed_first_registration_required'),
+            ], 422);
+        }
+
         $request->validate(array_merge([
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],

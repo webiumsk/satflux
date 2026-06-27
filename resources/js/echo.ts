@@ -42,7 +42,7 @@ export function getEcho(): Echo | null {
         wsPort: port,
         wssPort: port,
         forceTLS,
-        enabledTransports: ['ws', 'wss'],
+        enabledTransports: forceTLS ? ['wss'] : ['ws'],
         authEndpoint: `${baseUrl}/broadcasting/auth`,
         auth: {
             headers: {

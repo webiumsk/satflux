@@ -54,7 +54,7 @@ export function useCompanyVatPolicy() {
     return !isDomesticSupply(company, contact);
   }
 
-  function calculatesVatAmounts(company: VatPolicyCompany, contact: VatPolicyContact): boolean {
+  function calculatesVatAmounts(company: VatPolicyCompany): boolean {
     if (company?.jurisdiction === 'us') {
       return true;
     }
@@ -71,7 +71,7 @@ export function useCompanyVatPolicy() {
     return isPartialPayer(company) && isForeignSupply(company, contact);
   }
 
-  function defaultTaxRate(company: VatPolicyCompany, _contact?: VatPolicyContact): number {
+  function defaultTaxRate(company: VatPolicyCompany): number {
     if (company?.jurisdiction === 'us') {
       return Number(company?.vat_rate_default ?? 0);
     }
@@ -86,10 +86,10 @@ export function useCompanyVatPolicy() {
     contact: VatPolicyContact,
     requestedRate?: number | null,
   ): number {
-    if (!calculatesVatAmounts(company, contact)) {
+    if (!calculatesVatAmounts(company)) {
       return 0;
     }
-    return requestedRate ?? defaultTaxRate(company, contact);
+    return requestedRate ?? defaultTaxRate(company);
   }
 
   return {

@@ -26,7 +26,7 @@ class EnsurePlanAllowsBusinessInvoicing
 
         return response()->json([
             'message' => __('messages.business_invoicing_available_in_pro', [
-                'default' => 'Business invoicing is available on the Pro plan. Please upgrade to create invoices.',
+                'default' => 'Business invoicing is available on the PRO plan. Please upgrade to create invoices.',
             ]),
         ], 403);
     }

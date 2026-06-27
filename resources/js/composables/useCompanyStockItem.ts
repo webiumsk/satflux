@@ -187,7 +187,7 @@ export function useStockItemPage() {
 export function formatStockQuantity(qty: number | string, unit: string): string {
   const n = Number(qty);
   if (!Number.isFinite(n)) {
-    return '—';
+    return '-';
   }
   const formatted = Number.isInteger(n) ? String(n) : n.toLocaleString(undefined, { maximumFractionDigits: 4 });
   const u = unit?.trim();
@@ -195,9 +195,9 @@ export function formatStockQuantity(qty: number | string, unit: string): string 
 }
 
 export function formatStockPrice(amount: number | string | null | undefined, currency?: string | null): string {
-  if (amount == null || amount === '') return '—';
+  if (amount == null || amount === '') return '-';
   const n = Number(amount);
-  if (!Number.isFinite(n)) return '—';
+  if (!Number.isFinite(n)) return '-';
   const formatted = n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return currency ? `${formatted} ${currency}` : formatted;
 }

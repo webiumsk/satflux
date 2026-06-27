@@ -76,6 +76,11 @@ export function efakturaSecretIsSet(company: Record<string, unknown> | null): bo
     return true;
   }
 
+  const plain = raw.efaktura_sapi_client_secret;
+  if (typeof plain === 'string' && plain !== '') {
+    return true;
+  }
+
   const encrypted = raw.efaktura_sapi_client_secret_encrypted;
   return typeof encrypted === 'string' && encrypted !== '';
 }

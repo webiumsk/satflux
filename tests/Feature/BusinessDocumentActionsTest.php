@@ -157,7 +157,7 @@ class BusinessDocumentActionsTest extends TestCase
             'company_id' => $this->company->id,
             'type' => 'invoice',
             'status' => BusinessDocumentStatus::Paid,
-            'number' => "{$year}0005",
+            'number' => "INV{$year}0005",
             'total' => 99,
             'currency' => 'EUR',
             'paid_at' => now(),
@@ -187,7 +187,7 @@ class BusinessDocumentActionsTest extends TestCase
             ->getJson("/api/invoicing/companies/{$this->company->id}/number-series/preview?type=invoice");
 
         $preview->assertOk()
-            ->assertJsonPath('data.next_number', "{$year}0001");
+            ->assertJsonPath('data.next_number', "INV{$year}0001");
     }
 
     #[Test]
@@ -199,7 +199,7 @@ class BusinessDocumentActionsTest extends TestCase
             'company_id' => $this->company->id,
             'type' => 'invoice',
             'status' => BusinessDocumentStatus::Issued,
-            'number' => "{$year}0001",
+            'number' => "INV{$year}0001",
             'total' => 10,
             'currency' => 'EUR',
         ]);
@@ -208,7 +208,7 @@ class BusinessDocumentActionsTest extends TestCase
             'company_id' => $this->company->id,
             'type' => 'invoice',
             'status' => BusinessDocumentStatus::Paid,
-            'number' => "{$year}0002",
+            'number' => "INV{$year}0002",
             'total' => 20,
             'currency' => 'EUR',
             'paid_at' => now(),
@@ -236,7 +236,7 @@ class BusinessDocumentActionsTest extends TestCase
             ->getJson("/api/invoicing/companies/{$this->company->id}/number-series/preview?type=invoice");
 
         $preview->assertOk()
-            ->assertJsonPath('data.next_number', "{$year}0002");
+            ->assertJsonPath('data.next_number', "INV{$year}0002");
     }
 
     #[Test]

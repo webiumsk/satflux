@@ -1,15 +1,23 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import axios from 'axios';
 import api from '../services/api';
+import { ensureCsrfCookie } from '../services/csrf';
 import { useStoresStore } from './stores';
 import {
     clearStoredGuestMnemonic,
     getStoredGuestMnemonic,
     guestRecoveryMessage,
     guestRecoveryPublicKeyHexFromMnemonic,
+    hydrateAccountMnemonicSession,
     signGuestRecoveryMessage,
+    storeGuestMnemonic,
 } from '../services/guestRecovery';
+import { isInvoicingLocalFirst } from '../evolu/flags';
+import { ensureEvoluBoundToAccountSeed } from '../evolu/bootstrap';
+
+function scheduleChoralaSync(): void {
+    void import('../services/chorala').then(({ syncChoralaIdentity }) => syncChoralaIdentity());
+}
 
 export interface User {
     id: number;
@@ -17,6 +25,8 @@ export interface User {
     is_guest?: boolean;
     allows_satflux_email_changes?: boolean;
     guest_recovery_enrolled?: boolean;
+    requires_recovery_migration?: boolean;
+    can_use_password_login?: boolean;
     email_verified_at?: string;
     role?: string;
     name?: string;
@@ -43,6 +53,7 @@ export interface User {
     };
     has_lightning_login?: boolean;
     has_nostr_login?: boolean;
+    evolu_relay_url?: string | null;
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -52,6 +63,10 @@ export const useAuthStore = defineStore('auth', () => {
 
     const isAuthenticated = computed(() => user.value !== null);
 
+    const requiresRecoveryMigration = computed(
+        () => user.value?.requires_recovery_migration === true,
+    );
+
     /** Drop in-memory user + tenant store selection (same as logout’s local cleanup; no API call). */
     function clearLocalAuthAndTenantState() {
         user.value = null;
@@ -60,20 +75,38 @@ export const useAuthStore = defineStore('auth', () => {
         storesStore.currentStore = null;
     }
 
+    function normalizeUserPayload(data: User): User {
+        return { ...data };
+    }
+
+    async function syncAccountSeedAfterAuth(mnemonic: string): Promise<void> {
+        storeGuestMnemonic(mnemonic);
+        try {
+            await ensureEvoluBoundToAccountSeed();
+        } catch {
+            // Evolu init is best-effort; invoicing layout may retry on first visit.
+        }
+    }
+
     async function fetchUser() {
         try {
-            // Ensure session/CSRF cookie is set first (same-origin request).
-            // Required after full page reload so the session cookie is sent on /api/user.
-            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            await ensureCsrfCookie();
+            hydrateAccountMnemonicSession();
             const response = await api.get('/user');
-            user.value = response.data;
-            if (!user.value?.is_guest) {
-                clearStoredGuestMnemonic();
+            const previousUserId = user.value?.id ?? null;
+            user.value = normalizeUserPayload(response.data);
+            if ((user.value?.id ?? null) !== previousUserId) {
+                scheduleChoralaSync();
+            }
+            const mnemonic = getStoredGuestMnemonic();
+            if (mnemonic && isInvoicingLocalFirst()) {
+                void ensureEvoluBoundToAccountSeed();
             }
         } catch (error: any) {
             const status = error?.response?.status ?? error?.status;
             if (status === 401 || status === 403) {
                 user.value = null;
+                scheduleChoralaSync();
                 await tryAutoRestoreGuestFromStoredSeed();
                 return;
             }
@@ -87,7 +120,7 @@ export const useAuthStore = defineStore('auth', () => {
 
         autoRestoreInFlight = true;
         try {
-            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            await ensureCsrfCookie();
             const chRes = await api.post('/auth/guest/recovery/challenge');
             const { challenge_id, nonce } = chRes.data.data;
             const message = guestRecoveryMessage(challenge_id, nonce);
@@ -99,6 +132,10 @@ export const useAuthStore = defineStore('auth', () => {
                 signature,
             });
             user.value = response.data.user;
+            await syncAccountSeedAfterAuth(mnemonic);
+            scheduleChoralaSync();
+            const storesStore = useStoresStore();
+            await storesStore.fetchStores();
         } catch {
             // Keep user unauthenticated when auto-restore fails; manual restore remains available.
         } finally {
@@ -110,15 +147,39 @@ export const useAuthStore = defineStore('auth', () => {
         loading.value = true;
         try {
             // Ensure CSRF cookie is set before login
-            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            await ensureCsrfCookie();
 
             const response = await api.post('/auth/login', {
                 email,
                 password,
                 remember,
             });
-            user.value = response.data.user;
+            user.value = normalizeUserPayload({
+                ...response.data.user,
+                requires_recovery_migration:
+                    response.data.requires_recovery_migration ??
+                    response.data.user?.requires_recovery_migration,
+            });
+            hydrateAccountMnemonicSession();
+            scheduleChoralaSync();
+            if (getStoredGuestMnemonic() && isInvoicingLocalFirst()) {
+                void ensureEvoluBoundToAccountSeed();
+            }
             return response.data;
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    async function completeLegacyRecoveryMigration(payload: {
+        recoveryPublicKeyHex: string;
+        mnemonic: string;
+    }) {
+        loading.value = true;
+        try {
+            await enrollGuestRecoveryPublicKey(payload.recoveryPublicKeyHex);
+            await syncAccountSeedAfterAuth(payload.mnemonic);
+            await fetchUser();
         } finally {
             loading.value = false;
         }
@@ -133,7 +194,7 @@ export const useAuthStore = defineStore('auth', () => {
         loading.value = true;
         try {
             // Ensure CSRF cookie is set before register
-            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            await ensureCsrfCookie();
 
             const response = await api.post('/auth/register', {
                 email,
@@ -153,13 +214,14 @@ export const useAuthStore = defineStore('auth', () => {
     async function continueAsGuest(recoveryPublicKeyHex?: string) {
         loading.value = true;
         try {
-            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            await ensureCsrfCookie();
             const response = await api.post('/auth/guest', {
                 ...(recoveryPublicKeyHex
                     ? { recovery_public_key: recoveryPublicKeyHex }
                     : {}),
             });
             user.value = response.data.user;
+            scheduleChoralaSync();
             return response.data;
         } finally {
             loading.value = false;
@@ -170,12 +232,13 @@ export const useAuthStore = defineStore('auth', () => {
     async function enrollGuestRecoveryPublicKey(recoveryPublicKeyHex: string) {
         loading.value = true;
         try {
-            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            await ensureCsrfCookie();
             const response = await api.post('/auth/guest', {
                 recovery_public_key: recoveryPublicKeyHex,
             });
             if (response.data?.user) {
                 user.value = response.data.user;
+                scheduleChoralaSync();
             }
             return response.data;
         } finally {
@@ -186,7 +249,7 @@ export const useAuthStore = defineStore('auth', () => {
     async function restoreGuestFromMnemonic(mnemonic: string) {
         loading.value = true;
         try {
-            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+            await ensureCsrfCookie();
             const chRes = await api.post('/auth/guest/recovery/challenge');
             const { challenge_id, nonce } = chRes.data.data;
             const message = guestRecoveryMessage(challenge_id, nonce);
@@ -198,6 +261,10 @@ export const useAuthStore = defineStore('auth', () => {
                 signature,
             });
             user.value = response.data.user;
+            await syncAccountSeedAfterAuth(mnemonic);
+            scheduleChoralaSync();
+            const storesStore = useStoresStore();
+            await storesStore.fetchStores();
             return response.data;
         } finally {
             loading.value = false;
@@ -209,6 +276,8 @@ export const useAuthStore = defineStore('auth', () => {
             await api.post('/auth/logout');
         } finally {
             clearLocalAuthAndTenantState();
+            clearStoredGuestMnemonic();
+            scheduleChoralaSync();
         }
     }
 
@@ -216,8 +285,10 @@ export const useAuthStore = defineStore('auth', () => {
         user,
         loading,
         isAuthenticated,
+        requiresRecoveryMigration,
         fetchUser,
         login,
+        completeLegacyRecoveryMigration,
         register,
         continueAsGuest,
         enrollGuestRecoveryPublicKey,

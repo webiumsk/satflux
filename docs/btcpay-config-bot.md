@@ -26,13 +26,13 @@ npm install
 
 ### Why the first Blink save can “work” but a later change hits the bot
 
-After you save a Blink connection, **`WalletConnectionService`** often tries **`connectLightningNode`** over the BTCPay Greenfield API first (when the merchant has a BTCPay API key and the connection is new `pending` Blink). If that succeeds, Laravel marks the wallet **`connected`** and **Playwright never runs** — it can look like “the bot configured it” even though only the API ran.
+After you save a Blink connection, **`WalletConnectionService`** often tries **`connectLightningNode`** over the BTCPay Greenfield API first (when the merchant has a BTCPay API key and the connection is new `pending` Blink). If that succeeds, Laravel marks the wallet **`connected`** and **Playwright never runs** - it can look like “the bot configured it” even though only the API ran.
 
 When you **change** an existing Lightning setup (another Blink string, or switching from another wallet type), that API path may **not replace** the live node or may return an error. The row stays **`pending`** with **`reconfig`** set where applicable, and the **poller must open Chromium**. If the host is missing `libnspr4` (etc.), you only notice the failure on those runs.
 
 So: fix **OS dependencies** above for any host that runs `poll.js`; do not assume the first success implied a working Playwright stack.
 
-Install OS libraries for Chromium (Debian/Ubuntu, as root). **Use Playwright’s installer first**—it tracks Chromium’s requirements and distro-specific package names (e.g. Ubuntu 24.04 `libasound2t64`) better than a hand-maintained `apt` list:
+Install OS libraries for Chromium (Debian/Ubuntu, as root). **Use Playwright’s installer first**-it tracks Chromium’s requirements and distro-specific package names (e.g. Ubuntu 24.04 `libasound2t64`) better than a hand-maintained `apt` list:
 
 ```bash
 cd /path/to/satflux/scripts/btcpay-config-bot
@@ -41,7 +41,7 @@ npx playwright install-deps chromium
 
 See [Playwright: system dependencies](https://playwright.dev/docs/cli#install-system-dependencies) for OS notes.
 
-If you **cannot** run `install-deps` (air‑gapped host, policy, or the command fails) and must use `apt` only, install the set that matches **your** Ubuntu/Debian release. Package names differ between releases—for example **Ubuntu 24.04+** often provides ALSA as `libasound2t64` instead of `libasound2`. Cross-check the [Playwright `install_deps_linux` script](https://github.com/microsoft/playwright/blob/main/packages/playwright-core/bin/install_deps_linux.sh) (or run `install-deps` on a similar online host and read the suggested `apt-get` line) for the full set. A typical baseline (adjust `libasound2` vs `libasound2t64` per release) is:
+If you **cannot** run `install-deps` (air‑gapped host, policy, or the command fails) and must use `apt` only, install the set that matches **your** Ubuntu/Debian release. Package names differ between releases-for example **Ubuntu 24.04+** often provides ALSA as `libasound2t64` instead of `libasound2`. Cross-check the [Playwright `install_deps_linux` script](https://github.com/microsoft/playwright/blob/main/packages/playwright-core/bin/install_deps_linux.sh) (or run `install-deps` on a similar online host and read the suggested `apt-get` line) for the full set. A typical baseline (adjust `libasound2` vs `libasound2t64` per release) is:
 
 ```bash
 sudo apt-get update
@@ -114,7 +114,7 @@ Cron uses a minimal `PATH`; `node` may not resolve to the same binary as in your
 */2 * * * * cd /path/to/satflux/scripts/btcpay-config-bot && /usr/bin/node poll.js --once >> /tmp/btcpay-bot.log 2>&1
 ```
 
-Ensure **`npm install`** has been run in `scripts/btcpay-config-bot` on that host. The bot reads `/path/to/satflux/.env` plus `.env.production` and **`.env.standalone`** at the project root—not only files inside Docker.
+Ensure **`npm install`** has been run in `scripts/btcpay-config-bot` on that host. The bot reads `/path/to/satflux/.env` plus `.env.production` and **`.env.standalone`** at the project root-not only files inside Docker.
 
 ## Alternative: Laravel job (Docker)
 

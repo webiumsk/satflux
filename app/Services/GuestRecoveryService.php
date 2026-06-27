@@ -62,11 +62,10 @@ class GuestRecoveryService
 
         $user = User::query()
             ->where('guest_recovery_public_key', $pkHex)
-            ->where('is_guest', true)
             ->first();
 
         if (! $user) {
-            throw new \DomainException('No guest account found for this recovery key.');
+            throw new \DomainException('No account found for this recovery phrase.');
         }
 
         Auth::login($user);

@@ -95,7 +95,7 @@ class BusinessRecurringProfileService
             'company_contact_id' => $document->company_contact_id,
             'store_id' => $document->store_id,
             'title' => $this->restorePlaceholders($title, $document->number),
-            'variable_symbol' => $document->variable_symbol ?: '#INVOICE_NUMBER#',
+            'variable_symbol' => $document->variable_symbol ?: '#VARIABLE_SYMBOL#',
             'constant_symbol' => $document->constant_symbol,
             'specific_symbol' => $document->specific_symbol,
             'currency' => $document->currency,

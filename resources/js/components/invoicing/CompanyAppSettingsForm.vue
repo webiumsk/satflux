@@ -160,6 +160,14 @@
           {{ t('invoicing.save_my_details') }}
         </button>
         <p class="text-xs text-gray-500 mt-2">{{ t('invoicing.app_save_note') }}</p>
+        <p class="text-xs text-gray-500 mt-4">
+          <router-link
+            to="/legal/privacy"
+            class="text-indigo-600 hover:text-indigo-500 underline"
+          >
+            {{ t('invoicing.app_privacy_data_link') }}
+          </router-link>
+        </p>
         <p v-if="saveError" class="text-sm text-red-600 mt-2">{{ saveError }}</p>
       </div>
     </form>
@@ -169,13 +177,20 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import api from '../../services/api';
-import CompanyAppTabsNav from './CompanyAppTabsNav.vue';
 import {
   PDF_FILENAME_SHORTCUTS,
   appSettingsFromCompany,
   type CompanyAppSettingsState,
 } from '../../composables/useCompanyAppSettings';
+import { asCompanyId } from '../../composables/useInvoicingCompany';
+import { allCompaniesDetailQuery, useInvoicingEvolu } from '../../evolu/client';
+import { evoluCompanyToApi, type EvoluCompanyRow } from '../../evolu/companyMap';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
+import { updateLocalAppSettings } from '../../evolu/companySettingsCrud';
+import api from '../../services/api';
+import { useStoresStore } from '../../store/stores';
+import { useInvoicingSaveFeedback } from '../../composables/useInvoicingSaveFeedback';
+import CompanyAppTabsNav from './CompanyAppTabsNav.vue';
 
 const props = defineProps<{
   companyId: string;
@@ -187,6 +202,10 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const { notifySaved } = useInvoicingSaveFeedback();
+const localFirst = isInvoicingLocalFirst();
+const evolu = localFirst ? useInvoicingEvolu() : null;
+const storesStore = useStoresStore();
 
 const saving = ref(false);
 const saveError = ref('');
@@ -220,6 +239,21 @@ watch(
   { immediate: true, deep: true }
 );
 
+function emitUpdatedFromEvoluRow() {
+  if (!evolu) return;
+  const row = evolu.getQueryRows(allCompaniesDetailQuery).find((c) => c.id === props.companyId);
+  if (!row) return;
+  emit(
+    'updated',
+    evoluCompanyToApi(row as EvoluCompanyRow, (storeId) => {
+      const store = storesStore.stores.find((s) => s.id === storeId);
+      return store
+        ? { id: store.id, name: store.name, default_currency: store.default_currency }
+        : undefined;
+    }),
+  );
+}
+
 async function save() {
   saving.value = true;
   saveError.value = '';
@@ -228,8 +262,21 @@ async function save() {
     if (!payload.stripe_tax_secret_key) {
       delete payload.stripe_tax_secret_key;
     }
+
+    if (localFirst && evolu) {
+      const result = updateLocalAppSettings(evolu, asCompanyId(props.companyId), payload);
+      if (!result.ok) {
+        saveError.value = t('invoicing.company_save_validation_error');
+        return;
+      }
+      emitUpdatedFromEvoluRow();
+      notifySaved();
+      return;
+    }
+
     const res = await api.patch(`/invoicing/companies/${props.companyId}/app-settings`, payload);
     emit('updated', res.data.data);
+    notifySaved();
   } catch (e: any) {
     saveError.value = e?.response?.data?.message ?? t('common.error_generic');
   } finally {

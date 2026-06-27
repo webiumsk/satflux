@@ -4,17 +4,17 @@ User-scoped module for company profiles, customer contacts, and accounting invoi
 
 ## Plan access
 
-- Feature flag: `business_invoicing` on Pro and Enterprise (`SubscriptionPlanSeeder`).
+- Feature flag: `business_invoicing` on PRO and Enterprise (`SubscriptionPlanSeeder`).
 - API: all routes under `/api/invoicing/*` use `EnsurePlanAllowsBusinessInvoicing`.
 - Frontend: `plan_features.business_invoicing` on `/api/user`.
-- **Company limits:** Pro = 2 companies (`max_companies` on plan). Enterprise = unlimited (`null`). Beta override: `INVOICING_BETA_PRO_MAX_COMPANIES=5` in `.env` (effective limit for Pro testers). `POST /api/invoicing/companies` uses `EnsureCompanyLimit`.
+- **Company limits:** PRO = 2 companies (`max_companies` on plan). Enterprise = unlimited (`null`). Beta override: `INVOICING_BETA_PRO_MAX_COMPANIES=5` in `.env` (effective limit for PRO testers). `POST /api/invoicing/companies` uses `EnsureCompanyLimit`.
 
 ### When a client stops paying
 
 Entitlement is enforced from the local `subscriptions` row (`billing_phase`, `expires_at`, `grace_ends_at`), not from `users.role` alone. See `User::hasActiveProEntitlement()` and `SubscriptionService::canUseBusinessInvoicing()`.
 
 1. **Active paid subscription** (`billing_phase = paid`) - full Pro/Enterprise access including invoicing.
-2. **Free trial** (`billing_phase = trial`, `expires_at = trial_ends_at` from BTCPay) - full Pro demo including invoicing until trial end. **No grace period** after trial if payment does not settle.
+2. **Free trial** (`billing_phase = trial`, `expires_at = trial_ends_at` from BTCPay) - full PRO demo including invoicing until trial end. **No grace period** after trial if payment does not settle.
 3. **Paid grace period** (30 days after `expires_at`; `config/pricing.php` `grace_days`) - access continues; user can still view and edit invoicing data.
 4. **After trial end without payment, or after paid grace** (`status = expired`, `billing_phase = expired`) - `business_invoicing` is off: all `/api/invoicing/*` and SPA invoicing routes return **403**. **Data is not deleted** (companies, contacts, issued documents remain in DB).
 5. **Customer-facing** - public Bitcoin pay links (`GET /pay/i/{payment_token}`) keep working for already-issued invoices; webhooks can still mark documents paid. BTCPay store payments, PoS, and Lightning addresses are **not** disabled (non-custodial promise).
@@ -22,7 +22,33 @@ Entitlement is enforced from the local `subscriptions` row (`billing_phase`, `ex
 
 **Trial anti-reuse:** `users.trial_consumed_at` is set on first trial activation. Subsequent checkouts send `isTrial: false` to BTCPay (paid checkout only).
 
-Existing companies above the Free limit (0) are **not** removed; the user simply cannot open the module until Pro is active again. Creating new companies is blocked when at plan limit (Pro: 2, or beta: 5).
+Existing companies above the Free limit (0) are **not** removed; the user simply cannot open the module until PRO is active again. Creating new companies is blocked when at plan limit (Pro: 2, or beta: 5).
+
+## Local-first mode and recovery phrase
+
+When `VITE_INVOICING_LOCAL_FIRST=true`, invoicing companies, contacts, and documents live in the browser (Evolu SQLite). The **same 24-word Satflux recovery phrase** is the Evolu AppOwner key (`resources/js/services/evoluOwner.ts`) - one offline backup for:
+
+- Server account restore (BTCPay store ownership via `POST /api/auth/guest/recovery`)
+- Local invoicing data on new devices (same phrase + relay sync)
+
+Legacy data created under a random pre-unification Evolu owner migrates automatically when you sign in with your recovery phrase on the original browser (any authenticated page). After migration, only the Satflux phrase is needed on new devices.
+
+**BTCPay store UUIDs** in local data (`company.linkedStoreId`, `document.storeId`) refer to server `stores.id` rows on **your** account. Importing or syncing data from another account leaves stale UUIDs; the app clears unknown store links on invoicing startup (`sanitizeLocalStoreReferences`). Re-link a store in company settings.
+
+### Multi-device sync (runbook)
+
+1. **Same recovery phrase** on every device - it is both the Satflux account key and the Evolu AppOwner.
+2. After sign-in with the phrase (or opening Invoicing on a new browser), wait for **“Synchronizujem…” / relay sync** to finish before creating a company. Creating too early can produce duplicate company rows (same legal name, different Evolu IDs).
+3. **Empty list after restore?** Wait up to ~45 seconds on the Invoicing index. If data was created on another device, companies appear when the relay pull completes.
+4. **Duplicate companies?** Open **Company settings → Danger zone → Delete company** on the copy with fewer documents. Keep one profile per legal entity.
+5. **Legacy Evolu owner** (pre-unification random/HKDF key): sign in with your phrase on the **original** browser once; migration uploads a snapshot to the unified owner. Then use only the Satflux phrase elsewhere.
+6. **Reset browser data** on a new device is fine - sign in with the phrase again; data reloads from the E2EE relay (not from satflux servers).
+
+**Local-first expenses (phase 7):** expense rows and file attachments (PDF/images, max ~384 KB each) sync via Evolu. Excel/CSV expense import runs in the browser (`xlsx` for `.xlsx`). ISDOC field extraction, bulk PDF attachment import, Excel export, and attachment ZIP still use the ephemeral server bridge.
+
+Seed-first onboarding (`SEED_FIRST_REGISTRATION=true`) creates accounts via recovery phrase; email/password is added later in Account (guest upgrade). **Invoicing requires Pro.** Guest accounts have limited BTCPay access; upgrade Guest → Free (verified email) before purchasing Pro. Local-first data stays in the browser; PRO unlocks the module and ephemeral server bridges (PDF, e-faktura, BTCPay checkout).
+
+**Production rollout:** [INVOICING_LOCAL_FIRST_ROLLOUT.md](INVOICING_LOCAL_FIRST_ROLLOUT.md).
 
 ## Subscription billing company
 
@@ -54,14 +80,14 @@ Buyer PII on issued documents is frozen in `buyer_snapshot` at issue. Contact de
 - `company_contacts` - customers / recipients.
 - `business_documents` + `business_document_lines` - local accounting documents (`buyer_snapshot` JSON at issue).
 - `business_recurring_profiles` + `business_recurring_profile_lines` - recurring invoice schedules (templates with placeholders).
-- `company_document_sequences` - configurable number series per document type (name, format pattern, reset period, default flag). Formats use tokens `R`/`M`/`C` (year/month/counter) plus literal prefixes (e.g. `RRRRCCCC`, `DODRRCCC`). Seeded on company create; issuing uses the default series for the document type.
+- `company_document_sequences` - configurable number series per document type (name, format pattern, reset period, default flag). Formats use tokens `Y`/`M`/`N` (year/month/counter; counter needs a run of 2+ `N`, e.g. `NNNN`) plus literal prefixes (e.g. `INVYYYYNNNN`, `DODYYCCC`). Legacy `R`/`C` patterns still work. Seeded on company create; issuing uses the default series for the document type.
 
 ## Jurisdictions
 
-| Code | Bank QR | Notes |
-|------|---------|-------|
+| Code                         | Bank QR                      | Notes                 |
+| ---------------------------- | ---------------------------- | --------------------- |
 | `eu_sk`, `eu_cz`, `eu_other` | Pay by Square payload in PDF | Variable symbol, IBAN |
-| `us` | Text bank details only | EIN-style fields |
+| `us`                         | Text bank details only       | EIN-style fields      |
 
 ## Payments on issued invoices
 
@@ -100,13 +126,13 @@ Buyer PII on issued documents is frozen in `buyer_snapshot` at issue. Contact de
 
 ## Phases (not in MVP)
 
-| Phase | Scope |
-|-------|--------|
-| 1.1 | Email PDF, manual bank paid (BTC paid sync via webhook implemented) |
-| 2 | Credit notes |
-| 3 | Proforma, quotes, orders received |
-| 4 | Delivery notes (recurring invoices: **implemented** as `recurring-profiles`) |
-| 5 | Public invoice link, logo branding, multi-language PDF |
-| 6 | ISDOC + UBL export (**shipped**); SK e-faktura SAPI-SK gateway, auto-send, inbound poll, merchant UI (**shipped** - see [SK_EFAKTURA.md](SK_EFAKTURA.md)); CZ hooks TBD |
+| Phase | Scope                                                                                                                                                                   |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.1   | Email PDF, manual bank paid (BTC paid sync via webhook implemented)                                                                                                     |
+| 2     | Credit notes                                                                                                                                                            |
+| 3     | Proforma, quotes, orders received                                                                                                                                       |
+| 4     | Delivery notes (recurring invoices: **implemented** as `recurring-profiles`)                                                                                            |
+| 5     | Public invoice link, logo branding, multi-language PDF                                                                                                                  |
+| 6     | ISDOC + UBL export (**shipped**); SK e-faktura SAPI-SK gateway, auto-send, inbound poll, merchant UI (**shipped** - see [SK_EFAKTURA.md](SK_EFAKTURA.md)); CZ hooks TBD |
 
 Document types exist in `BusinessDocumentType` enum; MVP UI enables `invoice`, `proforma` (zálohové faktúry), and `quote` (cenové ponuky). Paid proformas can spawn a draft final invoice via `POST .../documents/{id}/create-final-invoice` (`source_document_id` link). Approved quotes can spawn an issued invoice via `POST .../documents/{id}/create-invoice-from-quote`. Quote workflow uses `quote_status` (`pending`, `approved`, `rejected`, `expired`; expiry is also derived when `due_date` is past while still `pending`).

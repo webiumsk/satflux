@@ -130,7 +130,14 @@
 import { reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { EfakturaInboundPollStats } from '../../composables/useCompanyEfakturaSettings';
+import { asCompanyId } from '../../composables/useInvoicingCompany';
+import { allCompaniesDetailQuery, useInvoicingEvolu } from '../../evolu/client';
+import { evoluCompanyToApi, type EvoluCompanyRow } from '../../evolu/companyMap';
+import { updateLocalEfakturaSettings } from '../../evolu/companySettingsCrud';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
 import api from '../../services/api';
+import { useStoresStore } from '../../store/stores';
+import { useInvoicingSaveFeedback } from '../../composables/useInvoicingSaveFeedback';
 import {
   efakturaSecretIsSet,
   efakturaSettingsFromCompany,
@@ -147,6 +154,10 @@ const emit = defineEmits<{
 }>();
 
 const { t, locale } = useI18n();
+const { notifySaved } = useInvoicingSaveFeedback();
+const localFirst = isInvoicingLocalFirst();
+const evolu = localFirst ? useInvoicingEvolu() : null;
+const storesStore = useStoresStore();
 const saving = ref(false);
 const saveError = ref('');
 const secretSet = ref(false);
@@ -174,7 +185,38 @@ function applyInboundPollMeta(polledAt: string | null, stats: EfakturaInboundPol
   form.efaktura_inbound_last_poll_stats = stats;
 }
 
+function buildPayload(): Partial<CompanyEfakturaSettingsState> {
+  const payload: Partial<CompanyEfakturaSettingsState> = { ...form };
+  delete payload.efaktura_inbound_last_poll_at;
+  delete payload.efaktura_inbound_last_poll_stats;
+  if (!payload.efaktura_sapi_client_secret) {
+    delete payload.efaktura_sapi_client_secret;
+  }
+  return payload;
+}
+
+function emitUpdatedFromEvoluRow() {
+  if (!evolu) return;
+  const row = evolu.getQueryRows(allCompaniesDetailQuery).find((c) => c.id === props.companyId);
+  if (!row) return;
+  emit(
+    'updated',
+    evoluCompanyToApi(row as EvoluCompanyRow, (storeId) => {
+      const store = storesStore.stores.find((s) => s.id === storeId);
+      return store
+        ? { id: store.id, name: store.name, default_currency: store.default_currency }
+        : undefined;
+    }),
+  );
+}
+
 async function pollInboundNow() {
+  if (localFirst) {
+    pollError.value = true;
+    pollMessage.value = t('invoicing.local_first_efaktura_inbound_unavailable');
+    return;
+  }
+
   pollingInbound.value = true;
   pollMessage.value = '';
   pollError.value = false;
@@ -211,16 +253,36 @@ async function save() {
   saving.value = true;
   saveError.value = '';
   try {
-    const payload: Record<string, unknown> = { ...form };
-    delete payload.efaktura_inbound_last_poll_at;
-    delete payload.efaktura_inbound_last_poll_stats;
-    if (!payload.efaktura_sapi_client_secret) {
-      delete payload.efaktura_sapi_client_secret;
+    const payload = buildPayload();
+
+    if (localFirst && evolu) {
+      const result = updateLocalEfakturaSettings(evolu, asCompanyId(props.companyId), payload);
+      if (!result.ok) {
+        saveError.value = t('invoicing.company_save_validation_error');
+        return;
+      }
+      form.efaktura_sapi_client_secret = '';
+      emitUpdatedFromEvoluRow();
+      const row = evolu.getQueryRows(allCompaniesDetailQuery).find((c) => c.id === props.companyId);
+      if (row) {
+        secretSet.value = efakturaSecretIsSet(
+          evoluCompanyToApi(row as EvoluCompanyRow, (storeId) => {
+            const store = storesStore.stores.find((s) => s.id === storeId);
+            return store
+              ? { id: store.id, name: store.name, default_currency: store.default_currency }
+              : undefined;
+          }),
+        );
+      }
+      notifySaved();
+      return;
     }
+
     const res = await api.patch(`/invoicing/companies/${props.companyId}/app-settings`, payload);
     emit('updated', res.data.data);
     form.efaktura_sapi_client_secret = '';
     secretSet.value = efakturaSecretIsSet(res.data.data);
+    notifySaved();
   } catch (e: any) {
     saveError.value = e?.response?.data?.message ?? t('common.error_generic');
   } finally {

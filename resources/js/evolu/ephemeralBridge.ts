@@ -1,0 +1,634 @@
+import api from "@/services/api";
+import { normalizeIsoCountryCode } from "@/utils/isoCountryCode";
+import type { DocumentSavePayload } from "./documentCrud";
+import type { DocumentId } from "./schema";
+import type { useLocalInvoiceDocumentSupport } from "@/composables/useLocalInvoiceDocument";
+import type { AxiosResponse } from "axios";
+
+export type EphemeralSnapshotPayload = {
+    company: Record<string, unknown>;
+    contact: Record<string, unknown> | null;
+    document: Record<string, unknown>;
+    lines: DocumentSavePayload["lines"];
+    store_id?: string;
+    evolu_document_id?: string;
+    btcpay_checkout_link?: string;
+};
+
+export type EphemeralSnapshotOptions = {
+    storeId?: string | null;
+    evoluDocumentId?: string | null;
+    btcpayCheckoutLink?: string | null;
+};
+
+const EPHEMERAL_PDF_PATH = "/invoicing/ephemeral/pdf";
+const EPHEMERAL_EMAIL_PREVIEW_PATH = "/invoicing/ephemeral/email-preview";
+const EPHEMERAL_SEND_EMAIL_PATH = "/invoicing/ephemeral/send-email";
+const EPHEMERAL_ISDOC_PATH = "/invoicing/ephemeral/isdoc";
+const EPHEMERAL_UBL_PATH = "/invoicing/ephemeral/ubl";
+const EPHEMERAL_BTCPAY_CHECKOUT_PATH = "/invoicing/ephemeral/btcpay-checkout";
+const EPHEMERAL_EFAKTURA_BRIDGE_PATH = "/invoicing/ephemeral/efaktura/bridge";
+const EPHEMERAL_EFAKTURA_STATUS_PATH = "/invoicing/ephemeral/efaktura/status";
+const EPHEMERAL_EFAKTURA_SEND_PATH = "/invoicing/ephemeral/efaktura/send";
+const EPHEMERAL_EFAKTURA_REFRESH_PATH = "/invoicing/ephemeral/efaktura/refresh";
+const EPHEMERAL_BULK_PDF_ZIP_PATH = "/invoicing/ephemeral/bulk/pdf-zip";
+const EPHEMERAL_BULK_PDF_MERGE_PATH = "/invoicing/ephemeral/bulk/pdf-merge";
+
+function companyScopedEphemeralPdfPath(bridgeCompanyId: string): string {
+    return `/invoicing/companies/${bridgeCompanyId}/documents/ephemeral/pdf`;
+}
+
+function companyScopedEphemeralEmailPreviewPath(bridgeCompanyId: string): string {
+    return `/invoicing/companies/${bridgeCompanyId}/documents/ephemeral/email-preview`;
+}
+
+function companyScopedEphemeralSendEmailPath(bridgeCompanyId: string): string {
+    return `/invoicing/companies/${bridgeCompanyId}/documents/ephemeral/send-email`;
+}
+
+function companyScopedEphemeralIsdocPath(bridgeCompanyId: string): string {
+    return `/invoicing/companies/${bridgeCompanyId}/documents/ephemeral/isdoc`;
+}
+
+function companyScopedEphemeralUblPath(bridgeCompanyId: string): string {
+    return `/invoicing/companies/${bridgeCompanyId}/documents/ephemeral/ubl`;
+}
+
+function companyScopedEphemeralBtcpayCheckoutPath(bridgeCompanyId: string): string {
+    return `/invoicing/companies/${bridgeCompanyId}/documents/ephemeral/btcpay-checkout`;
+}
+
+function companyScopedEphemeralEfakturaSendPath(bridgeCompanyId: string): string {
+    return `/invoicing/companies/${bridgeCompanyId}/documents/ephemeral/efaktura/send`;
+}
+
+function companyScopedEphemeralEfakturaRefreshPath(bridgeCompanyId: string): string {
+    return `/invoicing/companies/${bridgeCompanyId}/documents/ephemeral/efaktura/refresh`;
+}
+
+function companyScopedEphemeralBulkPdfZipPath(bridgeCompanyId: string): string {
+    return `/invoicing/companies/${bridgeCompanyId}/documents/ephemeral/bulk/pdf-zip`;
+}
+
+function companyScopedEphemeralBulkPdfMergePath(bridgeCompanyId: string): string {
+    return `/invoicing/companies/${bridgeCompanyId}/documents/ephemeral/bulk/pdf-merge`;
+}
+
+function shouldFallbackEphemeralRoute(error: unknown): boolean {
+    const status = (error as { response?: { status?: number } })?.response?.status;
+    return status === 404 || status === 405;
+}
+
+export async function parseAxiosBlobError(error: unknown): Promise<string | null> {
+    const response = (error as { response?: { data?: unknown } })?.response;
+    if (!response?.data) return null;
+
+    if (response.data instanceof Blob) {
+        try {
+            const text = await response.data.text();
+            const parsed = JSON.parse(text) as {
+                message?: string;
+                errors?: Record<string, string[]>;
+            };
+            const firstFieldError = parsed.errors
+                ? Object.values(parsed.errors).flat().find(Boolean)
+                : undefined;
+            return parsed.message || firstFieldError || null;
+        } catch {
+            return null;
+        }
+    }
+
+    const data = response.data as { message?: string; errors?: Record<string, string[]> } | undefined;
+    if (!data) return null;
+    const firstFieldError = data.errors
+        ? Object.values(data.errors).flat().find(Boolean)
+        : undefined;
+    return data.message || firstFieldError || null;
+}
+
+async function postWithCompanyScopedFallback<T>(
+    companyLessPath: string,
+    companyScopedPath: string | null,
+    body: unknown,
+    config?: { responseType?: "blob" },
+): Promise<AxiosResponse<T>> {
+    try {
+        return await api.post<T>(companyLessPath, body, config);
+    } catch (error: unknown) {
+        if (companyScopedPath && shouldFallbackEphemeralRoute(error)) {
+            try {
+                return await api.post<T>(companyScopedPath, body, config);
+            } catch (scopedError: unknown) {
+                const message = await parseAxiosBlobError(scopedError);
+                if (message) {
+                    throw new Error(message);
+                }
+                throw scopedError;
+            }
+        }
+        const message = await parseAxiosBlobError(error);
+        if (message) {
+            throw new Error(message);
+        }
+        throw error;
+    }
+}
+
+/** Resolve a server-owned company id for legacy company-scoped ephemeral bridge routes. */
+export async function resolveEphemeralBridgeCompanyId(): Promise<string | null> {
+    try {
+        const { data } = await api.get("/invoicing/companies");
+        const rows = data.data as Array<{ id: string }> | undefined;
+        return rows?.[0]?.id ?? null;
+    } catch {
+        return null;
+    }
+}
+
+export function resolveEphemeralAmountPaid(value: unknown): number | undefined {
+    if (value == null || value === "") {
+        return undefined;
+    }
+    const amount = typeof value === "number" ? value : parseFloat(String(value));
+    if (!Number.isFinite(amount)) {
+        return undefined;
+    }
+    return amount;
+}
+
+export function buildEphemeralSnapshot(
+    company: Record<string, unknown> | null,
+    contact: Record<string, unknown> | null,
+    document: Record<string, unknown>,
+    lines: DocumentSavePayload["lines"],
+    options: EphemeralSnapshotOptions = {},
+): EphemeralSnapshotPayload {
+    const rawAppSettings = (company?.app_settings ?? {}) as Record<string, unknown>;
+    const appSettings: Record<string, unknown> = {
+        show_pay_by_square: rawAppSettings.show_pay_by_square ?? true,
+        efaktura_enabled: rawAppSettings.efaktura_enabled,
+        efaktura_auto_send: rawAppSettings.efaktura_auto_send,
+        efaktura_sapi_base_url: rawAppSettings.efaktura_sapi_base_url,
+        efaktura_peppol_participant_id: rawAppSettings.efaktura_peppol_participant_id,
+        efaktura_sapi_client_id: rawAppSettings.efaktura_sapi_client_id,
+    };
+    const secret = rawAppSettings.efaktura_sapi_client_secret;
+    if (typeof secret === "string" && secret !== "") {
+        appSettings.efaktura_sapi_client_secret = secret;
+    }
+
+    const amountPaid = resolveEphemeralAmountPaid(document.amount_paid);
+
+    return {
+        company: {
+            legal_name: company?.legal_name,
+            trade_name: company?.trade_name,
+            registration_number: company?.registration_number,
+            tax_id: company?.tax_id,
+            vat_number: company?.vat_number,
+            street: company?.street,
+            city: company?.city,
+            postal_code: company?.postal_code,
+            country: normalizeIsoCountryCode(company?.country as string | null | undefined),
+            state_region: company?.state_region,
+            iban: company?.iban,
+            bic: company?.bic,
+            bank_name: company?.bank_name,
+            bank_account: company?.bank_account,
+            bank_code: company?.bank_code,
+            default_currency: company?.default_currency,
+            jurisdiction: company?.jurisdiction,
+            vat_payer: company?.vat_payer,
+            vat_rate_default: company?.vat_rate_default,
+            legal_footer_note: company?.legal_footer_note,
+            issuer_name: company?.issuer_name,
+            issuer_phone: company?.issuer_phone,
+            issuer_email: company?.issuer_email,
+            website: company?.website,
+            app_settings: appSettings,
+            ...(company?.logo_url ? { logo_url: company.logo_url } : {}),
+            ...(company?.signature_stamp_url ? { signature_stamp_url: company.signature_stamp_url } : {}),
+        },
+        contact: contact
+            ? {
+                  name: contact.name,
+                  email: contact.email,
+                  registration_number: contact.registration_number,
+                  tax_id: contact.tax_id,
+                  vat_id: contact.vat_id,
+                  street: contact.street,
+                  city: contact.city,
+                  postal_code: contact.postal_code,
+                  state_region: contact.state_region,
+                  country: normalizeIsoCountryCode(contact.country as string | null | undefined),
+              }
+            : null,
+        document: {
+            type: document.type,
+            status: document.status,
+            title: document.title,
+            number: document.number,
+            variable_symbol: document.variable_symbol,
+            constant_symbol: document.constant_symbol,
+            specific_symbol: document.specific_symbol,
+            issue_date: document.issue_date,
+            delivery_date: document.delivery_date,
+            due_date: document.due_date,
+            currency: document.currency,
+            note_above_lines: document.note_above_lines,
+            note_footer: document.note_footer,
+            internal_note: document.internal_note,
+            pdf_locale: document.pdf_locale,
+            pdf_show_signature: document.pdf_show_signature,
+            pdf_show_payment_info: document.pdf_show_payment_info,
+            payment_bank_enabled: document.payment_bank_enabled,
+            payment_btc_enabled: document.payment_btc_enabled,
+            discount_percent: document.discount_percent,
+            ...(amountPaid !== undefined ? { amount_paid: amountPaid } : {}),
+        },
+        lines: lines.map((line) => ({
+            name: line.name,
+            description: line.description,
+            quantity: line.quantity,
+            unit: line.unit,
+            unit_price: line.unit_price,
+            line_discount_percent: line.line_discount_percent,
+            tax_rate: line.tax_rate,
+        })),
+        ...(options.storeId ? { store_id: options.storeId } : {}),
+        ...(options.evoluDocumentId ? { evolu_document_id: options.evoluDocumentId } : {}),
+        ...(options.btcpayCheckoutLink ? { btcpay_checkout_link: options.btcpayCheckoutLink } : {}),
+    };
+}
+
+export async function downloadEphemeralPdf(
+    snapshot: EphemeralSnapshotPayload,
+    filename: string,
+    bridgeCompanyId?: string | null,
+): Promise<void> {
+    await downloadEphemeralBlob(
+        EPHEMERAL_PDF_PATH,
+        bridgeCompanyId ? companyScopedEphemeralPdfPath(bridgeCompanyId) : null,
+        snapshot,
+        filename,
+    );
+}
+
+async function downloadEphemeralBlob(
+    companyLessPath: string,
+    companyScopedPath: string | null,
+    snapshot: EphemeralSnapshotPayload,
+    filename: string,
+): Promise<void> {
+    const res = await postWithCompanyScopedFallback<Blob>(
+        companyLessPath,
+        companyScopedPath,
+        snapshot,
+        { responseType: "blob" },
+    );
+    const blob = res.data as Blob;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+export async function downloadEphemeralIsdoc(
+    snapshot: EphemeralSnapshotPayload,
+    filename: string,
+    bridgeCompanyId?: string | null,
+): Promise<void> {
+    await downloadEphemeralBlob(
+        EPHEMERAL_ISDOC_PATH,
+        bridgeCompanyId ? companyScopedEphemeralIsdocPath(bridgeCompanyId) : null,
+        snapshot,
+        filename,
+    );
+}
+
+export async function downloadEphemeralUbl(
+    snapshot: EphemeralSnapshotPayload,
+    filename: string,
+    bridgeCompanyId?: string | null,
+): Promise<void> {
+    await downloadEphemeralBlob(
+        EPHEMERAL_UBL_PATH,
+        bridgeCompanyId ? companyScopedEphemeralUblPath(bridgeCompanyId) : null,
+        snapshot,
+        filename,
+    );
+}
+
+export type EphemeralBtcpayCheckoutResult = {
+    checkout_link: string | null;
+    btcpay_invoice_id: string | null;
+};
+
+export async function fetchEphemeralBtcpayCheckout(
+    snapshot: EphemeralSnapshotPayload,
+    storeId: string,
+    evoluDocumentId?: string | null,
+    bridgeCompanyId?: string | null,
+): Promise<EphemeralBtcpayCheckoutResult> {
+    const body = {
+        ...snapshot,
+        store_id: storeId,
+        evolu_document_id: evoluDocumentId || undefined,
+        document: {
+            ...snapshot.document,
+            payment_btc_enabled: true,
+        },
+    };
+
+    try {
+        const res = await postWithCompanyScopedFallback<{ data: EphemeralBtcpayCheckoutResult }>(
+            EPHEMERAL_BTCPAY_CHECKOUT_PATH,
+            bridgeCompanyId ? companyScopedEphemeralBtcpayCheckoutPath(bridgeCompanyId) : null,
+            body,
+        );
+
+        return res.data.data;
+    } catch (error: unknown) {
+        const message = await parseAxiosBlobError(error);
+        if (message) {
+            throw new Error(message);
+        }
+        throw error;
+    }
+}
+
+export async function previewEphemeralEmail(
+    snapshot: EphemeralSnapshotPayload,
+    bridgeCompanyId?: string | null,
+): Promise<{
+    to: string;
+    subject: string;
+    body: string;
+    attachment_filename: string;
+}> {
+    const res = await postWithCompanyScopedFallback<{ data: {
+        to: string;
+        subject: string;
+        body: string;
+        attachment_filename: string;
+    } }>(
+        EPHEMERAL_EMAIL_PREVIEW_PATH,
+        bridgeCompanyId ? companyScopedEphemeralEmailPreviewPath(bridgeCompanyId) : null,
+        snapshot,
+    );
+    return res.data.data;
+}
+
+export async function sendEphemeralEmail(
+    snapshot: EphemeralSnapshotPayload,
+    fields: {
+        to: string;
+        cc?: string;
+        bcc?: string;
+        subject: string;
+        body: string;
+    },
+    bridgeCompanyId?: string | null,
+): Promise<{ email_sent_at?: string }> {
+    const res = await postWithCompanyScopedFallback<{ data?: { email_sent_at?: string } }>(
+        EPHEMERAL_SEND_EMAIL_PATH,
+        bridgeCompanyId ? companyScopedEphemeralSendEmailPath(bridgeCompanyId) : null,
+        {
+            ...snapshot,
+            to: fields.to,
+            cc: fields.cc || undefined,
+            bcc: fields.bcc || undefined,
+            subject: fields.subject,
+            body: fields.body,
+        },
+    );
+    return res.data.data ?? {};
+}
+
+export async function fetchEphemeralBtcpayStatus(
+    evoluDocumentId: string,
+    btcpayInvoiceId: string,
+): Promise<{ status: string; paid_at: string | null; evolu_document_id: string }> {
+    const res = await api.get("/invoicing/ephemeral/btcpay-status", {
+        params: {
+            evolu_document_id: evoluDocumentId,
+            btcpay_invoice_id: btcpayInvoiceId,
+        },
+    });
+    return res.data.data;
+}
+
+export type EphemeralEfakturaBridgeInfo = {
+    configured: boolean;
+    bridge_company_id: string | null;
+    bridge_company_name: string | null;
+};
+
+export type EphemeralEfakturaComplianceRow = {
+    id: string;
+    provider: string;
+    status: string;
+    external_id: string | null;
+    submitted_at: string | null;
+    resolved_at?: string | null;
+    response_payload?: Record<string, unknown> | null;
+    message?: string | null;
+};
+
+export async function fetchEphemeralEfakturaBridge(): Promise<EphemeralEfakturaBridgeInfo> {
+    const res = await api.get(EPHEMERAL_EFAKTURA_BRIDGE_PATH);
+    return res.data.data;
+}
+
+export async function fetchEphemeralEfakturaStatus(
+    evoluDocumentId: string,
+): Promise<EphemeralEfakturaComplianceRow[]> {
+    const res = await api.get(EPHEMERAL_EFAKTURA_STATUS_PATH, {
+        params: { evolu_document_id: evoluDocumentId },
+    });
+    return Array.isArray(res.data?.data) ? res.data.data : [];
+}
+
+export async function sendEphemeralEfaktura(
+    snapshot: EphemeralSnapshotPayload,
+    evoluDocumentId: string,
+    bridgeCompanyId?: string | null,
+): Promise<EphemeralEfakturaComplianceRow> {
+    const body = {
+        ...snapshot,
+        evolu_document_id: evoluDocumentId,
+    };
+
+    const res = await postWithCompanyScopedFallback<{ data: EphemeralEfakturaComplianceRow }>(
+        EPHEMERAL_EFAKTURA_SEND_PATH,
+        bridgeCompanyId ? companyScopedEphemeralEfakturaSendPath(bridgeCompanyId) : null,
+        body,
+    );
+
+    return res.data.data;
+}
+
+export async function refreshEphemeralEfakturaStatus(
+    evoluDocumentId: string,
+    bridgeCompanyId?: string | null,
+): Promise<EphemeralEfakturaComplianceRow[]> {
+    const body = { evolu_document_id: evoluDocumentId };
+
+    const res = await postWithCompanyScopedFallback<{ data: EphemeralEfakturaComplianceRow[] }>(
+        EPHEMERAL_EFAKTURA_REFRESH_PATH,
+        bridgeCompanyId ? companyScopedEphemeralEfakturaRefreshPath(bridgeCompanyId) : null,
+        body,
+    );
+
+    return Array.isArray(res.data?.data) ? res.data.data : [];
+}
+
+export type EphemeralBulkDocumentItem = Omit<EphemeralSnapshotPayload, "company">;
+
+export type EphemeralBulkRequestBody = {
+    company: EphemeralSnapshotPayload["company"];
+    documents: EphemeralBulkDocumentItem[];
+};
+
+function downloadResponseBlob(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+export async function downloadEphemeralPdfZip(
+    body: EphemeralBulkRequestBody,
+    bridgeCompanyId?: string | null,
+): Promise<void> {
+    const res = await postWithCompanyScopedFallback<Blob>(
+        EPHEMERAL_BULK_PDF_ZIP_PATH,
+        bridgeCompanyId ? companyScopedEphemeralBulkPdfZipPath(bridgeCompanyId) : null,
+        body,
+        { responseType: "blob" },
+    );
+    downloadResponseBlob(res.data as Blob, "invoices.zip");
+}
+
+export async function downloadEphemeralPdfMerge(
+    body: EphemeralBulkRequestBody,
+    bridgeCompanyId?: string | null,
+): Promise<void> {
+    const res = await postWithCompanyScopedFallback<Blob>(
+        EPHEMERAL_BULK_PDF_MERGE_PATH,
+        bridgeCompanyId ? companyScopedEphemeralBulkPdfMergePath(bridgeCompanyId) : null,
+        body,
+        { responseType: "blob" },
+    );
+    downloadResponseBlob(res.data as Blob, "invoices-merged.pdf");
+}
+
+export async function buildBulkEphemeralRequest(
+    localDoc: ReturnType<typeof useLocalInvoiceDocumentSupport>,
+    companyId: string,
+    documentIds: string[],
+): Promise<{ body: EphemeralBulkRequestBody; bridgeCompanyId: string | null } | null> {
+    await localDoc.refreshAll();
+
+    const company = localDoc.companyApi(companyId);
+    if (!company) return null;
+
+    const documents: EphemeralBulkDocumentItem[] = [];
+    let companyPayload: EphemeralBulkRequestBody["company"] | null = null;
+
+    for (const documentId of documentIds) {
+        const doc = localDoc.documentApi(documentId as DocumentId);
+        if (!doc) continue;
+
+        const contactId = String(doc.company_contact_id || "");
+        const contact = contactId
+            ? localDoc.contactsForCompany(companyId).find((c) => c.id === contactId) ?? null
+            : null;
+        const payload = localDoc.payloadFromApiDocument(doc);
+        const snapshot = buildEphemeralSnapshotFromApiDocument(company, contact, doc, payload.lines);
+        if (!companyPayload) {
+            companyPayload = snapshot.company;
+        }
+        documents.push({
+            contact: snapshot.contact,
+            document: snapshot.document,
+            lines: snapshot.lines,
+        });
+    }
+
+    if (documents.length === 0 || !companyPayload) return null;
+
+    const bridgeCompanyId = await resolveEphemeralBridgeCompanyId();
+
+    return {
+        bridgeCompanyId,
+        body: {
+            company: companyPayload,
+            documents,
+        },
+    };
+}
+
+export function buildEphemeralSnapshotFromApiDocument(
+    company: Record<string, unknown> | null,
+    contact: Record<string, unknown> | null,
+    doc: Record<string, unknown>,
+    lines: DocumentSavePayload["lines"],
+): EphemeralSnapshotPayload {
+    return buildEphemeralSnapshot(company, contact, {
+        type: doc.type,
+        status: doc.status,
+        title: doc.title,
+        number: doc.number,
+        variable_symbol: doc.variable_symbol,
+        constant_symbol: doc.constant_symbol,
+        specific_symbol: doc.specific_symbol,
+        issue_date: doc.issue_date,
+        delivery_date: doc.delivery_date,
+        due_date: doc.due_date,
+        currency: doc.currency,
+        note_above_lines: doc.note_above_lines,
+        note_footer: doc.note_footer,
+        internal_note: doc.internal_note,
+        pdf_locale: doc.pdf_locale,
+        pdf_show_signature: doc.pdf_show_signature,
+        pdf_show_payment_info: doc.pdf_show_payment_info,
+        payment_bank_enabled: doc.payment_bank_enabled,
+        payment_btc_enabled: doc.payment_btc_enabled,
+        discount_percent: doc.discount_percent,
+        amount_paid: doc.amount_paid,
+    }, lines, {
+        storeId: typeof doc.store_id === 'string' ? doc.store_id : null,
+    });
+}
+
+type LocalDocSupport = ReturnType<typeof useLocalInvoiceDocumentSupport>;
+
+export async function buildLocalDocumentEphemeralSnapshot(
+    localDoc: LocalDocSupport,
+    companyId: string,
+    documentId: string,
+): Promise<{ snapshot: EphemeralSnapshotPayload; bridgeCompanyId: string | null } | null> {
+    await localDoc.refreshAll();
+
+    const doc = localDoc.documentApi(documentId as DocumentId);
+    if (!doc) return null;
+
+    const company = localDoc.companyApi(companyId);
+    const contactId = String(doc.company_contact_id || "");
+    const contact = contactId
+        ? localDoc.contactsForCompany(companyId).find((c) => c.id === contactId) ?? null
+        : null;
+    const payload = localDoc.payloadFromApiDocument(doc);
+    const bridgeCompanyId = await resolveEphemeralBridgeCompanyId();
+
+    return {
+        bridgeCompanyId,
+        snapshot: buildEphemeralSnapshotFromApiDocument(company, contact, doc, payload.lines),
+    };
+}

@@ -4,9 +4,7 @@
     <!-- Crowdfund Form -->
     <form id="crowdfund-form" @submit.prevent="handleSubmit" class="space-y-6">
       <!-- General Information -->
-      <div
-        class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700"
-      >
+      <div class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700">
         <div class="p-6 md:p-8 space-y-6">
           <h2 class="text-xl font-bold text-white mb-4">
             {{ t("stores.crowdfund_general_section") }}
@@ -635,7 +633,10 @@ const currencyOptions = computed(() => {
       }),
       value: "",
     },
-    ...currencies.map((c) => ({ label: `${c.code} - ${c.name}`, value: c.code })),
+    ...currencies.map((c) => ({
+      label: `${c.code} - ${c.name}`,
+      value: c.code,
+    })),
   ];
 });
 
@@ -724,10 +725,8 @@ function parsePerksJson() {
 /** BTCPay perks use `image` (URL). The grid previously read `imageUrl`, so images never showed. */
 function perkImageDisplayUrl(perk: any): string {
   if (!perk) return "";
-  const fromImage =
-    typeof perk.image === "string" ? perk.image.trim() : "";
-  const fromAlt =
-    typeof perk.imageUrl === "string" ? perk.imageUrl.trim() : "";
+  const fromImage = typeof perk.image === "string" ? perk.image.trim() : "";
+  const fromAlt = typeof perk.imageUrl === "string" ? perk.imageUrl.trim() : "";
   return fromImage || fromAlt;
 }
 
@@ -779,7 +778,7 @@ async function handleSubmit() {
         let outPriceType = rawPriceType;
         let outPrice: string | null =
           rawPriceType !== "Topup" ? String(p.price ?? 1) : null;
-        // Legacy UI / BTCPay: "Free" is not a valid enum — treat as Fixed @ 0.
+        // Legacy UI / BTCPay: "Free" is not a valid enum - treat as Fixed @ 0.
         if (rawPriceType === "Free") {
           outPriceType = "Fixed";
           outPrice = "0";
@@ -964,8 +963,7 @@ function applyCrowdfundConfigFromProps() {
           : true;
     form.value.description = config.description || "";
     form.value.targetAmount = config.targetAmount || config.goal || "";
-    form.value.currency =
-      config.currency || config.targetCurrency || "";
+    form.value.currency = config.currency || config.targetCurrency || "";
 
     // Handle dates - convert from UNIX timestamp or ISO string to datetime-local format
     if (config.startDate) {
@@ -1045,25 +1043,21 @@ function applyCrowdfundConfigFromProps() {
       const adv = (config.advanced || {}) as Record<string, unknown>;
       const soundsArr = config.sounds;
       const colorsArr = config.animationColors;
-      const soundsText =
-        Array.isArray(soundsArr)
-          ? soundsArr.map((s: unknown) => String(s)).join("\n")
-          : typeof adv.soundsText === "string"
-            ? adv.soundsText
-            : "";
-      const animationColorsText =
-        Array.isArray(colorsArr)
-          ? colorsArr.map((c: unknown) => String(c)).join("\n")
-          : typeof adv.animationColorsText === "string"
-            ? adv.animationColorsText
-            : "";
+      const soundsText = Array.isArray(soundsArr)
+        ? soundsArr.map((s: unknown) => String(s)).join("\n")
+        : typeof adv.soundsText === "string"
+          ? adv.soundsText
+          : "";
+      const animationColorsText = Array.isArray(colorsArr)
+        ? colorsArr.map((c: unknown) => String(c)).join("\n")
+        : typeof adv.animationColorsText === "string"
+          ? adv.animationColorsText
+          : "";
       form.value.advanced = {
         htmlLanguage:
           (adv.htmlLanguage as string) || (config.htmlLang as string) || "",
         htmlMetaTags:
-          (adv.htmlMetaTags as string) ||
-          (config.htmlMetaTags as string) ||
-          "",
+          (adv.htmlMetaTags as string) || (config.htmlMetaTags as string) || "",
         enableSounds:
           config.soundsEnabled !== undefined
             ? Boolean(config.soundsEnabled)
@@ -1098,10 +1092,7 @@ function applyCrowdfundConfigFromProps() {
     // Load perks - could be in 'perks', 'items', or 'template' field
     let perksArray: any[] = [];
     const perksSource =
-      config.perks ||
-      config.items ||
-      config.template ||
-      config.perksTemplate;
+      config.perks || config.items || config.template || config.perksTemplate;
 
     if (perksSource) {
       if (Array.isArray(perksSource)) {

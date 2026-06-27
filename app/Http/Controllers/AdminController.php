@@ -9,6 +9,7 @@ use App\Models\Store;
 use App\Models\User;
 use App\Models\WalletConnection;
 use App\Services\StatsService;
+use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -389,7 +390,9 @@ class AdminController extends Controller
             ],
         ]);
 
-        DB::transaction(function () use ($request, $user) {
+        $roleChanged = false;
+
+        DB::transaction(function () use ($request, $user, &$roleChanged) {
             $updated = [];
 
             if ($request->has('email')) {
@@ -402,13 +405,14 @@ class AdminController extends Controller
                 $oldRole = $user->role ?? 'free';
                 $user->role = $request->role;
                 $updated['role'] = $oldRole;
+                $roleChanged = true;
             }
 
             $user->save();
 
             // Clear cached limits when role changes so the new plan takes effect immediately
             if (isset($updated['role'])) {
-                \Illuminate\Support\Facades\Cache::forget('user_limits_'.$user->id);
+                Cache::forget('user_limits_'.$user->id);
             }
 
             Log::info('Admin updated user', [
@@ -418,6 +422,13 @@ class AdminController extends Controller
                 'old_values' => $updated,
             ]);
         });
+
+        if ($roleChanged) {
+            app(SubscriptionService::class)->syncSubscriptionForAdminRole(
+                $user->fresh() ?? $user,
+                $user->role ?? 'free',
+            );
+        }
 
         return response()->json([
             'message' => 'User updated successfully',

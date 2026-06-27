@@ -63,6 +63,31 @@ class CompanyDocumentSequenceTest extends TestCase
     }
 
     #[Test]
+    public function seeded_default_series_use_locale_names(): void
+    {
+        app()->setLocale('sk');
+
+        $company = Company::create([
+            'user_id' => $this->proUser->id,
+            'legal_name' => 'SK Locale Co',
+            'jurisdiction' => CompanyJurisdiction::EuSk,
+            'default_currency' => 'EUR',
+            'vat_payer' => false,
+        ]);
+
+        app(DocumentSequenceService::class)->seedDefaultsForCompany($company, 'sk');
+
+        $invoiceSeries = CompanyDocumentSequence::query()
+            ->where('company_id', $company->id)
+            ->where('document_type', 'invoice')
+            ->where('is_default', true)
+            ->first();
+
+        $this->assertNotNull($invoiceSeries);
+        $this->assertSame('Faktúra', $invoiceSeries->name);
+    }
+
+    #[Test]
     public function user_can_list_and_create_number_series(): void
     {
         $list = $this->actingAs($this->proUser)
@@ -75,14 +100,14 @@ class CompanyDocumentSequenceTest extends TestCase
             ->postJson("/api/invoicing/companies/{$this->company->id}/number-series", [
                 'name' => 'Faktúra export',
                 'document_type' => 'invoice',
-                'format' => 'FAKRRRRCCCC',
+                'format' => 'FAKYYYYNNNN',
                 'reset_period' => 'yearly',
                 'is_default' => false,
                 'last_number' => 10,
             ]);
 
         $create->assertCreated();
-        $create->assertJsonPath('data.format', 'FAKRRRRCCCC');
+        $create->assertJsonPath('data.format', 'FAKYYYYNNNN');
         $create->assertJsonPath('data.next_number_preview', 'FAK20260011');
     }
 
@@ -95,13 +120,13 @@ class CompanyDocumentSequenceTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.document_type', 'invoice');
         $year = now()->format('Y');
-        $response->assertJsonPath('data.next_number', "{$year}0001");
+        $response->assertJsonPath('data.next_number', "INV{$year}0001");
 
         $proforma = $this->actingAs($this->proUser)
             ->getJson("/api/invoicing/companies/{$this->company->id}/number-series/preview?type=proforma");
 
         $proforma->assertOk();
-        $proforma->assertJsonPath('data.next_number', "ZAL{$year}0001");
+        $proforma->assertJsonPath('data.next_number', "PF{$year}0001");
     }
 
     #[Test]
@@ -112,7 +137,7 @@ class CompanyDocumentSequenceTest extends TestCase
             'company_id' => $this->company->id,
             'type' => \App\Enums\BusinessDocumentType::Proforma,
             'status' => BusinessDocumentStatus::Issued,
-            'number' => "ZAL{$year}0001",
+            'number' => "PF{$year}0001",
             'total' => 10,
             'currency' => 'EUR',
         ]);
@@ -126,7 +151,7 @@ class CompanyDocumentSequenceTest extends TestCase
             ->getJson("/api/invoicing/companies/{$this->company->id}/number-series/preview?type=proforma");
 
         $preview->assertOk();
-        $preview->assertJsonPath('data.next_number', "ZAL{$year}0002");
+        $preview->assertJsonPath('data.next_number', "PF{$year}0002");
     }
 
     #[Test]

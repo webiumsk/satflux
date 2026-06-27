@@ -77,8 +77,8 @@ class BusinessDocumentQuoteTest extends TestCase
             ->postJson("/api/invoicing/companies/{$this->company->id}/documents", [
                 'type' => 'quote',
                 'company_contact_id' => $this->contact->id,
-                'issue_date' => '2026-06-04',
-                'due_date' => '2026-06-18',
+                'issue_date' => now()->toDateString(),
+                'due_date' => now()->addDays(14)->toDateString(),
                 'lines' => [
                     ['name' => 'Služba', 'quantity' => 1, 'unit_price' => 87],
                 ],
@@ -102,8 +102,8 @@ class BusinessDocumentQuoteTest extends TestCase
             'company_contact_id' => $this->contact->id,
             'type' => BusinessDocumentType::Quote,
             'status' => BusinessDocumentStatus::Draft,
-            'issue_date' => '2026-06-04',
-            'due_date' => '2026-06-18',
+            'issue_date' => now()->toDateString(),
+            'due_date' => now()->addDays(14)->toDateString(),
             'currency' => 'EUR',
             'subtotal' => 87,
             'tax_total' => 0,
@@ -115,6 +115,7 @@ class BusinessDocumentQuoteTest extends TestCase
         app(BusinessDocumentIssueService::class)->issue($quote);
         $quote->refresh();
         $this->assertSame(BusinessDocumentQuoteStatus::Pending, $quote->quote_status);
+        $this->assertSame(BusinessDocumentQuoteStatus::Pending, $quote->resolvedQuoteStatus());
 
         $this->actingAs($this->proUser)
             ->postJson("/api/invoicing/companies/{$this->company->id}/documents/{$quote->id}/approve-quote")
@@ -142,8 +143,8 @@ class BusinessDocumentQuoteTest extends TestCase
             'company_contact_id' => $this->contact->id,
             'type' => BusinessDocumentType::Quote,
             'status' => BusinessDocumentStatus::Draft,
-            'issue_date' => '2026-06-04',
-            'due_date' => '2026-06-18',
+            'issue_date' => now()->toDateString(),
+            'due_date' => now()->addDays(14)->toDateString(),
             'currency' => 'EUR',
             'subtotal' => 50,
             'tax_total' => 0,

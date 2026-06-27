@@ -92,7 +92,7 @@
         />
       </div>
     </div>
-    <!-- Payment options: Pro only -->
+    <!-- Payment options: PRO only -->
     <div class="space-y-4 pt-4 border-t border-gray-700">
       <div class="flex items-center gap-2 flex-wrap">
         <h3 class="text-base font-semibold text-white">

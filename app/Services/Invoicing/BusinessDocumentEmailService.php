@@ -45,6 +45,27 @@ class BusinessDocumentEmailService
     }
 
     /**
+     * @return array{subject: string, body: string, body_html: string, to: string|null, template_key: string, attachment_filename: string}
+     */
+    public function previewEphemeral(Company $company, BusinessDocument $document, ?User $sender): array
+    {
+        $templateCompany = $document->relationLoaded('company') && $document->company
+            ? $document->company
+            : $company;
+        $templateKey = $this->templateKeyFor($document);
+        $rendered = $this->templateRenderer->render($templateCompany, $templateKey, $document, $sender);
+
+        return [
+            'subject' => $rendered['subject'],
+            'body' => $rendered['body'],
+            'body_html' => $this->bodyToHtml($rendered['body']),
+            'to' => $document->resolvedBuyer()?->email,
+            'template_key' => $templateKey,
+            'attachment_filename' => $this->pdfFilenameBuilder->build($document),
+        ];
+    }
+
+    /**
      * @param  list<string>  $to
      * @param  list<string>  $cc
      * @param  list<string>  $bcc
@@ -118,6 +139,81 @@ class BusinessDocumentEmailService
         return [
             'sent_to' => $to,
             'email_sent_at' => $document->fresh()->email_sent_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * @param  list<string>  $to
+     * @param  list<string>  $cc
+     * @param  list<string>  $bcc
+     * @return array{sent_to: list<string>}
+     *
+     * @throws TransportExceptionInterface
+     */
+    public function sendEphemeral(
+        Company $company,
+        BusinessDocument $document,
+        ?User $sender,
+        array $to,
+        array $cc = [],
+        array $bcc = [],
+        ?string $subjectOverride = null,
+        ?string $bodyOverride = null,
+    ): array {
+        $templateCompany = $document->relationLoaded('company') && $document->company
+            ? $document->company
+            : $company;
+
+        $to = $this->normalizeAddresses($to);
+        $cc = $this->normalizeAddresses($cc);
+        $bcc = $this->normalizeAddresses($bcc);
+
+        if ($to === []) {
+            throw ValidationException::withMessages([
+                'to' => ['At least one recipient email is required.'],
+            ]);
+        }
+
+        $templateKey = $this->templateKeyFor($document);
+        $rendered = $this->templateRenderer->render($templateCompany, $templateKey, $document, $sender);
+
+        $subject = trim($subjectOverride ?? '') !== '' ? trim($subjectOverride) : $rendered['subject'];
+        $body = trim($bodyOverride ?? '') !== '' ? trim($bodyOverride) : $rendered['body'];
+        $htmlBody = $this->bodyToHtml($body);
+
+        $pdfBinary = $this->pdfService->renderBinary($document);
+        $pdfFilename = $this->pdfFilenameBuilder->build($document);
+
+        $mailer = $this->emailSettings->registerCompanyMailer($company);
+        [$fromAddress, $fromName] = $this->emailSettings->resolveFromAddress($company);
+
+        $mailable = new BusinessDocumentEmail(
+            subjectLine: $subject,
+            htmlBody: $htmlBody,
+            toAddresses: $to,
+            pdfBinary: $pdfBinary,
+            pdfFilename: $pdfFilename,
+            ccAddresses: $cc,
+            bccAddresses: $bcc,
+            fromAddress: $fromAddress,
+            fromName: $fromName,
+        );
+
+        if ($mailer) {
+            Mail::mailer($mailer)->send($mailable);
+        } else {
+            Mail::send($mailable);
+        }
+
+        AuditLog::log('business_document.ephemeral_email_sent', 'company', $company->id, [
+            'document_type' => $document->type?->value,
+            'to_hashes' => PiiRedaction::emailListHashes($to),
+            'cc_hashes' => PiiRedaction::emailListHashes($cc),
+            'line_count' => $document->lines->count(),
+        ], $sender?->id);
+
+        return [
+            'sent_to' => $to,
         ];
     }
 

@@ -255,4 +255,57 @@ class BusinessDocumentBtcPayService
         $document->btcpay_checkout_link = $result['checkoutLink'] ?? null;
         $document->btcpay_checkout_created_at = now();
     }
+
+    /**
+     * Create a BTCPay checkout for an in-memory document without persisting business document rows.
+     *
+     * @return array{checkout_link: string|null, btcpay_invoice_id: string|null}
+     */
+    public function createEphemeralCheckout(BusinessDocument $document, Store $store, ?string $evoluDocumentId = null): array
+    {
+        if (! $document->payment_btc_enabled) {
+            throw ValidationException::withMessages([
+                'document' => ['Bitcoin payment is not enabled for this document.'],
+            ]);
+        }
+
+        if ($store->user_id !== $document->company?->user_id) {
+            throw ValidationException::withMessages([
+                'store_id' => ['The selected store does not belong to your account.'],
+            ]);
+        }
+
+        $document->store_id = $store->id;
+        $document->setRelation('store', $store);
+
+        $userApiKey = $store->user->getBtcPayApiKeyOrFail();
+
+        $metadata = [
+            'ephemeral' => true,
+            'documentNumber' => $document->number,
+        ];
+
+        if (is_string($evoluDocumentId) && $evoluDocumentId !== '') {
+            $metadata['evoluDocumentId'] = $evoluDocumentId;
+        }
+
+        $result = $this->btcPayInvoiceService->createInvoice(
+            $store->btcpay_store_id,
+            [
+                'amount' => (string) $document->total,
+                'currency' => $document->currency,
+                'metadata' => $metadata,
+                'checkout' => [
+                    'expirationMinutes' => 60,
+                    'monitoringMinutes' => 1440,
+                ],
+            ],
+            $userApiKey
+        );
+
+        return [
+            'checkout_link' => $result['checkoutLink'] ?? null,
+            'btcpay_invoice_id' => $result['id'] ?? null,
+        ];
+    }
 }

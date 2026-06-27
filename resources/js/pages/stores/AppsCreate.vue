@@ -254,6 +254,7 @@ import { useI18n } from "vue-i18n";
 import { useAppsStore } from "../../store/apps";
 import { useStoresStore } from "../../store/stores";
 import { useAuthStore } from "../../store/auth";
+import { useGuestUpgradeModal } from "../../composables/useGuestUpgradeModal";
 import { useFlashStore } from "../../store/flash";
 import StoreSidebar from "../../components/stores/StoreSidebar.vue";
 import AppScrollPane from "../../components/layout/AppScrollPane.vue";
@@ -266,6 +267,7 @@ const router = useRouter();
 const appsStore = useAppsStore();
 const storesStore = useStoresStore();
 const authStore = useAuthStore();
+const { openGuestUpgradeModal } = useGuestUpgradeModal();
 
 const storeId = computed(() => route.params.id as string);
 const isGuestUser = computed(() => !!authStore.user?.is_guest);
@@ -310,11 +312,13 @@ async function redirectGuestIfLocked(): Promise<boolean> {
   if (!isGuestUser.value) return false;
   const qType = route.query.type as string | undefined;
   if (qType && !isPointOfSaleAppType(qType)) {
-    await router.replace({ name: "account" });
+    openGuestUpgradeModal("apps.title");
+    await router.replace({ name: "stores-apps", params: { id: storeId.value } });
     return true;
   }
   if (guestActivePosCount() >= 1) {
-    await router.replace({ name: "account" });
+    openGuestUpgradeModal("stores.point_of_sale");
+    await router.replace({ name: "stores-apps", params: { id: storeId.value } });
     return true;
   }
   form.value.appType = "PointOfSale";
@@ -324,11 +328,11 @@ async function redirectGuestIfLocked(): Promise<boolean> {
 async function handleSubmit() {
   if (!form.value.name || !form.value.appType) return;
   if (isGuestUser.value && !isPointOfSaleAppType(form.value.appType)) {
-    await router.replace({ name: "account" });
+    openGuestUpgradeModal("apps.title");
     return;
   }
   if (isGuestUser.value && guestActivePosCount() >= 1) {
-    await router.replace({ name: "account" });
+    openGuestUpgradeModal("stores.point_of_sale");
     return;
   }
   saving.value = true;

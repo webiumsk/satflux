@@ -87,6 +87,7 @@ Events/tickets use the **Webium-maintained fork** of the Satoshi Tickets plugin 
 
 ## Key Conventions
 
+- **Typography:** use ASCII hyphen `-` with spaces (`word - word`), not em dash `—`, in UI copy, docs, and comments (see `.cursor/rules/typography-dash.mdc`).
 - **Never expose `btcpay_store_id`** to the frontend; always use the local UUID
 - **`EnsureStoreOwnership` middleware** must be applied to all store-scoped API routes
 - BTCPay API responses are cached with cache keys scoped by user/API key hash

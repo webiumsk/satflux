@@ -5,6 +5,7 @@
 /storage/*.key
 /vendor
 /.composer
+/composer-setup.php
 /backups
 .env
 .env.backup
@@ -25,6 +26,9 @@ yarn-error.log
 /.idea
 /.vscode
 /.claude
+
+# graphify knowledge graph (generated locally; rebuild with `graphify .` or `graphify update .`)
+/graphify-out/
 
 # Log files (these change frequently and should not be committed)
 /storage/logs/*.log

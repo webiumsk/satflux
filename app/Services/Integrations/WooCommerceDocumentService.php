@@ -8,6 +8,7 @@ use App\Models\BusinessDocument;
 use App\Models\BusinessDocumentLine;
 use App\Models\Company;
 use App\Models\CompanyContact;
+use App\Models\IntegrationDocumentInbox;
 use App\Models\StoreIntegration;
 use App\Services\Invoicing\BusinessDocumentIssueService;
 use App\Services\Invoicing\DocumentTotalsCalculator;
@@ -22,6 +23,7 @@ class WooCommerceDocumentService
         protected DocumentTotalsCalculator $totalsCalculator,
         protected BusinessDocumentIssueService $issueService,
         protected SubscriptionService $subscriptionService,
+        protected IntegrationDocumentInboxService $inboxService,
     ) {}
 
     /**
@@ -33,16 +35,26 @@ class WooCommerceDocumentService
         $user = $store->user;
         $company = $integration->company ?? $store->company;
 
+        $inboxMode = $company && $this->shouldUseInbox($company);
+
         return [
             'store' => [
                 'id' => $store->id,
                 'name' => $store->name,
+                'btcpay_store_id' => $store->btcpay_store_id,
             ],
             'company' => $company ? [
                 'id' => $company->id,
                 'name' => $company->legal_name,
             ] : null,
             'invoicing_enabled' => $company && $this->subscriptionService->canUseBusinessInvoicing($user),
+            'inbox_mode' => $inboxMode,
+            'local_first' => (bool) config('invoicing.local_first', false),
+            'uses_server_invoicing' => $company ? $company->usesServerInvoicing() : null,
+            'integration_inbox_path' => '/invoicing/stores/'.$store->id.'/integration-inbox',
+            'invoices_path' => $company
+                ? '/invoicing/companies/'.$company->id.'/invoices'
+                : null,
         ];
     }
 
@@ -90,7 +102,7 @@ class WooCommerceDocumentService
     /**
      * @param  array<string, mixed>  $payload
      */
-    public function createDocument(StoreIntegration $integration, array $payload): BusinessDocument
+    public function createDocument(StoreIntegration $integration, array $payload): BusinessDocument|IntegrationDocumentInbox
     {
         $company = $this->resolveCompany($integration);
         $store = $integration->store;
@@ -98,8 +110,14 @@ class WooCommerceDocumentService
 
         if (! $this->subscriptionService->canUseBusinessInvoicing($user)) {
             throw ValidationException::withMessages([
-                'plan' => ['Business invoicing requires a Pro plan.'],
+                'plan' => ['Business invoicing requires a PRO plan.'],
             ]);
+        }
+
+        if ($this->shouldUseInbox($company)) {
+            $result = $this->inboxService->enqueueFromWoo($integration, $payload);
+
+            return IntegrationDocumentInbox::query()->findOrFail($result['inbox_id']);
         }
 
         $wcOrderId = (int) ($payload['woocommerce_order_id'] ?? 0);
@@ -173,6 +191,56 @@ class WooCommerceDocumentService
         return $this->issueService->issue($document);
     }
 
+    public function issueInboxEntry(
+        StoreIntegration $integration,
+        IntegrationDocumentInbox $inbox,
+    ): IntegrationDocumentInbox {
+        $this->assertInboxAccess($integration, $inbox);
+        $company = $this->resolveCompany($integration);
+
+        return $this->inboxService->issuePendingEntry($inbox, $company);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function serializeIssuedInboxEntry(IntegrationDocumentInbox $entry): array
+    {
+        $payload = is_array($entry->payload_json) ? $entry->payload_json : [];
+        $base = $this->inboxService->serializeEntry($entry);
+
+        return [
+            'id' => $entry->evolu_document_id,
+            'inbox_id' => $entry->id,
+            'evolu_document_id' => $entry->evolu_document_id,
+            'number' => $payload['number'] ?? null,
+            'status' => ! empty($payload['number']) ? 'issued' : $entry->status->value,
+            'woocommerce_order_id' => $entry->woocommerce_order_id,
+            'currency' => (string) ($payload['currency'] ?? 'EUR'),
+            'payment_token' => null,
+            'pdf_url' => null,
+            'payment_url' => null,
+            'summary' => $base['summary'] ?? [],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function serializeInboxEntry(IntegrationDocumentInbox $entry): array
+    {
+        return $this->inboxService->serializeEntry($entry);
+    }
+
+    protected function shouldUseInbox(Company $company): bool
+    {
+        if (config('invoicing.woocommerce_inbox_mode')) {
+            return true;
+        }
+
+        return ! $company->usesServerInvoicing();
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -211,6 +279,14 @@ class WooCommerceDocumentService
     {
         $company = $this->resolveCompany($integration);
         if ($document->company_id !== $company->id) {
+            abort(404);
+        }
+    }
+
+    protected function assertInboxAccess(StoreIntegration $integration, IntegrationDocumentInbox $inbox): void
+    {
+        $integrationId = $inbox->store_integration_id;
+        if ($integrationId !== $integration->id) {
             abort(404);
         }
     }

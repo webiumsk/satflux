@@ -45,8 +45,8 @@ export function useInvoicingLayout() {
   const documentNavItems = computed<InvoicingDocumentNavItem[]>(() => [
     { kind: 'invoice', routeName: 'invoicing-invoices', labelKey: 'invoicing.doc_nav_invoice', apiType: 'invoice', mvpEnabled: true },
     { kind: 'proforma', routeName: 'invoicing-proformas', labelKey: 'invoicing.doc_nav_proforma', apiType: 'proforma', mvpEnabled: true },
-    { kind: 'delivery_note', routeName: 'invoicing-delivery-notes', labelKey: 'invoicing.doc_nav_delivery', apiType: 'delivery_note', mvpEnabled: false },
-    { kind: 'order_received', routeName: 'invoicing-orders', labelKey: 'invoicing.doc_nav_order', apiType: 'order_received', mvpEnabled: false },
+    { kind: 'delivery_note', routeName: 'invoicing-delivery-notes', labelKey: 'invoicing.doc_nav_delivery', apiType: 'delivery_note', mvpEnabled: true },
+    { kind: 'order_received', routeName: 'invoicing-orders', labelKey: 'invoicing.doc_nav_order', apiType: 'order_received', mvpEnabled: true },
     { kind: 'quote', routeName: 'invoicing-quotes', labelKey: 'invoicing.doc_nav_quote', apiType: 'quote', mvpEnabled: true },
     { kind: 'recurring', routeName: 'invoicing-recurring', labelKey: 'invoicing.doc_nav_recurring', mvpEnabled: true },
     { kind: 'credit_note', routeName: 'invoicing-credit-notes', labelKey: 'invoicing.doc_nav_credit', apiType: 'credit_note', mvpEnabled: true },
@@ -241,8 +241,8 @@ export function useInvoicingLayout() {
     const map: Record<InvoicingDocumentKind, string> = {
       invoice: 'invoicing-invoice-new',
       proforma: 'invoicing-proforma-new',
-      delivery_note: 'invoicing-invoice-new',
-      order_received: 'invoicing-invoice-new',
+      delivery_note: 'invoicing-delivery-note-new',
+      order_received: 'invoicing-order-new',
       quote: 'invoicing-quote-new',
       recurring: 'invoicing-recurring-new',
       credit_note: 'invoicing-credit-note-new',

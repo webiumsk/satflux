@@ -51,6 +51,7 @@ import { useI18n } from 'vue-i18n';
 import { useAppsStore } from '../../store/apps';
 import { useStoresStore } from '../../store/stores';
 import { useAuthStore } from '../../store/auth';
+import { useGuestUpgradeModal } from '../../composables/useGuestUpgradeModal';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
 import PointOfSaleShow from './PointOfSaleShow.vue';
 import PayButtonShow from './PayButtonShow.vue';
@@ -64,6 +65,7 @@ const router = useRouter();
 const appsStore = useAppsStore();
 const storesStore = useStoresStore();
 const authStore = useAuthStore();
+const { openGuestUpgradeModal } = useGuestUpgradeModal();
 
 const storeId = computed(() => route.params.id as string);
 const appId = computed(() => route.params.appId as string);
@@ -99,7 +101,8 @@ async function loadApp() {
     await appsStore.fetchApps(storeId.value);
     const currentApp = appsStore.apps.find((a: any) => a.id === appId.value);
     if (authStore.user?.is_guest && currentApp && currentApp.app_type !== 'PointOfSale') {
-      router.replace({ name: 'account' });
+      openGuestUpgradeModal('apps.title');
+      router.replace({ name: 'stores-apps', params: { id: storeId.value } });
       return;
     }
     if (currentApp?.app_type === 'Tickets') {

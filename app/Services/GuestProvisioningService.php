@@ -30,8 +30,12 @@ class GuestProvisioningService
 
     public function attachRecoveryKeyToGuest(User $user, string $recoveryPkHex): User
     {
-        if (! ($user->is_guest ?? false)
-            || ! Schema::hasColumn('users', 'guest_recovery_public_key')
+        return $this->attachRecoveryKey($user, $recoveryPkHex);
+    }
+
+    public function attachRecoveryKey(User $user, string $recoveryPkHex): User
+    {
+        if (! Schema::hasColumn('users', 'guest_recovery_public_key')
             || ! empty($user->guest_recovery_public_key)) {
             return $user;
         }

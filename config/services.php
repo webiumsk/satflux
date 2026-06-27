@@ -54,6 +54,8 @@ return [
             'pro' => env('SUBSCRIPTION_PLAN_PRO_ID'),
             'enterprise' => env('SUBSCRIPTION_PLAN_ENTERPRISE_ID'),
         ],
+        // Satflux store UUID for the marketing landing Pay Button (BTCPay store ID resolved server-side).
+        'landing_pay_demo_store_id' => env('LANDING_PAY_DEMO_STORE_ID'),
         // Lightning Address host in the UI (user@host). Explicit env, else hostname of BTCPAY_BASE_URL (same default as base_url).
         'lightning_address_domain' => (static function (): string {
             $explicit = env('BTCPAY_LIGHTNING_ADDRESS_DOMAIN');
@@ -71,6 +73,12 @@ return [
     'matomo' => [
         'url' => env('MATOMO_URL'),
         'site_id' => env('MATOMO_SITE_ID'),
+    ],
+
+    'chorala' => [
+        'project_key' => env('CHORALA_PROJECT_KEY'),
+        'widget_url' => rtrim((string) env('CHORALA_WIDGET_URL', 'https://chorala.com'), '/'),
+        'end_user_jwt_secret' => env('CHORALA_END_USER_JWT_SECRET'),
     ],
 
     'discord' => [

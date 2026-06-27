@@ -525,7 +525,7 @@ class AppService
                             $filteredConfig['sounds'] = [reset($filteredSounds)];
                         }
                     } elseif (is_array($sounds) && $sounds === []) {
-                        // Explicit empty list (e.g. sounds disabled in UI) — do not inject default
+                        // Explicit empty list (e.g. sounds disabled in UI) - do not inject default
                         $filteredConfig['sounds'] = [];
                     } else {
                         // If sounds is empty or not array, set default
@@ -641,7 +641,7 @@ class AppService
                 }
 
                 // Handle perks/items field - BTCPay expects 'perksTemplate' as JSON string (not array)
-                // AppItemPriceType is only Fixed, Topup, Minimum — normalize UI "Free" to Fixed + 0.
+                // AppItemPriceType is only Fixed, Topup, Minimum - normalize UI "Free" to Fixed + 0.
                 $perksSource = $config['perks'] ?? $config['items'] ?? $config['template'] ?? null;
                 if ($perksSource !== null && $perksSource !== '') {
                     if (is_array($perksSource)) {
@@ -765,7 +765,7 @@ class AppService
                     }
                 }
 
-                // Crowdfund: Greenfield uses formId (BTCPay UI: same keys as FormDataService — "", Email, Address, or a store form UUID).
+                // Crowdfund: Greenfield uses formId (BTCPay UI: same keys as FormDataService - "", Email, Address, or a store form UUID).
                 // Never persist formId as ""; that value hits a BTCPay code path with a null Form and NREs in the crowdfund UI.
                 if (isset($config['checkout']) && is_array($config['checkout'])) {
                     if (array_key_exists('formId', $config['checkout'])) {
@@ -775,8 +775,10 @@ class AppService
                         } else {
                             $filteredConfig['formId'] = is_string($v) ? trim($v) : (string) $v;
                         }
-                    } elseif (array_key_exists('requestContributorData', $config['checkout'])
-                        && ! (bool) $config['checkout']['requestContributorData']) {
+                    } elseif (
+                        array_key_exists('requestContributorData', $config['checkout'])
+                        && ! (bool) $config['checkout']['requestContributorData']
+                    ) {
                         $filteredConfig['formId'] = null;
                     }
                 }
@@ -1185,7 +1187,7 @@ class AppService
 
     /**
      * BTCPay Greenfield AppItem uses AppItemPriceType: Fixed, Topup, Minimum only (no "Free").
-     * Satflux UI offers "Free" — map to Fixed with price 0 before sending JSON to BTCPay.
+     * Satflux UI offers "Free" - map to Fixed with price 0 before sending JSON to BTCPay.
      *
      * @param  mixed  $node  Decoded template or perks array (may be nested)
      * @return mixed

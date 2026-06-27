@@ -34,6 +34,7 @@ class BankTransactionController extends Controller
             'from' => ['sometimes', 'date'],
             'to' => ['sometimes', 'date'],
             'variable_symbol' => ['sometimes', 'string', 'max:32'],
+            'source' => ['sometimes', 'string', Rule::in(['csv', 'camt053', 'manual', 'email'])],
             'per_page' => ['sometimes', 'integer', 'min:5', 'max:100'],
         ]);
 
@@ -56,6 +57,9 @@ class BankTransactionController extends Controller
         }
         if (! empty($validated['variable_symbol'])) {
             $query->where('variable_symbol', 'like', '%'.$validated['variable_symbol'].'%');
+        }
+        if (! empty($validated['source'])) {
+            $query->where('source', $validated['source']);
         }
 
         $summary = app(BankTransactionListSummary::class)->forQuery($query);

@@ -14,7 +14,7 @@ enum BusinessDocumentType: string
 
     public static function mvpEnabled(): array
     {
-        return [self::Invoice, self::Proforma, self::Quote, self::CreditNote];
+        return [self::Invoice, self::Proforma, self::Quote, self::CreditNote, self::DeliveryNote, self::OrderReceived];
     }
 
     public function isMvpEnabled(): bool

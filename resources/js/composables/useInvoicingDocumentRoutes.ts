@@ -32,6 +32,18 @@ const ROUTES_BY_KIND: Partial<Record<InvoicingDocumentKind, InvoicingDocumentRou
     show: 'invoicing-credit-note-show',
     edit: 'invoicing-credit-note-edit',
   },
+  delivery_note: {
+    list: 'invoicing-delivery-notes',
+    new: 'invoicing-delivery-note-new',
+    show: 'invoicing-delivery-note-show',
+    edit: 'invoicing-delivery-note-edit',
+  },
+  order_received: {
+    list: 'invoicing-orders',
+    new: 'invoicing-order-new',
+    show: 'invoicing-order-show',
+    edit: 'invoicing-order-edit',
+  },
 };
 
 const DEFAULT_ROUTES = ROUTES_BY_KIND.invoice!;

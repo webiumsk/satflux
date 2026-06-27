@@ -38,6 +38,8 @@
             v-else-if="activeDocumentNav?.mvpEnabled"
             :to="newDocumentLink"
             class="invoicing-btn-primary w-full text-center"
+            :class="{ 'pointer-events-none opacity-60': isRelaySyncing }"
+            @click="guardRelaySync"
           >
             + {{ newDocumentLabel() }}
           </RouterLink>
@@ -47,7 +49,9 @@
             v-if="activeDocumentNav?.mvpEnabled && !isCreditNoteList"
             :to="newDocumentLink"
             class="invoicing-mobile-icon-btn"
+            :class="{ 'pointer-events-none opacity-60': isRelaySyncing }"
             :title="newDocumentLabel()"
+            @click="guardRelaySync"
           >
             <InvoicingIcons name="plus" />
           </RouterLink>
@@ -63,6 +67,41 @@
         </template>
       </InvoicingAppHeader>
     </template>
+
+  <div
+    v-if="showIntegrationInbox && localCompanyForInbox"
+    id="woocommerce-integration-inbox"
+  >
+    <IntegrationInboxPanel
+      :company-id="companyId"
+      :linked-store-id="linkedStoreIdForInbox"
+      :company="localCompanyForInbox"
+      :enabled="!isRelaySyncing"
+      @imported="onIntegrationInboxImported"
+    />
+  </div>
+
+  <div v-if="localFirst && isRelaySyncing" class="invoicing-alert-warn mb-4">
+    <p class="text-sm font-medium">{{ t('invoicing.relay_sync_loading') }}</p>
+    <p class="text-sm mt-2 opacity-90">{{ t('invoicing.relay_sync_documents_detail') }}</p>
+  </div>
+  <div
+    v-else-if="localFirst"
+    class="mb-4 flex flex-wrap items-center justify-end gap-2"
+  >
+    <button
+      type="button"
+      class="invoicing-btn-secondary text-sm"
+      :disabled="loading || relayRefreshing"
+      @click="refreshListFromRelay"
+    >
+      {{
+        relayRefreshing
+          ? t('invoicing.relay_sync_refresh_in_progress')
+          : t('invoicing.relay_sync_refresh')
+      }}
+    </button>
+  </div>
 
     <template #subheader>
       <InvoicingDocumentFilterBar
@@ -91,6 +130,8 @@
             v-else-if="activeDocumentNav?.mvpEnabled"
             :to="newDocumentLink"
             class="invoicing-btn-primary shrink-0"
+            :class="{ 'pointer-events-none opacity-60': isRelaySyncing }"
+            @click="guardRelaySync"
           >
             + {{ newDocumentLabel() }}
           </RouterLink>
@@ -100,11 +141,15 @@
 
     <div v-if="selectionCount > 0" class="invoicing-bulk-bar hidden md:flex">
       <span class="text-sm text-indigo-800 font-medium">
-        {{ t('invoicing.bulk_selected', { count: selectionCount }) }}
+        {{ t("invoicing.bulk_selected", { count: selectionCount }) }}
       </span>
       <div class="relative">
-        <button type="button" class="invoicing-btn-secondary text-sm py-1.5" @click="showBulkMenu = !showBulkMenu">
-          {{ t('invoicing.bulk_actions') }} ▾
+        <button
+          type="button"
+          class="invoicing-btn-secondary text-sm py-1.5"
+          @click="showBulkMenu = !showBulkMenu"
+        >
+          {{ t("invoicing.bulk_actions") }} ▾
         </button>
         <div v-if="showBulkMenu" class="invoicing-dropdown">
           <button
@@ -113,28 +158,52 @@
             class="invoicing-dropdown-item"
             @click="runBulk('mark_paid')"
           >
-            {{ t('invoicing.bulk_mark_paid') }}
+            {{ t("invoicing.bulk_mark_paid") }}
           </button>
           <div class="border-t border-gray-700 my-1"></div>
-          <button type="button" class="invoicing-dropdown-item" @click="runBulk('pdf_zip')">
-            {{ t('invoicing.bulk_pdf_separate') }}
+          <button
+            type="button"
+            class="invoicing-dropdown-item"
+            @click="runBulk('pdf_zip')"
+          >
+            {{ t("invoicing.bulk_pdf_separate") }}
           </button>
-          <button type="button" class="invoicing-dropdown-item" @click="runBulk('pdf_merge')">
-            {{ t('invoicing.bulk_pdf_merge') }}
+          <button
+            type="button"
+            class="invoicing-dropdown-item"
+            @click="runBulk('pdf_merge')"
+          >
+            {{ t("invoicing.bulk_pdf_merge") }}
           </button>
-          <button type="button" class="invoicing-dropdown-item" @click="runBulk('export_xlsx')">
-            {{ t('invoicing.bulk_export_xlsx') }}
+          <button
+            type="button"
+            class="invoicing-dropdown-item"
+            @click="runBulk('export_xlsx')"
+          >
+            {{ t("invoicing.bulk_export_xlsx") }}
           </button>
           <div class="border-t border-gray-200 my-1"></div>
-          <button type="button" class="invoicing-dropdown-item text-red-600" @click="runBulk('delete')">
-            {{ t('invoicing.bulk_delete') }}
+          <button
+            type="button"
+            class="invoicing-dropdown-item text-red-600"
+            @click="runBulk('delete')"
+          >
+            {{ t("invoicing.bulk_delete") }}
           </button>
-          <button type="button" class="invoicing-dropdown-item text-amber-700" @click="runBulk('cancel')">
-            {{ t('invoicing.bulk_cancel') }}
+          <button
+            type="button"
+            class="invoicing-dropdown-item text-amber-700"
+            @click="runBulk('cancel')"
+          >
+            {{ t("invoicing.bulk_cancel") }}
           </button>
           <div class="border-t border-gray-200 my-1"></div>
-          <button type="button" class="invoicing-dropdown-item text-gray-500" @click="clearSelection">
-            {{ t('invoicing.bulk_clear') }}
+          <button
+            type="button"
+            class="invoicing-dropdown-item text-gray-500"
+            @click="clearSelection"
+          >
+            {{ t("invoicing.bulk_clear") }}
           </button>
         </div>
       </div>
@@ -151,35 +220,67 @@
         class="invoicing-btn-secondary text-sm shrink-0"
         @click="runBulk('mark_paid')"
       >
-        {{ t('invoicing.bulk_mark_paid') }}
+        {{ t("invoicing.bulk_mark_paid") }}
       </button>
-      <button type="button" class="invoicing-btn-secondary text-sm shrink-0" @click="runBulk('pdf_zip')">
-        {{ t('invoicing.bulk_pdf_separate') }}
+      <button
+        type="button"
+        class="invoicing-btn-secondary text-sm shrink-0"
+        @click="runBulk('pdf_zip')"
+      >
+        {{ t("invoicing.bulk_pdf_separate") }}
       </button>
-      <button type="button" class="invoicing-btn-secondary text-sm shrink-0" @click="runBulk('pdf_merge')">
-        {{ t('invoicing.bulk_pdf_merge') }}
+      <button
+        type="button"
+        class="invoicing-btn-secondary text-sm shrink-0"
+        @click="runBulk('pdf_merge')"
+      >
+        {{ t("invoicing.bulk_pdf_merge") }}
       </button>
-      <button type="button" class="invoicing-btn-secondary text-sm shrink-0" @click="runBulk('export_xlsx')">
-        {{ t('invoicing.bulk_export_xlsx') }}
+      <button
+        type="button"
+        class="invoicing-btn-secondary text-sm shrink-0"
+        @click="runBulk('export_xlsx')"
+      >
+        {{ t("invoicing.bulk_export_xlsx") }}
       </button>
-      <button type="button" class="invoicing-btn-secondary text-sm shrink-0 text-red-600" @click="runBulk('delete')">
-        {{ t('invoicing.bulk_delete') }}
+      <button
+        type="button"
+        class="invoicing-btn-secondary text-sm shrink-0 text-red-600"
+        @click="runBulk('delete')"
+      >
+        {{ t("invoicing.bulk_delete") }}
       </button>
-      <button type="button" class="invoicing-btn-secondary text-sm shrink-0 text-amber-700" @click="runBulk('cancel')">
-        {{ t('invoicing.bulk_cancel') }}
+      <button
+        type="button"
+        class="invoicing-btn-secondary text-sm shrink-0 text-amber-700"
+        @click="runBulk('cancel')"
+      >
+        {{ t("invoicing.bulk_cancel") }}
       </button>
     </InvoicingMobileBulkBar>
 
-    <div v-if="loading" class="invoicing-muted py-8">{{ t('common.loading') }}</div>
+    <div v-if="loading" class="invoicing-muted py-8">
+      {{ t("common.loading") }}
+    </div>
 
-    <div v-else-if="documents.length === 0" class="invoicing-card-pad text-center text-gray-600">
+    <div
+      v-else-if="documents.length === 0"
+      class="invoicing-card-pad text-center text-gray-600"
+    >
       {{ emptyMessage }}
     </div>
 
-    <div v-else class="my-4 md:my-8 space-y-0 invoicing-card max-md:overflow-visible md:overflow-hidden">
-      <div class="hidden md:block border-b border-gray-200 overflow-x-auto invoice-table-wrap">
+    <div
+      v-else
+      class="my-4 md:my-8 space-y-0 invoicing-card max-md:overflow-visible md:overflow-hidden"
+    >
+      <div
+        class="hidden md:block border-b border-gray-200 overflow-x-auto invoice-table-wrap"
+      >
         <table class="invoice-table w-full min-w-[900px] text-sm text-left">
-          <thead class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide border-b border-gray-200">
+          <thead
+            class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide border-b border-gray-200"
+          >
             <tr>
               <th class="w-12 px-2 py-3 relative text-center">
                 <button
@@ -190,12 +291,27 @@
                 >
                   ☰
                 </button>
-                <div v-if="showSelectMenu" class="invoicing-dropdown min-w-[240px] text-xs normal-case tracking-normal font-normal">
-                  <button type="button" class="invoicing-dropdown-item" @click="selectPage">
-                    {{ t('invoicing.select_page', { count: documents.length }) }}
+                <div
+                  v-if="showSelectMenu"
+                  class="invoicing-dropdown min-w-[240px] text-xs normal-case tracking-normal font-normal"
+                >
+                  <button
+                    type="button"
+                    class="invoicing-dropdown-item"
+                    @click="selectPage"
+                  >
+                    {{
+                      t("invoicing.select_page", { count: documents.length })
+                    }}
                   </button>
-                  <button type="button" class="invoicing-dropdown-item" @click="selectAllFiltered">
-                    {{ t('invoicing.select_all_filtered', { count: totalCount }) }}
+                  <button
+                    type="button"
+                    class="invoicing-dropdown-item"
+                    @click="selectAllFiltered"
+                  >
+                    {{
+                      t("invoicing.select_all_filtered", { count: totalCount })
+                    }}
                   </button>
                   <button
                     v-if="selectionCount > 0"
@@ -203,24 +319,46 @@
                     class="invoicing-dropdown-item text-gray-500"
                     @click="clearSelection"
                   >
-                    {{ t('invoicing.bulk_clear') }}
+                    {{ t("invoicing.bulk_clear") }}
                   </button>
                 </div>
               </th>
               <th class="w-4 px-0 py-3" aria-hidden="true"></th>
-              <th class="px-4 py-3 min-w-[140px]">{{ t('invoicing.col_number') }}</th>
-              <th class="w-10 px-1 py-3 text-center" :title="t('invoicing.col_email_status')">@</th>
-              <th class="px-4 py-3 min-w-[160px]">{{ t('invoicing.col_title') }}</th>
-              <th class="px-4 py-3 min-w-[180px]">{{ t('invoicing.col_client') }}</th>
+              <th class="px-4 py-3 min-w-[140px]">
+                {{ t("invoicing.col_number") }}
+              </th>
+              <th
+                class="w-10 px-1 py-3 text-center"
+                :title="t('invoicing.col_email_status')"
+              >
+                @
+              </th>
+              <th class="px-4 py-3 min-w-[160px]">
+                {{ t("invoicing.col_title") }}
+              </th>
+              <th class="px-4 py-3 min-w-[180px]">
+                {{ t("invoicing.col_client") }}
+              </th>
               <th v-if="showLinkedSourceColumn" class="px-4 py-3 min-w-[120px]">
-                {{ isCreditNoteList ? t('invoicing.col_credited_invoice') : t('invoicing.col_linked_invoice') }}
+                {{
+                  isCreditNoteList
+                    ? t("invoicing.col_credited_invoice")
+                    : t("invoicing.col_linked_invoice")
+                }}
               </th>
-              <th class="px-4 py-3 text-right min-w-[100px]">{{ t('invoicing.col_total') }}</th>
+              <th class="px-4 py-3 text-right min-w-[100px]">
+                {{ t("invoicing.col_total") }}
+              </th>
               <th class="px-4 py-3 text-right min-w-[110px]">
-                {{ isQuoteList ? t('invoicing.col_created') : t('invoicing.col_dates') }}
+                {{
+                  isQuoteList
+                    ? t("invoicing.col_created")
+                    : t("invoicing.col_dates")
+                }}
               </th>
-              <th v-if="isQuoteList" class="px-4 py-3 text-right min-w-[110px]">{{ t('invoicing.col_valid_until') }}</th>
-              
+              <th v-if="isQuoteList" class="px-4 py-3 text-right min-w-[110px]">
+                {{ t("invoicing.col_valid_until") }}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -229,7 +367,9 @@
               :key="d.id"
               class="invoice-row border-t border-gray-100 group"
               :class="[
-                rowSelected(d.id) ? 'bg-indigo-50' : 'bg-white hover:bg-indigo-50 hover:border-b border-gray-200',
+                rowSelected(d.id)
+                  ? 'bg-indigo-50'
+                  : 'bg-white hover:bg-indigo-50 hover:border-b border-gray-200',
               ]"
             >
               <td class="px-2 py-3 align-middle">
@@ -254,10 +394,21 @@
                 >
                   {{ documentListNumber(d) }}
                 </RouterLink>
-                <p v-if="!isQuoteList && d.final_invoice?.id" class="text-xs text-emerald-700 mt-0.5">
-                  {{ t('invoicing.final_invoice_short', { number: d.final_invoice.number || t('invoicing.draft_label') }) }}
+                <p
+                  v-if="!isQuoteList && d.final_invoice?.id"
+                  class="text-xs text-emerald-700 mt-0.5"
+                >
+                  {{
+                    t("invoicing.final_invoice_short", {
+                      number:
+                        d.final_invoice.number || t("invoicing.draft_label"),
+                    })
+                  }}
                 </p>
-                <p v-if="d.variable_symbol" class="text-xs text-gray-500 mt-0.5">
+                <p
+                  v-if="d.variable_symbol"
+                  class="text-xs text-gray-500 mt-0.5"
+                >
                   VS: {{ d.variable_symbol }}
                 </p>
               </td>
@@ -266,7 +417,11 @@
                   v-if="canSendEmail(d)"
                   type="button"
                   class="invoice-email-indicator"
-                  :class="d.email_sent_at ? 'invoice-email-indicator--sent' : 'invoice-email-indicator--unsent'"
+                  :class="
+                    d.email_sent_at
+                      ? 'invoice-email-indicator--sent'
+                      : 'invoice-email-indicator--unsent'
+                  "
                   :title="emailIndicatorTitle(d)"
                   @click.stop="openSendEmail(d)"
                 >
@@ -291,34 +446,45 @@
                 >
                   {{ d.contact.name }}
                 </RouterLink>
-                <span v-else class="text-gray-400">—</span>
+                <span v-else class="text-gray-400">-</span>
               </td>
               <td v-if="showLinkedSourceColumn" class="px-4 py-3 align-middle">
                 <RouterLink
                   v-if="isQuoteList && d.final_invoice?.id"
-                  :to="documentShowTo({ id: d.final_invoice.id, type: 'invoice' })"
+                  :to="
+                    documentShowTo({ id: d.final_invoice.id, type: 'invoice' })
+                  "
                   class="text-indigo-600 hover:text-indigo-800 hover:underline text-sm"
                 >
-                  {{ d.final_invoice.number || t('invoicing.draft_label') }}
+                  {{ d.final_invoice.number || t("invoicing.draft_label") }}
                 </RouterLink>
                 <RouterLink
                   v-else-if="isCreditNoteList && d.source_document?.id"
-                  :to="documentShowTo({ id: d.source_document.id, type: d.source_document.type || 'invoice' })"
+                  :to="
+                    documentShowTo({
+                      id: d.source_document.id,
+                      type: d.source_document.type || 'invoice',
+                    })
+                  "
                   class="text-indigo-600 hover:text-indigo-800 hover:underline text-sm"
                 >
-                  {{ d.source_document.number || t('invoicing.draft_label') }}
+                  {{ d.source_document.number || t("invoicing.draft_label") }}
                 </RouterLink>
-                <span v-else class="text-gray-400">—</span>
+                <span v-else class="text-gray-400">-</span>
               </td>
-              <td class="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap align-middle">
+              <td
+                class="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap align-middle"
+              >
                 {{ formatMoney(d.total, d.currency) }}
               </td>
-              <td class="px-4 py-3 text-right text-gray-600 text-xs whitespace-nowrap align-middle relative">
-                <span>{{ d.issue_date ? formatDate(d.issue_date) : '—' }}</span>
+              <td
+                class="px-4 py-3 text-right text-gray-600 text-xs whitespace-nowrap align-middle relative"
+              >
+                <span>{{ d.issue_date ? formatDate(d.issue_date) : "-" }}</span>
                 <template v-if="!isQuoteList">
                   <span class="text-gray-600 mx-1">/</span>
                   <span :class="isOverdue(d) ? 'text-red-400 font-medium' : ''">
-                    {{ d.due_date ? formatDate(d.due_date) : '—' }}
+                    {{ d.due_date ? formatDate(d.due_date) : "-" }}
                   </span>
                 </template>
                 <div
@@ -368,9 +534,40 @@
                     :disabled="actionId === d.id"
                     @click="downloadPdf(d)"
                   >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
                     </svg>
+                  </button>
+                  <button
+                    v-if="localFirst && canDownloadStructuredExport(d)"
+                    type="button"
+                    class="row-action-btn"
+                    :title="t('invoicing.action_isdoc')"
+                    :disabled="actionId === d.id"
+                    @click="downloadIsdoc(d)"
+                  >
+                    <span class="text-[10px] font-bold leading-none">IS</span>
+                  </button>
+                  <button
+                    v-if="localFirst && canDownloadStructuredExport(d)"
+                    type="button"
+                    class="row-action-btn"
+                    :title="t('invoicing.action_ubl')"
+                    :disabled="actionId === d.id"
+                    @click="downloadUbl(d)"
+                  >
+                    <span class="text-[10px] font-bold leading-none">UBL</span>
                   </button>
                   <button
                     type="button"
@@ -379,8 +576,19 @@
                     :disabled="actionId === d.id"
                     @click="duplicateDoc(d)"
                   >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                      />
                     </svg>
                   </button>
                   <button
@@ -391,8 +599,19 @@
                     :disabled="actionId === d.id"
                     @click="unmarkPaid(d)"
                   >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"
+                      />
                     </svg>
                   </button>
                   <RouterLink
@@ -401,8 +620,19 @@
                     class="row-action-btn"
                     :title="t('common.edit')"
                   >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                      />
                     </svg>
                   </RouterLink>
                   <button
@@ -413,8 +643,19 @@
                     :disabled="actionId === d.id"
                     @click="deleteDoc(d)"
                   >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
                     </svg>
                   </button>
                   <button
@@ -425,8 +666,19 @@
                     :disabled="actionId === d.id"
                     @click="cancelDoc(d)"
                   >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                   </button>
                 </div>
@@ -436,7 +688,7 @@
                 class="px-4 py-3 text-right text-gray-600 text-xs whitespace-nowrap align-middle relative"
               >
                 <span :class="quoteValidUntilClass(d)">
-                  {{ d.due_date ? formatDate(d.due_date) : '—' }}
+                  {{ d.due_date ? formatDate(d.due_date) : "-" }}
                 </span>
                 <div
                   class="row-actions-bar flex items-center justify-end gap-0.5 min-h-[52px] pr-2 pl-3 rounded-lg transition-opacity"
@@ -514,9 +766,40 @@
                     :disabled="actionId === d.id"
                     @click="downloadPdf(d)"
                   >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
                     </svg>
+                  </button>
+                  <button
+                    v-if="localFirst && canDownloadStructuredExport(d)"
+                    type="button"
+                    class="row-action-btn"
+                    :title="t('invoicing.action_isdoc')"
+                    :disabled="actionId === d.id"
+                    @click="downloadIsdoc(d)"
+                  >
+                    <span class="text-[10px] font-bold leading-none">IS</span>
+                  </button>
+                  <button
+                    v-if="localFirst && canDownloadStructuredExport(d)"
+                    type="button"
+                    class="row-action-btn"
+                    :title="t('invoicing.action_ubl')"
+                    :disabled="actionId === d.id"
+                    @click="downloadUbl(d)"
+                  >
+                    <span class="text-[10px] font-bold leading-none">UBL</span>
                   </button>
                   <button
                     type="button"
@@ -525,8 +808,19 @@
                     :disabled="actionId === d.id"
                     @click="duplicateDoc(d)"
                   >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                      />
                     </svg>
                   </button>
                   <button
@@ -537,8 +831,19 @@
                     :disabled="actionId === d.id"
                     @click="unmarkPaid(d)"
                   >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"
+                      />
                     </svg>
                   </button>
                   <RouterLink
@@ -547,8 +852,19 @@
                     class="row-action-btn"
                     :title="t('common.edit')"
                   >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                      />
                     </svg>
                   </RouterLink>
                   <button
@@ -559,8 +875,19 @@
                     :disabled="actionId === d.id"
                     @click="deleteDoc(d)"
                   >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
                     </svg>
                   </button>
                   <button
@@ -571,8 +898,19 @@
                     :disabled="actionId === d.id"
                     @click="cancelDoc(d)"
                   >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                   </button>
                 </div>
@@ -599,48 +937,106 @@
             />
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0">
-                <p class="font-semibold text-gray-900 truncate">{{ documentListNumber(d) }}</p>
-                <p v-if="d.contact?.name" class="text-sm text-gray-600 truncate">{{ d.contact.name }}</p>
-                <p v-if="invoiceTitle(d)" class="text-xs text-gray-500 truncate mt-0.5">{{ invoiceTitle(d) }}</p>
+                <p class="font-semibold text-gray-900 truncate">
+                  {{ documentListNumber(d) }}
+                </p>
+                <p
+                  v-if="d.contact?.name"
+                  class="text-sm text-gray-600 truncate"
+                >
+                  {{ d.contact.name }}
+                </p>
+                <p
+                  v-if="invoiceTitle(d)"
+                  class="text-xs text-gray-500 truncate mt-0.5"
+                >
+                  {{ invoiceTitle(d) }}
+                </p>
                 <p class="text-xs text-gray-500 mt-1">
                   <template v-if="!isQuoteList">
-                    {{ d.issue_date ? formatDate(d.issue_date) : '—' }}
+                    {{ d.issue_date ? formatDate(d.issue_date) : "-" }}
                     /
-                    <span :class="isOverdue(d) ? 'text-red-500 font-medium' : ''">
-                      {{ d.due_date ? formatDate(d.due_date) : '—' }}
+                    <span
+                      :class="isOverdue(d) ? 'text-red-500 font-medium' : ''"
+                    >
+                      {{ d.due_date ? formatDate(d.due_date) : "-" }}
                     </span>
                   </template>
                   <template v-else>
-                    {{ d.due_date ? formatDate(d.due_date) : '—' }}
+                    {{ d.due_date ? formatDate(d.due_date) : "-" }}
                   </template>
                 </p>
               </div>
-              <p class="text-sm font-semibold text-gray-900 shrink-0">{{ formatMoney(d.total, d.currency) }}</p>
+              <p class="text-sm font-semibold text-gray-900 shrink-0">
+                {{ formatMoney(d.total, d.currency) }}
+              </p>
             </div>
           </div>
           <template #actions>
             <InvoicingRowActionsMenu>
-              <button v-if="canIssue(d)" type="button" class="invoicing-dropdown-item" @click="issueDoc(d)">
-                {{ t('invoicing.action_issue') }}
+              <button
+                v-if="canIssue(d)"
+                type="button"
+                class="invoicing-dropdown-item"
+                @click="issueDoc(d)"
+              >
+                {{ t("invoicing.action_issue") }}
               </button>
-              <button v-if="canMarkPaid(d)" type="button" class="invoicing-dropdown-item" @click="markPaid(d)">
-                {{ t('invoicing.action_mark_paid') }}
+              <button
+                v-if="canMarkPaid(d)"
+                type="button"
+                class="invoicing-dropdown-item"
+                @click="markPaid(d)"
+              >
+                {{ t("invoicing.action_mark_paid") }}
               </button>
-              <button v-if="d.status !== 'draft'" type="button" class="invoicing-dropdown-item" @click="downloadPdf(d)">
-                {{ t('invoicing.action_pdf') }}
+              <button
+                v-if="d.status !== 'draft'"
+                type="button"
+                class="invoicing-dropdown-item"
+                @click="downloadPdf(d)"
+              >
+                {{ t("invoicing.action_pdf") }}
               </button>
-              <RouterLink v-if="d.can_update" :to="documentEditTo(d)" class="invoicing-dropdown-item block">
-                {{ t('common.edit') }}
+              <button
+                v-if="localFirst && canDownloadStructuredExport(d)"
+                type="button"
+                class="invoicing-dropdown-item"
+                @click="downloadIsdoc(d)"
+              >
+                {{ t("invoicing.action_isdoc") }}
+              </button>
+              <button
+                v-if="localFirst && canDownloadStructuredExport(d)"
+                type="button"
+                class="invoicing-dropdown-item"
+                @click="downloadUbl(d)"
+              >
+                {{ t("invoicing.action_ubl") }}
+              </button>
+              <RouterLink
+                v-if="d.can_update"
+                :to="documentEditTo(d)"
+                class="invoicing-dropdown-item block"
+              >
+                {{ t("common.edit") }}
               </RouterLink>
-              <button v-if="d.can_delete" type="button" class="invoicing-dropdown-item text-red-600" @click="deleteDoc(d)">
-                {{ t('invoicing.action_delete') }}
+              <button
+                v-if="d.can_delete"
+                type="button"
+                class="invoicing-dropdown-item text-red-600"
+                @click="deleteDoc(d)"
+              >
+                {{ t("invoicing.action_delete") }}
               </button>
             </InvoicingRowActionsMenu>
           </template>
         </InvoicingMobileCard>
       </div>
 
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-4 py-3 border-t border-gray-200 bg-gray-50">
+      <div
+        class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-4 py-3 border-t border-gray-200 bg-gray-50"
+      >
         <div class="flex items-center gap-2 text-sm">
           <button
             type="button"
@@ -688,29 +1084,49 @@
           class="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 text-right min-w-[200px] shadow-sm"
         >
           <div>
-            <span class="text-gray-500">{{ t('invoicing.summary_page') }}:</span>
-            {{ formatMoney(pageTotal, 'EUR') }}
-            <span class="text-gray-500">({{ documents.length }} / {{ totalCount }})</span>
+            <span class="text-gray-500"
+              >{{ t("invoicing.summary_page") }}:</span
+            >
+            {{ formatMoney(pageTotal, "EUR") }}
+            <span class="text-gray-500"
+              >({{ documents.length }} / {{ totalCount }})</span
+            >
           </div>
-          <div v-if="!isQuoteList && pageUnpaidTotal > 0" class="text-amber-700">
-            <span class="text-gray-500">{{ t('invoicing.summary_unpaid') }}:</span>
-            {{ formatMoney(pageUnpaidTotal, 'EUR') }}
+          <div
+            v-if="!isQuoteList && pageUnpaidTotal > 0"
+            class="text-amber-700"
+          >
+            <span class="text-gray-500"
+              >{{ t("invoicing.summary_unpaid") }}:</span
+            >
+            {{ formatMoney(pageUnpaidTotal, "EUR") }}
           </div>
         </div>
       </div>
 
       <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="invoicing-card-pad">
-          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-            {{ t('invoicing.legend_title') }}
+          <h3
+            class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3"
+          >
+            {{ t("invoicing.legend_title") }}
           </h3>
           <ul class="space-y-2 text-sm text-gray-700">
-            <li v-for="item in legendItems" :key="item.kind" class="flex items-center gap-3">
+            <li
+              v-for="item in legendItems"
+              :key="item.kind"
+              class="flex items-center gap-3"
+            >
               <span
                 v-if="item.kind === 'email_sent'"
                 class="invoice-email-indicator invoice-email-indicator--sent shrink-0 static cursor-default"
-              >@</span>
-              <span v-else class="status-corner shrink-0 static" :class="`status-corner--${item.kind}`"></span>
+                >@</span
+              >
+              <span
+                v-else
+                class="status-corner shrink-0 static"
+                :class="`status-corner--${item.kind}`"
+              ></span>
               <span>{{ item.label }}</span>
             </li>
           </ul>
@@ -725,6 +1141,8 @@
       :open="sendEmailOpen"
       :company-id="companyId"
       :document-id="sendEmailDocumentId"
+      :ephemeral-snapshot="sendEmailEphemeralSnapshot"
+      :bridge-company-id="sendEmailBridgeCompanyId"
       @close="closeSendEmail"
       @sent="onEmailSent"
     />
@@ -745,34 +1163,74 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { useI18n } from 'vue-i18n';
-import { useRoute, useRouter } from 'vue-router';
-import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
-import InvoicingDocumentFilterBar from '../../components/invoicing/InvoicingDocumentFilterBar.vue';
-import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
-import InvoicingMobileBulkBar from '../../components/invoicing/InvoicingMobileBulkBar.vue';
-import InvoicingMobileCard from '../../components/invoicing/InvoicingMobileCard.vue';
-import InvoicingRowActionsMenu from '../../components/invoicing/InvoicingRowActionsMenu.vue';
-import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
-import { useInvoicingDocumentListFilters } from '../../composables/useInvoicingDocumentListFilters';
-import CreditNotePickInvoiceModal from '../../components/invoicing/CreditNotePickInvoiceModal.vue';
-import CreditNoteStartModal from '../../components/invoicing/CreditNoteStartModal.vue';
-import SendDocumentEmailModal from '../../components/invoicing/SendDocumentEmailModal.vue';
-import api, { businessDocumentPdfPath, getWebBlob } from '../../services/api';
-import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
-import { invoicingDocumentRoutesForType } from '../../composables/useInvoicingDocumentRoutes';
+import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
+import { useRoute, useRouter } from "vue-router";
+import InvoicingAppHeader from "../../components/invoicing/InvoicingAppHeader.vue";
+import InvoicingDocumentFilterBar from "../../components/invoicing/InvoicingDocumentFilterBar.vue";
+import InvoicingPageShell from "../../components/invoicing/InvoicingPageShell.vue";
+import InvoicingMobileBulkBar from "../../components/invoicing/InvoicingMobileBulkBar.vue";
+import InvoicingMobileCard from "../../components/invoicing/InvoicingMobileCard.vue";
+import InvoicingRowActionsMenu from "../../components/invoicing/InvoicingRowActionsMenu.vue";
+import InvoicingIcons from "../../components/invoicing/icons/InvoicingIcons.vue";
+import { appSettingsFromCompany } from "../../composables/useCompanyAppSettings";
+import IntegrationInboxPanel from "../../components/invoicing/IntegrationInboxPanel.vue";
+import { useInvoicingDocumentListFilters } from "../../composables/useInvoicingDocumentListFilters";
+import { useCompanyVatPolicy } from "../../composables/useCompanyVatPolicy";
+import { useInvoicingCompanySummary } from "../../composables/useInvoicingCompanySummary";
+import { useInvoicingDocumentsLocal } from "../../composables/useInvoicingDocumentsLocal";
+import { isInvoicingLocalFirst } from "../../evolu/flags";
+import { useLocalInvoiceDocumentSupport } from "../../composables/useLocalInvoiceDocument";
+import {
+  deleteLocalDocumentAsync,
+  cancelLocalDocumentAsync,
+  markLocalDocumentPaid,
+  unmarkLocalDocumentPaid,
+  markLocalDocumentEmailSent,
+  payloadFromApiDocument,
+} from "../../evolu/documentCrud";
+import type { CompanyId, DocumentId } from "../../evolu/schema";
+import type { EvoluCompanyRow } from "../../evolu/companyMap";
+import type { EvoluDocumentRow } from "../../evolu/documentMap";
+import type { EvoluNumberSeriesRow } from "../../evolu/numberSeriesMap";
+import CreditNotePickInvoiceModal from "../../components/invoicing/CreditNotePickInvoiceModal.vue";
+import CreditNoteStartModal from "../../components/invoicing/CreditNoteStartModal.vue";
+import SendDocumentEmailModal from "../../components/invoicing/SendDocumentEmailModal.vue";
+import api, { businessDocumentPdfPath, getWebBlob } from "../../services/api";
+import {
+  buildBulkEphemeralRequest,
+  buildLocalDocumentEphemeralSnapshot,
+  downloadEphemeralIsdoc,
+  downloadEphemeralPdf,
+  downloadEphemeralPdfMerge,
+  downloadEphemeralPdfZip,
+  downloadEphemeralUbl,
+  type EphemeralSnapshotPayload,
+} from "../../evolu/ephemeralBridge";
+import {
+  bulkCancelLocalAsync,
+  bulkDeleteLocal,
+  bulkMarkPaidLocal,
+  buildDocumentsCsvBlob,
+  downloadCsvBlob,
+  localBulkFilterOptions,
+  resolveBulkTargets,
+} from "../../evolu/documentBulkLocal";
+import { useInvoicingRelaySync } from "../../composables/useInvoicingRelaySync";
+import { useInvoicingSaveFeedback } from "../../composables/useInvoicingSaveFeedback";
+import { useInvoicingLayout } from "../../composables/useInvoicingLayout";
+import { invoicingDocumentRoutesForType } from "../../composables/useInvoicingDocumentRoutes";
 
 type StatusKind =
-  | 'paid'
-  | 'waiting'
-  | 'overdue'
-  | 'draft'
-  | 'cancelled'
-  | 'approved'
-  | 'pending'
-  | 'rejected'
-  | 'expired';
+  | "paid"
+  | "waiting"
+  | "overdue"
+  | "draft"
+  | "cancelled"
+  | "approved"
+  | "pending"
+  | "rejected"
+  | "expired";
 
 const { t, locale } = useI18n();
 const route = useRoute();
@@ -786,9 +1244,169 @@ const {
   INVOICING_CONTAINER_CLASS,
 } = useInvoicingLayout();
 
+const localFirst = isInvoicingLocalFirst();
+const { isRelaySyncing, refreshFromRelay } = useInvoicingRelaySync({ refreshOnMount: true });
+const { notifySaved, notifySaveFailed } = useInvoicingSaveFeedback();
+const relayRefreshing = ref(false);
+const contactFilterId = computed(() => {
+  const id = route.query.contact_id;
+  return typeof id === "string" && id ? id : undefined;
+});
+const localDocuments = localFirst
+  ? useInvoicingDocumentsLocal(companyId)
+  : null;
+const localDoc = localFirst ? useLocalInvoiceDocumentSupport() : null;
+const vatPolicy = useCompanyVatPolicy();
+const { companyName: summaryCompanyName } = useInvoicingCompanySummary();
+
+const localCompanyJurisdiction = computed(() => {
+  if (!localFirst || !localDoc) return null;
+  return localDoc.companyApi(companyId.value)?.jurisdiction as
+    | string
+    | undefined;
+});
+
+const localCompanyForInbox = computed(() => {
+  if (!localFirst || !localDoc) return null;
+  return localDoc.companyApi(companyId.value);
+});
+
+const linkedStoreIdForInbox = computed(() => {
+  if (!localFirst || !localDoc) return null;
+  const row = localDoc.companyRows.value.find((c) => c.id === companyId.value);
+  const fromRow =
+    typeof row?.linkedStoreId === "string" ? row.linkedStoreId.trim() : "";
+  if (fromRow) return fromRow;
+  return localCompanyForInbox.value?.stores?.[0]?.id ?? null;
+});
+
+const companyRunsEshop = computed(() => {
+  const company = localCompanyForInbox.value;
+  if (!company) return false;
+  return appSettingsFromCompany(company).runs_eshop;
+});
+
+const showIntegrationInbox = computed(
+  () =>
+    localFirst &&
+    activeDocumentNav.value?.kind === "invoice" &&
+    companyRunsEshop.value &&
+    localCompanyForInbox.value != null,
+);
+
+async function onIntegrationInboxImported(): Promise<void> {
+  if (!localFirst || !localDoc || !localDocuments) return;
+  await localDoc.refreshAll();
+  const nav = activeDocumentNav.value;
+  await localDocuments.refresh({
+    apiType: nav.kind === "drafts" ? undefined : nav.apiType,
+    statusFilter: nav.kind === "drafts" ? "draft" : activeFilter.value,
+    issuePeriod: { ...issuePeriod },
+    advanced: { ...advancedApplied },
+    contactId: contactFilterId.value,
+  });
+}
+
+function scrollToIntegrationInbox(): void {
+  if (route.query.integration_inbox !== "1") {
+    return;
+  }
+  void nextTick(() => {
+    document.getElementById("woocommerce-integration-inbox")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  });
+}
+
+function guardRelaySync(event: Event): void {
+  if (!isRelaySyncing.value) return;
+  event.preventDefault();
+  error.value = t("invoicing.relay_sync_wait_hint");
+}
+
+async function refreshListFromRelay(): Promise<void> {
+  if (relayRefreshing.value) return;
+  relayRefreshing.value = true;
+  error.value = "";
+  try {
+    const result = await refreshFromRelay({
+      companyId: companyId.value,
+      documentType:
+        activeDocumentNav.value.kind === "drafts"
+          ? undefined
+          : activeDocumentNav.value.apiType,
+    });
+    await load();
+
+    if (result.ownerStatus === "no_phrase") {
+      notifySaveFailed(t("invoicing.relay_sync_no_phrase"));
+      return;
+    }
+    if (result.relayDisabled) {
+      notifySaveFailed(t("invoicing.relay_sync_relay_disabled"));
+      return;
+    }
+    if (result.ownerStatus === "owner_mismatch") {
+      notifySaveFailed(t("invoicing.relay_sync_owner_mismatch"));
+      return;
+    }
+    if (result.syncedElsewhere) {
+      notifySaveFailed(t("invoicing.relay_sync_company_mismatch"));
+      return;
+    }
+    if (result.syncedOtherDocumentType) {
+      notifySaved("invoicing.relay_sync_other_document_type");
+      return;
+    }
+    if (result.changed) {
+      notifySaved("invoicing.relay_sync_refresh_ok", {
+        count: result.documentCount,
+      });
+      return;
+    }
+    if (result.timedOut) {
+      notifySaveFailed(
+        t(
+          showIntegrationInbox.value
+            ? 'invoicing.relay_sync_pull_no_changes'
+            : 'invoicing.relay_sync_refresh_no_changes',
+        ),
+      );
+      return;
+    }
+    notifySaved("invoicing.relay_sync_refresh_up_to_date");
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } }; message?: string };
+    const message =
+      err?.response?.data?.message ||
+      err?.message ||
+      t("invoicing.relay_sync_refresh_failed");
+    error.value = message;
+    notifySaveFailed(message);
+  } finally {
+    relayRefreshing.value = false;
+  }
+}
+
+watch(showIntegrationInbox, (visible) => {
+  if (visible) {
+    scrollToIntegrationInbox();
+  }
+});
+
+const supportsEuExport = computed(() => {
+  const j = localCompanyJurisdiction.value;
+  if (localFirst) {
+    return j === "eu_sk" || j === "eu_cz" || j === "eu_other";
+  }
+  return false;
+});
+
 const {
   issuePeriod,
   advancedDraft,
+  advancedApplied,
   resetAdvancedDraft,
   applyAdvancedDraft,
   hasActiveAdvanced,
@@ -796,9 +1414,13 @@ const {
   resetOnRouteChange,
 } = useInvoicingDocumentListFilters();
 
-const isQuoteList = computed(() => activeDocumentNav.value.kind === 'quote');
-const isCreditNoteList = computed(() => activeDocumentNav.value.kind === 'credit_note');
-const showLinkedSourceColumn = computed(() => isQuoteList.value || isCreditNoteList.value);
+const isQuoteList = computed(() => activeDocumentNav.value.kind === "quote");
+const isCreditNoteList = computed(
+  () => activeDocumentNav.value.kind === "credit_note",
+);
+const showLinkedSourceColumn = computed(
+  () => isQuoteList.value || isCreditNoteList.value,
+);
 
 const creditNoteStartOpen = ref(false);
 const creditNotePickOpen = ref(false);
@@ -806,16 +1428,18 @@ const creditNotePickOpen = ref(false);
 const newDocumentLink = computed(() => ({
   name: newDocumentRouteName(activeDocumentNav.value.kind),
   params: { companyId: companyId.value },
-  query: activeDocumentNav.value.apiType ? { type: activeDocumentNav.value.apiType } : {},
+  query: activeDocumentNav.value.apiType
+    ? { type: activeDocumentNav.value.apiType }
+    : {},
 }));
 
 const documents = ref<any[]>([]);
 const loading = ref(false);
-const error = ref('');
-const success = ref('');
+const error = ref("");
+const success = ref("");
 const actionId = ref<string | null>(null);
-const companyName = ref('');
-const activeFilter = ref('all');
+const companyName = ref("");
+const activeFilter = ref("all");
 const totalCount = ref(0);
 const currentPage = ref(1);
 const lastPage = ref(1);
@@ -826,64 +1450,66 @@ const selectAllMode = ref(false);
 const showSelectMenu = ref(false);
 const showBulkMenu = ref(false);
 const sendEmailOpen = ref(false);
-const sendEmailDocumentId = ref('');
+const sendEmailDocumentId = ref("");
+const sendEmailEphemeralSnapshot = ref<EphemeralSnapshotPayload | null>(null);
+const sendEmailBridgeCompanyId = ref<string | null>(null);
 
 const emptyMessage = computed(() => {
   const kind = activeDocumentNav.value.kind;
-  if (kind === 'proforma') return t('invoicing.no_proformas');
-  if (kind === 'quote') return t('invoicing.no_quotes');
-  if (kind === 'credit_note') return t('invoicing.no_credit_notes');
-  if (kind === 'drafts') return t('invoicing.no_drafts');
-  return t('invoicing.no_invoices');
+  if (kind === "proforma") return t("invoicing.no_proformas");
+  if (kind === "quote") return t("invoicing.no_quotes");
+  if (kind === "credit_note") return t("invoicing.no_credit_notes");
+  if (kind === "drafts") return t("invoicing.no_drafts");
+  return t("invoicing.no_invoices");
 });
 
 const filters = computed(() => {
   if (isQuoteList.value) {
     return [
-      { id: 'all', label: t('invoicing.filter_all') },
-      { id: 'approved', label: t('invoicing.filter_quote_approved') },
-      { id: 'pending', label: t('invoicing.filter_quote_pending') },
-      { id: 'rejected', label: t('invoicing.filter_quote_rejected') },
-      { id: 'expired', label: t('invoicing.filter_quote_expired') },
+      { id: "all", label: t("invoicing.filter_all") },
+      { id: "approved", label: t("invoicing.filter_quote_approved") },
+      { id: "pending", label: t("invoicing.filter_quote_pending") },
+      { id: "rejected", label: t("invoicing.filter_quote_rejected") },
+      { id: "expired", label: t("invoicing.filter_quote_expired") },
     ];
   }
   return [
-    { id: 'all', label: t('invoicing.filter_all') },
-    { id: 'paid', label: t('invoicing.filter_paid') },
-    { id: 'unpaid', label: t('invoicing.filter_unpaid') },
-    { id: 'overdue', label: t('invoicing.filter_overdue') },
+    { id: "all", label: t("invoicing.filter_all") },
+    { id: "paid", label: t("invoicing.filter_paid") },
+    { id: "unpaid", label: t("invoicing.filter_unpaid") },
+    { id: "overdue", label: t("invoicing.filter_overdue") },
   ];
 });
 
 const legendItems = computed(() => {
   if (isQuoteList.value) {
     return [
-      { kind: 'approved', label: t('invoicing.legend_quote_approved') },
-      { kind: 'pending', label: t('invoicing.legend_quote_pending') },
-      { kind: 'expired', label: t('invoicing.legend_quote_expired') },
-      { kind: 'rejected', label: t('invoicing.legend_quote_rejected') },
-      { kind: 'draft', label: t('invoicing.legend_draft') },
-      { kind: 'email_sent', label: t('invoicing.legend_email_sent') },
+      { kind: "approved", label: t("invoicing.legend_quote_approved") },
+      { kind: "pending", label: t("invoicing.legend_quote_pending") },
+      { kind: "expired", label: t("invoicing.legend_quote_expired") },
+      { kind: "rejected", label: t("invoicing.legend_quote_rejected") },
+      { kind: "draft", label: t("invoicing.legend_draft") },
+      { kind: "email_sent", label: t("invoicing.legend_email_sent") },
     ];
   }
   return [
-    { kind: 'paid', label: t('invoicing.legend_paid') },
-    { kind: 'waiting', label: t('invoicing.legend_waiting') },
-    { kind: 'overdue', label: t('invoicing.legend_overdue') },
-    { kind: 'draft', label: t('invoicing.legend_draft') },
-    { kind: 'cancelled', label: t('invoicing.legend_cancelled') },
-    { kind: 'email_sent', label: t('invoicing.legend_email_sent') },
+    { kind: "paid", label: t("invoicing.legend_paid") },
+    { kind: "waiting", label: t("invoicing.legend_waiting") },
+    { kind: "overdue", label: t("invoicing.legend_overdue") },
+    { kind: "draft", label: t("invoicing.legend_draft") },
+    { kind: "cancelled", label: t("invoicing.legend_cancelled") },
+    { kind: "email_sent", label: t("invoicing.legend_email_sent") },
   ];
 });
 
 const selectionCount = computed(() =>
-  selectAllMode.value ? totalCount.value : selectedIds.value.size
+  selectAllMode.value ? totalCount.value : selectedIds.value.size,
 );
 
 const mobileFilterActiveCount = computed(() => {
   let count = 0;
-  if (activeFilter.value !== 'all') count++;
-  if (issuePeriod.preset !== 'all') count++;
+  if (activeFilter.value !== "all") count++;
+  if (issuePeriod.preset !== "all") count++;
   if (hasActiveAdvanced()) count++;
   return count;
 });
@@ -893,10 +1519,10 @@ function onMobileFilterApply() {
 }
 
 function onMobileFilterClear() {
-  activeFilter.value = 'all';
-  issuePeriod.preset = 'all';
-  issuePeriod.customFrom = '';
-  issuePeriod.customTo = '';
+  activeFilter.value = "all";
+  issuePeriod.preset = "all";
+  issuePeriod.customFrom = "";
+  issuePeriod.customTo = "";
   resetAdvancedDraft();
   applyAdvancedDraft();
   currentPage.value = 1;
@@ -905,13 +1531,13 @@ function onMobileFilterClear() {
 }
 
 const pageTotal = computed(() =>
-  documents.value.reduce((sum, d) => sum + Number(d.total || 0), 0)
+  documents.value.reduce((sum, d) => sum + Number(d.total || 0), 0),
 );
 
 const pageUnpaidTotal = computed(() =>
   documents.value
-    .filter((d) => d.status === 'issued')
-    .reduce((sum, d) => sum + Number(d.total || 0), 0)
+    .filter((d) => d.status === "issued")
+    .reduce((sum, d) => sum + Number(d.total || 0), 0),
 );
 
 const visiblePages = computed(() => {
@@ -936,50 +1562,61 @@ function statusKind(d: {
   quote_status?: string | null;
   resolved_quote_status?: string | null;
 }): StatusKind {
-  if (d.type === 'quote') {
-    if (d.status === 'draft') return 'draft';
-    if (d.status === 'cancelled') return 'cancelled';
+  if (d.type === "quote") {
+    if (d.status === "draft") return "draft";
+    if (d.status === "cancelled") return "cancelled";
     const rs = resolvedQuoteStatus(d);
-    if (rs === 'approved') return 'approved';
-    if (rs === 'rejected') return 'rejected';
-    if (rs === 'expired') return 'expired';
-    if (rs === 'pending') return 'pending';
-    return 'waiting';
+    if (rs === "approved") return "approved";
+    if (rs === "rejected") return "rejected";
+    if (rs === "expired") return "expired";
+    if (rs === "pending") return "pending";
+    return "waiting";
   }
-  if (d.status === 'paid') return 'paid';
-  if (d.status === 'cancelled') return 'cancelled';
-  if (d.status === 'draft') return 'draft';
-  if (d.status === 'issued' && isOverdue(d)) return 'overdue';
-  return 'waiting';
+  if (d.status === "paid") return "paid";
+  if (d.status === "cancelled") return "cancelled";
+  if (d.status === "draft") return "draft";
+  if (d.status === "issued" && isOverdue(d)) return "overdue";
+  return "waiting";
 }
 
 function statusCornerClass(d: { status: string; due_date?: string }) {
   return `status-corner--${statusKind(d)}`;
 }
 
-function invoiceTitle(d: { number?: string; title?: string; type?: string; status: string }) {
+function invoiceTitle(d: {
+  number?: string;
+  title?: string;
+  type?: string;
+  status: string;
+}) {
   if (d.title) return d.title;
   const prefixKey =
-    d.type === 'proforma'
-      ? 'invoicing.proforma_title_prefix'
-      : d.type === 'quote'
-        ? 'invoicing.quote_title_prefix'
-        : d.type === 'credit_note'
-          ? 'invoicing.credit_note_title_prefix'
-          : 'invoicing.invoice_title_prefix';
+    d.type === "proforma"
+      ? "invoicing.proforma_title_prefix"
+      : d.type === "quote"
+        ? "invoicing.quote_title_prefix"
+        : d.type === "credit_note"
+          ? "invoicing.credit_note_title_prefix"
+          : "invoicing.invoice_title_prefix";
   const num = documentListNumber(d);
-  if (num !== t('invoicing.draft_label')) return `${t(prefixKey)} ${num}`;
-  return t('invoicing.draft_label');
+  if (num !== t("invoicing.draft_label")) return `${t(prefixKey)} ${num}`;
+  return t("invoicing.draft_label");
 }
 
 function documentShowTo(d: { id: string; type?: string }) {
   const routes = invoicingDocumentRoutesForType(d.type);
-  return { name: routes.show, params: { companyId: companyId.value, documentId: d.id } };
+  return {
+    name: routes.show,
+    params: { companyId: companyId.value, documentId: d.id },
+  };
 }
 
 function documentEditTo(d: { id: string; type?: string }) {
   const routes = invoicingDocumentRoutesForType(d.type);
-  return { name: routes.edit, params: { companyId: companyId.value, documentId: d.id } };
+  return {
+    name: routes.edit,
+    params: { companyId: companyId.value, documentId: d.id },
+  };
 }
 
 function canCreateFinalInvoice(d: {
@@ -987,7 +1624,7 @@ function canCreateFinalInvoice(d: {
   status: string;
   final_invoice?: { id?: string } | null;
 }) {
-  return d.type === 'proforma' && d.status === 'paid' && !d.final_invoice?.id;
+  return d.type === "proforma" && d.status === "paid" && !d.final_invoice?.id;
 }
 
 function canApproveQuote(d: {
@@ -996,7 +1633,11 @@ function canApproveQuote(d: {
   quote_status?: string | null;
   resolved_quote_status?: string | null;
 }) {
-  return d.type === 'quote' && d.status === 'issued' && resolvedQuoteStatus(d) === 'pending';
+  return (
+    d.type === "quote" &&
+    d.status === "issued" &&
+    resolvedQuoteStatus(d) === "pending"
+  );
 }
 
 function canRejectQuote(d: {
@@ -1005,7 +1646,11 @@ function canRejectQuote(d: {
   quote_status?: string | null;
   resolved_quote_status?: string | null;
 }) {
-  return d.type === 'quote' && d.status === 'issued' && resolvedQuoteStatus(d) === 'pending';
+  return (
+    d.type === "quote" &&
+    d.status === "issued" &&
+    resolvedQuoteStatus(d) === "pending"
+  );
 }
 
 function canCreateInvoiceFromQuote(d: {
@@ -1016,22 +1661,30 @@ function canCreateInvoiceFromQuote(d: {
   final_invoice?: { id?: string } | null;
 }) {
   return (
-    d.type === 'quote'
-    && d.status === 'issued'
-    && resolvedQuoteStatus(d) === 'approved'
-    && !d.final_invoice?.id
+    d.type === "quote" &&
+    d.status === "issued" &&
+    resolvedQuoteStatus(d) === "approved" &&
+    !d.final_invoice?.id
   );
 }
 
 async function approveQuote(d: { id: string }) {
   actionId.value = d.id;
-  error.value = '';
+  error.value = "";
   try {
-    await api.post(`/invoicing/companies/${companyId.value}/documents/${d.id}/approve-quote`);
-    success.value = t('invoicing.quote_approved_success');
+    if (localFirst && localDoc) {
+      localDoc.approveLocalQuote(localDoc.evolu, d.id as DocumentId);
+      success.value = t("invoicing.quote_approved_success");
+      await load();
+      return;
+    }
+    await api.post(
+      `/invoicing/companies/${companyId.value}/documents/${d.id}/approve-quote`,
+    );
+    success.value = t("invoicing.quote_approved_success");
     await load();
   } catch (e: any) {
-    error.value = e?.response?.data?.message || t('common.error');
+    error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;
   }
@@ -1039,13 +1692,21 @@ async function approveQuote(d: { id: string }) {
 
 async function rejectQuote(d: { id: string }) {
   actionId.value = d.id;
-  error.value = '';
+  error.value = "";
   try {
-    await api.post(`/invoicing/companies/${companyId.value}/documents/${d.id}/reject-quote`);
-    success.value = t('invoicing.quote_rejected_success');
+    if (localFirst && localDoc) {
+      localDoc.rejectLocalQuote(localDoc.evolu, d.id as DocumentId);
+      success.value = t("invoicing.quote_rejected_success");
+      await load();
+      return;
+    }
+    await api.post(
+      `/invoicing/companies/${companyId.value}/documents/${d.id}/reject-quote`,
+    );
+    success.value = t("invoicing.quote_rejected_success");
     await load();
   } catch (e: any) {
-    error.value = e?.response?.data?.message || t('common.error');
+    error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;
   }
@@ -1053,20 +1714,56 @@ async function rejectQuote(d: { id: string }) {
 
 async function createInvoiceFromQuote(d: { id: string }) {
   actionId.value = d.id;
-  error.value = '';
+  error.value = "";
   try {
+    if (localFirst && localDoc) {
+      await localDoc.refreshAll();
+      const apiDoc = localDoc.documentApi(d.id as DocumentId);
+      if (!apiDoc) return;
+      const contact = apiDoc.company_contact_id
+        ? (localDoc
+            .contactsForCompany(companyId.value)
+            .find((c) => c.id === apiDoc.company_contact_id) ?? null)
+        : null;
+      const company = localDoc.companyApi(companyId.value);
+      const result = localDoc.createLocalInvoiceFromQuote(
+        localDoc.evolu,
+        d.id as DocumentId,
+        localDoc.documentRows.value as EvoluDocumentRow[],
+        localDoc.lineRows
+          .value as import("../../evolu/documentMap").EvoluDocumentLineRow[],
+        (doc) => payloadFromApiDocument(doc),
+        {
+          ...localDoc.saveOptions(
+            Number(company?.vat_rate_default ?? 23),
+            () => vatPolicy.calculatesVatAmounts(company),
+            (line) =>
+              vatPolicy.resolveLineTaxRate(company, contact, line.tax_rate),
+          ),
+        },
+      );
+      if (!result.ok) {
+        error.value = t("common.error");
+        return;
+      }
+      router.push({
+        name: "invoicing-invoice-edit",
+        params: { companyId: companyId.value, documentId: result.value.id },
+      });
+      return;
+    }
     const res = await api.post(
-      `/invoicing/companies/${companyId.value}/documents/${d.id}/create-invoice-from-quote`
+      `/invoicing/companies/${companyId.value}/documents/${d.id}/create-invoice-from-quote`,
     );
     router.push({
-      name: 'invoicing-invoice-edit',
+      name: "invoicing-invoice-edit",
       params: { companyId: companyId.value, documentId: res.data.data.id },
     });
   } catch (e: any) {
     error.value =
-      e?.response?.data?.message
-      || e?.response?.data?.errors?.quote_status?.[0]
-      || t('common.error');
+      e?.response?.data?.message ||
+      e?.response?.data?.errors?.quote_status?.[0] ||
+      t("common.error");
   } finally {
     actionId.value = null;
   }
@@ -1076,25 +1773,64 @@ function quoteValidUntilClass(d: {
   quote_status?: string | null;
   resolved_quote_status?: string | null;
 }) {
-  return resolvedQuoteStatus(d) === 'expired' ? 'text-gray-500 font-medium' : '';
+  return resolvedQuoteStatus(d) === "expired"
+    ? "text-gray-500 font-medium"
+    : "";
 }
 
 async function createFinalInvoice(d: { id: string }) {
   actionId.value = d.id;
-  error.value = '';
+  error.value = "";
   try {
+    if (localFirst && localDoc) {
+      await localDoc.refreshAll();
+      const apiDoc = localDoc.documentApi(d.id as DocumentId);
+      if (!apiDoc) return;
+      const contact = apiDoc.company_contact_id
+        ? (localDoc
+            .contactsForCompany(companyId.value)
+            .find((c) => c.id === apiDoc.company_contact_id) ?? null)
+        : null;
+      const company = localDoc.companyApi(companyId.value);
+      const result = localDoc.createLocalFinalInvoiceFromProforma(
+        localDoc.evolu,
+        d.id as DocumentId,
+        localDoc.documentRows.value as EvoluDocumentRow[],
+        localDoc.lineRows
+          .value as import("../../evolu/documentMap").EvoluDocumentLineRow[],
+        (doc) => payloadFromApiDocument(doc),
+        {
+          ...localDoc.saveOptions(
+            Number(company?.vat_rate_default ?? 23),
+            () => vatPolicy.calculatesVatAmounts(company),
+            (line) =>
+              vatPolicy.resolveLineTaxRate(company, contact, line.tax_rate),
+          ),
+        },
+      );
+      if (!result.ok) {
+        error.value = t("common.error");
+        return;
+      }
+      router.push({
+        name: "invoicing-invoice-edit",
+        params: { companyId: companyId.value, documentId: result.value.id },
+      });
+      return;
+    }
     const res = await api.post(
-      `/invoicing/companies/${companyId.value}/documents/${d.id}/create-final-invoice`
+      `/invoicing/companies/${companyId.value}/documents/${d.id}/create-final-invoice`,
     );
     router.push({
-      name: 'invoicing-invoice-edit',
+      name: "invoicing-invoice-edit",
       params: { companyId: companyId.value, documentId: res.data.data.id },
     });
   } catch (e: any) {
-    error.value = e?.response?.data?.message
-      || e?.response?.data?.errors?.status?.[0]
-      || e?.response?.data?.errors?.source_document_id?.[0]
-      || t('common.error');
+    error.value =
+      e?.response?.data?.message ||
+      e?.response?.data?.errors?.status?.[0] ||
+      e?.response?.data?.errors?.source_document_id?.[0] ||
+      t("common.error");
   } finally {
     actionId.value = null;
   }
@@ -1102,40 +1838,65 @@ async function createFinalInvoice(d: { id: string }) {
 
 function contactShowTo(contactId: string) {
   return {
-    name: 'invoicing-contact-show',
+    name: "invoicing-contact-show",
     params: { companyId: companyId.value, contactId },
   };
 }
 
 function canSendEmail(d: { status: string }) {
-  return d.status !== 'draft' && d.status !== 'cancelled';
+  return d.status !== "draft" && d.status !== "cancelled";
 }
 
 function emailIndicatorTitle(d: { email_sent_at?: string | null }) {
   if (d.email_sent_at) {
-    return t('invoicing.email_indicator_sent');
+    return t("invoicing.email_indicator_sent");
   }
-  return t('invoicing.email_indicator_send');
+  return t("invoicing.email_indicator_send");
 }
 
-function openSendEmail(d: { id: string }) {
+async function openSendEmail(d: { id: string }) {
   sendEmailDocumentId.value = d.id;
+  sendEmailEphemeralSnapshot.value = null;
+  sendEmailBridgeCompanyId.value = null;
+  if (localFirst && localDoc) {
+    const ctx = await buildLocalDocumentEphemeralSnapshot(
+      localDoc,
+      companyId.value,
+      d.id,
+    );
+    if (!ctx) {
+      error.value = t("common.error_generic");
+      return;
+    }
+    sendEmailEphemeralSnapshot.value = ctx.snapshot;
+    sendEmailBridgeCompanyId.value = ctx.bridgeCompanyId;
+  }
   sendEmailOpen.value = true;
 }
 
 function closeSendEmail() {
   sendEmailOpen.value = false;
-  sendEmailDocumentId.value = '';
+  sendEmailDocumentId.value = "";
+  sendEmailEphemeralSnapshot.value = null;
+  sendEmailBridgeCompanyId.value = null;
 }
 
 function onEmailSent(payload?: { email_sent_at?: string }) {
   const id = sendEmailDocumentId.value;
+  if (localFirst && localDoc && id) {
+    markLocalDocumentEmailSent(
+      localDoc.evolu,
+      id as DocumentId,
+      payload?.email_sent_at,
+    );
+  }
   const row = documents.value.find((doc) => doc.id === id);
   if (row) {
     row.email_sent_at = payload?.email_sent_at ?? new Date().toISOString();
   }
-  success.value = t('invoicing.send_email_success');
+  success.value = t("invoicing.send_email_success");
   closeSendEmail();
+  void load();
 }
 
 function rowSelected(id: string) {
@@ -1178,10 +1939,13 @@ function listQueryParams(): Record<string, unknown> {
     page: currentPage.value,
     per_page: perPage.value,
   };
-  if (nav.kind === 'drafts') {
-    params.status = 'draft';
+  if (nav.kind === "drafts") {
+    params.status = "draft";
   } else if (nav.apiType) {
     params.type = nav.apiType;
+  }
+  if (contactFilterId.value) {
+    params.company_contact_id = contactFilterId.value;
   }
   return appendListQueryParams(params, activeFilter.value);
 }
@@ -1190,7 +1954,9 @@ function bulkPayload(action: string) {
   const nav = activeDocumentNav.value;
   const base: Record<string, unknown> = {
     action,
-    ...(nav.kind === 'drafts' ? { status: 'draft' } : { type: nav.apiType ?? 'invoice' }),
+    ...(nav.kind === "drafts"
+      ? { status: "draft" }
+      : { type: nav.apiType ?? "invoice" }),
   };
   appendListQueryParams(base, activeFilter.value);
   if (selectAllMode.value) {
@@ -1201,43 +1967,189 @@ function bulkPayload(action: string) {
   return base;
 }
 
-const fileActions = new Set(['pdf_zip', 'pdf_merge', 'export_xlsx']);
+const fileActions = new Set(["pdf_zip", "pdf_merge", "export_xlsx"]);
+
+async function runBulkLocal(action: string) {
+  if (!localDoc || !localDocuments) return;
+
+  await localDoc.refreshAll();
+  await localDocuments.refresh({
+    apiType:
+      activeDocumentNav.value.kind === "drafts"
+        ? undefined
+        : activeDocumentNav.value.apiType,
+    statusFilter:
+      activeDocumentNav.value.kind === "drafts" ? "draft" : activeFilter.value,
+    issuePeriod: { ...issuePeriod },
+    advanced: { ...advancedApplied },
+    contactId: contactFilterId.value,
+  });
+
+  const allDocuments = localDocuments.documentRows
+    .value as unknown as EvoluDocumentRow[];
+  const contactNameById = new Map<string, string>();
+  for (const row of localDocuments.contactRows.value) {
+    if (row.companyId !== companyId.value) continue;
+    contactNameById.set(row.id, String(row.name || ""));
+  }
+
+  const filterOpts = localBulkFilterOptions(
+    activeDocumentNav.value,
+    activeFilter.value,
+    issuePeriod,
+    advancedApplied,
+    contactNameById,
+  );
+
+  const targets = resolveBulkTargets({
+    companyId: companyId.value as CompanyId,
+    selectAll: selectAllMode.value,
+    selectedIds: selectedIds.value,
+    allDocuments,
+    ...filterOpts,
+  });
+
+  if (targets.length === 0) {
+    error.value = t("common.error");
+    return;
+  }
+
+  if (action === "mark_paid") {
+    const result = bulkMarkPaidLocal(localDoc.evolu, targets, allDocuments);
+    success.value = t("invoicing.bulk_result", {
+      processed: result.processed,
+      skipped: result.skipped,
+    });
+    await load();
+    clearSelection();
+    return;
+  }
+
+  if (action === "delete") {
+    const result = bulkDeleteLocal(
+      localDoc.evolu,
+      targets,
+      allDocuments,
+      localDoc.seriesRows.value as EvoluNumberSeriesRow[],
+    );
+    success.value = t("invoicing.bulk_result", {
+      processed: result.processed,
+      skipped: result.skipped,
+    });
+    await load();
+    clearSelection();
+    return;
+  }
+
+  if (action === "cancel") {
+    const result = await bulkCancelLocalAsync(
+      localDoc.evolu,
+      targets,
+      allDocuments,
+    );
+    success.value = t("invoicing.bulk_result", {
+      processed: result.processed,
+      skipped: result.skipped,
+    });
+    await load();
+    clearSelection();
+    return;
+  }
+
+  if (action === "export_csv") {
+    const rows = targets.map((row) => ({
+      number: row.number || "",
+      status: row.status,
+      client: row.contactId ? contactNameById.get(row.contactId) || "" : "",
+      total: row.total || "0",
+      currency: row.currency || "EUR",
+      issueDate: row.issueDate || "",
+      dueDate: row.dueDate || "",
+      variableSymbol: row.variableSymbol || "",
+    }));
+    downloadCsvBlob(buildDocumentsCsvBlob(rows), "invoices.csv");
+    clearSelection();
+    return;
+  }
+
+  if (action === "pdf_zip" || action === "pdf_merge") {
+    const issuedIds = targets
+      .filter((row) => row.status !== "draft")
+      .map((row) => row.id);
+
+    if (issuedIds.length === 0) {
+      error.value = t("common.error");
+      return;
+    }
+
+    const bulk = await buildBulkEphemeralRequest(
+      localDoc,
+      companyId.value,
+      issuedIds,
+    );
+    if (!bulk) {
+      error.value = t("common.error_generic");
+      return;
+    }
+
+    if (action === "pdf_zip") {
+      await downloadEphemeralPdfZip(bulk.body, bulk.bridgeCompanyId);
+    } else {
+      await downloadEphemeralPdfMerge(bulk.body, bulk.bridgeCompanyId);
+    }
+    clearSelection();
+  }
+}
 
 async function runBulk(action: string) {
   if (selectionCount.value === 0) return;
   showBulkMenu.value = false;
 
-  if (action === 'delete' && !window.confirm(t('invoicing.confirm_bulk_delete'))) return;
-  if (action === 'cancel' && !window.confirm(t('invoicing.confirm_bulk_cancel'))) return;
+  if (
+    action === "delete" &&
+    !window.confirm(t("invoicing.confirm_bulk_delete"))
+  )
+    return;
+  if (
+    action === "cancel" &&
+    !window.confirm(t("invoicing.confirm_bulk_cancel"))
+  )
+    return;
 
-  error.value = '';
-  success.value = '';
+  error.value = "";
+  success.value = "";
   loading.value = true;
 
   try {
+    if (localFirst && localDoc && localDocuments) {
+      const localAction = action === "export_xlsx" ? "export_csv" : action;
+      await runBulkLocal(localAction);
+      return;
+    }
+
     const isFile = fileActions.has(action);
     const res = await api.post(
       `/invoicing/companies/${companyId.value}/documents/bulk`,
       bulkPayload(action),
-      isFile ? { responseType: 'blob' } : {}
+      isFile ? { responseType: "blob" } : {},
     );
 
     if (isFile) {
       const blob = res.data as Blob;
       const names: Record<string, string> = {
-        pdf_zip: 'invoices.zip',
-        pdf_merge: 'invoices-merged.pdf',
-        export_xlsx: 'invoices.xlsx',
+        pdf_zip: "invoices.zip",
+        pdf_merge: "invoices-merged.pdf",
+        export_xlsx: "invoices.xlsx",
       };
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = names[action] || 'export';
+      a.download = names[action] || "export";
       a.click();
       URL.revokeObjectURL(url);
     } else {
       const data = res.data.data;
-      success.value = t('invoicing.bulk_result', {
+      success.value = t("invoicing.bulk_result", {
         processed: data.processed ?? 0,
         skipped: data.skipped ?? 0,
       });
@@ -1249,12 +2161,12 @@ async function runBulk(action: string) {
       const text = await e.response.data.text();
       try {
         const json = JSON.parse(text);
-        error.value = json.message || t('common.error');
+        error.value = json.message || t("common.error");
       } catch {
-        error.value = t('common.error');
+        error.value = t("common.error");
       }
     } else {
-      error.value = e?.response?.data?.message || t('common.error');
+      error.value = e?.response?.data?.message || t("common.error");
     }
   } finally {
     loading.value = false;
@@ -1263,42 +2175,46 @@ async function runBulk(action: string) {
 
 function formatMoney(amount: string | number, currency: string) {
   const n = Number(amount);
-  return `${n.toLocaleString(locale.value, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency || 'EUR'}`;
+  return `${n.toLocaleString(locale.value, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency || "EUR"}`;
 }
 
 function formatDate(iso: string) {
-  const d = new Date(iso.includes('T') ? iso : `${iso}T12:00:00`);
+  const d = new Date(iso.includes("T") ? iso : `${iso}T12:00:00`);
   return d.toLocaleDateString(locale.value);
 }
 
 function statusLabel(kind: StatusKind) {
-  if (['approved', 'pending', 'rejected', 'expired'].includes(kind)) {
+  if (["approved", "pending", "rejected", "expired"].includes(kind)) {
     return t(`invoicing.legend_quote_${kind}`);
   }
   return t(`invoicing.legend_${kind}`);
 }
 
 function isOverdue(d: { status: string; due_date?: string }) {
-  if (d.status !== 'issued' || !d.due_date) return false;
+  if (d.status !== "issued" || !d.due_date) return false;
   return new Date(`${d.due_date}T23:59:59`) < new Date();
 }
 
-function documentListNumber(d: { number?: string; title?: string; status: string }) {
+function documentListNumber(d: {
+  number?: string;
+  title?: string;
+  status: string;
+}) {
   if (d.number) return d.number;
-  if (d.status === 'draft' && d.title) {
+  if (d.status === "draft" && d.title) {
     const match = d.title.match(/\b(PON\d{7,}|ZAL\d{8}|\d{8,})\b/i);
     if (match) return match[1];
   }
-  return t('invoicing.draft_label');
+  return t("invoicing.draft_label");
 }
 
 function canMarkPaid(d: { status: string; type?: string }) {
-  if (d.type === 'quote') return false;
-  return d.status === 'issued' || d.status === 'draft';
+  if (d.type === "quote") return false;
+  return d.status === "issued" || d.status === "draft";
 }
 
 function canIssue(d: { status: string }) {
-  return d.status === 'draft';
+  return d.status === "draft";
 }
 
 function goPage(page: number) {
@@ -1309,21 +2225,44 @@ function goPage(page: number) {
 
 async function load() {
   loading.value = true;
-  error.value = '';
+  error.value = "";
   try {
+    if (localFirst && localDocuments) {
+      const nav = activeDocumentNav.value;
+      await localDocuments.refresh({
+        apiType: nav.kind === "drafts" ? undefined : nav.apiType,
+        statusFilter: nav.kind === "drafts" ? "draft" : activeFilter.value,
+        issuePeriod: { ...issuePeriod },
+        advanced: { ...advancedApplied },
+        contactId: contactFilterId.value,
+      });
+      companyName.value = summaryCompanyName.value;
+      const all = [...localDocuments.documents.value];
+      totalCount.value = all.length;
+      lastPage.value = Math.max(1, Math.ceil(all.length / perPage.value));
+      if (currentPage.value > lastPage.value) currentPage.value = 1;
+      const start = (currentPage.value - 1) * perPage.value;
+      documents.value = all.slice(start, start + perPage.value);
+      return;
+    }
+
     const [companyRes, docsRes] = await Promise.all([
       api.get(`/invoicing/companies/${companyId.value}/summary`),
       api.get(`/invoicing/companies/${companyId.value}/documents`, {
         params: listQueryParams(),
       }),
     ]);
-    companyName.value = companyRes.data.data?.trade_name || companyRes.data.data?.legal_name || '';
+    companyName.value =
+      companyRes.data.data?.trade_name ||
+      companyRes.data.data?.legal_name ||
+      "";
     documents.value = docsRes.data.data ?? [];
     totalCount.value = docsRes.data.total ?? documents.value.length;
     currentPage.value = docsRes.data.current_page ?? 1;
     lastPage.value = docsRes.data.last_page ?? 1;
-  } catch (e: any) {
-    error.value = e?.response?.data?.message || t('common.error');
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } }; message?: string };
+    error.value = err?.response?.data?.message || err?.message || t("common.error");
   } finally {
     loading.value = false;
   }
@@ -1336,7 +2275,7 @@ function openCreditNoteStart() {
 function goNewCreditNoteBlank() {
   creditNoteStartOpen.value = false;
   router.push({
-    name: 'invoicing-credit-note-new',
+    name: "invoicing-credit-note-new",
     params: { companyId: companyId.value },
   });
 }
@@ -1349,7 +2288,7 @@ function openCreditNotePick() {
 function onCreditNoteCreatedFromInvoice(documentId: string) {
   creditNotePickOpen.value = false;
   router.push({
-    name: 'invoicing-credit-note-edit',
+    name: "invoicing-credit-note-edit",
     params: { companyId: companyId.value, documentId },
   });
 }
@@ -1375,12 +2314,32 @@ function onAdvancedApply() {
 }
 
 async function issueDoc(d: { id: string }) {
+  if (localFirst && isRelaySyncing.value) {
+    error.value = t("invoicing.relay_sync_wait_hint");
+    return;
+  }
   actionId.value = d.id;
   try {
-    await api.post(`/invoicing/companies/${companyId.value}/documents/${d.id}/issue`);
+    if (localFirst && localDoc) {
+      await localDoc.refreshAll();
+      const companyRow = localDoc.companyRows.value.find(
+        (c) => c.id === companyId.value,
+      );
+      if (!companyRow) return;
+      await localDoc.issueLocalDocumentAsync(
+        localDoc.evolu,
+        d.id as DocumentId,
+        companyRow as EvoluCompanyRow,
+      );
+      await load();
+      return;
+    }
+    await api.post(
+      `/invoicing/companies/${companyId.value}/documents/${d.id}/issue`,
+    );
     await load();
   } catch (e: any) {
-    error.value = e?.response?.data?.message || t('common.error');
+    error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;
   }
@@ -1389,23 +2348,42 @@ async function issueDoc(d: { id: string }) {
 async function markPaid(d: { id: string }) {
   actionId.value = d.id;
   try {
-    await api.post(`/invoicing/companies/${companyId.value}/documents/${d.id}/mark-paid`);
+    if (localFirst && localDoc) {
+      await localDoc.refreshAll();
+      markLocalDocumentPaid(
+        localDoc.evolu,
+        d.id as DocumentId,
+        localDoc.documentRows.value as EvoluDocumentRow[],
+      );
+      await load();
+      return;
+    }
+    await api.post(
+      `/invoicing/companies/${companyId.value}/documents/${d.id}/mark-paid`,
+    );
     await load();
   } catch (e: any) {
-    error.value = e?.response?.data?.message || t('common.error');
+    error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;
   }
 }
 
 async function unmarkPaid(d: { id: string }) {
-  if (!window.confirm(t('invoicing.confirm_unmark_paid'))) return;
+  if (!window.confirm(t("invoicing.confirm_unmark_paid"))) return;
   actionId.value = d.id;
   try {
-    await api.post(`/invoicing/companies/${companyId.value}/documents/${d.id}/unmark-paid`);
+    if (localFirst && localDoc) {
+      unmarkLocalDocumentPaid(localDoc.evolu, d.id as DocumentId);
+      await load();
+      return;
+    }
+    await api.post(
+      `/invoicing/companies/${companyId.value}/documents/${d.id}/unmark-paid`,
+    );
     await load();
   } catch (e: any) {
-    error.value = e?.response?.data?.message || t('common.error');
+    error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;
   }
@@ -1414,25 +2392,136 @@ async function unmarkPaid(d: { id: string }) {
 async function downloadPdf(d: { id: string; number?: string }) {
   actionId.value = d.id;
   try {
-    const blob = await getWebBlob(businessDocumentPdfPath(companyId.value, d.id));
+    if (localFirst && localDoc) {
+      const ctx = await buildLocalDocumentEphemeralSnapshot(
+        localDoc,
+        companyId.value,
+        d.id,
+      );
+      if (!ctx) {
+        error.value = t("common.error_generic");
+        return;
+      }
+      await downloadEphemeralPdf(
+        ctx.snapshot,
+        `invoice-${d.number || d.id}.pdf`,
+        ctx.bridgeCompanyId,
+      );
+      return;
+    }
+    const blob = await getWebBlob(
+      businessDocumentPdfPath(companyId.value, d.id),
+    );
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `invoice-${d.number || d.id}.pdf`;
     a.click();
     URL.revokeObjectURL(url);
   } catch (e: any) {
-    error.value = e?.response?.data?.message || t('common.error');
+    error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;
   }
 }
 
-async function duplicateDoc(d: { id: string }) {
+function canDownloadStructuredExport(d: {
+  status: string;
+  number?: string | null;
+}) {
+  return supportsEuExport.value && d.status !== "draft" && Boolean(d.number);
+}
+
+async function downloadIsdoc(d: { id: string; number?: string }) {
+  if (!canDownloadStructuredExport(d) || !localDoc) return;
   actionId.value = d.id;
   try {
+    const ctx = await buildLocalDocumentEphemeralSnapshot(
+      localDoc,
+      companyId.value,
+      d.id,
+    );
+    if (!ctx) {
+      error.value = t("common.error_generic");
+      return;
+    }
+    await downloadEphemeralIsdoc(
+      ctx.snapshot,
+      `${d.number || d.id}.isdoc`,
+      ctx.bridgeCompanyId,
+    );
+  } catch (e: any) {
+    error.value = e?.response?.data?.message || t("common.error");
+  } finally {
+    actionId.value = null;
+  }
+}
+
+async function downloadUbl(d: { id: string; number?: string }) {
+  if (!canDownloadStructuredExport(d) || !localDoc) return;
+  actionId.value = d.id;
+  try {
+    const ctx = await buildLocalDocumentEphemeralSnapshot(
+      localDoc,
+      companyId.value,
+      d.id,
+    );
+    if (!ctx) {
+      error.value = t("common.error_generic");
+      return;
+    }
+    await downloadEphemeralUbl(
+      ctx.snapshot,
+      `${d.number || d.id}.xml`,
+      ctx.bridgeCompanyId,
+    );
+  } catch (e: any) {
+    error.value = e?.response?.data?.message || t("common.error");
+  } finally {
+    actionId.value = null;
+  }
+}
+
+async function duplicateDoc(d: { id: string; type?: string }) {
+  actionId.value = d.id;
+  try {
+    if (localFirst && localDoc) {
+      await localDoc.refreshAll();
+      const apiDoc = localDoc.documentApi(d.id as DocumentId);
+      if (!apiDoc) return;
+      const p = payloadFromApiDocument(apiDoc);
+      p.title = p.title ? `${p.title} (copy)` : "Copy";
+      const company = localDoc.companyApi(companyId.value);
+      const contact = p.company_contact_id
+        ? (localDoc
+            .contactsForCompany(companyId.value)
+            .find((c) => c.id === p.company_contact_id) ?? null)
+        : null;
+      const defaultVat = Number(company?.vat_rate_default ?? 23);
+      const result = localDoc.saveLocalDocument(
+        localDoc.evolu,
+        companyId.value as CompanyId,
+        p,
+        localDoc.saveOptions(
+          defaultVat,
+          () => vatPolicy.calculatesVatAmounts(company),
+          (line) =>
+            vatPolicy.resolveLineTaxRate(company, contact, line.tax_rate),
+        ),
+      );
+      if (!result.ok) return;
+      const routes = invoicingDocumentRoutesForType(
+        String(apiDoc.type || d.type || "invoice"),
+      );
+      router.push({
+        name: routes.edit,
+        params: { companyId: companyId.value, documentId: result.value.id },
+      });
+      return;
+    }
+
     const res = await api.post(
-      `/invoicing/companies/${companyId.value}/documents/${d.id}/duplicate`
+      `/invoicing/companies/${companyId.value}/documents/${d.id}/duplicate`,
     );
     const routes = invoicingDocumentRoutesForType(res.data.data.type);
     router.push({
@@ -1440,37 +2529,64 @@ async function duplicateDoc(d: { id: string }) {
       params: { companyId: companyId.value, documentId: res.data.data.id },
     });
   } catch (e: any) {
-    error.value = e?.response?.data?.message || t('common.error');
+    error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;
   }
 }
 
-async function deleteDoc(d: { id: string; status?: string; can_delete?: boolean }) {
+async function deleteDoc(d: {
+  id: string;
+  status?: string;
+  can_delete?: boolean;
+}) {
   const msg =
-    d.status === 'paid' || d.status === 'issued'
-      ? t('invoicing.confirm_delete_last')
-      : t('invoicing.confirm_delete');
+    d.status === "paid" || d.status === "issued"
+      ? t("invoicing.confirm_delete_last")
+      : t("invoicing.confirm_delete");
   if (!window.confirm(msg)) return;
   actionId.value = d.id;
   try {
-    await api.delete(`/invoicing/companies/${companyId.value}/documents/${d.id}`);
+    if (localFirst && localDoc) {
+      await deleteLocalDocumentAsync(
+        localDoc.evolu,
+        d.id as DocumentId,
+        localDoc.documentRows.value as EvoluDocumentRow[],
+        localDoc.seriesRows.value as EvoluNumberSeriesRow[],
+      );
+      await load();
+      return;
+    }
+    await api.delete(
+      `/invoicing/companies/${companyId.value}/documents/${d.id}`,
+    );
     await load();
   } catch (e: any) {
-    error.value = e?.response?.data?.message || t('common.error');
+    error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;
   }
 }
 
 async function cancelDoc(d: { id: string }) {
-  if (!window.confirm(t('invoicing.confirm_cancel'))) return;
+  if (!window.confirm(t("invoicing.confirm_cancel"))) return;
   actionId.value = d.id;
   try {
-    await api.post(`/invoicing/companies/${companyId.value}/documents/${d.id}/cancel`);
+    if (localFirst && localDoc) {
+      await cancelLocalDocumentAsync(
+        localDoc.evolu,
+        d.id as DocumentId,
+        localDoc.documentRows.value as EvoluDocumentRow[],
+      );
+      await load();
+      return;
+    }
+    await api.post(
+      `/invoicing/companies/${companyId.value}/documents/${d.id}/cancel`,
+    );
     await load();
   } catch (e: any) {
-    error.value = e?.response?.data?.message || t('common.error');
+    error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;
   }
@@ -1483,19 +2599,29 @@ watch(companyId, () => {
 });
 
 watch(
+  () => route.query.contact_id,
+  () => {
+    currentPage.value = 1;
+    clearSelection();
+    load();
+  },
+);
+
+watch(
   () => route.name,
   () => {
-    activeFilter.value = 'all';
+    activeFilter.value = "all";
     resetOnRouteChange();
     clearSelection();
     currentPage.value = 1;
     load();
-  }
+  },
 );
 
 onMounted(() => {
   rememberCompany(companyId.value);
   load();
+  scrollToIntegrationInbox();
 });
 </script>
 

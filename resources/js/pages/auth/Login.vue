@@ -24,7 +24,11 @@
           {{ t("auth.welcome_back") }}
         </h2>
         <p class="mt-2 text-center text-sm text-gray-400">
-          {{ t("auth.sign_in_to_account") }}
+          {{
+            seedFirst
+              ? t("auth.seed_first_login_subtitle")
+              : t("auth.sign_in_to_account")
+          }}
         </p>
       </div>
 
@@ -56,8 +60,8 @@
         </div>
 
         <div
-          class="grid gap-1 mb-6 rounded-xl border border-gray-600 p-1"
-          :class="showPasswordlessTabs ? 'grid-cols-3' : 'grid-cols-2'"
+          v-if="!seedFirst"
+          class="grid grid-cols-2 gap-1 mb-6 rounded-xl border border-gray-600 p-1"
         >
           <button
             type="button"
@@ -69,7 +73,7 @@
             "
             @click="authMethodTab = 'guest'"
           >
-            {{ t("auth.tab_guest") }}
+            {{ t("auth.tab_seed") }}
           </button>
           <button
             type="button"
@@ -83,83 +87,45 @@
           >
             {{ t("auth.tab_email") }}
           </button>
-          <button
-            v-if="showPasswordlessTabs"
-            type="button"
-            class="py-2.5 px-1 text-xs sm:text-sm font-semibold rounded-lg transition-colors text-center leading-tight"
-            :class="
-              authMethodTab === 'other'
-                ? 'bg-indigo-600 text-white shadow'
-                : 'text-gray-400 hover:text-white hover:bg-gray-700/60'
-            "
-            @click="authMethodTab = 'other'"
-          >
-            {{ t("auth.tab_lightning_nostr") }}
-          </button>
         </div>
 
-        <div v-show="authMethodTab === 'guest'" class="space-y-4 mb-2">
-          <p class="text-sm text-gray-300 leading-relaxed">
-            {{ t("auth.guest_mode_short_intro") }}
+        <div v-show="showSeedPanel" class="mb-2">
+          <AuthSeedGuestPanel
+            variant="login"
+            :primary-label="t('auth.restore_guest_session')"
+            @primary="showGuestRestoreModal = true"
+          />
+          <p v-if="seedFirst" class="text-center text-sm text-gray-400 mt-4">
+            <button
+              type="button"
+              class="font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+              @click="showLegacyEmailLogin = true"
+            >
+              {{ t("auth.legacy_email_login_link") }}
+            </button>
           </p>
-          <div
-            class="rounded-lg border border-amber-500/25 bg-amber-950/30 px-3 py-2.5"
-            role="note"
-          >
-            <p class="text-xs font-semibold text-amber-200/95 mb-1">
-              {{ t("auth.guest_mode_limits_heading") }}
-            </p>
-            <p class="text-xs text-amber-100/85 leading-relaxed">
-              {{ t("auth.guest_mode_limitations") }}
-            </p>
-          </div>
-          <div
-            class="rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/15 to-purple-500/15 p-4 space-y-3 shadow-inner"
-          >
-            <button
-              type="button"
-              :disabled="guestLoading"
-              class="w-full inline-flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-gray-800"
-              @click="showGuestBackupWizard = true"
-            >
-              <svg
-                class="w-4 h-4 shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
-              {{
-                guestLoading
-                  ? t("auth.starting_guest_session")
-                  : t("auth.continue_without_registration")
-              }}
-            </button>
-            <p class="text-xs text-indigo-100/90 text-center">
-              {{ t("auth.guest_cta_hint") }}
-            </p>
-            <button
-              type="button"
-              class="w-full font-medium text-indigo-200 hover:text-white text-sm focus:outline-none focus:underline rounded"
-              @click="showGuestRestoreModal = true"
-            >
-              {{ t("auth.restore_guest_session") }}
-            </button>
-          </div>
         </div>
 
         <form
-          v-show="authMethodTab === 'email'"
+          v-show="showEmailForm"
           class="space-y-6"
           @submit.prevent="handleLogin"
         >
+          <p
+            v-if="seedFirst"
+            class="text-xs text-amber-200/90 leading-relaxed rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2"
+            role="note"
+          >
+            {{ t("auth.legacy_email_login_notice") }}
+          </p>
+          <button
+            v-if="seedFirst"
+            type="button"
+            class="text-sm text-gray-400 hover:text-white transition-colors"
+            @click="showLegacyEmailLogin = false"
+          >
+            {{ t("auth.back_to_recovery_phrase") }}
+          </button>
           <div>
             <label
               for="email"
@@ -244,198 +210,32 @@
             </router-link>
           </div>
         </form>
-
-        <div
-          v-show="authMethodTab === 'other' && showPasswordlessTabs"
-          class="space-y-4"
-        >
-          <button
-            v-if="lnurlAuthEnabled"
-            type="button"
-            @click="handleLnurlAuth"
-            :disabled="lnurlLoading"
-            class="group relative w-full flex justify-center items-center py-3 px-4 border border-gray-600 text-sm font-bold rounded-xl text-white bg-gray-700/50 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all"
-          >
-            <svg
-              class="w-5 h-5 mr-2 text-yellow-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M13 10V3L4 14h7v7l9-11h-7z"
-              />
-            </svg>
-            {{
-              lnurlLoading ? t("auth.generating") : t("auth.lightning_login")
-            }}
-          </button>
-          <button
-            v-if="nostrAuthEnabled"
-            type="button"
-            @click="showNostrModal = true"
-            class="group relative w-full flex justify-center items-center py-3 px-4 border border-gray-600 text-sm font-bold rounded-xl text-white bg-gray-700/50 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 transition-all"
-          >
-            <span class="mr-2 text-lg">
-              <svg
-                class="w-5 h-5 text-purple-400"
-                viewBox="0 0 750 750"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <g transform="matrix(0.1, 0, 0, -0.1, 0, 0)">
-                  <path
-                    d="m5404,-1199c-53,-24 -107,-88 -129,-154c-10,-30 -20,-94 -23,-154c-3,-85 -1,-114 17,-172c40,-132 139,-253 321,-391c176,-134 230,-214 238,-352c11,-187 -57,-312 -211,-388c-82,-40 -140,-47 -266,-30c-85,11 -104,11 -153,-4c-31,-9 -67,-16 -80,-16c-14,0 -95,43 -182,95c-274,164 -364,189 -681,190c-253,0 -318,-10 -526,-81c-135,-46 -177,-64 -499,-222c-113,-55 -237,-110 -275,-121c-110,-35 -246,-51 -422,-51c-182,0 -202,-6 -182,-58c6,-15 16,-34 23,-42c29,-34 28,-39 -11,-28c-21,5 -45,16 -53,23c-43,38 -206,45 -326,15c-204,-53 -392,-228 -465,-436c-24,-67 -25,-122 -3,-131c10,-3 47,9 88,29c39,19 86,39 103,42c41,9 42,3 8,-100c-31,-96 -33,-162 -4,-198c11,-14 27,-26 35,-26c8,0 58,41 111,90c66,62 104,90 120,90c16,0 23,-4 19,-12c-39,-94 -47,-231 -15,-251c18,-11 26,-8 154,67c107,63 263,108 423,123c50,5 57,2 115,-37c34,-23 98,-59 143,-81c98,-47 342,-129 479,-159c55,-13 104,-26 108,-30c12,-11 -72,-117 -164,-207c-125,-122 -270,-235 -338,-261c-106,-41 -159,-103 -186,-217c-9,-38 -39,-90 -120,-206c-60,-85 -156,-221 -213,-304c-262,-374 -251,-362 -355,-385c-68,-15 -138,-53 -175,-94c-37,-42 -56,-100 -41,-127c11,-22 26,-23 65,-9c36,14 40,7 15,-28c-35,-50 -90,-172 -101,-228c-8,-40 -8,-68 0,-108c11,-54 40,-94 59,-81c6,3 29,43 52,88c46,93 78,135 200,262c47,50 110,128 139,175c90,145 218,323 429,595c196,253 230,293 274,310c85,34 152,104 171,179c11,41 23,52 239,215l229,172l125,45c69,24 129,44 134,44c11,0 -20,-72 -36,-85c-8,-5 -36,-70 -64,-143c-56,-146 -64,-207 -35,-268c9,-18 31,-43 49,-54c51,-32 101,-26 177,20c50,30 144,64 399,144c458,143 474,148 522,144l42,-3l11,-62c13,-72 35,-110 71,-124c39,-15 55,4 48,60c-10,80 4,80 86,-2c77,-77 140,-117 184,-117c34,0 42,24 21,67c-38,81 -231,366 -264,391c-32,25 -43,27 -126,27c-99,0 -55,12 -706,-194c-124,-40 -234,-74 -244,-77c-25,-8 -19,7 38,94c34,51 58,75 93,95c72,39 133,85 133,101c0,8 11,28 25,44l24,29l168,6c332,13 537,72 705,205c146,114 207,264 208,508c0,81 4,125 13,136c6,8 59,44 117,79c260,158 390,290 498,504c74,148 100,334 68,484c-37,175 -124,292 -342,460c-136,105 -165,138 -171,195c-6,53 7,64 112,94c55,15 107,20 235,21c206,3 233,18 102,56c-34,10 -59,22 -55,26c4,4 35,9 68,11c45,2 60,7 60,18c0,11 -46,30 -155,66c-126,41 -171,61 -235,104c-128,87 -204,106 -281,71z"
-                  />
-                </g>
-              </svg>
-            </span>
-            {{ t("auth.nostr_login") }}
-          </button>
-        </div>
       </div>
     </div>
 
-    <GuestBackupWizardModal
-      :open="showGuestBackupWizard"
-      @close="showGuestBackupWizard = false"
-      @done="handleGuestEnrolled"
-    />
     <GuestRestoreModal
       :open="showGuestRestoreModal"
       @close="showGuestRestoreModal = false"
       @success="redirectAfterGuestRestore"
     />
-
-    <NostrAuthModal
-      :open="showNostrModal"
-      mode="login"
-      @close="showNostrModal = false"
-    />
-
-    <!-- LNURL-auth QR step: use shared modal -->
-    <LnurlQrModal
-      v-if="showLnurlModal && !showEmailStep"
-      :open="true"
-      :title="t('auth.scan_with_lightning_wallet')"
-      :lnurl="lnurlAuthUrl"
-      :error="lnurlError"
-      :polling="lnurlPolling"
-      :expires-in-seconds="300"
-      @close="closeLnurlModal"
-      @regenerate="requestNewAuthChallenge"
-    />
-
-    <!-- LNURL-auth Email step (complete registration) -->
-    <div
-      v-if="showLnurlModal && showEmailStep"
-      class="fixed z-50 inset-0 overflow-y-auto"
-      @click.self="closeLnurlModal"
-    >
-      <div
-        class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0"
-      >
-        <div
-          class="fixed inset-0 bg-gray-900 bg-opacity-90 transition-opacity backdrop-blur-sm"
-          @click="closeLnurlModal"
-        ></div>
-        <div
-          class="inline-block align-bottom bg-gray-800 border border-gray-700 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
-        >
-          <div class="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-            <div class="sm:flex sm:items-start">
-              <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
-                <!-- Email Input Step -->
-                <div>
-                  <h3 class="text-lg leading-6 font-bold text-white mb-4">
-                    {{ t("auth.complete_registration") }}
-                  </h3>
-                  <p class="text-sm text-gray-400 mb-6">
-                    {{ t("auth.provide_email_to_complete") }}
-                  </p>
-                  <form @submit.prevent="handleCompleteRegistration">
-                    <div class="mb-6">
-                      <label
-                        for="lnurl-email"
-                        class="block text-sm font-medium text-gray-300 mb-2"
-                      >
-                        {{ t("auth.email") }}
-                      </label>
-                      <input
-                        id="lnurl-email"
-                        v-model="emailForm.email"
-                        type="email"
-                        required
-                        autocomplete="email"
-                        class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
-                        :placeholder="t('auth.email_placeholder')"
-                      />
-                      <div v-if="emailError" class="mt-2 text-sm text-red-400">
-                        {{ emailError }}
-                      </div>
-                    </div>
-                    <div class="flex justify-end gap-3">
-                      <button
-                        type="button"
-                        @click="closeLnurlModal"
-                        class="inline-flex justify-center rounded-lg border border-gray-600 px-4 py-2 bg-gray-700 text-base font-medium text-white hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm transition-colors"
-                      >
-                        {{ t("common.cancel") }}
-                      </button>
-                      <button
-                        type="submit"
-                        :disabled="emailLoading"
-                        class="inline-flex justify-center rounded-lg border border-transparent px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 sm:text-sm transition-colors"
-                      >
-                        {{
-                          emailLoading ? t("auth.saving") : t("common.continue")
-                        }}
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { usePage } from "@inertiajs/vue3";
 import { useAuthStore } from "../../store/auth";
+import { useStoresStore } from "../../store/stores";
 import { useFlashStore } from "../../store/flash";
-import api from "../../services/api";
-import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
-import NostrAuthModal from "../../components/auth/NostrAuthModal.vue";
-import GuestBackupWizardModal from "../../components/auth/GuestBackupWizardModal.vue";
 import GuestRestoreModal from "../../components/auth/GuestRestoreModal.vue";
-import { storeGuestMnemonic } from "../../services/guestRecovery";
+import AuthSeedGuestPanel from "../../components/auth/AuthSeedGuestPanel.vue";
+import { isPublicMarketingPath, navigateToAppPath } from "../../utils/publicMarketingRoutes";
+import { isSeedFirstRegistration } from "../../config/auth";
 
 const { t } = useI18n();
 
-// LNURL / Nostr: fetch from server
-const lnurlEnabledFromServer = ref<boolean | null>(null);
-const nostrEnabledFromServer = ref<boolean | null>(null);
-onMounted(async () => {
-  try {
-    const [lnurlRes, nostrRes] = await Promise.all([
-      api.get<{ enabled: boolean }>(`/lnurl-auth/enabled?_=${Date.now()}`),
-      api.get<{ enabled: boolean }>(`/nostr-auth/enabled?_=${Date.now()}`),
-    ]);
-    lnurlEnabledFromServer.value = lnurlRes.data?.enabled === true;
-    nostrEnabledFromServer.value = nostrRes.data?.enabled === true;
-  } catch {
-    // Leave null so fallback is used
-  }
+onMounted(() => {
   applyAuthTabFromQuery();
 });
 
@@ -451,72 +251,58 @@ const form = ref({
 });
 
 const loading = ref(false);
-const guestLoading = ref(false);
-const authMethodTab = ref<"guest" | "email" | "other">("guest");
-const showGuestBackupWizard = ref(false);
+const seedFirst = computed(() => isSeedFirstRegistration());
+const authMethodTab = ref<"guest" | "email">("guest");
+const showLegacyEmailLogin = ref(false);
 const showGuestRestoreModal = ref(false);
 
-const showLnurlModal = ref(false);
-const showNostrModal = ref(false);
-const lnurlAuthUrl = ref("");
-const lnurlLoading = ref(false);
-const lnurlPolling = ref(false);
-const lnurlError = ref("");
-const lnurlK1 = ref("");
-const showEmailStep = ref(false);
-const emailForm = ref({
-  email: "",
-  user_id: null as number | null,
-});
-const emailLoading = ref(false);
-const emailError = ref("");
-let pollingInterval: number | null = null;
+const showSeedPanel = computed(
+  () =>
+    authMethodTab.value === "guest" &&
+    (!seedFirst.value || !showLegacyEmailLogin.value),
+);
 
-// LNURL auth: prefer server response; only then data attribute / Vite (so false on server hides the option)
-const page = usePage();
-const lnurlAuthEnabled = computed(() => {
-  if (lnurlEnabledFromServer.value !== null)
-    return lnurlEnabledFromServer.value;
-  const el = document.getElementById("app");
-  const dataVal = el?.getAttribute("data-lnurl-auth-enabled");
-  if (dataVal !== null && dataVal !== undefined) return dataVal === "true";
-  if (page.props?.app?.lnurlAuthEnabled !== undefined)
-    return page.props.app.lnurlAuthEnabled === true;
-  return import.meta.env.VITE_LNURL_AUTH_ENABLED === "true";
-});
-const nostrAuthEnabled = computed(() => nostrEnabledFromServer.value === true);
-
-const showPasswordlessTabs = computed(
-  () => lnurlAuthEnabled.value || nostrAuthEnabled.value,
+const showEmailForm = computed(
+  () =>
+    authMethodTab.value === "email" ||
+    (seedFirst.value && showLegacyEmailLogin.value),
 );
 
 function applyAuthTabFromQuery() {
+  const legacyRaw = route.query.legacy;
+  const legacy = Array.isArray(legacyRaw) ? legacyRaw[0] : legacyRaw;
+  if (legacy === "1" || legacy === "true") {
+    showLegacyEmailLogin.value = true;
+  }
+
   const raw = route.query.tab;
   const q = Array.isArray(raw) ? raw[0] : raw;
   if (!q || typeof q !== "string") return;
   if (q === "email") {
     authMethodTab.value = "email";
+    if (seedFirst.value) {
+      showLegacyEmailLogin.value = true;
+    }
     return;
   }
   if (q === "guest") {
     authMethodTab.value = "guest";
-    return;
-  }
-  if (q === "other" && showPasswordlessTabs.value) {
-    authMethodTab.value = "other";
   }
 }
 
-watch(showPasswordlessTabs, (on: boolean) => {
-  if (!on && authMethodTab.value === "other") {
-    authMethodTab.value = "guest";
-  }
-});
-
 watch(
-  () => [route.query.tab, lnurlAuthEnabled.value, nostrAuthEnabled.value],
+  () => route.query.tab,
   () => applyAuthTabFromQuery(),
 );
+
+function redirectAfterAuth(target?: string | null) {
+  const path = target && target.trim() !== "" ? target : "/dashboard";
+  if (!isPublicMarketingPath(path)) {
+    navigateToAppPath(path);
+    return;
+  }
+  router.push(path);
+}
 
 async function handleLogin() {
   loading.value = true;
@@ -527,9 +313,8 @@ async function handleLogin() {
       form.value.password,
       form.value.remember,
     );
-    // Redirect to dashboard after login
     const redirect = router.currentRoute.value.query.redirect as string;
-    router.push(redirect || "/dashboard");
+    redirectAfterAuth(redirect);
   } catch (err: any) {
     flashStore.error(
       err.response?.data?.message || "Login failed. Please try again.",
@@ -540,232 +325,17 @@ async function handleLogin() {
 }
 
 function redirectAfterGuestRestore(payload: { store_id?: string | null }) {
-  const storeId = payload?.store_id;
-  if (storeId) {
-    router.replace(`/stores/${storeId}/wallet-connection`);
-    return;
-  }
-  router.replace("/stores/create");
-}
-
-async function handleGuestEnrolled(payload: {
-  recoveryPublicKeyHex: string;
-  mnemonic: string;
-}) {
-  showGuestBackupWizard.value = false;
-  guestLoading.value = true;
-  try {
-    const response = await authStore.continueAsGuest(
-      payload.recoveryPublicKeyHex,
-    );
-    storeGuestMnemonic(payload.mnemonic);
-    // Be resilient to slight response shape differences.
-    let storeId = response?.store_id ?? response?.data?.store_id ?? null;
-
-    if (!storeId) {
-      try {
-        const storesRes = await api.get("/stores");
-        const firstStoreId = storesRes?.data?.data?.[0]?.id;
-        storeId =
-          typeof firstStoreId === "string" || typeof firstStoreId === "number"
-            ? String(firstStoreId)
-            : null;
-      } catch {
-        storeId = null;
-      }
-    }
-
+  const storesStore = useStoresStore();
+  void storesStore.fetchStores().then(() => {
+    const storeId =
+      payload?.store_id
+      ?? storesStore.stores[0]?.id
+      ?? null;
     if (storeId) {
       router.replace(`/stores/${storeId}/wallet-connection`);
       return;
     }
-
     router.replace("/stores/create");
-  } catch (err: any) {
-    flashStore.error(
-      err.response?.data?.message || "Unable to start guest session.",
-    );
-  } finally {
-    guestLoading.value = false;
-  }
+  });
 }
-
-async function fetchAuthChallengeAndOpen(): Promise<boolean> {
-  try {
-    const response = await api.post("/lnurl-auth/challenge");
-    const raw = response.data ?? {};
-    const challengeData =
-      typeof raw === "object" && raw !== null && "data" in raw ? raw.data : raw;
-    const k1 = challengeData?.k1 ?? challengeData?.K1;
-    const lnurl = challengeData?.lnurl ?? challengeData?.lnurlAuthUrl;
-
-    if (!k1 || !lnurl) {
-      lnurlError.value = t("auth.error_occurred");
-      return false;
-    }
-
-    lnurlK1.value = k1;
-    lnurlAuthUrl.value = lnurl;
-    showLnurlModal.value = true;
-    startPolling(k1);
-    return true;
-  } catch (err: any) {
-    lnurlError.value =
-      err.response?.data?.error || "Failed to generate challenge";
-    return false;
-  }
-}
-
-async function handleLnurlAuth() {
-  lnurlLoading.value = true;
-  lnurlError.value = "";
-  showEmailStep.value = false;
-  emailError.value = "";
-
-  try {
-    await fetchAuthChallengeAndOpen();
-  } finally {
-    lnurlLoading.value = false;
-  }
-}
-
-async function requestNewAuthChallenge() {
-  lnurlError.value = "";
-  stopPolling();
-  await fetchAuthChallengeAndOpen();
-}
-
-function startPolling(k1: string) {
-  lnurlPolling.value = true;
-  const startTime = Date.now();
-  const timeout = 300000; // 5 minutes
-
-  const doPoll = async () => {
-    if (Date.now() - startTime > timeout) {
-      lnurlError.value = t("account.challenge_expired");
-      stopPolling();
-      return;
-    }
-    try {
-      const statusResponse = await api.get(
-        `/lnurl-auth/challenge-status/${k1}?_=${Date.now()}`,
-      );
-      const raw = statusResponse.data ?? {};
-      const data =
-        typeof raw === "object" && raw !== null && "data" in raw
-          ? raw.data
-          : raw;
-      const payload = typeof data === "object" && data !== null ? data : {};
-      const status = payload.status;
-      const user_id = payload.user_id != null ? Number(payload.user_id) : null;
-
-      if (
-        !status &&
-        typeof payload === "object" &&
-        payload !== null &&
-        Object.keys(payload).length > 0
-      ) {
-        console.warn(
-          "[LNURL] challenge-status response missing .status:",
-          payload,
-        );
-      }
-
-      if (status === "authenticated") {
-        stopPolling();
-        closeLnurlModal();
-        await authStore.fetchUser();
-        router.push("/dashboard");
-      } else if (
-        status === "pending_email" &&
-        (user_id || payload.k1 || lnurlK1.value)
-      ) {
-        stopPolling();
-        emailForm.value.user_id = user_id ?? null;
-        showEmailStep.value = true;
-        await nextTick();
-      } else if (status === "expired") {
-        lnurlError.value = t("account.challenge_expired");
-        stopPolling();
-      } else if (status === "error") {
-        lnurlError.value =
-          (payload as { message?: string }).message || t("auth.error_occurred");
-        stopPolling();
-      }
-    } catch (err: any) {
-      // 403 = LNURL disabled, stop. Network errors (ERR_NETWORK_CHANGED, etc.) = keep polling
-      if (err.response?.status === 403) {
-        lnurlError.value = t("auth.error_occurred");
-        stopPolling();
-      } else {
-        // Transient network error - clear error on next successful poll
-        lnurlError.value = "";
-      }
-    }
-  };
-
-  doPoll();
-  pollingInterval = window.setInterval(doPoll, 1000);
-}
-
-async function handleCompleteRegistration() {
-  const hasUserId = emailForm.value.user_id != null;
-  const hasK1 = !!lnurlK1.value;
-  if (!hasUserId && !hasK1) {
-    emailError.value = t("auth.invalid_session");
-    return;
-  }
-
-  emailLoading.value = true;
-  emailError.value = "";
-
-  try {
-    await api.post("/lnurl-auth/complete-registration", {
-      ...(hasUserId
-        ? { user_id: emailForm.value.user_id }
-        : { k1: lnurlK1.value }),
-      email: emailForm.value.email,
-    });
-
-    // Registration completed, show success message and close modal
-    closeLnurlModal();
-    flashStore.success(t("auth.registration_successful"));
-  } catch (err: any) {
-    if (err.response?.data?.errors?.email) {
-      emailError.value = err.response.data.errors.email[0];
-    } else {
-      emailError.value =
-        err.response?.data?.message ||
-        "Failed to complete registration. Please try again.";
-    }
-  } finally {
-    emailLoading.value = false;
-  }
-}
-
-function stopPolling() {
-  if (pollingInterval !== null) {
-    clearInterval(pollingInterval);
-    pollingInterval = null;
-  }
-  lnurlPolling.value = false;
-}
-
-function closeLnurlModal() {
-  stopPolling();
-  showLnurlModal.value = false;
-  showEmailStep.value = false;
-  lnurlError.value = "";
-  lnurlAuthUrl.value = "";
-  lnurlK1.value = "";
-  emailForm.value = {
-    email: "",
-    user_id: null,
-  };
-  emailError.value = "";
-}
-
-onUnmounted(() => {
-  stopPolling();
-});
 </script>

@@ -58,10 +58,11 @@ class CompanyContactController extends Controller
             }
         }
 
-        $contacts = $query->get();
+        $perPage = min(max($request->integer('per_page', 25), 1), 100);
+        $paginator = $query->paginate($perPage);
         $statsMap = $this->statsService->statsForCompany($company);
 
-        $data = $contacts->map(function (CompanyContact $contact) use ($statsMap) {
+        $data = $paginator->getCollection()->map(function (CompanyContact $contact) use ($statsMap) {
             $row = $contact->toArray();
             $row['stats'] = $statsMap[$contact->id] ?? [
                 'invoiced_total' => 0,
@@ -80,7 +81,10 @@ class CompanyContactController extends Controller
             'data' => $data,
             'meta' => [
                 'letters' => $this->statsService->availableLetters($company, $allForLetters),
-                'total' => $allForLetters->count(),
+                'total' => $paginator->total(),
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
             ],
         ]);
     }

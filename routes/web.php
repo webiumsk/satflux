@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Integrations\WooCommerceConnectController;
 use App\Http\Controllers\Invoicing\BusinessDocumentController;
 use App\Http\Controllers\Invoicing\BusinessDocumentPayController;
+use App\Http\Controllers\LandingPayButtonController;
 use App\Http\Controllers\OgImageController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StoreAppPageController;
@@ -11,6 +12,7 @@ use App\Http\Middleware\EnsureCompanyOwnership;
 use App\Http\Middleware\EnsurePlanAllowsBusinessInvoicing;
 use App\Http\Middleware\EnsureStoreOwnership;
 use App\Http\Middleware\RequireVerifiedEmail;
+use App\Support\PublicSpaRoutes;
 use Illuminate\Filesystem\ServeFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -26,7 +28,7 @@ Route::get('/export-files/{path}', function (Request $request, string $path) {
     return (new ServeFile($disk, is_array($config) ? $config : [], app()->isProduction()))($request, $path);
 })->where('path', '.*');
 
-// Must use the "public" disk (storage/app/public). "local" points at app/private — wrong for /storage/products/… uploads.
+// Must use the "public" disk (storage/app/public). "local" points at app/private - wrong for /storage/products/… uploads.
 Route::get('/storage/{path}', function (Request $request, string $path) {
     $disk = 'public';
     $config = config("filesystems.disks.{$disk}");
@@ -85,12 +87,12 @@ Route::get('/reset-password/{token}', function (Request $request, string $token)
 
 // Named route for authentication redirects (used by Laravel auth middleware)
 Route::get('/login', function () {
-    return view('app');
+    return view('public');
 })->name('login');
 
 // Verification route for Vue router (redirects to SPA, component handles API call)
 Route::get('/auth/verify-email/{id}/{hash}', function () {
-    return view('app');
+    return view('public');
 })->where(['id' => '[0-9]+', 'hash' => '[a-f0-9]+']);
 
 // WooCommerce plugin - Connect flow
@@ -102,15 +104,18 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Business invoice PDF: session auth (direct browser GET / copy link; API /api/... is stateless without SPA headers)
-Route::middleware(['auth', RequireVerifiedEmail::class, EnsurePlanAllowsBusinessInvoicing::class, 'guest.restrict'])
+Route::middleware(['auth', RequireVerifiedEmail::class, EnsurePlanAllowsBusinessInvoicing::class])
     ->get('/invoicing/companies/{company}/documents/{businessDocument}/pdf', [BusinessDocumentController::class, 'pdf'])
     ->middleware(EnsureCompanyOwnership::class);
-Route::middleware(['auth', RequireVerifiedEmail::class, EnsurePlanAllowsBusinessInvoicing::class, 'guest.restrict'])
+Route::middleware(['auth', RequireVerifiedEmail::class, EnsurePlanAllowsBusinessInvoicing::class])
     ->get('/invoicing/companies/{company}/documents/{businessDocument}/isdoc', [BusinessDocumentController::class, 'isdoc'])
     ->middleware(EnsureCompanyOwnership::class);
-Route::middleware(['auth', RequireVerifiedEmail::class, EnsurePlanAllowsBusinessInvoicing::class, 'guest.restrict'])
+Route::middleware(['auth', RequireVerifiedEmail::class, EnsurePlanAllowsBusinessInvoicing::class])
     ->get('/invoicing/companies/{company}/documents/{businessDocument}/ubl', [BusinessDocumentController::class, 'ubl'])
     ->middleware(EnsureCompanyOwnership::class);
+
+// Marketing landing Pay Button (BTCPay store resolved server-side; no store ID in frontend markup)
+Route::post('/landing/pay-button', [LandingPayButtonController::class, 'store']);
 
 // Inertia routes: store apps (must be before SPA catch-all)
 Route::middleware(['auth'])->group(function () {
@@ -133,6 +138,13 @@ Route::get('/{any}', function (Request $request) {
         $location = rtrim(config('app.url', $request->getSchemeAndHttpHost()), '/').'/'.ltrim($request->getRequestUri(), '/');
 
         return response('', 409)->header('X-Inertia-Location', $location);
+    }
+
+    $path = $request->path();
+    if (PublicSpaRoutes::isPublicMarketing($path)) {
+        return view('public', [
+            'showLandingShell' => PublicSpaRoutes::isLandingHome($path),
+        ]);
     }
 
     return view('app');

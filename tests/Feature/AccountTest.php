@@ -65,6 +65,47 @@ class AccountTest extends TestCase
         $this->assertSame('me@example.com', $user->email);
     }
 
+    public function test_user_can_set_evolu_relay_url(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $response = $this->putJson('/api/user', [
+            'evolu_relay_url' => 'wss://evolu.satflux.io',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('user.evolu_relay_url', 'wss://evolu.satflux.io');
+        $user->refresh();
+        $this->assertSame('wss://evolu.satflux.io', $user->evolu_relay_url);
+    }
+
+    public function test_evolu_relay_url_must_be_wss(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $response = $this->putJson('/api/user', [
+            'evolu_relay_url' => 'https://evolu.satflux.io',
+        ]);
+
+        $response->assertStatus(422);
+    }
+
+    public function test_user_can_clear_evolu_relay_url(): void
+    {
+        $user = User::factory()->create(['evolu_relay_url' => 'wss://evolu.satflux.io']);
+        Sanctum::actingAs($user);
+
+        $response = $this->putJson('/api/user', [
+            'evolu_relay_url' => null,
+        ]);
+
+        $response->assertStatus(200);
+        $user->refresh();
+        $this->assertNull($user->evolu_relay_url);
+    }
+
     public function test_user_can_update_password(): void
     {
         $user = User::factory()->create([

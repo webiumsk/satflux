@@ -3,7 +3,10 @@ import { useRafflesStore } from '../store/raffles';
 
 const cacheByStore = new Map<string, boolean>();
 
-export function useRaffleAvailability(storeId: Ref<string | undefined> | string) {
+export function useRaffleAvailability(
+    storeId: Ref<string | undefined> | string,
+    skipProbe?: Ref<boolean>,
+) {
     const rafflesStore = useRafflesStore();
     const available = ref<boolean | null>(null);
     const loading = ref(false);
@@ -11,6 +14,11 @@ export function useRaffleAvailability(storeId: Ref<string | undefined> | string)
     async function load(refresh = false) {
         const id = typeof storeId === 'string' ? storeId : storeId.value;
         if (!id) {
+            available.value = null;
+            return;
+        }
+
+        if (skipProbe?.value) {
             available.value = null;
             return;
         }
@@ -26,7 +34,15 @@ export function useRaffleAvailability(storeId: Ref<string | undefined> | string)
             const result = await rafflesStore.fetchAvailability(id, refresh);
             available.value = result;
             cacheByStore.set(id, result);
-        } catch {
+        } catch (e: unknown) {
+            const err = e as { response?: { status?: number; data?: { code?: string } } };
+            if (
+                err.response?.status === 403
+                && err.response?.data?.code === 'guest_feature_locked'
+            ) {
+                available.value = null;
+                return;
+            }
             available.value = false;
             cacheByStore.set(id, false);
         } finally {
@@ -35,11 +51,17 @@ export function useRaffleAvailability(storeId: Ref<string | undefined> | string)
     }
 
     if (typeof storeId !== 'string') {
-        watch(storeId, (id) => {
-            if (id) load();
+        const sources: Array<Ref<unknown>> = [storeId];
+        if (skipProbe) {
+            sources.push(skipProbe);
+        }
+        watch(sources, () => {
+            if (storeId.value) {
+                void load();
+            }
         }, { immediate: true });
     } else if (storeId) {
-        load();
+        void load();
     }
 
     function invalidate() {

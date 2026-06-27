@@ -18,11 +18,15 @@
           />
         </template>
         <template #actions>
-          <button type="button" class="invoicing-btn-secondary" @click="showImportModal = true">
-            {{ t('invoicing.import_contacts') }}
+          <button
+            type="button"
+            class="invoicing-btn-secondary"
+            @click="showImportModal = true"
+          >
+            {{ t("invoicing.import_contacts") }}
           </button>
           <RouterLink :to="contactNewTo()" class="invoicing-btn-primary">
-            + {{ t('invoicing.new_contact') }}
+            + {{ t("invoicing.new_contact") }}
           </RouterLink>
         </template>
         <template #mobile-filters>
@@ -37,10 +41,14 @@
             <button
               type="button"
               class="invoicing-letter shrink-0"
-              :class="activeLetter === 'all' ? 'invoicing-letter--active' : 'invoicing-letter--idle'"
+              :class="
+                activeLetter === 'all'
+                  ? 'invoicing-letter--active'
+                  : 'invoicing-letter--idle'
+              "
               @click="setLetter('all')"
             >
-              {{ t('invoicing.letter_all') }}
+              {{ t("invoicing.letter_all") }}
             </button>
             <button
               v-for="ch in ALPHABET_FILTER"
@@ -55,15 +63,26 @@
           </div>
         </template>
         <template #mobile-actions>
-          <button type="button" class="invoicing-btn-secondary w-full" @click="showImportModal = true">
-            {{ t('invoicing.import_contacts') }}
+          <button
+            type="button"
+            class="invoicing-btn-secondary w-full"
+            @click="showImportModal = true"
+          >
+            {{ t("invoicing.import_contacts") }}
           </button>
-          <RouterLink :to="contactNewTo()" class="invoicing-btn-primary w-full text-center">
-            + {{ t('invoicing.new_contact') }}
+          <RouterLink
+            :to="contactNewTo()"
+            class="invoicing-btn-primary w-full text-center"
+          >
+            + {{ t("invoicing.new_contact") }}
           </RouterLink>
         </template>
         <template #mobile-primary-action>
-          <RouterLink :to="contactNewTo()" class="invoicing-mobile-icon-btn" :title="t('invoicing.mobile_new_contact')">
+          <RouterLink
+            :to="contactNewTo()"
+            class="invoicing-mobile-icon-btn"
+            :title="t('invoicing.mobile_new_contact')"
+          >
             <InvoicingIcons name="plus" />
           </RouterLink>
         </template>
@@ -74,10 +93,14 @@
       <button
         type="button"
         class="invoicing-letter"
-        :class="activeLetter === 'all' ? 'invoicing-letter--active' : 'invoicing-letter--idle'"
+        :class="
+          activeLetter === 'all'
+            ? 'invoicing-letter--active'
+            : 'invoicing-letter--idle'
+        "
         @click="setLetter('all')"
       >
-        {{ t('invoicing.letter_all') }}
+        {{ t("invoicing.letter_all") }}
       </button>
       <button
         v-for="ch in ALPHABET_FILTER"
@@ -95,22 +118,38 @@
 
     <div v-if="selectionCount > 0" class="invoicing-bulk-bar hidden md:flex">
       <span class="text-sm text-indigo-800 font-medium">
-        {{ t('invoicing.bulk_selected', { count: selectionCount }) }}
+        {{ t("invoicing.bulk_selected", { count: selectionCount }) }}
       </span>
       <div class="relative">
-        <button type="button" class="invoicing-btn-secondary text-sm py-1.5" @click="showBulkMenu = !showBulkMenu">
-          {{ t('invoicing.bulk_actions') }} ▾
+        <button
+          type="button"
+          class="invoicing-btn-secondary text-sm py-1.5"
+          @click="showBulkMenu = !showBulkMenu"
+        >
+          {{ t("invoicing.bulk_actions") }} ▾
         </button>
         <div v-if="showBulkMenu" class="invoicing-dropdown">
-          <button type="button" class="invoicing-dropdown-item" @click="runBulk('export_xlsx')">
-            {{ t('invoicing.bulk_export_xlsx') }}
+          <button
+            type="button"
+            class="invoicing-dropdown-item"
+            @click="runBulk('export_xlsx')"
+          >
+            {{ t("invoicing.bulk_export_xlsx") }}
           </button>
-          <button type="button" class="invoicing-dropdown-item text-red-600" @click="runBulk('delete')">
-            {{ t('invoicing.bulk_delete_contacts') }}
+          <button
+            type="button"
+            class="invoicing-dropdown-item text-red-600"
+            @click="runBulk('delete')"
+          >
+            {{ t("invoicing.bulk_delete_contacts") }}
           </button>
           <div class="border-t border-gray-200 my-1"></div>
-          <button type="button" class="invoicing-dropdown-item text-gray-500" @click="clearSelection">
-            {{ t('invoicing.bulk_clear') }}
+          <button
+            type="button"
+            class="invoicing-dropdown-item text-gray-500"
+            @click="clearSelection"
+          >
+            {{ t("invoicing.bulk_clear") }}
           </button>
         </div>
       </div>
@@ -121,24 +160,39 @@
       :selection-count="selectionCount"
       @clear="clearSelection"
     >
-      <button type="button" class="invoicing-btn-secondary text-sm shrink-0" @click="runBulk('export_xlsx')">
+      <button
+        type="button"
+        class="invoicing-btn-secondary text-sm shrink-0"
+        @click="runBulk('export_xlsx')"
+      >
         XLSX
       </button>
-      <button type="button" class="invoicing-btn-secondary text-sm shrink-0 text-red-600" @click="runBulk('delete')">
-        {{ t('invoicing.bulk_delete_contacts') }}
+      <button
+        type="button"
+        class="invoicing-btn-secondary text-sm shrink-0 text-red-600"
+        @click="runBulk('delete')"
+      >
+        {{ t("invoicing.bulk_delete_contacts") }}
       </button>
     </InvoicingMobileBulkBar>
 
-    <div v-if="loading" class="invoicing-muted py-8">{{ t('common.loading') }}</div>
+    <div v-if="loading" class="invoicing-muted py-8">
+      {{ t("common.loading") }}
+    </div>
 
-    <div v-else-if="contacts.length === 0" class="invoicing-card-pad text-center text-gray-600">
-      {{ t('invoicing.no_contacts') }}
+    <div
+      v-else-if="contacts.length === 0"
+      class="invoicing-card-pad text-center text-gray-600"
+    >
+      {{ t("invoicing.no_contacts") }}
     </div>
 
     <div v-else class="invoicing-card overflow-hidden">
       <div class="hidden md:block overflow-x-auto">
         <table class="contact-table w-full min-w-[800px] text-sm">
-          <thead class="bg-gray-50 border-b border-gray-200 text-gray-600 text-xs uppercase tracking-wide">
+          <thead
+            class="bg-gray-50 border-b border-gray-200 text-gray-600 text-xs uppercase tracking-wide"
+          >
             <tr>
               <th class="w-12 px-2 py-3 relative text-center">
                 <button
@@ -153,11 +207,21 @@
                   v-if="showSelectMenu"
                   class="invoicing-dropdown min-w-[240px] text-xs normal-case tracking-normal font-normal"
                 >
-                  <button type="button" class="invoicing-dropdown-item" @click="selectPage">
-                    {{ t('invoicing.select_page', { count: contacts.length }) }}
+                  <button
+                    type="button"
+                    class="invoicing-dropdown-item"
+                    @click="selectPage"
+                  >
+                    {{ t("invoicing.select_page", { count: contacts.length }) }}
                   </button>
-                  <button type="button" class="invoicing-dropdown-item" @click="selectAllFiltered">
-                    {{ t('invoicing.select_all_filtered', { count: contacts.length }) }}
+                  <button
+                    type="button"
+                    class="invoicing-dropdown-item"
+                    @click="selectAllFiltered"
+                  >
+                    {{
+                      t("invoicing.select_all_filtered", { count: totalCount })
+                    }}
                   </button>
                   <button
                     v-if="selectionCount > 0"
@@ -165,16 +229,22 @@
                     class="invoicing-dropdown-item text-gray-500"
                     @click="clearSelection"
                   >
-                    {{ t('invoicing.bulk_clear') }}
+                    {{ t("invoicing.bulk_clear") }}
                   </button>
                 </div>
               </th>
-              <th class="min-w-[220px] text-left">{{ t('invoicing.col_contact_name') }}</th>
-              <th class="min-w-[160px] text-right">
-                <span class="block">{{ t('invoicing.col_invoiced') }}</span>
-                <span class="block font-normal normal-case text-gray-500">{{ t('invoicing.col_overdue_sub') }}</span>
+              <th class="min-w-[220px] text-left">
+                {{ t("invoicing.col_contact_name") }}
               </th>
-              <th class="min-w-[140px] text-right">{{ t('invoicing.col_avg_payment') }}</th>
+              <th class="min-w-[160px] text-right">
+                <span class="block">{{ t("invoicing.col_invoiced") }}</span>
+                <span class="block font-normal normal-case text-gray-500">{{
+                  t("invoicing.col_overdue_sub")
+                }}</span>
+              </th>
+              <th class="min-w-[140px] text-right">
+                {{ t("invoicing.col_avg_payment") }}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -193,16 +263,23 @@
                 />
               </td>
               <td>
-                <RouterLink :to="contactShowTo(c.id)" class="text-indigo-600 hover:text-indigo-800 hover:underline font-medium">
+                <RouterLink
+                  :to="contactShowTo(c.id)"
+                  class="text-indigo-600 hover:text-indigo-800 hover:underline font-medium"
+                >
                   {{ c.name }}
                 </RouterLink>
               </td>
               <td class="text-right">
                 <template v-if="statLine(c)">
-                  <span class="invoicing-stat-main">{{ statLine(c).main }}</span>
+                  <span class="invoicing-stat-main">{{
+                    statLine(c).main
+                  }}</span>
                   <span
                     class="invoicing-stat-sub"
-                    :class="statLine(c).subAlert ? 'invoicing-stat-sub--alert' : ''"
+                    :class="
+                      statLine(c).subAlert ? 'invoicing-stat-sub--alert' : ''
+                    "
                   >
                     {{ statLine(c).sub }}
                   </span>
@@ -210,9 +287,10 @@
               </td>
               <td class="text-right text-gray-700 whitespace-nowrap">
                 <template v-if="c.stats?.avg_payment_days != null">
-                  {{ c.stats.avg_payment_days }} {{ t('invoicing.days_suffix') }}
+                  {{ c.stats.avg_payment_days }}
+                  {{ t("invoicing.days_suffix") }}
                 </template>
-                <span v-else class="text-gray-400">—</span>
+                <span v-else class="text-gray-400">-</span>
               </td>
             </tr>
           </tbody>
@@ -229,11 +307,66 @@
           @toggle-select="toggleRow(c.id)"
         >
           <p class="font-semibold text-gray-900 truncate">{{ c.name }}</p>
-          <p v-if="statLine(c)" class="text-sm text-gray-600 mt-1">{{ statLine(c)?.main }}</p>
-          <p v-if="c.stats?.avg_payment_days != null" class="text-xs text-gray-500 mt-0.5">
-            {{ c.stats.avg_payment_days }} {{ t('invoicing.days_suffix') }}
+          <p v-if="statLine(c)" class="text-sm text-gray-600 mt-1">
+            {{ statLine(c)?.main }}
+          </p>
+          <p
+            v-if="c.stats?.avg_payment_days != null"
+            class="text-xs text-gray-500 mt-0.5"
+          >
+            {{ c.stats.avg_payment_days }} {{ t("invoicing.days_suffix") }}
           </p>
         </InvoicingMobileCard>
+      </div>
+
+      <div
+        class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-4 py-3 border-t border-gray-200 bg-gray-50"
+      >
+        <div class="flex items-center gap-2 text-sm">
+          <button
+            type="button"
+            class="px-2 py-1 rounded border border-gray-300 text-gray-600 bg-white disabled:opacity-40"
+            :disabled="currentPage <= 1"
+            @click="goPage(currentPage - 1)"
+          >
+            ‹
+          </button>
+          <button
+            v-for="p in visiblePages"
+            :key="p"
+            type="button"
+            class="min-w-[2rem] px-2 py-1 rounded text-sm"
+            :class="
+              p === currentPage
+                ? 'bg-indigo-600 text-white'
+                : 'text-gray-600 hover:bg-gray-200'
+            "
+            @click="goPage(p)"
+          >
+            {{ p }}
+          </button>
+          <button
+            type="button"
+            class="px-2 py-1 rounded border border-gray-300 text-gray-600 bg-white disabled:opacity-40"
+            :disabled="currentPage >= lastPage"
+            @click="goPage(currentPage + 1)"
+          >
+            ›
+          </button>
+          <select
+            v-model.number="perPage"
+            class="ml-2 px-2 py-1 rounded border border-gray-300 bg-white text-gray-700 text-sm"
+            @change="goPage(1)"
+          >
+            <option :value="10">10</option>
+            <option :value="20">20</option>
+            <option :value="25">25</option>
+            <option :value="50">50</option>
+          </select>
+        </div>
+        <p class="text-sm text-gray-600 text-right">
+          {{ contacts.length }} / {{ totalCount }}
+        </p>
       </div>
     </div>
 
@@ -247,57 +380,87 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { useI18n } from 'vue-i18n';
-import { useRoute } from 'vue-router';
-import ContactImportModal from '../../components/invoicing/ContactImportModal.vue';
-import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
-import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
-import InvoicingMobileBulkBar from '../../components/invoicing/InvoicingMobileBulkBar.vue';
-import InvoicingMobileCard from '../../components/invoicing/InvoicingMobileCard.vue';
-import InvoicingIcons from '../../components/invoicing/icons/InvoicingIcons.vue';
-import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
+import { computed, onMounted, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
+import { useRoute } from "vue-router";
+import ContactImportModal from "../../components/invoicing/ContactImportModal.vue";
+import InvoicingAppHeader from "../../components/invoicing/InvoicingAppHeader.vue";
+import InvoicingPageShell from "../../components/invoicing/InvoicingPageShell.vue";
+import InvoicingMobileBulkBar from "../../components/invoicing/InvoicingMobileBulkBar.vue";
+import InvoicingMobileCard from "../../components/invoicing/InvoicingMobileCard.vue";
+import InvoicingIcons from "../../components/invoicing/icons/InvoicingIcons.vue";
+import { useInvoicingLayout } from "../../composables/useInvoicingLayout";
+import { useInvoicingContacts } from "../../composables/useInvoicingContacts";
+import { useInvoicingCompanySummary } from "../../composables/useInvoicingCompanySummary";
 import {
   ALPHABET_FILTER,
   formatOverduePair,
   useContactRoutes,
   type CompanyContactRow,
-} from '../../composables/useCompanyContact';
-import api from '../../services/api';
+} from "../../composables/useCompanyContact";
+import api from "../../services/api";
+import {
+  bulkDeleteLocalContacts,
+  buildContactsCsvBlob,
+  downloadCsvBlob,
+  resolveBulkContactTargets,
+} from "../../evolu/contactBulkLocal";
+import type { EvoluContactRow } from "../../evolu/contactMap";
+import type { EvoluDocumentRow } from "../../evolu/documentMap";
+import type { CompanyId } from "../../evolu/schema";
 
 const { t } = useI18n();
 const route = useRoute();
 const { companyId, rememberCompany } = useInvoicingLayout();
 const { contactShowTo, contactNewTo } = useContactRoutes(companyId);
-const companyName = ref('');
-
-const contacts = ref<CompanyContactRow[]>([]);
-const availableLetters = ref<string[]>([]);
-const loading = ref(true);
-const searchQuery = ref('');
-const activeLetter = ref('all');
+const { companyName } = useInvoicingCompanySummary();
+const {
+  localFirst,
+  contacts,
+  availableLetters,
+  totalCount,
+  lastPage,
+  loading,
+  refresh: refreshContacts,
+  evolu: evoluClient,
+  contactRows,
+  documentRows,
+} = useInvoicingContacts(companyId);
+const searchQuery = ref("");
+const activeLetter = ref("all");
+const currentPage = ref(1);
+const perPage = ref(25);
 const selectedIds = ref(new Set<string>());
 const selectAllMode = ref(false);
 const showSelectMenu = ref(false);
 const showBulkMenu = ref(false);
 const showImportModal = ref(false);
-const success = ref('');
+const success = ref("");
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 const selectionCount = computed(() =>
-  selectAllMode.value ? contacts.value.length : selectedIds.value.size
+  selectAllMode.value ? totalCount.value : selectedIds.value.size,
 );
+
+const visiblePages = computed(() => {
+  const pages: number[] = [];
+  const start = Math.max(1, currentPage.value - 2);
+  const end = Math.min(lastPage.value, currentPage.value + 2);
+  for (let p = start; p <= end; p++) pages.push(p);
+  return pages;
+});
 
 const mobileFilterActiveCount = computed(() => {
   let count = 0;
   if (searchQuery.value.trim()) count++;
-  if (activeLetter.value !== 'all') count++;
+  if (activeLetter.value !== "all") count++;
   return count;
 });
 
 function onMobileFilterClear() {
-  searchQuery.value = '';
-  activeLetter.value = 'all';
+  searchQuery.value = "";
+  activeLetter.value = "all";
+  currentPage.value = 1;
   clearSelection();
   load();
 }
@@ -306,48 +469,50 @@ function onContactsImported() {
   load();
 }
 
-function listFilterParams(): Record<string, string | undefined> {
+function listFilterParams() {
   return {
     q: searchQuery.value.trim() || undefined,
-    letter: activeLetter.value === 'all' ? undefined : activeLetter.value,
+    letter: activeLetter.value === "all" ? undefined : activeLetter.value,
+    page: currentPage.value,
+    per_page: perPage.value,
   };
 }
 
-async function load() {
-  loading.value = true;
-  try {
-    const companyRes = await api.get(`/invoicing/companies/${companyId.value}/summary`);
-    companyName.value = companyRes.data.data?.trade_name || companyRes.data.data?.legal_name || '';
+function goPage(page: number) {
+  if (page < 1 || page > lastPage.value) return;
+  currentPage.value = page;
+  clearSelection();
+  load();
+}
 
-    const res = await api.get(`/invoicing/companies/${companyId.value}/contacts`, {
-      params: listFilterParams(),
-    });
-    contacts.value = res.data.data ?? [];
-    availableLetters.value = res.data.meta?.letters ?? [];
-  } finally {
-    loading.value = false;
+async function load() {
+  if (currentPage.value > lastPage.value && lastPage.value > 0) {
+    currentPage.value = lastPage.value;
   }
+  await refreshContacts(listFilterParams());
 }
 
 function onSearchInput() {
   if (searchTimer) clearTimeout(searchTimer);
   searchTimer = setTimeout(() => {
+    currentPage.value = 1;
     clearSelection();
     load();
   }, 300);
 }
 
 function setLetter(letter: string) {
-  if (letter !== 'all' && !availableLetters.value.includes(letter)) return;
+  if (letter !== "all" && !availableLetters.value.includes(letter)) return;
   activeLetter.value = letter;
+  currentPage.value = 1;
   clearSelection();
   load();
 }
 
 function letterClass(ch: string) {
-  if (activeLetter.value === ch) return 'invoicing-letter--active';
-  if (!availableLetters.value.includes(ch)) return 'invoicing-letter--disabled';
-  return 'invoicing-letter--idle';
+  if (activeLetter.value === ch) return "invoicing-letter--active";
+  if (!availableLetters.value.includes(ch)) return "invoicing-letter--disabled";
+  return "invoicing-letter--idle";
 }
 
 function statLine(c: CompanyContactRow) {
@@ -357,7 +522,7 @@ function statLine(c: CompanyContactRow) {
     s.invoiced_total,
     s.invoiced_count,
     s.overdue_total,
-    s.overdue_count
+    s.overdue_count,
   );
 }
 
@@ -408,35 +573,95 @@ function bulkPayload(action: string) {
   return base;
 }
 
-async function runBulk(action: 'export_xlsx' | 'delete') {
-  if (selectionCount.value === 0) return;
-  showBulkMenu.value = false;
+async function runBulkLocal(action: "export_csv" | "delete") {
+  if (!evoluClient) return;
 
-  if (action === 'delete' && !window.confirm(t('invoicing.confirm_bulk_delete_contacts'))) {
+  await refreshContacts(listFilterParams());
+
+  const targets = resolveBulkContactTargets(
+    companyId.value as CompanyId,
+    selectAllMode.value,
+    selectedIds.value,
+    contactRows.value as EvoluContactRow[],
+    listFilterParams(),
+  );
+
+  if (targets.length === 0) {
+    alert(t("common.error"));
     return;
   }
 
-  success.value = '';
+  if (action === "delete") {
+    const allDocuments = documentRows.value as unknown as EvoluDocumentRow[];
+    const result = bulkDeleteLocalContacts(evoluClient, targets, allDocuments);
+    success.value = t("invoicing.bulk_result", {
+      processed: result.processed,
+      skipped: result.skipped,
+    });
+    await load();
+    clearSelection();
+    return;
+  }
+
+  if (action === "export_csv") {
+    const rows = targets.map((row) => ({
+      name: row.name || "",
+      email: row.email || "",
+      registrationNumber: row.registrationNumber || "",
+      taxId: row.taxId || "",
+      vatId: row.vatId || "",
+      city: row.city || "",
+      country: row.country || "",
+    }));
+    downloadCsvBlob(buildContactsCsvBlob(rows), "contacts.csv");
+    clearSelection();
+  }
+}
+
+async function runBulk(action: "export_xlsx" | "delete") {
+  if (selectionCount.value === 0) return;
+  showBulkMenu.value = false;
+
+  if (
+    action === "delete" &&
+    !window.confirm(t("invoicing.confirm_bulk_delete_contacts"))
+  ) {
+    return;
+  }
+
+  success.value = "";
+
+  if (localFirst && evoluClient) {
+    loading.value = true;
+    try {
+      const localAction = action === "export_xlsx" ? "export_csv" : action;
+      await runBulkLocal(localAction);
+    } finally {
+      loading.value = false;
+    }
+    return;
+  }
+
   loading.value = true;
   try {
-    const isFile = action === 'export_xlsx';
+    const isFile = action === "export_xlsx";
     const res = await api.post(
       `/invoicing/companies/${companyId.value}/contacts/bulk`,
       bulkPayload(action),
-      isFile ? { responseType: 'blob' } : {}
+      isFile ? { responseType: "blob" } : {},
     );
 
     if (isFile) {
       const url = URL.createObjectURL(res.data as Blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = 'contacts.xlsx';
+      a.download = "contacts.xlsx";
       a.click();
       URL.revokeObjectURL(url);
       clearSelection();
     } else {
       const data = res.data.data;
-      success.value = t('invoicing.bulk_contact_delete_result', {
+      success.value = t("invoicing.bulk_contact_delete_result", {
         deleted: data.deleted ?? 0,
         anonymized: data.anonymized ?? 0,
       });
@@ -448,12 +673,12 @@ async function runBulk(action: 'export_xlsx' | 'delete') {
       const text = await e.response.data.text();
       try {
         const json = JSON.parse(text);
-        alert(json.message || t('common.error'));
+        alert(json.message || t("common.error"));
       } catch {
-        alert(t('common.error'));
+        alert(t("common.error"));
       }
     } else {
-      alert(e?.response?.data?.message || t('common.error'));
+      alert(e?.response?.data?.message || t("common.error"));
     }
   } finally {
     loading.value = false;
@@ -463,11 +688,11 @@ async function runBulk(action: 'export_xlsx' | 'delete') {
 watch(
   () => route.params.companyId,
   () => {
-    activeLetter.value = 'all';
-    searchQuery.value = '';
+    activeLetter.value = "all";
+    searchQuery.value = "";
     clearSelection();
     load();
-  }
+  },
 );
 
 onMounted(() => {

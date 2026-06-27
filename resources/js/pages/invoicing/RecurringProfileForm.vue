@@ -379,19 +379,28 @@ import StockWarehouseSelect from '../../components/invoicing/StockWarehouseSelec
 import { defaultWarehouseId, type WarehouseRow } from '../../composables/useCompanyWarehouse';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import { DEFAULT_INVOICE_LINE_UNIT } from '../../composables/useInvoiceLineUnits';
+import { useLocalRecurringProfileSupport } from '../../composables/useLocalRecurringProfile';
 import api from '../../services/api';
+import { useInvoicingSaveFeedback } from '../../composables/useInvoicingSaveFeedback';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import { appSettingsFromCompany } from '../../composables/useCompanyAppSettings';
 import { companyCurrencyOptions } from '../../config/companyCurrencies';
 import {
   RECURRING_INVOICE_NUMBER_TOKEN,
+  RECURRING_VARIABLE_SYMBOL_TOKEN,
   RECURRING_PLACEHOLDER_TOKENS,
 } from '../../composables/useInvoicingPlaceholders';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
+import type { RecurringProfileId } from '../../evolu/schema';
+import type { RecurringProfileSavePayload } from '../../evolu/recurringCrud';
 
 const { t, locale } = useI18n();
+const { notifySaved } = useInvoicingSaveFeedback();
 const route = useRoute();
 const router = useRouter();
 const { companyId, rememberCompany } = useInvoicingLayout();
+const localFirst = isInvoicingLocalFirst();
+const localSupport = localFirst ? useLocalRecurringProfileSupport(companyId) : null;
 
 const profileId = computed(() => route.params.profileId as string | undefined);
 const isNew = computed(() => !profileId.value);
@@ -435,7 +444,7 @@ const form = reactive({
   repeat_indefinitely: true,
   issue_last_day_of_month: false,
   title: `Faktúra ${RECURRING_INVOICE_NUMBER_TOKEN}`,
-  variable_symbol: RECURRING_INVOICE_NUMBER_TOKEN,
+  variable_symbol: RECURRING_VARIABLE_SYMBOL_TOKEN,
   constant_symbol: '',
   payment_terms_days: 14,
   delivery_date_mode: 'on_issue',
@@ -475,6 +484,12 @@ function onContactCreated(contact: Record<string, unknown>) {
   if (!id) return;
   contacts.value = [...contacts.value, contact];
   form.company_contact_id = id;
+  if (localFirst && localSupport) {
+    void localSupport.refreshAll().then(() => {
+      contacts.value = localSupport.contactsForCompany();
+      form.company_contact_id = id;
+    });
+  }
 }
 
 const defaultVat = computed(() => Number(company.value?.vat_rate_default ?? 23));
@@ -595,7 +610,26 @@ function applyPaymentDefaults() {
   }
 }
 
-function payload() {
+function payload(): RecurringProfileSavePayload {
+  return {
+    ...form,
+    tags: tagsInput.value
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+    lines: form.lines.map((l) => ({
+      name: l.name,
+      description: l.description || null,
+      quantity: l.quantity,
+      unit: l.unit,
+      unit_price: l.unit_price,
+      line_discount_percent: l.line_discount_percent || 0,
+      tax_rate: l.tax_rate ?? defaultVat.value,
+    })),
+  };
+}
+
+function serverPayload() {
   return {
     ...form,
     tags: tagsInput.value
@@ -616,7 +650,26 @@ function payload() {
   };
 }
 
+function recurringTaxOptions() {
+  return {
+    defaultVat: defaultVat.value,
+    lineTaxApplies: () => Boolean(company.value?.vat_payer),
+    lineTaxRate: (line: { tax_rate?: number }) => Number(line.tax_rate) || defaultVat.value,
+  };
+}
+
 async function loadCompany() {
+  if (localFirst && localSupport) {
+    await localSupport.refreshAll();
+    company.value = localSupport.companyApi();
+    contacts.value = localSupport.contactsForCompany();
+    linkedStores.value = company.value?.stores ?? [];
+    const app = appSettingsFromCompany(company.value);
+    if (!form.constant_symbol) form.constant_symbol = app.default_constant_symbol;
+    if (!form.note_footer) form.note_footer = company.value?.legal_footer_note || '';
+    applyPaymentDefaults();
+    return;
+  }
   const res = await api.get(`/invoicing/companies/${companyId.value}`);
   company.value = res.data.data;
   linkedStores.value = company.value?.stores ?? [];
@@ -633,10 +686,23 @@ async function loadCompany() {
 }
 
 async function loadProfile() {
+  if (localFirst && localSupport) {
+    await localSupport.refreshAll();
+    const d = localSupport.profileApi(profileId.value!);
+    if (!d) {
+      error.value = t('common.error');
+      return;
+    }
+    applyProfileData(d);
+    return;
+  }
   const res = await api.get(
     `/invoicing/companies/${companyId.value}/recurring-profiles/${profileId.value}`
   );
-  const d = res.data.data;
+  applyProfileData(res.data.data);
+}
+
+function applyProfileData(d: Record<string, any>) {
   Object.assign(form, {
     document_type: d.document_type,
     company_contact_id: d.company_contact_id || '',
@@ -683,10 +749,36 @@ async function save() {
   saving.value = true;
   error.value = '';
   try {
+    if (localFirst && localSupport) {
+      const tax = recurringTaxOptions();
+      if (isNew.value) {
+        const result = localSupport.saveProfile(payload(), tax);
+        if (!result.ok) {
+          error.value = t('common.error');
+          return;
+        }
+        router.push({
+          name: 'invoicing-recurring-edit',
+          params: { companyId: companyId.value, profileId: result.value.id },
+        });
+      } else {
+        const result = localSupport.saveProfile(payload(), {
+          ...tax,
+          profileId: profileId.value as RecurringProfileId,
+        });
+        if (!result.ok) {
+          error.value = t('common.error');
+          return;
+        }
+        await loadProfile();
+        notifySaved('invoicing.changes_saved');
+      }
+      return;
+    }
     if (isNew.value) {
       const res = await api.post(
         `/invoicing/companies/${companyId.value}/recurring-profiles`,
-        payload()
+        serverPayload()
       );
       router.push({
         name: 'invoicing-recurring-edit',
@@ -695,9 +787,10 @@ async function save() {
     } else {
       await api.patch(
         `/invoicing/companies/${companyId.value}/recurring-profiles/${profileId.value}`,
-        payload()
+        serverPayload()
       );
       await loadProfile();
+      notifySaved('invoicing.changes_saved');
     }
   } catch (e: any) {
     error.value = e?.response?.data?.message || t('common.error');
@@ -711,6 +804,20 @@ async function generateNow() {
   saving.value = true;
   error.value = '';
   try {
+    if (localFirst && localSupport) {
+      const result = await localSupport.generateNow(profileId.value as RecurringProfileId, recurringTaxOptions());
+      if (!result.ok) {
+        error.value = t('common.error');
+        return;
+      }
+      const routeName =
+        form.document_type === 'proforma' ? 'invoicing-proforma-show' : 'invoicing-invoice-show';
+      router.push({
+        name: routeName,
+        params: { companyId: companyId.value, documentId: result.value.documentId },
+      });
+      return;
+    }
     const res = await api.post(
       `/invoicing/companies/${companyId.value}/recurring-profiles/${profileId.value}/generate`
     );
@@ -730,6 +837,15 @@ async function generateNow() {
 
 async function remove() {
   if (!profileId.value || !window.confirm(t('invoicing.confirm_delete'))) return;
+  if (localFirst && localSupport) {
+    const result = localSupport.deleteProfile(profileId.value as RecurringProfileId);
+    if (!result.ok) {
+      error.value = t('common.error');
+      return;
+    }
+    router.push({ name: 'invoicing-recurring', params: { companyId: companyId.value } });
+    return;
+  }
   await api.delete(
     `/invoicing/companies/${companyId.value}/recurring-profiles/${profileId.value}`
   );

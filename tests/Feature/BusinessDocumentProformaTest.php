@@ -111,7 +111,7 @@ class BusinessDocumentProformaTest extends TestCase
         $response->assertJsonPath('data.status', 'paid');
         $invoiceNumber = $response->json('data.number');
         $this->assertNotNull($invoiceNumber);
-        $this->assertStringStartsWith('2026', $invoiceNumber);
+        $this->assertStringStartsWith('INV', $invoiceNumber);
         $response->assertJsonPath('data.title', "Faktúra {$invoiceNumber}");
         $this->assertStringNotContainsString('Zálohová', $response->json('data.title'));
         $this->assertStringContainsString($proforma->number, $response->json('data.note_above_lines'));
@@ -155,7 +155,7 @@ class BusinessDocumentProformaTest extends TestCase
             ->pluck('number')
             ->all();
 
-        $this->assertSame(["ZAL{$year}0001", "ZAL{$year}0002"], $numbers);
+        $this->assertSame(["PF{$year}0001", "PF{$year}0002"], $numbers);
     }
 
     #[Test]
@@ -176,7 +176,7 @@ class BusinessDocumentProformaTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.status', 'paid');
         $this->assertNotNull($response->json('data.number'));
-        $this->assertStringStartsWith('ZAL', $response->json('data.number'));
+        $this->assertStringStartsWith('PF', $response->json('data.number'));
     }
 
     #[Test]
@@ -186,7 +186,7 @@ class BusinessDocumentProformaTest extends TestCase
             'company_id' => $this->company->id,
             'type' => BusinessDocumentType::Proforma,
             'status' => BusinessDocumentStatus::Issued,
-            'number' => 'ZAL20260001',
+            'number' => 'PF20260001',
             'total' => 100,
             'currency' => 'EUR',
         ]);

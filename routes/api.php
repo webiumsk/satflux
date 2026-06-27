@@ -15,6 +15,8 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\NostrAuthController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\CashuController;
+use App\Http\Controllers\ChoralaController;
+use App\Http\Controllers\ChoralaProxyController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\EshopIntegrationController;
@@ -33,6 +35,10 @@ use App\Http\Controllers\Invoicing\CompanyEmailSettingsController;
 use App\Http\Controllers\Invoicing\CompanyRegistryController;
 use App\Http\Controllers\Invoicing\CompanyStockItemController;
 use App\Http\Controllers\Invoicing\CompanyWarehouseController;
+use App\Http\Controllers\Invoicing\EphemeralBusinessDocumentController;
+use App\Http\Controllers\Invoicing\IntegrationDocumentInboxController;
+use App\Http\Controllers\Invoicing\InvoicingMigrationController;
+use App\Http\Controllers\Invoicing\StoreDocumentSequenceController;
 use App\Http\Controllers\Invoicing\UsSalesTaxController;
 use App\Http\Controllers\Invoicing\ViesValidationController;
 use App\Http\Controllers\LightningAddressController;
@@ -230,6 +236,7 @@ Route::post('/webhooks/bank-inbound', [\App\Http\Controllers\Invoicing\BankInbou
 Route::middleware(['throttle:10,1'])->group(function () {
     Route::post('/public/eshop/connect', [EshopIntegrationController::class, 'connect']);
     Route::get('/public/eshop/token/{token}', [EshopIntegrationController::class, 'getToken']);
+    Route::get('/integrations/woocommerce/oauth-exchange', [\App\Http\Controllers\Integrations\WooCommerceConnectController::class, 'exchangeConnectCode']);
 });
 
 // WooCommerce plugin integration API (Bearer integration token)
@@ -286,10 +293,16 @@ Route::get('/nostr-auth/enabled', [NostrAuthController::class, 'enabled']);
 Route::get('/nostr-auth/challenge-status/{id}', [NostrAuthController::class, 'challengeStatus'])
     ->middleware(['throttle:60,1']);
 
-// Authenticated routes (email must be verified — classic registration and API use)
+// Chorala widget public API proxy (localhost / dev - avoids cross-origin CORS to chorala.com)
+Route::any('/chorala-proxy/v1/{path}', [ChoralaProxyController::class, 'forward'])
+    ->where('path', '.*')
+    ->middleware(['throttle:60,1']);
+
+// Authenticated routes (email must be verified - classic registration and API use)
 Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-user'])->group(function () {
     // User/Account routes
     Route::get('/user', [AccountController::class, 'user']);
+    Route::get('/chorala/widget-token', [ChoralaController::class, 'widgetToken']);
     Route::post('/lnurl-auth/link-challenge', [LnurlAuthController::class, 'linkChallenge']);
     Route::post('/lnurl-auth/reveal-confirm-challenge', [LnurlAuthController::class, 'revealConfirmChallenge']);
     Route::post('/nostr-auth/link-challenge', [NostrAuthController::class, 'linkChallenge']);
@@ -314,8 +327,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
     Route::patch('/messages/{id}/read', [MessageController::class, 'markAsRead'])->where('id', '[a-zA-Z0-9_-]+');
     Route::post('/messages/mark-all-read', [MessageController::class, 'markAllAsRead']);
 
-    // Business invoicing (Pro+)
-    Route::middleware([EnsurePlanAllowsBusinessInvoicing::class, 'guest.restrict'])
+    // Business invoicing (Pro+; seed accounts may use local-first + ephemeral bridges)
+    Route::middleware([EnsurePlanAllowsBusinessInvoicing::class])
         ->prefix('invoicing')
         ->group(function () {
             Route::middleware(['throttle:30,1'])->group(function () {
@@ -327,6 +340,24 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             });
 
             Route::get('/companies', [CompanyController::class, 'index']);
+            Route::get('/migration/status', [InvoicingMigrationController::class, 'status']);
+            Route::get('/migration/export', [InvoicingMigrationController::class, 'export'])
+                ->middleware('throttle:5,60');
+            Route::get('/migration/export-attachments', [InvoicingMigrationController::class, 'exportAttachments'])
+                ->middleware('throttle:3,60');
+            Route::post('/ephemeral/pdf', [EphemeralBusinessDocumentController::class, 'pdfWithoutCompany']);
+            Route::post('/ephemeral/email-preview', [EphemeralBusinessDocumentController::class, 'emailPreviewWithoutCompany']);
+            Route::post('/ephemeral/send-email', [EphemeralBusinessDocumentController::class, 'sendEmailWithoutCompany']);
+            Route::post('/ephemeral/isdoc', [EphemeralBusinessDocumentController::class, 'isdocWithoutCompany']);
+            Route::post('/ephemeral/ubl', [EphemeralBusinessDocumentController::class, 'ublWithoutCompany']);
+            Route::post('/ephemeral/btcpay-checkout', [EphemeralBusinessDocumentController::class, 'btcpayCheckoutWithoutCompany']);
+            Route::get('/ephemeral/btcpay-status', [EphemeralBusinessDocumentController::class, 'btcpayStatus']);
+            Route::get('/ephemeral/efaktura/bridge', [EphemeralBusinessDocumentController::class, 'efakturaBridge']);
+            Route::get('/ephemeral/efaktura/status', [EphemeralBusinessDocumentController::class, 'efakturaStatus']);
+            Route::post('/ephemeral/efaktura/send', [EphemeralBusinessDocumentController::class, 'efakturaSendWithoutCompany']);
+            Route::post('/ephemeral/efaktura/refresh', [EphemeralBusinessDocumentController::class, 'efakturaRefreshWithoutCompany']);
+            Route::post('/ephemeral/bulk/pdf-zip', [EphemeralBusinessDocumentController::class, 'bulkPdfZipWithoutCompany']);
+            Route::post('/ephemeral/bulk/pdf-merge', [EphemeralBusinessDocumentController::class, 'bulkPdfMergeWithoutCompany']);
             Route::post('/companies', [CompanyController::class, 'store'])
                 ->middleware(EnsureCompanyLimit::class);
             Route::get('/companies/{company}', [CompanyController::class, 'show'])
@@ -440,6 +471,26 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::post('/companies/{company}/recurring-profiles/{recurringProfile}/generate', [\App\Http\Controllers\Invoicing\BusinessRecurringProfileController::class, 'generateNow'])
                 ->middleware(EnsureCompanyOwnership::class);
 
+            Route::get('/integration-inbox/deeplink', [IntegrationDocumentInboxController::class, 'resolveDeepLink']);
+
+            Route::get('/companies/{company}/integration-inbox', [IntegrationDocumentInboxController::class, 'index'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/integration-inbox/{inbox}/dismiss', [IntegrationDocumentInboxController::class, 'dismiss'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/integration-inbox/{inbox}/imported', [IntegrationDocumentInboxController::class, 'markImported'])
+                ->middleware(EnsureCompanyOwnership::class);
+
+            Route::get('/stores/{store}/integration-inbox', [IntegrationDocumentInboxController::class, 'indexForStore'])
+                ->middleware(EnsureStoreOwnership::class);
+            Route::post('/stores/{store}/integration-inbox/{inbox}/dismiss', [IntegrationDocumentInboxController::class, 'dismissForStore'])
+                ->middleware(EnsureStoreOwnership::class);
+            Route::post('/stores/{store}/integration-inbox/{inbox}/imported', [IntegrationDocumentInboxController::class, 'markImportedForStore'])
+                ->middleware(EnsureStoreOwnership::class);
+            Route::get('/stores/{store}/number-series/preview', [StoreDocumentSequenceController::class, 'preview'])
+                ->middleware(EnsureStoreOwnership::class);
+            Route::post('/stores/{store}/number-series/reserve', [StoreDocumentSequenceController::class, 'reserve'])
+                ->middleware(EnsureStoreOwnership::class);
+
             Route::get('/companies/{company}/documents/import/fields', [\App\Http\Controllers\Invoicing\BusinessDocumentImportController::class, 'fields'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::get('/companies/{company}/documents/import/example', [\App\Http\Controllers\Invoicing\BusinessDocumentImportController::class, 'example'])
@@ -454,6 +505,26 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::post('/companies/{company}/documents/bulk', [BusinessDocumentController::class, 'bulk'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/documents', [BusinessDocumentController::class, 'store'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/pdf', [EphemeralBusinessDocumentController::class, 'pdf'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/email-preview', [EphemeralBusinessDocumentController::class, 'emailPreview'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/send-email', [EphemeralBusinessDocumentController::class, 'sendEmail'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/isdoc', [EphemeralBusinessDocumentController::class, 'isdoc'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/ubl', [EphemeralBusinessDocumentController::class, 'ubl'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/btcpay-checkout', [EphemeralBusinessDocumentController::class, 'btcpayCheckout'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/efaktura/send', [EphemeralBusinessDocumentController::class, 'efakturaSend'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/efaktura/refresh', [EphemeralBusinessDocumentController::class, 'efakturaRefresh'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/bulk/pdf-zip', [EphemeralBusinessDocumentController::class, 'bulkPdfZip'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/documents/ephemeral/bulk/pdf-merge', [EphemeralBusinessDocumentController::class, 'bulkPdfMerge'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/documents/credit-note-from-invoice', [BusinessDocumentController::class, 'createCreditNoteFromInvoice'])
                 ->middleware(EnsureCompanyOwnership::class);

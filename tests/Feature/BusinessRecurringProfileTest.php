@@ -126,7 +126,7 @@ class BusinessRecurringProfileTest extends TestCase
         $response->assertOk();
         $year = now()->format('Y');
         $response->assertJsonPath('data.document.status', 'issued');
-        $this->assertStringStartsWith($year, $response->json('data.document.number'));
+        $this->assertStringStartsWith("INV{$year}", $response->json('data.document.number'));
         $this->assertStringContainsString($year, $response->json('data.document.title'));
         $this->assertStringContainsString('Služba', $response->json('data.document.lines.0.name'));
     }

@@ -140,7 +140,7 @@ class StoreDashboardController extends Controller
                     return ['name' => $name, 'count' => $data['count'], 'total' => $data['total'], 'currency' => $data['currency']];
                 }, array_keys($itemCounts), $itemCounts), 0, 5);
 
-                // Per-source aggregates (for Pro filter and dashboard)
+                // Per-source aggregates (for PRO filter and dashboard)
                 $bySource = [];
                 foreach (InvoiceSourceService::SOURCES as $sourceKey) {
                     $sourceInvoices = $invoicesBySource[$sourceKey] ?? [];

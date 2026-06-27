@@ -44,6 +44,10 @@ class BusinessDocumentBulkService
 
         $query = $this->applyAdvancedFilters($query, $request);
 
+        if ($request->filled('company_contact_id')) {
+            $query->where('company_contact_id', $request->get('company_contact_id'));
+        }
+
         if ($type === BusinessDocumentType::Quote->value) {
             return $this->applyQuoteFilter($query, $filter);
         }

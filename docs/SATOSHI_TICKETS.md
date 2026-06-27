@@ -1,6 +1,6 @@
 # Satoshi Tickets (BTCPay plugin)
 
-Satflux neimplementuje tickety lokálne — volá Greenfield API pluginu **Satoshi Tickets** na BTCPay Serveri.
+Satflux neimplementuje tickety lokálne - volá Greenfield API pluginu **Satoshi Tickets** na BTCPay Serveri.
 
 ## Ktorý plugin nasadiť
 
@@ -20,7 +20,7 @@ Na produkcii používaj **Webium fork**, nie čistý build od TChukwuleta:
 |-------------------------|------------------------|---------------------------|
 | Event raffle bundle | ≥ **1.3.6.4** (fork; reflection ValueTuple) | ≥ **1.3.1.0** (`IRaffleEventBundleService`) |
 
-Ak create event vráti `BTCPay Raffle plugin … required`, na serveri beží starý Raffle (napr. 1.3.0.2) bez bundle API — nahraj novší `.btcpay` a reštartuj BTCPay.
+Ak create event vráti `BTCPay Raffle plugin … required`, na serveri beží starý Raffle (napr. 1.3.0.2) bez bundle API - nahraj novší `.btcpay` a reštartuj BTCPay.
 
 ## Kód v Satflux
 

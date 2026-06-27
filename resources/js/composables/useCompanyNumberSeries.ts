@@ -1,5 +1,5 @@
 export type NumberSeriesRow = {
-  id: number;
+  id: number | string;
   company_id: string;
   name: string;
   document_type: string;
@@ -31,20 +31,22 @@ export const DOCUMENT_TYPE_OPTIONS = [
 ] as const;
 
 export const FORMAT_PRESETS = [
-  'RRRRCCCC',
-  'RRRRMMCCCC',
-  'DODRRCCC',
-  'ZALRRRRCCCC',
-  'PONRRRRCCC',
-  'OBJRRRRMMCCC',
-  'VOBJRRRRCCC',
+  'INVYYYYNNNN',
+  'CNYYYYNNNN',
+  'PFYYYYNNNN',
+  'DELYYYYNNNN',
+  'QTYYYYNNNN',
+  'POYYYYNNNN',
+  'SOYYYYNNNN',
+  'EXPYYYYNNNN',
+  'YYYYNNNN',
 ] as const;
 
 export function emptySeriesForm(): NumberSeriesFormState {
   return {
     name: '',
     document_type: 'invoice',
-    format: 'RRRRCCCC',
+    format: 'INVYYYYNNNN',
     reset_period: 'yearly',
     is_default: false,
     last_number: 0,

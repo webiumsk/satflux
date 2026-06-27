@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Invoicing;
 
 use App\Enums\BusinessDocumentType;
+use App\Support\Invoicing\BankSymbolNormalizer;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -11,6 +12,15 @@ class StoreBusinessDocumentRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('variable_symbol')) {
+            $this->merge([
+                'variable_symbol' => BankSymbolNormalizer::variableSymbol($this->input('variable_symbol')),
+            ]);
+        }
     }
 
     public function rules(): array

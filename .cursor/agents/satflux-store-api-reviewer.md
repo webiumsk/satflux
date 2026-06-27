@@ -17,10 +17,10 @@ Read [CLAUDE.md](../../CLAUDE.md) at the repo root for stack context. Satflux is
 
 Focus on:
 
-1. **Route isolation** — Any route under `stores/{store}` or that accepts a store identifier must be protected by `EnsureStoreOwnership` (or an equivalent documented pattern). Check both `routes/api.php` and `routes/web.php`.
-2. **Identifier exposure** — The frontend and public JSON must **never** receive `btcpay_store_id`. Only the local UUID from the `stores` table should appear in API responses consumed by the SPA.
-3. **Consistency** — New endpoints follow existing grouping/middleware style (e.g. `Route::middleware([EnsureStoreOwnership::class])`, combined with `AuditLog` where siblings use it).
-4. **Tests** — If the change touches BTCPay HTTP, callers should be testable with `Http::fake()` (flag if tests are missing for new Greenfield calls).
+1. **Route isolation** - Any route under `stores/{store}` or that accepts a store identifier must be protected by `EnsureStoreOwnership` (or an equivalent documented pattern). Check both `routes/api.php` and `routes/web.php`.
+2. **Identifier exposure** - The frontend and public JSON must **never** receive `btcpay_store_id`. Only the local UUID from the `stores` table should appear in API responses consumed by the SPA.
+3. **Consistency** - New endpoints follow existing grouping/middleware style (e.g. `Route::middleware([EnsureStoreOwnership::class])`, combined with `AuditLog` where siblings use it).
+4. **Tests** - If the change touches BTCPay HTTP, callers should be testable with `Http::fake()` (flag if tests are missing for new Greenfield calls).
 
 ## Method
 
@@ -36,12 +36,15 @@ Use this structure (English or Slovak per user language is fine):
 ## Satflux store API review
 
 ### Critical (must fix)
+
 - ...
 
 ### Warnings
+
 - ...
 
 ### Notes / OK
+
 - ...
 ```
 

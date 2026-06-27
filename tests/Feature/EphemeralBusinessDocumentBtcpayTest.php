@@ -1,0 +1,157 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\AuditLog;
+use App\Models\Store;
+use App\Models\Subscription;
+use App\Models\SubscriptionPlan;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
+
+class EphemeralBusinessDocumentBtcpayTest extends TestCase
+{
+    use RefreshDatabase;
+
+    #[Test]
+    public function authenticated_user_can_create_ephemeral_btcpay_checkout_without_persisting_document(): void
+    {
+        Http::fake([
+            '*' => Http::response([
+                'id' => 'btcpay-inv-ephemeral',
+                'checkoutLink' => 'https://btcpay.example/i/ephemeral',
+            ], 200),
+        ]);
+
+        $user = $this->createProUser();
+        $user->update(['btcpay_api_key' => 'test-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'btcpay_store_id' => 'btcpay-store-1',
+        ]);
+
+        $payload = $this->ephemeralPayload();
+        $payload['store_id'] = $store->id;
+        $payload['evolu_document_id'] = 'evolu-doc-123';
+        $payload['document']['payment_btc_enabled'] = true;
+
+        $response = $this->actingAs($user)->postJson('/api/invoicing/ephemeral/btcpay-checkout', $payload);
+
+        $response->assertOk()
+            ->assertJsonPath('data.checkout_link', 'https://btcpay.example/i/ephemeral')
+            ->assertJsonPath('data.btcpay_invoice_id', 'btcpay-inv-ephemeral');
+        $this->assertDatabaseCount('business_documents', 0);
+        $this->assertDatabaseHas('ephemeral_btcpay_checkouts', [
+            'user_id' => $user->id,
+            'store_id' => $store->id,
+            'evolu_document_id' => 'evolu-doc-123',
+            'btcpay_invoice_id' => 'btcpay-inv-ephemeral',
+            'status' => 'pending',
+        ]);
+
+        $auditLog = AuditLog::query()
+            ->where('user_id', $user->id)
+            ->where('action', 'business_document.ephemeral_btcpay_checkout')
+            ->first();
+        $this->assertNotNull($auditLog);
+        $this->assertSame('company', $auditLog->target_type);
+        $this->assertTrue(Str::isUuid((string) $auditLog->target_id));
+    }
+
+    #[Test]
+    public function authenticated_user_can_poll_ephemeral_btcpay_status(): void
+    {
+        $user = $this->createProUser();
+        $store = Store::factory()->create(['user_id' => $user->id]);
+
+        \App\Models\EphemeralBtcpayCheckout::query()->create([
+            'user_id' => $user->id,
+            'store_id' => $store->id,
+            'btcpay_invoice_id' => 'btcpay-inv-paid',
+            'evolu_document_id' => 'evolu-doc-abc',
+            'status' => 'paid',
+            'paid_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->getJson('/api/invoicing/ephemeral/btcpay-status?'.http_build_query([
+            'evolu_document_id' => 'evolu-doc-abc',
+            'btcpay_invoice_id' => 'btcpay-inv-paid',
+        ]));
+
+        $response->assertOk()
+            ->assertJsonPath('data.status', 'paid')
+            ->assertJsonPath('data.evolu_document_id', 'evolu-doc-abc');
+    }
+
+    protected function createProUser(): User
+    {
+        $plan = SubscriptionPlan::create([
+            'code' => 'pro',
+            'name' => 'pro',
+            'display_name' => 'Pro',
+            'price_eur' => 99,
+            'billing_period' => 'year',
+            'max_stores' => 3,
+            'max_api_keys' => 3,
+            'max_ln_addresses' => null,
+            'features' => ['business_invoicing'],
+            'is_active' => true,
+        ]);
+
+        $user = User::factory()->create();
+        Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'status' => 'active',
+            'starts_at' => now(),
+            'expires_at' => now()->addYear(),
+        ]);
+
+        return $user;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function ephemeralPayload(): array
+    {
+        return [
+            'company' => [
+                'legal_name' => 'Local Studio s.r.o.',
+                'street' => 'Main 1',
+                'city' => 'Bratislava',
+                'postal_code' => '81101',
+                'country' => 'SK',
+                'default_currency' => 'EUR',
+                'jurisdiction' => 'eu_sk',
+            ],
+            'contact' => [
+                'name' => 'Client Ltd',
+                'email' => 'client@example.com',
+            ],
+            'document' => [
+                'type' => 'invoice',
+                'status' => 'issued',
+                'number' => 'LOCAL-2026-001',
+                'issue_date' => now()->toDateString(),
+                'due_date' => now()->addDays(14)->toDateString(),
+                'currency' => 'EUR',
+                'discount_percent' => 0,
+                'pdf_locale' => 'sk',
+            ],
+            'lines' => [
+                [
+                    'name' => 'Consulting',
+                    'quantity' => 1,
+                    'unit' => 'h',
+                    'unit_price' => 100,
+                    'tax_rate' => 0,
+                ],
+            ],
+        ];
+    }
+}

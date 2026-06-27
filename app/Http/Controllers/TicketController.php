@@ -62,7 +62,7 @@ class TicketController extends Controller
 
     /**
      * Create a new event.
-     * Free plan: max 1 event per store. Pro / admin / support: unlimited.
+     * Free plan: max 1 event per store. PRO / admin / support: unlimited.
      */
     public function createEvent(Request $request, Store $store)
     {

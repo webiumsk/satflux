@@ -25,7 +25,17 @@ class LoginController extends Controller
             ]);
         }
 
-        if (! Auth::user()->hasVerifiedEmail() && ! (bool) (Auth::user()->is_guest ?? false)) {
+        $user = Auth::user();
+
+        if (! $user->canUsePasswordLogin()) {
+            Auth::logout();
+
+            throw ValidationException::withMessages([
+                'email' => __('messages.password_login_use_recovery_phrase'),
+            ]);
+        }
+
+        if (! $user->hasVerifiedEmail() && ! (bool) ($user->is_guest ?? false)) {
             Auth::logout();
 
             throw ValidationException::withMessages([
@@ -39,11 +49,12 @@ class LoginController extends Controller
             $request->session()->regenerate();
         }
 
-        Auth::user()->update(['last_login_at' => now()]);
+        $user->update(['last_login_at' => now()]);
 
         return response()->json([
             'message' => __('messages.login_successful'),
-            'user' => Auth::user(),
+            'user' => $user,
+            'requires_recovery_migration' => $user->requiresRecoveryMigration(),
         ]);
     }
 

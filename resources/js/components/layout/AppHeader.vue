@@ -77,36 +77,22 @@
             </component>
             <component
               :is="isInertia ? Link : RouterLink"
-              :href="isInertia ? '/invoicing' : undefined"
-              :to="!isInertia ? '/invoicing' : undefined"
+              :href="isInertia ? dashboardInvoicingTabPath : undefined"
+              :to="!isInertia ? dashboardInvoicingTabRoute : undefined"
               class="px-3 py-2 rounded-lg text-sm font-medium transition-all inline-flex items-center gap-1.5"
               :class="
-                isActive('/invoicing')
+                isInvoicingNavActiveState
                   ? 'text-white bg-indigo-600/20 text-indigo-300'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               "
+              @click="closeMobileMenu"
             >
-              <svg
-                class="w-4 h-4 shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
               {{ t("header.invoicing") }}
               <span
                 v-if="!canBusinessInvoicing"
                 class="text-[10px] uppercase tracking-wide text-amber-400/90"
               >Pro /</span>
               <span
-                
                 class="text-[10px] uppercase tracking-wide text-green-400/90"
               >BETA</span>
             </component>
@@ -472,12 +458,12 @@
           </component>
           <component
             :is="isInertia ? Link : RouterLink"
-            :href="isInertia ? '/invoicing' : undefined"
-            :to="!isInertia ? '/invoicing' : undefined"
+            :href="isInertia ? dashboardInvoicingTabPath : undefined"
+            :to="!isInertia ? dashboardInvoicingTabRoute : undefined"
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors"
             :class="
-              isActive('/invoicing')
+              isInvoicingNavActiveState
                 ? 'bg-indigo-600/20 text-indigo-300'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
             "
@@ -681,6 +667,11 @@ import { Link, router as inertiaRouter, usePage } from "@inertiajs/vue3";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
 import { useBusinessInvoicing } from "../../composables/useBusinessInvoicing";
+import {
+  dashboardInvoicingTabPath,
+  dashboardInvoicingTabRoute,
+  isInvoicingNavActive,
+} from "../../utils/dashboardInvoicingTab";
 import LanguageSwitcher from "../LanguageSwitcher.vue";
 import api from "../../services/api";
 import { getEcho } from "../../echo";
@@ -721,6 +712,19 @@ const userName = computed(() => {
     return authStore.user.email.split("@")[0];
   }
   return "";
+});
+
+const isInvoicingNavActiveState = computed(() => {
+  if (isInertia && page) {
+    const url = page.url;
+    const path = url.split("?")[0] ?? url;
+    const params = new URLSearchParams(url.includes("?") ? url.split("?")[1] : "");
+    return isInvoicingNavActive(path, params.get("tab"));
+  }
+  if (route) {
+    return isInvoicingNavActive(route.path, route.query.tab);
+  }
+  return false;
 });
 
 const closeUserMenu = () => {
@@ -771,10 +775,20 @@ const loadSupportCount = async () => {
 };
 
 const loadMessageCount = async () => {
+  if (!authStore.user) {
+    messageCount.value = 0;
+    return;
+  }
+
   try {
     const response = await api.get("/messages/count");
     messageCount.value = response.data.data?.unread ?? 0;
-  } catch (error) {
+  } catch (error: unknown) {
+    const status = (error as { response?: { status?: number } })?.response?.status;
+    if (status === 401 || status === 403) {
+      messageCount.value = 0;
+      return;
+    }
     console.error("Failed to load message count:", error);
     messageCount.value = 0;
   }

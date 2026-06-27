@@ -32,7 +32,7 @@ class StatsController extends Controller
     }
 
     /**
-     * Advanced stats (per store, per PoS, overall). Pro only.
+     * Advanced stats (per store, per PoS, overall). PRO only.
      */
     public function advanced(Request $request)
     {

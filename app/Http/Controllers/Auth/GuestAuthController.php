@@ -36,11 +36,10 @@ class GuestAuthController extends Controller
             $existingUser = $request->user();
             $existingStoreId = $this->guestProvisioningService->resolvePrimaryStoreId($existingUser);
 
-            if (($existingUser->is_guest ?? false)
-                && $recoveryPkHex
+            if ($recoveryPkHex
                 && Schema::hasColumn('users', 'guest_recovery_public_key')
                 && empty($existingUser->guest_recovery_public_key)) {
-                $existingUser = $this->guestProvisioningService->attachRecoveryKeyToGuest($existingUser, $recoveryPkHex);
+                $existingUser = $this->guestProvisioningService->attachRecoveryKey($existingUser, $recoveryPkHex);
             }
 
             return response()->json([

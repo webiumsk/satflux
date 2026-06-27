@@ -113,7 +113,7 @@ class InvoiceController extends Controller
 
         if ($format === 'xlsx' && ! $this->subscriptionService->canUseXlsxExport($request->user())) {
             return response()->json([
-                'message' => 'XLSX export is available in Pro and above. Please upgrade.',
+                'message' => 'XLSX export is available in PRO and above. Please upgrade.',
             ], 403);
         }
 
@@ -314,8 +314,23 @@ class InvoiceController extends Controller
             $sheet->setTitle('Invoices');
 
             $headers = [
-                'invoiceId', 'store', 'pos', 'createdTime', 'status', 'amount', 'currency',
-                'paidAmount', 'paidSats', 'paymentRate', 'tax', 'tip', 'discount', 'paymentMethod', 'buyerEmail', 'orderId', 'checkoutLink',
+                'invoiceId',
+                'store',
+                'pos',
+                'createdTime',
+                'status',
+                'amount',
+                'currency',
+                'paidAmount',
+                'paidSats',
+                'paymentRate',
+                'tax',
+                'tip',
+                'discount',
+                'paymentMethod',
+                'buyerEmail',
+                'orderId',
+                'checkoutLink',
             ];
             $sheet->fromArray($headers, null, 'A1');
 

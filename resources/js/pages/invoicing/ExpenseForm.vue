@@ -123,6 +123,9 @@
         @select-pending="selectPendingFile"
         @remove-pending="removePendingFile"
       />
+      <p v-if="localFirst" class="text-xs text-gray-500">
+        {{ t('invoicing.local_first_expenses_isdoc_bridge') }}
+      </p>
     </div>
   </InvoicingPageShell>
 </template>
@@ -139,7 +142,12 @@ import {
   useExpenseIsdocAttachment,
   type ExpenseImportDraft,
 } from '../../composables/useExpenseIsdocAttachment';
+import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompanySummary';
+import { useInvoicingExpense } from '../../composables/useInvoicingExpenses';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
+import { insertLocalExpense, updateLocalExpense } from '../../evolu/expenseCrud';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
+import type { CompanyId, ExpenseId } from '../../evolu/schema';
 import api from '../../services/api';
 
 const { t } = useI18n();
@@ -148,6 +156,9 @@ const router = useRouter();
 const { companyId, rememberCompany } = useInvoicingLayout();
 const expenseId = computed(() => route.params.expenseId as string | undefined);
 const isNew = computed(() => route.name === 'invoicing-expense-new');
+const localFirst = isInvoicingLocalFirst();
+const expenseResource = useInvoicingExpense(companyId, expenseId);
+const { defaultCurrency } = useInvoicingCompanySummary();
 
 const {
   quota,
@@ -256,6 +267,28 @@ function expenseShowTo(id: string) {
 
 async function loadExpense() {
   if (isNew.value) return;
+  if (localFirst) {
+    await expenseResource.refresh();
+    const e = expenseResource.expense.value;
+    if (!e) return;
+    internalNumber.value = e.internal_number;
+    expenseLabel.value = e.internal_number + (e.title ? ` · ${e.title}` : '');
+    form.value = {
+      title: e.title || '',
+      external_number: e.external_number || '',
+      variable_symbol: e.variable_symbol || '',
+      constant_symbol: e.constant_symbol || '',
+      specific_symbol: e.specific_symbol || '',
+      issue_date: (e.issue_date || '').slice(0, 10),
+      delivery_date: (e.delivery_date || e.issue_date || '').slice(0, 10),
+      due_date: e.due_date ? e.due_date.slice(0, 10) : '',
+      total: parseFloat(e.total) || 0,
+      currency: e.currency || 'EUR',
+      internal_note: e.internal_note || '',
+      mark_paid: false,
+    };
+    return;
+  }
   const res = await api.get(`/invoicing/companies/${companyId.value}/expenses/${expenseId.value}`);
   const e = res.data.data;
   internalNumber.value = e.internal_number;
@@ -299,6 +332,36 @@ async function save() {
       mark_paid: isNew.value ? form.value.mark_paid : undefined,
     };
     let savedId: string;
+    if (localFirst && expenseResource.evolu) {
+      if (isNew.value) {
+        const result = insertLocalExpense(
+          expenseResource.evolu,
+          companyId.value as CompanyId,
+          payload,
+          expenseResource.expenseRows.value,
+        );
+        if (!result.ok) {
+          error.value = t('errors.generic');
+          return;
+        }
+        savedId = result.value.id;
+      } else {
+        const current = expenseResource.expenseRows.value.find((row) => row.id === expenseId.value);
+        const result = updateLocalExpense(
+          expenseResource.evolu,
+          expenseId.value! as ExpenseId,
+          payload,
+          current ?? null,
+        );
+        if (!result.ok) {
+          error.value = t('errors.generic');
+          return;
+        }
+        savedId = expenseId.value!;
+      }
+      await router.push(expenseShowTo(savedId));
+      return;
+    }
     if (isNew.value) {
       const res = await api.post(`/invoicing/companies/${companyId.value}/expenses`, payload);
       savedId = res.data.data.id;
@@ -318,9 +381,13 @@ async function save() {
 
 onMounted(async () => {
   rememberCompany(companyId.value);
-  await loadQuota();
-  const companyRes = await api.get(`/invoicing/companies/${companyId.value}`);
-  form.value.currency = companyRes.data.data?.default_currency || 'EUR';
+  if (!localFirst) {
+    await loadQuota();
+    const companyRes = await api.get(`/invoicing/companies/${companyId.value}`);
+    form.value.currency = companyRes.data.data?.default_currency || 'EUR';
+  } else {
+    form.value.currency = defaultCurrency.value || 'EUR';
+  }
   await loadExpense();
 });
 </script>

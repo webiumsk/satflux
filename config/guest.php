@@ -25,4 +25,27 @@ return [
     */
     'max_stores_check' => (int) env('GUEST_PURGE_MAX_STORES_CHECK', 10),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Seed-first registration
+    |--------------------------------------------------------------------------
+    |
+    | When true, direct email/password registration is disabled. New users start
+    | with a recovery phrase (guest provisioning) and may add email later.
+    */
+    'seed_first_registration' => filter_var(env('SEED_FIRST_REGISTRATION', false), FILTER_VALIDATE_BOOLEAN),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Guest upgrade without password
+    |--------------------------------------------------------------------------
+    |
+    | When true (default follows seed_first_registration), Guest → Free upgrade
+    | requires only a real email + verification; password is not collected.
+    */
+    'upgrade_email_only' => filter_var(
+        env('GUEST_UPGRADE_EMAIL_ONLY', env('SEED_FIRST_REGISTRATION', false)),
+        FILTER_VALIDATE_BOOLEAN,
+    ),
+
 ];

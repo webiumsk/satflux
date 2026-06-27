@@ -14,7 +14,7 @@ const OPERATOR_EIN = LEGAL_OPERATOR.ein;
 const SERVICE_NAME = LEGAL_OPERATOR.serviceName;
 const CONTACT_EMAIL = LEGAL_OPERATOR.contactEmail;
 const PRIVACY_EMAIL = LEGAL_OPERATOR.privacyEmail;
-const LAST_UPDATED = '2026-06-02';
+const LAST_UPDATED = '2026-06-15';
 
 const termsEn: LegalDocumentContent = {
   title: 'Terms of Service',
@@ -40,6 +40,7 @@ const termsEn: LegalDocumentContent = {
         '2.3 Wallet connections. Where you connect a third-party wallet provider (for example, Blink via a receive/read-scoped API credential), any custody of funds is solely a relationship between you and that provider. We are not a party to that relationship and assume no responsibility for it, including for that provider\'s availability, security, or solvency. Any API credential you supply is used only to generate payment requests and read settlement status; our systems have no technical capability to withdraw or move your funds. Where you use a self-custodial wallet (for example, Aqua), you retain full control of your keys and funds at all times.',
         '2.4 Software only; not a financial service. We provide software tools only. We are not a money services business, money transmitter, payment processor, payment institution, exchange, broker, or virtual asset service provider, and we do not provide custody, exchange, fiat on-ramp or off-ramp, or stablecoin services. We do not transmit, convert, or take possession of funds or virtual assets on your behalf.',
         '2.5 Your responsibilities. You are solely responsible for your own legal, regulatory, tax, accounting, and anti-money-laundering obligations arising from your acceptance of Bitcoin or Lightning payments, including any licensing, reporting, or record-keeping required in your jurisdiction. Nothing in the service constitutes financial, legal, or tax advice.',
+        '2.6 Local-first business invoicing (Pro). Where enabled, your business invoicing register (company profiles, customer contacts, invoices, expenses, and related settings) is stored primarily on your devices using end-to-end encrypted sync via a relay operator. SatFlux does not persist that register in our application database. When you use server-assisted features (for example PDF export, outbound email, structured export, or BTCPay checkout helpers), document data is transmitted only for the duration of that request and is not stored by us as issued business documents. You are responsible for safeguarding your recovery phrase and device backups.',
       ],
     },
     {
@@ -141,10 +142,12 @@ const privacyEn: LegalDocumentContent = {
     {
       heading: '2. Data we collect',
       paragraphs: [
-        'Account data: email, name (if provided), password hash, language preference, subscription status.',
-        'Usage data: logs, IP address, browser type, pages visited, API requests (for security and operations).',
-        'Merchant content: store settings, invoice and business document data you enter, including customer/contact details on issued documents.',
-        'Payment metadata: BTCPay invoice identifiers and settlement status (we do not receive your on-chain private keys).',
+        'Account data: email (including aliases used for registration), optional name, password hash, language preference, subscription status, and a recovery public key for seed-first accounts.',
+        'Usage data: logs, IP address, browser type, pages visited, and API requests (for security and operations).',
+        'BTCPay Stores: store settings and payment invoice metadata (we do not receive your wallet private keys or seed).',
+        'Local-first business invoicing (Pro): company profiles, customer contacts, issued invoices, expenses, and related settings are stored primarily in your browser and synchronized via end-to-end encryption through a relay operator. SatFlux does not store this invoicing register in our application database.',
+        'Ephemeral server processing: when you request PDF export, outbound email, structured file export, BTCPay checkout helpers, or similar features, relevant document data is sent to our servers only for the duration of that request and is not persisted as business documents afterward.',
+        'WooCommerce integration (if enabled): new order payloads may be queued briefly on our servers until you import them into local invoicing.',
       ],
     },
     {
@@ -163,6 +166,7 @@ const privacyEn: LegalDocumentContent = {
         'We use infrastructure and service providers that process data on our instructions.',
         'Infrastructure providers include hosting (Hetzner, EU), email delivery, and monitoring.',
         'BTCPay Server: we host and operate the BTCPay Server software infrastructure on your behalf. It processes payment metadata (such as invoice identifiers and settlement status) under your store configuration. We never receive, hold, or have access to your private keys, wallet seed, or funds.',
+        'E2EE sync relay (for example Evolu): encrypted payloads for local-first invoicing sync between your devices. SatFlux does not receive plaintext invoicing content from the relay; the relay operator processes encrypted blobs under its own terms.',
         'A current list of categories of processors is available on request at the privacy contact above.',
       ],
     },
@@ -177,7 +181,9 @@ const privacyEn: LegalDocumentContent = {
       heading: '6. Retention',
       paragraphs: [
         'Account data is kept while your account is active and for a reasonable period afterward for legal, tax, and dispute resolution purposes.',
-        'Issued business documents may retain buyer snapshots as described in our product documentation and data retention settings.',
+        'Local-first invoicing content is not retained on SatFlux servers after ephemeral processing completes.',
+        'Legacy server-mode invoicing data created before local-first rollout, if any remains on your account, may retain buyer snapshots as described in our product documentation until you delete it.',
+        'Ephemeral bridge metadata (for example BTCPay checkout linkage or e-faktura submission status) is kept only as long as needed for the feature.',
         'You may request deletion subject to legal retention obligations.',
       ],
     },
@@ -195,6 +201,7 @@ const privacyEn: LegalDocumentContent = {
       paragraphs: [
         'We use essential cookies for authentication (Laravel session, CSRF) and optional preferences (e.g. language).',
         'We do not use third-party advertising cookies on the authenticated app. Public pages may use privacy-friendly analytics if enabled.',
+        'When the Chorala feedback widget is enabled, it may set a functional cookie to attribute votes and submissions to your session.',
       ],
     },
     {
@@ -236,6 +243,7 @@ const termsSk: LegalDocumentContent = {
         '2.3 Pripojenia peňaženiek. Ak pripojíte poskytovateľa peňaženky tretej strany (napríklad Blink cez API credential s rozsahom receive/read), akákoľvek úschova prostriedkov je výhradne vzťahom medzi vami a týmto poskytovateľom. Nie sme stranou tohto vzťahu a nepreberáme zaň zodpovednosť, vrátane dostupnosti, bezpečnosti alebo solventnosti tohto poskytovateľa. Akýkoľvek API credential, ktorý poskytnete, používame len na generovanie platobných požiadaviek a čítanie stavu vyrovnania; naše systémy nemajú technickú možnosť vyberať ani presúvať vaše prostriedky. Pri samosprávnej (self-custodial) peňaženke (napríklad Aqua) máte vždy plnú kontrolu nad kľúčmi a prostriedkami.',
         '2.4 Iba softvér; nie finančná služba. Poskytujeme výhradne softvérové nástroje. Nie sme money services business, prevodca peňazí, payment processor, platobná inštitúcia, burza, broker ani poskytovateľ služieb s virtuálnymi aktívami a neposkytujeme úschovu, zmenáreň, fiat on-ramp ani off-ramp ani služby so stablecoinmi. Vo vašom mene neprenášame, nekonvertujeme ani nepreberáme prostriedky alebo virtuálne aktíva.',
         '2.5 Vaše povinnosti. Sami zodpovedáte za svoje právne, regulačné, daňové, účtovné a povinnosti v oblasti boja proti praniu špinavých peňazí vyplývajúce z prijímania platieb Bitcoinom alebo Lightning, vrátane licencií, výkazníctva alebo vedenia záznamov požadovaných vo vašej jurisdikcii. Nič v službe nepredstavuje finančné, právne ani daňové poradenstvo.',
+        '2.6 Local-first fakturácia (Pro). Ak je zapnutá, váš fakturačný register (profily firiem, kontakty odberateľov, faktúry, náklady a súvisiace nastavenia) sa ukladá primárne vo vašich zariadeniach s end-to-end šifrovanou synchronizáciou cez relay operátora. SatFlux tento register v našej aplikačnej databáze neukladá. Pri serverovo asistovaných funkciách (napr. export PDF, odoslanie e-mailu, štruktúrovaný export alebo BTCPay checkout) sa údaje dokladu prenášajú len na dobu spracovania požiadavky a neukladáme ich ako vystavené obchodné dokumenty. Za ochranu recovery frázy a záloh zariadení zodpovedáte vy.',
       ],
     },
     {
@@ -337,10 +345,12 @@ const privacySk: LegalDocumentContent = {
     {
       heading: '2. Aké údaje spracúvame',
       paragraphs: [
-        'Údaje účtu: e-mail, meno (ak je uvedené), hash hesla, jazyková preferencia, stav predplatného.',
-        'Údaje o používaní: logy, IP adresa, typ prehliadača, navštívené stránky, API požiadavky (bezpečnosť a prevádzka).',
-        'Obsah obchodníka: nastavenia obchodu, faktúry a obchodné dokumenty vrátane údajov zákazníkov/kontaktov na vystavených dokladoch.',
-        'Metadáta platieb: identifikátory BTCPay faktúr a stav vyrovnania (neprijímame vaše on-chain súkromné kľúče).',
+        'Údaje účtu: e-mail (vrátane aliasov použitých pri registrácii), voliteľné meno, hash hesla, jazyková preferencia, stav predplatného a verejný kľúč recovery pre seed-first účty.',
+        'Údaje o používaní: logy, IP adresa, typ prehliadača, navštívené stránky a API požiadavky (bezpečnosť a prevádzka).',
+        'BTCPay obchody: nastavenia obchodu a metadáta platobných faktúr (neprijímame súkromné kľúče ani seed peňaženky).',
+        'Local-first fakturácia (Pro): profily firiem, kontakty odberateľov, vystavené faktúry, náklady a súvisiace nastavenia sa ukladajú primárne vo vašom prehliadači a synchronizujú sa end-to-end šifrovaním cez relay operátora. SatFlux tento fakturačný register v našej aplikačnej databáze neukladá.',
+        'Ephemerálne serverové spracovanie: pri exporte PDF, odoslaní e-mailu, štruktúrovanom exporte, BTCPay checkout a podobných funkciách sa relevantné údaje dokladu pošlú na server len na dobu spracovania požiadavky a potom sa u nás neukladajú ako obchodné dokumenty.',
+        'WooCommerce integrácia (ak je zapnutá): payloady nových objednávok môžu krátko čakať na serveri, kým ich neimportujete do lokálnej fakturácie.',
       ],
     },
     {
@@ -359,6 +369,7 @@ const privacySk: LegalDocumentContent = {
         'Používame poskytovateľov infraštruktúry a služieb, ktorí spracúvajú údaje podľa našich pokynov.',
         'Medzi infraštruktúrnych poskytovateľov patrí hosting (Hetzner, EÚ), doručovanie e-mailov a monitoring.',
         'BTCPay Server: softvérovú infraštruktúru BTCPay Server hostujeme a prevádzkujeme vo vašom mene. Spracúva metadáta platieb (napríklad identifikátory faktúr a stav vyrovnania) podľa konfigurácie vášho obchodu. Nikdy neprijímame, nedržíme ani nemáme prístup k vašim súkromným kľúčom, seedu peňaženky ani prostriedkom.',
+        'E2EE sync relay (napríklad Evolu): šifrované payloady pre synchronizáciu local-first fakturácie medzi zariadeniami. SatFlux od relay operátora neprijíma čitateľný obsah faktúr v plaintexte; relay spracúva šifrované bloby podľa vlastných podmienok.',
         'Aktuálny zoznam kategórií sprostredkovateľov poskytneme na požiadanie na kontakte vyššie.',
       ],
     },
@@ -373,7 +384,9 @@ const privacySk: LegalDocumentContent = {
       heading: '6. Uchovávanie',
       paragraphs: [
         'Údaje účtu uchovávame počas aktivity účtu a primeranú dobu potom pre právne, daňové a sporné účely.',
-        'Vystavené obchodné dokumenty môžu uchovávať snapshoty kupujúceho podľa dokumentácie produktu a nastavení retencie.',
+        'Obsah local-first fakturácie sa na serveroch SatFlux po dokončení ephemerálneho spracovania neuchováva.',
+        'Legacy fakturačné údaje zo serverového režimu pred nasadením local-first, ak na účte zostali, môžu obsahovať snapshoty kupujúceho podľa dokumentácie, kým ich nevymažete.',
+        'Metadáta ephemerálneho mostu (napr. väzba BTCPay checkout alebo stav odoslania e-faktúry) uchovávame len po dobu potrebnú pre danú funkciu.',
         'Môžete požiadať o vymazanie s ohľadom na zákonné povinnosti uchovávania.',
       ],
     },
@@ -391,6 +404,7 @@ const privacySk: LegalDocumentContent = {
       paragraphs: [
         'Používame nevyhnutné cookies pre autentifikáciu (Laravel session, CSRF) a voliteľné preferencie (napr. jazyk).',
         'V prihlásenej aplikácii nepoužívame reklamné cookies tretích strán. Verejné stránky môžu používať privacy-friendly analytiku, ak je zapnutá.',
+        'Ak je zapnutý feedback widget Chorala, môže nastaviť funkčný cookie na priradenie hlasov a podnetov k vašej relácii.',
       ],
     },
     {
@@ -434,6 +448,7 @@ const termsEs: LegalDocumentContent = {
           '2.3 Conexiones de cartera. Cuando conecta un proveedor de cartera de terceros (por ejemplo, Blink mediante una credencial API de alcance receive/read), cualquier custodia de fondos es exclusivamente una relación entre usted y ese proveedor. No somos parte de esa relación ni asumimos responsabilidad por ella, incluida la disponibilidad, seguridad o solvencia de dicho proveedor. Cualquier credencial API que proporcione se usa solo para generar solicitudes de pago y leer el estado de liquidación; nuestros sistemas no tienen capacidad técnica para retirar o mover sus fondos. Si usa una cartera de autocustodia (por ejemplo, Aqua), conserva el control total de sus claves y fondos en todo momento.',
           '2.4 Solo software; no es un servicio financiero. Proporcionamos únicamente herramientas de software. No somos una empresa de servicios monetarios, transmisor de dinero, procesador de pagos, institución de pago, exchange, bróker ni proveedor de servicios de activos virtuales, y no ofrecemos custodia, cambio, rampas fiat de entrada o salida ni servicios de stablecoin. No transmitimos, convertimos ni tomamos posesión de fondos o activos virtuales en su nombre.',
           '2.5 Sus responsabilidades. Usted es el único responsable de sus obligaciones legales, regulatorias, fiscales, contables y de prevención del blanqueo de capitales derivadas de aceptar pagos Bitcoin o Lightning, incluidas licencias, informes o registros exigidos en su jurisdicción. Nada en el servicio constituye asesoramiento financiero, legal o fiscal.',
+          '2.6 Facturación local-first (Pro). Cuando está activada, su registro de facturación (perfiles de empresa, contactos de clientes, facturas, gastos y ajustes relacionados) se almacena principalmente en sus dispositivos con sincronización cifrada de extremo a extremo mediante un operador relay. SatFlux no persiste ese registro en nuestra base de datos de aplicación. Al usar funciones asistidas por el servidor (por ejemplo exportación PDF, envío de correo, exportación estructurada o checkout BTCPay), los datos del documento se transmiten solo durante esa solicitud y no se almacenan como documentos comerciales emitidos. Usted es responsable de proteger su frase de recuperación y las copias de seguridad del dispositivo.',
         ],
       };
     }
@@ -471,6 +486,19 @@ const privacyEs: LegalDocumentContent = {
         ],
       };
     }
+    if (index === 2) {
+      return {
+        heading: '2. Datos que recopilamos',
+        paragraphs: [
+          'Datos de cuenta: correo electrónico (incluidos alias usados en el registro), nombre opcional, hash de contraseña, preferencia de idioma, estado de suscripción y clave pública de recuperación para cuentas seed-first.',
+          'Datos de uso: registros, dirección IP, tipo de navegador, páginas visitadas y solicitudes API (seguridad y operaciones).',
+          'Tiendas BTCPay: ajustes de tienda y metadatos de facturas de pago (no recibimos sus claves privadas ni la semilla de la cartera).',
+          'Facturación local-first (Pro): perfiles de empresa, contactos de clientes, facturas emitidas, gastos y ajustes relacionados se almacenan principalmente en su navegador y se sincronizan con cifrado de extremo a extremo mediante un operador relay. SatFlux no almacena este registro de facturación en nuestra base de datos de aplicación.',
+          'Procesamiento efímero en el servidor: al exportar PDF, enviar correo, exportar archivos estructurados, checkout BTCPay u otras funciones similares, los datos relevantes se envían al servidor solo durante esa solicitud y no se conservan como documentos comerciales.',
+          'Integración WooCommerce (si está activada): los payloads de pedidos nuevos pueden quedar brevemente en cola en nuestros servidores hasta que los importe a la facturación local.',
+        ],
+      };
+    }
     if (index === 4) {
       return {
         heading: '4. Encargados y subencargados del tratamiento',
@@ -478,7 +506,20 @@ const privacyEs: LegalDocumentContent = {
           'Utilizamos proveedores de infraestructura y servicios que tratan datos siguiendo nuestras instrucciones.',
           'Los proveedores de infraestructura incluyen hosting (Hetzner, UE), entrega de correo electrónico y monitorización.',
           'BTCPay Server: alojamos y operamos la infraestructura de software BTCPay Server en su nombre. Procesa metadatos de pago (como identificadores de factura y estado de liquidación) según la configuración de su tienda. Nunca recibimos, retenemos ni tenemos acceso a sus claves privadas, semilla de cartera ni fondos.',
+          'Relay de sincronización E2EE (por ejemplo Evolu): cargas cifradas para sincronizar la facturación local-first entre sus dispositivos. SatFlux no recibe el contenido de facturación en texto claro desde el relay; el operador del relay procesa blobs cifrados según sus propios términos.',
           'Una lista actualizada de categorías de encargados está disponible previa solicitud en el contacto de privacidad indicado arriba.',
+        ],
+      };
+    }
+    if (index === 6) {
+      return {
+        heading: '6. Conservación',
+        paragraphs: [
+          'Los datos de cuenta se conservan mientras su cuenta esté activa y durante un período razonable después para fines legales, fiscales y de resolución de disputas.',
+          'El contenido de facturación local-first no se conserva en los servidores de SatFlux una vez finalizado el procesamiento efímero.',
+          'Los datos de facturación legacy del modo servidor anteriores al despliegue local-first, si permanecen en su cuenta, pueden conservar instantáneas del comprador según la documentación hasta que los elimine.',
+          'Los metadatos del puente efímero (por ejemplo vinculación de checkout BTCPay o estado de envío de e-factura) se conservan solo el tiempo necesario para la función.',
+          'Puede solicitar la eliminación sujeta a obligaciones legales de conservación.',
         ],
       };
     }

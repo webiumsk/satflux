@@ -56,6 +56,11 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ContactFormFields from './ContactFormFields.vue';
 import { emptyContactForm, formToPayload, type ContactFormState } from '../../composables/useCompanyContact';
+import { useInvoicingCompany, asCompanyId } from '../../composables/useInvoicingCompany';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
+import { useInvoicingEvolu } from '../../evolu/client';
+import { insertLocalContactFromForm } from '../../evolu/contactCrud';
+import { contactPayloadFromForm, evoluContactToApi } from '../../evolu/contactMap';
 import api from '../../services/api';
 
 const props = defineProps<{
@@ -69,8 +74,11 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const localFirst = isInvoicingLocalFirst();
+const evolu = localFirst ? useInvoicingEvolu() : null;
+const { company: companyRef } = useInvoicingCompany(computed(() => props.companyId));
 
-const company = ref<Record<string, unknown> | null>(null);
+const company = computed(() => companyRef.value as Record<string, unknown> | null);
 const form = ref<ContactFormState>(emptyContactForm());
 const activeTab = ref<'billing' | 'defaults'>('billing');
 const saving = ref(false);
@@ -93,18 +101,10 @@ function resetForm() {
   saving.value = false;
 }
 
-async function loadCompany() {
-  const res = await api.get(`/invoicing/companies/${props.companyId}`);
-  company.value = res.data.data;
-}
-
 watch(
   () => props.open,
   (isOpen) => {
-    if (isOpen) {
-      resetForm();
-      void loadCompany();
-    }
+    if (isOpen) resetForm();
   }
 );
 
@@ -117,12 +117,35 @@ async function save() {
   }
   saving.value = true;
   try {
+    if (localFirst && evolu) {
+      const result = insertLocalContactFromForm(
+        evolu,
+        asCompanyId(props.companyId),
+        form.value,
+        showDelivery.value,
+      );
+      if (!result.ok) {
+        error.value = t('invoicing.company_save_validation_error');
+        return;
+      }
+      const payload = contactPayloadFromForm(form.value, showDelivery.value);
+      const row = evoluContactToApi({
+        id: result.value.id,
+        companyId: asCompanyId(props.companyId),
+        ...payload,
+      });
+      emit('saved', row as unknown as Record<string, unknown>);
+      emit('close');
+      return;
+    }
+
     const payload = formToPayload(form.value, showDelivery.value);
     const res = await api.post(`/invoicing/companies/${props.companyId}/contacts`, payload);
     emit('saved', res.data.data);
     emit('close');
-  } catch (e: any) {
-    error.value = e?.response?.data?.message || t('errors.generic');
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } } };
+    error.value = err?.response?.data?.message || t('errors.generic');
   } finally {
     saving.value = false;
   }

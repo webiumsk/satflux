@@ -30,6 +30,10 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="LOG_CHANNEL" value="null"/>
+        <!-- CI copies .env.example (seed-first on); keep classic register tests working -->
+        <env name="SEED_FIRST_REGISTRATION" value="false"/>
+        <env name="COMPLIANCE_SCREENING_ENABLED" value="false"/>
+        <env name="COMPLIANCE_LIST_SCREENING_ENABLED" value="false"/>
     </php>
 </phpunit>
 

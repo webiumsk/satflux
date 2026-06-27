@@ -16,13 +16,13 @@
       />
       <div class="absolute inset-0 bg-gray-900">
         <div
-          class="absolute top-0 -left-4 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"
+          class="absolute top-0 -left-4 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply opacity-20"
         ></div>
         <div
-          class="absolute top-0 -right-4 w-80 h-80 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-[0.18] animate-blob [animation-delay:2.5s]"
+          class="absolute top-0 -right-4 w-80 h-80 bg-indigo-500 rounded-full mix-blend-multiply opacity-[0.18]"
         ></div>
         <div
-          class="absolute -bottom-8 left-1/4 w-72 h-72 bg-orange-500 rounded-full mix-blend-multiply filter blur-3xl opacity-[0.12] animate-blob [animation-delay:5s]"
+          class="absolute -bottom-8 left-1/4 w-72 h-72 bg-orange-500 rounded-full mix-blend-multiply opacity-[0.12]"
         ></div>
       </div>
 
@@ -83,14 +83,14 @@
                 class="flex flex-wrap items-center justify-between gap-3 mb-4"
               >
                 <span
-                  class="text-[10px] uppercase tracking-widest text-gray-500 font-semibold"
+                  class="text-[10px] uppercase tracking-widest text-gray-400 font-semibold"
                 >
                   {{ t("landing.hero_carousel_hint") }}
                 </span>
                 <div class="flex items-center gap-1">
                   <button
                     type="button"
-                    class="rounded-lg border border-gray-700 p-2 text-gray-400 hover:border-indigo-500/40 hover:text-white hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                    class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-gray-700 p-2 text-gray-400 hover:border-indigo-500/40 hover:text-white hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                     :aria-label="t('landing.hero_carousel_prev')"
                     @click="heroSlidePrev"
                   >
@@ -111,7 +111,7 @@
                   </button>
                   <button
                     type="button"
-                    class="rounded-lg border border-gray-700 p-2 text-gray-400 hover:border-indigo-500/40 hover:text-white hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                    class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-gray-700 p-2 text-gray-400 hover:border-indigo-500/40 hover:text-white hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                     :aria-label="t('landing.hero_carousel_next')"
                     @click="heroSlideNext"
                   >
@@ -485,7 +485,7 @@
               </transition>
             </div>
 
-            <!-- SK only: hero intro video — poster + play; iframe loads on click (no YT chrome until play) -->
+            <!-- SK only: hero intro video - poster + play; iframe loads on click (no YT chrome until play) -->
             <div
               v-if="locale === 'sk'"
               class="mt-8 w-full max-w-md lg:max-w-none"
@@ -503,7 +503,15 @@
                   class="absolute inset-0 h-full w-full"
                   :src="heroSkYoutubeEmbedUrl"
                   :title="t('landing.hero_sk_video_iframe_title')"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allow="
+                    accelerometer;
+                    autoplay;
+                    clipboard-write;
+                    encrypted-media;
+                    gyroscope;
+                    picture-in-picture;
+                    web-share;
+                  "
                   referrerpolicy="strict-origin-when-cross-origin"
                   allowfullscreen
                 />
@@ -544,7 +552,7 @@
             </div>
           </div>
 
-          <!-- Dots, CTAs, trust — full width under copy + visual columns -->
+          <!-- Dots, CTAs, trust - full width under copy + visual columns -->
           <div
             class="order-3 col-span-full flex w-full flex-col items-center gap-4 sm:gap-5 pt-6 lg:pt-8"
           >
@@ -1175,7 +1183,7 @@
           <!-- Crowdfund (coming soon) -->
           <div
             class="relative bg-gradient-to-br from-gray-800/90 to-gray-900 rounded-3xl p-8 border border-dashed border-violet-500/35 shadow-xl overflow-hidden group transition-all duration-300 hover:-translate-y-1 hover:border-violet-400/45 hover:shadow-2xl hover:shadow-violet-950/25"
-          >            
+          >
             <div
               class="absolute inset-0 bg-violet-600/[0.04] pointer-events-none"
             ></div>
@@ -1209,7 +1217,6 @@
             </div>
           </div>
         </div>
-
       </div>
     </section>
 
@@ -1920,13 +1927,17 @@
                 <div
                   class="w-full max-w-md rounded-2xl border border-violet-500/30 bg-gray-800 p-6 shadow-xl shadow-violet-950/20 transform group-hover:scale-105 transition-transform duration-500"
                 >
-                  <p class="text-xs font-medium uppercase tracking-wider text-violet-300/80 mb-2">
+                  <p
+                    class="text-xs font-medium uppercase tracking-wider text-violet-300/80 mb-2"
+                  >
                     {{ t("landing.step5_goal_label") }}
                   </p>
                   <p class="text-lg font-bold text-white mb-4">
                     {{ t("landing.step5_goal_amount") }}
                   </p>
-                  <div class="h-3 w-full rounded-full bg-gray-700 overflow-hidden mb-2">
+                  <div
+                    class="h-3 w-full rounded-full bg-gray-700 overflow-hidden mb-2"
+                  >
                     <div
                       class="h-full w-[64%] rounded-full bg-gradient-to-r from-violet-500 to-indigo-500"
                     />
@@ -2511,9 +2522,7 @@
               <div
                 class="md:w-5/12 flex justify-start pl-16 md:justify-end pr-8 md:pr-16 order-2 md:order-1"
               >
-                <LandingRafflePresenterPreview
-                  class="group-hover:scale-105"
-                />
+                <LandingRafflePresenterPreview class="group-hover:scale-105" />
               </div>
 
               <div
@@ -2875,7 +2884,7 @@
             </router-link>
           </div>
 
-          <!-- Pro Plan (Highlighted) -->
+          <!-- PRO Plan (Highlighted) -->
           <div
             class="bg-gray-800 rounded-2xl p-8 border-2 border-indigo-500 shadow-2xl relative transform md:scale-[1.02] z-10"
           >
@@ -3158,6 +3167,16 @@
                 }}
               </p>
             </div>
+            <div class="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+              <h4
+                class="mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 font-semibold"
+              >
+                {{ t("landing.pricing_faq_shutdown_q") }}
+              </h4>
+              <p class="text-gray-400 text-sm">
+                {{ t("landing.pricing_faq_shutdown_a") }}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -3177,7 +3196,7 @@ import {
 } from "../composables/usePricing";
 import { usePlanFeatures } from "../composables/usePlanFeatures";
 import { useCurrentPlan } from "../composables/useCurrentPlan";
-import { onMounted, ref, computed } from "vue";
+import { onMounted, onBeforeUnmount, ref, computed, nextTick } from "vue";
 import { useI18n } from "vue-i18n";
 import PublicHeader from "../components/layout/PublicHeader.vue";
 import AppFooter from "../components/layout/AppFooter.vue";
@@ -3195,8 +3214,11 @@ const {
   displayLightningDomain,
 } = useBtcPayUrl();
 const { pricing, formatSats, load: loadPricing } = usePricing();
-const { planFeatures, invoicingHighlightKeys, load: loadPlanFeatures } =
-  usePlanFeatures();
+const {
+  planFeatures,
+  invoicingHighlightKeys,
+  load: loadPlanFeatures,
+} = usePlanFeatures();
 
 const proInvoicingFeatures = computed(() =>
   planFeatures.value.pro.feature_keys.filter((key: string) =>
@@ -3287,13 +3309,38 @@ const posDemoUrl = computed(() => {
   return b ? `${b}/` : "";
 });
 
-// Ensure user, pricing and plan features are fetched on mount; anchor smooth-scroll
-onMounted(async () => {
-  await Promise.all([loadPricing(), loadPlanFeatures(), loadBtcpayConfig()]);
-  try {
-    await authStore.fetchUser();
-  } catch {
-    // User not authenticated, which is fine
+function handleHashAnchorClick(e: Event) {
+  const targetAnchor = e.currentTarget as HTMLAnchorElement;
+  const href = targetAnchor.getAttribute("href");
+  if (href && href !== "#") {
+    e.preventDefault();
+    const target = document.querySelector(href);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+}
+
+let hashAnchorElements: HTMLAnchorElement[] = [];
+
+// Ensure user, pricing and plan features are fetched after first paint
+onMounted(() => {
+  void nextTick().then(() => {
+    requestAnimationFrame(() => {
+      document.getElementById("landing-shell")?.remove();
+      document.getElementById("app")?.classList.remove("sf-app-pending");
+    });
+  });
+
+  const loadDeferred = () => {
+    void Promise.all([loadPricing(), loadPlanFeatures(), loadBtcpayConfig()]);
+    void authStore.fetchUser();
+  };
+
+  if ("requestIdleCallback" in window) {
+    requestIdleCallback(loadDeferred);
+  } else {
+    setTimeout(loadDeferred, 0);
   }
 
   if (window.location.hash) {
@@ -3305,24 +3352,23 @@ onMounted(async () => {
     }, 100);
   }
 
-  const anchors = document.querySelectorAll('a[href^="#"]');
-  anchors.forEach((anchor) => {
-    anchor.addEventListener("click", function (e) {
-      const targetAnchor = e.currentTarget as HTMLAnchorElement;
-      const href = targetAnchor.getAttribute("href");
-      if (href && href !== "#") {
-        e.preventDefault();
-        const target = document.querySelector(href);
-        if (target) {
-          target.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      }
-    });
+  hashAnchorElements = [
+    ...document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]'),
+  ];
+  hashAnchorElements.forEach((anchor) => {
+    anchor.addEventListener("click", handleHashAnchorClick);
   });
 });
 
+onBeforeUnmount(() => {
+  hashAnchorElements.forEach((anchor) => {
+    anchor.removeEventListener("click", handleHashAnchorClick);
+  });
+  hashAnchorElements = [];
+});
+
 async function handleUpgrade(plan: string) {
-  // Both Pro and Enterprise can use the same checkout flow now
+  // Both PRO and Enterprise can use the same checkout flow now
   subscribing.value = true;
   subscribeError.value = "";
 

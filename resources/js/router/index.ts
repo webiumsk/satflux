@@ -1,8 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { invoicingRoutes } from './invoicingRoutes';
 import { useAuthStore } from '../store/auth';
 import { useStoresStore } from '../store/stores';
 import api from '../services/api';
 import { updatePageMeta } from '../composables/usePageMeta';
+import { ensureEvoluBoundToAccountSeed } from '../evolu/bootstrap';
+import { getStoredAccountMnemonic } from '../services/accountSeed';
+import { isInvoicingLocalFirst } from '../evolu/flags';
 
 /** Guest sessions are PoS-oriented: block the SPA until wallet (Lightning or Cashu) is actually configured. */
 async function isGuestWalletReady(storeId: string): Promise<boolean> {
@@ -127,268 +131,16 @@ const router = createRouter({
             meta: { requiresAuth: true, titleKey: 'common.info_page_title' },
         },
         {
+            path: '/dev/evolu',
+            name: 'dev-evolu',
+            component: () => import('../pages/dev/EvoluPoc.vue'),
+            meta: { requiresAuth: true, titleKey: 'evolu.poc_title' },
+        },
+        {
             path: '/invoicing',
-            name: 'invoicing',
-            component: () => import('../pages/invoicing/Index.vue'),
-            meta: { requiresAuth: true, titleKey: 'invoicing.title' },
-        },
-        {
-            path: '/invoicing/companies/new',
-            name: 'invoicing-company-new',
-            component: () => import('../pages/invoicing/CompanyForm.vue'),
+            component: () => import('../layouts/InvoicingEvoluLayout.vue'),
             meta: { requiresAuth: true },
-        },
-        {
-            path: '/invoicing/companies/:companyId',
-            name: 'invoicing-company',
-            component: () => import('../pages/invoicing/CompanyShow.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'tools' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/app',
-            name: 'invoicing-company-app',
-            component: () => import('../pages/invoicing/CompanyShow.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'tools' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/app/emails',
-            name: 'invoicing-company-app-emails',
-            component: () => import('../pages/invoicing/CompanyShow.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'tools' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/app/series',
-            name: 'invoicing-company-app-series',
-            component: () => import('../pages/invoicing/CompanyShow.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'tools' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/import',
-            name: 'invoicing-company-import',
-            component: () => import('../pages/invoicing/DocumentImport.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'tools' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/payments',
-            name: 'invoicing-payments',
-            component: () => import('../pages/invoicing/CompanyPayments.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'payments' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/contacts',
-            name: 'invoicing-contacts',
-            component: () => import('../pages/invoicing/Contacts.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'contacts' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/stock',
-            name: 'invoicing-stock',
-            component: () => import('../pages/invoicing/StockItems.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'stock' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/stock/new',
-            name: 'invoicing-stock-new',
-            component: () => import('../pages/invoicing/StockItemForm.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'stock' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/stock/:itemId',
-            name: 'invoicing-stock-edit',
-            component: () => import('../pages/invoicing/StockItemForm.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'stock' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/warehouses',
-            name: 'invoicing-warehouses',
-            component: () => import('../pages/invoicing/Warehouses.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'stock' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/warehouses/new',
-            name: 'invoicing-warehouse-new',
-            component: () => import('../pages/invoicing/WarehouseForm.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'stock' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/warehouses/:warehouseId',
-            name: 'invoicing-warehouse-edit',
-            component: () => import('../pages/invoicing/WarehouseForm.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'stock' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/contacts/new',
-            name: 'invoicing-contact-new',
-            component: () => import('../pages/invoicing/ContactForm.vue'),
-            meta: { requiresAuth: true },
-        },
-        {
-            path: '/invoicing/companies/:companyId/contacts/:contactId/edit',
-            name: 'invoicing-contact-edit',
-            component: () => import('../pages/invoicing/ContactForm.vue'),
-            meta: { requiresAuth: true },
-        },
-        {
-            path: '/invoicing/companies/:companyId/contacts/:contactId',
-            name: 'invoicing-contact-show',
-            component: () => import('../pages/invoicing/ContactShow.vue'),
-            meta: { requiresAuth: true },
-        },
-        {
-            path: '/invoicing/companies/:companyId/invoices',
-            name: 'invoicing-invoices',
-            component: () => import('../pages/invoicing/Invoices.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'invoice' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/proformas',
-            name: 'invoicing-proformas',
-            component: () => import('../pages/invoicing/Invoices.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'proforma' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/delivery-notes',
-            name: 'invoicing-delivery-notes',
-            component: () => import('../pages/invoicing/Invoices.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'delivery_note' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/orders',
-            name: 'invoicing-orders',
-            component: () => import('../pages/invoicing/Invoices.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'order_received' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/quotes',
-            name: 'invoicing-quotes',
-            component: () => import('../pages/invoicing/Invoices.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'quote' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/recurring',
-            name: 'invoicing-recurring',
-            component: () => import('../pages/invoicing/RecurringProfiles.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'recurring' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/recurring/new',
-            name: 'invoicing-recurring-new',
-            component: () => import('../pages/invoicing/RecurringProfileForm.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'recurring' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/recurring/:profileId/edit',
-            name: 'invoicing-recurring-edit',
-            component: () => import('../pages/invoicing/RecurringProfileForm.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'recurring' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/credit-notes',
-            name: 'invoicing-credit-notes',
-            component: () => import('../pages/invoicing/Invoices.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'credit_note' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/drafts',
-            name: 'invoicing-drafts',
-            component: () => import('../pages/invoicing/Invoices.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'drafts' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/expenses',
-            name: 'invoicing-expenses',
-            component: () => import('../pages/invoicing/Expenses.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'expenses' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/expenses/new',
-            name: 'invoicing-expense-new',
-            component: () => import('../pages/invoicing/ExpenseForm.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'expenses' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/expenses/:expenseId',
-            name: 'invoicing-expense-show',
-            component: () => import('../pages/invoicing/ExpenseShow.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'expenses' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/expenses/:expenseId/edit',
-            name: 'invoicing-expense-edit',
-            component: () => import('../pages/invoicing/ExpenseForm.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'expenses' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/proformas/new',
-            name: 'invoicing-proforma-new',
-            component: () => import('../pages/invoicing/InvoiceForm.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'proforma' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/proformas/:documentId',
-            name: 'invoicing-proforma-show',
-            component: () => import('../pages/invoicing/InvoiceShow.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'proforma' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/proformas/:documentId/edit',
-            name: 'invoicing-proforma-edit',
-            component: () => import('../pages/invoicing/InvoiceForm.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'proforma' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/quotes/new',
-            name: 'invoicing-quote-new',
-            component: () => import('../pages/invoicing/InvoiceForm.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'quote' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/quotes/:documentId',
-            name: 'invoicing-quote-show',
-            component: () => import('../pages/invoicing/InvoiceShow.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'quote' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/quotes/:documentId/edit',
-            name: 'invoicing-quote-edit',
-            component: () => import('../pages/invoicing/InvoiceForm.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'quote' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/credit-notes/new',
-            name: 'invoicing-credit-note-new',
-            component: () => import('../pages/invoicing/InvoiceForm.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'credit_note' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/credit-notes/:documentId',
-            name: 'invoicing-credit-note-show',
-            component: () => import('../pages/invoicing/InvoiceShow.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'credit_note' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/credit-notes/:documentId/edit',
-            name: 'invoicing-credit-note-edit',
-            component: () => import('../pages/invoicing/InvoiceForm.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'credit_note' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/invoices/new',
-            name: 'invoicing-invoice-new',
-            component: () => import('../pages/invoicing/InvoiceForm.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'invoice' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/invoices/:documentId',
-            name: 'invoicing-invoice-show',
-            component: () => import('../pages/invoicing/InvoiceShow.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'invoice' },
-        },
-        {
-            path: '/invoicing/companies/:companyId/invoices/:documentId/edit',
-            name: 'invoicing-invoice-edit',
-            component: () => import('../pages/invoicing/InvoiceForm.vue'),
-            meta: { requiresAuth: true, invoicingSection: 'documents', documentKind: 'invoice' },
+            children: invoicingRoutes,
         },
         {
             path: '/stores',
@@ -675,21 +427,45 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore();
 
-    // Fetch user info for all pages (except login/register/password-reset) to determine auth state
-    // This is needed for landing page to show correct buttons
+    if (to.meta.public) {
+        if (
+            !authStore.user
+            && to.name !== 'login'
+            && to.name !== 'register'
+            && to.name !== 'password-reset'
+        ) {
+            void authStore.fetchUser().catch(() => {});
+        }
+        next();
+        return;
+    }
+
+    // Fetch user info for protected pages to determine auth state
     if (!authStore.user && to.name !== 'login' && to.name !== 'register' && to.name !== 'password-reset') {
         try {
             await authStore.fetchUser();
         } catch (error) {
             // If fetch fails (401), user is null which is correct
-            // This allows public pages to work correctly
         }
     }
 
-    // Skip auth check for public pages
-    if (to.meta.public) {
-        next();
+    if (
+        authStore.isAuthenticated
+        && isInvoicingLocalFirst()
+        && !getStoredAccountMnemonic()
+        && (to.path.startsWith('/invoicing') || String(to.name ?? '').startsWith('invoicing'))
+    ) {
+        next({ name: 'account', query: { restore_phrase: '1' } });
         return;
+    }
+
+    if (
+        authStore.isAuthenticated
+        && isInvoicingLocalFirst()
+        && getStoredAccountMnemonic()
+        && to.meta.requiresAuth
+    ) {
+        await ensureEvoluBoundToAccountSeed();
     }
 
     // Hard gate: guests cannot use the app until wallet setup is complete (Lightning connected or Cashu mint+LN address).
@@ -735,6 +511,14 @@ router.beforeEach(async (to, from, next) => {
                 return;
             }
         }
+    }
+
+    if (
+        authStore.user?.is_guest
+        && (to.path.startsWith('/invoicing') || to.name?.toString().startsWith('invoicing'))
+    ) {
+        next({ name: 'home', query: { tab: 'invoicing' } });
+        return;
     }
 
     if (to.meta.requiresAuth && !authStore.isAuthenticated) {

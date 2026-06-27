@@ -16,201 +16,304 @@
 
         <div
           v-if="authStore.user?.is_guest"
-          class="rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-5 space-y-3"
+          class="rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-5 space-y-4"
         >
-          <h4 class="text-sm font-semibold text-white">
-            {{ t("account.guest_account_title") }}
-          </h4>
-          <p class="text-sm text-gray-300">
-            {{ t("account.guest_account_backup_desc") }}
-          </p>
-          <p
-            v-if="authStore.user?.guest_recovery_enrolled"
-            class="text-sm text-emerald-400"
-          >
-            {{ t("account.guest_recovery_enrolled") }}
-          </p>
-          <div v-if="storedGuestMnemonic" class="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
-              @click="showGuestSeedModal = true"
-            >
-              {{ t("account.guest_reveal_seed") }}
-            </button>
-          </div>
-          <p v-else class="text-sm text-amber-300">
-            {{ t("account.guest_seed_unavailable_here") }}
-          </p>
-
-          <div class="mt-2 pt-3 border-t border-indigo-400/20 space-y-3">
-            <h5 class="text-sm font-semibold text-white">
+          <div class="space-y-3">
+            <h4 class="text-sm font-semibold text-white">
               {{ t("account.guest_upgrade_title") }}
-            </h5>
-            <p class="text-xs text-gray-300">
-              {{ t("account.guest_upgrade_desc") }}
-            </p>
-
-            <div class="rounded-xl border border-indigo-500/20 bg-gray-900/30 p-2">
-              <div class="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  class="py-2 px-3 rounded-lg text-xs font-semibold transition-colors"
-                  :class="
-                    guestUpgradeMode === 'email'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-800 text-gray-300 hover:text-white'
-                  "
-                  @click="guestUpgradeMode = 'email'"
-                >
-                  {{ t("account.guest_upgrade_tab_email") }}
-                </button>
-                <button
-                  type="button"
-                  class="py-2 px-3 rounded-lg text-xs font-semibold transition-colors"
-                  :class="
-                    guestUpgradeMode === 'linked'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-800 text-gray-300 hover:text-white'
-                  "
-                  @click="guestUpgradeMode = 'linked'"
-                >
-                  {{ t("account.guest_upgrade_tab_linked") }}
-                </button>
-              </div>
-
-              <form
-                v-if="guestUpgradeMode === 'email'"
-                class="space-y-3 mt-3"
-                @submit.prevent="handleGuestUpgradeEmail"
-              >
-                <input
-                  v-model="guestUpgradeForm.email"
-                  type="email"
-                  required
-                  class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  :placeholder="t('auth.email_placeholder')"
-                />
-                <input
-                  v-model="guestUpgradeForm.password"
-                  type="password"
-                  required
-                  class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  :placeholder="t('account.new_password')"
-                />
-                <input
-                  v-model="guestUpgradeForm.password_confirmation"
-                  type="password"
-                  required
-                  class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  :placeholder="t('account.confirm_new_password')"
-                />
-                <p
-                  class="text-xs text-amber-200/90 leading-relaxed rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2"
-                  role="note"
-                >
-                  {{ t("account.guest_upgrade_email_verify_notice") }}
-                </p>
-                <LegalConsentFields
-                  v-model:privacy-consent="guestPrivacyConsent"
-                  v-model:terms-accepted="guestTermsAccepted"
-                  id-prefix="guest-upgrade-email"
-                />
-                <button
-                  type="submit"
-                  :disabled="guestUpgradeLoading || !guestUpgradeCanSubmit"
-                  class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-50"
-                >
-                  {{ guestUpgradeLoading ? t("auth.saving") : t("account.guest_upgrade_email_submit") }}
-                </button>
-              </form>
-
-              <form
-                v-else
-                class="space-y-3 mt-3"
-                @submit.prevent="handleGuestUpgradeLinkedSubmit"
-              >
-                <template
-                  v-if="
-                    authStore.user?.has_lightning_login ||
-                    authStore.user?.has_nostr_login
-                  "
-                >
-                  <div
-                    v-if="hasBothLinkedLogins"
-                    class="flex flex-wrap gap-4 text-xs text-gray-300"
-                  >
-                    <label class="inline-flex items-center gap-2 cursor-pointer">
-                      <input
-                        v-model="linkedUpgradeMethod"
-                        type="radio"
-                        value="lightning"
-                        class="text-indigo-500"
-                      />
-                      <span>{{ t("account.guest_upgrade_use_lightning") }}</span>
-                    </label>
-                    <label class="inline-flex items-center gap-2 cursor-pointer">
-                      <input
-                        v-model="linkedUpgradeMethod"
-                        type="radio"
-                        value="nostr"
-                        class="text-indigo-500"
-                      />
-                      <span>{{ t("account.guest_upgrade_use_nostr") }}</span>
-                    </label>
-                  </div>
-                  <input
-                    v-model="guestUpgradeForm.email"
-                    type="email"
-                    required
-                    class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    :placeholder="t('auth.email_placeholder')"
-                  />
-                  <input
-                    v-model="guestUpgradeForm.password"
-                    type="password"
-                    required
-                    class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    :placeholder="t('account.new_password')"
-                  />
-                  <input
-                    v-model="guestUpgradeForm.password_confirmation"
-                    type="password"
-                    required
-                    class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    :placeholder="t('account.confirm_new_password')"
-                  />
-                  <p
-                    class="text-xs text-amber-200/90 leading-relaxed rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2"
-                    role="note"
-                  >
-                    {{ t("account.guest_upgrade_email_verify_notice") }}
-                  </p>
-                  <LegalConsentFields
-                    v-model:privacy-consent="guestPrivacyConsent"
-                    v-model:terms-accepted="guestTermsAccepted"
-                    id-prefix="guest-upgrade-linked"
-                  />
-                  <button
-                    type="submit"
-                    :disabled="guestUpgradeLoading || !guestUpgradeCanSubmit"
-                    class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-50"
-                  >
-                    {{
-                      guestUpgradeLoading
-                        ? t("auth.saving")
-                        : t("account.guest_upgrade_linked_submit")
-                    }}
-                  </button>
-                </template>
-                <p v-else class="text-xs text-gray-400">
-                  {{ t("account.guest_upgrade_linked_empty") }}
-                </p>
-              </form>
-            </div>
+            </h4>
+            <GuestUpgradeForm id-prefix="guest-upgrade-email" />
           </div>
         </div>
 
+        <nav
+          class="flex border-b border-gray-700 -mx-1 overflow-x-auto"
+          :aria-label="t('account.tabs_aria')"
+        >
+          <button
+            v-for="tab in visibleProfileTabs"
+            :key="tab.id"
+            type="button"
+            :class="[
+              'px-4 sm:px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex items-center gap-2',
+              activeTab === tab.id
+                ? 'border-indigo-500 text-indigo-400'
+                : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600',
+            ]"
+            @click="setProfileTab(tab.id)"
+          >
+            {{ t(tab.labelKey) }}
+            <span
+              v-if="tab.badge"
+              class="inline-flex h-2 w-2 rounded-full bg-amber-400"
+              :title="t(tab.badgeHintKey ?? 'account.tab_sync_badge_hint')"
+            />
+          </button>
+        </nav>
+
+        <div v-show="activeTab === 'sync'" class="space-y-6">
+        <div
+          v-if="localFirst"
+          class="rounded-2xl border border-gray-700 bg-gray-800/80 p-5 space-y-3"
+        >
+          <h4 class="text-sm font-semibold text-white">
+            {{ t("account.evolu_relay_title") }}
+          </h4>
+          <p class="text-sm text-gray-300">
+            {{ t("account.evolu_relay_desc") }}
+          </p>
+          <p class="text-xs text-gray-400">
+            {{ t("account.evolu_relay_active", { url: activeRelayUrl }) }}
+          </p>
+          <p v-if="relayBuildDefault" class="text-xs text-gray-500">
+            {{ t("account.evolu_relay_build_default", { url: relayBuildDefault }) }}
+          </p>
+          <label class="block text-sm text-gray-300">
+            <span class="mb-1 block">{{ t("account.evolu_relay_url_label") }}</span>
+            <input
+              v-model="evoluRelayForm.url"
+              type="url"
+              class="w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white"
+              :placeholder="t('account.evolu_relay_url_placeholder')"
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </label>
+          <div class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20 disabled:opacity-50"
+              :disabled="evoluRelaySaving"
+              @click="saveEvoluRelayUrl"
+            >
+              {{
+                evoluRelaySaving
+                  ? t("account.evolu_relay_saving")
+                  : t("account.evolu_relay_save")
+              }}
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center px-4 py-2 border border-gray-500 rounded-lg text-sm font-medium text-gray-200 hover:bg-gray-700/50 disabled:opacity-50"
+              :disabled="evoluRelaySaving"
+              @click="clearEvoluRelayUrl"
+            >
+              {{ t("account.evolu_relay_clear") }}
+            </button>
+          </div>
+
+          <div class="mt-4 border-t border-gray-600 pt-4 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h5 class="text-sm font-semibold text-white">
+                {{ t("account.evolu_stats_title") }}
+              </h5>
+              <button
+                type="button"
+                class="text-xs font-medium text-indigo-300 hover:text-indigo-200 disabled:opacity-50"
+                :disabled="evoluStatsLoading"
+                @click="refreshEvoluStats"
+              >
+                {{
+                  evoluStatsLoading
+                    ? t("account.evolu_stats_loading")
+                    : t("account.evolu_stats_refresh")
+                }}
+              </button>
+            </div>
+            <p class="text-xs text-gray-400">
+              {{ t("account.evolu_stats_desc") }}
+            </p>
+
+            <template v-if="evoluLocalStats">
+              <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <div>
+                  <dt class="text-gray-500">{{ t("account.evolu_stats_owner_id") }}</dt>
+                  <dd class="font-mono text-gray-200">{{ evoluLocalStats.ownerIdShort }}</dd>
+                </div>
+                <div v-if="evoluLocalStats.localDbBytes != null">
+                  <dt class="text-gray-500">{{ t("account.evolu_stats_local_db") }}</dt>
+                  <dd class="text-gray-200">{{ formatByteSize(evoluLocalStats.localDbBytes) }}</dd>
+                </div>
+                <div>
+                  <dt class="text-gray-500">{{ t("account.evolu_stats_companies") }}</dt>
+                  <dd class="text-gray-200">{{ evoluLocalStats.counts.company }}</dd>
+                </div>
+                <div>
+                  <dt class="text-gray-500">{{ t("account.evolu_stats_contacts") }}</dt>
+                  <dd class="text-gray-200">{{ evoluLocalStats.counts.contact }}</dd>
+                </div>
+                <div>
+                  <dt class="text-gray-500">{{ t("account.evolu_stats_documents") }}</dt>
+                  <dd class="text-gray-200">
+                    {{ evoluLocalStats.counts.document }}
+                    <span v-if="documentTypeSummary" class="text-gray-500 text-xs">
+                      ({{ documentTypeSummary }})
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-gray-500">{{ t("account.evolu_stats_expenses") }}</dt>
+                  <dd class="text-gray-200">{{ evoluLocalStats.counts.expense }}</dd>
+                </div>
+                <div v-if="evoluLocalStats.lastRelayPushAt">
+                  <dt class="text-gray-500">{{ t("account.evolu_stats_last_push") }}</dt>
+                  <dd class="text-gray-200">{{ formatStatsTime(evoluLocalStats.lastRelayPushAt) }}</dd>
+                </div>
+                <div v-if="evoluLocalStats.lastForceRelayPushAt">
+                  <dt class="text-gray-500">{{ t("account.evolu_stats_last_force_push") }}</dt>
+                  <dd class="text-gray-200">{{ formatStatsTime(evoluLocalStats.lastForceRelayPushAt) }}</dd>
+                </div>
+              </dl>
+
+              <ul
+                v-if="evoluLocalStats.companies.length"
+                class="rounded-lg border border-gray-600 bg-gray-900/40 divide-y divide-gray-700 text-sm"
+              >
+                <li
+                  v-for="row in evoluLocalStats.companies"
+                  :key="row.id"
+                  class="flex flex-wrap justify-between gap-2 px-3 py-2"
+                >
+                  <span class="text-gray-200 truncate">{{ row.name }}</span>
+                  <span class="text-gray-500 text-xs shrink-0">
+                    {{
+                      t("account.evolu_stats_company_row", {
+                        invoices: row.invoices,
+                        documents: row.documents,
+                        contacts: row.contacts,
+                      })
+                    }}
+                  </span>
+                </li>
+              </ul>
+
+              <p v-if="evoluLocalStats.relayError" class="text-xs text-amber-300">
+                {{ t("account.evolu_stats_relay_error", { error: evoluLocalStats.relayError }) }}
+              </p>
+
+              <div
+                v-if="evoluRelayUsage"
+                class="rounded-lg border border-emerald-700/40 bg-emerald-950/30 px-3 py-2 text-sm space-y-1"
+              >
+                <p class="text-emerald-200 font-medium">{{ t("account.evolu_relay_usage_title") }}</p>
+                <p class="text-emerald-100/90 text-xs">
+                  {{
+                    t("account.evolu_relay_usage_size", {
+                      used: formatByteSize(evoluRelayUsage.storedBytes),
+                      quota: formatByteSize(evoluRelayUsage.quotaBytes),
+                      percent: relayUsagePercent(
+                        evoluRelayUsage.storedBytes,
+                        evoluRelayUsage.quotaBytes,
+                      ),
+                    })
+                  }}
+                </p>
+                <p
+                  v-if="evoluRelayUsage.lastActivityAt"
+                  class="text-emerald-100/80 text-xs"
+                >
+                  {{
+                    t("account.evolu_relay_usage_last_activity", {
+                      time: formatStatsIso(evoluRelayUsage.lastActivityAt),
+                    })
+                  }}
+                </p>
+              </div>
+              <p v-else-if="evoluRelayUsageChecked" class="text-xs text-gray-500">
+                {{ t("account.evolu_relay_usage_unavailable") }}
+              </p>
+            </template>
+            <p v-else-if="evoluStatsLoading" class="text-xs text-gray-500">
+              {{ t("account.evolu_stats_loading") }}
+            </p>
+            <p v-else-if="evoluStatsNeedPhrase" class="text-xs text-amber-300">
+              {{ t("account.evolu_stats_need_phrase") }}
+            </p>
+          </div>
+
+          <p class="text-xs text-gray-500">
+            {{ t("account.evolu_sync_invoicing_hint") }}
+            <router-link
+              :to="dashboardInvoicingTabPath"
+              class="text-indigo-400 hover:text-indigo-300 underline"
+            >
+              {{ t("account.evolu_sync_invoicing_link") }}
+            </router-link>
+          </p>
+        </div>
+        </div>
+
+        <div v-show="activeTab === 'data'" class="space-y-6">
+        <div
+          class="rounded-2xl border border-gray-700 bg-gray-800/80 p-5 space-y-3"
+        >
+          <h4 class="text-sm font-semibold text-white">
+            {{ t("account.data_privacy_title") }}
+          </h4>
+          <p class="text-sm text-gray-300">
+            {{ t("account.data_privacy_desc") }}
+          </p>
+          <router-link
+            to="/legal/privacy"
+            class="inline-flex text-sm font-medium text-indigo-400 hover:text-indigo-300 underline"
+          >
+            {{ t("account.data_privacy_link") }}
+          </router-link>
+
+          <div
+            v-if="localFirst && serverLegacyCompanies.length"
+            class="mt-4 pt-4 border-t border-gray-600 space-y-3"
+          >
+            <h5 class="text-sm font-semibold text-white">
+              {{ t("account.server_legacy_companies_title") }}
+            </h5>
+            <p class="text-xs text-gray-400">
+              {{ t("account.server_legacy_companies_desc") }}
+            </p>
+            <ul class="space-y-2">
+              <li
+                v-for="company in serverLegacyCompanies"
+                :key="company.id"
+                class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-600 bg-gray-900/50 px-3 py-2"
+              >
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-white truncate">
+                    {{ company.legal_name }}
+                  </p>
+                  <p class="text-xs text-gray-500">
+                    {{
+                      t("account.server_legacy_companies_meta", {
+                        contacts: company.contacts_count ?? 0,
+                        documents: company.documents_count ?? 0,
+                      })
+                    }}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="shrink-0 rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+                  :disabled="serverLegacyDeleting === company.id"
+                  @click="deleteServerLegacyCompany(company.id)"
+                >
+                  {{
+                    serverLegacyDeleting === company.id
+                      ? t("auth.saving")
+                      : t("account.server_legacy_companies_delete")
+                  }}
+                </button>
+              </li>
+            </ul>
+          </div>
+          <p
+            v-else-if="localFirst && serverLegacyLoading"
+            class="text-xs text-gray-500"
+          >
+            {{ t("common.loading") }}
+          </p>
+        </div>
+        </div>
+
+        <div v-show="activeTab === 'account'" class="space-y-6">
         <!-- Profile Information -->
         <div
           class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
@@ -284,9 +387,60 @@
           </div>
         </div>
 
-        <!-- Login methods (Lightning + Nostr) -->
         <div
-          v-if="lnurlAuthEnabled || nostrAuthEnabled"
+          class="rounded-2xl border border-gray-700 bg-gray-800/80 p-5 space-y-3"
+        >
+          <h4 class="text-sm font-semibold text-white">
+            {{ t("account.recovery_phrase_title") }}
+          </h4>
+          <p class="text-sm text-gray-300">
+            {{ t("account.recovery_phrase_desc") }}
+          </p>
+          <p
+            v-if="authStore.user?.guest_recovery_enrolled"
+            class="text-sm text-emerald-400"
+          >
+            {{ t("account.recovery_phrase_enrolled") }}
+          </p>
+          <template v-if="authStore.user?.guest_recovery_enrolled">
+            <div
+              v-if="storedGuestMnemonic"
+              class="flex flex-wrap items-center gap-2"
+            >
+              <button
+                type="button"
+                class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
+                @click="showGuestSeedModal = true"
+              >
+                {{ t("account.recovery_phrase_reveal") }}
+              </button>
+            </div>
+            <template v-else>
+              <p class="text-sm text-amber-300">
+                {{ t("account.recovery_phrase_unavailable_here") }}
+              </p>
+              <button
+                type="button"
+                class="inline-flex items-center px-4 py-2 border border-amber-400/60 rounded-lg text-sm font-medium text-amber-100 hover:bg-amber-500/10"
+                @click="showRestoreOnDeviceModal = true"
+              >
+                {{ t("account.recovery_phrase_restore_on_device") }}
+              </button>
+            </template>
+          </template>
+          <button
+            v-else
+            type="button"
+            class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
+            @click="showRecoveryBackupWizard = true"
+          >
+            {{ t("account.recovery_phrase_setup") }}
+          </button>
+        </div>
+
+        <!-- Change Password -->
+        <div
+          v-if="authStore.user?.can_use_password_login !== false"
           class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
         >
           <div class="px-6 py-8 sm:p-10">
@@ -304,83 +458,78 @@
                   d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                 />
               </svg>
-              {{ t("account.login_methods") }}
+              {{ t("account.password_settings") }}
             </h4>
-            <div class="space-y-4">
-              <p class="text-sm text-gray-400">
-                {{ t("account.login_methods_desc") }}
-              </p>
-              <div
-                v-if="lnurlAuthEnabled"
-                class="flex items-center justify-between gap-2"
-              >
-                <div
-                  v-if="authStore.user?.has_lightning_login"
-                  class="flex items-center gap-2 text-green-400"
-                >
-                  <svg
-                    class="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+            <form @submit.prevent="handleUpdatePassword">
+              <div class="space-y-6">
+                <div>
+                  <label
+                    for="current_password"
+                    class="block text-sm font-medium text-gray-300"
+                    >{{ t("account.current_password") }}</label
                   >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M5 13l4 4L19 7"
+                  <div class="mt-1">
+                    <input
+                      id="current_password"
+                      v-model="passwordForm.current_password"
+                      type="password"
+                      required
+                      class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
                     />
-                  </svg>
-                  <span>{{ t("account.lightning_login_enabled") }}</span>
+                  </div>
                 </div>
+                <div>
+                  <label
+                    for="password"
+                    class="block text-sm font-medium text-gray-300"
+                    >{{ t("account.new_password") }}</label
+                  >
+                  <div class="mt-1">
+                    <input
+                      id="password"
+                      v-model="passwordForm.password"
+                      type="password"
+                      required
+                      class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label
+                    for="password_confirmation"
+                    class="block text-sm font-medium text-gray-300"
+                    >{{ t("account.confirm_new_password") }}</label
+                  >
+                  <div class="mt-1">
+                    <input
+                      id="password_confirmation"
+                      v-model="passwordForm.password_confirmation"
+                      type="password"
+                      required
+                      class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div class="mt-8 flex justify-end">
                 <button
-                  v-else
-                  type="button"
-                  :disabled="lnurlLinkLoading"
-                  @click="handleAddLightningLogin"
-                  class="inline-flex items-center px-4 py-2 border border-indigo-500 rounded-lg text-sm font-medium text-indigo-400 hover:bg-indigo-500/10 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                  type="submit"
+                  :disabled="passwordLoading"
+                  class="inline-flex justify-center py-2.5 px-6 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20"
                 >
-                  <span v-if="lnurlLinkLoading">{{ t("common.loading") }}</span>
-                  <span v-else>{{ t("account.add_lightning_login") }}</span>
+                  {{
+                    passwordLoading
+                      ? t("auth.saving")
+                      : t("account.update_password")
+                  }}
                 </button>
               </div>
-              <div
-                v-if="nostrAuthEnabled"
-                class="flex items-center justify-between gap-2"
-              >
-                <div
-                  v-if="authStore.user?.has_nostr_login"
-                  class="flex items-center gap-2 text-green-400"
-                >
-                  <svg
-                    class="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <span>{{ t("account.nostr_login_enabled") }}</span>
-                </div>
-                <button
-                  v-else
-                  type="button"
-                  @click="showNostrLinkModal = true"
-                  class="inline-flex items-center px-4 py-2 border border-amber-500/50 rounded-lg text-sm font-medium text-amber-400 hover:bg-amber-500/10 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                >
-                  <span class="mr-1">🟠</span>
-                  {{ t("account.add_nostr_login") }}
-                </button>
-              </div>
-            </div>
+            </form>
           </div>
         </div>
+        </div>
 
+        <div v-show="activeTab === 'billing'" class="space-y-6">
         <!-- Subscription Plan -->
         <div
           class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
@@ -446,7 +595,10 @@
                   </h5>
                   <p class="text-gray-400 mt-2">{{ currentPlanDescription }}</p>
                   <div
-                    v-if="subscriptionBilling?.isTrial && subscriptionBilling?.trialEndsAt"
+                    v-if="
+                      subscriptionBilling?.isTrial &&
+                      subscriptionBilling?.trialEndsAt
+                    "
                     class="text-sm text-gray-400 mt-2"
                   >
                     {{
@@ -467,7 +619,9 @@
                   </div>
                 </div>
                 <div class="mt-4 md:mt-0 md:text-right">
-                  <div class="text-3xl font-bold text-white flex items-baseline justify-end flex-wrap gap-x-2">
+                  <div
+                    class="text-3xl font-bold text-white flex items-baseline justify-end flex-wrap gap-x-2"
+                  >
                     <span
                       v-if="isProPlan && proHasMonthlyDiscount(pricing.pro)"
                       class="text-lg font-normal text-gray-500 line-through"
@@ -526,7 +680,9 @@
                   :disabled="payingNow"
                   @click="handlePayNow"
                 >
-                  {{ payingNow ? t("account.processing") : t("account.pay_now") }}
+                  {{
+                    payingNow ? t("account.processing") : t("account.pay_now")
+                  }}
                 </button>
               </div>
 
@@ -610,7 +766,10 @@
                     </div>
                   </div>
                   <div
-                    v-if="subscriptionBilling && subscriptionBilling.planPriceSats > 0"
+                    v-if="
+                      subscriptionBilling &&
+                      subscriptionBilling.planPriceSats > 0
+                    "
                     class="rounded-lg border border-gray-600/80 bg-gray-900/40 p-4 space-y-2"
                   >
                     <div class="flex items-center justify-between text-sm">
@@ -721,7 +880,9 @@
                 >
                   {{ t("account.credit_history") }}
                 </h6>
-                <div class="overflow-x-auto rounded-lg border border-gray-600/80">
+                <div
+                  class="overflow-x-auto rounded-lg border border-gray-600/80"
+                >
                   <table class="min-w-full text-sm">
                     <thead class="bg-gray-900/60 text-gray-400">
                       <tr>
@@ -789,7 +950,7 @@
                       : 'grid grid-cols-1 gap-6'
                   "
                 >
-                  <!-- Pro Plan Card -->
+                  <!-- PRO Plan Card -->
                   <div
                     v-if="showProUpgrade"
                     class="border border-gray-600 rounded-xl p-6 bg-gray-800/80 hover:border-indigo-500 transition-colors relative group"
@@ -907,129 +1068,20 @@
             </div>
           </div>
         </div>
-
-        <!-- Change Password -->
-        <div
-          class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"
-        >
-          <div class="px-6 py-8 sm:p-10">
-            <h4 class="text-lg font-semibold text-white mb-6 flex items-center">
-              <svg
-                class="w-5 h-5 mr-2 text-indigo-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                />
-              </svg>
-              {{ t("account.password_settings") }}
-            </h4>
-            <form @submit.prevent="handleUpdatePassword">
-              <div class="space-y-6">
-                <div>
-                  <label
-                    for="current_password"
-                    class="block text-sm font-medium text-gray-300"
-                    >{{ t("account.current_password") }}</label
-                  >
-                  <div class="mt-1">
-                    <input
-                      id="current_password"
-                      v-model="passwordForm.current_password"
-                      type="password"
-                      required
-                      class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label
-                    for="password"
-                    class="block text-sm font-medium text-gray-300"
-                    >{{ t("account.new_password") }}</label
-                  >
-                  <div class="mt-1">
-                    <input
-                      id="password"
-                      v-model="passwordForm.password"
-                      type="password"
-                      required
-                      class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label
-                    for="password_confirmation"
-                    class="block text-sm font-medium text-gray-300"
-                    >{{ t("account.confirm_new_password") }}</label
-                  >
-                  <div class="mt-1">
-                    <input
-                      id="password_confirmation"
-                      v-model="passwordForm.password_confirmation"
-                      type="password"
-                      required
-                      class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div class="mt-8 flex justify-end">
-                <button
-                  type="submit"
-                  :disabled="passwordLoading"
-                  class="inline-flex justify-center py-2.5 px-6 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20"
-                >
-                  {{
-                    passwordLoading
-                      ? t("auth.saving")
-                      : t("account.update_password")
-                  }}
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
       </div>
-
-      <!-- Add Lightning Login Modal -->
-      <LnurlQrModal
-        :open="showLnurlLinkModal"
-        :title="t('account.add_lightning_login')"
-        :lnurl="lnurlLinkUrl"
-        :error="lnurlLinkError"
-        :polling="lnurlLinkPolling"
-        :expires-in-seconds="300"
-        @close="closeLnurlLinkModal"
-        @regenerate="requestNewLinkChallenge"
-      />
-
-      <NostrAuthModal
-        :open="showNostrLinkModal"
-        mode="link"
-        @close="showNostrLinkModal = false"
-        @success="
-          showNostrLinkModal = false;
-          authStore.fetchUser();
-          flashStore.success(t('account.nostr_login_added'));
-        "
-      />
 
       <div
         v-if="showGuestSeedModal"
         class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
         @click.self="showGuestSeedModal = false"
       >
-        <div class="bg-gray-800 rounded-2xl border border-gray-700 max-w-2xl w-full p-6">
+        <div
+          class="bg-gray-800 rounded-2xl border border-gray-700 max-w-2xl w-full p-6"
+        >
           <div class="flex items-center justify-between mb-4">
             <h5 class="text-lg font-bold text-white">
-              {{ t("account.guest_seed_modal_title") }}
+              {{ t("account.recovery_phrase_title") }}
             </h5>
             <button
               type="button"
@@ -1054,7 +1106,11 @@
               class="px-4 py-2 border border-gray-600 rounded-lg text-sm text-gray-300 hover:bg-gray-700"
               @click="copyStoredSeed"
             >
-              {{ copiedSeed ? t("auth.guest_backup_copied") : t("auth.guest_backup_copy") }}
+              {{
+                copiedSeed
+                  ? t("auth.guest_backup_copied")
+                  : t("auth.guest_backup_copy")
+              }}
             </button>
             <button
               type="button"
@@ -1062,6 +1118,54 @@
               @click="showGuestSeedModal = false"
             >
               {{ t("common.close") }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-if="showRestoreOnDeviceModal"
+        class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+        @click.self="showRestoreOnDeviceModal = false"
+      >
+        <div
+          class="bg-gray-800 rounded-2xl border border-gray-700 max-w-lg w-full p-6 space-y-4"
+        >
+          <h5 class="text-lg font-bold text-white">
+            {{ t("account.recovery_phrase_restore_on_device") }}
+          </h5>
+          <p class="text-sm text-gray-300">
+            {{ t("account.recovery_phrase_restore_on_device_detail") }}
+          </p>
+          <textarea
+            v-model="restoreOnDeviceInput"
+            rows="4"
+            class="w-full rounded-xl border border-gray-600 bg-gray-900/80 px-4 py-3 text-sm text-gray-200"
+            :placeholder="t('auth.guest_restore_placeholder')"
+            autocomplete="off"
+          />
+          <p v-if="restoreOnDeviceError" class="text-sm text-red-400">
+            {{ restoreOnDeviceError }}
+          </p>
+          <div class="flex justify-end gap-2">
+            <button
+              type="button"
+              class="px-4 py-2 border border-gray-600 rounded-lg text-sm text-gray-300 hover:bg-gray-700"
+              @click="showRestoreOnDeviceModal = false"
+            >
+              {{ t("common.cancel") }}
+            </button>
+            <button
+              type="button"
+              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm text-white disabled:opacity-50"
+              :disabled="restoreOnDeviceLoading"
+              @click="submitRestoreOnDevice"
+            >
+              {{
+                restoreOnDeviceLoading
+                  ? t("common.loading")
+                  : t("account.recovery_phrase_restore_on_device_submit")
+              }}
             </button>
           </div>
         </div>
@@ -1135,13 +1239,19 @@
           </div>
         </div>
       </div>
+
+      <GuestBackupWizardModal
+        :open="showRecoveryBackupWizard"
+        @close="showRecoveryBackupWizard = false"
+        @done="handleRecoveryEnrolled"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, onUnmounted } from "vue";
-import { useRouter } from "vue-router";
+import { ref, onMounted, computed, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
 import { useFlashStore } from "../../store/flash";
@@ -1153,20 +1263,44 @@ import {
 import { usePlanFeatures } from "../../composables/usePlanFeatures";
 import { useCurrentPlan } from "../../composables/useCurrentPlan";
 import api from "../../services/api";
-import LnurlQrModal from "../../components/auth/LnurlQrModal.vue";
-import NostrAuthModal from "../../components/auth/NostrAuthModal.vue";
-import LegalConsentFields from "../../components/legal/LegalConsentFields.vue";
+import GuestBackupWizardModal from "../../components/auth/GuestBackupWizardModal.vue";
+import GuestUpgradeForm from "../../components/account/GuestUpgradeForm.vue";
 import {
-  clearStoredGuestMnemonic,
   getStoredGuestMnemonic,
+  storeGuestMnemonic,
 } from "../../services/guestRecovery";
+import {
+  initEvoluFromAccountSeedIfNeeded,
+  bindRecoveryPhraseOnThisDevice,
+  getStoredAccountMnemonic,
+} from "../../services/accountSeed";
+import { isInvoicingLocalFirst } from "../../evolu/flags";
+import { getEvoluRelayBuildInfo } from "../../evolu/config";
+import { getEvoluRelayRuntimeInfo } from "../../services/evoluRelayPreference";
+import { refreshEvoluRelaySubscription } from "../../evolu/evoluRelaySubscription";
+import { ensureEvoluBoundToAccountSeed } from "../../evolu/bootstrap";
+import {
+  formatByteSize,
+  loadInvoicingLocalStats,
+  type InvoicingLocalStats,
+} from "../../evolu/invoicingLocalStats";
+import {
+  fetchEvoluRelayUsage,
+  relayUsagePercent,
+  type EvoluRelayUsageResponse,
+} from "../../services/evoluRelayUsageApi";
+import { dashboardInvoicingTabPath } from "../../utils/dashboardInvoicingTab";
 const { t, locale } = useI18n();
+const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const flashStore = useFlashStore();
 const { pricing, formatSats, load: loadPricing } = usePricing();
-const { planFeatures, isInvoicingFeature, load: loadPlanFeatures } =
-  usePlanFeatures();
+const {
+  planFeatures,
+  isInvoicingFeature,
+  load: loadPlanFeatures,
+} = usePlanFeatures();
 
 const profileForm = ref({
   name: "",
@@ -1210,38 +1344,136 @@ const addingCredit = ref(false);
 const payingNow = ref(false);
 const loadingSubscription = ref(false);
 
-const lnurlAuthEnabled = ref(false);
-const nostrAuthEnabled = ref(false);
-const showLnurlLinkModal = ref(false);
-const showNostrLinkModal = ref(false);
 const showGuestSeedModal = ref(false);
+const showRecoveryBackupWizard = ref(false);
+const showRestoreOnDeviceModal = ref(false);
+const restoreOnDeviceInput = ref("");
+const restoreOnDeviceLoading = ref(false);
+const restoreOnDeviceError = ref("");
 const storedGuestMnemonic = ref<string | null>(null);
 const copiedSeed = ref(false);
-const guestUpgradeLoading = ref(false);
-const guestPrivacyConsent = ref(false);
-const guestTermsAccepted = ref(false);
-const guestUpgradeCanSubmit = computed(
-  () => guestPrivacyConsent.value && guestTermsAccepted.value,
-);
-const guestUpgradeMode = ref<"email" | "linked">("email");
-const guestUpgradeForm = ref({
-  email: "",
-  password: "",
-  password_confirmation: "",
-});
-const linkedUpgradeMethod = ref<"lightning" | "nostr">("lightning");
-const lnurlLinkUrl = ref("");
-const lnurlK1 = ref("");
-const lnurlLinkLoading = ref(false);
-const lnurlLinkError = ref("");
-const lnurlLinkPolling = ref(false);
-let linkPollingInterval: number | null = null;
+const localFirst = isInvoicingLocalFirst();
 
-const hasBothLinkedLogins = computed(
-  () =>
-    !!authStore.user?.has_lightning_login &&
-    !!authStore.user?.has_nostr_login,
+type ProfileTab = "account" | "sync" | "billing" | "data";
+
+function parseProfileTab(value: unknown): ProfileTab {
+  if (value === "sync" && localFirst) {
+    return "sync";
+  }
+  if (value === "billing") {
+    return "billing";
+  }
+  if (value === "data") {
+    return "data";
+  }
+  return "account";
+}
+
+const activeTab = ref<ProfileTab>(parseProfileTab(route.query.tab));
+
+watch(
+  () => route.query.tab,
+  (q) => {
+    activeTab.value = parseProfileTab(q);
+  },
 );
+
+function setProfileTab(tab: ProfileTab) {
+  activeTab.value = tab;
+  const query =
+    tab === "account"
+      ? Object.fromEntries(
+          Object.entries(route.query).filter(([key]) => key !== "tab"),
+        )
+      : { ...route.query, tab };
+  void router.replace({ path: route.path, query });
+}
+
+const evoluRelayForm = ref({ url: "" });
+const evoluRelaySaving = ref(false);
+const relayBuildDefault = computed(() => {
+  const build = getEvoluRelayBuildInfo();
+  return build.enabled ? build.url : "";
+});
+const activeRelayUrl = computed(() => getEvoluRelayRuntimeInfo().url);
+const evoluLocalStats = ref<InvoicingLocalStats | null>(null);
+const evoluRelayUsage = ref<EvoluRelayUsageResponse | null>(null);
+const evoluStatsLoading = ref(false);
+const evoluRelayUsageChecked = ref(false);
+const evoluStatsNeedPhrase = computed(
+  () => localFirst && !getStoredAccountMnemonic(),
+);
+
+const accountTabBadge = computed(() => {
+  if (!authStore.user?.guest_recovery_enrolled) {
+    return true;
+  }
+  return !storedGuestMnemonic.value && !getStoredAccountMnemonic();
+});
+
+const syncTabBadge = computed(() => {
+  if (!localFirst) {
+    return false;
+  }
+  const relayError = evoluLocalStats.value?.relayError;
+  return typeof relayError === "string" && relayError.length > 0;
+});
+
+const visibleProfileTabs = computed(() => {
+  const tabs: {
+    id: ProfileTab;
+    labelKey: string;
+    badge?: boolean;
+    badgeHintKey?: string;
+  }[] = [
+    {
+      id: "account",
+      labelKey: "account.tab_account",
+      badge: accountTabBadge.value,
+      badgeHintKey: "account.tab_account_badge_hint",
+    },
+  ];
+  if (localFirst) {
+    tabs.push({
+      id: "sync",
+      labelKey: "account.tab_sync",
+      badge: syncTabBadge.value,
+      badgeHintKey: "account.tab_sync_badge_hint",
+    });
+  }
+  tabs.push(
+    { id: "billing", labelKey: "account.tab_billing" },
+    { id: "data", labelKey: "account.tab_data" },
+  );
+  return tabs;
+});
+
+watch(activeTab, (tab) => {
+  if (tab === "sync" && localFirst) {
+    void refreshEvoluStats();
+  }
+});
+
+const documentTypeSummary = computed(() => {
+  const byType = evoluLocalStats.value?.counts.documentByType;
+  if (!byType) {
+    return "";
+  }
+  const parts = Object.entries(byType)
+    .filter(([, count]) => count > 0)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([type, count]) => `${type}: ${count}`);
+  return parts.join(", ");
+});
+type ServerLegacyCompany = {
+  id: string;
+  legal_name: string;
+  contacts_count?: number;
+  documents_count?: number;
+};
+const serverLegacyCompanies = ref<ServerLegacyCompany[]>([]);
+const serverLegacyLoading = ref(false);
+const serverLegacyDeleting = ref<string | null>(null);
 
 const { planCode: effectivePlanCode } = useCurrentPlan();
 
@@ -1310,23 +1542,59 @@ onMounted(async () => {
   storedGuestMnemonic.value = getStoredGuestMnemonic();
   if (authStore.user) {
     profileForm.value.name = authStore.user.name || "";
-    guestUpgradeForm.value.email = authStore.user.email || "";
-  }
-
-  try {
-    const [lnurlRes, nostrRes] = await Promise.all([
-      api.get<{ enabled: boolean }>("/lnurl-auth/enabled"),
-      api.get<{ enabled: boolean }>("/nostr-auth/enabled"),
-    ]);
-    lnurlAuthEnabled.value = lnurlRes.data?.enabled === true;
-    nostrAuthEnabled.value = nostrRes.data?.enabled === true;
-  } catch {
-    lnurlAuthEnabled.value = false;
-    nostrAuthEnabled.value = false;
+    evoluRelayForm.value.url = authStore.user.evolu_relay_url ?? "";
   }
 
   await loadSubscriptionDetails();
+  if (localFirst) {
+    await loadServerLegacyCompanies();
+    void refreshEvoluStats();
+  }
+  if (route.query.restore_phrase === "1" && !storedGuestMnemonic.value) {
+    setProfileTab("account");
+    showRestoreOnDeviceModal.value = true;
+    flashStore.warning(t("account.recovery_phrase_required_for_invoicing"));
+    void router.replace({
+      query: { ...route.query, restore_phrase: undefined },
+    });
+  }
 });
+
+async function loadServerLegacyCompanies(): Promise<void> {
+  serverLegacyLoading.value = true;
+  try {
+    const response = await api.get<{ data: ServerLegacyCompany[] }>(
+      "/invoicing/companies",
+    );
+    serverLegacyCompanies.value = response.data?.data ?? [];
+  } catch {
+    serverLegacyCompanies.value = [];
+  } finally {
+    serverLegacyLoading.value = false;
+  }
+}
+
+async function deleteServerLegacyCompany(companyId: string): Promise<void> {
+  if (!window.confirm(t("account.server_legacy_companies_delete_confirm"))) {
+    return;
+  }
+  serverLegacyDeleting.value = companyId;
+  try {
+    await api.delete(`/invoicing/companies/${companyId}`);
+    serverLegacyCompanies.value = serverLegacyCompanies.value.filter(
+      (row) => row.id !== companyId,
+    );
+    flashStore.success(t("account.server_legacy_companies_deleted"));
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { message?: string } } };
+    flashStore.error(
+      err?.response?.data?.message ??
+        t("account.server_legacy_companies_delete_failed"),
+    );
+  } finally {
+    serverLegacyDeleting.value = null;
+  }
+}
 
 async function loadSubscriptionDetails() {
   loadingSubscription.value = true;
@@ -1461,113 +1729,6 @@ async function upgradePlan(plan: string) {
   }
 }
 
-function stopLinkPolling() {
-  if (linkPollingInterval != null) {
-    window.clearInterval(linkPollingInterval);
-    linkPollingInterval = null;
-  }
-  lnurlLinkPolling.value = false;
-}
-
-function closeLnurlLinkModal() {
-  stopLinkPolling();
-  showLnurlLinkModal.value = false;
-  lnurlK1.value = "";
-  lnurlLinkUrl.value = "";
-  lnurlLinkError.value = "";
-}
-
-async function fetchLinkChallengeAndOpen() {
-  const response = await api.post("/lnurl-auth/link-challenge");
-  const raw = response.data ?? {};
-  const data =
-    typeof raw === "object" && raw !== null && "data" in raw
-      ? (raw as { data: { k1?: string; lnurl?: string } }).data
-      : raw;
-  const k1 = data?.k1 ?? (data as { K1?: string })?.K1;
-  const lnurl =
-    data?.lnurl ?? (data as { lnurlAuthUrl?: string })?.lnurlAuthUrl;
-  if (!k1 || !lnurl) {
-    lnurlLinkError.value = t("auth.error_occurred");
-    return false;
-  }
-  lnurlK1.value = k1;
-  lnurlLinkUrl.value = lnurl;
-  showLnurlLinkModal.value = true;
-  startLinkPolling(k1);
-  return true;
-}
-
-async function handleAddLightningLogin() {
-  lnurlLinkLoading.value = true;
-  lnurlLinkError.value = "";
-  try {
-    await fetchLinkChallengeAndOpen();
-  } catch (err: any) {
-    lnurlLinkError.value =
-      err.response?.data?.error || t("auth.error_occurred");
-  } finally {
-    lnurlLinkLoading.value = false;
-  }
-}
-
-async function requestNewLinkChallenge() {
-  lnurlLinkError.value = "";
-  stopLinkPolling();
-  try {
-    const ok = await fetchLinkChallengeAndOpen();
-    if (!ok) lnurlLinkError.value = t("auth.error_occurred");
-  } catch (err: any) {
-    lnurlLinkError.value =
-      err.response?.data?.error || t("auth.error_occurred");
-  }
-}
-
-function startLinkPolling(k1: string) {
-  lnurlLinkPolling.value = true;
-  const startTime = Date.now();
-  const timeout = 300000;
-  const doPoll = async () => {
-    if (Date.now() - startTime > timeout) {
-      lnurlLinkError.value = t("account.challenge_expired");
-      closeLnurlLinkModal();
-      return;
-    }
-    try {
-      const res = await api.get(
-        `/lnurl-auth/challenge-status/${k1}?_=${Date.now()}`,
-      );
-      const raw = res.data ?? {};
-      const data =
-        typeof raw === "object" && raw !== null && "data" in raw
-          ? (raw as { data: { status?: string } }).data
-          : raw;
-      const status = (data as { status?: string })?.status;
-      if (status === "linked") {
-        stopLinkPolling();
-        closeLnurlLinkModal();
-        await authStore.fetchUser();
-        alert(t("account.lightning_login_added"));
-      } else if (status === "expired") {
-        lnurlLinkError.value = t("account.challenge_expired");
-        closeLnurlLinkModal();
-      } else if (status === "error") {
-        lnurlLinkError.value =
-          (data as { message?: string }).message || t("auth.error_occurred");
-        closeLnurlLinkModal();
-      }
-    } catch (err: any) {
-      if (err.response?.status === 403) closeLnurlLinkModal();
-    }
-  };
-  doPoll();
-  linkPollingInterval = window.setInterval(doPoll, 1000);
-}
-
-onUnmounted(() => {
-  stopLinkPolling();
-});
-
 async function copyStoredSeed() {
   if (!storedGuestMnemonic.value) return;
   try {
@@ -1581,81 +1742,122 @@ async function copyStoredSeed() {
   }
 }
 
-async function handleGuestUpgradeEmail() {
-  if (!guestUpgradeCanSubmit.value) return;
-  guestUpgradeLoading.value = true;
+async function handleRecoveryEnrolled(payload: {
+  recoveryPublicKeyHex: string;
+  mnemonic: string;
+}) {
+  showRecoveryBackupWizard.value = false;
   try {
-    const response = await api.put("/user/guest/upgrade", {
-      method: "email",
-      email: guestUpgradeForm.value.email,
-      password: guestUpgradeForm.value.password,
-      password_confirmation: guestUpgradeForm.value.password_confirmation,
-      privacy_consent: guestPrivacyConsent.value,
-      terms_accepted: guestTermsAccepted.value,
-    });
-    if (response?.data?.user) {
-      authStore.user = response.data.user;
-    } else {
-      await authStore.fetchUser();
-    }
-    clearStoredGuestMnemonic();
-    storedGuestMnemonic.value = null;
-    guestUpgradeForm.value.password = "";
-    guestUpgradeForm.value.password_confirmation = "";
-    await router.push({ name: "account-check-email" });
+    await authStore.enrollGuestRecoveryPublicKey(payload.recoveryPublicKeyHex);
+    storeGuestMnemonic(payload.mnemonic);
+    await initEvoluFromAccountSeedIfNeeded(payload.mnemonic);
+    storedGuestMnemonic.value = payload.mnemonic;
+    flashStore.success(t("account.recovery_phrase_saved"));
   } catch (e: any) {
     flashStore.error(
-      e?.response?.data?.message || t("account.guest_upgrade_failed"),
+      e?.response?.data?.message || t("account.recovery_phrase_save_failed"),
     );
-  } finally {
-    guestUpgradeLoading.value = false;
   }
 }
 
-function resolveLinkedUpgradeMethod(): "lightning" | "nostr" {
-  const u = authStore.user;
-  if (!u?.has_lightning_login && !u?.has_nostr_login) {
-    return "lightning";
+async function submitRestoreOnDevice(): Promise<void> {
+  restoreOnDeviceError.value = "";
+  restoreOnDeviceLoading.value = true;
+  try {
+    const result = await bindRecoveryPhraseOnThisDevice(restoreOnDeviceInput.value);
+    storedGuestMnemonic.value = getStoredGuestMnemonic();
+    showRestoreOnDeviceModal.value = false;
+    restoreOnDeviceInput.value = "";
+    if (result === "restored" || result === "migrated_legacy_owner") {
+      const { evolu } = await import("@/evolu/client");
+      evolu.reloadApp();
+    }
+    flashStore.success(t("account.recovery_phrase_restore_on_device_success"));
+  } catch {
+    restoreOnDeviceError.value = t("account.recovery_phrase_restore_on_device_failed");
+  } finally {
+    restoreOnDeviceLoading.value = false;
   }
-  if (hasBothLinkedLogins.value) {
-    return linkedUpgradeMethod.value;
-  }
-  if (u.has_lightning_login) {
-    return "lightning";
-  }
-
-  return "nostr";
 }
 
-async function handleGuestUpgradeLinkedSubmit() {
-  if (!guestUpgradeCanSubmit.value) return;
-  guestUpgradeLoading.value = true;
+async function saveEvoluRelayUrl(): Promise<void> {
+  evoluRelaySaving.value = true;
   try {
-    const method = resolveLinkedUpgradeMethod();
-    const response = await api.put("/user/guest/upgrade", {
-      method,
-      email: guestUpgradeForm.value.email,
-      password: guestUpgradeForm.value.password,
-      password_confirmation: guestUpgradeForm.value.password_confirmation,
-      privacy_consent: guestPrivacyConsent.value,
-      terms_accepted: guestTermsAccepted.value,
+    const url = evoluRelayForm.value.url.trim();
+    await api.put("/user", {
+      evolu_relay_url: url !== "" ? url : null,
     });
-    if (response?.data?.user) {
-      authStore.user = response.data.user;
-    } else {
-      await authStore.fetchUser();
+    await authStore.fetchUser();
+    evoluRelayForm.value.url = authStore.user?.evolu_relay_url ?? "";
+    if (localFirst) {
+      const { evolu } = await import("@/evolu/client");
+      await refreshEvoluRelaySubscription(evolu);
     }
-    clearStoredGuestMnemonic();
-    storedGuestMnemonic.value = null;
-    guestUpgradeForm.value.password = "";
-    guestUpgradeForm.value.password_confirmation = "";
-    await router.push({ name: "account-check-email" });
-  } catch (e: any) {
-    flashStore.error(
-      e?.response?.data?.message || t("account.guest_upgrade_failed"),
-    );
+    flashStore.success(t("account.evolu_relay_saved"));
+    void refreshEvoluStats();
+  } catch {
+    flashStore.error(t("account.evolu_relay_save_failed"));
   } finally {
-    guestUpgradeLoading.value = false;
+    evoluRelaySaving.value = false;
+  }
+}
+
+async function clearEvoluRelayUrl(): Promise<void> {
+  evoluRelayForm.value.url = "";
+  await saveEvoluRelayUrl();
+}
+
+function formatStatsTime(ms: number): string {
+  try {
+    return new Intl.DateTimeFormat(locale.value, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(ms));
+  } catch {
+    return new Date(ms).toISOString();
+  }
+}
+
+function formatStatsIso(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat(locale.value, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+async function refreshEvoluStats(): Promise<void> {
+  if (!localFirst || evoluStatsNeedPhrase.value) {
+    evoluLocalStats.value = null;
+    evoluRelayUsage.value = null;
+    evoluRelayUsageChecked.value = false;
+    return;
+  }
+
+  evoluStatsLoading.value = true;
+  evoluRelayUsageChecked.value = false;
+  try {
+    await ensureEvoluBoundToAccountSeed();
+    const { evolu } = await import("@/evolu/client");
+    const stats = await loadInvoicingLocalStats(evolu, { includeDbExport: true });
+    evoluLocalStats.value = stats;
+
+    const relayUrl = activeRelayUrl.value;
+    if (relayUrl && stats.ownerId) {
+      evoluRelayUsage.value = await fetchEvoluRelayUsage(relayUrl, stats.ownerId);
+    } else {
+      evoluRelayUsage.value = null;
+    }
+    evoluRelayUsageChecked.value = true;
+  } catch {
+    evoluLocalStats.value = null;
+    evoluRelayUsage.value = null;
+    evoluRelayUsageChecked.value = true;
+  } finally {
+    evoluStatsLoading.value = false;
   }
 }
 

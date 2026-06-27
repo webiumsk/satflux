@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Integrations;
 
 use App\Http\Controllers\Controller;
 use App\Models\BusinessDocument;
+use App\Models\IntegrationDocumentInbox;
 use App\Models\StoreIntegration;
 use App\Services\Integrations\WooCommerceDocumentService;
 use Illuminate\Http\JsonResponse;
@@ -61,12 +62,24 @@ class WooCommerceIntegrationController extends Controller
             'lines.*.quantity' => ['required', 'numeric', 'min:0'],
             'lines.*.unit_price' => ['required', 'numeric'],
             'lines.*.tax_rate' => ['sometimes', 'numeric'],
+            'payment_method' => ['sometimes', 'string', 'max:64'],
+            'is_paid' => ['sometimes', 'boolean'],
+            'paid_at' => ['sometimes', 'string', 'max:64'],
+            'order_total' => ['sometimes', 'numeric'],
+            'discount_percent' => ['sometimes', 'numeric', 'min:0'],
+            'btcpay_invoice_id' => ['sometimes', 'string', 'max:128'],
         ]);
 
-        $document = $this->documentService->createDocument($integration, $validated);
+        $result = $this->documentService->createDocument($integration, $validated);
+
+        if ($result instanceof IntegrationDocumentInbox) {
+            return response()->json([
+                'data' => $this->documentService->serializeInboxEntry($result),
+            ], 201);
+        }
 
         return response()->json([
-            'data' => $this->documentService->serializeDocument($document),
+            'data' => $this->documentService->serializeDocument($result),
         ], 201);
     }
 
@@ -74,7 +87,24 @@ class WooCommerceIntegrationController extends Controller
     {
         /** @var StoreIntegration $integration */
         $integration = $request->attributes->get('store_integration');
+
+        $inbox = IntegrationDocumentInbox::query()
+            ->where('id', $documentId)
+            ->where('store_integration_id', $integration->id)
+            ->first();
+        if ($inbox) {
+            $entry = $this->documentService->issueInboxEntry($integration, $inbox);
+
+            return response()->json([
+                'data' => $this->documentService->serializeIssuedInboxEntry($entry),
+            ]);
+        }
+
         $document = BusinessDocument::findOrFail($documentId);
+        $company = $integration->company ?? $integration->store->company;
+        if (! $company || $document->company_id !== $company->id) {
+            abort(404);
+        }
         $document = $this->documentService->issueDocument($integration, $document);
 
         return response()->json([
@@ -86,6 +116,17 @@ class WooCommerceIntegrationController extends Controller
     {
         /** @var StoreIntegration $integration */
         $integration = $request->attributes->get('store_integration');
+
+        $inbox = IntegrationDocumentInbox::query()
+            ->where('id', $documentId)
+            ->where('store_integration_id', $integration->id)
+            ->first();
+        if ($inbox) {
+            return response()->json([
+                'data' => $this->documentService->serializeIssuedInboxEntry($inbox),
+            ]);
+        }
+
         $document = BusinessDocument::findOrFail($documentId);
         $company = $integration->company ?? $integration->store->company;
         if (! $company || $document->company_id !== $company->id) {

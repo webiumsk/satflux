@@ -1,0 +1,29 @@
+@import '@fontsource/outfit/400.css';
+@import '@fontsource/outfit/600.css';
+@import '@fontsource/outfit/700.css';
+
+@config "../../tailwind.public.config.js";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .onboarding-step-highlight {
+    @apply border border-orange-400/40 shadow-xl shadow-orange-900/20;
+  }
+}
+
+a {
+    cursor: pointer;
+}
+
+.sf-app-pending {
+    visibility: hidden;
+    height: 0;
+    overflow: hidden;
+}
+
+#app {
+    background-color: #111827;
+}

@@ -8,6 +8,7 @@ use App\Enums\BusinessDocumentType;
 use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Services\Invoicing\Efaktura\ComplianceSubmissionService;
+use App\Support\Invoicing\BankSymbolNormalizer;
 use App\Support\Invoicing\BuyerSnapshot;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -39,7 +40,8 @@ class BusinessDocumentIssueService
             );
 
             $document->number = $number;
-            $document->variable_symbol = $document->variable_symbol ?: preg_replace('/\D/', '', $number);
+            $document->variable_symbol = BankSymbolNormalizer::variableSymbol($document->variable_symbol)
+                ?? BankSymbolNormalizer::variableSymbol($number);
             $document->issue_date = $document->issue_date ?? now()->toDateString();
             $document->status = BusinessDocumentStatus::Issued;
 

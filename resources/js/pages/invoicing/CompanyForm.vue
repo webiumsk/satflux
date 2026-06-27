@@ -4,6 +4,11 @@
       <RouterLink :to="{ name: 'invoicing' }" class="invoicing-back">← {{ t('invoicing.title') }}</RouterLink>
     </template>
 
+    <div v-if="localFirst && isRelaySyncing" class="invoicing-alert-warn mb-4">
+      <p class="text-sm font-medium">{{ t('invoicing.relay_sync_loading') }}</p>
+      <p class="text-sm mt-2 opacity-90">{{ t('invoicing.relay_sync_wait_detail') }}</p>
+    </div>
+
     <form class="invoicing-card-pad space-y-6" @submit.prevent="save">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
@@ -166,7 +171,7 @@
       </label>
 
       <div class="flex flex-wrap gap-3 pt-2">
-        <button type="submit" class="invoicing-btn-primary" :disabled="saving">
+        <button type="submit" class="invoicing-btn-primary" :disabled="saving || isRelaySyncing">
           {{ t('common.save') }}
         </button>
         <RouterLink :to="{ name: 'invoicing' }" class="invoicing-btn-secondary">
@@ -184,6 +189,7 @@ import { useRouter } from 'vue-router';
 import InvoicingJurisdictionSelect from '../../components/invoicing/InvoicingJurisdictionSelect.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import RegistryLookupField from '../../components/invoicing/RegistryLookupField.vue';
+import type { CompanyJurisdictionValue } from '../../config/companyJurisdiction';
 import {
   countryAllowedForJurisdiction,
   countriesForJurisdiction,
@@ -203,12 +209,21 @@ import {
   type RegistrySummary,
 } from '../../composables/useCompanyRegistryLookup';
 import api from '../../services/api';
+import { useInvoicingRelaySync } from '../../composables/useInvoicingRelaySync';
+import { isInvoicingLocalFirst } from '../../evolu/flags';
+import { useInvoicingEvolu, allCompaniesQuery } from '../../evolu/client';
+import { insertLocalCompanyFromPayload } from '../../evolu/companyInsert';
+import { normalizeCompanyIdentityKey } from '../../evolu/duplicateCompanies';
+import { seedDefaultNumberSeries, localizedDefaultSeries } from '../../evolu/numberSeriesCrud';
 import { useStoresStore } from '../../store/stores';
 
 const { t, te } = useI18n();
 const router = useRouter();
 const storesStore = useStoresStore();
 const saving = ref(false);
+const localFirst = isInvoicingLocalFirst();
+const { isRelaySyncing } = useInvoicingRelaySync();
+const evolu = localFirst ? useInvoicingEvolu() : null;
 
 const form = reactive({
   legal_name: '',
@@ -374,12 +389,16 @@ onMounted(async () => {
 });
 
 async function save() {
+  if (localFirst && isRelaySyncing.value) {
+    window.alert(t('invoicing.relay_sync_wait_hint'));
+    return;
+  }
   saving.value = true;
   try {
     const payload = {
       legal_name: form.legal_name,
       store_id: form.store_id || null,
-      jurisdiction: form.jurisdiction,
+      jurisdiction: form.jurisdiction as CompanyJurisdictionValue,
       default_currency: form.default_currency,
       registration_number: form.registration_number || null,
       tax_id: form.tax_id || null,
@@ -397,8 +416,33 @@ async function save() {
       commercial_register: form.commercial_register || null,
       vat_payer: showVatPayer.value ? form.vat_payer || Boolean(form.vat_number) : false,
       vat_status:
-        !showVatPayer.value || (!form.vat_payer && !form.vat_number) ? 'none' : 'payer',
+        (!showVatPayer.value || (!form.vat_payer && !form.vat_number) ? 'none' : 'payer') as
+          | 'none'
+          | 'payer'
+          | 'partial',
     };
+
+    if (localFirst && evolu) {
+      const existing = await evolu.loadQuery(allCompaniesQuery);
+      const identityKey = normalizeCompanyIdentityKey(payload.legal_name);
+      const duplicate = existing.some(
+        (row) => normalizeCompanyIdentityKey(row.legalName) === identityKey,
+      );
+      if (duplicate) {
+        window.alert(t('invoicing.duplicate_company_blocked'));
+        return;
+      }
+
+      const result = insertLocalCompanyFromPayload(evolu, payload);
+      if (!result.ok) {
+        window.alert(t('invoicing.company_save_validation_error'));
+        return;
+      }
+      seedDefaultNumberSeries(evolu, result.value.id, [], localizedDefaultSeries(t));
+      router.push({ name: 'invoicing' });
+      return;
+    }
+
     const res = await api.post('/invoicing/companies', payload);
     router.push({ name: 'invoicing-company', params: { companyId: res.data.data.id } });
   } finally {

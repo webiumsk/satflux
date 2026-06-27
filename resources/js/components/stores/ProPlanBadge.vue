@@ -26,7 +26,7 @@ import { useI18n } from "vue-i18n";
 
 withDefaults(
   defineProps<{
-    /** Show native tooltip with longer Pro hint (e.g. on compact badges). */
+    /** Show native tooltip with longer PRO hint (e.g. on compact badges). */
     withTooltip?: boolean;
   }>(),
   { withTooltip: false },

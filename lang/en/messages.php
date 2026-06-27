@@ -15,6 +15,8 @@ return [
     'login_successful' => 'Login successful',
     'logout_successful' => 'Logout successful',
     'registration_successful' => 'Registration successful! Please check your email to verify your account.',
+    'seed_first_registration_required' => 'Create your account with a recovery phrase first. You can add a verified email later when upgrading to Free.',
+    'password_login_use_recovery_phrase' => 'This account uses a recovery phrase for sign-in. Use "Restore with recovery phrase" on the login page.',
     'compliance_registration_unavailable' => 'Registration is not available from your location or could not be completed. Please contact support if you believe this is an error.',
     'contact_inquiry_received' => 'Thank you. We received your message and will respond by email.',
     'verification_email_failed' => 'Unable to send verification email. Please verify your email address is valid and try again.',
@@ -61,8 +63,8 @@ return [
     'lightning_address_limit_reached' => 'You have reached the maximum number of Lightning Addresses (:max) for your :plan plan. Please upgrade to add more addresses.',
 
     // Tickets (events limit)
-    'tickets_event_limit_free' => 'Ticket events are limited to :max per store on the Free plan. Upgrade to Pro for unlimited events.',
-    'raffles_limit_free' => 'Raffles are limited to :max per store on the Free plan. Upgrade to Pro for unlimited raffles.',
+    'tickets_event_limit_free' => 'Ticket events are limited to :max per store on the Free plan. Upgrade to PRO for unlimited events.',
+    'raffles_limit_free' => 'Raffles are limited to :max per store on the Free plan. Upgrade to PRO for unlimited raffles.',
     'raffles_quota_verification_failed' => 'Could not verify raffle limit with BTCPay. Please try again.',
     'raffles_cannot_delete' => 'This raffle can only be deleted when it is a draft or completed.',
     'tickets_bundled_raffle_required' => 'Select an open raffle when including raffle tickets per admission.',
@@ -145,6 +147,6 @@ return [
     'faq_marked_helpful' => 'Thank you for your feedback!',
 
     // Business invoicing
-    'business_invoicing_available_in_pro' => 'Business invoicing is available on the Pro plan. Please upgrade to create invoices.',
+    'business_invoicing_available_in_pro' => 'Business invoicing is available on the PRO plan. Please upgrade to create invoices.',
     'company_limit_reached' => 'You have reached the maximum number of companies (:max) for your plan.',
 ];
