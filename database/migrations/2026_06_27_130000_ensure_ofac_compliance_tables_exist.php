@@ -55,7 +55,10 @@ return new class extends Migration
             && Schema::getConnection()->getDriverName() === 'pgsql'
         ) {
             $indexExists = DB::selectOne(
-                "SELECT 1 FROM pg_indexes WHERE indexname = 'sanctions_entries_aliases_normalized_gin'",
+                "SELECT 1 FROM pg_indexes
+                 WHERE indexname = 'sanctions_entries_aliases_normalized_gin'
+                   AND schemaname = current_schema()
+                   AND tablename = 'sanctions_entries'",
             );
             if ($indexExists === null) {
                 DB::statement(

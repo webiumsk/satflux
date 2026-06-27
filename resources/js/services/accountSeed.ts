@@ -136,7 +136,8 @@ export type EvoluAccountSeedInitResult =
     | "restored"
     | "already_synced"
     | "migrated_legacy_owner"
-    | "relay_synced";
+    | "relay_synced"
+    | "owner_restore_failed";
 
 const PENDING_OWNER_MIGRATION_SNAPSHOT_KEY = "satflux.evolu.pending_owner_migration_snapshot.v1";
 /** Set when auto restoreAppOwner completes but owner still mismatches - prevents reload loops. */
@@ -198,7 +199,13 @@ export async function initEvoluFromAccountSeedIfNeeded(
     }
 
     if (hasEvoluOwnerRestoreBeenAttempted()) {
-        return "already_synced";
+        const ownerAfterAttempt = await evolu.appOwner;
+        if (isTargetEvoluOwner(ownerAfterAttempt.mnemonic, mnemonic)) {
+            clearEvoluOwnerRestoreAttempted();
+            await ensureEvoluRelaySubscription(evolu);
+            return "already_synced";
+        }
+        return "owner_restore_failed";
     }
 
     const snapshot = await snapshotInvoicingData(evolu);
@@ -217,24 +224,27 @@ export async function initEvoluFromAccountSeedIfNeeded(
         await waitForInvoicingRelaySync(evolu);
     }
 
+    async function finishAfterOwnerRestore(
+        result: "restored" | "migrated_legacy_owner",
+    ): Promise<EvoluAccountSeedInitResult> {
+        const ownerAfterRestore = await evolu.appOwner;
+        if (!isTargetEvoluOwner(ownerAfterRestore.mnemonic, mnemonic)) {
+            markEvoluOwnerRestoreAttempted();
+            return "owner_restore_failed";
+        }
+        clearEvoluOwnerRestoreAttempted();
+        await ensureEvoluRelaySubscription(evolu);
+        return result;
+    }
+
     if (wrongOwner && hasData) {
         markEvoluRelaySyncPending();
         await evolu.restoreAppOwner(evoluMnemonic, { reload: false });
         await restoreInvoicingAfterOwnerReset(snapshot);
-        clearEvoluOwnerRestoreAttempted();
-        return "migrated_legacy_owner";
+        return finishAfterOwnerRestore("migrated_legacy_owner");
     }
 
     markEvoluRelaySyncPending();
     await evolu.restoreAppOwner(evoluMnemonic, { reload: false });
-
-    const ownerAfterRestore = await evolu.appOwner;
-    if (!isTargetEvoluOwner(ownerAfterRestore.mnemonic, mnemonic)) {
-        markEvoluOwnerRestoreAttempted();
-        throw new Error("evolu_owner_restore_failed");
-    }
-
-    clearEvoluOwnerRestoreAttempted();
-    await ensureEvoluRelaySubscription(evolu);
-    return "restored";
+    return finishAfterOwnerRestore("restored");
 }
