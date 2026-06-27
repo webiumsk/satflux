@@ -62,6 +62,7 @@ export function storeAccountMnemonic(mnemonic: string): void {
     }
     sessionStorage.setItem(ACCOUNT_MNEMONIC_STORAGE_KEY, normalized);
     sessionStorage.removeItem(LEGACY_GUEST_MNEMONIC_STORAGE_KEY);
+    clearEvoluOwnerRestoreAttempted();
     try {
         localStorage.setItem(PERSISTENT_ACCOUNT_MNEMONIC_KEY, normalized);
     } catch {
@@ -135,9 +136,24 @@ export type EvoluAccountSeedInitResult =
     | "restored"
     | "already_synced"
     | "migrated_legacy_owner"
-    | "relay_synced";
+    | "relay_synced"
+    | "owner_restore_failed";
 
 const PENDING_OWNER_MIGRATION_SNAPSHOT_KEY = "satflux.evolu.pending_owner_migration_snapshot.v1";
+/** Set when auto restoreAppOwner completes but owner still mismatches - prevents reload loops. */
+const EVOLU_OWNER_RESTORE_ATTEMPTED_KEY = "satflux.evolu.owner_restore_attempted.v1";
+
+function clearEvoluOwnerRestoreAttempted(): void {
+    sessionStorage.removeItem(EVOLU_OWNER_RESTORE_ATTEMPTED_KEY);
+}
+
+export function markEvoluOwnerRestoreAttempted(): void {
+    sessionStorage.setItem(EVOLU_OWNER_RESTORE_ATTEMPTED_KEY, "1");
+}
+
+export function hasEvoluOwnerRestoreBeenAttempted(): boolean {
+    return sessionStorage.getItem(EVOLU_OWNER_RESTORE_ATTEMPTED_KEY) === "1";
+}
 
 export async function initEvoluFromAccountSeedIfNeeded(
     mnemonic: string,
@@ -173,6 +189,7 @@ export async function initEvoluFromAccountSeedIfNeeded(
 
     const owner = await evolu.appOwner;
     if (isTargetEvoluOwner(owner.mnemonic, mnemonic)) {
+        clearEvoluOwnerRestoreAttempted();
         await ensureEvoluRelaySubscription(evolu);
         if (isEvoluRelaySyncPending()) {
             const synced = await waitForInvoicingRelaySync(evolu);
@@ -181,18 +198,53 @@ export async function initEvoluFromAccountSeedIfNeeded(
         return "already_synced";
     }
 
+    if (hasEvoluOwnerRestoreBeenAttempted()) {
+        const ownerAfterAttempt = await evolu.appOwner;
+        if (isTargetEvoluOwner(ownerAfterAttempt.mnemonic, mnemonic)) {
+            clearEvoluOwnerRestoreAttempted();
+            await ensureEvoluRelaySubscription(evolu);
+            return "already_synced";
+        }
+        return "owner_restore_failed";
+    }
+
     const snapshot = await snapshotInvoicingData(evolu);
     const hasData = snapshotHasInvoicingData(snapshot);
     const wrongOwner = owner.mnemonic != null && owner.mnemonic !== evoluMnemonic;
 
-    if (wrongOwner && hasData) {
-        sessionStorage.setItem(PENDING_OWNER_MIGRATION_SNAPSHOT_KEY, JSON.stringify(snapshot));
+    async function restoreInvoicingAfterOwnerReset(
+        dataSnapshot: InvoicingDataSnapshot,
+    ): Promise<void> {
+        if (!snapshotHasInvoicingData(dataSnapshot)) {
+            return;
+        }
         markEvoluRelaySyncPending();
-        await evolu.restoreAppOwner(evoluMnemonic, { reload: true });
-        return "migrated_legacy_owner";
+        await restoreInvoicingSnapshotAsync(evolu, dataSnapshot);
+        await ensureEvoluRelaySubscription(evolu);
+        await waitForInvoicingRelaySync(evolu);
+    }
+
+    async function finishAfterOwnerRestore(
+        result: "restored" | "migrated_legacy_owner",
+    ): Promise<EvoluAccountSeedInitResult> {
+        const ownerAfterRestore = await evolu.appOwner;
+        if (!isTargetEvoluOwner(ownerAfterRestore.mnemonic, mnemonic)) {
+            markEvoluOwnerRestoreAttempted();
+            return "owner_restore_failed";
+        }
+        clearEvoluOwnerRestoreAttempted();
+        await ensureEvoluRelaySubscription(evolu);
+        return result;
+    }
+
+    if (wrongOwner && hasData) {
+        markEvoluRelaySyncPending();
+        await evolu.restoreAppOwner(evoluMnemonic, { reload: false });
+        await restoreInvoicingAfterOwnerReset(snapshot);
+        return finishAfterOwnerRestore("migrated_legacy_owner");
     }
 
     markEvoluRelaySyncPending();
-    await evolu.restoreAppOwner(evoluMnemonic, { reload: true });
-    return "restored";
+    await evolu.restoreAppOwner(evoluMnemonic, { reload: false });
+    return finishAfterOwnerRestore("restored");
 }

@@ -1278,7 +1278,8 @@ import { isInvoicingLocalFirst } from "../../evolu/flags";
 import { getEvoluRelayBuildInfo } from "../../evolu/config";
 import { getEvoluRelayRuntimeInfo } from "../../services/evoluRelayPreference";
 import { refreshEvoluRelaySubscription } from "../../evolu/evoluRelaySubscription";
-import { ensureEvoluBoundToAccountSeed } from "../../evolu/bootstrap";
+import { ensureEvoluBoundToAccountSeed, resetEvoluBootstrapForRetry } from "../../evolu/bootstrap";
+import { allowEvoluPageReload } from "../../evolu/reloadGuard";
 import {
   formatByteSize,
   loadInvoicingLocalStats,
@@ -1764,12 +1765,14 @@ async function submitRestoreOnDevice(): Promise<void> {
   restoreOnDeviceError.value = "";
   restoreOnDeviceLoading.value = true;
   try {
+    resetEvoluBootstrapForRetry();
     const result = await bindRecoveryPhraseOnThisDevice(restoreOnDeviceInput.value);
     storedGuestMnemonic.value = getStoredGuestMnemonic();
     showRestoreOnDeviceModal.value = false;
     restoreOnDeviceInput.value = "";
     if (result === "restored" || result === "migrated_legacy_owner") {
       const { evolu } = await import("@/evolu/client");
+      allowEvoluPageReload();
       evolu.reloadApp();
     }
     flashStore.success(t("account.recovery_phrase_restore_on_device_success"));

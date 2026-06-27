@@ -9,10 +9,20 @@ export const EVOLU_BOOTSTRAP_DEFER_MS = 350;
 export const EVOLU_BOOTSTRAP_TIMEOUT_MS = 60_000;
 
 let bootstrapPromise: Promise<void> | null = null;
+let bootstrapState: "idle" | "running" | "done" | "failed" = "idle";
+/** Incremented on reset so stale in-flight bootstrap chains cannot mutate state. */
+let bootstrapGeneration = 0;
+
+/** Allow a fresh bootstrap after manual recovery phrase restore on Profile. */
+export function resetEvoluBootstrapForRetry(): void {
+    bootstrapGeneration += 1;
+    bootstrapState = "idle";
+    bootstrapPromise = null;
+}
 
 /**
  * Bind Evolu AppOwner to the Satflux recovery phrase (same 24 words).
- * Safe to call repeatedly; migrates legacy random/HKDF owners with local data.
+ * Runs at most once per page load; does not full-page reload on owner restore.
  */
 export function ensureEvoluBoundToAccountSeed(): Promise<void> {
     if (!isInvoicingLocalFirst()) {
@@ -22,18 +32,42 @@ export function ensureEvoluBoundToAccountSeed(): Promise<void> {
     if (!mnemonic) {
         return Promise.resolve();
     }
+    if (bootstrapState === "done" || bootstrapState === "failed") {
+        return Promise.resolve();
+    }
     if (!bootstrapPromise) {
+        const generation = bootstrapGeneration;
+        bootstrapState = "running";
         bootstrapPromise = sleep(EVOLU_BOOTSTRAP_DEFER_MS)
-            .then(() =>
-                withTimeout(
+            .then(() => {
+                if (generation !== bootstrapGeneration) {
+                    return null;
+                }
+                return withTimeout(
                     initEvoluFromAccountSeedIfNeeded(mnemonic),
                     EVOLU_BOOTSTRAP_TIMEOUT_MS,
                     "evolu_bootstrap_timeout",
-                ),
-            )
-            .then(() => undefined)
+                );
+            })
+            .then((result) => {
+                if (generation !== bootstrapGeneration) {
+                    return;
+                }
+                bootstrapState = result === "owner_restore_failed" ? "failed" : "done";
+            })
+            .catch((error) => {
+                if (generation !== bootstrapGeneration) {
+                    return;
+                }
+                bootstrapState = "failed";
+                if (import.meta.env.DEV) {
+                    console.warn("[evolu] bootstrap failed:", error);
+                }
+            })
             .finally(() => {
-                bootstrapPromise = null;
+                if (generation === bootstrapGeneration) {
+                    bootstrapPromise = null;
+                }
             });
     }
     return bootstrapPromise;
