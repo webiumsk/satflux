@@ -465,7 +465,11 @@ router.beforeEach(async (to, from, next) => {
         && getStoredAccountMnemonic()
         && to.meta.requiresAuth
     ) {
-        await ensureEvoluBoundToAccountSeed();
+        try {
+            await ensureEvoluBoundToAccountSeed();
+        } catch {
+            // Evolu bootstrap is best-effort; do not block navigation (avoids reload loops when WASM fails in dev).
+        }
     }
 
     // Hard gate: guests cannot use the app until wallet setup is complete (Lightning connected or Cashu mint+LN address).

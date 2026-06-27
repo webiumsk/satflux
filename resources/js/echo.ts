@@ -43,6 +43,8 @@ export function getEcho(): Echo | null {
         wssPort: port,
         forceTLS,
         enabledTransports: forceTLS ? ['wss'] : ['ws'],
+        // Reverb is optional; avoid noisy reconnect loops when the websocket drops during navigation.
+        disableStats: true,
         authEndpoint: `${baseUrl}/broadcasting/auth`,
         auth: {
             headers: {

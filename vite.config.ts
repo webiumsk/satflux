@@ -1,8 +1,31 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import laravel from 'laravel-vite-plugin';
 
 const viteDevOrigin = process.env.VITE_DEV_SERVER_ORIGIN || 'http://localhost:8080';
+
+/** Evolu sqlite-wasm workers break when prebundled into node_modules/.vite/deps. */
+const evoluOptimizeExclude = [
+    '@sqlite.org/sqlite-wasm',
+    '@evolu/sqlite-wasm',
+    '@evolu/web',
+    '@evolu/common',
+    '@evolu/vue',
+];
+
+function wasmMimeType(): Plugin {
+    return {
+        name: 'wasm-mime-type',
+        configureServer(server) {
+            server.middlewares.use((req, res, next) => {
+                if (req.url?.split('?')[0]?.endsWith('.wasm')) {
+                    res.setHeader('Content-Type', 'application/wasm');
+                }
+                next();
+            });
+        },
+    };
+}
 
 export default defineConfig({
     build: {
@@ -35,6 +58,7 @@ export default defineConfig({
             },
         },
     },
+    assetsInclude: ['**/*.wasm'],
     plugins: [
         laravel({
             input: [
@@ -43,7 +67,8 @@ export default defineConfig({
                 'resources/js/app.ts',
                 'resources/js/public.ts',
             ],
-            refresh: true,
+            // Avoid full-page reload when lang/routes change during backend work (Docker scheduler, etc.).
+            refresh: ['resources/views/**'],
         }),
         vue({
             template: {
@@ -53,6 +78,7 @@ export default defineConfig({
                 },
             },
         }),
+        wasmMimeType(),
     ],
     resolve: {
         alias: {
@@ -60,15 +86,7 @@ export default defineConfig({
         },
     },
     optimizeDeps: {
-        // Evolu: sqlite-wasm must not be prebundled; @evolu/web must stay unbundled so
-        // Db.worker.js resolves to node_modules/@evolu/web/... (not missing .vite/deps/Db.worker.js).
-        exclude: [
-            '@sqlite.org/sqlite-wasm',
-            '@evolu/sqlite-wasm',
-            '@evolu/web',
-            '@evolu/common',
-            '@evolu/vue',
-        ],
+        exclude: evoluOptimizeExclude,
     },
     worker: {
         format: 'es',
@@ -77,14 +95,17 @@ export default defineConfig({
         host: '0.0.0.0',
         port: 5173,
         strictPort: true,
-        // Page is served via Laravel/nginx :8080; asset URLs use origin below.
-        // HMR WebSocket connects directly to Vite :5173 (nginx does not proxy it reliably).
+        // Laravel/nginx serves the page on :8080 and proxies /@vite, /node_modules, etc.
+        // origin + clientPort keep workers/WASM on the same origin (no [::1]:5173 CORS block).
         origin: viteDevOrigin,
         cors: true,
         hmr: {
             host: 'localhost',
             port: 5173,
+            clientPort: 8080,
             protocol: 'ws',
+            // Proxied in docker/nginx/default.conf - root "/" would hit Laravel instead of Vite.
+            path: '/@vite-hmr',
         },
     },
 });

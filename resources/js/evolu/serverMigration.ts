@@ -1,6 +1,7 @@
 import type { Evolu } from "@evolu/common/local-first";
 import api from "@/services/api";
 import { getStoredAccountMnemonic, initEvoluFromAccountSeedIfNeeded } from "@/services/accountSeed";
+import { allowEvoluPageReload } from "@/evolu/reloadGuard";
 import { allCompaniesQuery } from "@/evolu/client";
 import {
     EMPTY_INVOICING_SNAPSHOT,
@@ -195,6 +196,7 @@ export async function importServerInvoicingToEvolu(
 
     const seedResult = await initEvoluFromAccountSeedIfNeeded(mnemonic);
     if (seedResult === "restored" || seedResult === "migrated_legacy_owner") {
+        allowEvoluPageReload();
         evolu.reloadApp();
         await new Promise((resolve) => {
             setTimeout(resolve, 300);

@@ -1,6 +1,8 @@
 # OFAC / sanctions compliance - implementation plan
 
-Legal basis: Terms of Service section **5a** (sanctions, export controls, prohibited jurisdictions). Contractual language alone is insufficient; OFAC enforcement in crypto expects **documented screening** at onboarding and on material account changes.
+**Default for satflux.io:** screening is **off** (`COMPLIANCE_SCREENING_ENABLED=false` in `.env`). Bitcoin-only operators (no fiat rails) can leave it disabled. Enable when you accept fiat settlement (e.g. Stripe to a bank account) and want geo-block + sanctions list checks on registration.
+
+Legal basis: Terms of Service section **5a** (sanctions, export controls, prohibited jurisdictions). Contractual language alone is insufficient; OFAC enforcement in crypto expects **documented screening** at onboarding and on material account changes when you operate fiat-facing flows.
 
 This document plans backend implementation for satflux.io. It does not replace advice from qualified sanctions counsel.
 

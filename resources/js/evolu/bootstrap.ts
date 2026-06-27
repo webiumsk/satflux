@@ -9,10 +9,17 @@ export const EVOLU_BOOTSTRAP_DEFER_MS = 350;
 export const EVOLU_BOOTSTRAP_TIMEOUT_MS = 60_000;
 
 let bootstrapPromise: Promise<void> | null = null;
+let bootstrapState: "idle" | "running" | "done" | "failed" = "idle";
+
+/** Allow a fresh bootstrap after manual recovery phrase restore on Profile. */
+export function resetEvoluBootstrapForRetry(): void {
+    bootstrapState = "idle";
+    bootstrapPromise = null;
+}
 
 /**
  * Bind Evolu AppOwner to the Satflux recovery phrase (same 24 words).
- * Safe to call repeatedly; migrates legacy random/HKDF owners with local data.
+ * Runs at most once per page load; does not full-page reload on owner restore.
  */
 export function ensureEvoluBoundToAccountSeed(): Promise<void> {
     if (!isInvoicingLocalFirst()) {
@@ -22,7 +29,11 @@ export function ensureEvoluBoundToAccountSeed(): Promise<void> {
     if (!mnemonic) {
         return Promise.resolve();
     }
+    if (bootstrapState === "done" || bootstrapState === "failed") {
+        return Promise.resolve();
+    }
     if (!bootstrapPromise) {
+        bootstrapState = "running";
         bootstrapPromise = sleep(EVOLU_BOOTSTRAP_DEFER_MS)
             .then(() =>
                 withTimeout(
@@ -31,7 +42,15 @@ export function ensureEvoluBoundToAccountSeed(): Promise<void> {
                     "evolu_bootstrap_timeout",
                 ),
             )
-            .then(() => undefined)
+            .then(() => {
+                bootstrapState = "done";
+            })
+            .catch((error) => {
+                bootstrapState = "failed";
+                if (import.meta.env.DEV) {
+                    console.warn("[evolu] bootstrap failed:", error);
+                }
+            })
             .finally(() => {
                 bootstrapPromise = null;
             });

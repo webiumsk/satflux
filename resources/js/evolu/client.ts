@@ -1,10 +1,10 @@
 import { createEvolu, kysely, SimpleName, sqliteTrue } from "@evolu/common";
 import { createUseEvolu } from "@evolu/vue";
-import { evoluWebDeps } from "@evolu/web";
 import { evoluTransports } from "./config";
+import { createEvoluWebDepsWithReloadGuard } from "./reloadGuard";
 import { EVOLU_APP_NAME, InvoicingLocalSchema } from "./schema";
 
-export const evolu = createEvolu(evoluWebDeps)(InvoicingLocalSchema, {
+export const evolu = createEvolu(createEvoluWebDepsWithReloadGuard())(InvoicingLocalSchema, {
     name: SimpleName.orThrow(EVOLU_APP_NAME),
     transports: evoluTransports(),
 });
