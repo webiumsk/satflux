@@ -28,8 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAppsStore } from '../../store/apps';
 import { useAccountLimits } from '../../composables/useAccountLimits';
@@ -48,6 +47,12 @@ const eventLimit = computed(() => limits.value?.events?.unlimited ? null : (limi
 onMounted(async () => {
   if (storeId.value) {
     await loadLimits(storeId.value);
+  }
+});
+
+watch(storeId, async (id) => {
+  if (id) {
+    await loadLimits(id);
   }
 });
 </script>

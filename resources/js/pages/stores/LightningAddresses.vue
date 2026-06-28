@@ -762,6 +762,7 @@ const storesStore = useStoresStore();
 
 const storeId = route.params.id as string;
 const loading = ref(false);
+const error = ref("");
 const saving = ref(false);
 const deleting = ref(false);
 const addresses = ref<any[]>([]);
@@ -829,10 +830,13 @@ watch(
 );
 
 async function loadStore() {
+  error.value = "";
   try {
     store.value = await storesStore.fetchStore(storeId);
   } catch (err: unknown) {
-    flashStore.error(getApiErrorMessage(err, t("stores.loading_store")));
+    store.value = null;
+    error.value = getApiErrorMessage(err, t("stores.loading_store"));
+    flashStore.error(error.value);
   }
 }
 

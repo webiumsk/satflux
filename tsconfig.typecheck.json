@@ -11,7 +11,9 @@
     "resources/js/composables/useApiError.ts",
     "resources/js/composables/useStorePageShell.ts",
     "resources/js/composables/useSamRockPairing.ts",
-    "resources/js/composables/useTicketEvents.ts"
+    "resources/js/composables/useTicketEvents.ts",
+    "resources/js/store/stores.ts",
+    "resources/js/store/apps.ts"
   ],
   "exclude": [
     "resources/js/evolu/**"

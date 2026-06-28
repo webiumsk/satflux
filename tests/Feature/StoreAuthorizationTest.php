@@ -102,4 +102,26 @@ class StoreAuthorizationTest extends TestCase
             ->getJson("/api/stores/{$store->id}/pos-terminals")
             ->assertStatus(200);
     }
+
+    public function test_user_cannot_list_other_users_pos_orders(): void
+    {
+        $owner = User::factory()->create();
+        $intruder = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $owner->id]);
+
+        $this->actingAs($intruder)
+            ->getJson("/api/stores/{$store->id}/pos-orders")
+            ->assertStatus(403);
+    }
+
+    public function test_admin_can_list_another_users_pos_orders(): void
+    {
+        $owner = User::factory()->create();
+        $admin = User::factory()->admin()->create();
+        $store = Store::factory()->create(['user_id' => $owner->id]);
+
+        $this->actingAs($admin)
+            ->getJson("/api/stores/{$store->id}/pos-orders")
+            ->assertStatus(200);
+    }
 }

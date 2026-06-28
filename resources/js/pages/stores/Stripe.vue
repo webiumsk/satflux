@@ -762,6 +762,7 @@ async function loadStore() {
   try {
     store.value = await storesStore.fetchStore(storeId.value);
   } catch (err: unknown) {
+    store.value = null;
     error.value = getApiErrorMessage(err, t("stores.loading_store"));
   }
 }

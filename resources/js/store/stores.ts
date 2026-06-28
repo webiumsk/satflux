@@ -54,18 +54,27 @@ export const useStoresStore = defineStore('stores', () => {
         }
     }
 
+    let fetchStoreGeneration = 0;
+
     async function fetchStore(id: string) {
+        const generation = ++fetchStoreGeneration;
         loading.value = true;
         try {
             const response = await api.get(`/stores/${id}`);
-            currentStore.value = response.data.data;
+            if (generation === fetchStoreGeneration) {
+                currentStore.value = response.data.data;
+            }
             return response.data.data;
         } catch (e) {
-            // Avoid showing the previous store when navigation fails (404/403/network).
-            currentStore.value = null;
+            if (generation === fetchStoreGeneration) {
+                // Avoid showing the previous store when navigation fails (404/403/network).
+                currentStore.value = null;
+            }
             throw e;
         } finally {
-            loading.value = false;
+            if (generation === fetchStoreGeneration) {
+                loading.value = false;
+            }
         }
     }
 

@@ -6,3 +6,4 @@ services.json
 cache/
 sessions/
 testing/
+views/

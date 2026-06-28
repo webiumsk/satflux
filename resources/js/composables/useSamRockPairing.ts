@@ -13,6 +13,8 @@ export function useSamRockPairing(storeId: () => string) {
     const samrockPollStatus = ref('');
     const samrockErrorMessage = ref('');
     let samrockPollInterval: number | null = null;
+    let samrockPollInFlight = false;
+    let pairingStoreId: string | null = null;
 
     function revokeSamRockQr() {
         if (samrockQrObjectUrl.value) {
@@ -26,15 +28,19 @@ export function useSamRockPairing(storeId: () => string) {
             window.clearInterval(samrockPollInterval);
             samrockPollInterval = null;
         }
+        samrockPollInFlight = false;
     }
 
     async function cancelSamRockPairing() {
         stopSamRockPolling();
         revokeSamRockQr();
-        if (samrockOtp.value) {
+        const sid = pairingStoreId;
+        const otp = samrockOtp.value;
+        pairingStoreId = null;
+        if (sid && otp) {
             try {
                 await api.delete(
-                    `/stores/${storeId()}/samrock/otps/${encodeURIComponent(samrockOtp.value)}`,
+                    `/stores/${sid}/samrock/otps/${encodeURIComponent(otp)}`,
                 );
             } catch {
                 // ignore cleanup errors
@@ -47,7 +53,38 @@ export function useSamRockPairing(storeId: () => string) {
         samrockBusy.value = false;
     }
 
+    async function pollSamRockStatus(onComplete: () => void | Promise<void>) {
+        if (samrockPollInFlight || !samrockOtp.value || !pairingStoreId) {
+            return;
+        }
+        samrockPollInFlight = true;
+        const sid = pairingStoreId;
+        const otp = samrockOtp.value;
+        try {
+            const statusRes = await api.get(
+                `/stores/${sid}/samrock/otps/${encodeURIComponent(otp)}`,
+            );
+            const status = statusRes.data?.data?.status ?? '';
+            if (status === 'completed') {
+                stopSamRockPolling();
+                await api.post(`/stores/${sid}/samrock/complete`, { otp });
+                samrockOtp.value = '';
+                pairingStoreId = null;
+                revokeSamRockQr();
+                samrockPollStatus.value = t('stores.samrock_pairing_complete');
+                await onComplete();
+            }
+        } catch (err: unknown) {
+            samrockErrorMessage.value = getApiErrorMessage(err, t('stores.samrock_error'));
+            stopSamRockPolling();
+        } finally {
+            samrockPollInFlight = false;
+        }
+    }
+
     async function startSamRockPairing(onComplete: () => void | Promise<void>) {
+        const sid = storeId();
+        pairingStoreId = sid;
         samrockBusy.value = true;
         samrockErrorMessage.value = '';
         revokeSamRockQr();
@@ -55,7 +92,7 @@ export function useSamRockPairing(storeId: () => string) {
         stopSamRockPolling();
 
         try {
-            const res = await api.post(`/stores/${storeId()}/samrock/otps`, {
+            const res = await api.post(`/stores/${sid}/samrock/otps`, {
                 btc: true,
                 btcln: true,
                 lbtc: false,
@@ -66,6 +103,7 @@ export function useSamRockPairing(storeId: () => string) {
             if (!otp) {
                 samrockErrorMessage.value = t('stores.samrock_error');
                 samrockBusy.value = false;
+                pairingStoreId = null;
                 return;
             }
 
@@ -73,7 +111,7 @@ export function useSamRockPairing(storeId: () => string) {
             samrockExpiresAt.value = d.expiresAt ?? null;
 
             const qrRes = await api.get(
-                `/stores/${storeId()}/samrock/otps/${encodeURIComponent(otp)}/qr`,
+                `/stores/${sid}/samrock/otps/${encodeURIComponent(otp)}/qr`,
                 { responseType: 'blob' },
             );
             revokeSamRockQr();
@@ -81,33 +119,13 @@ export function useSamRockPairing(storeId: () => string) {
             samrockBusy.value = false;
             samrockPollStatus.value = t('stores.samrock_waiting_scan');
 
-            samrockPollInterval = window.setInterval(async () => {
-                if (!samrockOtp.value) {
-                    return;
-                }
-                try {
-                    const statusRes = await api.get(
-                        `/stores/${storeId()}/samrock/otps/${encodeURIComponent(samrockOtp.value)}`,
-                    );
-                    const status = statusRes.data?.data?.status ?? '';
-                    if (status === 'completed') {
-                        stopSamRockPolling();
-                        await api.post(`/stores/${storeId()}/samrock/complete`, {
-                            otp: samrockOtp.value,
-                        });
-                        samrockOtp.value = '';
-                        revokeSamRockQr();
-                        samrockPollStatus.value = t('stores.samrock_pairing_complete');
-                        await onComplete();
-                    }
-                } catch (err: unknown) {
-                    samrockErrorMessage.value = getApiErrorMessage(err, t('stores.samrock_error'));
-                    stopSamRockPolling();
-                }
+            samrockPollInterval = window.setInterval(() => {
+                void pollSamRockStatus(onComplete);
             }, 3000);
         } catch (err: unknown) {
             samrockErrorMessage.value = getApiErrorMessage(err, t('stores.samrock_error'));
             samrockBusy.value = false;
+            pairingStoreId = null;
         }
     }
 

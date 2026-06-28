@@ -106,6 +106,7 @@ import RaffleTicketPricingFields from '../../components/stores/RaffleTicketPrici
 import UpgradeModal from '../../components/stores/UpgradeModal.vue';
 import { useAccountLimits } from '../../composables/useAccountLimits';
 import { useStorePageShell } from '../../composables/useStorePageShell';
+import { useAppsStore } from '../../store/apps';
 import { useRafflesStore } from '../../store/raffles';
 import { useFlashStore } from '../../store/flash';
 import { buildRafflePricingPayload, defaultRafflePricingForm } from '../../utils/rafflePricing';
@@ -114,8 +115,10 @@ const { t } = useI18n();
 const router = useRouter();
 const flashStore = useFlashStore();
 const rafflesStore = useRafflesStore();
+const appsStore = useAppsStore();
 const { limits } = useAccountLimits();
-const { storeId, store, error, apps, loadStore, goSettings, goSection } = useStorePageShell();
+const { storeId, store, error, loadStore, goSettings, goSection } = useStorePageShell();
+const apps = computed(() => appsStore.apps);
 
 const virtualApp = computed(() => ({ name: t('raffles.create') }));
 
@@ -144,6 +147,9 @@ const canCreateRaffle = computed(() => {
 });
 
 onMounted(async () => {
+    if (storeId.value) {
+        await appsStore.fetchApps(storeId.value);
+    }
     if (limits.value?.raffles?.current != null) {
         raffleCount.value = limits.value.raffles.current;
     } else {
@@ -153,6 +159,12 @@ onMounted(async () => {
         } catch {
             raffleCount.value = 0;
         }
+    }
+});
+
+watch(storeId, (id) => {
+    if (id) {
+        void appsStore.fetchApps(id);
     }
 });
 

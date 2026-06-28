@@ -35,7 +35,7 @@ class StripeService
      */
     public function updateSettings(string $storeId, array $data, ?string $userApiKey = null): array
     {
-        return $this->withUserKey($userApiKey, function () use ($storeId, $data) {
+        return $this->client->withUserKey($userApiKey, function () use ($storeId, $data) {
             return $this->client->put("/api/v1/stores/{$storeId}/stripe/settings", $data);
         });
     }
