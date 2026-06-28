@@ -5,7 +5,13 @@ import { isPublicMarketingPath, navigateToAppPath } from '../utils/publicMarketi
  * Shared navigation guard logic for public marketing SPA.
  */
 export async function runPublicRouteGuard(
-    to: { meta: Record<string, unknown>; name?: string | symbol | null; fullPath: string; path: string },
+    to: {
+        meta: Record<string, unknown>;
+        name?: string | symbol | null;
+        fullPath: string;
+        path: string;
+        query?: Record<string, unknown>;
+    },
     next: (value?: unknown) => void,
 ): Promise<void> {
     if (!isPublicMarketingPath(to.path)) {
@@ -34,8 +40,9 @@ export async function runPublicRouteGuard(
     }
 
     if (to.meta.requiresGuest && authStore.isAuthenticated) {
-        const redirect = typeof to.query.redirect === 'string' && to.query.redirect.trim() !== ''
-            ? to.query.redirect
+        const redirectQuery = to.query?.redirect;
+        const redirect = typeof redirectQuery === 'string' && redirectQuery.trim() !== ''
+            ? redirectQuery
             : '/dashboard';
         navigateToAppPath(redirect);
         return;

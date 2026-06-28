@@ -35,5 +35,6 @@ module.exports = {
     "vue/no-dupe-keys": "warn",
     "vue/no-unused-vars": "off",
     "@typescript-eslint/no-unused-vars": "warn",
+    "@typescript-eslint/no-explicit-any": "warn",
   },
 };

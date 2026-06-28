@@ -62,6 +62,30 @@ class BtcPayClient
     }
 
     /**
+     * Execute a closure with an optional user/merchant API key, then restore the prior key.
+     * Never skip restore when $userApiKey was applied: an empty captured key must not leave the client on the merchant key.
+     */
+    public function withUserKey(?string $userApiKey, callable $fn): mixed
+    {
+        if ($userApiKey === null || $userApiKey === '') {
+            return $fn();
+        }
+
+        $previousApiKey = $this->apiKey;
+        $this->setApiKey($userApiKey);
+
+        try {
+            return $fn();
+        } finally {
+            $restore = $previousApiKey !== ''
+                ? $previousApiKey
+                : (string) config('services.btcpay.api_key', '');
+
+            $this->setApiKey($restore);
+        }
+    }
+
+    /**
      * Make a GET request to BTCPay API.
      */
     public function get(string $endpoint, array $query = []): array

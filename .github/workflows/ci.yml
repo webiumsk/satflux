@@ -69,14 +69,23 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
+      - name: Security audit (npm, production deps)
+        run: npm audit --omit=dev --audit-level=critical
+
       - name: Lint
         run: npm run lint
+
+      - name: Locale parity
+        run: npm run test:locale-parity
+
+      - name: Typecheck
+        run: npm run typecheck
 
       - name: Unit tests
         run: npm run test

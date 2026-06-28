@@ -744,6 +744,8 @@ import UrlQrModal from "../../components/ui/UrlQrModal.vue";
 import { currencies } from "../../data/currencies";
 import api from "../../services/api";
 import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
+import { useStoresStore } from "../../store/stores";
+import { getApiErrorMessage } from "../../composables/useApiError";
 
 const { t } = useI18n();
 const { displayLightningDomain, load: loadBtcpayConfig } = useBtcPayUrl();
@@ -756,6 +758,7 @@ const route = useRoute();
 const router = useRouter();
 const appsStore = useAppsStore();
 const flashStore = useFlashStore();
+const storesStore = useStoresStore();
 
 const storeId = route.params.id as string;
 const loading = ref(false);
@@ -827,10 +830,9 @@ watch(
 
 async function loadStore() {
   try {
-    const response = await api.get(`/stores/${storeId}`);
-    store.value = response.data.data;
-  } catch (err: any) {
-    flashStore.error("Failed to load store");
+    store.value = await storesStore.fetchStore(storeId);
+  } catch (err: unknown) {
+    flashStore.error(getApiErrorMessage(err, t("stores.loading_store")));
   }
 }
 

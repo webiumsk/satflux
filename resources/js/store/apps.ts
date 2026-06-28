@@ -7,8 +7,8 @@ export interface App {
     name: string;
     app_type: 'PointOfSale' | 'PaymentButton' | 'LightningAddress' | 'Tickets';
     archived?: boolean;
-    config?: any;
-    metadata?: any;
+    config?: Record<string, unknown>;
+    metadata?: Record<string, unknown>;
     btcpay_app_url?: string;
     created_at?: string;
     updated_at?: string;

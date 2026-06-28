@@ -142,7 +142,6 @@
     "create_with_recovery_phrase": "Crear cuenta con frase de recuperación",
     "restore_with_recovery_phrase": "Restaurar con frase de recuperación",
     "already_have_email_account": "¿Ya tiene cuenta con email?",
-    "sign_in": "Iniciar sesión",
     "tab_email": "Correo",
     "tab_lightning_nostr": "Lightning / Nostr",
     "go_to_passwordless_login": "Ir al acceso con Lightning / Nostr",
@@ -293,7 +292,14 @@
     "back": "Back",
     "create_store": "Create Store",
     "creating": "Creating...",
-    "failed_to_create": "Failed to create store. Please try again."
+    "failed_to_create": "Failed to create store. Please try again.",
+    "samrock_hint_title": "Conectar con SamRock",
+    "samrock_hint_body": "Usa la app SamRock para emparejar Aqua sin copiar el descriptor manualmente.",
+    "descriptor_optional_samrock": "El descriptor es opcional si usas SamRock.",
+    "aqua_configure_later": "Puedes configurar Aqua mas tarde en la conexion de wallet.",
+    "tab_samrock": "SamRock",
+    "tab_descriptor": "Descriptor",
+    "aqua_summary_samrock": "Wallet Aqua via emparejamiento SamRock"
   },
   "apps": {
     "title": "Aplicaciones",
@@ -1324,7 +1330,20 @@
     "download": "Download",
     "retrying": "Retrying...",
     "processing": "Processing...",
-    "waiting": "Waiting..."
+    "waiting": "Waiting...",
+    "samrock_title": "Emparejar SamRock",
+    "samrock_description": "Escanea el codigo QR con la app SamRock para conectar tu wallet Aqua.",
+    "samrock_tab": "SamRock",
+    "descriptor_tab": "Descriptor",
+    "samrock_generate_qr": "Generar codigo QR",
+    "samrock_waiting_scan": "Esperando escaneo...",
+    "samrock_pairing_complete": "Emparejamiento completado",
+    "samrock_error": "Error de emparejamiento SamRock",
+    "samrock_cancel": "Cancelar emparejamiento",
+    "samrock_try_again": "Intentar de nuevo",
+    "samrock_connected_note": "SamRock conectado. Puedes continuar con la configuracion de la tienda.",
+    "samrock_or_manual": "O introduce el descriptor manualmente",
+    "samrock_expires": "El codigo QR expira en {seconds}s"
   },
   "account": {
     "title": "Configuración de cuenta",
@@ -1531,7 +1550,13 @@
     "copy_lnurl": "Copiar LNURL",
     "open_in_wallet": "Abrir en billetera",
     "expires_in": "Expira en",
-    "try_again": "Reintentar"
+    "try_again": "Reintentar",
+    "recovery_phrase_restore_on_device": "Restaurar frase de recuperacion en este dispositivo",
+    "recovery_phrase_restore_on_device_detail": "Introduce tu frase de recuperacion para habilitar la facturacion local en este navegador.",
+    "recovery_phrase_restore_on_device_submit": "Restaurar en este dispositivo",
+    "recovery_phrase_restore_on_device_success": "Frase de recuperacion restaurada en este dispositivo.",
+    "recovery_phrase_restore_on_device_failed": "No se pudo restaurar la frase de recuperacion en este dispositivo.",
+    "recovery_phrase_required_for_invoicing": "Se requiere una frase de recuperacion para usar la facturacion local."
   },
   "header": {
     "dashboard": "Tablero de control",
@@ -3210,7 +3235,7 @@
     "btc_pay_link": "Enlace de pago Bitcoin",
     "btc_pay_open": "Abrir pago",
     "total_preview": "Total",
-    "grand_total": "Importe total",
+    "grand_total": "Total",
     "note_short": "Nota",
     "amount_due_sum": "Importe a pagar",
     "save_draft": "Guardar borrador",
@@ -3515,7 +3540,6 @@
     "draft_issue_hint": "Este documento es un borrador. Emítalo para asignar número, PDF y registrar el pago.",
     "issue_success": "Documento emitido.",
     "issue_error": "No se pudo emitir el documento. Compruebe la serie numérica e inténtelo de nuevo.",
-    "grand_total": "Total",
     "col_line_total_vat": "Total con IVA",
     "issuer_name": "Emitido por",
     "issuer_phone": "Teléfono",

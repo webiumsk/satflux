@@ -4,8 +4,8 @@
     <StoreSidebar
       :store="store"
       :apps="allApps"
-      @show-settings="handleShowSettings"
-      @show-section="handleShowSection"
+      @show-settings="goSettings"
+      @show-section="goSection"
     />
 
     <!-- Main Content -->
@@ -329,10 +329,10 @@ import { useI18n } from "vue-i18n";
 import { useAppsStore } from "../../store/apps";
 import { useAuthStore } from "../../store/auth";
 import { useGuestUpgradeModal } from "../../composables/useGuestUpgradeModal";
+import { useStorePageShell } from "../../composables/useStorePageShell";
 import StoreSidebar from "../../components/stores/StoreSidebar.vue";
 import AppScrollPane from "../../components/layout/AppScrollPane.vue";
 import ArchivedStoreBanner from "../../components/stores/ArchivedStoreBanner.vue";
-import api from "../../services/api";
 
 const { t } = useI18n();
 
@@ -341,15 +341,9 @@ const router = useRouter();
 const appsStore = useAppsStore();
 const authStore = useAuthStore();
 const { openGuestUpgradeModal } = useGuestUpgradeModal();
+const { storeId, store, goSettings, goSection } = useStorePageShell();
 
-const storeId = computed(() => {
-  const id = route.params.id;
-  if (typeof id === "string") return id;
-  if (Array.isArray(id) && id[0]) return id[0];
-  return "";
-});
 const loading = ref(false);
-const store = ref<any>(null);
 
 const showArchived = computed(() => route.query.archived === "1");
 const allApps = computed(() => appsStore.apps);
@@ -389,17 +383,6 @@ function onAppRowClick(app: { id: string; app_type?: string }) {
   router.push(`/stores/${id}/apps/${app.id}`);
 }
 
-async function loadStore() {
-  const id = storeId.value;
-  if (!id) return;
-  try {
-    const response = await api.get(`/stores/${id}`);
-    store.value = response.data.data;
-  } catch (err: any) {
-    console.error("Failed to load store:", err);
-  }
-}
-
 async function loadApps() {
   const id = storeId.value;
   if (!id) return;
@@ -413,26 +396,6 @@ async function loadApps() {
   }
 }
 
-function handleShowSettings() {
-  const id = storeId.value;
-  if (!id) return;
-  router.push({
-    name: "stores-show",
-    params: { id },
-    query: { section: "settings" },
-  });
-}
-
-function handleShowSection(section: string) {
-  const id = storeId.value;
-  if (!id) return;
-  router.push({
-    name: "stores-show",
-    params: { id },
-    query: { section },
-  });
-}
-
 async function ensureGuestNotOnArchivedApps() {
   if (isGuestUser.value && showArchived.value) {
     openGuestUpgradeModal("stores.archived_apps");
@@ -441,7 +404,6 @@ async function ensureGuestNotOnArchivedApps() {
 }
 
 onMounted(async () => {
-  await loadStore();
   await loadApps();
   await ensureGuestNotOnArchivedApps();
 });
@@ -450,7 +412,6 @@ watch(
   () => route.params.id,
   async (newId) => {
     if (newId) {
-      await loadStore();
       await loadApps();
       await ensureGuestNotOnArchivedApps();
     }

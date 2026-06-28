@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import api from '../services/api';
+import type { BtcPayApp, StoreDashboardStats } from '../types/btcpay';
 
 export interface Store {
     id: string;
@@ -30,46 +31,13 @@ export interface ChecklistItem {
 
 export type InvoiceSource = 'pos' | 'pay_button' | 'ln_address' | 'tickets' | 'api' | 'other';
 
-export interface DashboardData {
-    paid_invoices_last_7d: number;
-    total_invoices: number;
-    recent_invoices: Array<{
-        id: string;
-        invoice_id: string;
-        status: string;
-        amount: string;
-        currency: string;
-        created_time: string;
-        source?: InvoiceSource;
-    }>;
-    apps: {
-        crowdfund: any[];
-        point_of_sale: any[];
-        payment_button: any[];
-    };
-    is_ready: boolean;
-    has_wallet_connection: boolean;
-    sales: {
-        last_7_days: Array<{ date: string; count: number }>;
-        last_30_days: Array<{ date: string; count: number }>;
-        total_7d: number;
-        total_30d: number;
-    };
-    top_items: Array<{
-        name: string;
-        count: number;
-        total: number;
-        currency: string;
-    }>;
-    can_filter_by_source?: boolean;
-    by_source?: Record<InvoiceSource, unknown>;
-}
+export type DashboardData = StoreDashboardStats;
 
 export const useStoresStore = defineStore('stores', () => {
     const stores = ref<Store[]>([]);
     const currentStore = ref<Store | null>(null);
     const dashboard = ref<DashboardData | null>(null);
-    const apps = ref<any[]>([]);
+    const apps = ref<BtcPayApp[]>([]);
     const loading = ref(false);
 
     async function fetchStores(): Promise<boolean> {

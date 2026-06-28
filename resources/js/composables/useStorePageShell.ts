@@ -1,25 +1,27 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useAppsStore } from '../store/apps';
-import api from '../services/api';
+import { useStoresStore } from '../store/stores';
+import { getApiErrorMessage } from './useApiError';
 
 export function useStorePageShell() {
     const route = useRoute();
     const router = useRouter();
+    const { t } = useI18n();
     const appsStore = useAppsStore();
+    const storesStore = useStoresStore();
 
     const storeId = computed(() => route.params.id as string);
-    const store = ref<Record<string, unknown> | null>(null);
+    const store = computed(() => storesStore.currentStore);
     const error = ref('');
 
     async function loadStore() {
         error.value = '';
         try {
-            const response = await api.get(`/stores/${storeId.value}`);
-            store.value = response.data.data;
+            await storesStore.fetchStore(storeId.value);
         } catch (err: unknown) {
-            const e = err as { response?: { data?: { message?: string } } };
-            error.value = e?.response?.data?.message || 'Failed to load store';
+            error.value = getApiErrorMessage(err, t('stores.loading_store'));
         }
     }
 
