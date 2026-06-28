@@ -16,7 +16,7 @@ Satflux loads company/contact data from public registries when creating a firm o
 
 - `GET /api/invoicing/company-registry/coverage` - options for the UI dropdown
 - `GET /api/invoicing/company-registry/search?q=&country=` - autocomplete
-- `GET /api/invoicing/company-registry/entities/{id}?country=` - detail (full for SK/CZ; OpenRegistry needs bearer token for profile)
+- `GET /api/invoicing/company-registry/entities/{id}?country=` - detail (full for SK/CZ; OpenRegistry profile also needs bearer token)
 
 ## Configuration
 
@@ -24,14 +24,16 @@ Satflux loads company/contact data from public registries when creating a firm o
 # SK/CZ (default)
 SUBJEKT_REGISTRY_BASE_URL=https://api.subjekt.sk/v1
 
-# OpenRegistry (EU + HK search; optional profile)
+# OpenRegistry (EU + HK autocomplete and profile)
 OPENREGISTRY_ENABLED=true
 OPENREGISTRY_BASE_URL=https://openregistry.sophymarine.com/api/v1
-# Optional: fuller address from profile endpoint (sign up at openregistry.sophymarine.com)
+# Required for server-side autocomplete (GET /api/v1/companies). Create at https://openregistry.sophymarine.com/login
 OPENREGISTRY_BEARER_TOKEN=
 ```
 
-Without `OPENREGISTRY_BEARER_TOKEN`, OpenRegistry **search** still works; selecting a row fills name, registry ID, and city/address line from the search hit.
+OpenRegistry **search** uses the authenticated REST endpoint `GET /api/v1/companies?q=&jurisdiction=` with `OPENREGISTRY_BEARER_TOKEN`. The legacy anonymous `/api/v1/search` path no longer works from the server (redirects to login). After changing `.env`, run `php artisan optimize:clear` (or the Docker equivalent).
+
+Without a token, autocomplete for OpenRegistry countries returns empty results and the UI shows a registry-unavailable hint. Selecting a row still fills name, registry ID, and city/address line from the search hit when search succeeds.
 
 ## UI
 

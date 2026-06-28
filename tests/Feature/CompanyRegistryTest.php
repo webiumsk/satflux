@@ -51,6 +51,7 @@ class CompanyRegistryTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.meta.subjekt', ['sk', 'cz'])
             ->assertJsonPath('data.meta.openregistry', fn ($v) => is_array($v) && in_array('pl', $v, true))
+            ->assertJsonPath('data.meta.openregistry_token_configured', fn ($v) => is_bool($v))
             ->assertJsonPath('data.options', fn ($opts) => is_array($opts) && count($opts) >= 10);
     }
 
@@ -88,8 +89,10 @@ class CompanyRegistryTest extends TestCase
     #[Test]
     public function pro_user_can_search_openregistry_pl(): void
     {
+        config(['services.openregistry.bearer_token' => 'test-openregistry-token']);
+
         Http::fake([
-            'https://openregistry.sophymarine.com/api/v1/search*' => Http::response([
+            'https://openregistry.sophymarine.com/api/v1/companies*' => Http::response([
                 'jurisdiction' => 'PL',
                 'count' => 1,
                 'results' => [
@@ -109,6 +112,44 @@ class CompanyRegistryTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.results.0.ico', '0000814511')
             ->assertJsonPath('data.results.0.registry_jurisdiction', 'PL');
+    }
+
+    #[Test]
+    public function openregistry_search_without_token_returns_auth_required(): void
+    {
+        config(['services.openregistry.bearer_token' => null]);
+
+        Http::fake();
+
+        $this->actingAs($this->proUser)
+            ->getJson('/api/invoicing/company-registry/search?q=Allegro&country=pl')
+            ->assertOk()
+            ->assertJsonPath('data.results', [])
+            ->assertJsonPath('data.error', 'auth_required');
+
+        Http::assertNothingSent();
+    }
+
+    #[Test]
+    public function openregistry_search_does_not_follow_legacy_search_redirect(): void
+    {
+        config(['services.openregistry.bearer_token' => 'test-openregistry-token']);
+
+        Http::fake([
+            'https://openregistry.sophymarine.com/api/v1/companies*' => Http::response('', 302, [
+                'Location' => 'https://openregistry.sophymarine.com/login',
+            ]),
+        ]);
+
+        $this->actingAs($this->proUser)
+            ->getJson('/api/invoicing/company-registry/search?q=Allegro&country=pl')
+            ->assertOk()
+            ->assertJsonPath('data.results', [])
+            ->assertJsonPath('data.error', 'search_unavailable');
+
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/api/v1/companies')
+            && ! str_contains($request->url(), '/login'));
     }
 
     #[Test]
@@ -156,13 +197,15 @@ class CompanyRegistryTest extends TestCase
     }
 
     #[Test]
-    public function openregistry_entity_uses_search_fallback_without_token(): void
+    public function openregistry_entity_uses_search_fallback_when_profile_denied(): void
     {
+        config(['services.openregistry.bearer_token' => 'test-openregistry-token']);
+
         Http::fake([
             'https://openregistry.sophymarine.com/api/v1/companies/PL/0000814511*' => Http::response([
                 'error' => 'access_denied',
             ], 403),
-            'https://openregistry.sophymarine.com/api/v1/search*' => Http::response([
+            'https://openregistry.sophymarine.com/api/v1/companies?q=0000814511&jurisdiction=PL*' => Http::response([
                 'jurisdiction' => 'PL',
                 'count' => 1,
                 'results' => [

@@ -3,12 +3,14 @@
 namespace App\Services\Invoicing;
 
 use App\Support\Invoicing\CompanyRegistryCoverage;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Proxy for OpenRegistry public search + optional authenticated company profile.
+ * Proxy for OpenRegistry authenticated search + company profile.
  *
  * @see https://openregistry.sophymarine.com/api
  */
@@ -27,37 +29,22 @@ class OpenRegistryService
             return ['results' => [], 'count' => 0, 'error' => $this->isEnabled() ? null : 'search_unavailable'];
         }
 
+        $token = $this->bearerToken();
+        if ($token === '') {
+            Log::warning('OpenRegistry search skipped: OPENREGISTRY_BEARER_TOKEN is not configured');
+
+            return ['results' => [], 'count' => 0, 'error' => 'auth_required'];
+        }
+
         try {
-            $response = Http::timeout(12)
-                ->acceptJson()
-                ->get($this->baseUrl().'/search', [
+            $response = $this->authenticatedClient($token)
+                ->get($this->baseUrl().'/companies', [
                     'q' => $query,
                     'jurisdiction' => $jurisdiction,
                     'limit' => min($limit, 20),
                 ]);
 
-            if ($response->status() === 429) {
-                return ['results' => [], 'count' => 0, 'error' => 'rate_limited'];
-            }
-
-            $response->throw();
-
-            if ($response->json('error') === 'search_unavailable') {
-                return ['results' => [], 'count' => 0, 'error' => 'search_unavailable'];
-            }
-
-            $results = [];
-            foreach ($response->json('results', []) as $row) {
-                $mapped = $this->mapSummary(is_array($row) ? $row : []);
-                if ($mapped !== null) {
-                    $results[] = $mapped;
-                }
-            }
-
-            return [
-                'results' => $results,
-                'count' => (int) ($response->json('count') ?? count($results)),
-            ];
+            return $this->parseSearchResponse($response, $query, $jurisdiction);
         } catch (RequestException $e) {
             Log::warning('OpenRegistry search failed', [
                 'query' => $query,
@@ -78,15 +65,13 @@ class OpenRegistryService
             return null;
         }
 
-        $token = (string) config('services.openregistry.bearer_token', '');
+        $token = $this->bearerToken();
         if ($token === '') {
             return null;
         }
 
         try {
-            $response = Http::timeout(12)
-                ->acceptJson()
-                ->withToken($token)
+            $response = $this->authenticatedClient($token)
                 ->get($this->baseUrl().'/companies/'.$jurisdiction.'/'.$this->encodeCompanyId($companyId));
 
             if ($response->status() === 404) {
@@ -110,6 +95,63 @@ class OpenRegistryService
 
             return null;
         }
+    }
+
+    /**
+     * @return array{results: list<array<string, mixed>>, count: int, error?: string|null}
+     */
+    protected function parseSearchResponse(Response $response, string $query, string $jurisdiction): array
+    {
+        if ($response->redirect()) {
+            Log::warning('OpenRegistry search redirected unexpectedly', [
+                'query' => $query,
+                'jurisdiction' => $jurisdiction,
+                'status' => $response->status(),
+                'location' => $response->header('Location'),
+            ]);
+
+            return ['results' => [], 'count' => 0, 'error' => 'search_unavailable'];
+        }
+
+        if ($response->status() === 429) {
+            return ['results' => [], 'count' => 0, 'error' => 'rate_limited'];
+        }
+
+        if ($response->status() === 403 || $response->json('error') === 'access_denied') {
+            return ['results' => [], 'count' => 0, 'error' => 'auth_required'];
+        }
+
+        $response->throw();
+
+        if ($response->json('error') === 'search_unavailable') {
+            return ['results' => [], 'count' => 0, 'error' => 'search_unavailable'];
+        }
+
+        $results = [];
+        foreach ($response->json('results', []) as $row) {
+            $mapped = $this->mapSummary(is_array($row) ? $row : []);
+            if ($mapped !== null) {
+                $results[] = $mapped;
+            }
+        }
+
+        return [
+            'results' => $results,
+            'count' => (int) ($response->json('count') ?? count($results)),
+        ];
+    }
+
+    protected function authenticatedClient(string $token): PendingRequest
+    {
+        return Http::timeout(12)
+            ->acceptJson()
+            ->withToken($token)
+            ->withoutRedirecting();
+    }
+
+    protected function bearerToken(): string
+    {
+        return trim((string) config('services.openregistry.bearer_token', ''));
     }
 
     /**

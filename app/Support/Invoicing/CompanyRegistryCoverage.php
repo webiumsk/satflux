@@ -89,6 +89,7 @@ class CompanyRegistryCoverage
             'manual_vies' => self::MANUAL_VIES,
             'manual_offshore' => self::MANUAL_OFFSHORE,
             'openregistry_configured' => (bool) config('services.openregistry.enabled', true),
+            'openregistry_token_configured' => filled(config('services.openregistry.bearer_token')),
         ];
     }
 

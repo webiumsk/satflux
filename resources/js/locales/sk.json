@@ -1146,7 +1146,7 @@
     "contact_name_label": "Názov / meno",
     "contact_name_placeholder": "Začnite písať meno, alebo IČO…",
     "registry_lookup_hint": "Návrhy z obchodného registra (subjekt.sk). Vyberte firmu pre doplnenie IČO, DIČ a adresy.",
-    "registry_lookup_hint_openregistry": "Návrhy z oficiálneho registra (OpenRegistry). Po výbere doplníme identifikátor a adresu; plný detail môže vyžadovať OPENREGISTRY_BEARER_TOKEN.",
+    "registry_lookup_hint_openregistry": "Návrhy z oficiálneho registra (OpenRegistry). Vyžaduje OPENREGISTRY_BEARER_TOKEN na serveri. Po výbere doplníme identifikátor a adresu.",
     "registry_lookup_manual": "Pre túto krajinu vyplňte údaje ručne.",
     "registry_lookup_manual_vies": "Register nedopĺňame automaticky. IČ DPH môžete overiť cez VIES.",
     "registry_lookup_offshore_manual": "Offshore register nie je pripojený - údaje zadajte ručne.",

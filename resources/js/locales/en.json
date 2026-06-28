@@ -1146,7 +1146,7 @@
     "contact_name_label": "Name",
     "contact_name_placeholder": "Start typing name or company ID…",
     "registry_lookup_hint": "Suggestions from the business registry (subjekt.sk). Pick a company to fill ID, tax numbers, and address.",
-    "registry_lookup_hint_openregistry": "Suggestions from the official registry (OpenRegistry). Pick a row to fill ID and address; full detail may need OPENREGISTRY_BEARER_TOKEN.",
+    "registry_lookup_hint_openregistry": "Suggestions from the official registry (OpenRegistry). Requires OPENREGISTRY_BEARER_TOKEN on the server. Pick a row to fill ID and address.",
     "registry_lookup_manual": "Enter details manually for this country.",
     "registry_lookup_manual_vies": "No registry autocomplete. You can still verify EU VAT ID via VIES.",
     "registry_lookup_offshore_manual": "Offshore registries are not connected - enter details manually.",

@@ -3402,7 +3402,7 @@
     "contact_name_label": "Nombre",
     "contact_name_placeholder": "Empiece a escribir nombre o ID fiscal…",
     "registry_lookup_hint": "Sugerencias del registro mercantil (subjekt.sk). Elija una empresa para rellenar ID, impuestos y dirección.",
-    "registry_lookup_hint_openregistry": "Sugerencias del registro oficial (OpenRegistry). Tras elegir fila se rellenan ID y dirección; el detalle completo puede requerir OPENREGISTRY_BEARER_TOKEN.",
+    "registry_lookup_hint_openregistry": "Sugerencias del registro oficial (OpenRegistry). Requiere OPENREGISTRY_BEARER_TOKEN en el servidor. Tras elegir fila se rellenan ID y dirección.",
     "registry_lookup_manual": "Introduzca los datos manualmente para este país.",
     "registry_lookup_manual_vies": "Sin autocompletado del registro. Puede validar el IVA europeo con VIES.",
     "registry_lookup_offshore_manual": "Registros offshore no conectados - introduzca los datos manualmente.",

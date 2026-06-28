@@ -110,7 +110,10 @@ export function useCompanyRegistryLookup() {
       });
       suggestions.value = res.data.data?.results ?? [];
       showSuggestions.value = suggestions.value.length > 0;
-      if (res.data.data?.error === 'search_unavailable') {
+      if (
+        res.data.data?.error === 'search_unavailable' ||
+        res.data.data?.error === 'auth_required'
+      ) {
         registryError.value = 'unavailable';
       }
     } catch {
