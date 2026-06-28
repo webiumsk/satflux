@@ -12,7 +12,6 @@ use App\Services\WalletConnectionService;
 use App\Services\WalletConnectionValidator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
 
 class WalletConnectionController extends Controller
 {
