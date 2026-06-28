@@ -90,9 +90,7 @@ const patch = {
         'Factura de crédito creada. Revise su correo para las instrucciones de pago.',
     'account.current_plan_includes': 'El plan actual incluye:',
     'account.enterprise_plan': 'Plan Enterprise',
-    'account.feature_1_ln_address': '1 Lightning Address',
     'account.feature_1_store': '1 tienda',
-    'account.feature_3_ln_addresses': '3 Lightning Addresses',
     'account.feature_api': 'Integraciones API',
     'account.feature_auto_reports': 'Informes mensuales automáticos',
     'account.feature_basic': 'Funciones básicas',
@@ -135,8 +133,6 @@ const patch = {
     'stores.blink_keys_warning':
         'Cree claves API solo con permisos «read» y «receive». Nunca use «write»: permitiría gastar desde su monedero.',
     'stores.blink_dashboard_link': 'Panel de Blink',
-    'stores.cashu_lightning_address_label': 'Lightning Address',
-    'stores.cashu_unit_sat': 'Sats',
     'stores.cashu_col_mint_poll': 'Consulta al mint',
     'stores.crowdfund_view_editor': 'Editor',
     'stores.view_plan_options': 'Ver opciones del plan',
@@ -167,7 +163,6 @@ const patch = {
     'stores.minutes_ago': 'hace {minutes} min',
     'stores.hours_ago': 'hace {hours} h',
     'stores.days_ago': 'hace {days} d',
-    'stores.payment_method_pay_button': 'Pay Button',
     'stores.configure_wallet_connection': 'Configure la conexión Lightning de su monedero para',
     'stores.sales': 'Ventas',
     'stores.manage': 'Gestionar',
@@ -185,17 +180,17 @@ const patch = {
     'stores.settings_tab_webhooks_desc':
         'Los webhooks envían eventos HTTP de su tienda a otro servidor.',
     'stores.settings_users_managed_in_panel':
-        'Los usuarios de la tienda y sus roles se gestionan aquí. Puede añadir o eliminar usuarios y asignar roles (Owner, Manager, Employee, Guest) cuando se cargue la lista.',
+        'Los usuarios de la tienda y sus roles se gestionan aquí. Puede añadir o eliminar usuarios y asignar roles (Propietario, Gestor, Empleado, Invitado) cuando se cargue la lista.',
     'stores.settings_webhooks_not_in_panel':
         'La gestión de webhooks no está disponible en el panel por ahora.',
     'stores.settings_role_owner':
-        'Owner - Acceso completo: ajustes, usuarios, apps, facturas y puede eliminar la tienda.',
+        'Propietario - Acceso completo: ajustes, usuarios, apps, facturas y puede eliminar la tienda.',
     'stores.settings_role_manager':
-        'Manager - Puede gestionar ajustes, apps y facturas; no puede gestionar usuarios ni eliminar la tienda.',
+        'Gestor - Puede gestionar ajustes, apps y facturas; no puede gestionar usuarios ni eliminar la tienda.',
     'stores.settings_role_employee':
-        'Employee - Puede ver la tienda y crear facturas; acceso limitado a ajustes.',
-    'stores.settings_role_guest': 'Guest - Acceso de solo lectura a la tienda.',
-    'stores.settings_checkout_section': 'Checkout',
+        'Empleado - Puede ver la tienda y crear facturas; acceso limitado a ajustes.',
+    'stores.settings_role_guest': 'Invitado - Acceso de solo lectura a la tienda.',
+    'stores.settings_checkout_section': 'Pago',
     'stores.loading_invoices': 'Cargando facturas...',
     'stores.view_manage_transactions': 'Vea y gestione las transacciones de su tienda.',
     'stores.exporting': 'Exportando...',
@@ -231,23 +226,6 @@ const patch = {
     'stores.processing': 'Procesando...',
     'stores.waiting': 'Esperando...',
 
-    // invoicing (user-facing labels)
-    'invoicing.expense_import_field_total': 'Total',
-    'invoicing.country_at': 'Austria',
-    'invoicing.col_total': 'Total',
-    'invoicing.total_preview': 'Total',
-    'invoicing.bank_summary_balance': 'Saldo',
-    'invoicing.country_pt': 'Portugal',
-    'invoicing.country_hk': 'Hong Kong',
-    'invoicing.country_gi': 'Gibraltar',
-    'invoicing.subtotal': 'Subtotal',
-    'invoicing.col_line_total': 'Total',
-    'invoicing.issuer_email': 'Correo',
-
-    // landing
-    'landing.step7_plugins_title': 'Plugins',
-    'landing.pricing_enterprise_webhooks': 'Webhooks',
-
     // header
     'header.view_support': 'Ver soporte',
 
@@ -261,8 +239,6 @@ const patch = {
     'account.evolu_stats_owner_id': 'ID del propietario',
     'stores.email_rules_placeholders_hint':
         "Marcadores de posición: '{'Invoice.Id'}', '{'Invoice.OrderId'}', '{'Invoice.Status'}', '{'Invoice.CheckoutLink'}', '{'Invoice.Metadata.key'}', '{'Store.Name'}', …",
-    'stores.settings_tab_roles': 'Roles',
-    'stores.settings_checkout_section': 'Pago',
     'apps.crowdfund_header_subtitle': 'Crowdfunding - {store}',
 
     // batch 2: remaining localized labels (brands/acronyms unchanged)
@@ -278,25 +254,13 @@ const patch = {
     'stores.crowdfund': 'Crowdfunding',
     'stores.no_crowdfund': 'Sin crowdfunding',
     'stores.payment_method_pay_button': 'Botón de pago',
-    'stores.settings_tab_webhooks': 'Webhooks',
-    'stores.settings_users_managed_in_panel':
-        'Los usuarios de la tienda y sus roles se gestionan aquí. Puede añadir o eliminar usuarios y asignar roles (Propietario, Gestor, Empleado, Invitado) cuando se cargue la lista.',
-    'stores.settings_role_owner':
-        'Propietario - Acceso completo: ajustes, usuarios, apps, facturas y puede eliminar la tienda.',
-    'stores.settings_role_manager':
-        'Gestor - Puede gestionar ajustes, apps y facturas; no puede gestionar usuarios ni eliminar la tienda.',
-    'stores.settings_role_employee':
-        'Empleado - Puede ver la tienda y crear facturas; acceso limitado a ajustes.',
-    'stores.settings_role_guest': 'Invitado - Acceso de solo lectura a la tienda.',
     'apps.crowdfund': 'Crowdfunding',
     'apps.open_crowdfund': 'Abrir crowdfunding',
     'tickets.no': 'No',
     'header.feature_crowdfund': 'Crowdfunding',
     'landing.step5_title': 'Crowdfunding',
-    'landing.step7_plugins_title': 'Complementos',
     'landing.feature_crowdfund_title': 'Crowdfunding',
     'landing.invoicing_section.compare.values.no': 'No',
-    'landing.pricing_enterprise_webhooks': 'Webhooks',
     'invoicing.recurring_type_proforma': 'Factura proforma',
     'invoicing.jurisdiction_asia': 'Asia',
     'invoicing.registry_group_asia': 'Asia',
@@ -306,6 +270,16 @@ const patch = {
     'invoicing.email_smtp_host': 'Servidor',
     'invoicing.efaktura_sapi_client_id': 'ID de cliente SAPI',
     'invoicing.efaktura_sapi_client_secret': 'Secreto de cliente SAPI',
+    'evolu.poc_badge': 'PoC local-first',
+    'evolu.relay_label': 'Relay',
+    'invoicing.relay_sync_owner_hint':
+        'ID del propietario (debe coincidir en ambos dispositivos): {owner}',
+    'invoicing.relay_sync_push_ok':
+        'Enviado al relay ({companies} empresas, {events} eventos sync). ID del propietario: {owner}. En el otro dispositivo verifique el mismo ID del propietario y actualice (~1 min).',
+    'invoicing.relay_sync_force_push_ok':
+        'Force push completado ({rows} filas). ID del propietario: {owner}. En el otro dispositivo, Restaurar desde relay (~1-2 min).',
+    'landing.step7_plugins_title': 'Complementos',
+    'landing.pricing_enterprise_webhooks': 'Webhooks',
     'invoicing.expense_import_field_total': 'Total',
     'invoicing.col_total': 'Total',
     'invoicing.total_preview': 'Total',
@@ -316,14 +290,6 @@ const patch = {
     'invoicing.country_gi': 'Gibraltar',
     'invoicing.bank_summary_balance': 'Saldo',
     'invoicing.issuer_email': 'Correo',
-    'evolu.poc_badge': 'PoC local-first',
-    'evolu.relay_label': 'Relay',
-    'invoicing.relay_sync_owner_hint':
-        'ID del propietario (debe coincidir en ambos dispositivos): {owner}',
-    'invoicing.relay_sync_push_ok':
-        'Enviado al relay ({companies} empresas, {events} eventos sync). ID del propietario: {owner}. En el otro dispositivo verifique el mismo ID del propietario y actualice (~1 min).',
-    'invoicing.relay_sync_force_push_ok':
-        'Force push completado ({rows} filas). ID del propietario: {owner}. En el otro dispositivo, Restaurar desde relay (~1–2 min).',
     'tickets.physical': 'Presencial',
     'tickets.virtual': 'En línea',
     'raffles.manual_ticket_badge': 'Entrada manual',
@@ -342,6 +308,11 @@ function setPath(obj, dotPath, value) {
 }
 
 const es = JSON.parse(fs.readFileSync(esPath, 'utf8'));
+const patchKeys = Object.keys(patch);
+if (patchKeys.length !== new Set(patchKeys).size) {
+    const dupes = patchKeys.filter((k, i) => patchKeys.indexOf(k) !== i);
+    throw new Error(`Duplicate patch keys: ${[...new Set(dupes)].join(', ')}`);
+}
 let applied = 0;
 for (const [key, value] of Object.entries(patch)) {
     setPath(es, key, value);

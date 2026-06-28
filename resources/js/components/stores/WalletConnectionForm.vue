@@ -91,10 +91,14 @@
           </p>
         </div>
       </div>
+      <p v-if="passwordError" class="mb-4 text-sm text-red-400">
+        {{ passwordError }}
+      </p>
       <div class="flex flex-wrap gap-3">
         <button
           type="button"
-          class="inline-flex items-center px-6 py-3 border border-indigo-500 rounded-xl text-sm font-medium text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 transition-all"
+          class="inline-flex items-center px-6 py-3 border border-indigo-500 rounded-xl text-sm font-medium text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 transition-all disabled:opacity-50"
+          :disabled="revealing"
           @click="startCashuConnectionEdit"
         >
           {{ t("stores.change_connection") }}
@@ -1028,11 +1032,15 @@
             }}</span>
           </span>
         </div>
+        <p v-if="passwordError" class="mt-4 text-sm text-red-400">
+          {{ passwordError }}
+        </p>
         <div class="mt-8 flex flex-wrap items-center gap-4">
           <button
             type="button"
             @click="startWalletConnectionEdit"
-            class="inline-flex items-center px-6 py-3 border border-indigo-500 rounded-xl text-sm font-medium text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 transition-all"
+            :disabled="revealing"
+            class="inline-flex items-center px-6 py-3 border border-indigo-500 rounded-xl text-sm font-medium text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 transition-all disabled:opacity-50"
           >
             {{ t("stores.change_connection") }}
           </button>

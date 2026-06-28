@@ -2370,7 +2370,7 @@
     "relay_sync_push_failed": "No se pudieron enviar los datos al relay.",
     "relay_sync_force_push": "Enviar todo (forzado)",
     "relay_sync_force_push_in_progress": "Force push al relay…",
-    "relay_sync_force_push_ok": "Force push completado ({rows} filas). ID del propietario: {owner}. En el otro dispositivo, Restaurar desde relay (~1–2 min).",
+    "relay_sync_force_push_ok": "Force push completado ({rows} filas). ID del propietario: {owner}. En el otro dispositivo, Restaurar desde relay (~1-2 min).",
     "relay_sync_force_push_failed": "Force push falló. Compruebe la URL del relay en Perfil.",
     "relay_sync_relay_from_profile": "Relay de su perfil (anula el predeterminado del build).",
     "relay_sync_pull": "Actualizar desde relay",

@@ -204,8 +204,10 @@ async function loadRaffles() {
 
 watch(storeId, (id) => {
     if (id) {
-        void appsStore.fetchApps(id);
         loadRaffles();
+        appsStore.fetchApps(id).catch(() => {
+            // Sidebar apps are optional; avoid unhandled rejection if fetch fails.
+        });
     }
 }, { immediate: true });
 </script>

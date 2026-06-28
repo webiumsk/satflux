@@ -27,20 +27,13 @@ class SensitiveActionAuthorization
         }
 
         $cacheKey = 'reveal_confirmed:'.$user->id;
-        if (! Cache::get($cacheKey)) {
-            return false;
-        }
 
         if ($request->boolean('confirm_via_lnurl') && $user->lightning_public_key) {
-            Cache::forget($cacheKey);
-
-            return true;
+            return Cache::pull($cacheKey) !== null;
         }
 
         if ($request->boolean('confirm_via_nostr') && $user->nostr_public_key) {
-            Cache::forget($cacheKey);
-
-            return true;
+            return Cache::pull($cacheKey) !== null;
         }
 
         return false;
