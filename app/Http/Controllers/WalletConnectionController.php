@@ -6,12 +6,11 @@ use App\Http\Requests\WalletConnectionStoreRequest;
 use App\Models\AuditLog;
 use App\Models\Store;
 use App\Models\WalletConnection;
+use App\Services\Auth\SensitiveActionAuthorization;
 use App\Services\BtcPay\LightningService;
 use App\Services\WalletConnectionService;
 use App\Services\WalletConnectionValidator;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -56,7 +55,7 @@ class WalletConnectionController extends Controller
 
     /**
      * Reveal wallet connection secret for store owner.
-     * Requires password, or LNURL confirm (confirm_via_lnurl: true) for users with Lightning login.
+     * Requires password, LNURL/Nostr confirm, or an authenticated recovery-phrase session.
      */
     public function revealForOwner(Request $request)
     {
@@ -74,28 +73,7 @@ class WalletConnectionController extends Controller
         }
 
         $user = $request->user();
-        $allowed = false;
-
-        if ($request->filled('password')) {
-            $allowed = Hash::check($request->password, $user->password);
-        } else {
-            $cacheKey = 'reveal_confirmed:'.$user->id;
-            if (Cache::get($cacheKey)) {
-                if ($request->boolean('confirm_via_lnurl') && $user->lightning_public_key) {
-                    $allowed = true;
-                    Cache::forget($cacheKey);
-                } elseif ($request->boolean('confirm_via_nostr') && $user->nostr_public_key) {
-                    $allowed = true;
-                    Cache::forget($cacheKey);
-                }
-            }
-        }
-
-        if (! $allowed) {
-            throw ValidationException::withMessages([
-                'password' => [__('auth.invalid_password_or_confirm_lnurl')],
-            ]);
-        }
+        SensitiveActionAuthorization::assertAllowed($user, $request);
 
         try {
             $plaintext = $this->service->reveal($connection, $user);
@@ -328,7 +306,7 @@ class WalletConnectionController extends Controller
 
     /**
      * Reveal wallet connection secret (support role only).
-     * Requires password, or LNURL confirm (confirm_via_lnurl: true) for users with Lightning login.
+     * Requires password, LNURL/Nostr confirm, or an authenticated recovery-phrase session.
      */
     public function reveal(Request $request, WalletConnection $connection)
     {
@@ -338,32 +316,10 @@ class WalletConnectionController extends Controller
             'confirm_via_nostr' => ['nullable', 'boolean'],
         ]);
 
-        $user = $request->user();
-        $allowed = false;
-
-        if ($request->filled('password')) {
-            $allowed = Hash::check($request->password, $user->password);
-        } else {
-            $cacheKey = 'reveal_confirmed:'.$user->id;
-            if (Cache::get($cacheKey)) {
-                if ($request->boolean('confirm_via_lnurl') && $user->lightning_public_key) {
-                    $allowed = true;
-                    Cache::forget($cacheKey);
-                } elseif ($request->boolean('confirm_via_nostr') && $user->nostr_public_key) {
-                    $allowed = true;
-                    Cache::forget($cacheKey);
-                }
-            }
-        }
-
-        if (! $allowed) {
-            throw ValidationException::withMessages([
-                'password' => [__('auth.invalid_password_or_confirm_lnurl')],
-            ]);
-        }
+        SensitiveActionAuthorization::assertAllowed($request->user(), $request);
 
         try {
-            $plaintext = $this->service->reveal($connection, $user);
+            $plaintext = $this->service->reveal($connection, $request->user());
         } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
             return response()->json([
                 'message' => 'Unable to decrypt the stored secret. This usually happens when APP_KEY was changed after the secret was saved. The merchant will need to re-submit their wallet connection.',

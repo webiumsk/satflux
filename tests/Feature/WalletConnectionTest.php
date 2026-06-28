@@ -410,6 +410,29 @@ class WalletConnectionTest extends TestCase
     }
 
     #[Test]
+    public function recovery_phrase_user_can_reveal_wallet_connection_without_password(): void
+    {
+        $user = User::factory()->create([
+            'guest_recovery_public_key' => str_repeat('a', 64),
+            'guest_recovery_enrolled_at' => now(),
+        ]);
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        WalletConnection::create([
+            'store_id' => $store->id,
+            'type' => 'blink',
+            'encrypted_secret' => Crypt::encryptString(self::VALID_BLINK_SECRET),
+            'status' => 'needs_support',
+            'submitted_by_user_id' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection/reveal", []);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.secret', self::VALID_BLINK_SECRET)
+            ->assertJsonPath('data.type', 'blink');
+    }
+
+    #[Test]
     public function saving_blink_wallet_disables_cashumelt_at_btcpay_when_plugin_reports_enabled(): void
     {
         config(['services.btcpay.base_url' => 'https://btcpay.test']);

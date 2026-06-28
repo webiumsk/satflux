@@ -3,14 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Store;
+use App\Services\Auth\SensitiveActionAuthorization;
 use App\Services\BtcPay\CashuService;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\LightningService;
 use App\Services\StoreChecklistService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -24,7 +23,7 @@ class CashuController extends Controller
 
     /**
      * Confirm account password (or LNURL / Nostr challenge) before editing Cashu settings in the UI.
-     * Same auth rules as wallet connection reveal, without requiring a wallet_connections row.
+     * Recovery-phrase accounts may confirm with their authenticated session only.
      */
     public function confirmEdit(Request $request, Store $store): \Illuminate\Http\JsonResponse
     {
@@ -40,29 +39,7 @@ class CashuController extends Controller
             'confirm_via_nostr' => ['nullable', 'boolean'],
         ]);
 
-        $user = $request->user();
-        $allowed = false;
-
-        if ($request->filled('password')) {
-            $allowed = Hash::check($request->password, $user->password);
-        } else {
-            $cacheKey = 'reveal_confirmed:'.$user->id;
-            if (Cache::get($cacheKey)) {
-                if ($request->boolean('confirm_via_lnurl') && $user->lightning_public_key) {
-                    $allowed = true;
-                    Cache::forget($cacheKey);
-                } elseif ($request->boolean('confirm_via_nostr') && $user->nostr_public_key) {
-                    $allowed = true;
-                    Cache::forget($cacheKey);
-                }
-            }
-        }
-
-        if (! $allowed) {
-            throw ValidationException::withMessages([
-                'password' => [__('auth.invalid_password_or_confirm_lnurl')],
-            ]);
-        }
+        SensitiveActionAuthorization::assertAllowed($request->user(), $request);
 
         return response()->json(['data' => ['ok' => true]]);
     }

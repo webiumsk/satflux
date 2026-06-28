@@ -123,6 +123,24 @@ class CashuPaymentsTest extends TestCase
         ])->assertOk()->assertJsonPath('data.ok', true);
     }
 
+    public function test_cashu_confirm_edit_accepts_recovery_phrase_session_without_password(): void
+    {
+        $user = User::factory()->create([
+            'guest_recovery_public_key' => str_repeat('c', 64),
+            'guest_recovery_enrolled_at' => now(),
+        ]);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'cashu',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->postJson("/api/stores/{$store->id}/cashu/confirm-edit", [])
+            ->assertOk()
+            ->assertJsonPath('data.ok', true);
+    }
+
     public function test_cashu_confirm_edit_rejects_when_wallet_type_is_not_cashu(): void
     {
         $user = User::factory()->create([
