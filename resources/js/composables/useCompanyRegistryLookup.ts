@@ -160,6 +160,7 @@ export function useCompanyRegistryLookup() {
     if (detail.city) form.city = detail.city;
     else if (item?.address_line) form.city = item.address_line;
     if (detail.postal_code) form.postal_code = detail.postal_code;
+    if (detail.state_region) form.state_region = detail.state_region;
     if (detail.country_code) {
       form.country = detail.country_code;
     } else if (detail.country) {
@@ -188,6 +189,7 @@ export function useCompanyRegistryLookup() {
     if (detail.city) form.city = detail.city;
     else if (item?.address_line) form.city = item.address_line;
     if (detail.postal_code) form.postal_code = detail.postal_code;
+    if (detail.state_region) form.state_region = detail.state_region;
     if (detail.country_code) {
       form.country = detail.country_code;
     } else if (item?.registry_jurisdiction) {
@@ -195,6 +197,26 @@ export function useCompanyRegistryLookup() {
     }
     if (detail.registry_note && !form.commercial_register.trim()) {
       form.commercial_register = detail.registry_note;
+    }
+  }
+
+  function applySummaryAddress(
+    target: { street: string; city: string; postal_code: string },
+    addressLine?: string
+  ) {
+    const line = (addressLine ?? '').trim();
+    if (!line) return;
+    if (target.street.trim()) {
+      if (!target.city.trim()) target.city = line;
+      return;
+    }
+    const parts = line.split(',').map((p) => p.trim());
+    if (parts.length >= 3) {
+      target.street = parts[0];
+      target.postal_code = parts[1];
+      target.city = parts.slice(2).join(', ');
+    } else {
+      target.city = line;
     }
   }
 
@@ -209,7 +231,7 @@ export function useCompanyRegistryLookup() {
       f.registration_number = item.ico;
       if (item.dic) f.tax_id = item.dic;
       if (item.ic_dph) f.vat_id = item.ic_dph;
-      if (item.address_line) f.city = item.address_line;
+      applySummaryAddress(f, item.address_line);
       if (item.registry_jurisdiction) f.country = item.registry_jurisdiction;
     } else {
       const f = form as CompanyRegistryFormState;
@@ -220,7 +242,7 @@ export function useCompanyRegistryLookup() {
         f.vat_number = item.ic_dph;
         f.vat_payer = true;
       }
-      if (item.address_line) f.city = item.address_line;
+      applySummaryAddress(f, item.address_line);
       if (item.registry_jurisdiction) f.country = item.registry_jurisdiction;
     }
   }

@@ -115,6 +115,79 @@ class CompanyRegistryTest extends TestCase
     }
 
     #[Test]
+    public function pro_user_can_search_openregistry_ch(): void
+    {
+        config(['services.openregistry.bearer_token' => 'test-openregistry-token']);
+
+        Http::fake([
+            'https://openregistry.sophymarine.com/api/v1/companies*' => Http::response([
+                'jurisdiction' => 'CH',
+                'count' => 1,
+                'results' => [
+                    [
+                        'jurisdiction' => 'CH',
+                        'company_id' => 'CHE-216.915.662',
+                        'company_name' => 'Institut für Franklin Methode GmbH',
+                        'registered_address' => 'Wetzikon (ZH)',
+                        'jurisdiction_data' => [
+                            'uid' => 'CHE216915662',
+                            'chid' => 'CH02040530375',
+                            'canton' => 'ZH',
+                            'address' => [
+                                'street' => 'Hittnauerstrasse',
+                                'houseNumber' => '40',
+                                'city' => 'Wetzikon ZH',
+                                'swissZipCode' => '8623',
+                            ],
+                        ],
+                    ],
+                ],
+            ]),
+        ]);
+
+        $this->actingAs($this->proUser)
+            ->getJson('/api/invoicing/company-registry/search?q=Franklin&country=ch')
+            ->assertOk()
+            ->assertJsonPath('data.results.0.ico', 'CH-020.4.053.037-5')
+            ->assertJsonPath('data.results.0.dic', 'CHE-216.915.662');
+    }
+
+    #[Test]
+    public function pro_user_can_fetch_openregistry_ch_profile(): void
+    {
+        config(['services.openregistry.bearer_token' => 'test-openregistry-token']);
+
+        Http::fake([
+            'https://openregistry.sophymarine.com/api/v1/companies/CH/CHE-216.915.662*' => Http::response([
+                'jurisdiction' => 'CH',
+                'company_id' => 'CHE-216.915.662',
+                'company_name' => 'Institut für Franklin Methode GmbH',
+                'registered_address' => 'Hittnauerstrasse 40, 8623, Wetzikon ZH',
+                'jurisdiction_data' => [
+                    'uid' => 'CHE216915662',
+                    'chid' => 'CH02040530375',
+                    'canton' => 'ZH',
+                    'address' => [
+                        'street' => 'Hittnauerstrasse',
+                        'houseNumber' => '40',
+                        'city' => 'Wetzikon ZH',
+                        'swissZipCode' => '8623',
+                    ],
+                ],
+            ]),
+        ]);
+
+        $this->actingAs($this->proUser)
+            ->getJson('/api/invoicing/company-registry/entities/CHE-216.915.662?country=ch')
+            ->assertOk()
+            ->assertJsonPath('data.ico', 'CH-020.4.053.037-5')
+            ->assertJsonPath('data.dic', 'CHE-216.915.662')
+            ->assertJsonPath('data.street', 'Hittnauerstrasse 40')
+            ->assertJsonPath('data.postal_code', 'CH-8623')
+            ->assertJsonPath('data.city', 'Wetzikon');
+    }
+
+    #[Test]
     public function openregistry_search_without_token_returns_auth_required(): void
     {
         config(['services.openregistry.bearer_token' => null]);

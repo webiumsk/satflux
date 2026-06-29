@@ -66,20 +66,41 @@ class CompanyRegistryService
     {
         $jurisdiction = strtoupper((string) ($summary['registry_jurisdiction'] ?? $country));
         $line = trim((string) ($summary['address_line'] ?? ''));
+        $parts = $this->parseSummaryAddressLine($line);
 
         return [
             'ico' => (string) ($summary['ico'] ?? ''),
             'name' => (string) ($summary['name'] ?? ''),
-            'dic' => '',
-            'ic_dph' => '',
-            'street' => '',
-            'city' => $line,
-            'postal_code' => '',
+            'dic' => (string) ($summary['dic'] ?? ''),
+            'ic_dph' => (string) ($summary['ic_dph'] ?? ''),
+            'street' => $parts['street'],
+            'city' => $parts['city'] !== '' ? $parts['city'] : $line,
+            'postal_code' => $parts['postal_code'],
             'country_code' => $jurisdiction,
             'country' => $jurisdiction,
             'registry_note' => '',
             'source' => 'openregistry',
         ];
+    }
+
+    /**
+     * @return array{street: string, city: string, postal_code: string}
+     */
+    protected function parseSummaryAddressLine(string $line): array
+    {
+        if ($line === '') {
+            return ['street' => '', 'city' => '', 'postal_code' => ''];
+        }
+
+        if (preg_match('/^(.+?),\s*(CH-\d{4,5}|\d{4,5})\s*,\s*(.+)$/iu', $line, $m)) {
+            return [
+                'street' => trim($m[1]),
+                'postal_code' => trim($m[2]),
+                'city' => trim($m[3]),
+            ];
+        }
+
+        return ['street' => '', 'city' => '', 'postal_code' => ''];
     }
 
     /**
