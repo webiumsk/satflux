@@ -112,7 +112,8 @@ export function useCompanyRegistryLookup() {
       showSuggestions.value = suggestions.value.length > 0;
       if (
         res.data.data?.error === 'search_unavailable' ||
-        res.data.data?.error === 'auth_required'
+        res.data.data?.error === 'auth_required' ||
+        res.data.data?.error === 'rate_limited'
       ) {
         registryError.value = 'unavailable';
       }
@@ -200,6 +201,11 @@ export function useCompanyRegistryLookup() {
     }
   }
 
+  function looksLikePostalCode(segment: string): boolean {
+    const s = segment.trim();
+    return /^(CH-\d{4,5}|\d{4,5})$/i.test(s);
+  }
+
   function applySummaryAddress(
     target: { street: string; city: string; postal_code: string },
     addressLine?: string
@@ -211,7 +217,7 @@ export function useCompanyRegistryLookup() {
       return;
     }
     const parts = line.split(',').map((p) => p.trim());
-    if (parts.length >= 3) {
+    if (parts.length >= 3 && looksLikePostalCode(parts[1])) {
       target.street = parts[0];
       target.postal_code = parts[1];
       target.city = parts.slice(2).join(', ');
