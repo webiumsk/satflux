@@ -43,8 +43,9 @@ class DocumentTotalsCalculator
         $document->discount_percent = $documentDiscountPercent;
 
         if ($document->relationLoaded('lines')) {
-            foreach ($canonical->lines as $index => $canonicalLine) {
-                $line = $document->lines->get($index);
+            $linesBySortOrder = $document->lines->keyBy('sort_order');
+            foreach ($canonical->lines as $canonicalLine) {
+                $line = $linesBySortOrder->get($canonicalLine->sortOrder);
                 if ($line !== null) {
                     $line->line_total = $canonicalLine->grossAmount;
                     $line->tax_rate = $canonicalLine->taxRate;

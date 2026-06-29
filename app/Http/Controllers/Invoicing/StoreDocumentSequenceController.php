@@ -95,6 +95,6 @@ class StoreDocumentSequenceController extends Controller
             'data' => null,
             'error' => 'store_not_linked',
             'message' => 'Link an invoicing company to this store before reserving document numbers.',
-        ]);
+        ], 422);
     }
 }

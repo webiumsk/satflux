@@ -329,9 +329,8 @@
       </div>
     </div>
 
-    <div class="relative mt-3 text-[9px] text-gray-400">
-      <p class="text-center">{{ t('invoicing.created_with_satflux') }}</p>
-      <p class="absolute right-0 top-0">{{ t('invoicing.page_number') }} 1/1</p>
+    <div class="mt-3 text-center text-[9px] text-gray-400">
+      <p>{{ t('invoicing.created_with_satflux') }}</p>
     </div>
   </div>
 </template>

@@ -270,7 +270,7 @@ class IntegrationDocumentInboxTest extends TestCase
 
         $this->actingAs($this->user)
             ->getJson("/api/invoicing/stores/{$unlinkedStore->id}/number-series/preview?type=invoice")
-            ->assertOk()
+            ->assertStatus(422)
             ->assertJsonPath('error', 'store_not_linked')
             ->assertJsonPath('data', null);
 
@@ -278,7 +278,7 @@ class IntegrationDocumentInboxTest extends TestCase
             ->postJson("/api/invoicing/stores/{$unlinkedStore->id}/number-series/reserve", [
                 'document_type' => 'invoice',
             ])
-            ->assertOk()
+            ->assertStatus(422)
             ->assertJsonPath('error', 'store_not_linked');
     }
 

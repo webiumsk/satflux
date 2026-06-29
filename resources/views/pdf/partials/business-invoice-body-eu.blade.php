@@ -116,9 +116,11 @@
                 @if($contact->street){{ $contact->street }}<br>@endif
                 @if($contact->postal_code || $contact->city || ($isUs && $contact->state_region))
                     @if($isUs)
-                        @if($contact->city){{ $contact->city }}@endif
-                        @if($contact->city && ($contact->state_region || $contact->postal_code)), {{ $contact->state_region }}@endif
-                        {{ $contact->postal_code }}<br>
+                        @if($contact->city || $contact->state_region || $contact->postal_code)
+                            @if($contact->city){{ $contact->city }}@endif
+                            @if($contact->city && ($contact->state_region || $contact->postal_code)), @endif
+                            {{ trim($contact->state_region.' '.$contact->postal_code) }}<br>
+                        @endif
                     @else
                         {{ $contact->postal_code }} {{ $contact->city }}<br>
                     @endif

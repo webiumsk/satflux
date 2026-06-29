@@ -156,7 +156,9 @@
         padding: 2px 10px 2px 0;
         font-size: 9px;
         color: #374151;
-        white-space: nowrap;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
     }
     .footer-issued-by { padding-right: 16px; }
     .footer-issued-by strong { color: #111827; }
