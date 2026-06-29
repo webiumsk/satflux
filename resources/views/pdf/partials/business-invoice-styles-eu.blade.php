@@ -136,55 +136,76 @@
         position: fixed;
         left: 32px;
         right: 32px;
-        bottom: 20px;
+        bottom: 18px;
         margin-top: 0;
         padding-top: 0;
     }
     .footer-divider {
         border: none;
-        border-top: 1px dotted #b8c0cc;
-        margin: 0 0 8px;
+        border-top: 1px dotted #c5cdd8;
+        margin: 0 0 7px;
         height: 0;
     }
     .footer-contact-table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 6px;
+        margin-bottom: 5px;
     }
-    .footer-contact-col {
+    .footer-contact-line {
+        font-size: 8.5px;
+        color: #6b7280;
+        line-height: 1.55;
         vertical-align: middle;
-        padding: 0 12px 0 0;
-        font-size: 9px;
-        color: #374151;
-        white-space: normal;
-        word-break: break-word;
-        overflow-wrap: anywhere;
     }
-    .footer-contact-col strong { color: #111827; }
+    .footer-contact-chunk {
+        display: inline-block;
+        margin-right: 16px;
+        margin-bottom: 1px;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+    .footer-contact-issuer {
+        margin-right: 20px;
+        white-space: normal;
+    }
+    .footer-contact-chunk strong {
+        color: #374151;
+        font-weight: bold;
+    }
     .footer-icon {
         display: inline-block;
-        width: 14px;
-        height: 14px;
-        margin-right: 4px;
-        border: 1px solid #9ca3af;
+        width: 12px;
+        height: 12px;
+        margin-right: 3px;
+        border: 1px solid #c4c9d2;
         border-radius: 50%;
-        font-size: 8px;
-        line-height: 13px;
+        font-size: 7px;
+        line-height: 11px;
         text-align: center;
-        color: #6b7280;
+        color: #9ca3af;
         vertical-align: middle;
     }
     .footer-brand-table {
         width: 100%;
         border-collapse: collapse;
-        margin-top: 2px;
+        margin-top: 1px;
     }
     .footer-brand-table td {
-        font-size: 8px;
-        color: #9ca3af;
+        font-size: 7.5px;
+        color: #a3a9b4;
         padding: 0;
+        vertical-align: middle;
+        line-height: 1.2;
     }
-    .footer-brand-center { text-align: center; }
+    .footer-brand-center {
+        text-align: center;
+        letter-spacing: 0.02em;
+    }
+    .footer-brand-side,
+    .footer-page-slot {
+        font-size: 7.5px;
+        color: #a3a9b4;
+    }
     .qr-block { margin-top: 12px; }
     .qr-col { vertical-align: top; width: 132px; }
     .qr-gap { font-size: 1px; line-height: 1px; }

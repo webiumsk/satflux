@@ -4,11 +4,11 @@ if (isset($pdf)) {
     if ($font) {
         $pageLabel = {!! json_encode(__('Page')) !!};
         $pageText = $pageLabel.' {PAGE_NUM}/{PAGE_COUNT}';
-        $size = 8;
-        $color = [0.55, 0.55, 0.55];
+        $size = 7.5;
+        $color = [0.64, 0.66, 0.71];
         $pageWidth = $pdf->get_width();
         $pageHeight = $pdf->get_height();
-        $y = $pageHeight - 20;
+        $y = $pageHeight - 18;
         $sample = $pageLabel.' 99/99';
         $textWidth = $fontMetrics->get_text_width($sample, $font, $size);
         $x = $pageWidth - 32 - $textWidth;
