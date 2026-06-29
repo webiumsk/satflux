@@ -1,7 +1,8 @@
 <template>
   <div
-    class="invoice-preview bg-white text-gray-900 rounded-lg shadow-lg text-sm p-8 min-h-[720px]"
+    class="invoice-preview flex min-h-[720px] flex-col bg-white text-gray-900 rounded-lg shadow-lg text-sm p-8"
   >
+    <div class="flex-1">
     <div class="grid grid-cols-3 gap-4 mb-3">
       <div class="text-[10px] leading-relaxed text-gray-700">
         <div
@@ -305,34 +306,29 @@
       </div>
     </div>
 
+    </div>
+
+    <div class="mt-auto shrink-0 pt-4">
     <div
       v-if="company?.issuer_name || company?.issuer_phone || company?.issuer_email || company?.website"
-      class="mt-5 pt-3 border-t border-dotted border-gray-300"
+      class="pt-3 border-t border-dotted border-gray-300"
     >
       <div class="flex flex-wrap items-center gap-x-6 gap-y-1 text-[10px] text-gray-600">
         <span v-if="company?.issuer_name">
           <span class="font-semibold text-gray-800">{{ t('invoicing.issued_by') }}:</span>
           {{ company.issuer_name }}
         </span>
-        <span v-if="company?.issuer_phone" class="inline-flex items-center gap-1">
-          <span class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-gray-400 text-[8px] text-gray-500" aria-hidden="true">☎</span>
-          {{ company.issuer_phone }}
-        </span>
-        <span v-if="company?.website" class="inline-flex items-center gap-1">
-          <span class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-gray-400 text-[8px] text-gray-500" aria-hidden="true">⌁</span>
-          {{ company.website }}
-        </span>
-        <span v-if="company?.issuer_email" class="inline-flex items-center gap-1">
-          <span class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-gray-400 text-[8px] text-gray-500" aria-hidden="true">✉</span>
-          {{ company.issuer_email }}
-        </span>
+        <span v-if="company?.issuer_phone">{{ company.issuer_phone }}</span>
+        <span v-if="company?.website">{{ company.website?.replace(/^https?:\/\//i, '') }}</span>
+        <span v-if="company?.issuer_email">{{ company.issuer_email }}</span>
       </div>
     </div>
 
-    <div class="mt-3 flex items-center justify-between text-[9px] text-gray-400">
-      <span class="flex-1" />
-      <p class="shrink-0 text-center">{{ t('invoicing.created_with_satflux') }}</p>
-      <span class="flex-1 text-right text-[8px] text-gray-300">{{ t('invoicing.page_number') }} 1/1</span>
+    <div class="mt-2 grid grid-cols-3 items-center text-[9px] text-gray-400">
+      <span />
+      <p class="text-center">{{ t('invoicing.created_with_satflux') }}</p>
+      <p class="text-right text-[8px]">{{ t('invoicing.page_number') }} 1/1</p>
+    </div>
     </div>
   </div>
 </template>

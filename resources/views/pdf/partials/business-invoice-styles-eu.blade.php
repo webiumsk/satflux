@@ -1,5 +1,5 @@
 <style>
-    @page { margin: 28px 32px 24px; }
+    @page { margin: 28px 32px 28px; }
     body {
         font-family: DejaVu Sans, sans-serif;
         font-size: 10px;
@@ -127,84 +127,8 @@
     .pay-bar .amount { font-size: 12px; font-weight: bold; color: #111827; }
     .issuer-line { margin-top: 14px; font-size: 9px; color: #6b7280; }
     .invoice-doc-footer {
-        margin-top: 0;
-        padding: 0;
-        font-size: 9px;
-        color: #4b5563;
-    }
-    .invoice-doc-footer--fixed {
-        position: fixed;
-        left: 32px;
-        right: 32px;
-        bottom: 18px;
-        margin-top: 0;
-        padding-top: 0;
-    }
-    .footer-divider {
-        border: none;
-        border-top: 1px dotted #c5cdd8;
-        margin: 0 0 7px;
-        height: 0;
-    }
-    .footer-contact-table {
-        width: 100%;
+        margin-top: 16px;
         border-collapse: collapse;
-        margin-bottom: 5px;
-    }
-    .footer-contact-line {
-        font-size: 8.5px;
-        color: #6b7280;
-        line-height: 1.55;
-        vertical-align: middle;
-    }
-    .footer-contact-chunk {
-        display: inline-block;
-        margin-right: 16px;
-        margin-bottom: 1px;
-        vertical-align: middle;
-        white-space: nowrap;
-    }
-    .footer-contact-issuer {
-        margin-right: 20px;
-        white-space: normal;
-    }
-    .footer-contact-chunk strong {
-        color: #374151;
-        font-weight: bold;
-    }
-    .footer-icon {
-        display: inline-block;
-        width: 12px;
-        height: 12px;
-        margin-right: 3px;
-        border: 1px solid #c4c9d2;
-        border-radius: 50%;
-        font-size: 7px;
-        line-height: 11px;
-        text-align: center;
-        color: #9ca3af;
-        vertical-align: middle;
-    }
-    .footer-brand-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 1px;
-    }
-    .footer-brand-table td {
-        font-size: 7.5px;
-        color: #a3a9b4;
-        padding: 0;
-        vertical-align: middle;
-        line-height: 1.2;
-    }
-    .footer-brand-center {
-        text-align: center;
-        letter-spacing: 0.02em;
-    }
-    .footer-brand-side,
-    .footer-page-slot {
-        font-size: 7.5px;
-        color: #a3a9b4;
     }
     .qr-block { margin-top: 12px; }
     .qr-col { vertical-align: top; width: 132px; }
@@ -239,5 +163,5 @@
     a.qr-item-link { text-decoration: none; color: inherit; }
     .muted { color: #6b7280; }
     .note-above { margin: 10px 0 4px; font-size: 10px; color: #374151; white-space: pre-wrap; }
-    .invoice-doc-body { padding-bottom: 52px; }
+    .invoice-doc-body { padding-bottom: 56px; }
 </style>

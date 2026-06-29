@@ -9,42 +9,44 @@
         : null;
 @endphp
 
-<div @class(['invoice-doc-footer', 'invoice-doc-footer--fixed' => $footerFixed])>
-    @if($hasContact)
-        <hr class="footer-divider">
-        <table class="footer-contact-table" width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-                <td class="footer-contact-line">
-                    @if($company->issuer_name)
-                        <span class="footer-contact-chunk footer-contact-issuer">
-                            <strong>{{ __('Issued by') }}:</strong> {{ $company->issuer_name }}
-                        </span>
-                    @endif
-                    @if($company->issuer_phone)
-                        <span class="footer-contact-chunk">
-                            <span class="footer-icon" aria-hidden="true">&#9742;</span>{{ $company->issuer_phone }}
-                        </span>
-                    @endif
-                    @if($displayWebsite)
-                        <span class="footer-contact-chunk">
-                            <span class="footer-icon" aria-hidden="true">&#8982;</span>{{ $displayWebsite }}
-                        </span>
-                    @endif
-                    @if($company->issuer_email)
-                        <span class="footer-contact-chunk">
-                            <span class="footer-icon" aria-hidden="true">&#9993;</span>{{ $company->issuer_email }}
-                        </span>
-                    @endif
-                </td>
-            </tr>
-        </table>
+<table
+    cellpadding="0"
+    cellspacing="0"
+    @if($footerFixed)
+        style="position: fixed; left: 32px; right: 32px; bottom: 20px; border-collapse: collapse;"
+    @else
+        style="width: 100%; margin-top: 18px; border-collapse: collapse;"
     @endif
-
-    <table class="footer-brand-table" width="100%" cellpadding="0" cellspacing="0">
-        <tr>
-            <td class="footer-brand-side" width="33%">&nbsp;</td>
-            <td class="footer-brand-center" width="34%">{{ __('Created with SATFLUX.io') }}</td>
-            <td class="footer-page-slot" width="33%" align="right">&nbsp;</td>
-        </tr>
-    </table>
-</div>
+>
+    <tr>
+        <td
+            colspan="2"
+            style="border-top: 1px dotted #b8c0cc; padding: 7px 0 5px; font-size: 9px; color: #374151; font-family: DejaVu Sans, sans-serif; vertical-align: middle;"
+        >
+            @if($hasContact)
+                @if($company->issuer_name)
+                    <strong style="color: #111827;">{{ __('Issued by') }}:</strong> {{ $company->issuer_name }}
+                @endif
+                @if($company->issuer_phone)
+                    @if($company->issuer_name)&nbsp;&nbsp;@endif{{ $company->issuer_phone }}
+                @endif
+                @if($displayWebsite)
+                    @if($company->issuer_name || $company->issuer_phone)&nbsp;&nbsp;@endif{{ $displayWebsite }}
+                @endif
+                @if($company->issuer_email)
+                    @if($company->issuer_name || $company->issuer_phone || $displayWebsite)&nbsp;&nbsp;@endif{{ $company->issuer_email }}
+                @endif
+            @else
+                &nbsp;
+            @endif
+        </td>
+    </tr>
+    <tr>
+        <td align="center" style="font-size: 8px; color: #6b7280; padding-top: 2px; font-family: DejaVu Sans, sans-serif; vertical-align: middle;">
+            {{ __('Created with SATFLUX.io') }}
+        </td>
+        <td align="right" style="width: 30%; font-size: 8px; color: #6b7280; padding-top: 2px; font-family: DejaVu Sans, sans-serif; vertical-align: middle;">
+            &nbsp;
+        </td>
+    </tr>
+</table>
