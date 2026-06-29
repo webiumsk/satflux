@@ -1226,6 +1226,8 @@
     "amount_due": "Amount due",
     "signature_stamp": "Signature and stamp",
     "issued_by": "Issued by",
+    "created_with_satflux": "Created with SATFLUX.io",
+    "page_number": "Page",
     "pdf_language": "PDF language",
     "pdf_signature": "Signature",
     "pdf_payment_info": "Payment info",

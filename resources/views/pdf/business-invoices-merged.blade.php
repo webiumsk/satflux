@@ -23,6 +23,8 @@
         $taxBreakdown = $page['taxBreakdown'] ?? [];
         $showVatColumn = $page['showVatColumn'] ?? false;
         $showVatBreakdown = $page['showVatBreakdown'] ?? false;
+        $showSalesTaxColumn = $page['showSalesTaxColumn'] ?? false;
+        $isUs = $page['isUs'] ?? false;
         $reverseChargeNote = $page['reverseChargeNote'] ?? null;
     @endphp
     <div class="invoice-page">
@@ -34,13 +36,18 @@
             'taxBreakdown',
             'showVatColumn',
             'showVatBreakdown',
+            'showSalesTaxColumn',
             'reverseChargeNote',
             'bankQr',
             'btcPayQr',
             'logoDataUri',
             'signatureStampDataUri',
+            'isUs',
         ))
+
+        @include('pdf.partials.business-invoice-footer', ['company' => $company, 'footerFixed' => false])
     </div>
 @endforeach
+@include('pdf.partials.business-invoice-page-script')
 </body>
 </html>

@@ -3482,6 +3482,8 @@
     "amount_due": "A pagar",
     "signature_stamp": "Firma y sello",
     "issued_by": "Emitido por",
+    "created_with_satflux": "Creado con SATFLUX.io",
+    "page_number": "Página",
     "pdf_language": "Idioma PDF",
     "pdf_signature": "Firma",
     "pdf_payment_info": "Info de pago",

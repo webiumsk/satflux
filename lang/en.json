@@ -51,5 +51,7 @@
     "invoice_unit_hours": "hrs",
     "invoice_unit_months": "months",
     "invoice_unit_person": "person",
-    "invoice_unit_year": "year"
+    "invoice_unit_year": "year",
+    "Page": "Page",
+    "Created with SATFLUX.io": "Created with SATFLUX.io"
 }

@@ -1,5 +1,5 @@
 <style>
-    @page { margin: 28px 32px; }
+    @page { margin: 28px 32px 62px; }
     body {
         font-family: DejaVu Sans, sans-serif;
         font-size: 10px;
@@ -126,6 +126,65 @@
     }
     .pay-bar .amount { font-size: 12px; font-weight: bold; color: #111827; }
     .issuer-line { margin-top: 14px; font-size: 9px; color: #6b7280; }
+    .invoice-doc-footer {
+        margin-top: 18px;
+        padding-top: 8px;
+        font-size: 9px;
+        color: #4b5563;
+    }
+    .invoice-doc-footer--fixed {
+        position: fixed;
+        left: 32px;
+        right: 32px;
+        bottom: 18px;
+        margin-top: 0;
+        padding-top: 0;
+    }
+    .footer-divider {
+        border: none;
+        border-top: 1px dotted #b8c0cc;
+        margin: 0 0 10px;
+        height: 0;
+    }
+    .footer-contact-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 8px;
+    }
+    .footer-contact-table td {
+        vertical-align: middle;
+        padding: 2px 10px 2px 0;
+        font-size: 9px;
+        color: #374151;
+        white-space: nowrap;
+    }
+    .footer-issued-by { padding-right: 16px; }
+    .footer-issued-by strong { color: #111827; }
+    .footer-contact-item { text-align: center; }
+    .footer-icon {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        margin-right: 5px;
+        border: 1px solid #9ca3af;
+        border-radius: 50%;
+        font-size: 8px;
+        line-height: 13px;
+        text-align: center;
+        color: #6b7280;
+        vertical-align: middle;
+    }
+    .footer-brand-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 6px;
+    }
+    .footer-brand-table td {
+        font-size: 8px;
+        color: #9ca3af;
+        padding: 0;
+    }
+    .footer-brand-center { text-align: center; }
     .qr-block { margin-top: 18px; }
     .qr-item { display: inline-block; margin-right: 28px; vertical-align: top; text-align: center; }
     .qr-item img { width: 130px; height: 130px; }
@@ -133,4 +192,5 @@
     .qr-hint { font-size: 7px; color: #6b7280; margin-top: 4px; max-width: 130px; line-height: 1.25; }
     .muted { color: #6b7280; }
     .note-above { margin: 10px 0 4px; font-size: 10px; color: #374151; white-space: pre-wrap; }
+    .invoice-doc-body { padding-bottom: 52px; }
 </style>

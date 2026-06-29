@@ -59,6 +59,10 @@ class BusinessDocumentUsPdfTest extends TestCase
             'postal_code' => '90001',
             'country' => 'US',
             'vat_rate_default' => 8.25,
+            'issuer_name' => 'Jane Issuer',
+            'issuer_phone' => '+1 555 0100',
+            'issuer_email' => 'billing@example.com',
+            'website' => 'https://example.com',
             'app_settings' => [
                 'us_sales_tax_provider' => 'manual',
                 'embed_isdoc_in_pdf' => true,
@@ -132,6 +136,9 @@ class BusinessDocumentUsPdfTest extends TestCase
         $this->assertStringContainsString('Tax %', $html);
         $this->assertStringContainsString('216.50', $html);
         $this->assertStringContainsString('Buyer Inc', $html);
+        $this->assertStringContainsString('Jane Issuer', $html);
+        $this->assertStringContainsString('SATFLUX.io', $html);
+        $this->assertStringContainsString('billing@example.com', $html);
     }
 
     #[Test]

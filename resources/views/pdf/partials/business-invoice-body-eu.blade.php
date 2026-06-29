@@ -317,14 +317,6 @@
     </table>
 @endif
 
-@if($company->issuer_name || $company->issuer_email || $company->issuer_phone)
-    <div class="issuer-line">
-        {{ __('Issued by') }}: {{ $company->issuer_name }}
-        @if($company->issuer_phone) · {{ $company->issuer_phone }}@endif
-        @if($company->issuer_email) · {{ $company->issuer_email }}@endif
-    </div>
-@endif
-
 @if(! $isQuote && ($bankQr || $btcPayQr))
     <div class="qr-block">
         @if($bankQr)

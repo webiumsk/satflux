@@ -1226,6 +1226,8 @@
     "amount_due": "K úhrade",
     "signature_stamp": "Podpis a pečiatka",
     "issued_by": "Vystavil",
+    "created_with_satflux": "Vytvorené v SATFLUX.io",
+    "page_number": "Strana",
     "pdf_language": "Jazyk PDF",
     "pdf_signature": "Podpis",
     "pdf_payment_info": "Info o úhrade",

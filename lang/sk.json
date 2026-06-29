@@ -51,5 +51,7 @@
     "invoice_unit_hours": "hod.",
     "invoice_unit_months": "mesiace",
     "invoice_unit_person": "osoba",
-    "invoice_unit_year": "rok"
+    "invoice_unit_year": "rok",
+    "Page": "Strana",
+    "Created with SATFLUX.io": "Vytvorené v SATFLUX.io"
 }

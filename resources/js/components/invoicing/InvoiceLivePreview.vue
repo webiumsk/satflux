@@ -305,14 +305,34 @@
       </div>
     </div>
 
-    <p
-      v-if="company?.issuer_name || company?.issuer_email"
-      class="text-[10px] text-gray-500 mt-4"
+    <div
+      v-if="company?.issuer_name || company?.issuer_phone || company?.issuer_email || company?.website"
+      class="mt-5 pt-3 border-t border-dotted border-gray-300"
     >
-      {{ t("invoicing.issued_by") }}: {{ company.issuer_name }}
-      <span v-if="company.issuer_phone"> · {{ company.issuer_phone }}</span>
-      <span v-if="company.issuer_email"> · {{ company.issuer_email }}</span>
-    </p>
+      <div class="flex flex-wrap items-center gap-x-6 gap-y-1 text-[10px] text-gray-600">
+        <span v-if="company?.issuer_name">
+          <span class="font-semibold text-gray-800">{{ t('invoicing.issued_by') }}:</span>
+          {{ company.issuer_name }}
+        </span>
+        <span v-if="company?.issuer_phone" class="inline-flex items-center gap-1">
+          <span class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-gray-400 text-[8px] text-gray-500" aria-hidden="true">☎</span>
+          {{ company.issuer_phone }}
+        </span>
+        <span v-if="company?.website" class="inline-flex items-center gap-1">
+          <span class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-gray-400 text-[8px] text-gray-500" aria-hidden="true">⌁</span>
+          {{ company.website }}
+        </span>
+        <span v-if="company?.issuer_email" class="inline-flex items-center gap-1">
+          <span class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-gray-400 text-[8px] text-gray-500" aria-hidden="true">✉</span>
+          {{ company.issuer_email }}
+        </span>
+      </div>
+    </div>
+
+    <div class="relative mt-3 text-[9px] text-gray-400">
+      <p class="text-center">{{ t('invoicing.created_with_satflux') }}</p>
+      <p class="absolute right-0 top-0">{{ t('invoicing.page_number') }} 1/1</p>
+    </div>
   </div>
 </template>
 
