@@ -139,6 +139,8 @@ class BusinessDocumentUsPdfTest extends TestCase
         $this->assertStringContainsString('Buyer Inc', $html);
         $this->assertStringContainsString('Jane Issuer', $html);
         $this->assertStringContainsString('SATFLUX.io', $html);
+        $this->assertStringContainsString('href="mailto:billing@example.com"', $html);
+        $this->assertStringContainsString('href="tel:', $html);
         $this->assertStringContainsString('billing@example.com', $html);
     }
 

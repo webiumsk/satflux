@@ -9,7 +9,7 @@ if (isset($pdf)) {
         $pageWidth = $pdf->get_width();
         $pageHeight = $pdf->get_height();
         // Align with the bottom footer row (brand row), not the contact row above.
-        $y = $pageHeight - 22;
+        $y = $pageHeight - 30;
         $sample = $pageLabel.' 99/99';
         $textWidth = $fontMetrics->get_text_width($sample, $font, $size);
         $x = $pageWidth - 32 - $textWidth;

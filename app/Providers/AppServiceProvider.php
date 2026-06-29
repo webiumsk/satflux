@@ -2,9 +2,9 @@
 
 namespace App\Providers;
 
-use App\Pdf\DomPdfDriver;
 use App\Contracts\Invoicing\UsSalesTaxCalculator;
 use App\Models\Store;
+use App\Pdf\DomPdfDriver;
 use App\Policies\StorePolicy;
 use App\Services\Invoicing\UsSalesTax\StripeTaxUsSalesTaxCalculator;
 use App\Services\Invoicing\UsSalesTax\UsSalesTaxCalculationService;

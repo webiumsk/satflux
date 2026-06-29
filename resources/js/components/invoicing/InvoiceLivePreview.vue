@@ -313,14 +313,23 @@
       v-if="company?.issuer_name || company?.issuer_phone || company?.issuer_email || company?.website"
       class="pt-3 border-t border-dotted border-gray-300"
     >
-      <div class="flex flex-wrap items-center gap-x-6 gap-y-1 text-[10px] text-gray-600">
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-[10px] text-gray-600">
         <span v-if="company?.issuer_name">
           <span class="font-semibold text-gray-800">{{ t('invoicing.issued_by') }}:</span>
           {{ company.issuer_name }}
         </span>
-        <span v-if="company?.issuer_phone">{{ company.issuer_phone }}</span>
-        <span v-if="company?.website">{{ company.website?.replace(/^https?:\/\//i, '') }}</span>
-        <span v-if="company?.issuer_email">{{ company.issuer_email }}</span>
+        <span v-if="company?.issuer_phone" class="inline-flex items-center gap-1.5">
+          <FooterContactIcon icon="phone" />
+          <a :href="phoneHref" class="text-blue-600 underline">{{ company.issuer_phone }}</a>
+        </span>
+        <span v-if="company?.website" class="inline-flex items-center gap-1.5">
+          <FooterContactIcon icon="web" />
+          <a :href="websiteHref" class="text-blue-600 underline" target="_blank" rel="noopener">{{ displayWebsite }}</a>
+        </span>
+        <span v-if="company?.issuer_email" class="inline-flex items-center gap-1.5">
+          <FooterContactIcon icon="email" />
+          <a :href="emailHref" class="text-blue-600 underline">{{ company.issuer_email }}</a>
+        </span>
       </div>
     </div>
 
@@ -337,6 +346,7 @@
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useCompanyVatPolicy } from "../../composables/useCompanyVatPolicy";
+import FooterContactIcon from "./FooterContactIcon.vue";
 
 export type InvoiceLineForm = {
   name: string;
@@ -433,6 +443,26 @@ const amountPaid = computed(() => props.amountPaid ?? props.totals.total);
 const amountDue = computed(() =>
   isPaid.value ? 0 : Math.max(0, props.totals.total - (props.amountPaid ?? 0)),
 );
+
+const displayWebsite = computed(() =>
+  props.company?.website?.replace(/^https?:\/\//i, "").replace(/\/$/, "") ?? "",
+);
+
+const phoneHref = computed(() => {
+  const phone = props.company?.issuer_phone;
+  if (!phone) return "";
+  return `tel:${phone.replace(/[^\d+]/g, "")}`;
+});
+
+const emailHref = computed(() =>
+  props.company?.issuer_email ? `mailto:${props.company.issuer_email}` : "",
+);
+
+const websiteHref = computed(() => {
+  const website = props.company?.website;
+  if (!website) return "";
+  return /^https?:\/\//i.test(website) ? website : `https://${website.replace(/^\/+/, "")}`;
+});
 
 function lineTotal(line: InvoiceLineForm) {
   const net =
