@@ -21,7 +21,7 @@ use Illuminate\Http\Request;
 
 class CompanyController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, CompanyBrandingService $brandingService): JsonResponse
     {
         $companies = Company::query()
             ->where('user_id', $request->user()->id)
@@ -29,7 +29,20 @@ class CompanyController extends Controller
             ->orderBy('legal_name')
             ->get();
 
-        return response()->json(['data' => $companies]);
+        $data = $companies->map(function (Company $company) use ($brandingService) {
+            return array_merge(
+                [
+                    'id' => $company->id,
+                    'legal_name' => $company->legal_name,
+                    'trade_name' => $company->trade_name,
+                    'registration_number' => $company->registration_number,
+                    'documents_count' => (int) $company->documents_count,
+                ],
+                $brandingService->brandingMeta($company),
+            );
+        });
+
+        return response()->json(['data' => $data]);
     }
 
     public function store(

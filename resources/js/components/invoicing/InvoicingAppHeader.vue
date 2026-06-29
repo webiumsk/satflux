@@ -13,9 +13,10 @@
         >
           {{ t(item.labelKey) }}
         </button>
-        <div v-if="companyId && displayCompanyLabel" class="invoicing-main-nav__company ml-auto">
-          {{ displayCompanyLabel }}
-        </div>
+        <InvoicingCompanySwitcher
+          v-if="companyId && displayCompanyLabel"
+          :current-label="displayCompanyLabel"
+        />
       </nav>
     </div>
 
@@ -107,6 +108,7 @@ import {
   type InvoicingMainSection,
 } from '../../composables/useInvoicingLayout';
 import InvoicingIcons from './icons/InvoicingIcons.vue';
+import InvoicingCompanySwitcher from './InvoicingCompanySwitcher.vue';
 import InvoicingMobileNavDrawer from './InvoicingMobileNavDrawer.vue';
 import InvoicingMobileFilterDrawer from './InvoicingMobileFilterDrawer.vue';
 

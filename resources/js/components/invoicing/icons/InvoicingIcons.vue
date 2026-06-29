@@ -12,7 +12,11 @@ defineProps<{
     | 'plus'
     | 'more'
     | 'chevron-left'
-    | 'chevron-right';
+    | 'chevron-right'
+    | 'building'
+    | 'search'
+    | 'chevrons-up-down'
+    | 'check';
   class?: string;
 }>();
 </script>
@@ -115,6 +119,34 @@ defineProps<{
       stroke-linejoin="round"
       stroke-width="2"
       d="M9 5l7 7-7 7"
+    />
+    <path
+      v-else-if="name === 'building'"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+    />
+    <path
+      v-else-if="name === 'search'"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+    />
+    <path
+      v-else-if="name === 'chevrons-up-down'"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M7 15l5 5 5-5M7 9l5-5 5 5"
+    />
+    <path
+      v-else-if="name === 'check'"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M5 13l4 4L19 7"
     />
   </svg>
 </template>

@@ -16,14 +16,23 @@ import type { InvoicingCompanyListItem, UseInvoicingCompaniesResult } from "./us
 import { countCompanyInvoicesForList } from "@/evolu/companyInvoiceCount";
 
 function mapEvoluCompanies(
-    rows: ReadonlyArray<{ id: CompanyId; legalName: string; tradeName: string | null }>,
+    rows: ReadonlyArray<{
+        id: CompanyId;
+        legalName: string;
+        tradeName: string | null;
+        registrationNumber?: string | null;
+        logoDataUrl?: string | null;
+    }>,
     documentRows: ReadonlyArray<{ companyId: CompanyId; documentType: string; status: string }>,
 ): InvoicingCompanyListItem[] {
     return rows.map((row) => ({
         id: row.id,
         legal_name: row.legalName,
         trade_name: row.tradeName,
+        registration_number: row.registrationNumber ?? null,
         documents_count: countCompanyInvoicesForList(documentRows, row.id),
+        logo_url: row.logoDataUrl ?? null,
+        has_logo: Boolean(row.logoDataUrl),
     }));
 }
 
