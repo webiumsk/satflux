@@ -309,34 +309,30 @@
     </div>
 
     <div class="mt-auto shrink-0 pt-4">
-    <div
-      v-if="company?.issuer_name || company?.issuer_phone || company?.issuer_email || company?.website"
-      class="pt-3 border-t border-dotted border-gray-300"
-    >
-      <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-[10px] text-gray-600">
-        <span v-if="company?.issuer_name">
+    <div class="border-t border-dotted border-gray-300 pt-3">
+      <div class="grid grid-cols-4 gap-2 text-[10px] text-gray-600">
+        <div v-if="company?.issuer_name" class="text-left">
           <span class="font-semibold text-gray-800">{{ t('invoicing.issued_by') }}:</span>
           {{ company.issuer_name }}
-        </span>
-        <span v-if="company?.issuer_phone" class="inline-flex items-center gap-1.5">
+        </div>
+        <div v-if="company?.issuer_phone" class="flex items-center justify-center gap-1.5 min-w-0">
           <FooterContactIcon icon="phone" />
-          <a :href="phoneHref" class="text-blue-600 underline">{{ company.issuer_phone }}</a>
-        </span>
-        <span v-if="company?.website" class="inline-flex items-center gap-1.5">
+          <a :href="phoneHref" class="text-gray-600 no-underline truncate">{{ company.issuer_phone }}</a>
+        </div>
+        <div v-if="company?.website" class="flex items-center justify-center gap-1.5 min-w-0">
           <FooterContactIcon icon="web" />
-          <a :href="websiteHref" class="text-blue-600 underline" target="_blank" rel="noopener">{{ displayWebsite }}</a>
-        </span>
-        <span v-if="company?.issuer_email" class="inline-flex items-center gap-1.5">
+          <a :href="websiteHref" class="text-gray-600 no-underline truncate" target="_blank" rel="noopener">{{ displayWebsite }}</a>
+        </div>
+        <div v-if="company?.issuer_email" class="flex items-center justify-end gap-1.5 min-w-0">
           <FooterContactIcon icon="email" />
-          <a :href="emailHref" class="text-blue-600 underline">{{ company.issuer_email }}</a>
-        </span>
+          <a :href="emailHref" class="text-gray-600 no-underline truncate">{{ company.issuer_email }}</a>
+        </div>
       </div>
-    </div>
-
-    <div class="mt-2 grid grid-cols-3 items-center text-[9px] text-gray-400">
-      <span />
-      <p class="text-center">{{ t('invoicing.created_with_satflux') }}</p>
-      <p class="text-right text-[8px]">{{ t('invoicing.page_number') }} 1/1</p>
+      <div class="mt-2 grid grid-cols-4 items-center text-[9px] text-gray-400">
+        <span />
+        <p class="col-span-2 text-center">{{ t('invoicing.created_with_satflux') }}</p>
+        <p class="text-right text-[7px] text-gray-300">{{ t('invoicing.page_number') }} 1/1</p>
+      </div>
     </div>
     </div>
   </div>

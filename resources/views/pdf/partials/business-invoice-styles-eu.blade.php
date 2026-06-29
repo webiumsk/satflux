@@ -1,5 +1,5 @@
 <style>
-    @page { margin: 28px 32px 28px; }
+    @page { margin: 28px 32px 32px; }
     body {
         font-family: DejaVu Sans, sans-serif;
         font-size: 10px;
@@ -163,5 +163,5 @@
     a.qr-item-link { text-decoration: none; color: inherit; }
     .muted { color: #6b7280; }
     .note-above { margin: 10px 0 4px; font-size: 10px; color: #374151; white-space: pre-wrap; }
-    .invoice-doc-body { padding-bottom: 62px; }
+    .invoice-doc-body { padding-bottom: 58px; }
 </style>

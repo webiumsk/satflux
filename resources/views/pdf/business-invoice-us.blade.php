@@ -30,6 +30,5 @@
     </div>
 
     @include('pdf.partials.business-invoice-footer', ['company' => $company, 'footerFixed' => true])
-    @include('pdf.partials.business-invoice-page-script')
 </body>
 </html>
