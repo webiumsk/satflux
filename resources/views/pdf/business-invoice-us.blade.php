@@ -19,9 +19,11 @@
         'reverseChargeNote',
         'bankQr',
         'btcPayQr',
+        'btcPayUrl',
         'logoDataUri',
         'signatureStampDataUri',
     ), ['isUs' => true]))
+
     </div>
 
     @include('pdf.partials.business-invoice-footer', ['company' => $company, 'footerFixed' => true])

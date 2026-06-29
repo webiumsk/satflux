@@ -103,9 +103,11 @@ class BusinessDocumentPdfService
         }
 
         $btcPayQr = null;
+        $btcPayUrl = null;
         if ($document->payment_btc_enabled && $document->type !== BusinessDocumentType::Quote) {
             $qrTarget = $this->resolveBtcPayQrTarget($document);
             if ($qrTarget) {
+                $btcPayUrl = $qrTarget;
                 $btcPayQr = $this->qrPngDataUri($qrTarget);
             }
         }
@@ -132,6 +134,7 @@ class BusinessDocumentPdfService
             'reverseChargeNote' => $reverseChargeNote,
             'bankQr' => $bankQr,
             'btcPayQr' => $btcPayQr,
+            'btcPayUrl' => $btcPayUrl,
             'logoDataUri' => $this->brandingService->resolveBrandingDataUri(
                 $company->getAttribute('ephemeral_logo_url'),
                 $company->logo_path,

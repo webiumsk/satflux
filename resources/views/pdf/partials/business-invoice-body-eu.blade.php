@@ -319,20 +319,4 @@
     </table>
 @endif
 
-@if(! $isQuote && ($bankQr || $btcPayQr))
-    <div class="qr-block">
-        @if($bankQr)
-            <div class="qr-item">
-                <div class="qr-caption">{{ __('Pay by bank (QR)') }}</div>
-                <img src="{{ $bankQr }}" alt="">
-            </div>
-        @endif
-        @if($btcPayQr)
-            <div class="qr-item">
-                <div class="qr-caption">{{ __('Bitcoin / Lightning (payment link)') }}</div>
-                <img src="{{ $btcPayQr }}" alt="">
-                <div class="qr-hint">{{ __('BTC payment QR is a web link. Open in your browser - do not scan with a Lightning wallet.') }}</div>
-            </div>
-        @endif
-    </div>
-@endif
+@include('pdf.partials.business-invoice-qr-block')

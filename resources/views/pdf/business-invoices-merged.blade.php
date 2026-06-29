@@ -18,6 +18,7 @@
         $lines = $page['lines'];
         $bankQr = $page['bankQr'] ?? null;
         $btcPayQr = $page['btcPayQr'] ?? null;
+        $btcPayUrl = $page['btcPayUrl'] ?? null;
         $logoDataUri = $page['logoDataUri'] ?? null;
         $signatureStampDataUri = $page['signatureStampDataUri'] ?? null;
         $taxBreakdown = $page['taxBreakdown'] ?? [];
@@ -40,6 +41,7 @@
             'reverseChargeNote',
             'bankQr',
             'btcPayQr',
+            'btcPayUrl',
             'logoDataUri',
             'signatureStampDataUri',
             'isUs',
