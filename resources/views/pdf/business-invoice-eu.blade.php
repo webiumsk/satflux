@@ -6,6 +6,9 @@
     @include('pdf.partials.business-invoice-styles-eu')
 </head>
 <body>
+    @php
+        $btcPayUrl = $btcPayUrl ?? null;
+    @endphp
     <div class="invoice-doc-body">
     @include('pdf.partials.business-invoice-body-eu', compact(
         'document',

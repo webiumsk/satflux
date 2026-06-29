@@ -136,38 +136,36 @@
         position: fixed;
         left: 32px;
         right: 32px;
-        bottom: 24px;
+        bottom: 20px;
         margin-top: 0;
         padding-top: 0;
     }
     .footer-divider {
         border: none;
         border-top: 1px dotted #b8c0cc;
-        margin: 0 0 10px;
+        margin: 0 0 8px;
         height: 0;
     }
     .footer-contact-table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
     }
-    .footer-contact-table td {
+    .footer-contact-col {
         vertical-align: middle;
-        padding: 2px 10px 2px 0;
+        padding: 0 12px 0 0;
         font-size: 9px;
         color: #374151;
         white-space: normal;
         word-break: break-word;
         overflow-wrap: anywhere;
     }
-    .footer-issued-by { padding-right: 16px; }
-    .footer-issued-by strong { color: #111827; }
-    .footer-contact-item { text-align: center; }
+    .footer-contact-col strong { color: #111827; }
     .footer-icon {
         display: inline-block;
         width: 14px;
         height: 14px;
-        margin-right: 5px;
+        margin-right: 4px;
         border: 1px solid #9ca3af;
         border-radius: 50%;
         font-size: 8px;
@@ -179,7 +177,7 @@
     .footer-brand-table {
         width: 100%;
         border-collapse: collapse;
-        margin-top: 6px;
+        margin-top: 2px;
     }
     .footer-brand-table td {
         font-size: 8px;
@@ -220,5 +218,5 @@
     a.qr-item-link { text-decoration: none; color: inherit; }
     .muted { color: #6b7280; }
     .note-above { margin: 10px 0 4px; font-size: 10px; color: #374151; white-space: pre-wrap; }
-    .invoice-doc-body { padding-bottom: 58px; }
+    .invoice-doc-body { padding-bottom: 52px; }
 </style>

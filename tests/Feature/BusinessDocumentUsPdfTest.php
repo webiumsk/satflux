@@ -127,6 +127,7 @@ class BusinessDocumentUsPdfTest extends TestCase
             'reverseChargeNote' => null,
             'bankQr' => null,
             'btcPayQr' => null,
+            'btcPayUrl' => null,
             'logoDataUri' => null,
             'signatureStampDataUri' => null,
         ])->render();
@@ -215,6 +216,7 @@ class BusinessDocumentUsPdfTest extends TestCase
             'reverseChargeNote' => null,
             'bankQr' => null,
             'btcPayQr' => null,
+            'btcPayUrl' => null,
             'logoDataUri' => null,
             'signatureStampDataUri' => null,
         ])->render();

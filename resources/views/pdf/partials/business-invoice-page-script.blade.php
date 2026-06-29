@@ -8,7 +8,7 @@ if (isset($pdf)) {
         $color = [0.55, 0.55, 0.55];
         $pageWidth = $pdf->get_width();
         $pageHeight = $pdf->get_height();
-        $y = $pageHeight - 24;
+        $y = $pageHeight - 20;
         $sample = $pageLabel.' 99/99';
         $textWidth = $fontMetrics->get_text_width($sample, $font, $size);
         $x = $pageWidth - 32 - $textWidth;
