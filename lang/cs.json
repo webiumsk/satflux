@@ -41,5 +41,15 @@
     "Bitcoin / Lightning (payment link)": "Bitcoin / Lightning (platební odkaz)",
     "BTC payment QR is a web link. Open in your browser - do not scan with a Lightning wallet.": "QR je odkaz - otevřete v prohlížeči, ne skenem LN peněženky.",
     "Reverse charge - VAT to be accounted for by the recipient.": "Přenesení daňové povinnosti - DPH vyúčtuje odběratel.",
-    "The supply of goods is exempt. The supply of services is subject to the reverse charge procedure.": "Dodání zboží je osvobozeno. Dodání služby podléhá přenesení daňové povinnosti."
+    "The supply of goods is exempt. The supply of services is subject to the reverse charge procedure.": "Dodání zboží je osvobozeno. Dodání služby podléhá přenesení daňové povinnosti.",
+    "EIN": "EIN",
+    "Rate": "Sazba",
+    "Tax %": "Daň %",
+    "Sales tax": "Prodejní daň",
+    "Total due": "Částka k úhradě",
+    "invoice_unit_pcs": "ks.",
+    "invoice_unit_hours": "hod.",
+    "invoice_unit_months": "měsíce",
+    "invoice_unit_person": "osoba",
+    "invoice_unit_year": "rok"
 }

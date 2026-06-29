@@ -7,17 +7,17 @@ export const INVOICE_LINE_UNIT_PRESETS: ReadonlyArray<{
   label?: string;
   labelKey?: string;
 }> = [
-  { value: 'ks.', label: 'ks' },
-  { value: 'hod.', label: 'hod.' },
+  { value: 'ks.', labelKey: 'unit_pcs' },
+  { value: 'hod.', labelKey: 'unit_hours' },
   { value: 'm', label: 'm' },
   { value: 'km', label: 'km' },
   { value: 'bm', label: 'bm' },
   { value: 'm2', label: 'm2' },
   { value: 'm3', label: 'm3' },
   { value: 'kg', label: 'kg' },
-  { value: 'mesiace', labelKey: 'unit_mesiace' },
+  { value: 'mesiace', labelKey: 'unit_months' },
   { value: 'person', labelKey: 'unit_person' },
-  { value: 'rok', label: 'rok' },
+  { value: 'rok', labelKey: 'unit_year' },
 ];
 
 const PRESET_SET = new Set(INVOICE_LINE_UNIT_PRESETS.map((p) => p.value));

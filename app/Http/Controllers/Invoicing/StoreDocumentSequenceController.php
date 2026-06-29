@@ -3,13 +3,11 @@
 namespace App\Http\Controllers\Invoicing;
 
 use App\Http\Controllers\Controller;
-use App\Models\Company;
 use App\Models\Store;
 use App\Services\Invoicing\DocumentSequenceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 
 class StoreDocumentSequenceController extends Controller
 {
@@ -19,7 +17,11 @@ class StoreDocumentSequenceController extends Controller
 
     public function preview(Request $request, Store $store): JsonResponse
     {
-        $company = $this->resolveLinkedCompany($store);
+        $company = $store->company;
+        if (! $company) {
+            return $this->storeNotLinkedResponse();
+        }
+
         $validated = $request->validate([
             'type' => ['sometimes', 'string', Rule::in([
                 'invoice',
@@ -52,7 +54,11 @@ class StoreDocumentSequenceController extends Controller
 
     public function reserve(Request $request, Store $store): JsonResponse
     {
-        $company = $this->resolveLinkedCompany($store);
+        $company = $store->company;
+        if (! $company) {
+            return $this->storeNotLinkedResponse();
+        }
+
         $validated = $request->validate([
             'document_type' => ['required', 'string', Rule::in([
                 'invoice',
@@ -83,15 +89,12 @@ class StoreDocumentSequenceController extends Controller
         ]);
     }
 
-    protected function resolveLinkedCompany(Store $store): Company
+    protected function storeNotLinkedResponse(): JsonResponse
     {
-        $company = $store->company;
-        if (! $company) {
-            throw ValidationException::withMessages([
-                'store' => ['Link an invoicing company to this store before reserving document numbers.'],
-            ]);
-        }
-
-        return $company;
+        return response()->json([
+            'data' => null,
+            'error' => 'store_not_linked',
+            'message' => 'Link an invoicing company to this store before reserving document numbers.',
+        ]);
     }
 }

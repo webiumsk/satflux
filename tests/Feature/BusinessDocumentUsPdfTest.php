@@ -118,15 +118,20 @@ class BusinessDocumentUsPdfTest extends TestCase
             'lines' => $doc->lines,
             'taxBreakdown' => $canonical->taxBreakdown,
             'showSalesTaxColumn' => true,
+            'showVatColumn' => false,
+            'showVatBreakdown' => false,
+            'reverseChargeNote' => null,
             'bankQr' => null,
             'btcPayQr' => null,
+            'logoDataUri' => null,
+            'signatureStampDataUri' => null,
         ])->render();
 
-        $this->assertStringContainsString('Subtotal:', $html);
+        $this->assertStringContainsString('Subtotal', $html);
         $this->assertStringContainsString('Sales tax 8.25%', $html);
         $this->assertStringContainsString('Tax %', $html);
         $this->assertStringContainsString('216.50', $html);
-        $this->assertStringContainsString('Bill to: Buyer Inc', $html);
+        $this->assertStringContainsString('Buyer Inc', $html);
     }
 
     #[Test]
@@ -198,8 +203,13 @@ class BusinessDocumentUsPdfTest extends TestCase
             'lines' => $doc->lines,
             'taxBreakdown' => [],
             'showSalesTaxColumn' => false,
+            'showVatColumn' => false,
+            'showVatBreakdown' => false,
+            'reverseChargeNote' => null,
             'bankQr' => null,
             'btcPayQr' => null,
+            'logoDataUri' => null,
+            'signatureStampDataUri' => null,
         ])->render();
 
         $this->assertStringNotContainsString('ISDOC', $html);

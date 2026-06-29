@@ -19,6 +19,7 @@
         'btcPayQr',
         'logoDataUri',
         'signatureStampDataUri',
+        'isUs',
     ))
 </body>
 </html>

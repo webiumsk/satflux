@@ -128,6 +128,7 @@ class BusinessDocumentPdfService
             'showVatColumn' => $this->vatPolicy->showsVatRateColumn($company, $contact),
             'showVatBreakdown' => $this->vatPolicy->showsVatBreakdown($company, $contact),
             'showSalesTaxColumn' => $isUs && (float) $canonical->taxTotal > 0,
+            'isUs' => $isUs,
             'reverseChargeNote' => $reverseChargeNote,
             'bankQr' => $bankQr,
             'btcPayQr' => $btcPayQr,
