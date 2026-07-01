@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\ProcessBtcPayWebhook;
 use App\Models\Store;
 use App\Models\WebhookEvent;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -60,13 +61,30 @@ class WebhookController extends Controller
 
         $eventType = $payload['type'] ?? $payload['eventType'] ?? 'unknown';
 
-        // Store webhook event
-        $webhookEvent = WebhookEvent::create([
-            'store_id' => $store?->id,
-            'event_type' => $eventType,
-            'payload' => $payload,
-            'verified' => $verified,
-        ]);
+        // Replay protection: BTCPay sends a unique deliveryId per delivery
+        // (redeliveries get a new one). A replayed payload reuses it, so
+        // reject duplicates. The unique index backstops concurrent replays.
+        $deliveryId = is_string($payload['deliveryId'] ?? null) && $payload['deliveryId'] !== ''
+            ? $payload['deliveryId']
+            : null;
+
+        try {
+            $webhookEvent = WebhookEvent::create([
+                'store_id' => $store?->id,
+                'event_type' => $eventType,
+                'payload' => $payload,
+                'verified' => $verified,
+                'delivery_id' => $deliveryId,
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            Log::warning('BTCPay webhook replay rejected (duplicate deliveryId)', [
+                'ip' => $request->ip(),
+                'store_id' => $store?->id,
+                'delivery_id' => $deliveryId,
+            ]);
+
+            return response()->json(['status' => 'duplicate']);
+        }
 
         // Dispatch job to process webhook (skeleton - no business logic yet)
         ProcessBtcPayWebhook::dispatch($webhookEvent);

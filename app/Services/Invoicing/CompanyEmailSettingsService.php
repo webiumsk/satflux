@@ -10,6 +10,8 @@ use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class CompanyEmailSettingsService
 {
+    public function __construct(protected SmtpHostGuard $smtpHostGuard) {}
+
     /**
      * @param  array<string, mixed>  $incoming
      * @return array<string, mixed>
@@ -116,8 +118,11 @@ class CompanyEmailSettingsService
             return null;
         }
 
+        $mailerConfig = $this->smtpMailerConfig($settings);
+        $this->smtpHostGuard->assertAllowed($mailerConfig['host']);
+
         $mailerName = 'company_smtp_'.$company->id;
-        config(['mail.mailers.'.$mailerName => $this->smtpMailerConfig($settings)]);
+        config(['mail.mailers.'.$mailerName => $mailerConfig]);
 
         return $mailerName;
     }

@@ -14,6 +14,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Company SMTP - private host guard (SSRF protection)
+    |--------------------------------------------------------------------------
+    | Company SMTP settings accept an arbitrary host:port. By default hosts that
+    | resolve to private/reserved IP ranges are rejected so the SMTP test endpoint
+    | cannot be used to probe the internal network. Enable only for local dev
+    | (Mailpit/Mailhog) or self-hosted setups with an internal mail relay.
+    */
+
+    'smtp_allow_private_hosts' => filter_var(env('SMTP_ALLOW_PRIVATE_HOSTS', false), FILTER_VALIDATE_BOOL),
+
+    /*
+    |--------------------------------------------------------------------------
     | WooCommerce inbox PoC
     |--------------------------------------------------------------------------
     | When true, all WooCommerce create-document calls enqueue to the inbox

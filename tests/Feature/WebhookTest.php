@@ -155,6 +155,45 @@ class WebhookTest extends TestCase
         Queue::assertPushed(ProcessBtcPayWebhook::class);
     }
 
+    public function test_webhook_replay_with_same_delivery_id_is_rejected(): void
+    {
+        config(['services.btcpay.webhook_secret' => 'test-secret']);
+        $payload = [
+            'type' => 'InvoiceSettled',
+            'storeId' => 'btcpay-store-123',
+            'deliveryId' => 'delivery-abc-1',
+        ];
+        $body = json_encode($payload);
+        $signature = hash_hmac('sha256', $body, 'test-secret');
+        $headers = ['BTCPay-Sig' => 'sha256='.$signature];
+
+        $first = $this->postJson('/api/webhooks/btcpay', $payload, $headers);
+        $first->assertStatus(200);
+        $first->assertJson(['status' => 'received']);
+
+        $replay = $this->postJson('/api/webhooks/btcpay', $payload, $headers);
+        $replay->assertStatus(200);
+        $replay->assertJson(['status' => 'duplicate']);
+
+        $this->assertDatabaseCount('webhook_events', 1);
+        $this->assertSame('delivery-abc-1', WebhookEvent::first()->delivery_id);
+        Queue::assertPushed(ProcessBtcPayWebhook::class, 1);
+    }
+
+    public function test_webhook_without_delivery_id_is_not_deduplicated(): void
+    {
+        config(['services.btcpay.webhook_secret' => 'test-secret']);
+        $payload = ['type' => 'InvoiceSettled', 'storeId' => 'btcpay-store-123'];
+        $body = json_encode($payload);
+        $signature = hash_hmac('sha256', $body, 'test-secret');
+        $headers = ['BTCPay-Sig' => 'sha256='.$signature];
+
+        $this->postJson('/api/webhooks/btcpay', $payload, $headers)->assertStatus(200);
+        $this->postJson('/api/webhooks/btcpay', $payload, $headers)->assertStatus(200);
+
+        $this->assertDatabaseCount('webhook_events', 2);
+    }
+
     public function test_webhook_returns_401_when_store_has_secret_but_request_signed_with_config_secret(): void
     {
         Store::factory()->create([

@@ -21,6 +21,7 @@ class WebhookEvent extends Model
         'payload',
         'verified',
         'processed_at',
+        'delivery_id',
     ];
 
     /**

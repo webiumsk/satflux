@@ -5,9 +5,19 @@ namespace Tests;
 use Illuminate\Cache\RateLimiter as CacheRateLimiter;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 
 abstract class TestCase extends BaseTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Fail loudly when a test triggers an HTTP call no Http::fake() matches,
+        // instead of silently hitting the real network.
+        Http::preventStrayRequests();
+    }
+
     public function createApplication()
     {
         // Set cache driver to array BEFORE bootstrapping to prevent Redis usage
@@ -40,6 +50,10 @@ abstract class TestCase extends BaseTestCase
         // Individual compliance test suites explicitly enable it.
         config(['compliance.enabled' => false]);
         config(['guest.seed_first_registration' => false]);
+
+        // Allow private SMTP hosts in tests so email tests don't hit real DNS.
+        // SmtpHostGuardTest explicitly disables this to test the guard itself.
+        config(['invoicing.smtp_allow_private_hosts' => true]);
 
         // Override RateLimiter AFTER bootstrap to use array cache
         // This prevents Redis connection attempts during rate limiting
