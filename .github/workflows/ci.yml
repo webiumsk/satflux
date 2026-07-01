@@ -57,6 +57,9 @@ jobs:
       - name: Check code style (Pint)
         run: vendor/bin/pint --test
 
+      - name: Static analysis (PHPStan/Larastan)
+        run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
       - name: Security audit (composer)
         run: composer audit
 
