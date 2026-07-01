@@ -121,7 +121,7 @@ class CheckSubscriptionStatuses extends Command
 
                         if ($expectedRole && $user->role !== $expectedRole) {
                             $oldRole = $user->role;
-                            $user->update(['role' => $expectedRole]);
+                            $user->forceFill(['role' => $expectedRole])->save();
 
                             if (in_array($oldRole, ['free']) && in_array($expectedRole, ['pro', 'enterprise'])) {
                                 $upgraded++;

@@ -29,7 +29,8 @@ class User extends Authenticatable implements MustVerifyEmailContract
         'nostr_public_key',
         'btcpay_user_id',
         'btcpay_api_key',
-        'role',
+        // 'role' is intentionally NOT fillable - assign explicitly or via forceFill()
+        // in trusted flows only (admin update, subscription sync, provisioning)
         'btcpay_subscription_id',
         'subscription_expires_at',
         'subscription_grace_period_ends_at',

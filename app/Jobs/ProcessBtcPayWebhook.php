@@ -586,11 +586,11 @@ class ProcessBtcPayWebhook implements ShouldQueue
 
             // Update user role and subscription tracking
             if ($planRole) {
-                $user->update([
+                $user->forceFill([
                     'role' => $planRole,
                     'subscription_expires_at' => $subscriptionExpiresAt,
                     'subscription_grace_period_ends_at' => null, // BTCPay handles grace period
-                ]);
+                ])->save();
             } else {
                 $user->update([
                     'subscription_expires_at' => $subscriptionExpiresAt,
