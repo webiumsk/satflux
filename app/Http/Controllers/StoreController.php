@@ -185,15 +185,12 @@ class StoreController extends Controller
                 'store_name' => $request->name,
             ]);
 
-            // Get server-level API key (unrestricted - has all permissions)
-            $serverApiKey = config('services.btcpay.api_key', env('BTCPAY_API_KEY'));
-            if (! $serverApiKey) {
+            // Server-level API key (unrestricted) is required for provisioning.
+            // StoreService's injected BtcPayClient defaults to it, so no key
+            // juggling here - createStore(..., null) runs with the server key.
+            if (! config('services.btcpay.api_key')) {
                 abort(500, 'Server-level BTCPay API key not configured.');
             }
-
-            // Ensure client is using server-level API key
-            $btcPayClient = app(\App\Services\BtcPay\BtcPayClient::class);
-            $btcPayClient->setApiKey($serverApiKey);
 
             // Create store in BTCPay using server-level API key
             $storeData = [
@@ -217,7 +214,7 @@ class StoreController extends Controller
                 'preferredExchange' => $storeData['preferredExchange'] ?? null,
             ]);
 
-            $btcpayStore = $this->storeService->createStore($storeData, null); // null = use server-level key (current client state)
+            $btcpayStore = $this->storeService->createStore($storeData, null); // null = server-level key (client default)
 
             Log::info('Store created in BTCPay', [
                 'user_id' => $user->id,
