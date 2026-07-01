@@ -53,7 +53,7 @@ function applySqliteBooleans(
     return out;
 }
 
-const BANK_IMPORT_SOURCES = new Set(["csv", "camt053", "inbound_email", "manual"]);
+const BANK_IMPORT_SOURCES = new Set(["csv", "camt053", "inbound_email", "manual", "wise"]);
 
 function normalizeBankImportSource(value: unknown): string {
     const text = emptyToNull(value);

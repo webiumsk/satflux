@@ -7,6 +7,8 @@ Match incoming bank transfers to business invoices and update document status to
 | Channel | Status | Notes |
 |---------|--------|-------|
 | **CSV / CAMT.053 import** | Implemented | UI: Invoicing → Bank payments → Import |
+| **Wise CSV** | Implemented | Auto-detects Wise export columns (`Direction`, `Reference`, `Target amount`) |
+| **Wise API sync** | Implemented | Personal API token; balance statements for US, CA, AU, NZ, SG, MY |
 | **Manual pairing** | Implemented | Unmatched list → Assign to invoice |
 | **B-mail (bank email)** | Optional | `BANK_INBOUND_ENABLED` + webhook; TB/SLSP parsers |
 | **Bank API (Finbricks-style)** | Not implemented | Future Enterprise option |
@@ -14,9 +16,9 @@ Match incoming bank transfers to business invoices and update document status to
 ## Matching rules
 
 1. Only **credit** (incoming) transactions are auto-matched.
-2. **Variable symbol** on the bank line must equal the invoice `variable_symbol` (or digits-only invoice number).
+2. **Bank VS** or **payment reference** must match the invoice `variable_symbol` or invoice number (VS and reference are checked independently - they do not have to be identical).
 3. **Amount** must match amount due within `BANK_MATCH_AMOUNT_TOLERANCE` (default 0.01).
-4. **Currency** must match the document currency.
+4. **Currency** must match the document currency (EUR, USD, or whatever the invoice uses).
 
 Partial payments keep status `issued` and set `amount_paid` below total until fully paid.
 
@@ -27,6 +29,36 @@ Partial payments keep status `issued` and set `amount_paid` below total until fu
 - `POST .../bank-transactions/{id}/match` body: `business_document_id`
 - `POST .../bank-transactions/batches/{batch}/auto-match`
 - `GET .../bank-transactions/inbound-email` - b-mail address for the company
+- `GET /api/invoicing/companies/{company}/wise/status` - Wise connection status
+- `POST .../wise/connect` body: `wise_api_token` (optional `wise_profile_id`, `wise_balance_id`)
+- `POST .../wise/sync` body: optional `from`, `to` (default last 30 days); `local_first: true` returns normalized rows without persisting (Evolu bridge)
+
+## Wise (US LLC and similar)
+
+Wise personal API tokens can pull balance statements for **US, CA, AU, NZ, SG, MY**. EU/UK Wise profiles do not support statement API with personal tokens - use CSV import instead.
+
+### CSV import
+
+1. Export one balance from Wise (Transactions → Export).
+2. Invoicing → Bank payments → Import → choose **Wise CSV** or leave format on auto.
+3. Ask payers to include the invoice **variable symbol** in the bank VS field and/or the invoice number in **Reference** (either can work).
+
+### API sync
+
+1. Create a personal API token in Wise: **Integrations and tools → API tokens**.
+2. Store in company settings via UI (Import tab → Wise section) or `POST .../wise/connect`.
+3. Token is encrypted in `company.app_settings` (`wise_api_token_encrypted`); frontend only sees `wise_token_set: true`.
+4. `POST .../wise/sync` imports CREDIT lines and auto-matches like CSV.
+
+Server env (optional sandbox):
+
+```env
+WISE_API_BASE_URL=https://api.wise.com
+WISE_API_SANDBOX_URL=https://api.sandbox.transferwise.com
+WISE_USE_SANDBOX=false
+```
+
+Local-first mode stores the token on the **server bridge company** and syncs with `local_first: true` into Evolu on the device.
 
 ## B-mail setup (phase 2)
 

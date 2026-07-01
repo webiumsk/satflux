@@ -647,6 +647,12 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/bank-transactions/{bankTransaction}/create-expense', [\App\Http\Controllers\Invoicing\BankTransactionController::class, 'createExpense'])
                 ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/wise/status', [\App\Http\Controllers\Invoicing\WiseBankController::class, 'status'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/wise/connect', [\App\Http\Controllers\Invoicing\WiseBankController::class, 'connect'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/wise/sync', [\App\Http\Controllers\Invoicing\WiseBankController::class, 'sync'])
+                ->middleware(EnsureCompanyOwnership::class);
         });
 
     // Dashboard

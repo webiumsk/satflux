@@ -34,7 +34,7 @@ class BankTransactionController extends Controller
             'from' => ['sometimes', 'date'],
             'to' => ['sometimes', 'date'],
             'variable_symbol' => ['sometimes', 'string', 'max:32'],
-            'source' => ['sometimes', 'string', Rule::in(['csv', 'camt053', 'manual', 'email'])],
+            'source' => ['sometimes', 'string', Rule::in(['csv', 'camt053', 'manual', 'email', 'wise'])],
             'per_page' => ['sometimes', 'integer', 'min:5', 'max:100'],
         ]);
 

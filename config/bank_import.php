@@ -33,6 +33,18 @@ return [
             'counterparty' => ['nazov protistrany', 'názov protistrany'],
             'reference' => ['informacia pre prijemcu', 'informácia pre príjemcu'],
         ],
+        'wise' => [
+            'date' => ['finished on', 'created on'],
+            'direction' => ['direction'],
+            'target_amount' => ['target amount (after fees)', 'target amount'],
+            'target_currency' => ['target currency'],
+            'source_amount' => ['source amount (after fees)', 'source amount'],
+            'source_currency' => ['source currency'],
+            'reference' => ['reference'],
+            'counterparty' => ['source name'],
+            'counterparty_out' => ['target name'],
+            'transaction_id' => ['id'],
+        ],
     ],
 
     'default_csv_profile' => 'generic',

@@ -39,6 +39,18 @@ const CSV_PROFILES: Record<string, Record<string, string[]>> = {
         counterparty: ["nazov protistrany", "názov protistrany"],
         reference: ["informacia pre prijemcu", "informácia pre príjemcu"],
     },
+    wise: {
+        date: ["finished on", "created on"],
+        direction: ["direction"],
+        target_amount: ["target amount (after fees)", "target amount"],
+        target_currency: ["target currency"],
+        source_amount: ["source amount (after fees)", "source amount"],
+        source_currency: ["source currency"],
+        reference: ["reference"],
+        counterparty: ["source name"],
+        counterparty_out: ["target name"],
+        transaction_id: ["id"],
+    },
 };
 
 function normalizeHeader(header: string): string {
@@ -88,6 +100,13 @@ function resolveProfile(headers: string[]): string {
     if (joined.includes("zauctovania") || joined.includes("protistrany")) {
         return "tatra";
     }
+    if (
+        joined.includes("direction")
+        && joined.includes("reference")
+        && (joined.includes("target amount") || joined.includes("source amount"))
+    ) {
+        return "wise";
+    }
     return "generic";
 }
 
@@ -109,7 +128,11 @@ function columnMap(headers: string[], profile: string): Record<string, number> {
         }
     }
 
-    if (map.date === undefined || map.amount === undefined) {
+    if (profile === "wise") {
+        if (map.date === undefined || map.direction === undefined) {
+            throw new Error("Wise CSV must include date and direction columns.");
+        }
+    } else if (map.date === undefined || map.amount === undefined) {
         throw new Error("CSV must include date and amount columns.");
     }
 
@@ -132,6 +155,7 @@ function parseAmount(raw: string): number {
 function parseDate(raw: string): string {
     const trimmed = raw.trim();
     const formats = [
+        /^(\d{2})-(\d{2})-(\d{4})$/,
         /^(\d{2})\.(\d{2})\.(\d{4})$/,
         /^(\d{2})\.(\d{2})\.(\d{2})$/,
         /^(\d{4})-(\d{2})-(\d{2})$/,
@@ -142,6 +166,9 @@ function parseDate(raw: string): string {
     for (const re of formats) {
         const m = trimmed.match(re);
         if (!m) continue;
+        if (re.source.startsWith("^(\\d{2})-")) {
+            return `${m[3]}-${m[2]}-${m[1]}T12:00:00.000Z`;
+        }
         if (re.source.startsWith("^(\\d{2})\\.")) {
             const year = m[3].length === 2 ? `20${m[3]}` : m[3];
             return `${year}-${m[2]}-${m[1]}T12:00:00.000Z`;
@@ -162,7 +189,57 @@ function parseDate(raw: string): string {
     throw new Error(`Unrecognized date: ${raw}`);
 }
 
-function parseRow(cols: string[], map: Record<string, number>): ParsedBankRow | null {
+function parseWiseRow(cols: string[], map: Record<string, number>): ParsedBankRow | null {
+    const directionRaw = col(cols, map, "direction");
+    const reference = col(cols, map, "reference");
+    const isIncoming = directionRaw != null && ["IN", "INCOMING"].includes(directionRaw.toUpperCase().trim());
+
+    const amountRaw = isIncoming
+        ? col(cols, map, "target_amount")
+        : col(cols, map, "source_amount");
+    if (!amountRaw) return null;
+
+    const amount = parseAmount(amountRaw);
+    if (amount === 0) return null;
+
+    const currency = (
+        (isIncoming ? col(cols, map, "target_currency") : col(cols, map, "source_currency")) || "USD"
+    ).toUpperCase();
+
+    const counterparty = isIncoming
+        ? col(cols, map, "counterparty")
+        : (col(cols, map, "counterparty_out") || col(cols, map, "counterparty"));
+
+    const direction = guessDirectionFromAmountAndHints(
+        amount,
+        directionRaw,
+        counterparty,
+        reference,
+    );
+
+    const dateRaw = col(cols, map, "date");
+    if (!dateRaw) return null;
+
+    return {
+        bookedAt: parseDate(dateRaw),
+        amount: Math.abs(amount),
+        currency,
+        direction,
+        variableSymbol: null,
+        constantSymbol: null,
+        specificSymbol: null,
+        counterpartyName: counterparty,
+        counterpartyIban: null,
+        reference,
+        bankTransactionId: col(cols, map, "transaction_id"),
+    };
+}
+
+function parseRow(cols: string[], map: Record<string, number>, profile: string): ParsedBankRow | null {
+    if (profile === "wise") {
+        return parseWiseRow(cols, map);
+    }
+
     const amountRaw = col(cols, map, "amount");
     if (!amountRaw) return null;
 
@@ -183,19 +260,20 @@ function parseRow(cols: string[], map: Record<string, number>): ParsedBankRow | 
     if (!dateRaw) return null;
 
     const currency = (col(cols, map, "currency") || "EUR").toUpperCase();
+    const variableSymbol = normalizeVariableSymbol(col(cols, map, "variable_symbol"));
 
     return {
         bookedAt: parseDate(dateRaw),
         amount: Math.abs(amount),
         currency,
         direction,
-        variableSymbol: normalizeVariableSymbol(col(cols, map, "variable_symbol")),
+        variableSymbol,
         constantSymbol: normalizeConstantSymbol(col(cols, map, "constant_symbol")),
         specificSymbol: normalizeSpecificSymbol(col(cols, map, "specific_symbol")),
         counterpartyName: counterparty,
         counterpartyIban: null,
         reference,
-        bankTransactionId: null,
+        bankTransactionId: col(cols, map, "transaction_id"),
     };
 }
 
@@ -236,7 +314,7 @@ export function parseCsvBankStatement(contents: string): ParsedBankRow[] {
     const parsed: ParsedBankRow[] = [];
     for (const line of lines) {
         const cols = parseCsvLine(line, delimiter);
-        const row = parseRow(cols, map);
+        const row = parseRow(cols, map, profile);
         if (row) parsed.push(row);
     }
 

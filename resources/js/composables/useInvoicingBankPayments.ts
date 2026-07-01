@@ -19,6 +19,8 @@ import {
     ignoreLocalBankTransaction,
     importInboundServerTransactionsAsync,
     importLocalBankFileAsync,
+    importLocalBankRows,
+    type WiseBankRowInput,
     loadBankPaymentContext,
     manualMatchLocalTransaction,
     mapLocalBankBatchesToApi,
@@ -45,6 +47,15 @@ export type BankMatchSuggestion = {
     reason: string;
 };
 
+export type WiseStatus = {
+    connected: boolean;
+    profile_id?: number | null;
+    balance_id?: number | null;
+    balance_currency?: string | null;
+    last_sync_at?: string | null;
+    api_available?: boolean;
+};
+
 export interface UseInvoicingBankPaymentsResult {
     localFirst: boolean;
     evolu: Evolu<InvoicingLocalSchema> | null;
@@ -63,6 +74,12 @@ export interface UseInvoicingBankPaymentsResult {
     ignoreTransaction: (transactionId: string) => Promise<void>;
     unmatchTransaction: (transactionId: string) => Promise<void>;
     createExpenseFromTransaction: (transactionId: string, draft: BankExpenseDraft) => Promise<void>;
+    wiseStatus: Ref<WiseStatus | null>;
+    wiseBridgeChecked: Ref<boolean>;
+    wiseBridgeMissing: ComputedRef<boolean>;
+    fetchWiseStatus: () => Promise<void>;
+    connectWise: (token: string) => Promise<void>;
+    syncWise: () => Promise<{ imported: number; auto_matched: number; skipped_duplicates: number }>;
 }
 
 function emptySummary(defaultCurrency = "EUR"): BankSummary {
@@ -224,6 +241,49 @@ function useServerInvoicingBankPayments(
         );
     }
 
+    const wiseStatus = ref<WiseStatus | null>(null);
+    const wiseBridgeChecked = ref(false);
+    const wiseBridgeMissing = computed(() => false);
+
+    async function fetchWiseStatus() {
+        const cid = requireCompanyId();
+        if (!cid) {
+            wiseStatus.value = null;
+            return;
+        }
+        try {
+            const { data } = await api.get(`/invoicing/companies/${cid}/wise/status`);
+            wiseStatus.value = data.data as WiseStatus;
+        } catch {
+            wiseStatus.value = null;
+        }
+        wiseBridgeChecked.value = true;
+    }
+
+    async function connectWise(token: string) {
+        const cid = requireCompanyId();
+        if (!cid) return;
+        await api.post(`/invoicing/companies/${cid}/wise/connect`, {
+            wise_api_token: token,
+        });
+        await fetchWiseStatus();
+    }
+
+    async function syncWise() {
+        const cid = requireCompanyId();
+        if (!cid) {
+            return { imported: 0, auto_matched: 0, skipped_duplicates: 0 };
+        }
+        const { data } = await api.post(`/invoicing/companies/${cid}/wise/sync`, {});
+        await load(lastFilter);
+        await loadBatches();
+        return {
+            imported: data.data.imported ?? 0,
+            auto_matched: data.data.auto_matched ?? 0,
+            skipped_duplicates: data.data.skipped_duplicates ?? 0,
+        };
+    }
+
     return {
         localFirst: false,
         evolu: null,
@@ -242,6 +302,12 @@ function useServerInvoicingBankPayments(
         ignoreTransaction,
         unmatchTransaction,
         createExpenseFromTransaction,
+        wiseStatus,
+        wiseBridgeChecked,
+        wiseBridgeMissing,
+        fetchWiseStatus,
+        connectWise,
+        syncWise,
     };
 }
 
@@ -309,6 +375,18 @@ function useLocalInvoicingBankPayments(
     const bridgeCompanyId = ref<string | null>(null);
     const inboundEmailAvailable = computed(() => bridgeCompanyId.value !== null);
 
+    const wiseStatus = ref<WiseStatus | null>(null);
+    const wiseBridgeChecked = ref(false);
+    const wiseBridgeMissing = computed(
+        () => wiseBridgeChecked.value && bridgeCompanyId.value === null,
+    );
+
+    async function resolveBridgeCompanyId(): Promise<string | null> {
+        const bridgeId = await resolveEphemeralBridgeCompanyId();
+        bridgeCompanyId.value = bridgeId;
+        return bridgeId;
+    }
+
     async function fetchInboundServerRows(bridgeId: string): Promise<ServerBankTransactionRow[]> {
         const rows: ServerBankTransactionRow[] = [];
         let page = 1;
@@ -326,8 +404,7 @@ function useLocalInvoicingBankPayments(
     }
 
     async function syncInboundFromBridge() {
-        const bridgeId = await resolveEphemeralBridgeCompanyId();
-        bridgeCompanyId.value = bridgeId;
+        const bridgeId = await resolveBridgeCompanyId();
         if (!bridgeId) {
             return;
         }
@@ -366,7 +443,60 @@ function useLocalInvoicingBankPayments(
     }
 
     async function loadInbound() {
-        bridgeCompanyId.value = await resolveEphemeralBridgeCompanyId();
+        await resolveBridgeCompanyId();
+    }
+
+    async function fetchWiseStatus() {
+        const bridgeId = await resolveBridgeCompanyId();
+        wiseBridgeChecked.value = true;
+        if (!bridgeId) {
+            wiseStatus.value = null;
+            return;
+        }
+        try {
+            const { data } = await api.get(`/invoicing/companies/${bridgeId}/wise/status`);
+            wiseStatus.value = data.data as WiseStatus;
+        } catch {
+            wiseStatus.value = null;
+        }
+    }
+
+    async function connectWise(token: string) {
+        const bridgeId = await resolveBridgeCompanyId();
+        if (!bridgeId) return;
+        await api.post(`/invoicing/companies/${bridgeId}/wise/connect`, {
+            wise_api_token: token,
+        });
+        await fetchWiseStatus();
+    }
+
+    async function syncWise() {
+        const bridgeId = await resolveBridgeCompanyId();
+        if (!bridgeId) {
+            return { imported: 0, auto_matched: 0, skipped_duplicates: 0 };
+        }
+        const { data } = await api.post(`/invoicing/companies/${bridgeId}/wise/sync`, {
+            local_first: true,
+        });
+        const rows = (data.data?.rows || []) as WiseBankRowInput[];
+        let autoMatched = 0;
+        if (rows.length > 0) {
+            const result = await importLocalBankRows(
+                evolu,
+                companyId.value as CompanyId,
+                rows,
+                "wise",
+                "wise-sync.json",
+            );
+            autoMatched = result.auto_matched;
+        }
+        await load(matchFilter.value);
+        await loadBatches();
+        return {
+            imported: rows.length,
+            auto_matched: autoMatched,
+            skipped_duplicates: data.data?.skipped_duplicates ?? 0,
+        };
     }
 
     async function importFile(file: File, format?: string) {
@@ -468,6 +598,12 @@ function useLocalInvoicingBankPayments(
         ignoreTransaction,
         unmatchTransaction,
         createExpenseFromTransaction,
+        wiseStatus,
+        wiseBridgeChecked,
+        wiseBridgeMissing,
+        fetchWiseStatus,
+        connectWise,
+        syncWise,
     };
 }
 

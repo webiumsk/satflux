@@ -52,6 +52,13 @@ export function guessDirectionFromAmountAndHints(
     amount: number,
     ...hints: (string | null | undefined)[]
 ): BankTransactionDirection {
+    for (const hint of hints) {
+        if (hint == null || hint.trim() === "") continue;
+        const norm = hint.trim().toLowerCase();
+        if (norm === "in" || norm === "incoming") return "credit";
+        if (norm === "out" || norm === "outgoing") return "debit";
+    }
+
     const haystack = hints
         .filter((h): h is string => h != null && h.trim() !== "")
         .join(" ")

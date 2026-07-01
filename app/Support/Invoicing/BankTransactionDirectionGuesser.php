@@ -12,6 +12,19 @@ final class BankTransactionDirectionGuesser
      */
     public function fromAmountAndHints(float $amount, ?string ...$hints): BankTransactionDirection
     {
+        foreach ($hints as $hint) {
+            if ($hint === null || trim($hint) === '') {
+                continue;
+            }
+            $norm = mb_strtolower(trim($hint));
+            if (in_array($norm, ['in', 'incoming'], true)) {
+                return BankTransactionDirection::Credit;
+            }
+            if (in_array($norm, ['out', 'outgoing'], true)) {
+                return BankTransactionDirection::Debit;
+            }
+        }
+
         $haystack = mb_strtolower(trim(implode(' ', array_filter($hints, fn (?string $h) => $h !== null && trim($h) !== ''))));
 
         if ($haystack !== '' && $this->containsDebitHint($haystack)) {

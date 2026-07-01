@@ -80,7 +80,7 @@ describe("server snapshot field validation", () => {
     });
 
     it("accepts bank import sources from PostgreSQL export", () => {
-        for (const source of ["csv", "camt053", "inbound_email", "manual"]) {
+        for (const source of ["csv", "camt053", "inbound_email", "manual", "wise"]) {
             expect(BankImportSource.from(source).ok).toBe(true);
         }
         expect(BankImportSource.from("email").ok).toBe(false);

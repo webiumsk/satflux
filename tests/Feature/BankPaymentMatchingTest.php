@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\BankImportSource;
 use App\Enums\BusinessDocumentStatus;
 use App\Enums\CompanyJurisdiction;
 use App\Models\BusinessDocument;
@@ -9,6 +10,8 @@ use App\Models\Company;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Services\Invoicing\BankImport\CsvBankParser;
+use App\Services\Invoicing\BankStatementImportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use PHPUnit\Framework\Attributes\Test;
@@ -216,5 +219,101 @@ class BankPaymentMatchingTest extends TestCase
         $response->assertJsonPath('meta.summary.credit_total', '18.80');
         $response->assertJsonPath('meta.summary.account_balance.amount', '107.13');
         $response->assertJsonPath('meta.summary.account_balance.currency', 'EUR');
+    }
+
+    #[Test]
+    public function wise_csv_import_auto_matches_us_invoice_by_payment_reference(): void
+    {
+        $this->company->update([
+            'jurisdiction' => CompanyJurisdiction::Us,
+            'default_currency' => 'USD',
+            'legal_name' => 'Webium LLC',
+        ]);
+
+        BusinessDocument::create([
+            'company_id' => $this->company->id,
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => 'INV-0042',
+            'variable_symbol' => '0042',
+            'currency' => 'USD',
+            'total' => 250.00,
+            'issue_date' => now(),
+        ]);
+
+        $csv = implode("\n", [
+            'ID,Status,Direction,Created on,Finished on,Source name,Source amount (after fees),Source currency,Target name,Target amount (after fees),Target currency,Reference',
+            'tx-1,COMPLETED,IN,01-06-2026,02-06-2026,Acme Client,250.00,USD,Webium LLC,250.00,USD,Invoice INV-0042',
+        ]);
+
+        $rows = (new CsvBankParser)->parse($csv);
+        $result = app(BankStatementImportService::class)->persistRows(
+            $this->company,
+            $this->user,
+            $rows,
+            BankImportSource::Csv,
+            'wise-usd.csv',
+        );
+
+        $this->assertSame(1, $result['imported']);
+        $this->assertSame(1, $result['auto_matched']);
+
+        $doc = BusinessDocument::first();
+        $this->assertSame(BusinessDocumentStatus::Paid, $doc->status);
+    }
+
+    #[Test]
+    public function csv_import_auto_matches_by_bank_vs_when_reference_differs(): void
+    {
+        BusinessDocument::create([
+            'company_id' => $this->company->id,
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => '20260042',
+            'variable_symbol' => '20260042',
+            'currency' => 'EUR',
+            'total' => 120.00,
+            'issue_date' => now(),
+        ]);
+
+        $csv = implode("\n", [
+            'datum;suma;mena;vs;referencia',
+            '01.06.2026;120,00;EUR;20260042;Internal wire note',
+        ]);
+
+        $this->actingAs($this->user)
+            ->post("/api/invoicing/companies/{$this->company->id}/bank-transactions/import", [
+                'file' => \Illuminate\Http\UploadedFile::fake()->createWithContent('tb.csv', $csv),
+            ])
+            ->assertOk();
+
+        $doc = BusinessDocument::first();
+        $this->assertSame(BusinessDocumentStatus::Paid, $doc->status);
+    }
+
+    #[Test]
+    public function csv_import_auto_matches_by_reference_when_bank_vs_differs(): void
+    {
+        BusinessDocument::create([
+            'company_id' => $this->company->id,
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => '20260042',
+            'variable_symbol' => '20260042',
+            'currency' => 'EUR',
+            'total' => 120.00,
+            'issue_date' => now(),
+        ]);
+
+        $csv = implode("\n", [
+            'datum;suma;mena;vs;referencia',
+            '01.06.2026;120,00;EUR;99999999;Uhrada faktury 20260042',
+        ]);
+
+        $this->actingAs($this->user)
+            ->post("/api/invoicing/companies/{$this->company->id}/bank-transactions/import", [
+                'file' => \Illuminate\Http\UploadedFile::fake()->createWithContent('tb.csv', $csv),
+            ])
+            ->assertOk();
+
+        $doc = BusinessDocument::first();
+        $this->assertSame(BusinessDocumentStatus::Paid, $doc->status);
     }
 }

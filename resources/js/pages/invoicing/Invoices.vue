@@ -1163,7 +1163,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onActivated, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import InvoicingAppHeader from "../../components/invoicing/InvoicingAppHeader.vue";
@@ -2223,6 +2223,16 @@ function goPage(page: number) {
   load();
 }
 
+function applyLocalDocumentPage() {
+  if (!localFirst || !localDocuments) return;
+  const all = [...localDocuments.documents.value];
+  totalCount.value = all.length;
+  lastPage.value = Math.max(1, Math.ceil(all.length / perPage.value));
+  if (currentPage.value > lastPage.value) currentPage.value = 1;
+  const start = (currentPage.value - 1) * perPage.value;
+  documents.value = all.slice(start, start + perPage.value);
+}
+
 async function load() {
   loading.value = true;
   error.value = "";
@@ -2237,12 +2247,7 @@ async function load() {
         contactId: contactFilterId.value,
       });
       companyName.value = summaryCompanyName.value;
-      const all = [...localDocuments.documents.value];
-      totalCount.value = all.length;
-      lastPage.value = Math.max(1, Math.ceil(all.length / perPage.value));
-      if (currentPage.value > lastPage.value) currentPage.value = 1;
-      const start = (currentPage.value - 1) * perPage.value;
-      documents.value = all.slice(start, start + perPage.value);
+      applyLocalDocumentPage();
       return;
     }
 
@@ -2618,10 +2623,24 @@ watch(
   },
 );
 
+watch(
+  () => localDocuments?.documents.value,
+  () => {
+    if (localFirst && localDocuments) {
+      applyLocalDocumentPage();
+    }
+  },
+  { deep: true },
+);
+
 onMounted(() => {
   rememberCompany(companyId.value);
   load();
   scrollToIntegrationInbox();
+});
+
+onActivated(() => {
+  load();
 });
 </script>
 

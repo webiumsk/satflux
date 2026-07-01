@@ -138,6 +138,7 @@
           <select v-model="importFormat" class="invoicing-sf-input w-full">
             <option value="">{{ t("invoicing.bank_format_auto") }}</option>
             <option value="csv">CSV</option>
+            <option value="wise">Wise CSV</option>
             <option value="camt053">CAMT.053 XML</option>
           </select>
           <button
@@ -199,6 +200,113 @@
             </p>
             <p v-if="!inboundEnabled" class="text-amber-700 text-xs mt-1">
               {{ t("invoicing.bank_inbound_disabled") }}
+            </p>
+          </template>
+        </div>
+        <div v-if="hasBankAccount" class="text-sm border-t pt-4 space-y-3">
+          <p class="font-medium text-gray-800">
+            {{ t("invoicing.bank_wise_title") }}
+          </p>
+          <p class="text-gray-600 text-xs">
+            {{ t("invoicing.bank_wise_help") }}
+          </p>
+          <p v-if="bank.localFirst" class="text-gray-600 text-xs">
+            {{ t("invoicing.bank_wise_local_first_hint") }}
+          </p>
+          <p v-if="wiseBridgeMissing" class="text-amber-700 text-xs">
+            {{ t("invoicing.bank_wise_bridge_missing") }}
+          </p>
+          <template v-else>
+            <p v-if="wiseStatus?.connected" class="text-green-700 text-xs">
+              {{ t("invoicing.bank_wise_connected") }}
+              <span v-if="wiseStatus?.last_sync_at">
+                ·
+                {{
+                  t("invoicing.bank_wise_last_sync", {
+                    at: formatWiseSyncAt(wiseStatus.last_sync_at),
+                  })
+                }}
+              </span>
+            </p>
+            <form
+              v-if="!wiseStatus?.connected"
+              class="space-y-2"
+              @submit.prevent="connectWise"
+            >
+              <label class="block text-xs text-gray-600" for="wise-api-token">
+                {{ t("invoicing.bank_wise_token_label") }}
+              </label>
+              <input
+                id="wise-api-token"
+                v-model="wiseToken"
+                type="password"
+                autocomplete="off"
+                class="invoicing-sf-input w-full"
+                :placeholder="t('invoicing.bank_wise_token_placeholder')"
+              />
+              <p class="text-gray-500 text-xs">
+                {{ t("invoicing.bank_wise_token_hint") }}
+              </p>
+              <button
+                type="submit"
+                class="invoicing-btn-secondary text-xs"
+                :disabled="!wiseToken.trim() || wiseConnecting"
+              >
+                {{
+                  wiseConnecting
+                    ? t("common.loading")
+                    : t("invoicing.bank_wise_connect")
+                }}
+              </button>
+            </form>
+            <div v-else class="flex flex-wrap gap-2">
+              <button
+                type="button"
+                class="invoicing-btn-primary text-xs"
+                :disabled="wiseSyncing"
+                @click="syncWise"
+              >
+                {{
+                  wiseSyncing
+                    ? t("common.loading")
+                    : t("invoicing.bank_wise_sync")
+                }}
+              </button>
+              <button
+                type="button"
+                class="invoicing-btn-secondary text-xs"
+                :disabled="wiseConnecting"
+                @click="showWiseReconnect = true"
+              >
+                {{ t("invoicing.bank_wise_reconnect") }}
+              </button>
+            </div>
+            <form
+              v-if="showWiseReconnect"
+              class="space-y-2 border-t pt-3"
+              @submit.prevent="connectWise"
+            >
+              <input
+                v-model="wiseToken"
+                type="password"
+                autocomplete="off"
+                class="invoicing-sf-input w-full"
+                :placeholder="t('invoicing.bank_wise_token_placeholder')"
+              />
+              <button
+                type="submit"
+                class="invoicing-btn-secondary text-xs"
+                :disabled="!wiseToken.trim() || wiseConnecting"
+              >
+                {{
+                  wiseConnecting
+                    ? t("common.loading")
+                    : t("invoicing.bank_wise_connect")
+                }}
+              </button>
+            </form>
+            <p v-if="wiseSyncResult" class="text-green-700 text-xs">
+              {{ t("invoicing.bank_import_result", wiseSyncResult) }}
             </p>
           </template>
         </div>
@@ -706,11 +814,20 @@ const transactions = bank.transactions;
 const summary = bank.summary;
 const batches = bank.batches;
 const matchFilter = ref("all");
+const wiseStatus = computed(() => bank.wiseStatus.value);
+const wiseBridgeMissing = computed(() => bank.wiseBridgeMissing.value);
 const activeTab = ref<"transactions" | "import">("transactions");
 const importFile = ref<File | null>(null);
 const importFormat = ref("");
 const importing = ref(false);
 const importResult = ref<{ imported: number; auto_matched: number } | null>(
+  null,
+);
+const wiseToken = ref("");
+const wiseConnecting = ref(false);
+const wiseSyncing = ref(false);
+const showWiseReconnect = ref(false);
+const wiseSyncResult = ref<{ imported: number; auto_matched: number } | null>(
   null,
 );
 const inboundEmail = ref("");
@@ -797,13 +914,14 @@ const legendItems = computed(() => [
 
 onMounted(async () => {
   rememberCompany(companyId.value);
-  await Promise.all([load(), loadBatches(), loadInbound()]);
+  await Promise.all([load(), loadBatches(), loadInbound(), bank.fetchWiseStatus()]);
 });
 
 watch(companyId, () => {
   load();
   loadBatches();
   loadInbound();
+  void bank.fetchWiseStatus();
 });
 
 watch(activeTab, (tab) => {
@@ -919,6 +1037,54 @@ async function copyInboundEmail() {
   }
 }
 
+function formatWiseSyncAt(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString(locale.value);
+  } catch {
+    return iso;
+  }
+}
+
+async function connectWise() {
+  const token = wiseToken.value.trim();
+  if (!token) return;
+  wiseConnecting.value = true;
+  try {
+    await bank.connectWise(token);
+    wiseToken.value = "";
+    showWiseReconnect.value = false;
+    flashStore.success(t("invoicing.bank_wise_connect_success"));
+  } catch (err: unknown) {
+    const message =
+      (err as { response?: { data?: { message?: string } } })?.response?.data
+        ?.message || t("invoicing.bank_wise_connect_failed");
+    flashStore.error(message);
+  } finally {
+    wiseConnecting.value = false;
+  }
+}
+
+async function syncWise() {
+  wiseSyncing.value = true;
+  wiseSyncResult.value = null;
+  try {
+    const result = await bank.syncWise();
+    wiseSyncResult.value = {
+      imported: result.imported,
+      auto_matched: result.auto_matched,
+    };
+    await load();
+    await loadBatches();
+  } catch (err: unknown) {
+    const message =
+      (err as { response?: { data?: { message?: string } } })?.response?.data
+        ?.message || t("invoicing.bank_wise_sync_failed");
+    flashStore.error(message);
+  } finally {
+    wiseSyncing.value = false;
+  }
+}
+
 function onFile(e: Event) {
   const input = e.target as HTMLInputElement;
   importFile.value = input.files?.[0] ?? null;
@@ -929,6 +1095,7 @@ watch(hasBankAccount, (value) => {
     load();
     loadBatches();
     loadInbound();
+    void bank.fetchWiseStatus();
   }
 });
 
