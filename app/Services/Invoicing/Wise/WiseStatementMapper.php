@@ -3,7 +3,6 @@
 namespace App\Services\Invoicing\Wise;
 
 use App\Enums\BankTransactionDirection;
-use App\Support\Invoicing\BankSymbolNormalizer;
 use App\Support\Invoicing\ParsedBankTransaction;
 use Carbon\Carbon;
 
