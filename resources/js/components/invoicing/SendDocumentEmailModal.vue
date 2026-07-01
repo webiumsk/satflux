@@ -98,7 +98,18 @@ const body = ref('');
 const attachmentName = ref('');
 
 function extractError(e: unknown): string {
-  const err = e as { response?: { data?: { message?: string; errors?: { status?: string[] } } } };
+  if (e instanceof Error && e.message) {
+    return e.message;
+  }
+  const err = e as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
+  const fieldErrors = err?.response?.data?.errors;
+  if (fieldErrors && typeof fieldErrors === 'object') {
+    for (const messages of Object.values(fieldErrors)) {
+      if (Array.isArray(messages) && messages[0]) {
+        return String(messages[0]);
+      }
+    }
+  }
   return (
     err?.response?.data?.message
     ?? err?.response?.data?.errors?.status?.[0]

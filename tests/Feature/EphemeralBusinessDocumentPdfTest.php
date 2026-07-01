@@ -184,6 +184,50 @@ class EphemeralBusinessDocumentPdfTest extends TestCase
     }
 
     #[Test]
+    public function ephemeral_email_send_uses_snapshot_smtp_credentials_over_bridge_company(): void
+    {
+        Mail::fake();
+        [$user, $company] = $this->createProUserWithCompany();
+        $company->update([
+            'email_settings' => [
+                'delivery_method' => 'smtp',
+                'smtp' => [
+                    'username' => 'broken@example.com',
+                    'host' => 'invalid.example.com',
+                    'port' => 587,
+                    'encryption' => 'tls',
+                ],
+            ],
+        ]);
+
+        $payload = $this->ephemeralPayload();
+        $payload['company']['email_settings'] = [
+            'delivery_method' => 'smtp',
+            'smtp' => [
+                'username' => 'billing@acme.sk',
+                'password' => 'secret-pass',
+                'host' => 'smtp.acme.sk',
+                'port' => 587,
+                'encryption' => 'tls',
+                'from_name' => 'Acme Billing',
+            ],
+        ];
+        $payload['to'] = ['billing@client.test'];
+        $payload['subject'] = 'Invoice via SMTP';
+        $payload['body'] = 'Please find attached invoice.';
+
+        $this->actingAs($user)->postJson(
+            "/api/invoicing/companies/{$company->id}/documents/ephemeral/send-email",
+            $payload,
+        )->assertOk()->assertJsonPath('data.sent_to.0', 'billing@client.test');
+
+        Mail::assertSent(BusinessDocumentEmail::class, function (BusinessDocumentEmail $mail) {
+            return $mail->subjectLine === 'Invoice via SMTP'
+                && in_array('billing@client.test', $mail->toAddresses, true);
+        });
+    }
+
+    #[Test]
     public function ephemeral_smtp_test_uses_snapshot_settings_without_persisting(): void
     {
         Mail::fake();

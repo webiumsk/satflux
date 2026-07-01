@@ -2,7 +2,8 @@ import api from "@/services/api";
 import { normalizeCompanyIdentityKey } from "@/evolu/duplicateCompanies";
 import { normalizeIsoCountryCode } from "@/utils/isoCountryCode";
 import type { DocumentSavePayload } from "./documentCrud";
-import type { DocumentId } from "./schema";
+import type { CompanyId, DocumentId } from "./schema";
+import { resolveLocalEmailSettingsForBridge } from "./companySettingsCrud";
 import type { useLocalInvoiceDocumentSupport } from "@/composables/useLocalInvoiceDocument";
 import type { AxiosResponse } from "axios";
 
@@ -618,6 +619,12 @@ export async function buildBulkEphemeralRequest(
     const company = localDoc.companyApi(companyId);
     if (!company) return null;
 
+    const emailSettings = resolveLocalEmailSettingsForBridge(
+        localDoc.evolu,
+        companyId as CompanyId,
+        {},
+    );
+
     const documents: EphemeralBulkDocumentItem[] = [];
     let companyPayload: EphemeralBulkRequestBody["company"] | null = null;
 
@@ -630,7 +637,13 @@ export async function buildBulkEphemeralRequest(
             ? localDoc.contactsForCompany(companyId).find((c) => c.id === contactId) ?? null
             : null;
         const payload = localDoc.payloadFromApiDocument(doc);
-        const snapshot = buildEphemeralSnapshotFromApiDocument(company, contact, doc, payload.lines);
+        const snapshot = buildEphemeralSnapshotFromApiDocument(
+            company,
+            contact,
+            doc,
+            payload.lines,
+            emailSettings,
+        );
         if (!companyPayload) {
             companyPayload = snapshot.company;
         }
@@ -662,8 +675,13 @@ export function buildEphemeralSnapshotFromApiDocument(
     contact: Record<string, unknown> | null,
     doc: Record<string, unknown>,
     lines: DocumentSavePayload["lines"],
+    emailSettingsOverride?: Record<string, unknown>,
 ): EphemeralSnapshotPayload {
-    return buildEphemeralSnapshot(company, contact, {
+    const companyForSnapshot = emailSettingsOverride && company
+        ? { ...company, email_settings: emailSettingsOverride }
+        : company;
+
+    return buildEphemeralSnapshot(companyForSnapshot, contact, {
         type: doc.type,
         status: doc.status,
         title: doc.title,
@@ -708,6 +726,11 @@ export async function buildLocalDocumentEphemeralSnapshot(
         ? localDoc.contactsForCompany(companyId).find((c) => c.id === contactId) ?? null
         : null;
     const payload = localDoc.payloadFromApiDocument(doc);
+    const emailSettings = resolveLocalEmailSettingsForBridge(
+        localDoc.evolu,
+        companyId as CompanyId,
+        {},
+    );
     const bridgeCompanyId = await resolveEphemeralBridgeCompanyId(
         company
             ? {
@@ -719,6 +742,12 @@ export async function buildLocalDocumentEphemeralSnapshot(
 
     return {
         bridgeCompanyId,
-        snapshot: buildEphemeralSnapshotFromApiDocument(company, contact, doc, payload.lines),
+        snapshot: buildEphemeralSnapshotFromApiDocument(
+            company,
+            contact,
+            doc,
+            payload.lines,
+            emailSettings,
+        ),
     };
 }
