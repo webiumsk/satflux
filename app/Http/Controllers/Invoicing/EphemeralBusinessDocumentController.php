@@ -22,6 +22,7 @@ use App\Services\Invoicing\BusinessDocumentEmailService;
 use App\Services\Invoicing\BusinessDocumentIsdocService;
 use App\Services\Invoicing\BusinessDocumentPdfService;
 use App\Services\Invoicing\BusinessDocumentUblService;
+use App\Services\Invoicing\CompanyEmailSettingsService;
 use App\Services\Invoicing\CompanyPdfFilenameBuilder;
 use App\Services\Invoicing\DocumentTotalsCalculator;
 use App\Services\Invoicing\Efaktura\EphemeralEfakturaSubmissionService;
@@ -51,6 +52,7 @@ class EphemeralBusinessDocumentController extends Controller
         protected CompanyPdfFilenameBuilder $pdfFilenameBuilder,
         protected BusinessDocumentEmailService $emailService,
         protected EphemeralEfakturaSubmissionService $efakturaService,
+        protected CompanyEmailSettingsService $emailSettingsService,
     ) {}
 
     public function pdf(EphemeralBusinessDocumentPdfRequest $request, Company $company): Response
@@ -732,6 +734,7 @@ class EphemeralBusinessDocumentController extends Controller
         }
 
         $this->mergeSnapshotAppSettings($company, $payload);
+        $this->mergeSnapshotEmailSettings($company, $payload);
 
         return $company;
     }
@@ -838,6 +841,7 @@ class EphemeralBusinessDocumentController extends Controller
         }
 
         $this->mergeSnapshotAppSettings($snapshot, $payload);
+        $this->mergeSnapshotEmailSettings($snapshot, $payload);
 
         return $snapshot;
     }
@@ -853,6 +857,18 @@ class EphemeralBusinessDocumentController extends Controller
 
         $current = is_array($company->app_settings) ? $company->app_settings : [];
         $company->app_settings = array_merge($current, $payload['app_settings']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function mergeSnapshotEmailSettings(Company $company, array $payload): void
+    {
+        if (! isset($payload['email_settings']) || ! is_array($payload['email_settings'])) {
+            return;
+        }
+
+        $this->emailSettingsService->applyIncomingToCompany($company, $payload['email_settings']);
     }
 
     /**

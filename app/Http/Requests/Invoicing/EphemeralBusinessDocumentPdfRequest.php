@@ -5,6 +5,7 @@ namespace App\Http\Requests\Invoicing;
 use App\Enums\BusinessDocumentStatus;
 use App\Enums\BusinessDocumentType;
 use App\Enums\CompanyJurisdiction;
+use App\Support\Invoicing\CompanyEmailSettings;
 use App\Support\Invoicing\IsoCountryCode;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -69,6 +70,24 @@ class EphemeralBusinessDocumentPdfRequest extends FormRequest
             'company.app_settings.efaktura_sapi_client_secret' => ['sometimes', 'nullable', 'string', 'max:255'],
             'company.logo_url' => ['sometimes', 'nullable', 'string', 'max:131072'],
             'company.signature_stamp_url' => ['sometimes', 'nullable', 'string', 'max:131072'],
+            'company.email_settings' => ['sometimes', 'array'],
+            'company.email_settings.delivery_method' => ['sometimes', 'string', Rule::in([
+                CompanyEmailSettings::DELIVERY_SYSTEM,
+                CompanyEmailSettings::DELIVERY_SMTP,
+                CompanyEmailSettings::DELIVERY_GMAIL,
+                CompanyEmailSettings::DELIVERY_OFFICE,
+            ])],
+            'company.email_settings.smtp' => ['sometimes', 'array'],
+            'company.email_settings.smtp.username' => ['nullable', 'string', 'max:255'],
+            'company.email_settings.smtp.password' => ['nullable', 'string', 'max:255'],
+            'company.email_settings.smtp.host' => ['nullable', 'string', 'max:255'],
+            'company.email_settings.smtp.port' => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'company.email_settings.smtp.from_name' => ['nullable', 'string', 'max:128'],
+            'company.email_settings.smtp.encryption' => ['nullable', 'string', 'in:tls,ssl,none'],
+            'company.email_settings.smtp.use_smtp_email_as_from' => ['sometimes', 'boolean'],
+            'company.email_settings.templates' => ['sometimes', 'array'],
+            'company.email_settings.templates.*.subject' => ['nullable', 'string', 'max:500'],
+            'company.email_settings.templates.*.body' => ['nullable', 'string', 'max:20000'],
 
             'contact' => ['sometimes', 'nullable', 'array'],
             'contact.name' => ['sometimes', 'nullable', 'string', 'max:255'],

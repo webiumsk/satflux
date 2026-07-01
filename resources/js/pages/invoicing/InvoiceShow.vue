@@ -410,7 +410,14 @@ const ephemeralSnapshotForModal = computed(() => (localFirst ? buildCurrentEphem
 
 async function openSendEmail() {
   if (localFirst) {
-    ephemeralBridgeCompanyId.value = await resolveEphemeralBridgeCompanyId();
+    ephemeralBridgeCompanyId.value = await resolveEphemeralBridgeCompanyId(
+      company.value
+        ? {
+            legal_name: company.value.legal_name,
+            registration_number: company.value.registration_number ?? null,
+          }
+        : undefined,
+    );
   }
   sendEmailOpen.value = true;
 }

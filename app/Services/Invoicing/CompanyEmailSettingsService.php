@@ -16,15 +16,44 @@ class CompanyEmailSettingsService
      */
     public function mergeAndPersist(Company $company, array $incoming): array
     {
-        $current = CompanyEmailSettings::from($company->email_settings);
-        $merged = $current->toArray();
+        $merged = $this->mergeIncomingSettings(
+            CompanyEmailSettings::from($company->email_settings)->toArray(),
+            $incoming,
+        );
+
+        $company->update(['email_settings' => $merged]);
+
+        return $this->publicPayload($company->fresh());
+    }
+
+    /**
+     * Apply email settings from an ephemeral snapshot onto an in-memory company (no DB write).
+     *
+     * @param  array<string, mixed>  $incoming
+     */
+    public function applyIncomingToCompany(Company $company, array $incoming): void
+    {
+        $company->email_settings = $this->mergeIncomingSettings(
+            CompanyEmailSettings::from($company->email_settings)->toArray(),
+            $incoming,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $current
+     * @param  array<string, mixed>  $incoming
+     * @return array<string, mixed>
+     */
+    public function mergeIncomingSettings(array $current, array $incoming): array
+    {
+        $merged = $current;
 
         if (isset($incoming['delivery_method'])) {
             $merged['delivery_method'] = $incoming['delivery_method'];
         }
 
         if (isset($incoming['smtp']) && is_array($incoming['smtp'])) {
-            $smtp = $merged['smtp'];
+            $smtp = is_array($merged['smtp'] ?? null) ? $merged['smtp'] : CompanyEmailSettings::DEFAULTS['smtp'];
             foreach (['username', 'host', 'port', 'from_name', 'encryption', 'use_smtp_email_as_from'] as $field) {
                 if (array_key_exists($field, $incoming['smtp'])) {
                     $smtp[$field] = $incoming['smtp'][$field];
@@ -33,11 +62,12 @@ class CompanyEmailSettingsService
             if (! empty($incoming['smtp']['password'])) {
                 $smtp['password_encrypted'] = Crypt::encryptString((string) $incoming['smtp']['password']);
             }
+            unset($smtp['password'], $smtp['password_set']);
             $merged['smtp'] = $smtp;
         }
 
         if (isset($incoming['templates']) && is_array($incoming['templates'])) {
-            $templates = $merged['templates'];
+            $templates = is_array($merged['templates'] ?? null) ? $merged['templates'] : [];
             foreach ($incoming['templates'] as $key => $tpl) {
                 if (! in_array($key, CompanyEmailSettings::TEMPLATE_KEYS, true) || ! is_array($tpl)) {
                     continue;
@@ -50,9 +80,7 @@ class CompanyEmailSettingsService
             $merged['templates'] = $templates;
         }
 
-        $company->update(['email_settings' => $merged]);
-
-        return $this->publicPayload($company->fresh());
+        return $merged;
     }
 
     /**
