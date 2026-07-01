@@ -348,6 +348,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::post('/ephemeral/pdf', [EphemeralBusinessDocumentController::class, 'pdfWithoutCompany']);
             Route::post('/ephemeral/email-preview', [EphemeralBusinessDocumentController::class, 'emailPreviewWithoutCompany']);
             Route::post('/ephemeral/send-email', [EphemeralBusinessDocumentController::class, 'sendEmailWithoutCompany']);
+            Route::post('/ephemeral/email-settings/test-smtp', [EphemeralBusinessDocumentController::class, 'testEmailSettingsSmtpWithoutCompany']);
             Route::post('/ephemeral/isdoc', [EphemeralBusinessDocumentController::class, 'isdocWithoutCompany']);
             Route::post('/ephemeral/ubl', [EphemeralBusinessDocumentController::class, 'ublWithoutCompany']);
             Route::post('/ephemeral/btcpay-checkout', [EphemeralBusinessDocumentController::class, 'btcpayCheckoutWithoutCompany']);
@@ -384,6 +385,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::delete('/companies/{company}/number-series/{sequence}', [CompanyDocumentSequenceController::class, 'destroy'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/email-settings/test-smtp', [CompanyEmailSettingsController::class, 'testSmtp'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/email-settings/ephemeral/test-smtp', [EphemeralBusinessDocumentController::class, 'testEmailSettingsSmtp'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/reset-data', [CompanyController::class, 'resetData'])
                 ->middleware(EnsureCompanyOwnership::class);

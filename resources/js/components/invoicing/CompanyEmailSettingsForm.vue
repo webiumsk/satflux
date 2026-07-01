@@ -177,7 +177,8 @@ import { asCompanyId } from '../../composables/useInvoicingCompany';
 import { allCompaniesDetailQuery, useInvoicingEvolu } from '../../evolu/client';
 import { evoluCompanyToApi, type EvoluCompanyRow } from '../../evolu/companyMap';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
-import { updateLocalEmailSettings } from '../../evolu/companySettingsCrud';
+import { updateLocalEmailSettings, resolveLocalEmailSettingsForBridge } from '../../evolu/companySettingsCrud';
+import { resolveEphemeralBridgeCompanyId, testEphemeralEmailSmtp } from '../../evolu/ephemeralBridge';
 import api from '../../services/api';
 import { useStoresStore } from '../../store/stores';
 import { useInvoicingSaveFeedback } from '../../composables/useInvoicingSaveFeedback';
@@ -314,25 +315,49 @@ async function saveAll() {
 }
 
 async function testSmtp() {
-  if (localFirst) {
-    smtpTestOk.value = false;
-    smtpTestMessage.value = t('invoicing.local_first_smtp_test_unavailable');
-    return;
-  }
   testingSmtp.value = true;
   smtpTestMessage.value = '';
   try {
+    const to = form.smtp.username || props.company?.issuer_email;
+    if (!to) {
+      smtpTestOk.value = false;
+      smtpTestMessage.value = t('common.error_generic');
+      return;
+    }
+
+    if (localFirst && evolu) {
+      const emailSettings = resolveLocalEmailSettingsForBridge(
+        evolu,
+        asCompanyId(props.companyId),
+        buildPayload(),
+      );
+      const bridgeCompanyId = await resolveEphemeralBridgeCompanyId({
+        legal_name: String(props.company?.legal_name ?? ''),
+        registration_number: (props.company?.registration_number as string | null | undefined) ?? null,
+      });
+      const companyPayload = {
+        legal_name: props.company?.legal_name,
+        trade_name: props.company?.trade_name,
+        registration_number: props.company?.registration_number,
+        issuer_email: props.company?.issuer_email,
+      };
+      const res = await testEphemeralEmailSmtp(companyPayload, emailSettings, to, bridgeCompanyId);
+      smtpTestOk.value = true;
+      smtpTestMessage.value = res.message ?? t('invoicing.email_smtp_test_ok');
+      return;
+    }
+
     if (form.smtp.password || form.delivery_method === 'smtp') {
       await api.patch(`/invoicing/companies/${props.companyId}/email-settings`, buildPayload());
     }
     const res = await api.post(`/invoicing/companies/${props.companyId}/email-settings/test-smtp`, {
-      to: form.smtp.username || props.company?.issuer_email,
+      to,
     });
     smtpTestOk.value = true;
     smtpTestMessage.value = res.data.message ?? t('invoicing.email_smtp_test_ok');
   } catch (e: any) {
     smtpTestOk.value = false;
-    smtpTestMessage.value = e?.response?.data?.message ?? t('common.error_generic');
+    smtpTestMessage.value = e?.message ?? e?.response?.data?.message ?? t('common.error_generic');
   } finally {
     testingSmtp.value = false;
   }

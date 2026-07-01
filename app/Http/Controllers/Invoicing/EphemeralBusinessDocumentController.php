@@ -11,6 +11,7 @@ use App\Http\Requests\Invoicing\EphemeralBusinessDocumentBulkRequest;
 use App\Http\Requests\Invoicing\EphemeralBusinessDocumentEfakturaRequest;
 use App\Http\Requests\Invoicing\EphemeralBusinessDocumentEmailRequest;
 use App\Http\Requests\Invoicing\EphemeralBusinessDocumentPdfRequest;
+use App\Http\Requests\Invoicing\EphemeralCompanyEmailSmtpTestRequest;
 use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\BusinessDocumentLine;
@@ -101,6 +102,22 @@ class EphemeralBusinessDocumentController extends Controller
         $snapshotCompany = $this->resolveEphemeralCompany($user, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithSendEmail($request, $snapshotCompany);
+    }
+
+    public function testEmailSettingsSmtp(EphemeralCompanyEmailSmtpTestRequest $request, Company $company): JsonResponse
+    {
+        $snapshotCompany = $this->buildSnapshotCompany($company, (array) ($request->validated()['company'] ?? []));
+
+        return $this->respondWithEmailSettingsSmtpTest($request, $snapshotCompany);
+    }
+
+    public function testEmailSettingsSmtpWithoutCompany(EphemeralCompanyEmailSmtpTestRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 401);
+        $snapshotCompany = $this->resolveEphemeralCompany($user, (array) ($request->validated()['company'] ?? []));
+
+        return $this->respondWithEmailSettingsSmtpTest($request, $snapshotCompany);
     }
 
     public function isdoc(EphemeralBusinessDocumentPdfRequest $request, Company $company): Response
@@ -343,6 +360,26 @@ class EphemeralBusinessDocumentController extends Controller
             'message' => 'Email sent.',
             'data' => $result,
         ]);
+    }
+
+    protected function respondWithEmailSettingsSmtpTest(
+        EphemeralCompanyEmailSmtpTestRequest $request,
+        Company $snapshotCompany,
+    ): JsonResponse {
+        try {
+            $this->emailSettingsService->sendSmtpTest($snapshotCompany, $request->validated('to'));
+        } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
+            Log::warning('Ephemeral company SMTP test failed', [
+                'user_id' => $request->user()?->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['message' => 'SMTP connection failed: '.$e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['message' => 'Test email sent.']);
     }
 
     protected function respondWithIsdoc(

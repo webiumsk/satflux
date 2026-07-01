@@ -25,6 +25,7 @@ export type EphemeralSnapshotOptions = {
 const EPHEMERAL_PDF_PATH = "/invoicing/ephemeral/pdf";
 const EPHEMERAL_EMAIL_PREVIEW_PATH = "/invoicing/ephemeral/email-preview";
 const EPHEMERAL_SEND_EMAIL_PATH = "/invoicing/ephemeral/send-email";
+const EPHEMERAL_EMAIL_SETTINGS_TEST_SMTP_PATH = "/invoicing/ephemeral/email-settings/test-smtp";
 const EPHEMERAL_ISDOC_PATH = "/invoicing/ephemeral/isdoc";
 const EPHEMERAL_UBL_PATH = "/invoicing/ephemeral/ubl";
 const EPHEMERAL_BTCPAY_CHECKOUT_PATH = "/invoicing/ephemeral/btcpay-checkout";
@@ -45,6 +46,10 @@ function companyScopedEphemeralEmailPreviewPath(bridgeCompanyId: string): string
 
 function companyScopedEphemeralSendEmailPath(bridgeCompanyId: string): string {
     return `/invoicing/companies/${bridgeCompanyId}/documents/ephemeral/send-email`;
+}
+
+function companyScopedEphemeralEmailSettingsTestSmtpPath(bridgeCompanyId: string): string {
+    return `/invoicing/companies/${bridgeCompanyId}/email-settings/ephemeral/test-smtp`;
 }
 
 function companyScopedEphemeralIsdocPath(bridgeCompanyId: string): string {
@@ -460,6 +465,27 @@ export async function sendEphemeralEmail(
         },
     );
     return res.data.data ?? {};
+}
+
+export async function testEphemeralEmailSmtp(
+    company: Record<string, unknown>,
+    emailSettings: Record<string, unknown>,
+    to: string,
+    bridgeCompanyId?: string | null,
+): Promise<{ message: string }> {
+    const res = await postWithCompanyScopedFallback<{ message: string }>(
+        EPHEMERAL_EMAIL_SETTINGS_TEST_SMTP_PATH,
+        bridgeCompanyId ? companyScopedEphemeralEmailSettingsTestSmtpPath(bridgeCompanyId) : null,
+        {
+            to,
+            company: {
+                ...company,
+                email_settings: emailSettings,
+            },
+        },
+    );
+
+    return { message: res.data.message ?? "Test email sent." };
 }
 
 export async function fetchEphemeralBtcpayStatus(

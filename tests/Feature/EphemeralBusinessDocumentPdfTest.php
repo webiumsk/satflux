@@ -183,6 +183,37 @@ class EphemeralBusinessDocumentPdfTest extends TestCase
         });
     }
 
+    #[Test]
+    public function ephemeral_smtp_test_uses_snapshot_settings_without_persisting(): void
+    {
+        Mail::fake();
+        [$user, $company] = $this->createProUserWithCompany();
+
+        $this->actingAs($user)->postJson(
+            "/api/invoicing/companies/{$company->id}/email-settings/ephemeral/test-smtp",
+            [
+                'to' => 'smtp-test@example.com',
+                'company' => [
+                    'legal_name' => $company->legal_name,
+                    'email_settings' => [
+                        'delivery_method' => 'smtp',
+                        'smtp' => [
+                            'username' => 'billing@acme.sk',
+                            'password' => 'secret-pass',
+                            'host' => 'smtp.acme.sk',
+                            'port' => 587,
+                            'encryption' => 'tls',
+                            'from_name' => 'Acme Billing',
+                        ],
+                    ],
+                ],
+            ],
+        )->assertOk()->assertJsonPath('message', 'Test email sent.');
+
+        $company->refresh();
+        $this->assertNull($company->email_settings);
+    }
+
     /**
      * @return array{0: User, 1: Company}
      */
