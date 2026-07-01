@@ -112,6 +112,7 @@ const documentColumns = [
     "tagsJson",
     "paidAt",
     "amountPaid",
+    "emailSentAt",
 ] as const;
 
 const documentLineColumns = [
