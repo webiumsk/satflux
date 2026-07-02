@@ -30,7 +30,7 @@ class ExportController extends Controller
      *
      * IMPORTANT: Manual CSV exports are available for ALL plans (FREE, PRO, ENTERPRISE).
      * Automatic monthly exports are handled by a scheduled job that checks the
-     * 'automatic_csv_exports' feature flag via SubscriptionService.
+     * 'automatic_csv_exports' feature flag via SubscriptionEntitlementService.
      */
     public function store(ExportRequest $request, Store $store)
     {

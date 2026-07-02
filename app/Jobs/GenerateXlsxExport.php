@@ -23,10 +23,27 @@ class GenerateXlsxExport implements ShouldQueue
     /** Maximum number of seconds the job may run (worker --timeout must be >= this). */
     public int $timeout = 600;
 
+    /** Transient BTCPay/storage failures are retried; permanent ones return early. */
+    public int $tries = 3;
+
+    /**
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [60, 300];
+    }
+
     public function __construct(
         protected Export $export
     ) {
         $this->onQueue('exports');
+    }
+
+    /** Runs after the last attempt - only then surface the failure to the user. */
+    public function failed(\Throwable $exception): void
+    {
+        $this->export->markAsFailed(self::GENERIC_FAILURE_MESSAGE);
     }
 
     public function handle(InvoiceService $invoiceService): void
@@ -172,10 +189,11 @@ class GenerateXlsxExport implements ShouldQueue
                 'export_id' => $this->export->id,
                 'store_id' => $this->export->store_id,
                 'user_id' => $this->export->user_id,
+                'attempt' => $this->attempts(),
                 'exception' => $e,
             ]);
 
-            $this->export->markAsFailed(self::GENERIC_FAILURE_MESSAGE);
+            // Rethrow so the queue retries; failed() marks the export after the last attempt.
             throw $e;
         }
     }

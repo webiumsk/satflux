@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\User;
 use App\Services\BtcPay\SubscriptionService as BtcPaySubscriptionService;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -26,7 +26,7 @@ class CheckSubscriptionStatuses extends Command
 
     public function __construct(
         protected BtcPaySubscriptionService $btcpaySubscriptionService,
-        protected SubscriptionService $subscriptionService,
+        protected SubscriptionEntitlementService $subscriptionService,
     ) {
         parent::__construct();
     }

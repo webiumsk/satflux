@@ -89,18 +89,27 @@ class GenerateCsvExportTest extends TestCase
     }
 
     #[Test]
-    public function csv_export_failure_uses_safe_error_message(): void
+    public function csv_export_failure_rethrows_for_retry_and_failed_hook_uses_safe_message(): void
     {
         $export = $this->makeExport('standard');
         $invoiceService = $this->failingInvoiceService();
         Http::fake();
 
+        $job = new GenerateCsvExport($export);
+        $thrown = null;
         try {
-            (new GenerateCsvExport($export))->handle($invoiceService);
-        } catch (\Throwable) {
-            // The job rethrows after marking the export as failed.
+            $job->handle($invoiceService);
+        } catch (\Throwable $e) {
+            $thrown = $e;
         }
 
+        // handle() rethrows so the queue can retry; the export stays running until the last attempt.
+        $this->assertNotNull($thrown);
+        $export->refresh();
+        $this->assertSame('running', $export->status);
+
+        // After the final attempt the queue invokes failed(), which surfaces a safe message.
+        $job->failed($thrown);
         $export->refresh();
         $this->assertSame('failed', $export->status);
         $this->assertSame('Export generation failed. Please try again or contact support.', $export->error_message);
@@ -109,18 +118,25 @@ class GenerateCsvExportTest extends TestCase
     }
 
     #[Test]
-    public function xlsx_export_failure_uses_safe_error_message(): void
+    public function xlsx_export_failure_rethrows_for_retry_and_failed_hook_uses_safe_message(): void
     {
         $export = $this->makeExport('standard');
         $invoiceService = $this->failingInvoiceService();
         Http::fake();
 
+        $job = new GenerateXlsxExport($export);
+        $thrown = null;
         try {
-            (new GenerateXlsxExport($export))->handle($invoiceService);
-        } catch (\Throwable) {
-            // The job rethrows after marking the export as failed.
+            $job->handle($invoiceService);
+        } catch (\Throwable $e) {
+            $thrown = $e;
         }
 
+        $this->assertNotNull($thrown);
+        $export->refresh();
+        $this->assertSame('running', $export->status);
+
+        $job->failed($thrown);
         $export->refresh();
         $this->assertSame('failed', $export->status);
         $this->assertSame('Export generation failed. Please try again or contact support.', $export->error_message);

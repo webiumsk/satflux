@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
  * IMPORTANT: This is a non-custodial system. Feature flags only affect
  * UX/management features, never payment acceptance or existing infrastructure.
  */
-class SubscriptionService
+class SubscriptionEntitlementService
 {
     /**
      * Get or create a FREE subscription for a user.

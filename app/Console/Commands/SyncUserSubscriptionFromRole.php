@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Console\Command;
 
 class SyncUserSubscriptionFromRole extends Command
@@ -12,7 +12,7 @@ class SyncUserSubscriptionFromRole extends Command
 
     protected $description = 'Align subscription rows with users.role after admin role changes';
 
-    public function handle(SubscriptionService $subscriptionService): int
+    public function handle(SubscriptionEntitlementService $subscriptionService): int
     {
         $email = $this->argument('email');
 

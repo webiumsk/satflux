@@ -14,6 +14,16 @@ class ProcessBankNotificationEmail implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $tries = 3;
+
+    /**
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [30, 120];
+    }
+
     /**
      * @param  array{to: string, from: string, subject: string, body: string, headers?: string}  $payload
      */
@@ -21,6 +31,15 @@ class ProcessBankNotificationEmail implements ShouldQueue
         public array $payload,
     ) {
         $this->onQueue('webhooks');
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('Bank inbound email processing failed permanently', [
+            'to' => $this->payload['to'],
+            'from' => $this->payload['from'],
+            'error' => $exception->getMessage(),
+        ]);
     }
 
     public function handle(BankInboundEmailService $service): void

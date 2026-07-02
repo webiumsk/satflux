@@ -4,13 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\PosTerminal;
 use App\Models\Store;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Http\Request;
 
 class PosTerminalController extends Controller
 {
     public function __construct(
-        protected SubscriptionService $subscriptionService
+        protected SubscriptionEntitlementService $subscriptionService
     ) {}
 
     /**

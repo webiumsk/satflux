@@ -6,7 +6,7 @@ use App\Jobs\GenerateCsvExport;
 use App\Jobs\GenerateXlsxExport;
 use App\Models\Export;
 use App\Services\BtcPay\InvoiceService;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -16,7 +16,7 @@ class InvoiceController extends Controller
 {
     public function __construct(
         protected InvoiceService $invoiceService,
-        protected SubscriptionService $subscriptionService
+        protected SubscriptionEntitlementService $subscriptionService
     ) {}
 
     /**

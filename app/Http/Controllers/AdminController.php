@@ -9,7 +9,7 @@ use App\Models\Store;
 use App\Models\User;
 use App\Models\WalletConnection;
 use App\Services\StatsService;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -424,7 +424,7 @@ class AdminController extends Controller
         });
 
         if ($roleChanged) {
-            app(SubscriptionService::class)->syncSubscriptionForAdminRole(
+            app(SubscriptionEntitlementService::class)->syncSubscriptionForAdminRole(
                 $user->fresh() ?? $user,
                 $user->role ?? 'free',
             );

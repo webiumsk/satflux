@@ -1465,7 +1465,7 @@ parameters:
 			path: app/Jobs/ProcessMonthlyExports.php
 
 		-
-			message: '#^Parameter \#1 \$user of method App\\Services\\SubscriptionService\:\:canUseAutomaticExports\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			message: '#^Parameter \#1 \$user of method App\\Services\\SubscriptionEntitlementService\:\:canUseAutomaticExports\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Jobs/ProcessMonthlyExports.php
@@ -4324,25 +4324,25 @@ parameters:
 			message: '#^Call to function in_array\(\) with arguments ''admin''\|''merchant''\|''support'', array\{''pro'', ''enterprise''\} and true will always evaluate to false\.$#'
 			identifier: function.impossibleType
 			count: 1
-			path: app/Services/SubscriptionService.php
+			path: app/Services/SubscriptionEntitlementService.php
 
 		-
-			message: '#^Method App\\Services\\SubscriptionService\:\:entitledPlan\(\) should return App\\Models\\SubscriptionPlan\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			message: '#^Method App\\Services\\SubscriptionEntitlementService\:\:entitledPlan\(\) should return App\\Models\\SubscriptionPlan\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
 			identifier: return.type
 			count: 1
-			path: app/Services/SubscriptionService.php
+			path: app/Services/SubscriptionEntitlementService.php
 
 		-
 			message: '#^Property App\\Models\\User\:\:\$role \(''admin''\|''merchant''\|''support''\) does not accept ''free''\.$#'
 			identifier: assign.propertyType
 			count: 1
-			path: app/Services/SubscriptionService.php
+			path: app/Services/SubscriptionEntitlementService.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>plan" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
-			path: app/Services/SubscriptionService.php
+			path: app/Services/SubscriptionEntitlementService.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'

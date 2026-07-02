@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PosOrder;
 use App\Models\PosTerminal;
 use App\Models\Store;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Http\Request;
 
 /**
@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 class PosOrderController extends Controller
 {
     public function __construct(
-        protected SubscriptionService $subscriptionService
+        protected SubscriptionEntitlementService $subscriptionService
     ) {}
 
     /**

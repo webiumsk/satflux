@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Integrations;
 use App\Http\Controllers\Controller;
 use App\Models\Store;
 use App\Models\StoreIntegration;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -19,7 +19,7 @@ use Illuminate\Validation\ValidationException;
 class WooCommerceConnectController extends Controller
 {
     public function __construct(
-        protected SubscriptionService $subscriptionService,
+        protected SubscriptionEntitlementService $subscriptionService,
     ) {}
 
     public function connect(Request $request)

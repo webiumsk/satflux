@@ -12,7 +12,7 @@ use App\Models\IntegrationDocumentInbox;
 use App\Models\StoreIntegration;
 use App\Services\Invoicing\BusinessDocumentIssueService;
 use App\Services\Invoicing\DocumentTotalsCalculator;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use App\Support\Invoicing\CompanyAppSettings;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
@@ -22,7 +22,7 @@ class WooCommerceDocumentService
     public function __construct(
         protected DocumentTotalsCalculator $totalsCalculator,
         protected BusinessDocumentIssueService $issueService,
-        protected SubscriptionService $subscriptionService,
+        protected SubscriptionEntitlementService $subscriptionService,
         protected IntegrationDocumentInboxService $inboxService,
     ) {}
 

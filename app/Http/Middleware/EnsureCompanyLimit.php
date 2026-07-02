@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
 class EnsureCompanyLimit
 {
     public function __construct(
-        protected SubscriptionService $subscriptionService
+        protected SubscriptionEntitlementService $subscriptionService
     ) {}
 
     public function handle(Request $request, Closure $next): Response

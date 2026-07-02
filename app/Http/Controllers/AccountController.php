@@ -8,7 +8,7 @@ use App\Services\BtcPay\RaffleService;
 use App\Services\BtcPay\TicketService;
 use App\Services\Compliance\ComplianceGate;
 use App\Services\GuestUpgradeService;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use App\Support\Legal\LegalConsent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -39,7 +39,7 @@ class AccountController extends Controller
         $plan = $user->currentSubscriptionPlan();
 
         $payload = $user->toArray();
-        $subscriptionService = app(SubscriptionService::class);
+        $subscriptionService = app(SubscriptionEntitlementService::class);
         $maxCompanies = $subscriptionService->maxCompaniesForUser($user);
 
         $payload['plan'] = $plan ? [
@@ -171,7 +171,7 @@ class AccountController extends Controller
 
             $maxEvents = $user->getMaxEventsPerStore();
             $maxRaffles = $user->getMaxRafflesPerStore();
-            $subscriptionService = app(SubscriptionService::class);
+            $subscriptionService = app(SubscriptionEntitlementService::class);
             $maxCompanies = $subscriptionService->maxCompaniesForUser($user);
             $companyCount = $user->companies()->count();
 
