@@ -37,6 +37,8 @@ export const useStoresStore = defineStore('stores', () => {
     const stores = ref<Store[]>([]);
     const currentStore = ref<Store | null>(null);
     const dashboard = ref<DashboardData | null>(null);
+    /** Store the current dashboard belongs to - stats payload carries no id. */
+    const dashboardStoreId = ref<string | null>(null);
     const apps = ref<BtcPayApp[]>([]);
     const loading = ref(false);
 
@@ -94,9 +96,11 @@ export const useStoresStore = defineStore('stores', () => {
         try {
             const stats = await storesApi.dashboard(storeId, params);
             dashboard.value = stats;
+            dashboardStoreId.value = storeId;
             return stats;
         } catch (error) {
             dashboard.value = null;
+            dashboardStoreId.value = null;
             throw error;
         } finally {
             loading.value = false;
@@ -128,7 +132,11 @@ export const useStoresStore = defineStore('stores', () => {
             if (currentStore.value?.id === storeId) {
                 currentStore.value = null;
             }
-            dashboard.value = null;
+            // Only wipe the dashboard when it belongs to the deleted store
+            if (dashboardStoreId.value === storeId) {
+                dashboard.value = null;
+                dashboardStoreId.value = null;
+            }
 
             return result;
         } finally {
