@@ -137,6 +137,16 @@ class BtcPayClient
     }
 
     /**
+     * Single POST returning the raw Response (no retries, no error mapping).
+     * For callers that need response headers (e.g. Location on app creation)
+     * rather than the JSON body.
+     */
+    public function postForResponse(string $endpoint, array $data = []): Response
+    {
+        return $this->performRequest('POST', $endpoint, ['json' => $data]);
+    }
+
+    /**
      * Make a POST request with multipart form data (for file uploads).
      *
      * @param  string  $endpoint  API endpoint

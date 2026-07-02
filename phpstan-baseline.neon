@@ -1927,124 +1927,70 @@ parameters:
 			path: app/Services/Auth/EmailVerificationService.php
 
 		-
-			message: '#^Call to function array_key_exists\(\) with ''resetEveryAmount'' and array\{id\: non\-falsy\-string, storeId\: string, appType\: ''Crowdfund'', sounds\: array\{\}\|array\{mixed\}, startDate\?\: float\|int\|string, endDate\?\: int, animationColors\?\: mixed, appName\?\: mixed, \.\.\.\}\|array\{sounds\: array\{\}\|array\{mixed\}, startDate\?\: float\|int\|string, endDate\?\: int, animationColors\?\: mixed, appName\?\: mixed, description\?\: mixed, disqusShortname\?\: mixed, formId\?\: mixed, \.\.\.\} will always evaluate to true\.$#'
+			message: '#^Call to function array_key_exists\(\) with ''resetEveryAmount'' and array\{id\: non\-empty\-string, storeId\: string, appType\: ''Crowdfund'', sounds\: array\{\}\|array\{mixed\}, startDate\?\: float\|int\|string, endDate\?\: int, animationColors\?\: mixed, appName\?\: mixed, \.\.\.\} will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
-			path: app/Services/BtcPay/AppService.php
-
-		-
-			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 2
-			path: app/Services/BtcPay/AppService.php
+			path: app/Services/BtcPay/Apps/CrowdfundUpdatePayloadBuilder.php
 
 		-
 			message: '#^Call to function is_string\(\) with int will always evaluate to false\.$#'
 			identifier: function.impossibleType
 			count: 1
-			path: app/Services/BtcPay/AppService.php
-
-		-
-			message: '#^Call to function method_exists\(\) with App\\Services\\BtcPay\\Exceptions\\BtcPayException and ''getStatusCode'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 3
-			path: app/Services/BtcPay/AppService.php
-
-		-
-			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
-			identifier: larastan.noEnvCallsOutsideOfConfig
-			count: 2
-			path: app/Services/BtcPay/AppService.php
-
-		-
-			message: '#^Cannot unset offset ''id'' on array\{\}\.$#'
-			identifier: unset.offset
-			count: 1
-			path: app/Services/BtcPay/AppService.php
-
-		-
-			message: '#^Comparison operation "\<" between int\<1, max\> and 1 is always false\.$#'
-			identifier: smaller.alwaysFalse
-			count: 1
-			path: app/Services/BtcPay/AppService.php
-
-		-
-			message: '#^Instantiated class App\\Services\\BtcPay\\BtcPayException not found\.$#'
-			identifier: class.notFound
-			count: 1
-			path: app/Services/BtcPay/AppService.php
+			path: app/Services/BtcPay/Apps/CrowdfundUpdatePayloadBuilder.php
 
 		-
 			message: '#^Left side of && is always false\.$#'
 			identifier: booleanAnd.leftAlwaysFalse
 			count: 1
-			path: app/Services/BtcPay/AppService.php
+			path: app/Services/BtcPay/Apps/CrowdfundUpdatePayloadBuilder.php
 
 		-
-			message: '#^Offset ''appName'' on non\-empty\-array on left side of \?\? always exists and is not nullable\.$#'
+			message: '#^Offset ''id'' on array\{id\: non\-empty\-string, storeId\: string, appType\: ''Crowdfund'', sounds\: array\{\}\|array\{mixed\}, startDate\?\: int, endDate\?\: int, animationColors\?\: mixed, appName\?\: mixed, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 1
-			path: app/Services/BtcPay/AppService.php
+			path: app/Services/BtcPay/Apps/CrowdfundUpdatePayloadBuilder.php
 
 		-
 			message: '#^Offset ''resetEveryAmount'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 1
-			path: app/Services/BtcPay/AppService.php
+			path: app/Services/BtcPay/Apps/CrowdfundUpdatePayloadBuilder.php
 
 		-
-			message: '#^Offset ''resetEveryAmount'' on array\{id\: non\-falsy\-string, storeId\: string, appType\: ''Crowdfund'', sounds\: array\{\}\|array\{mixed\}, startDate\?\: int, endDate\?\: int\}\|array\{sounds\: array\{\}\|array\{mixed\}, startDate\?\: int, endDate\?\: int\} in isset\(\) does not exist\.$#'
+			message: '#^Offset ''resetEveryAmount'' on array\{id\: non\-empty\-string, storeId\: string, appType\: ''Crowdfund'', sounds\: array\{\}\|array\{mixed\}, startDate\?\: int, endDate\?\: int\} in isset\(\) does not exist\.$#'
 			identifier: isset.offset
 			count: 1
-			path: app/Services/BtcPay/AppService.php
+			path: app/Services/BtcPay/Apps/CrowdfundUpdatePayloadBuilder.php
 
 		-
 			message: '#^Offset ''startDate'' on \*NEVER\* in isset\(\) always exists and is not nullable\.$#'
 			identifier: isset.offset
 			count: 1
-			path: app/Services/BtcPay/AppService.php
-
-		-
-			message: '#^Offset 1 on array\{non\-falsy\-string, non\-falsy\-string\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/BtcPay/AppService.php
+			path: app/Services/BtcPay/Apps/CrowdfundUpdatePayloadBuilder.php
 
 		-
 			message: '#^Result of && is always false\.$#'
 			identifier: booleanAnd.alwaysFalse
 			count: 1
-			path: app/Services/BtcPay/AppService.php
+			path: app/Services/BtcPay/Apps/CrowdfundUpdatePayloadBuilder.php
 
 		-
 			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
 			identifier: notIdentical.alwaysTrue
-			count: 3
-			path: app/Services/BtcPay/AppService.php
+			count: 2
+			path: app/Services/BtcPay/Apps/CrowdfundUpdatePayloadBuilder.php
 
 		-
 			message: '#^Strict comparison using \=\=\= between int and null will always evaluate to false\.$#'
 			identifier: identical.alwaysFalse
 			count: 1
-			path: app/Services/BtcPay/AppService.php
+			path: app/Services/BtcPay/Apps/CrowdfundUpdatePayloadBuilder.php
 
 		-
-			message: '#^Throwing object of an unknown class App\\Services\\BtcPay\\BtcPayException\.$#'
-			identifier: class.notFound
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
 			count: 1
-			path: app/Services/BtcPay/AppService.php
-
-		-
-			message: '#^Variable \$appType on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.variable
-			count: 1
-			path: app/Services/BtcPay/AppService.php
-
-		-
-			message: '#^Variable \$response on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.variable
-			count: 1
-			path: app/Services/BtcPay/AppService.php
+			path: app/Services/BtcPay/Apps/PosUpdatePayloadBuilder.php
 
 		-
 			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
