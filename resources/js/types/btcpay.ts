@@ -55,3 +55,64 @@ export interface StoreDashboardStats {
     can_filter_by_source?: boolean;
     by_source?: Record<string, unknown>;
 }
+
+export interface StoreSettingsReceipt {
+    enabled: boolean;
+    show_qr: boolean | null;
+    show_payments: boolean | null;
+}
+
+/**
+ * Response of GET/PUT /stores/{id}/settings - snake_case mapping of the
+ * BTCPay store built in StoreSettingsController::mapBtcPayStoreToResponse.
+ */
+export interface StoreSettings {
+    id: string;
+    name: string;
+    website: string | null;
+    support_url: string | null;
+    logo_url: string | null;
+    css_url: string | null;
+    payment_sound_url: string | null;
+    brand_color: string | null;
+    apply_brand_color_to_backend: boolean;
+    default_currency: string;
+    additional_tracked_rates: string[];
+    invoice_expiration: number | null;
+    refund_bolt11_expiration: number | null;
+    display_expiration_timer: number | null;
+    monitoring_expiration: number | null;
+    speed_policy: string | null;
+    lightning_description_template: string | null;
+    payment_tolerance: number | null;
+    archived: boolean;
+    anyone_can_create_invoice: boolean;
+    receipt: StoreSettingsReceipt;
+    lightning_amount_in_satoshi: boolean;
+    lightning_private_route_hints: boolean;
+    on_chain_with_ln_invoice_fallback: boolean;
+    redirect_automatically: boolean;
+    show_recommended_fee: boolean;
+    recommended_fee_block_target: number;
+    default_lang: string;
+    html_title: string | null;
+    network_fee_mode: string | null;
+    pay_join_enabled: boolean;
+    auto_detect_language: boolean;
+    show_pay_in_wallet_button: boolean;
+    show_store_header: boolean;
+    celebrate_payment: boolean;
+    play_sound_on_payment: boolean;
+    lazy_payment_methods: boolean;
+    default_payment_method: string | null;
+    payment_method_criteria: Array<Record<string, unknown>>;
+    timezone: string;
+    preferred_exchange: string | null;
+    store_url: string;
+    lnurl_enabled: boolean;
+    lnurl_classic_mode: boolean;
+    lnurl_allow_payee_comment: boolean;
+}
+
+/** PUT /stores/{id}/settings body - name is required, the rest is optional. */
+export type UpdateStoreSettingsPayload = Partial<StoreSettings> & { name: string };

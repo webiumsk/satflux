@@ -338,7 +338,7 @@ import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
 import { useStoresStore } from "../../store/stores";
 import { useFlashStore } from "../../store/flash";
-import api from "../../services/api";
+import { storesApi } from "../../services/api";
 import StoreSettingsGeneral from "./StoreSettingsGeneral.vue";
 import StoreSettingsPayment from "./StoreSettingsPayment.vue";
 import StoreSettingsRates from "./StoreSettingsRates.vue";
@@ -622,8 +622,7 @@ async function fetchSettings() {
   loading.value = true;
   settingsLoadError.value = false;
   try {
-    const response = await api.get(`/stores/${props.store.id}/settings`);
-    const d = response.data.data;
+    const d = await storesApi.settings.get(props.store.id);
     settings.value = d;
     storeLogoUrl.value = d.logo_url ?? null;
 
@@ -796,7 +795,7 @@ async function handleSettingsSubmit() {
       ];
       checkoutFields.forEach((key) => delete payload[key]);
     }
-    await api.put(`/stores/${props.store.id}/settings`, payload);
+    await storesApi.settings.update(props.store.id, payload);
     flashStore.success(t("settings.settings_updated"));
     emit("update-store"); // Notify parent to refresh store data if needed
   } catch (err: any) {
@@ -822,14 +821,8 @@ async function handleLogoUpload(event: Event) {
   logoSuccess.value = "";
 
   try {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const response = await api.post(`/stores/${props.store.id}/logo`, formData);
-
-    const data = response.data?.data ?? response.data;
-    storeLogoUrl.value =
-      data?.logo_url ?? data?.logoUrl ?? data?.imageUrl ?? storeLogoUrl.value;
+    const uploadedUrl = await storesApi.uploadLogo(props.store.id, file);
+    storeLogoUrl.value = uploadedUrl ?? storeLogoUrl.value;
 
     flashStore.success(
       t("stores.logo_uploaded") || "Logo uploaded successfully",
@@ -853,7 +846,7 @@ async function handleDeleteLogo() {
   logoSuccess.value = "";
 
   try {
-    await api.delete(`/stores/${props.store.id}/logo`);
+    await storesApi.deleteLogo(props.store.id);
     storeLogoUrl.value = null;
     if (settings.value && typeof settings.value === "object") {
       settings.value.logo_url = null;

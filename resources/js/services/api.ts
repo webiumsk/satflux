@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { classifyApiErrorForFlash, GLOBAL_API_ERROR_MESSAGE_KEYS, type GlobalApiErrorKind } from './apiError';
 import type { Store } from '../store/stores';
-import type { BtcPayApp, StoreDashboardStats } from '../types/btcpay';
+import type { BtcPayApp, StoreDashboardStats, StoreSettings, UpdateStoreSettingsPayload } from '../types/btcpay';
 
 declare module 'axios' {
     export interface AxiosRequestConfig {
@@ -177,6 +177,27 @@ export const storesApi = {
     async apps(storeId: string): Promise<BtcPayApp[]> {
         const { data } = await api.get<ApiEnvelope<BtcPayApp[]>>(`/stores/${storeId}/apps`);
         return data.data ?? [];
+    },
+    settings: {
+        async get(storeId: string): Promise<StoreSettings> {
+            const { data } = await api.get<ApiEnvelope<StoreSettings>>(`/stores/${storeId}/settings`);
+            return data.data;
+        },
+        async update(storeId: string, payload: UpdateStoreSettingsPayload): Promise<StoreSettings> {
+            const { data } = await api.put<ApiEnvelope<StoreSettings>>(`/stores/${storeId}/settings`, payload);
+            return data.data;
+        },
+    },
+    /** Returns the uploaded logo URL, or null when the response carries none. */
+    async uploadLogo(storeId: string, file: File): Promise<string | null> {
+        const formData = new FormData();
+        formData.append('file', file);
+        const { data } = await api.post<{ data?: { logo_url?: string | null; logoUrl?: string; imageUrl?: string } } & { logo_url?: string | null; logoUrl?: string; imageUrl?: string }>(`/stores/${storeId}/logo`, formData);
+        const payload = data?.data ?? data;
+        return payload?.logo_url ?? payload?.logoUrl ?? payload?.imageUrl ?? null;
+    },
+    async deleteLogo(storeId: string): Promise<void> {
+        await api.delete(`/stores/${storeId}/logo`);
     },
 };
 
