@@ -2534,6 +2534,8 @@
   },
   "errors": {
     "generic": "An error occurred",
+    "network": "Connection failed - check your internet connection and try again",
+    "rate_limited": "Too many requests - please wait a moment and try again",
     "not_found": "Not found",
     "unauthorized": "Unauthorized",
     "server_error": "Server error",
