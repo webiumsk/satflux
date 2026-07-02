@@ -12,7 +12,9 @@
     "preview": "vite preview",
     "lint": "eslint resources/js --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts",
     "lint:fix": "eslint resources/js --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.typecheck.json",
     "test": "vitest run",
+    "test:locale-parity": "node scripts/check-locale-parity.mjs",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "version:patch": "node scripts/bump-version.js patch",
@@ -77,6 +79,7 @@
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3",
     "vite": "^5.0.11",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.7",
+    "vue-tsc": "^2.2.12"
   }
 }

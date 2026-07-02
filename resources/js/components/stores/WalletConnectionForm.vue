@@ -91,15 +91,15 @@
           </p>
         </div>
       </div>
+      <p v-if="passwordError" class="mb-4 text-sm text-red-400">
+        {{ passwordError }}
+      </p>
       <div class="flex flex-wrap gap-3">
         <button
           type="button"
-          class="inline-flex items-center px-6 py-3 border border-indigo-500 rounded-xl text-sm font-medium text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 transition-all"
-          @click="
-            cashuSectionMode = 'password';
-            passwordError = '';
-            passwordInput = '';
-          "
+          class="inline-flex items-center px-6 py-3 border border-indigo-500 rounded-xl text-sm font-medium text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 transition-all disabled:opacity-50"
+          :disabled="revealing"
+          @click="startCashuConnectionEdit"
         >
           {{ t("stores.change_connection") }}
         </button>
@@ -1032,11 +1032,15 @@
             }}</span>
           </span>
         </div>
+        <p v-if="passwordError" class="mt-4 text-sm text-red-400">
+          {{ passwordError }}
+        </p>
         <div class="mt-8 flex flex-wrap items-center gap-4">
           <button
             type="button"
-            @click="viewMode = 'password'"
-            class="inline-flex items-center px-6 py-3 border border-indigo-500 rounded-xl text-sm font-medium text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 transition-all"
+            @click="startWalletConnectionEdit"
+            :disabled="revealing"
+            class="inline-flex items-center px-6 py-3 border border-indigo-500 rounded-xl text-sm font-medium text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 transition-all disabled:opacity-50"
           >
             {{ t("stores.change_connection") }}
           </button>
@@ -1821,6 +1825,10 @@ const revealing = ref(false);
 
 const hasLightningLogin = computed(() => !!authStore.user?.has_lightning_login);
 const hasNostrLogin = computed(() => !!authStore.user?.has_nostr_login);
+/** Legacy email/password accounts; recovery-phrase users have no password. */
+const canUsePasswordLogin = computed(
+  () => authStore.user?.can_use_password_login ?? true,
+);
 const showNostrRevealModal = ref(false);
 const showLnurlRevealModal = ref(false);
 const lnurlRevealUrl = ref("");
@@ -2512,16 +2520,37 @@ onUnmounted(() => {
   revokeSamRockQr();
 });
 
+function startWalletConnectionEdit() {
+  passwordError.value = "";
+  passwordInput.value = "";
+  if (!canUsePasswordLogin.value) {
+    void handleConfirmPassword();
+    return;
+  }
+  viewMode.value = "password";
+}
+
+function startCashuConnectionEdit() {
+  passwordError.value = "";
+  passwordInput.value = "";
+  if (!canUsePasswordLogin.value) {
+    void handleCashuConfirmPassword();
+    return;
+  }
+  cashuSectionMode.value = "password";
+}
+
 async function handleConfirmPassword() {
-  if (!passwordInput.value.trim()) return;
+  if (canUsePasswordLogin.value && !passwordInput.value.trim()) return;
   passwordError.value = "";
   revealing.value = true;
   try {
+    const payload = canUsePasswordLogin.value
+      ? { password: passwordInput.value }
+      : {};
     const response = await api.post(
       `/stores/${props.storeId}/wallet-connection/reveal`,
-      {
-        password: passwordInput.value,
-      },
+      payload,
     );
     form.type = (response.data.data?.type ||
       props.existingConnection?.type ||
@@ -2543,13 +2572,14 @@ async function handleConfirmPassword() {
 }
 
 async function handleCashuConfirmPassword() {
-  if (!passwordInput.value.trim()) return;
+  if (canUsePasswordLogin.value && !passwordInput.value.trim()) return;
   passwordError.value = "";
   revealing.value = true;
   try {
-    await api.post(`/stores/${props.storeId}/cashu/confirm-edit`, {
-      password: passwordInput.value,
-    });
+    const payload = canUsePasswordLogin.value
+      ? { password: passwordInput.value }
+      : {};
+    await api.post(`/stores/${props.storeId}/cashu/confirm-edit`, payload);
     passwordInput.value = "";
     cashuSectionMode.value = "editing";
   } catch (err: any) {

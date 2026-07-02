@@ -59,6 +59,10 @@ class BusinessDocumentUsPdfTest extends TestCase
             'postal_code' => '90001',
             'country' => 'US',
             'vat_rate_default' => 8.25,
+            'issuer_name' => 'Jane Issuer',
+            'issuer_phone' => '+1 555 0100',
+            'issuer_email' => 'billing@example.com',
+            'website' => 'https://example.com',
             'app_settings' => [
                 'us_sales_tax_provider' => 'manual',
                 'embed_isdoc_in_pdf' => true,
@@ -118,15 +122,26 @@ class BusinessDocumentUsPdfTest extends TestCase
             'lines' => $doc->lines,
             'taxBreakdown' => $canonical->taxBreakdown,
             'showSalesTaxColumn' => true,
+            'showVatColumn' => false,
+            'showVatBreakdown' => false,
+            'reverseChargeNote' => null,
             'bankQr' => null,
             'btcPayQr' => null,
+            'btcPayUrl' => null,
+            'logoDataUri' => null,
+            'signatureStampDataUri' => null,
         ])->render();
 
-        $this->assertStringContainsString('Subtotal:', $html);
+        $this->assertStringContainsString('Subtotal', $html);
         $this->assertStringContainsString('Sales tax 8.25%', $html);
         $this->assertStringContainsString('Tax %', $html);
         $this->assertStringContainsString('216.50', $html);
-        $this->assertStringContainsString('Bill to: Buyer Inc', $html);
+        $this->assertStringContainsString('Buyer Inc', $html);
+        $this->assertStringContainsString('Jane Issuer', $html);
+        $this->assertStringContainsString('SATFLUX.io', $html);
+        $this->assertStringContainsString('href="mailto:billing@example.com"', $html);
+        $this->assertStringContainsString('href="tel:', $html);
+        $this->assertStringContainsString('billing@example.com', $html);
     }
 
     #[Test]
@@ -198,8 +213,14 @@ class BusinessDocumentUsPdfTest extends TestCase
             'lines' => $doc->lines,
             'taxBreakdown' => [],
             'showSalesTaxColumn' => false,
+            'showVatColumn' => false,
+            'showVatBreakdown' => false,
+            'reverseChargeNote' => null,
             'bankQr' => null,
             'btcPayQr' => null,
+            'btcPayUrl' => null,
+            'logoDataUri' => null,
+            'signatureStampDataUri' => null,
         ])->render();
 
         $this->assertStringNotContainsString('ISDOC', $html);

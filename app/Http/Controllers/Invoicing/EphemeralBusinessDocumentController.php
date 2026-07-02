@@ -11,6 +11,7 @@ use App\Http\Requests\Invoicing\EphemeralBusinessDocumentBulkRequest;
 use App\Http\Requests\Invoicing\EphemeralBusinessDocumentEfakturaRequest;
 use App\Http\Requests\Invoicing\EphemeralBusinessDocumentEmailRequest;
 use App\Http\Requests\Invoicing\EphemeralBusinessDocumentPdfRequest;
+use App\Http\Requests\Invoicing\EphemeralCompanyEmailSmtpTestRequest;
 use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\BusinessDocumentLine;
@@ -22,6 +23,7 @@ use App\Services\Invoicing\BusinessDocumentEmailService;
 use App\Services\Invoicing\BusinessDocumentIsdocService;
 use App\Services\Invoicing\BusinessDocumentPdfService;
 use App\Services\Invoicing\BusinessDocumentUblService;
+use App\Services\Invoicing\CompanyEmailSettingsService;
 use App\Services\Invoicing\CompanyPdfFilenameBuilder;
 use App\Services\Invoicing\DocumentTotalsCalculator;
 use App\Services\Invoicing\Efaktura\EphemeralEfakturaSubmissionService;
@@ -51,6 +53,7 @@ class EphemeralBusinessDocumentController extends Controller
         protected CompanyPdfFilenameBuilder $pdfFilenameBuilder,
         protected BusinessDocumentEmailService $emailService,
         protected EphemeralEfakturaSubmissionService $efakturaService,
+        protected CompanyEmailSettingsService $emailSettingsService,
     ) {}
 
     public function pdf(EphemeralBusinessDocumentPdfRequest $request, Company $company): Response
@@ -99,6 +102,22 @@ class EphemeralBusinessDocumentController extends Controller
         $snapshotCompany = $this->resolveEphemeralCompany($user, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithSendEmail($request, $snapshotCompany);
+    }
+
+    public function testEmailSettingsSmtp(EphemeralCompanyEmailSmtpTestRequest $request, Company $company): JsonResponse
+    {
+        $snapshotCompany = $this->buildSnapshotCompany($company, (array) ($request->validated()['company'] ?? []));
+
+        return $this->respondWithEmailSettingsSmtpTest($request, $snapshotCompany);
+    }
+
+    public function testEmailSettingsSmtpWithoutCompany(EphemeralCompanyEmailSmtpTestRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 401);
+        $snapshotCompany = $this->resolveEphemeralCompany($user, (array) ($request->validated()['company'] ?? []));
+
+        return $this->respondWithEmailSettingsSmtpTest($request, $snapshotCompany);
     }
 
     public function isdoc(EphemeralBusinessDocumentPdfRequest $request, Company $company): Response
@@ -341,6 +360,26 @@ class EphemeralBusinessDocumentController extends Controller
             'message' => 'Email sent.',
             'data' => $result,
         ]);
+    }
+
+    protected function respondWithEmailSettingsSmtpTest(
+        EphemeralCompanyEmailSmtpTestRequest $request,
+        Company $snapshotCompany,
+    ): JsonResponse {
+        try {
+            $this->emailSettingsService->sendSmtpTest($snapshotCompany, $request->validated('to'));
+        } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
+            Log::warning('Ephemeral company SMTP test failed', [
+                'user_id' => $request->user()?->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['message' => 'SMTP connection failed: '.$e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['message' => 'Test email sent.']);
     }
 
     protected function respondWithIsdoc(
@@ -732,6 +771,7 @@ class EphemeralBusinessDocumentController extends Controller
         }
 
         $this->mergeSnapshotAppSettings($company, $payload);
+        $this->mergeSnapshotEmailSettings($company, $payload);
 
         return $company;
     }
@@ -838,6 +878,7 @@ class EphemeralBusinessDocumentController extends Controller
         }
 
         $this->mergeSnapshotAppSettings($snapshot, $payload);
+        $this->mergeSnapshotEmailSettings($snapshot, $payload);
 
         return $snapshot;
     }
@@ -853,6 +894,18 @@ class EphemeralBusinessDocumentController extends Controller
 
         $current = is_array($company->app_settings) ? $company->app_settings : [];
         $company->app_settings = array_merge($current, $payload['app_settings']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function mergeSnapshotEmailSettings(Company $company, array $payload): void
+    {
+        if (! isset($payload['email_settings']) || ! is_array($payload['email_settings'])) {
+            return;
+        }
+
+        $this->emailSettingsService->applyIncomingToCompany($company, $payload['email_settings']);
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Contracts\Invoicing\UsSalesTaxCalculator;
 use App\Models\Store;
+use App\Pdf\DomPdfDriver;
 use App\Policies\StorePolicy;
 use App\Services\Invoicing\UsSalesTax\StripeTaxUsSalesTaxCalculator;
 use App\Services\Invoicing\UsSalesTax\UsSalesTaxCalculationService;
@@ -28,6 +29,10 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->bind(UsSalesTaxCalculator::class, StripeTaxUsSalesTaxCalculator::class);
+
+        $this->app->singleton('laravel-pdf.driver.dompdf', function () {
+            return new DomPdfDriver(config('laravel-pdf.dompdf', []));
+        });
     }
 
     /**

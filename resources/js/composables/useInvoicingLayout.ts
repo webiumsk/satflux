@@ -35,6 +35,32 @@ export interface InvoicingToolsNavItem {
 
 const LAST_COMPANY_KEY = 'invoicing:lastCompanyId';
 
+/** Entity params that become invalid when switching company - navigate to list route instead. */
+const ENTITY_ROUTE_PARAMS = ['documentId', 'contactId', 'itemId', 'warehouseId', 'expenseId', 'profileId'] as const;
+
+/** Detail routes mapped to their section list when switching company. */
+const COMPANY_SWITCH_LIST_FALLBACK: Record<string, string> = {
+  'invoicing-invoice-show': 'invoicing-invoices',
+  'invoicing-invoice-edit': 'invoicing-invoices',
+  'invoicing-proforma-show': 'invoicing-proformas',
+  'invoicing-proforma-edit': 'invoicing-proformas',
+  'invoicing-delivery-note-show': 'invoicing-delivery-notes',
+  'invoicing-delivery-note-edit': 'invoicing-delivery-notes',
+  'invoicing-order-show': 'invoicing-orders',
+  'invoicing-order-edit': 'invoicing-orders',
+  'invoicing-quote-show': 'invoicing-quotes',
+  'invoicing-quote-edit': 'invoicing-quotes',
+  'invoicing-credit-note-show': 'invoicing-credit-notes',
+  'invoicing-credit-note-edit': 'invoicing-credit-notes',
+  'invoicing-contact-show': 'invoicing-contacts',
+  'invoicing-contact-edit': 'invoicing-contacts',
+  'invoicing-stock-edit': 'invoicing-stock',
+  'invoicing-warehouse-edit': 'invoicing-warehouses',
+  'invoicing-expense-show': 'invoicing-expenses',
+  'invoicing-expense-edit': 'invoicing-expenses',
+  'invoicing-recurring-edit': 'invoicing-recurring',
+};
+
 export function useInvoicingLayout() {
   const route = useRoute();
   const router = useRouter();
@@ -251,6 +277,26 @@ export function useInvoicingLayout() {
     return map[kind] ?? 'invoicing-invoice-new';
   }
 
+  function switchCompany(targetId: string) {
+    if (!targetId || targetId === companyId.value) {
+      return;
+    }
+    rememberCompany(targetId);
+
+    const routeName = String(route.name ?? '');
+    const hasEntityParam = ENTITY_ROUTE_PARAMS.some((key) => Boolean(route.params[key]));
+    const fallback = COMPANY_SWITCH_LIST_FALLBACK[routeName];
+
+    let targetRoute = routeName;
+    if (routeName === 'invoicing-company-new') {
+      targetRoute = 'invoicing-invoices';
+    } else if (hasEntityParam && fallback) {
+      targetRoute = fallback;
+    }
+
+    router.push({ name: targetRoute, params: { companyId: targetId } });
+  }
+
   function newDocumentLabel(): string {
     const fallbacks: Record<InvoicingDocumentKind, string> = {
       invoice: 'invoicing.new_invoice',
@@ -274,6 +320,7 @@ export function useInvoicingLayout() {
     activeToolsSection,
     activeDocumentNav,
     rememberCompany,
+    switchCompany,
     navigateMain,
     navigateToolsSection,
     navigateDocumentKind,

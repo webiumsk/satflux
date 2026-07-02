@@ -148,7 +148,7 @@ export type BankTransactionDirection = typeof BankTransactionDirection.Type;
 export const BankTransactionMatchStatus = union("unmatched", "matched", "ignored");
 export type BankTransactionMatchStatus = typeof BankTransactionMatchStatus.Type;
 
-export const BankImportSource = union("csv", "camt053", "inbound_email", "manual");
+export const BankImportSource = union("csv", "camt053", "inbound_email", "manual", "wise");
 export type BankImportSource = typeof BankImportSource.Type;
 
 export const BankMatchType = union("auto", "manual");

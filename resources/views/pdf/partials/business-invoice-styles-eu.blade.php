@@ -1,5 +1,5 @@
 <style>
-    @page { margin: 28px 32px; }
+    @page { margin: 28px 32px 32px; }
     body {
         font-family: DejaVu Sans, sans-serif;
         font-size: 10px;
@@ -126,11 +126,42 @@
     }
     .pay-bar .amount { font-size: 12px; font-weight: bold; color: #111827; }
     .issuer-line { margin-top: 14px; font-size: 9px; color: #6b7280; }
-    .qr-block { margin-top: 18px; }
-    .qr-item { display: inline-block; margin-right: 28px; vertical-align: top; text-align: center; }
-    .qr-item img { width: 130px; height: 130px; }
-    .qr-caption { font-size: 8px; color: #6b7280; margin-bottom: 4px; font-weight: 600; }
-    .qr-hint { font-size: 7px; color: #6b7280; margin-top: 4px; max-width: 130px; line-height: 1.25; }
+    .invoice-doc-footer {
+        margin-top: 16px;
+        border-collapse: collapse;
+    }
+    .qr-block { margin-top: 12px; }
+    .qr-col { vertical-align: top; width: 132px; }
+    .qr-gap { font-size: 1px; line-height: 1px; }
+    .qr-frame {
+        width: 132px;
+        height: 132px;
+        border: 1.5px solid #00a0e3;
+        background: #ffffff;
+        padding: 0;
+    }
+    .qr-frame-pbs { border-color: #00a0e3; }
+    .qr-frame-btc { border-color: #f7931a; }
+    .qr-frame img {
+        width: 110px;
+        height: 110px;
+        display: block;
+        margin: 0 auto;
+    }
+    .qr-frame a { text-decoration: none; }
+    .qr-caption {
+        width: 132px;
+        margin-top: 5px;
+        text-align: center;
+        font-size: 9px;
+        line-height: 1.3;
+        color: #374151;
+    }
+    .qr-caption strong { font-size: 10px; }
+    .qr-caption-pbs strong { color: #00a0e3; }
+    .qr-caption-btc strong { color: #f7931a; }
+    a.qr-item-link { text-decoration: none; color: inherit; }
     .muted { color: #6b7280; }
     .note-above { margin: 10px 0 4px; font-size: 10px; color: #374151; white-space: pre-wrap; }
+    .invoice-doc-body { padding-bottom: 58px; }
 </style>

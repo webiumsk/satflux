@@ -7,7 +7,7 @@ use App\Services\BtcPay\SubscriptionService as BtcPaySubscriptionService;
 use App\Services\Invoicing\SubscriptionBillingInvoiceService;
 use App\Services\SubscriptionCheckoutRegistry;
 use App\Services\SubscriptionCreditLedgerService;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -15,9 +15,9 @@ class SubscriptionController extends Controller
 {
     protected BtcPaySubscriptionService $btcpaySubscriptionService;
 
-    protected SubscriptionService $subscriptionService;
+    protected SubscriptionEntitlementService $subscriptionService;
 
-    public function __construct(BtcPaySubscriptionService $btcpaySubscriptionService, SubscriptionService $subscriptionService)
+    public function __construct(BtcPaySubscriptionService $btcpaySubscriptionService, SubscriptionEntitlementService $subscriptionService)
     {
         $this->btcpaySubscriptionService = $btcpaySubscriptionService;
         $this->subscriptionService = $subscriptionService;

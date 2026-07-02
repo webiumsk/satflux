@@ -261,6 +261,28 @@ class IntegrationDocumentInboxTest extends TestCase
     }
 
     #[Test]
+    public function store_number_series_returns_store_not_linked_when_company_missing(): void
+    {
+        $unlinkedStore = Store::factory()->create([
+            'user_id' => $this->user->id,
+            'company_id' => null,
+        ]);
+
+        $this->actingAs($this->user)
+            ->getJson("/api/invoicing/stores/{$unlinkedStore->id}/number-series/preview?type=invoice")
+            ->assertStatus(422)
+            ->assertJsonPath('error', 'store_not_linked')
+            ->assertJsonPath('data', null);
+
+        $this->actingAs($this->user)
+            ->postJson("/api/invoicing/stores/{$unlinkedStore->id}/number-series/reserve", [
+                'document_type' => 'invoice',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('error', 'store_not_linked');
+    }
+
+    #[Test]
     public function mark_imported_deletes_entry(): void
     {
         $entry = IntegrationDocumentInbox::create([

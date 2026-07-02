@@ -15,40 +15,12 @@ class StoreService
     }
 
     /**
-     * After temporarily using a merchant/user API key, restore the server key (or prior key).
-     * Never skip restore when $userApiKey was applied: an empty captured key must not leave the client on the merchant key.
-     */
-    private function restoreApiKeyAfterUserScopedCall(?string $userApiKey, ?string $previousApiKey): void
-    {
-        if ($userApiKey === null || $userApiKey === '') {
-            return;
-        }
-
-        $restore = (is_string($previousApiKey) && $previousApiKey !== '')
-            ? $previousApiKey
-            : (string) config('services.btcpay.api_key', '');
-
-        $this->client->setApiKey($restore);
-    }
-
-    /**
      * Create a new store in BTCPay Server.
      * If a user-level API key is provided, it will be used instead of server-level.
      */
     public function createStore(array $data, ?string $userApiKey = null): array
     {
-        $originalApiKey = null;
-        if ($userApiKey) {
-            // Temporarily use user-level API key
-            $originalApiKey = $this->client->getApiKey();
-            $this->client->setApiKey($userApiKey);
-        }
-
-        try {
-            return $this->client->post('/api/v1/stores', $data);
-        } finally {
-            $this->restoreApiKeyAfterUserScopedCall($userApiKey, $originalApiKey);
-        }
+        return $this->client->withUserKey($userApiKey, fn () => $this->client->post('/api/v1/stores', $data));
     }
 
     /**
@@ -61,20 +33,10 @@ class StoreService
         $apiKeyHash = $userApiKey ? hash('sha256', $userApiKey) : 'server';
         $cacheKey = "btcpay:store:{$storeId}:{$apiKeyHash}";
 
-        return Cache::remember($cacheKey, 60, function () use ($storeId, $userApiKey) {
-            $originalApiKey = null;
-            if ($userApiKey) {
-                // Temporarily use user-level API key
-                $originalApiKey = $this->client->getApiKey();
-                $this->client->setApiKey($userApiKey);
-            }
-
-            try {
-                return $this->client->get("/api/v1/stores/{$storeId}");
-            } finally {
-                $this->restoreApiKeyAfterUserScopedCall($userApiKey, $originalApiKey);
-            }
-        });
+        return Cache::remember($cacheKey, 60, fn () => $this->client->withUserKey(
+            $userApiKey,
+            fn () => $this->client->get("/api/v1/stores/{$storeId}")
+        ));
     }
 
     /**
@@ -83,18 +45,7 @@ class StoreService
      */
     public function listStores(?string $userApiKey = null): array
     {
-        $originalApiKey = null;
-        if ($userApiKey) {
-            // Temporarily use user-level API key
-            $originalApiKey = $this->client->getApiKey();
-            $this->client->setApiKey($userApiKey);
-        }
-
-        try {
-            return $this->client->get('/api/v1/stores');
-        } finally {
-            $this->restoreApiKeyAfterUserScopedCall($userApiKey, $originalApiKey);
-        }
+        return $this->client->withUserKey($userApiKey, fn () => $this->client->get('/api/v1/stores'));
     }
 
     /**
@@ -103,21 +54,12 @@ class StoreService
      */
     public function updateStore(string $storeId, array $data, ?string $userApiKey = null): array
     {
-        $originalApiKey = null;
-        if ($userApiKey) {
-            // Temporarily use user-level API key
-            $originalApiKey = $this->client->getApiKey();
-            $this->client->setApiKey($userApiKey);
-        }
-
-        try {
+        return $this->client->withUserKey($userApiKey, function () use ($storeId, $data, $userApiKey) {
             $result = $this->client->put("/api/v1/stores/{$storeId}", $data);
             $this->forgetStoreCache($storeId, $userApiKey);
 
             return $result;
-        } finally {
-            $this->restoreApiKeyAfterUserScopedCall($userApiKey, $originalApiKey);
-        }
+        });
     }
 
     /**
@@ -235,21 +177,12 @@ class StoreService
      */
     public function uploadLogo(string $storeId, $file, ?string $userApiKey = null): array
     {
-        $originalApiKey = null;
-        if ($userApiKey) {
-            // Temporarily use user-level API key
-            $originalApiKey = $this->client->getApiKey();
-            $this->client->setApiKey($userApiKey);
-        }
-
-        try {
+        return $this->client->withUserKey($userApiKey, function () use ($storeId, $file, $userApiKey) {
             $result = $this->client->postMultipart("/api/v1/stores/{$storeId}/logo", $file);
             $this->forgetStoreCache($storeId, $userApiKey);
 
             return $result;
-        } finally {
-            $this->restoreApiKeyAfterUserScopedCall($userApiKey, $originalApiKey);
-        }
+        });
     }
 
     /**
@@ -258,14 +191,7 @@ class StoreService
      */
     public function deleteLogo(string $storeId, ?string $userApiKey = null): void
     {
-        $originalApiKey = null;
-        if ($userApiKey) {
-            // Temporarily use user-level API key
-            $originalApiKey = $this->client->getApiKey();
-            $this->client->setApiKey($userApiKey);
-        }
-
-        try {
+        $this->client->withUserKey($userApiKey, function () use ($storeId, $userApiKey) {
             try {
                 $this->client->delete("/api/v1/stores/{$storeId}/logo");
             } catch (BtcPayException $e) {
@@ -278,8 +204,6 @@ class StoreService
             // BTCPay may keep logoUrl on the store after DELETE /logo (external URL, fileid reference, or 2.x branding).
             // Partial PUT matches how StoreSettingsController updates BTCPay.
             $this->updateStore($storeId, ['logoUrl' => null], $userApiKey);
-        } finally {
-            $this->restoreApiKeyAfterUserScopedCall($userApiKey, $originalApiKey);
-        }
+        });
     }
 }

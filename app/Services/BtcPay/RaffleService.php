@@ -11,7 +11,7 @@ class RaffleService
     public function probe(string $storeId, string $apiKey): bool
     {
         try {
-            $this->withUserKey($apiKey, function () use ($storeId) {
+            $this->client->withUserKey($apiKey, function () use ($storeId) {
                 $this->client->get("/api/v1/stores/{$storeId}/raffle");
             });
 
@@ -30,7 +30,7 @@ class RaffleService
      */
     public function listRaffles(string $storeId, string $apiKey): array
     {
-        $result = $this->withUserKey($apiKey, function () use ($storeId) {
+        $result = $this->client->withUserKey($apiKey, function () use ($storeId) {
             return $this->client->get("/api/v1/stores/{$storeId}/raffle");
         });
 
@@ -43,7 +43,7 @@ class RaffleService
      */
     public function createRaffle(string $storeId, array $payload, string $apiKey): array
     {
-        return $this->withUserKey($apiKey, function () use ($storeId, $payload) {
+        return $this->client->withUserKey($apiKey, function () use ($storeId, $payload) {
             return $this->client->post("/api/v1/stores/{$storeId}/raffle", $payload);
         });
     }
@@ -54,14 +54,14 @@ class RaffleService
      */
     public function updateRaffle(string $storeId, string $raffleId, array $payload, string $apiKey): array
     {
-        return $this->withUserKey($apiKey, function () use ($storeId, $raffleId, $payload) {
+        return $this->client->withUserKey($apiKey, function () use ($storeId, $raffleId, $payload) {
             return $this->client->put("/api/v1/stores/{$storeId}/raffle/{$raffleId}", $payload);
         });
     }
 
     public function deleteRaffle(string $storeId, string $raffleId, string $apiKey): void
     {
-        $this->withUserKey($apiKey, function () use ($storeId, $raffleId) {
+        $this->client->withUserKey($apiKey, function () use ($storeId, $raffleId) {
             $this->client->delete("/api/v1/stores/{$storeId}/raffle/{$raffleId}");
         });
     }
@@ -72,7 +72,7 @@ class RaffleService
      */
     public function addManualTickets(string $storeId, string $raffleId, array $payload, string $apiKey): array
     {
-        $result = $this->withUserKey($apiKey, function () use ($storeId, $raffleId, $payload) {
+        $result = $this->client->withUserKey($apiKey, function () use ($storeId, $raffleId, $payload) {
             return $this->client->post(
                 "/api/v1/stores/{$storeId}/raffle/{$raffleId}/tickets/manual",
                 $payload
@@ -87,7 +87,7 @@ class RaffleService
      */
     public function createPresenterToken(string $storeId, string $raffleId, string $apiKey): array
     {
-        return $this->withUserKey($apiKey, function () use ($storeId, $raffleId) {
+        return $this->client->withUserKey($apiKey, function () use ($storeId, $raffleId) {
             return $this->client->post(
                 "/api/v1/stores/{$storeId}/raffle/{$raffleId}/presenter-token",
                 []
@@ -100,7 +100,7 @@ class RaffleService
      */
     public function getRaffle(string $storeId, string $raffleId, string $apiKey): array
     {
-        return $this->withUserKey($apiKey, function () use ($storeId, $raffleId) {
+        return $this->client->withUserKey($apiKey, function () use ($storeId, $raffleId) {
             return $this->client->get("/api/v1/stores/{$storeId}/raffle/{$raffleId}");
         });
     }
@@ -110,7 +110,7 @@ class RaffleService
      */
     public function openRaffle(string $storeId, string $raffleId, string $apiKey): array
     {
-        return $this->withUserKey($apiKey, function () use ($storeId, $raffleId) {
+        return $this->client->withUserKey($apiKey, function () use ($storeId, $raffleId) {
             return $this->client->post("/api/v1/stores/{$storeId}/raffle/{$raffleId}/open", []);
         });
     }
@@ -120,7 +120,7 @@ class RaffleService
      */
     public function closeRaffle(string $storeId, string $raffleId, string $apiKey): array
     {
-        return $this->withUserKey($apiKey, function () use ($storeId, $raffleId) {
+        return $this->client->withUserKey($apiKey, function () use ($storeId, $raffleId) {
             return $this->client->post("/api/v1/stores/{$storeId}/raffle/{$raffleId}/close", []);
         });
     }
@@ -130,7 +130,7 @@ class RaffleService
      */
     public function drawRaffle(string $storeId, string $raffleId, string $apiKey): array
     {
-        return $this->withUserKey($apiKey, function () use ($storeId, $raffleId) {
+        return $this->client->withUserKey($apiKey, function () use ($storeId, $raffleId) {
             return $this->client->post("/api/v1/stores/{$storeId}/raffle/{$raffleId}/draw", []);
         });
     }
@@ -140,7 +140,7 @@ class RaffleService
      */
     public function completeRaffle(string $storeId, string $raffleId, string $apiKey): array
     {
-        return $this->withUserKey($apiKey, function () use ($storeId, $raffleId) {
+        return $this->client->withUserKey($apiKey, function () use ($storeId, $raffleId) {
             return $this->client->post("/api/v1/stores/{$storeId}/raffle/{$raffleId}/complete", []);
         });
     }
@@ -150,7 +150,7 @@ class RaffleService
      */
     public function listTickets(string $storeId, string $raffleId, string $apiKey): array
     {
-        $result = $this->withUserKey($apiKey, function () use ($storeId, $raffleId) {
+        $result = $this->client->withUserKey($apiKey, function () use ($storeId, $raffleId) {
             return $this->client->get("/api/v1/stores/{$storeId}/raffle/{$raffleId}/tickets");
         });
 
@@ -162,23 +162,11 @@ class RaffleService
      */
     public function listDrawings(string $storeId, string $raffleId, string $apiKey): array
     {
-        $result = $this->withUserKey($apiKey, function () use ($storeId, $raffleId) {
+        $result = $this->client->withUserKey($apiKey, function () use ($storeId, $raffleId) {
             return $this->client->get("/api/v1/stores/{$storeId}/raffle/{$raffleId}/drawings");
         });
 
         return $this->normalizeList($result);
-    }
-
-    protected function withUserKey(string $userApiKey, callable $fn): mixed
-    {
-        $originalApiKey = $this->client->getApiKey();
-        $this->client->setApiKey($userApiKey);
-
-        try {
-            return $fn();
-        } finally {
-            $this->client->setApiKey($originalApiKey);
-        }
     }
 
     /**

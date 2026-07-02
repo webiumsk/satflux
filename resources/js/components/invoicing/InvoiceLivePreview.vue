@@ -1,7 +1,8 @@
 <template>
   <div
-    class="invoice-preview bg-white text-gray-900 rounded-lg shadow-lg text-sm p-8 min-h-[720px]"
+    class="invoice-preview flex min-h-[720px] flex-col bg-white text-gray-900 rounded-lg shadow-lg text-sm p-8"
   >
+    <div class="flex-1">
     <div class="grid grid-cols-3 gap-4 mb-3">
       <div class="text-[10px] leading-relaxed text-gray-700">
         <div
@@ -305,14 +306,35 @@
       </div>
     </div>
 
-    <p
-      v-if="company?.issuer_name || company?.issuer_email"
-      class="text-[10px] text-gray-500 mt-4"
-    >
-      {{ t("invoicing.issued_by") }}: {{ company.issuer_name }}
-      <span v-if="company.issuer_phone"> · {{ company.issuer_phone }}</span>
-      <span v-if="company.issuer_email"> · {{ company.issuer_email }}</span>
-    </p>
+    </div>
+
+    <div class="mt-auto shrink-0 pt-4">
+    <div class="border-t border-dotted border-gray-300 pt-3">
+      <div class="grid grid-cols-4 gap-2 text-[10px] text-gray-600">
+        <div v-if="company?.issuer_name" class="text-left">
+          <span class="font-semibold text-gray-800">{{ t('invoicing.issued_by') }}:</span>
+          {{ company.issuer_name }}
+        </div>
+        <div v-if="company?.issuer_phone" class="flex items-center justify-center gap-1.5 min-w-0">
+          <FooterContactIcon icon="phone" />
+          <a :href="phoneHref" class="text-gray-600 no-underline truncate">{{ company.issuer_phone }}</a>
+        </div>
+        <div v-if="company?.website" class="flex items-center justify-center gap-1.5 min-w-0">
+          <FooterContactIcon icon="web" />
+          <a :href="websiteHref" class="text-gray-600 no-underline truncate" target="_blank" rel="noopener">{{ displayWebsite }}</a>
+        </div>
+        <div v-if="company?.issuer_email" class="flex items-center justify-end gap-1.5 min-w-0">
+          <FooterContactIcon icon="email" />
+          <a :href="emailHref" class="text-gray-600 no-underline truncate">{{ company.issuer_email }}</a>
+        </div>
+      </div>
+      <div class="mt-2 grid grid-cols-4 items-center text-[9px] text-gray-400">
+        <span />
+        <p class="col-span-2 text-center">{{ t('invoicing.created_with_satflux') }}</p>
+        <p class="text-right text-[7px] text-gray-300">{{ t('invoicing.page_number') }} 1/1</p>
+      </div>
+    </div>
+    </div>
   </div>
 </template>
 
@@ -320,6 +342,7 @@
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useCompanyVatPolicy } from "../../composables/useCompanyVatPolicy";
+import FooterContactIcon from "./FooterContactIcon.vue";
 
 export type InvoiceLineForm = {
   name: string;
@@ -416,6 +439,26 @@ const amountPaid = computed(() => props.amountPaid ?? props.totals.total);
 const amountDue = computed(() =>
   isPaid.value ? 0 : Math.max(0, props.totals.total - (props.amountPaid ?? 0)),
 );
+
+const displayWebsite = computed(() =>
+  props.company?.website?.replace(/^https?:\/\//i, "").replace(/\/$/, "") ?? "",
+);
+
+const phoneHref = computed(() => {
+  const phone = props.company?.issuer_phone;
+  if (!phone) return "";
+  return `tel:${phone.replace(/[^\d+]/g, "")}`;
+});
+
+const emailHref = computed(() =>
+  props.company?.issuer_email ? `mailto:${props.company.issuer_email}` : "",
+);
+
+const websiteHref = computed(() => {
+  const website = props.company?.website;
+  if (!website) return "";
+  return /^https?:\/\//i.test(website) ? website : `https://${website.replace(/^\/+/, "")}`;
+});
 
 function lineTotal(line: InvoiceLineForm) {
   const net =

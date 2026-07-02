@@ -26,11 +26,11 @@
 }
 
 .invoicing-app-header {
-  @apply bg-gray-100;
+  @apply bg-gray-100 overflow-visible;
 }
 
 .invoicing-main-nav {
-  @apply flex flex-wrap items-center gap-0 bg-gray-100 border-b border-gray-200 min-h-[44px];
+  @apply flex flex-wrap items-center gap-0 bg-gray-100 border-b border-gray-200 min-h-[44px] overflow-visible;
 }
 
 .invoicing-main-nav__item {
@@ -43,6 +43,78 @@
 
 .invoicing-main-nav__company {
   @apply text-xs text-gray-500 truncate max-w-[200px] py-2 pr-2;
+}
+
+.invoicing-company-switcher {
+  @apply relative shrink-0 overflow-visible;
+}
+
+.invoicing-company-switcher__logo {
+  @apply h-4 w-4 shrink-0 rounded object-contain bg-white;
+}
+
+.invoicing-company-switcher__trigger {
+  @apply inline-flex items-center gap-1.5 max-w-[240px] rounded-md px-2 py-1.5 text-sm text-gray-700
+    hover:bg-gray-200/80 transition-colors border border-transparent;
+}
+
+.invoicing-company-switcher__trigger--open {
+  @apply bg-white border-gray-300 shadow-sm;
+}
+
+.invoicing-company-switcher__label {
+  @apply truncate text-left font-medium text-gray-800;
+}
+
+.invoicing-company-switcher__panel {
+  @apply absolute right-0 top-full mt-1.5 z-[100] w-[min(320px,calc(100vw-2rem))] rounded-lg border border-gray-200
+    bg-white shadow-xl overflow-hidden text-sm;
+}
+
+.invoicing-company-switcher__panel::before {
+  content: '';
+  @apply absolute -top-1.5 right-6 h-3 w-3 rotate-45 border-l border-t border-gray-200 bg-white;
+}
+
+.invoicing-company-switcher__search-wrap {
+  @apply relative z-10 flex items-center gap-2 border-b border-gray-200 px-3 py-2.5;
+}
+
+.invoicing-company-switcher__search {
+  @apply w-full border-0 bg-transparent p-0 text-sm text-gray-900 placeholder:text-gray-400
+    focus:outline-none focus:ring-0;
+}
+
+.invoicing-company-switcher__list {
+  @apply relative z-10 max-h-64 overflow-y-auto py-1;
+}
+
+.invoicing-company-switcher__item {
+  @apply flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50;
+}
+
+.invoicing-company-switcher__item--active {
+  @apply bg-gray-100 text-gray-900;
+}
+
+.invoicing-company-switcher__empty {
+  @apply px-3 py-4 text-center text-xs text-gray-500;
+}
+
+.invoicing-company-switcher__footer {
+  @apply relative z-10 flex items-center justify-between gap-2 border-t border-gray-200 px-3 py-2;
+}
+
+.invoicing-company-switcher__panel--inline {
+  @apply static mt-0 w-full shadow-none border-gray-200;
+}
+
+.invoicing-company-switcher__panel--inline::before {
+  content: none;
+}
+
+.invoicing-company-switcher--inline .invoicing-company-switcher__label {
+  @apply text-gray-900;
 }
 
 .invoicing-sub-nav {
@@ -173,8 +245,12 @@
   @apply bg-white border border-gray-200 rounded-xl shadow-xl p-6 w-full max-w-md space-y-3;
 }
 
+.invoicing-sticky-chrome {
+  @apply sticky top-0 z-30 shadow-sm bg-gray-100 overflow-visible;
+}
+
 .invoicing-toolbar {
-  @apply border-b border-gray-200 bg-white/95 backdrop-blur sticky top-0 z-20 shadow-sm;
+  @apply border-b border-gray-200 bg-white/95 backdrop-blur sticky top-0 z-10 shadow-sm;
 }
 
 .invoicing-bulk-bar {

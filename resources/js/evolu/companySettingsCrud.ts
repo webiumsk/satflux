@@ -66,6 +66,17 @@ function mergeEmailSettings(
     return merged;
 }
 
+export function resolveLocalEmailSettingsForBridge(
+    evolu: Evolu<InvoicingLocalSchema>,
+    companyId: CompanyId,
+    partial: Record<string, unknown>,
+): Record<string, unknown> {
+    const row = findCompanyRow(evolu, companyId);
+    const existing = parseSettingsJson(row?.emailSettingsJson ?? null);
+
+    return mergeEmailSettings(existing, partial);
+}
+
 export function updateLocalAppSettings(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,

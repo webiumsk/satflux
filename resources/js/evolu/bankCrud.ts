@@ -10,12 +10,16 @@ import {
 import { resolvedBankDirection } from "./bankDirectionGuesser";
 import { parseCamt053BankStatement, supportsCamt053File } from "./bankCamt053Parser";
 import { parseCsvBankStatement, supportsCsvBankFile, type ParsedBankRow } from "./bankCsvParser";
+import {
+    bankPaymentMatchReason,
+    documentMatchesBankPaymentHints,
+    hasBankPaymentMatchHints,
+} from "./bankPaymentDocumentMatcher";
 import { bankTransactionDedupeHash } from "./bankDedupe";
 import {
     documentAmountDue,
     evoluBankBatchToApi,
     evoluBankTxToApi,
-    matchesDocumentVariableSymbol,
     type EvoluBankImportBatchRow,
     type EvoluBankTransactionMatchRow,
     type EvoluBankTransactionRow,
@@ -89,15 +93,16 @@ function findExactMatchDocument(
     transaction: EvoluBankTransactionRow,
     documents: EvoluDocumentRow[],
 ): EvoluDocumentRow | null {
-    const vs = transaction.variableSymbol;
-    if (!vs) return null;
+    if (!hasBankPaymentMatchHints(transaction.variableSymbol, transaction.reference)) {
+        return null;
+    }
 
     const candidates = documents.filter(
         (doc) =>
             doc.companyId === companyId
             && doc.status === "issued"
             && (doc.documentType === "invoice" || doc.documentType === "proforma")
-            && matchesDocumentVariableSymbol(doc, vs),
+            && documentMatchesBankPaymentHints(doc, transaction.variableSymbol, transaction.reference),
     );
 
     if (candidates.length === 0) return null;
@@ -147,6 +152,17 @@ function applyMatch(
         AMOUNT_TOLERANCE,
     );
 
+    const docInCtx = ctx.documents.find((row) => row.id === document.id);
+    if (docInCtx) {
+        const total = parseFloat(docInCtx.total || "0");
+        const fullyPaid = Math.abs(matchedAmount - total) <= AMOUNT_TOLERANCE;
+        docInCtx.status = fullyPaid ? "paid" : "issued";
+        docInCtx.amountPaid = matchedAmount.toFixed(2);
+        if (fullyPaid) {
+            docInCtx.paidAt = new Date().toISOString();
+        }
+    }
+
     ctx.matches.push({
         id: match.value.id,
         bankTransactionId: transaction.id,
@@ -167,7 +183,7 @@ export function tryAutoMatchTransaction(
 ): boolean {
     if (transaction.matchStatus === "matched") return true;
     if (resolvedBankDirection(transaction) !== "credit") return false;
-    if (!transaction.variableSymbol) return false;
+    if (!hasBankPaymentMatchHints(transaction.variableSymbol, transaction.reference)) return false;
 
     const document = findExactMatchDocument(transaction.companyId, transaction, ctx.documents);
     if (!document) return false;
@@ -190,14 +206,21 @@ export function bankMatchSuggestions(
 ): { document: EvoluDocumentRow; reason: string }[] {
     if (resolvedBankDirection(transaction) !== "credit") return [];
 
-    const vs = transaction.variableSymbol;
+    if (!hasBankPaymentMatchHints(transaction.variableSymbol, transaction.reference)) {
+        return [];
+    }
+
     const candidates = documents
         .filter(
             (doc) =>
                 doc.companyId === transaction.companyId
                 && doc.status === "issued"
                 && (doc.documentType === "invoice" || doc.documentType === "proforma")
-                && matchesDocumentVariableSymbol(doc, vs),
+                && documentMatchesBankPaymentHints(
+                    doc,
+                    transaction.variableSymbol,
+                    transaction.reference,
+                ),
         )
         .sort((a, b) => (b.issueDate || "").localeCompare(a.issueDate || ""))
         .slice(0, 50);
@@ -207,7 +230,9 @@ export function bankMatchSuggestions(
     const txCurrency = (transaction.currency || "EUR").toUpperCase();
 
     for (const document of candidates) {
-        let reason = "variable_symbol";
+        let reason =
+            bankPaymentMatchReason(document, transaction.variableSymbol, transaction.reference)
+            ?? "variable_symbol";
         if (Math.abs(documentAmountDue(document) - txAmount) > AMOUNT_TOLERANCE) {
             reason = "amount_mismatch";
         }
@@ -229,13 +254,57 @@ export async function importLocalBankFileAsync(
 ): Promise<{ imported: number; auto_matched: number; skipped_duplicates: number }> {
     const contents = await file.text();
     const { rows, source } = parseBankFile(file.name, contents, format);
+
+    return importLocalBankRows(evolu, companyId, rows, source, file.name.slice(0, 255));
+}
+
+export type WiseBankRowInput = {
+    booked_at: string;
+    amount: number | string;
+    currency: string;
+    direction: string;
+    variable_symbol?: string | null;
+    constant_symbol?: string | null;
+    specific_symbol?: string | null;
+    counterparty_name?: string | null;
+    counterparty_iban?: string | null;
+    reference?: string | null;
+    bank_transaction_id?: string | null;
+};
+
+function wiseRowsToParsed(rows: WiseBankRowInput[]): ParsedBankRow[] {
+    return rows.map((row) => ({
+        bookedAt: row.booked_at,
+        amount: typeof row.amount === "number" ? row.amount : parseFloat(String(row.amount)) || 0,
+        currency: (row.currency || "USD").toUpperCase(),
+        direction: row.direction === "debit" ? "debit" : "credit",
+        variableSymbol: row.variable_symbol ?? null,
+        constantSymbol: row.constant_symbol ?? null,
+        specificSymbol: row.specific_symbol ?? null,
+        counterpartyName: row.counterparty_name ?? null,
+        counterpartyIban: row.counterparty_iban ?? null,
+        reference: row.reference ?? null,
+        bankTransactionId: row.bank_transaction_id ?? null,
+    }));
+}
+
+export async function importLocalBankRows(
+    evolu: Evolu<InvoicingLocalSchema>,
+    companyId: CompanyId,
+    rows: ParsedBankRow[] | WiseBankRowInput[],
+    source: BankImportSource,
+    filename = "import",
+): Promise<{ imported: number; auto_matched: number; skipped_duplicates: number }> {
+    const parsedRows = rows.length > 0 && "bookedAt" in rows[0]
+        ? (rows as ParsedBankRow[])
+        : wiseRowsToParsed(rows as WiseBankRowInput[]);
     const ctx = await loadBankPaymentContext(evolu);
 
     const batchResult = evolu.insert("bankImportBatch", {
         companyId,
         source,
-        filename: file.name.slice(0, 255),
-        rowCount: String(rows.length),
+        filename: filename.slice(0, 255),
+        rowCount: String(parsedRows.length),
         importedCount: "0",
         skippedDuplicates: "0",
         autoMatchedCount: "0",
@@ -251,19 +320,19 @@ export async function importLocalBankFileAsync(
     let autoMatched = 0;
     const created: EvoluBankTransactionRow[] = [];
 
-    for (const parsed of rows) {
+    for (const row of parsedRows) {
         const dedupeHash = await bankTransactionDedupeHash(companyId, {
-            bookedAt: parsed.bookedAt,
-            amount: parsed.amount,
-            currency: parsed.currency,
-            direction: parsed.direction,
-            variableSymbol: parsed.variableSymbol,
-            reference: parsed.reference,
-            bankTransactionId: parsed.bankTransactionId,
+            bookedAt: row.bookedAt,
+            amount: row.amount,
+            currency: row.currency,
+            direction: row.direction,
+            variableSymbol: row.variableSymbol,
+            reference: row.reference,
+            bankTransactionId: row.bankTransactionId,
         });
 
         const duplicate = ctx.transactions.some(
-            (row) => row.companyId === companyId && row.dedupeHash === dedupeHash,
+            (tx) => tx.companyId === companyId && tx.dedupeHash === dedupeHash,
         );
         if (duplicate) {
             skipped++;
@@ -273,46 +342,46 @@ export async function importLocalBankFileAsync(
         const insertResult = evolu.insert("bankTransaction", {
             companyId,
             bankImportBatchId: batchId,
-            bookedAt: parsed.bookedAt,
-            amount: parsed.amount.toFixed(2),
-            currency: parsed.currency,
-            direction: parsed.direction,
+            bookedAt: row.bookedAt,
+            amount: row.amount.toFixed(2),
+            currency: row.currency,
+            direction: row.direction,
             matchStatus: "unmatched",
             businessExpenseId: null,
-            variableSymbol: parsed.variableSymbol,
-            constantSymbol: parsed.constantSymbol,
-            specificSymbol: parsed.specificSymbol,
-            counterpartyName: parsed.counterpartyName,
-            counterpartyIban: parsed.counterpartyIban,
-            reference: parsed.reference,
-            bankTransactionId: parsed.bankTransactionId,
+            variableSymbol: row.variableSymbol,
+            constantSymbol: row.constantSymbol,
+            specificSymbol: row.specificSymbol,
+            counterpartyName: row.counterpartyName,
+            counterpartyIban: row.counterpartyIban,
+            reference: row.reference,
+            bankTransactionId: row.bankTransactionId,
             dedupeHash,
             source,
         });
 
         if (insertResult.ok) {
-            const row: EvoluBankTransactionRow = {
+            const createdRow: EvoluBankTransactionRow = {
                 id: insertResult.value.id,
                 companyId,
                 bankImportBatchId: batchId,
-                bookedAt: parsed.bookedAt,
-                amount: parsed.amount.toFixed(2),
-                currency: parsed.currency,
-                direction: parsed.direction,
+                bookedAt: row.bookedAt,
+                amount: row.amount.toFixed(2),
+                currency: row.currency,
+                direction: row.direction,
                 matchStatus: "unmatched",
                 businessExpenseId: null,
-                variableSymbol: parsed.variableSymbol,
-                constantSymbol: parsed.constantSymbol,
-                specificSymbol: parsed.specificSymbol,
-                counterpartyName: parsed.counterpartyName,
-                counterpartyIban: parsed.counterpartyIban,
-                reference: parsed.reference,
-                bankTransactionId: parsed.bankTransactionId,
+                variableSymbol: row.variableSymbol,
+                constantSymbol: row.constantSymbol,
+                specificSymbol: row.specificSymbol,
+                counterpartyName: row.counterpartyName,
+                counterpartyIban: row.counterpartyIban,
+                reference: row.reference,
+                bankTransactionId: row.bankTransactionId,
                 dedupeHash,
                 source,
             };
-            ctx.transactions.push(row);
-            created.push(row);
+            ctx.transactions.push(createdRow);
+            created.push(createdRow);
             imported++;
         } else {
             skipped++;
@@ -323,6 +392,10 @@ export async function importLocalBankFileAsync(
         if (tryAutoMatchTransaction(evolu, transaction, ctx)) {
             autoMatched++;
         }
+    }
+
+    if (autoMatched > 0) {
+        await evolu.loadQuery(allDocumentsQuery);
     }
 
     evolu.update("bankImportBatch", {
@@ -463,6 +536,10 @@ export async function importInboundServerTransactionsAsync(
         }
     }
 
+    if (autoMatched > 0) {
+        await evolu.loadQuery(allDocumentsQuery);
+    }
+
     evolu.update("bankImportBatch", {
         id: batchId,
         importedCount: String(imported),
@@ -496,6 +573,10 @@ export async function autoMatchLocalBatchAsync(
             id: batchId,
             autoMatchedCount: String(prev + autoMatched),
         });
+    }
+
+    if (autoMatched > 0) {
+        await evolu.loadQuery(allDocumentsQuery);
     }
 
     return { auto_matched: autoMatched };

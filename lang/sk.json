@@ -41,5 +41,18 @@
     "Bitcoin / Lightning (payment link)": "Bitcoin / Lightning (platobný odkaz)",
     "BTC payment QR is a web link. Open in your browser - do not scan with a Lightning wallet.": "QR je odkaz - otvorte v prehliadači, nie skenom LN peňaženky.",
     "Reverse charge - VAT to be accounted for by the recipient.": "Prenesenie daňovej povinnosti - DPH vyúčtuje odberateľ.",
-    "The supply of goods is exempt. The supply of services is subject to the reverse charge procedure.": "Dodanie tovaru je oslobodené. Dodanie služby podlieha preneseniu daňovej povinnosti."
+    "The supply of goods is exempt. The supply of services is subject to the reverse charge procedure.": "Dodanie tovaru je oslobodené. Dodanie služby podlieha preneseniu daňovej povinnosti.",
+    "EIN": "EIN",
+    "Rate": "Sadzba",
+    "Tax %": "Daň %",
+    "Sales tax": "Predajná daň",
+    "Total due": "Suma na úhradu",
+    "invoice_unit_pcs": "ks.",
+    "invoice_unit_hours": "hod.",
+    "invoice_unit_months": "mesiace",
+    "invoice_unit_person": "osoba",
+    "invoice_unit_year": "rok",
+    "Page": "Strana",
+    "Created with SATFLUX.io": "Vytvorené v SATFLUX.io",
+    "Tap or click to open payment page": "Kliknutím alebo skenom otvorte platobnú stránku"
 }

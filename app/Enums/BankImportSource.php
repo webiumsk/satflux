@@ -8,4 +8,5 @@ enum BankImportSource: string
     case Camt053 = 'camt053';
     case Manual = 'manual';
     case Email = 'email';
+    case Wise = 'wise';
 }

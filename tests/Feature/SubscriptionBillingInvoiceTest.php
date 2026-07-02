@@ -14,7 +14,7 @@ use App\Models\User;
 use App\Models\WebhookEvent;
 use App\Services\Invoicing\DocumentSequenceService;
 use App\Services\Invoicing\SubscriptionBillingInvoiceService;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -166,7 +166,7 @@ class SubscriptionBillingInvoiceTest extends TestCase
         $subscriber = User::factory()->create(['email' => 'customer@example.com', 'role' => 'free']);
         $this->fakeBtcPaySubscriptionInvoice();
 
-        app(SubscriptionService::class)->activateSubscription($subscriber, 'pro', 'btcpay-sub-99');
+        app(SubscriptionEntitlementService::class)->activateSubscription($subscriber, 'pro', 'btcpay-sub-99');
 
         $invoiceData = [
             'id' => 'inv-sub-1',

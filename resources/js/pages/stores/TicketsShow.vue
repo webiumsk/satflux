@@ -1773,6 +1773,7 @@ import {
 import { useRafflesStore } from "../../store/raffles";
 import { useFlashStore } from "../../store/flash";
 import api from "../../services/api";
+import { getApiErrorMessage } from "../../composables/useApiError";
 import AppShowLayout from "../../components/stores/AppShowLayout.vue";
 import DatePicker from "../../components/ui/DatePicker.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
@@ -2067,10 +2068,8 @@ async function loadEvents() {
   clearMessages();
   try {
     events.value = await ticketsStore.fetchEvents(props.store.id);
-  } catch (err: any) {
-    showError(
-      err?.response?.data?.message || err?.message || "Failed to load events",
-    );
+  } catch (err: unknown) {
+    showError(getApiErrorMessage(err, t("common.error")));
   } finally {
     loadingEvents.value = false;
   }

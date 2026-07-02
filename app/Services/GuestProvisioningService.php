@@ -195,7 +195,8 @@ class GuestProvisioningService
                     $userData['guest_recovery_enrolled_at'] = now();
                 }
 
-                $user = User::create($userData);
+                // forceCreate: 'role' is not mass assignable (trusted internal flow)
+                $user = User::forceCreate($userData);
 
                 $store = new Store([
                     'id' => (string) Str::uuid(),

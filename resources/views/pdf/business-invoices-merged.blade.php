@@ -18,11 +18,14 @@
         $lines = $page['lines'];
         $bankQr = $page['bankQr'] ?? null;
         $btcPayQr = $page['btcPayQr'] ?? null;
+        $btcPayUrl = $page['btcPayUrl'] ?? null;
         $logoDataUri = $page['logoDataUri'] ?? null;
         $signatureStampDataUri = $page['signatureStampDataUri'] ?? null;
         $taxBreakdown = $page['taxBreakdown'] ?? [];
         $showVatColumn = $page['showVatColumn'] ?? false;
         $showVatBreakdown = $page['showVatBreakdown'] ?? false;
+        $showSalesTaxColumn = $page['showSalesTaxColumn'] ?? false;
+        $isUs = $page['isUs'] ?? false;
         $reverseChargeNote = $page['reverseChargeNote'] ?? null;
     @endphp
     <div class="invoice-page">
@@ -34,13 +37,19 @@
             'taxBreakdown',
             'showVatColumn',
             'showVatBreakdown',
+            'showSalesTaxColumn',
             'reverseChargeNote',
             'bankQr',
             'btcPayQr',
+            'btcPayUrl',
             'logoDataUri',
             'signatureStampDataUri',
+            'isUs',
         ))
+
+        @include('pdf.partials.business-invoice-footer', ['company' => $company, 'footerFixed' => false])
     </div>
 @endforeach
+@include('pdf.partials.business-invoice-page-script')
 </body>
 </html>

@@ -35,6 +35,19 @@ class Store extends Model
     ];
 
     /**
+     * The attributes that should be hidden for serialization.
+     * btcpay_store_id is exposed only explicitly (Pay Button - see CLAUDE.md),
+     * never via toArray()/toJson().
+     *
+     * @var array<int, string>
+     */
+    protected $hidden = [
+        'webhook_secret',
+        'btcpay_store_id',
+        'btcpay_webhook_id',
+    ];
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

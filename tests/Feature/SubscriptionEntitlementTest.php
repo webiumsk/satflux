@@ -9,7 +9,7 @@ use App\Models\Store;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
@@ -63,7 +63,7 @@ class SubscriptionEntitlementTest extends TestCase
         $user = User::factory()->create();
         $trialEndsAt = now()->addDays(30);
 
-        $subscription = app(SubscriptionService::class)->activateTrialSubscription(
+        $subscription = app(SubscriptionEntitlementService::class)->activateTrialSubscription(
             $user,
             'pro',
             $trialEndsAt,
@@ -100,7 +100,7 @@ class SubscriptionEntitlementTest extends TestCase
             'btcpay_subscription_id' => 'btcpay-paid-sub',
         ]);
 
-        $subscription = app(SubscriptionService::class)->activateTrialSubscription(
+        $subscription = app(SubscriptionEntitlementService::class)->activateTrialSubscription(
             $user,
             'pro',
             now()->addDays(30),
@@ -371,7 +371,7 @@ class SubscriptionEntitlementTest extends TestCase
             'trial_ends_at' => now()->subDay(),
         ]);
 
-        app(SubscriptionService::class)->updateAllSubscriptionStatuses();
+        app(SubscriptionEntitlementService::class)->updateAllSubscriptionStatuses();
 
         $user->refresh();
         $this->assertSame('free', $user->role);

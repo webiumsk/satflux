@@ -683,6 +683,8 @@ import AppScrollPane from "../../components/layout/AppScrollPane.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 import ProPlanBadge from "../../components/stores/ProPlanBadge.vue";
 import Select from "../../components/ui/Select.vue";
+import { useStoresStore } from "../../store/stores";
+import { getApiErrorMessage } from "../../composables/useApiError";
 import api from "../../services/api";
 
 const { t } = useI18n();
@@ -690,6 +692,7 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const appsStore = useAppsStore();
+const storesStore = useStoresStore();
 const authUser = computed(() => authStore.user);
 const planCode = computed(
   () => (authUser.value?.plan?.code ?? "free") as string,
@@ -757,10 +760,10 @@ function setFlash(msg: string, type: "success" | "error" = "success") {
 async function loadStore() {
   error.value = "";
   try {
-    const res = await api.get(`/stores/${storeId.value}`);
-    store.value = res.data.data;
-  } catch (err: any) {
-    error.value = err.response?.data?.message || "Failed to load store";
+    store.value = await storesStore.fetchStore(storeId.value);
+  } catch (err: unknown) {
+    store.value = null;
+    error.value = getApiErrorMessage(err, t("stores.loading_store"));
   }
 }
 

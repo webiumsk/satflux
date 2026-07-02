@@ -6,6 +6,13 @@
     :subtitle="t('invoicing.mobile_nav_subtitle')"
     @close="emit('close')"
   >
+    <InvoicingCompanySwitcher
+      v-if="companyId && displayCompanyLabel"
+      variant="inline"
+      :current-label="displayCompanyLabel"
+      class="mb-4"
+      @switched="emit('close')"
+    />
     <nav class="space-y-1" aria-label="Invoicing navigation">
       <div v-for="item in visibleMainNav" :key="item.id" class="space-y-0.5">
         <button
@@ -69,6 +76,7 @@ import { computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import InvoicingDrawer from './ui/InvoicingDrawer.vue';
 import InvoicingIcons from './icons/InvoicingIcons.vue';
+import InvoicingCompanySwitcher from './InvoicingCompanySwitcher.vue';
 import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompanySummary';
 import {
   useInvoicingLayout,
@@ -86,6 +94,7 @@ const emit = defineEmits<{ close: [] }>();
 
 const { t } = useI18n();
 const {
+  companyId,
   documentNavItems,
   toolsNavItems,
   activeMainSection,

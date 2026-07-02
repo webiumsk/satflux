@@ -62,6 +62,30 @@ class BtcPayClient
     }
 
     /**
+     * Execute a closure with an optional user/merchant API key, then restore the prior key.
+     * Never skip restore when $userApiKey was applied: an empty captured key must not leave the client on the merchant key.
+     */
+    public function withUserKey(?string $userApiKey, callable $fn): mixed
+    {
+        if ($userApiKey === null || $userApiKey === '') {
+            return $fn();
+        }
+
+        $previousApiKey = $this->apiKey;
+        $this->setApiKey($userApiKey);
+
+        try {
+            return $fn();
+        } finally {
+            $restore = $previousApiKey !== ''
+                ? $previousApiKey
+                : (string) config('services.btcpay.api_key', '');
+
+            $this->setApiKey($restore);
+        }
+    }
+
+    /**
      * Make a GET request to BTCPay API.
      */
     public function get(string $endpoint, array $query = []): array
@@ -121,72 +145,30 @@ class BtcPayClient
      */
     public function postMultipart(string $endpoint, $file): array
     {
-        $attempt = 0;
-        $backoff = $this->initialBackoff;
+        // Use safe filename derived from MIME type + uniqid to avoid malicious client names (.php, path traversal, etc.)
+        $safeFilename = $this->getSafeFilenameFromUploadedFile($file);
+        $fileContents = $file->get();
 
-        while ($attempt <= $this->maxRetries) {
-            try {
-                // Create a new client without Content-Type header for multipart
-                $client = Http::baseUrl($this->baseUrl)
-                    ->withHeaders([
-                        'Authorization' => "Bearer {$this->apiKey}",
-                        'Accept' => 'application/json',
-                        // Don't set Content-Type - Laravel will set it automatically for multipart
-                    ])
-                    ->timeout(30);
+        return $this->executeWithRetry(
+            'POST',
+            $endpoint,
+            ['multipart' => true],
+            // New client without Content-Type header - Laravel sets it automatically for multipart
+            fn (): Response => Http::baseUrl($this->baseUrl)
+                ->withHeaders([
+                    'Authorization' => "Bearer {$this->apiKey}",
+                    'Accept' => 'application/json',
+                ])
+                ->timeout(30)
+                ->attach('file', $fileContents, $safeFilename)
+                ->post($endpoint),
+            function (Response $response) use ($endpoint): array {
+                $responseData = $response->json();
+                $this->logRequest('POST', $endpoint, ['multipart' => true], $response, $responseData);
 
-                // Use safe filename derived from MIME type + uniqid to avoid malicious client names (.php, path traversal, etc.)
-                $safeFilename = $this->getSafeFilenameFromUploadedFile($file);
-                $fileContents = $file->get();
-                $response = $client->attach('file', $fileContents, $safeFilename)
-                    ->post($endpoint);
-
-                if ($response->successful()) {
-                    $responseData = $response->json();
-                    $this->logRequest('POST', $endpoint, ['multipart' => true], $response, $responseData);
-
-                    return $responseData ?? [];
-                }
-
-                // Handle rate limiting
-                if ($response->status() === 429) {
-                    $retryAfter = (int) ($response->header('Retry-After') ?? $backoff);
-                    $this->logRequest('POST', $endpoint, ['multipart' => true], $response, null, "Rate limit exceeded, retry after {$retryAfter}s");
-
-                    if ($attempt < $this->maxRetries) {
-                        sleep($backoff);
-                        $backoff = $this->exponentialBackoff($backoff);
-                        $attempt++;
-
-                        continue;
-                    }
-
-                    throw new BtcPayRateLimitException('Rate limit exceeded', $retryAfter);
-                }
-
-                // Handle other errors
-                $this->handleErrorResponse($response, 'POST', $endpoint);
-
-            } catch (BtcPayRateLimitException $e) {
-                throw $e;
-            } catch (BtcPayException $e) {
-                throw $e;
-            } catch (\Exception $e) {
-                $this->logRequest('POST', $endpoint, ['multipart' => true], null, null, "Exception: {$e->getMessage()}");
-
-                if ($attempt < $this->maxRetries) {
-                    sleep($backoff);
-                    $backoff = $this->exponentialBackoff($backoff);
-                    $attempt++;
-
-                    continue;
-                }
-
-                throw new BtcPayException("Request failed after {$this->maxRetries} retries: {$e->getMessage()}", 0, $e);
+                return $responseData ?? [];
             }
-        }
-
-        throw new BtcPayException("Request failed after {$this->maxRetries} retries");
+        );
     }
 
     /**
@@ -194,26 +176,50 @@ class BtcPayClient
      */
     protected function request(string $method, string $endpoint, array $options = []): array
     {
+        return $this->executeWithRetry(
+            $method,
+            $endpoint,
+            $options,
+            fn (): Response => $this->performRequest($method, $endpoint, $options),
+            function (Response $response) use ($method, $endpoint, $options): array {
+                // For DELETE requests, BTCPay may return 204 No Content (empty body)
+                // or 200 OK with empty/null body
+                $data = $response->json();
+                $this->logRequest($method, $endpoint, $options, $response, $data);
+
+                return $data ?? [];
+            }
+        );
+    }
+
+    /**
+     * Shared retry loop: retries 429s and transport failures with exponential
+     * backoff (blocking sleep), delegates other error responses to handleErrorResponse().
+     *
+     * @template T
+     *
+     * @param  array  $logOptions  Context passed to logRequest()
+     * @param  \Closure(): Response  $send
+     * @param  \Closure(Response): T  $onSuccess
+     * @return T
+     */
+    protected function executeWithRetry(string $method, string $endpoint, array $logOptions, \Closure $send, \Closure $onSuccess): mixed
+    {
         $attempt = 0;
         $backoff = $this->initialBackoff;
 
         while ($attempt <= $this->maxRetries) {
             try {
-                $response = $this->performRequest($method, $endpoint, $options);
+                $response = $send();
 
                 if ($response->successful()) {
-                    // For DELETE requests, BTCPay may return 204 No Content (empty body)
-                    // or 200 OK with empty/null body
-                    $data = $response->json();
-                    $this->logRequest($method, $endpoint, $options, $response, $data);
-
-                    return $data ?? [];
+                    return $onSuccess($response);
                 }
 
                 // Handle rate limiting
                 if ($response->status() === 429) {
                     $retryAfter = (int) ($response->header('Retry-After') ?? $backoff);
-                    $this->logRequest($method, $endpoint, $options, $response, null, "Rate limit exceeded, retry after {$retryAfter}s");
+                    $this->logRequest($method, $endpoint, $logOptions, $response, null, "Rate limit exceeded, retry after {$retryAfter}s");
 
                     if ($attempt < $this->maxRetries) {
                         sleep($backoff);
@@ -229,12 +235,11 @@ class BtcPayClient
                 // Handle other errors
                 $this->handleErrorResponse($response, $method, $endpoint);
 
-            } catch (BtcPayRateLimitException $e) {
-                throw $e;
             } catch (BtcPayException $e) {
+                // Includes BtcPayRateLimitException - already logged, never retried here
                 throw $e;
             } catch (\Exception $e) {
-                $this->logRequest($method, $endpoint, $options, null, null, "Exception: {$e->getMessage()}");
+                $this->logRequest($method, $endpoint, $logOptions, null, null, "Exception: {$e->getMessage()}");
 
                 if ($attempt < $this->maxRetries) {
                     sleep($backoff);
@@ -336,61 +341,23 @@ class BtcPayClient
      */
     public function getBinary(string $endpoint, string $accept = 'image/png'): string
     {
-        $attempt = 0;
-        $backoff = $this->initialBackoff;
+        return $this->executeWithRetry(
+            'GET',
+            $endpoint,
+            ['accept' => $accept],
+            fn (): Response => Http::baseUrl($this->baseUrl)
+                ->withHeaders([
+                    'Authorization' => "Bearer {$this->apiKey}",
+                    'Accept' => $accept,
+                ])
+                ->timeout(30)
+                ->get($endpoint),
+            function (Response $response) use ($endpoint, $accept): string {
+                $this->logRequest('GET', $endpoint, ['accept' => $accept], $response, null, 'binary response');
 
-        while ($attempt <= $this->maxRetries) {
-            try {
-                $response = Http::baseUrl($this->baseUrl)
-                    ->withHeaders([
-                        'Authorization' => "Bearer {$this->apiKey}",
-                        'Accept' => $accept,
-                    ])
-                    ->timeout(30)
-                    ->get($endpoint);
-
-                if ($response->successful()) {
-                    $this->logRequest('GET', $endpoint, ['accept' => $accept], $response, null, 'binary response');
-
-                    return $response->body();
-                }
-
-                if ($response->status() === 429) {
-                    $retryAfter = (int) ($response->header('Retry-After') ?? $backoff);
-                    $this->logRequest('GET', $endpoint, ['accept' => $accept], $response, null, "Rate limit exceeded, retry after {$retryAfter}s");
-
-                    if ($attempt < $this->maxRetries) {
-                        sleep($backoff);
-                        $backoff = $this->exponentialBackoff($backoff);
-                        $attempt++;
-
-                        continue;
-                    }
-
-                    throw new BtcPayRateLimitException('Rate limit exceeded', $retryAfter);
-                }
-
-                $this->handleErrorResponse($response, 'GET', $endpoint);
-            } catch (BtcPayRateLimitException $e) {
-                throw $e;
-            } catch (BtcPayException $e) {
-                throw $e;
-            } catch (\Exception $e) {
-                $this->logRequest('GET', $endpoint, ['accept' => $accept], null, null, "Exception: {$e->getMessage()}");
-
-                if ($attempt < $this->maxRetries) {
-                    sleep($backoff);
-                    $backoff = $this->exponentialBackoff($backoff);
-                    $attempt++;
-
-                    continue;
-                }
-
-                throw new BtcPayException("Request failed after {$this->maxRetries} retries: {$e->getMessage()}", 0, $e);
+                return $response->body();
             }
-        }
-
-        throw new BtcPayException("Request failed after {$this->maxRetries} retries");
+        );
     }
 
     /**

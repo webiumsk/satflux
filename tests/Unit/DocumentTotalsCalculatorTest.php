@@ -57,4 +57,87 @@ class DocumentTotalsCalculatorTest extends TestCase
         $this->assertSame('6.00', $totals['tax_total']);
         $this->assertSame('86.00', $totals['total']);
     }
+
+    #[Test]
+    public function apply_to_document_syncs_line_totals_from_canonical(): void
+    {
+        $user = User::factory()->create();
+        $company = Company::create([
+            'user_id' => $user->id,
+            'legal_name' => 'Test s.r.o.',
+            'jurisdiction' => CompanyJurisdiction::EuSk,
+            'vat_payer' => false,
+            'default_currency' => 'EUR',
+        ]);
+
+        $document = new \App\Models\BusinessDocument([
+            'currency' => 'EUR',
+            'discount_percent' => 0,
+        ]);
+        $document->setRelation('company', $company);
+        $document->setRelation('contact', null);
+        $document->setRelation('lines', collect([
+            new \App\Models\BusinessDocumentLine([
+                'sort_order' => 0,
+                'name' => 'Service',
+                'quantity' => 1,
+                'unit_price' => 1200,
+                'tax_rate' => 0,
+                'line_total' => 0,
+            ]),
+        ]));
+
+        app(DocumentTotalsCalculator::class)->applyToDocument($document, [
+            ['name' => 'Service', 'quantity' => 1, 'unit_price' => 1200, 'tax_rate' => 0],
+        ]);
+
+        $this->assertSame('1200.00', $document->lines->first()->line_total);
+        $this->assertSame('1200.00', $document->total);
+    }
+
+    #[Test]
+    public function apply_to_document_matches_lines_by_sort_order_not_collection_index(): void
+    {
+        $user = User::factory()->create();
+        $company = Company::create([
+            'user_id' => $user->id,
+            'legal_name' => 'Test s.r.o.',
+            'jurisdiction' => CompanyJurisdiction::EuSk,
+            'vat_payer' => false,
+            'default_currency' => 'EUR',
+        ]);
+
+        $document = new \App\Models\BusinessDocument([
+            'currency' => 'EUR',
+            'discount_percent' => 0,
+        ]);
+        $document->setRelation('company', $company);
+        $document->setRelation('contact', null);
+        $document->setRelation('lines', collect([
+            new \App\Models\BusinessDocumentLine([
+                'sort_order' => 1,
+                'name' => 'Second',
+                'quantity' => 1,
+                'unit_price' => 50,
+                'tax_rate' => 0,
+                'line_total' => 0,
+            ]),
+            new \App\Models\BusinessDocumentLine([
+                'sort_order' => 0,
+                'name' => 'First',
+                'quantity' => 1,
+                'unit_price' => 100,
+                'tax_rate' => 0,
+                'line_total' => 0,
+            ]),
+        ]));
+
+        app(DocumentTotalsCalculator::class)->applyToDocument($document, [
+            ['name' => 'First', 'quantity' => 1, 'unit_price' => 100, 'tax_rate' => 0],
+            ['name' => 'Second', 'quantity' => 1, 'unit_price' => 50, 'tax_rate' => 0],
+        ]);
+
+        $this->assertSame('100.00', $document->lines->firstWhere('sort_order', 0)->line_total);
+        $this->assertSame('50.00', $document->lines->firstWhere('sort_order', 1)->line_total);
+    }
 }

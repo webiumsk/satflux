@@ -12,7 +12,7 @@ use App\Models\BankTransaction;
 use App\Models\BankTransactionMatch;
 use App\Models\BusinessDocument;
 use App\Models\Company;
-use App\Support\Invoicing\BankSymbolNormalizer;
+use App\Support\Invoicing\BankPaymentDocumentMatcher;
 use Illuminate\Support\Collection;
 
 class BusinessDocumentPaymentMatcher
@@ -34,7 +34,10 @@ class BusinessDocumentPaymentMatcher
             return ['matched' => false, 'match' => null];
         }
 
-        if ($transaction->variable_symbol === null || $transaction->variable_symbol === '') {
+        if (! BankPaymentDocumentMatcher::hasMatchableHints(
+            $transaction->variable_symbol,
+            $transaction->reference,
+        )) {
             return ['matched' => false, 'match' => null];
         }
 
@@ -63,7 +66,13 @@ class BusinessDocumentPaymentMatcher
             return [];
         }
 
-        $vs = $transaction->variable_symbol;
+        if (! BankPaymentDocumentMatcher::hasMatchableHints(
+            $transaction->variable_symbol,
+            $transaction->reference,
+        )) {
+            return [];
+        }
+
         $query = BusinessDocument::query()
             ->where('company_id', $transaction->company_id)
             ->where('status', BusinessDocumentStatus::Issued)
@@ -77,9 +86,19 @@ class BusinessDocumentPaymentMatcher
         $tolerance = (float) config('bank_import.amount_tolerance', 0.01);
         $out = [];
 
-        foreach ($query->get()->filter(fn ($doc) => $this->matchesVariableSymbol($doc, $vs)) as $document) {
+        foreach ($query->get()->filter(
+            fn ($doc) => BankPaymentDocumentMatcher::matches(
+                $doc,
+                $transaction->variable_symbol,
+                $transaction->reference,
+            ),
+        ) as $document) {
             $due = $this->amountDue($document);
-            $reason = 'variable_symbol';
+            $reason = BankPaymentDocumentMatcher::matchReason(
+                $document,
+                $transaction->variable_symbol,
+                $transaction->reference,
+            ) ?? 'variable_symbol';
             if (abs((float) $transaction->amount - $due) > $tolerance) {
                 $reason = 'amount_mismatch';
             }
@@ -166,17 +185,16 @@ class BusinessDocumentPaymentMatcher
 
     protected function findExactMatch(Company $company, BankTransaction $transaction): ?BusinessDocument
     {
-        $vs = BankSymbolNormalizer::variableSymbol($transaction->variable_symbol);
-        if ($vs === null) {
-            return null;
-        }
-
         $candidates = BusinessDocument::query()
             ->where('company_id', $company->id)
             ->where('status', BusinessDocumentStatus::Issued)
             ->whereIn('type', [BusinessDocumentType::Invoice, BusinessDocumentType::Proforma])
             ->get()
-            ->filter(fn ($doc) => $this->matchesVariableSymbol($doc, $vs));
+            ->filter(fn ($doc) => BankPaymentDocumentMatcher::matches(
+                $doc,
+                $transaction->variable_symbol,
+                $transaction->reference,
+            ));
 
         if ($candidates->isEmpty()) {
             return null;
@@ -203,21 +221,6 @@ class BusinessDocumentPaymentMatcher
         $paid = (float) ($document->amount_paid ?? 0);
 
         return max(0, (float) $document->total - $paid);
-    }
-
-    protected function matchesVariableSymbol(BusinessDocument $document, ?string $vs): bool
-    {
-        if ($vs === null || $vs === '') {
-            return true;
-        }
-
-        if ((string) $document->variable_symbol === $vs) {
-            return true;
-        }
-
-        $fromNumber = preg_replace('/\D/', '', (string) ($document->number ?? ''));
-
-        return $fromNumber !== '' && $fromNumber === $vs;
     }
 
     protected function applyMatch(

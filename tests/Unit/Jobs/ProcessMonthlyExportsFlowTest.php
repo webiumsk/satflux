@@ -8,7 +8,7 @@ use App\Models\Store;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -69,7 +69,7 @@ class ProcessMonthlyExportsFlowTest extends TestCase
         ]);
 
         $job = new ProcessMonthlyExports('2026-03', $store->id);
-        $job->handle(app(SubscriptionService::class));
+        $job->handle(app(SubscriptionEntitlementService::class));
 
         $this->assertDatabaseHas('exports', [
             'store_id' => $store->id,

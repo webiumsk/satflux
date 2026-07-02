@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -32,11 +32,11 @@ class AdminUserRoleSubscriptionSyncTest extends TestCase
         $user->role = 'pro';
         $user->save();
 
-        app(SubscriptionService::class)->syncSubscriptionForAdminRole($user, 'pro');
+        app(SubscriptionEntitlementService::class)->syncSubscriptionForAdminRole($user, 'pro');
 
         $user->refresh();
 
-        $this->assertTrue(app(SubscriptionService::class)->canUseBusinessInvoicing($user));
+        $this->assertTrue(app(SubscriptionEntitlementService::class)->canUseBusinessInvoicing($user));
         $this->assertDatabaseHas('subscriptions', [
             'user_id' => $user->id,
             'plan_id' => $proPlan->id,
@@ -64,11 +64,11 @@ class AdminUserRoleSubscriptionSyncTest extends TestCase
         $user->role = 'free';
         $user->save();
 
-        app(SubscriptionService::class)->syncSubscriptionForAdminRole($user, 'free');
+        app(SubscriptionEntitlementService::class)->syncSubscriptionForAdminRole($user, 'free');
 
         $user->refresh();
 
-        $this->assertFalse(app(SubscriptionService::class)->canUseBusinessInvoicing($user));
+        $this->assertFalse(app(SubscriptionEntitlementService::class)->canUseBusinessInvoicing($user));
         $this->assertDatabaseHas('subscriptions', [
             'user_id' => $user->id,
             'plan_id' => $proPlan->id,

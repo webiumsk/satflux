@@ -1,0 +1,4513 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$btcpay_store_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/AttemptWalletConnectionConfig.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Console/Commands/AttemptWalletConnectionConfig.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/AttemptWalletConnectionConfig.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/AttemptWalletConnectionConfig.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between ''admin''\|''merchant''\|''support'' and ''enterprise''\|''pro'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Console/Commands/CheckSubscriptionStatuses.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\BusinessDocument\:\:\$document_number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/FulfillSubscriptionInvoice.php
+
+		-
+			message: '#^Property App\\Models\\User\:\:\$role \(''admin''\|''merchant''\|''support''\) does not accept ''enterprise''\|''pro''\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Console/Commands/FulfillSubscriptionInvoice.php
+
+		-
+			message: '#^Comparison operation "\>" between 0 and 0 is always false\.$#'
+			identifier: greater.alwaysFalse
+			count: 1
+			path: app/Console/Commands/SyncSubscriptionsFromBtcPay.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between ''admin''\|''merchant''\|''support'' and ''enterprise''\|''pro'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 3
+			path: app/Console/Commands/SyncSubscriptionsFromBtcPay.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Database\\Eloquent\\Model\:\:\$btcpay_store_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/AccountController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$btcpay_store_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AccountController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:apiKeys\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Controllers/AccountController.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: app/Http/Controllers/AccountController.php
+
+		-
+			message: '#^Call to function is_array\(\) with list\<array\<string, mixed\>\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Controllers/AccountController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: app/Http/Controllers/AccountController.php
+
+		-
+			message: '#^Right side of \|\| is always false\.$#'
+			identifier: booleanOr.rightAlwaysFalse
+			count: 1
+			path: app/Http/Controllers/AccountController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between int and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/AccountController.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/AccountController.php
+
+		-
+			message: '#^Offset ''en'' on string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentationArticleController.php
+
+		-
+			message: '#^Offset ''en'' on string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentationCategoryController.php
+
+		-
+			message: '#^Offset ''en'' on string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/Admin/FaqCategoryController.php
+
+		-
+			message: '#^Offset ''en'' on string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/Admin/FaqItemController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AdminController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AdminController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/AdminController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Store\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/AdminController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/AdminController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{id\: string, name\: string, created_at\: Carbon\\Carbon\|null, wallet_type\: string\|null, pos_terminal_count\: int\<0, max\>, wallet_connection_status\: mixed\}, Closure\(App\\Models\\Store\)\: array\{id\: string, name\: string, created_at\: Carbon\\Carbon\|null, wallet_type\: string\|null, pos_terminal_count\: int\<0, max\>, wallet_connection_status\: mixed\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/AdminController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>code" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/AdminController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/AdminController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/AdminController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>status" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/AdminController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: app/Http/Controllers/AppController.php
+
+		-
+			message: '#^Call to function is_string\(\) with array will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Http/Controllers/AppController.php
+
+		-
+			message: '#^Cannot unset offset ''id'' on array\{\}\|string\.$#'
+			identifier: unset.offset
+			count: 1
+			path: app/Http/Controllers/AppController.php
+
+		-
+			message: '#^Cannot unset offset ''name'' on array\{appName\: mixed\}\.$#'
+			identifier: unset.offset
+			count: 1
+			path: app/Http/Controllers/AppController.php
+
+		-
+			message: '#^Expression on left side of \?\? is always null\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Http/Controllers/AppController.php
+
+		-
+			message: '#^Property App\\Models\\App\:\:\$config \(string\|null\) does not accept array\<mixed, mixed\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Http/Controllers/AppController.php
+
+		-
+			message: '#^Variable \$btcpayApp in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: app/Http/Controllers/AppController.php
+
+		-
+			message: '#^Binary operation "\-" between float\|int\|string and non\-empty\-array\|non\-falsy\-string results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Http/Controllers/Auth/EmailVerificationController.php
+
+		-
+			message: '#^Binary operation "\-" between non\-empty\-array\|non\-falsy\-string and float\|int\|string results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Http/Controllers/Auth/EmailVerificationController.php
+
+		-
+			message: '#^Left side of && is always false\.$#'
+			identifier: booleanAnd.leftAlwaysFalse
+			count: 1
+			path: app/Http/Controllers/Auth/EmailVerificationController.php
+
+		-
+			message: '#^Parameter \#2 \$timestamp of function date expects int\|null, \(array\|string\) given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Auth/EmailVerificationController.php
+
+		-
+			message: '#^Right side of && is always true\.$#'
+			identifier: booleanAnd.rightAlwaysTrue
+			count: 1
+			path: app/Http/Controllers/Auth/EmailVerificationController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: app/Http/Controllers/CashuController.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Database\\Eloquent\\Relations\\HasOne\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/CashuController.php
+
+		-
+			message: '#^Cannot call method startOfDay\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/DashboardController.php
+
+		-
+			message: '#^Offset ''sats'' on non\-empty\-array\<string, float\|int\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/DashboardController.php
+
+		-
+			message: '#^Offset int\<0, max\> on non\-empty\-list\<non\-falsy\-string\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Http/Controllers/DashboardController.php
+
+		-
+			message: '#^Parameter \#1 \$array \(non\-empty\-list\<string\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/Http/Controllers/DashboardController.php
+
+		-
+			message: '#^Right side of && is always true\.$#'
+			identifier: booleanAnd.rightAlwaysTrue
+			count: 1
+			path: app/Http/Controllers/DashboardController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/DocumentationController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/DocumentationController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/DocumentationController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getLocalizedNameAttribute\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Controllers/DocumentationController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\DocumentationArticle\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/DocumentationController.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Http/Controllers/ExportController.php
+
+		-
+			message: '#^Cannot call method isFuture\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/ExportController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''accounting''\|''standard'' and ''xlsx'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/ExportController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/FaqController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/FaqController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getLocalizedNameAttribute\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Controllers/FaqController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\FaqItem\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/FaqController.php
+
+		-
+			message: '#^Parameter \#2 \$store of method App\\Http\\Controllers\\Integrations\\WooCommerceConnectController\:\:redirectToReturnUrl\(\) expects App\\Models\\Store, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/Integrations/WooCommerceConnectController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$company\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Integrations/WooCommerceIntegrationController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$currency\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Invoicing/BankTransactionController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$document\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Invoicing/BankTransactionController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Invoicing/BankTransactionController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$internal_number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Invoicing/BankTransactionController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$match_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Invoicing/BankTransactionController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$matched_amount\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Invoicing/BankTransactionController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$matched_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Invoicing/BankTransactionController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Invoicing/BankTransactionController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Invoicing/BankTransactionController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Invoicing/BankTransactionController.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: app/Http/Controllers/Invoicing/BankTransactionController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\BankImportBatch\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Invoicing/BankTransactionController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Invoicing/BusinessDocumentController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Invoicing/BusinessDocumentController.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Controllers/Invoicing/BusinessDocumentController.php
+
+		-
+			message: '#^If condition is always false\.$#'
+			identifier: if.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/Invoicing/BusinessDocumentController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\AuditLog\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Invoicing/BusinessDocumentController.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\CanonicalInvoiceBuilder\:\:computeLineAmounts\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Invoicing/BusinessDocumentController.php
+
+		-
+			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyAppSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Http/Controllers/Invoicing/BusinessDocumentController.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/Invoicing/BusinessDocumentController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Cancelled will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 2
+			path: app/Http/Controllers/Invoicing/BusinessDocumentController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Draft will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 3
+			path: app/Http/Controllers/Invoicing/BusinessDocumentController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Issued will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 3
+			path: app/Http/Controllers/Invoicing/BusinessDocumentController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentType\:\:Quote will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/Invoicing/BusinessDocumentController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>default_payment_terms_days" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Invoicing/BusinessDocumentController.php
+
+		-
+			message: '#^Result of \|\| is always true\.$#'
+			identifier: booleanOr.alwaysTrue
+			count: 2
+			path: app/Http/Controllers/Invoicing/BusinessDocumentPayController.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Issued will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Http/Controllers/Invoicing/BusinessDocumentPayController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Paid will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/Invoicing/BusinessDocumentPayController.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Http/Controllers/Invoicing/BusinessDocumentPayController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Invoicing/BusinessExpenseController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Invoicing/BusinessExpenseController.php
+
+		-
+			message: '#^Parameter \#1 \$attachment of method App\\Http\\Controllers\\Invoicing\\BusinessExpenseController\:\:attachmentResponse\(\) expects App\\Models\\BusinessExpenseAttachment, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Invoicing/BusinessExpenseController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\AuditLog\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Invoicing/BusinessExpenseController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: non\-empty\-array\<mixed\>, Closure\(App\\Models\\CompanyContact\)\: non\-empty\-array\<mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Invoicing/CompanyContactController.php
+
+		-
+			message: '#^Parameter \#2 \$contact of method App\\Http\\Controllers\\Invoicing\\CompanyContactController\:\:contactWithStats\(\) expects App\\Models\\CompanyContact, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Invoicing/CompanyContactController.php
+
+		-
+			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyAppSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Invoicing/CompanyController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Invoicing/CompanyDocumentSequenceController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\<string, mixed\>, Closure\(App\\Models\\CompanyDocumentSequence\)\: array\<string, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Invoicing/CompanyDocumentSequenceController.php
+
+		-
+			message: '#^Parameter \#1 \$series of method App\\Http\\Controllers\\Invoicing\\CompanyDocumentSequenceController\:\:serializeSeries\(\) expects App\\Models\\CompanyDocumentSequence, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Invoicing/CompanyDocumentSequenceController.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
+
+		-
+			message: '#^Call to function is_string\(\) with non\-falsy\-string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 4
+			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
+
+		-
+			message: '#^Property App\\Models\\Company\:\:\$app_settings \(string\|null\) does not accept array\<mixed\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
+
+		-
+			message: '#^Property App\\Models\\Company\:\:\$jurisdiction \(string\) does not accept App\\Enums\\CompanyJurisdiction\:\:EuSk\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Draft will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Issued will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Draft will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 2
+			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 4
+			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\DocumentSequenceService\:\:lastIssuedCounter\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Invoicing/StoreDocumentSequenceController.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\DocumentSequenceService\:\:nextNumber\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Invoicing/StoreDocumentSequenceController.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\DocumentSequenceService\:\:previewNextCounter\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Invoicing/StoreDocumentSequenceController.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\DocumentSequenceService\:\:previewNextNumber\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Invoicing/StoreDocumentSequenceController.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\CompanyJurisdiction\:\:Us will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Http/Controllers/Invoicing/UsSalesTaxController.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Http/Controllers/Invoicing/UsSalesTaxController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/LandingPayButtonController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$stores\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/LightningAddressController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:currentSubscriptionPlan\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Controllers/LightningAddressController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: app/Http/Controllers/LightningAddressController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getMaxLightningAddresses\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Controllers/LightningAddressController.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 3
+			path: app/Http/Controllers/LightningAddressController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>display_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Controllers/LightningAddressController.php
+
+		-
+			message: '#^Variable \$addresses on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: app/Http/Controllers/LightningAddressController.php
+
+		-
+			message: '#^Variable \$invoiceMetadata in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
+			count: 2
+			path: app/Http/Controllers/LightningAddressController.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: app/Http/Controllers/MessageController.php
+
+		-
+			message: '#^Offset ''data'' on array\{data\: array, total\?\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Http/Controllers/MessageController.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/MessageController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\OgImageController\:\:generate\(\) should return Illuminate\\Http\\Response but returns Symfony\\Component\\HttpFoundation\\BinaryFileResponse\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/OgImageController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/PosOrderController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/PosOrderController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/PosOrderController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array, Closure\(App\\Models\\PosOrder\)\: array given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/PosOrderController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array, Closure\(App\\Models\\PosTerminal\)\: array given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/PosTerminalController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
+			identifier: method.notFound
+			count: 13
+			path: app/Http/Controllers/RaffleController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getMaxRafflesPerStore\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/RaffleController.php
+
+		-
+			message: '#^Call to function is_array\(\) with list\<array\<string, mixed\>\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Controllers/RaffleController.php
+
+		-
+			message: '#^Offset ''winnerEmail'' on non\-empty\-array\<string, mixed\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/RaffleController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/ReportController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
+			identifier: method.notFound
+			count: 5
+			path: app/Http/Controllers/SamRockController.php
+
+		-
+			message: '#^Offset ''changefreq'' on array\{loc\: non\-falsy\-string, priority\: ''0\.5''\|''0\.8'', changefreq\: ''monthly''\}\|array\{loc\: non\-falsy\-string, priority\: ''0\.7'', changefreq\: ''monthly'', lastmod\: mixed\}\|array\{loc\: non\-falsy\-string, priority\: ''0\.9''\|''1\.0'', changefreq\: ''weekly''\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/SitemapController.php
+
+		-
+			message: '#^Offset ''priority'' on array\{loc\: non\-falsy\-string, priority\: ''0\.5''\|''0\.8'', changefreq\: ''monthly''\}\|array\{loc\: non\-falsy\-string, priority\: ''0\.7'', changefreq\: ''monthly'', lastmod\: mixed\}\|array\{loc\: non\-falsy\-string, priority\: ''0\.9''\|''1\.0'', changefreq\: ''weekly''\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/SitemapController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$callback_url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/StoreApiKeyController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/StoreApiKeyController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$expires_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/StoreApiKeyController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/StoreApiKeyController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/StoreApiKeyController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$label\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/StoreApiKeyController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_used_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/StoreApiKeyController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$permissions\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/StoreApiKeyController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:currentSubscriptionPlan\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/StoreApiKeyController.php
+
+		-
+			message: '#^Cannot call method toISOString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/StoreApiKeyController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/StoreApiKeyController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$completed_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/StoreChecklistController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$item_key\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Http/Controllers/StoreChecklistController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isCompleted\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/StoreChecklistController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/StoreChecklistController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/StoreChecklistController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$completed_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/StoreController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$item_key\.$#'
+			identifier: property.notFound
+			count: 6
+			path: app/Http/Controllers/StoreController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isCompleted\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Controllers/StoreController.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: app/Http/Controllers/StoreController.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<mixed, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Controllers/StoreController.php
+
+		-
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
+			count: 1
+			path: app/Http/Controllers/StoreController.php
+
+		-
+			message: '#^Offset ''default_currency'' on array\{id\: string, name\: mixed, default_currency\: mixed, timezone\: mixed, preferred_exchange\: mixed, wallet_type\: string\|null, created_at\: Carbon\\Carbon\|null, updated_at\: Carbon\\Carbon\|null, \.\.\.\} in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Http/Controllers/StoreController.php
+
+		-
+			message: '#^Offset ''preferred_exchange'' on array\{id\: string, name\: mixed, default_currency\: mixed, timezone\: mixed, preferred_exchange\: mixed, wallet_type\: string\|null, created_at\: Carbon\\Carbon\|null, updated_at\: Carbon\\Carbon\|null, \.\.\.\} in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Http/Controllers/StoreController.php
+
+		-
+			message: '#^Offset ''timezone'' on array\{id\: string, name\: mixed, default_currency\: mixed, timezone\: mixed, preferred_exchange\: mixed, wallet_type\: string\|null, created_at\: Carbon\\Carbon\|null, updated_at\: Carbon\\Carbon\|null, \.\.\.\} in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Http/Controllers/StoreController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 2
+			path: app/Http/Controllers/StoreController.php
+
+		-
+			message: '#^Parameter \#2 \$walletConnection of method App\\Http\\Controllers\\StoreController\:\:formatWalletConnectionPayload\(\) expects App\\Models\\WalletConnection\|null, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/StoreController.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 2
+			path: app/Http/Controllers/StoreController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/StoreDashboardController.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Controllers/StoreDashboardController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''lightningaddress'' and ''payment_button'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/StoreDashboardController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''lightningaddress''\|''paymentbutton'' and ''point_of_sale'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/StoreDashboardController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: app/Http/Controllers/StripeController.php
+
+		-
+			message: '#^Offset ''paymentUrl'' on array\{checkoutId\: string, checkoutUrl\: string, invoiceId\: string\|null, invoiceUrl\: string\|null, expiresAt\?\: string\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/SubscriptionController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
+			identifier: method.notFound
+			count: 18
+			path: app/Http/Controllers/TicketController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getMaxEventsPerStore\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/TicketController.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Controllers/TicketController.php
+
+		-
+			message: '#^Offset ''eventLogoFileId'' on non\-empty\-array on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/TicketController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Controllers/TicketEventImageController.php
+
+		-
+			message: '#^Offset ''eventLogoFileId'' on non\-empty\-array on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/TicketEventImageController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/UserApiKeyController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/UserApiKeyController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{id\: int, name\: string, last_used_at\: mixed, created_at\: string\}, Closure\(App\\Models\\UserApiKey\)\: array\{id\: int, name\: string, last_used_at\: mixed, created_at\: string\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/UserApiKeyController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$btcpay_store_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/WalletConnectionController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/WalletConnectionController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/WalletConnectionController.php
+
+		-
+			message: '#^Offset ''message'' on non\-empty\-array on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/WalletConnectionController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>webhook_secret" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/WebhookController.php
+
+		-
+			message: '#^Parameter \#2 \$store of method App\\Http\\Controllers\\WooCommerceSatoshiTicketsController\:\:redirectToReturnUrl\(\) expects App\\Models\\Store, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/WooCommerceSatoshiTicketsController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:currentSubscriptionPlan\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Middleware/EnsureApiKeyLimit.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>display_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Middleware/EnsureApiKeyLimit.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$btcpay_store_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Middleware/EnsurePlanAllowsLnAddressCreation.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 2
+			path: app/Http/Middleware/EnsurePlanAllowsLnAddressCreation.php
+
+		-
+			message: '#^Variable \$list on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: app/Http/Middleware/EnsurePlanAllowsLnAddressCreation.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Http/Middleware/EnsurePlanAllowsUserApiKeyCreation.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Http/Middleware/EnsureStoreLimit.php
+
+		-
+			message: '#^Instanceof between Laravel\\Sanctum\\PersonalAccessToken and Laravel\\Sanctum\\PersonalAccessToken will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Http/Middleware/RequireVerifiedEmail.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Requests/DocumentationArticleRequest.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Requests/FaqItemRequest.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<non\-empty\-string\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/Http/Requests/Invoicing/EphemeralBusinessDocumentEmailRequest.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<non\-empty\-string\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/Http/Requests/Invoicing/SendBusinessDocumentEmailRequest.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''aqua_boltz'' and ''aqua_boltz'' will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 1
+			path: app/Http/Requests/StoreCreateRequest.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between \*NEVER\* and ''cashu'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Http/Requests/StoreCreateRequest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$auto_report_email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/GenerateCsvExport.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Jobs/GenerateCsvExport.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/GenerateCsvExport.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Jobs/GenerateCsvExport.php
+
+		-
+			message: '#^Offset ''date_from'' on array\{\}\|string in isset\(\) does not exist\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Jobs/GenerateCsvExport.php
+
+		-
+			message: '#^Offset ''date_from'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Jobs/GenerateCsvExport.php
+
+		-
+			message: '#^Offset ''date_to'' on array\{\}\|string in isset\(\) does not exist\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Jobs/GenerateCsvExport.php
+
+		-
+			message: '#^Offset ''status'' on array\{\}\|string in isset\(\) does not exist\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Jobs/GenerateCsvExport.php
+
+		-
+			message: '#^Parameter \#2 \$store of class App\\Notifications\\ExportReadyNotification constructor expects App\\Models\\Store, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/GenerateCsvExport.php
+
+		-
+			message: '#^Parameter \#2 \$store of class App\\Notifications\\MonthlyExportReadyNotification constructor expects App\\Models\\Store, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/GenerateCsvExport.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 2
+			path: app/Jobs/GenerateCsvExport.php
+
+		-
+			message: '#^Ternary operator condition is always false\.$#'
+			identifier: ternary.alwaysFalse
+			count: 1
+			path: app/Jobs/GenerateCsvExport.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$auto_report_email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/GenerateXlsxExport.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$btcpay_store_id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Jobs/GenerateXlsxExport.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Jobs/GenerateXlsxExport.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Jobs/GenerateXlsxExport.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Jobs/GenerateXlsxExport.php
+
+		-
+			message: '#^Offset ''date_from'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Jobs/GenerateXlsxExport.php
+
+		-
+			message: '#^Parameter \#2 \$store of class App\\Notifications\\ExportReadyNotification constructor expects App\\Models\\Store, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/GenerateXlsxExport.php
+
+		-
+			message: '#^Parameter \#2 \$store of class App\\Notifications\\MonthlyExportReadyNotification constructor expects App\\Models\\Store, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/GenerateXlsxExport.php
+
+		-
+			message: '#^Ternary operator condition is always false\.$#'
+			identifier: ternary.alwaysFalse
+			count: 1
+			path: app/Jobs/GenerateXlsxExport.php
+
+		-
+			message: '#^Property App\\Jobs\\ProcessBankNotificationEmail\:\:\$payload on left side of \?\? is not nullable nor uninitialized\.$#'
+			identifier: nullCoalesce.initializedProperty
+			count: 1
+			path: app/Jobs/ProcessBankNotificationEmail.php
+
+		-
+			message: '#^If condition is always false\.$#'
+			identifier: if.alwaysFalse
+			count: 1
+			path: app/Jobs/ProcessBtcPayWebhook.php
+
+		-
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
+			count: 1
+			path: app/Jobs/ProcessBtcPayWebhook.php
+
+		-
+			message: '#^Offset ''storeId'' on string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Jobs/ProcessBtcPayWebhook.php
+
+		-
+			message: '#^Parameter \#1 \$payload of method App\\Jobs\\ProcessBtcPayWebhook\:\:handleSubscriberCreditLedgerEvent\(\) expects array, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/ProcessBtcPayWebhook.php
+
+		-
+			message: '#^Parameter \#1 \$payload of method App\\Jobs\\ProcessBtcPayWebhook\:\:handleSubscriptionInvoicePaid\(\) expects array, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/ProcessBtcPayWebhook.php
+
+		-
+			message: '#^Parameter \#1 \$payload of method App\\Jobs\\ProcessBtcPayWebhook\:\:handleSubscriptionLifecycleEvent\(\) expects array, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/ProcessBtcPayWebhook.php
+
+		-
+			message: '#^Parameter \#1 \$payload of method App\\Jobs\\ProcessBtcPayWebhook\:\:handleSubscriptionPlanStarted\(\) expects array, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/ProcessBtcPayWebhook.php
+
+		-
+			message: '#^Parameter \#2 \$payload of method App\\Services\\Invoicing\\BusinessDocumentPaymentWebhookService\:\:handleInvoicePayment\(\) expects array\<string, mixed\>, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/ProcessBtcPayWebhook.php
+
+		-
+			message: '#^Property App\\Models\\User\:\:\$role \(''admin''\|''merchant''\|''support''\) does not accept ''enterprise''\|''pro''\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Jobs/ProcessBtcPayWebhook.php
+
+		-
+			message: '#^Ternary operator condition is always false\.$#'
+			identifier: ternary.alwaysFalse
+			count: 1
+			path: app/Jobs/ProcessBtcPayWebhook.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Jobs/ProcessMonthlyExports.php
+
+		-
+			message: '#^Parameter \#1 \$user of method App\\Services\\SubscriptionEntitlementService\:\:canUseAutomaticExports\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/ProcessMonthlyExports.php
+
+		-
+			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\App\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/App.php
+
+		-
+			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\AuditLog\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/AuditLog.php
+
+		-
+			message: '#^Instanceof between string and App\\Enums\\BankTransactionDirection will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: app/Models/BankTransaction.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments string, array\{App\\Enums\\BusinessDocumentStatus\:\:Draft, App\\Enums\\BusinessDocumentStatus\:\:Cancelled\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Models/BusinessDocument.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments string, array\{App\\Enums\\BusinessDocumentStatus\:\:Draft, App\\Enums\\BusinessDocumentStatus\:\:Issued\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Models/BusinessDocument.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments string, array\{App\\Enums\\BusinessDocumentStatus\:\:Issued, App\\Enums\\BusinessDocumentStatus\:\:Paid\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 2
+			path: app/Models/BusinessDocument.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Models/BusinessDocument.php
+
+		-
+			message: '#^Method App\\Models\\BusinessDocument\:\:resolvedBuyer\(\) should return App\\Models\\CompanyContact\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 2
+			path: app/Models/BusinessDocument.php
+
+		-
+			message: '#^Property ''can_cancel'' does not exist in model\.$#'
+			identifier: rules.modelAppends
+			count: 1
+			path: app/Models/BusinessDocument.php
+
+		-
+			message: '#^Property ''can_delete'' does not exist in model\.$#'
+			identifier: rules.modelAppends
+			count: 1
+			path: app/Models/BusinessDocument.php
+
+		-
+			message: '#^Property ''can_unmark_paid'' does not exist in model\.$#'
+			identifier: rules.modelAppends
+			count: 1
+			path: app/Models/BusinessDocument.php
+
+		-
+			message: '#^Property ''can_update'' does not exist in model\.$#'
+			identifier: rules.modelAppends
+			count: 1
+			path: app/Models/BusinessDocument.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Models/BusinessDocument.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between \*NEVER\* and array\{\} will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Models/BusinessDocument.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentType\:\:Quote will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Models/BusinessDocument.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Draft will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/BusinessDocument.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Paid will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/BusinessDocument.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentType\:\:Quote will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/BusinessDocument.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 2
+			path: app/Models/BusinessDocument.php
+
+		-
+			message: '#^Cannot call method isPast\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/BusinessExpense.php
+
+		-
+			message: '#^Result of \|\| is always false\.$#'
+			identifier: booleanOr.alwaysFalse
+			count: 1
+			path: app/Models/BusinessExpense.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessExpenseStatus\:\:Cancelled will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/BusinessExpense.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessExpenseStatus\:\:Paid will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/BusinessExpense.php
+
+		-
+			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyAppSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Models/Company.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:sum\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model\)\: float\)\|string\|null, Closure\(App\\Models\\CompanyStockBalance\)\: float given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/CompanyStockItem.php
+
+		-
+			message: '#^Call to function is_array\(\) with string will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 4
+			path: app/Models/DocumentationArticle.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 2
+			path: app/Models/DocumentationArticle.php
+
+		-
+			message: '#^Offset ''en'' on \*NEVER\* in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 3
+			path: app/Models/DocumentationArticle.php
+
+		-
+			message: '#^Offset string on \*NEVER\* in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 3
+			path: app/Models/DocumentationArticle.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 6
+			path: app/Models/DocumentationArticle.php
+
+		-
+			message: '#^Call to function is_array\(\) with string will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 2
+			path: app/Models/DocumentationCategory.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 2
+			path: app/Models/DocumentationCategory.php
+
+		-
+			message: '#^Offset ''en'' on \*NEVER\* in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 2
+			path: app/Models/DocumentationCategory.php
+
+		-
+			message: '#^Offset string on \*NEVER\* in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 2
+			path: app/Models/DocumentationCategory.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 4
+			path: app/Models/DocumentationCategory.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Models/EphemeralEfakturaSubmission.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Models/EphemeralEfakturaSubmission.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Models/EphemeralEfakturaSubmission.php
+
+		-
+			message: '#^PHPDoc tag @var for constant App\\Models\\Export\:\:SOURCE_MANUAL with type array\<int, string\> is incompatible with value ''manual''\.$#'
+			identifier: classConstant.phpDocType
+			count: 1
+			path: app/Models/Export.php
+
+		-
+			message: '#^Call to function is_array\(\) with string will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 2
+			path: app/Models/FaqCategory.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 2
+			path: app/Models/FaqCategory.php
+
+		-
+			message: '#^Offset ''en'' on \*NEVER\* in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 2
+			path: app/Models/FaqCategory.php
+
+		-
+			message: '#^Offset string on \*NEVER\* in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 2
+			path: app/Models/FaqCategory.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 4
+			path: app/Models/FaqCategory.php
+
+		-
+			message: '#^Call to function is_array\(\) with string will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 4
+			path: app/Models/FaqItem.php
+
+		-
+			message: '#^Offset ''en'' on \*NEVER\* in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 2
+			path: app/Models/FaqItem.php
+
+		-
+			message: '#^Offset string on \*NEVER\* in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 2
+			path: app/Models/FaqItem.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 4
+			path: app/Models/FaqItem.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\IntegrationDocumentInboxStatus\:\:Pending will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/IntegrationDocumentInbox.php
+
+		-
+			message: '#^Cannot call method isPast\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/LnurlAuthChallenge.php
+
+		-
+			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\LnurlAuthChallenge\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/LnurlAuthChallenge.php
+
+		-
+			message: '#^Cannot call method isPast\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/NostrAuthChallenge.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\{''lightning'', ''onchain''\} will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Models/PosTerminal.php
+
+		-
+			message: '#^Offset ''enabled_payment…'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Models/PosTerminal.php
+
+		-
+			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\Store\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/Store.php
+
+		-
+			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\Store\:\:\$hidden is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$hidden\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/Store.php
+
+		-
+			message: '#^Cannot call method isPast\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/StoreApiKey.php
+
+		-
+			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\StoreApiKey\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/StoreApiKey.php
+
+		-
+			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\StoreChecklist\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/StoreChecklist.php
+
+		-
+			message: '#^Cannot call method copy\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: app/Models/Subscription.php
+
+		-
+			message: '#^Cannot call method isFuture\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 4
+			path: app/Models/Subscription.php
+
+		-
+			message: '#^Cannot call method isPast\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: app/Models/Subscription.php
+
+		-
+			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\Subscription\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/Subscription.php
+
+		-
+			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\SubscriptionPlan\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/SubscriptionPlan.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments ''admin''\|''free''\|''merchant''\|''support'', array\{''pro'', ''enterprise''\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:currentSubscription\(\) should return App\\Models\\Subscription\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:currentSubscriptionPlan\(\) should return App\\Models\\SubscriptionPlan\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\User\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\User\:\:\$hidden is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$hidden\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''admin''\|''merchant''\|''support'' and ''enterprise'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''admin''\|''merchant''\|''support'' and ''free'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''admin''\|''merchant''\|''support'' and ''pro'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\WalletConnection\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/WalletConnection.php
+
+		-
+			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\WebhookEvent\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/WebhookEvent.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Services/Auth/EmailVerificationService.php
+
+		-
+			message: '#^Call to function array_key_exists\(\) with ''resetEveryAmount'' and array\{id\: non\-falsy\-string, storeId\: string, appType\: ''Crowdfund'', sounds\: array\{\}\|array\{mixed\}, startDate\?\: float\|int\|string, endDate\?\: int, animationColors\?\: mixed, appName\?\: mixed, \.\.\.\}\|array\{sounds\: array\{\}\|array\{mixed\}, startDate\?\: float\|int\|string, endDate\?\: int, animationColors\?\: mixed, appName\?\: mixed, description\?\: mixed, disqusShortname\?\: mixed, formId\?\: mixed, \.\.\.\} will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Call to function is_string\(\) with int will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Call to function method_exists\(\) with App\\Services\\BtcPay\\Exceptions\\BtcPayException and ''getStatusCode'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 3
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 2
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Cannot unset offset ''id'' on array\{\}\.$#'
+			identifier: unset.offset
+			count: 1
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Comparison operation "\<" between int\<1, max\> and 1 is always false\.$#'
+			identifier: smaller.alwaysFalse
+			count: 1
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Instantiated class App\\Services\\BtcPay\\BtcPayException not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Left side of && is always false\.$#'
+			identifier: booleanAnd.leftAlwaysFalse
+			count: 1
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Offset ''appName'' on non\-empty\-array on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Offset ''resetEveryAmount'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Offset ''resetEveryAmount'' on array\{id\: non\-falsy\-string, storeId\: string, appType\: ''Crowdfund'', sounds\: array\{\}\|array\{mixed\}, startDate\?\: int, endDate\?\: int\}\|array\{sounds\: array\{\}\|array\{mixed\}, startDate\?\: int, endDate\?\: int\} in isset\(\) does not exist\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Offset ''startDate'' on \*NEVER\* in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Offset 1 on array\{non\-falsy\-string, non\-falsy\-string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 3
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between int and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Throwing object of an unknown class App\\Services\\BtcPay\\BtcPayException\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Variable \$appType on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Variable \$response on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: app/Services/BtcPay/AppService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/BtcPay/BoltzService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/BtcPay/BoltzService.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 2
+			path: app/Services/BtcPay/BtcPayClient.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Services/BtcPay/BtcPayClient.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/BtcPay/BtcPayFileUploadService.php
+
+		-
+			message: '#^Parameter \#3 \$previous of method App\\Services\\BtcPay\\Exceptions\\BtcPayException\:\:__construct\(\) expects Exception\|null, App\\Services\\BtcPay\\Exceptions\\Exception\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/BtcPay/Exceptions/BtcPayRateLimitException.php
+
+		-
+			message: '#^Parameter \$previous of method App\\Services\\BtcPay\\Exceptions\\BtcPayRateLimitException\:\:__construct\(\) has invalid type App\\Services\\BtcPay\\Exceptions\\Exception\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Services/BtcPay/Exceptions/BtcPayRateLimitException.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/BtcPay/InvoiceService.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Services/BtcPay/InvoiceService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/BtcPay/LightningAddressService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/BtcPay/LightningService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<mixed, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/BtcPay/LightningService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\{non\-falsy\-string, ''POST''\|''PUT''\} will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: app/Services/BtcPay/LightningService.php
+
+		-
+			message: '#^Offset 1 on array\{non\-falsy\-string, ''POST''\|''PUT''\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/BtcPay/LightningService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''POST'' and ''PATCH'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/BtcPay/LightningService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/BtcPay/NotificationService.php
+
+		-
+			message: '#^Offset ''data'' on array\{data\: array, total\?\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/BtcPay/NotificationService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/BtcPay/NotificationService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$btcpay_store_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/BtcPay/StoreApiKeyService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$btcpay_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/BtcPay/StoreApiKeyService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between mixed and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/BtcPay/TicketService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/BtcPay/UserService.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Services/BtcPay/UserService.php
+
+		-
+			message: '#^Variable \$finalPermissions might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: app/Services/BtcPay/UserService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/BtcPay/WebhookService.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Services/BtcPay/WebhookService.php
+
+		-
+			message: '#^Method App\\Services\\BtcPay\\WebhookService\:\:normalizeWebhooksListResponse\(\) should return list\<array\<string, mixed\>\> but returns non\-empty\-array\<string, mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/BtcPay/WebhookService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 3
+			path: app/Services/BtcPay/WebhookService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between non\-empty\-list\<string\> and non\-empty\-list\<int\<0, max\>\> will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/BtcPay/WebhookService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between array\{plan\?\: non\-empty\-string, status\?\: ''active''\|''expired''\|''grace'', is_guest\: bool\} and array\{\} will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Chorala/ChoralaWidgetTokenService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$btcpay_store_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/GuestBtcPayDecommissioner.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Services/GuestProvisioningService.php
+
+		-
+			message: '#^Cannot call method lt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/GuestPurgeService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$company\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Integrations/IntegrationDocumentInboxService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$company_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Integrations/IntegrationDocumentInboxService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Integrations/IntegrationDocumentInboxService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$store\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Integrations/IntegrationDocumentInboxService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$store_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Integrations/IntegrationDocumentInboxService.php
+
+		-
+			message: '#^Call to function is_array\(\) with string will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 2
+			path: app/Services/Integrations/IntegrationDocumentInboxService.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Integrations/IntegrationDocumentInboxService.php
+
+		-
+			message: '#^Offset ''buyer'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Services/Integrations/IntegrationDocumentInboxService.php
+
+		-
+			message: '#^Offset ''currency'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Integrations/IntegrationDocumentInboxService.php
+
+		-
+			message: '#^Offset ''lines'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Integrations/IntegrationDocumentInboxService.php
+
+		-
+			message: '#^Offset ''number'' on array\{\} in empty\(\) does not exist\.$#'
+			identifier: empty.offset
+			count: 1
+			path: app/Services/Integrations/IntegrationDocumentInboxService.php
+
+		-
+			message: '#^Offset ''type'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Integrations/IntegrationDocumentInboxService.php
+
+		-
+			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyAppSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Integrations/IntegrationDocumentInboxService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\IntegrationDocumentInboxStatus\:\:Pending will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 3
+			path: app/Services/Integrations/IntegrationDocumentInboxService.php
+
+		-
+			message: '#^Ternary operator condition is always false\.$#'
+			identifier: ternary.alwaysFalse
+			count: 1
+			path: app/Services/Integrations/IntegrationDocumentInboxService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 3
+			path: app/Services/Integrations/IntegrationDocumentInboxService.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Integrations/IntegrationDocumentInboxService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$btcpay_store_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Integrations/IntegrationInboxDeepLinkService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$company\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Integrations/IntegrationInboxDeepLinkService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Integrations/IntegrationInboxDeepLinkService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$btcpay_store_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Integrations/WooCommerceDocumentService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$company\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Integrations/WooCommerceDocumentService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$company_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Integrations/WooCommerceDocumentService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Integrations/WooCommerceDocumentService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Integrations/WooCommerceDocumentService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Integrations/WooCommerceDocumentService.php
+
+		-
+			message: '#^Call to function is_array\(\) with string will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Services/Integrations/WooCommerceDocumentService.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: app/Services/Integrations/WooCommerceDocumentService.php
+
+		-
+			message: '#^Offset ''currency'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Integrations/WooCommerceDocumentService.php
+
+		-
+			message: '#^Offset ''number'' on array\{\} in empty\(\) does not exist\.$#'
+			identifier: empty.offset
+			count: 1
+			path: app/Services/Integrations/WooCommerceDocumentService.php
+
+		-
+			message: '#^Offset ''number'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Integrations/WooCommerceDocumentService.php
+
+		-
+			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyAppSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Integrations/WooCommerceDocumentService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Draft will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Integrations/WooCommerceDocumentService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Services/Integrations/WooCommerceDocumentService.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Integrations/WooCommerceWebhookNotifier.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Invoicing/BankTransactionExpenseService.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BankTransactionExpenseService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BankTransactionMatchStatus\:\:Matched will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BankTransactionExpenseService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Invoicing/BusinessDocumentBtcPayService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: app/Services/Invoicing/BusinessDocumentBtcPayService.php
+
+		-
+			message: '#^Parameter \#1 \$store of method App\\Services\\Invoicing\\BusinessDocumentBtcPayService\:\:fetchBtcpayInvoiceForStore\(\) expects App\\Models\\Store, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentBtcPayService.php
+
+		-
+			message: '#^Result of \|\| is always true\.$#'
+			identifier: booleanOr.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentBtcPayService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Issued will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentBtcPayService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Paid will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentBtcPayService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentBtcPayService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentType\:\:Invoice will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentCreditNoteService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentCreditNoteService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$default_payment_terms_days\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentDuplicateService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentDuplicateService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$line_discount_percent\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentDuplicateService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$line_total\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentDuplicateService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentDuplicateService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$quantity\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentDuplicateService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$sort_order\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentDuplicateService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$tax_rate\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentDuplicateService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$unit\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentDuplicateService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$unit_price\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentDuplicateService.php
+
+		-
+			message: '#^Property App\\Models\\BusinessDocument\:\:\$status \(string\) does not accept App\\Enums\\BusinessDocumentStatus\:\:Draft\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentDuplicateService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentEmailService.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentEmailService.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentEmailService.php
+
+		-
+			message: '#^Match arm comparison between string and App\\Enums\\BusinessDocumentType\:\:CreditNote is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentEmailService.php
+
+		-
+			message: '#^Match arm comparison between string and App\\Enums\\BusinessDocumentType\:\:DeliveryNote is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentEmailService.php
+
+		-
+			message: '#^Match arm comparison between string and App\\Enums\\BusinessDocumentType\:\:OrderReceived is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentEmailService.php
+
+		-
+			message: '#^Match arm comparison between string and App\\Enums\\BusinessDocumentType\:\:Proforma is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentEmailService.php
+
+		-
+			message: '#^Match arm comparison between string and App\\Enums\\BusinessDocumentType\:\:Quote is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentEmailService.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\CompanyEmailTemplateRenderer\:\:render\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Invoicing/BusinessDocumentEmailService.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentEmailService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Cancelled will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentEmailService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Draft will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentEmailService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentType\:\:Invoice will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentEmailService.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentEmailService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\ConnectionInterface\:\:getDriverName\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentExcelImportService.php
+
+		-
+			message: '#^Invalid array key type list\<string\>\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 2
+			path: app/Services/Invoicing/BusinessDocumentExcelImportService.php
+
+		-
+			message: '#^Method App\\Services\\Invoicing\\BusinessDocumentExcelImportService\:\:resolveContact\(\) should return array\{contact\: App\\Models\\CompanyContact\|null, created\: bool, linked\: bool\} but returns array\{contact\: Illuminate\\Database\\Eloquent\\Model, created\: true, linked\: false\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentExcelImportService.php
+
+		-
+			message: '#^Method App\\Services\\Invoicing\\BusinessDocumentExcelImportService\:\:resolveContact\(\) should return array\{contact\: App\\Models\\CompanyContact\|null, created\: bool, linked\: bool\} but returns array\{contact\: Illuminate\\Database\\Eloquent\\Model\|null, created\: false, linked\: true\}\.$#'
+			identifier: return.type
+			count: 2
+			path: app/Services/Invoicing/BusinessDocumentExcelImportService.php
+
+		-
+			message: '#^Offset ''date_format'' on array\{line_name\?\: string, line_description\?\: string, create_contacts\?\: bool\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentExcelImportService.php
+
+		-
+			message: '#^Offset ''date_format'' on array\{line_name\?\: string, line_description\?\: string\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentExcelImportService.php
+
+		-
+			message: '#^Parameter \#1 \$contact of method App\\Services\\Invoicing\\BusinessDocumentExcelImportService\:\:fillMissingContactFields\(\) expects App\\Models\\CompanyContact, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Invoicing/BusinessDocumentExcelImportService.php
+
+		-
+			message: '#^Property App\\Models\\BusinessDocument\:\:\$buyer_snapshot \(string\|null\) does not accept array\<string, mixed\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentExcelImportService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$default_payment_terms_days\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentFromProformaService.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentFromProformaService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentType\:\:Proforma will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentFromProformaService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentFromProformaService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$default_payment_terms_days\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentFromQuoteService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentType\:\:Quote will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentFromQuoteService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentFromQuoteService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$app_settings\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentIsdocService.php
+
+		-
+			message: '#^Match arm comparison between string and App\\Enums\\BusinessDocumentType\:\:CreditNote is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentIsdocService.php
+
+		-
+			message: '#^Match arm comparison between string and App\\Enums\\BusinessDocumentType\:\:Proforma is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentIsdocService.php
+
+		-
+			message: '#^Match arm comparison between string and App\\Enums\\CompanyJurisdiction\:\:EuCz is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentIsdocService.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentIssueService.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\DocumentSequenceService\:\:nextNumber\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentIssueService.php
+
+		-
+			message: '#^Parameter \#1 \$contact of static method App\\Support\\Invoicing\\BuyerSnapshot\:\:fromContact\(\) expects App\\Models\\CompanyContact, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentIssueService.php
+
+		-
+			message: '#^Property App\\Models\\BusinessDocument\:\:\$buyer_snapshot \(string\|null\) does not accept array\<string, mixed\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentIssueService.php
+
+		-
+			message: '#^Property App\\Models\\BusinessDocument\:\:\$quote_status \(string\|null\) does not accept App\\Enums\\BusinessDocumentQuoteStatus\:\:Pending\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentIssueService.php
+
+		-
+			message: '#^Property App\\Models\\BusinessDocument\:\:\$status \(string\) does not accept App\\Enums\\BusinessDocumentStatus\:\:Issued\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentIssueService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentType\:\:Quote will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentIssueService.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments string, array\{App\\Enums\\BusinessDocumentStatus\:\:Draft, App\\Enums\\BusinessDocumentStatus\:\:Cancelled\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentListCapabilities.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments string, array\{App\\Enums\\BusinessDocumentStatus\:\:Issued, App\\Enums\\BusinessDocumentStatus\:\:Paid\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentListCapabilities.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentListCapabilities.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$bank_transaction_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentListPresenter.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$business_document_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentListPresenter.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Invoicing/BusinessDocumentListPresenter.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$match_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentListPresenter.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$matched_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentListPresenter.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Invoicing/BusinessDocumentListPresenter.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\:\:getCollection\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentListPresenter.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 5
+			path: app/Services/Invoicing/BusinessDocumentListPresenter.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Services/Invoicing/BusinessDocumentListPresenter.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentListPresenter.php
+
+		-
+			message: '#^Parameter \#1 \$document of method App\\Services\\Invoicing\\BusinessDocumentListPresenter\:\:relatedDocument\(\) expects App\\Models\\BusinessDocument, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Invoicing/BusinessDocumentListPresenter.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentType\:\:Quote will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentListPresenter.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Issued will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentMarkPaidService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Paid will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentMarkPaidService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Cancelled will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentMarkPaidService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Draft will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentMarkPaidService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Paid will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentMarkPaidService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 2
+			path: app/Services/Invoicing/BusinessDocumentMarkPaidService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$document\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentPaymentMatcher.php
+
+		-
+			message: '#^Method App\\Services\\Invoicing\\BusinessDocumentPaymentMatcher\:\:tryAutoMatch\(\) should return array\{matched\: bool, match\: App\\Models\\BankTransactionMatch\|null\} but returns array\{matched\: true, match\: Illuminate\\Database\\Eloquent\\Model\|null\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentPaymentMatcher.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BankTransactionDirection\:\:Credit will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: app/Services/Invoicing/BusinessDocumentPaymentMatcher.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BankTransactionMatchStatus\:\:Matched will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 2
+			path: app/Services/Invoicing/BusinessDocumentPaymentMatcher.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 2
+			path: app/Services/Invoicing/BusinessDocumentPaymentMatcher.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Issued will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentPaymentWebhookService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Paid will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentPaymentWebhookService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentPaymentWebhookService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$app_settings\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentPdfService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$jurisdiction\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Invoicing/BusinessDocumentPdfService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$logo_path\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentPdfService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$signature_stamp_path\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentPdfService.php
+
+		-
+			message: '#^Instantiated class chillerlan\\QRCode\\QROptions not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentPdfService.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\PayBySquareGenerator\:\:generateQrDataUri\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentPdfService.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Support\\Invoicing\\CompanyVatPolicy\:\:reverseChargeNote\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentPdfService.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Support\\Invoicing\\CompanyVatPolicy\:\:showsVatBreakdown\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentPdfService.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Support\\Invoicing\\CompanyVatPolicy\:\:showsVatRateColumn\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentPdfService.php
+
+		-
+			message: '#^Parameter \#2 \$store of method App\\Services\\Invoicing\\BusinessDocumentBtcPayService\:\:createEphemeralCheckout\(\) expects App\\Models\\Store, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentPdfService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentType\:\:Quote will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: app/Services/Invoicing/BusinessDocumentPdfService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentType\:\:Quote will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentQuoteService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentQuoteService.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Services/Invoicing/BusinessDocumentUblService.php
+
+		-
+			message: '#^If condition is always false\.$#'
+			identifier: if.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentUblService.php
+
+		-
+			message: '#^Negated boolean expression is always true\.$#'
+			identifier: booleanNot.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentUblService.php
+
+		-
+			message: '#^Parameter \#1 \$type of method App\\Services\\Invoicing\\BusinessDocumentUblService\:\:invoiceTypeCode\(\) expects App\\Enums\\BusinessDocumentType, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentUblService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentType\:\:CreditNote will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentUblService.php
+
+		-
+			message: '#^Ternary operator condition is always false\.$#'
+			identifier: ternary.alwaysFalse
+			count: 2
+			path: app/Services/Invoicing/BusinessDocumentUblService.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Services/Invoicing/BusinessExpenseAttachmentBulkService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Support\\Collection\:\:load\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessExpenseBulkService.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\{0\: non\-falsy\-string, 1\?\: non\-falsy\-string, 2\?\: non\-falsy\-string, 3\?\: non\-falsy\-string, 4\?\: non\-falsy\-string, 5\?\: ''import''\}\) to function array_filter does not contain falsy values, the array will always stay the same\.$#'
+			identifier: arrayFilter.same
+			count: 1
+			path: app/Services/Invoicing/BusinessExpenseExcelImportService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$disk\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessExpenseService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$mime\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessExpenseService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$original_filename\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessExpenseService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$path\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessExpenseService.php
+
+		-
+			message: '#^Method App\\Services\\Invoicing\\BusinessExpenseService\:\:addAttachment\(\) should return App\\Models\\BusinessExpenseAttachment but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Invoicing/BusinessExpenseService.php
+
+		-
+			message: '#^Method App\\Services\\Invoicing\\BusinessExpenseService\:\:removeAttachment\(\) should return App\\Models\\BusinessExpense but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Invoicing/BusinessExpenseService.php
+
+		-
+			message: '#^Parameter \#1 \$attachment of method App\\Services\\Invoicing\\BusinessExpenseService\:\:deleteAttachmentFileRecord\(\) expects App\\Models\\BusinessExpenseAttachment, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Invoicing/BusinessExpenseService.php
+
+		-
+			message: '#^Parameter \#1 \$expense of method App\\Services\\Invoicing\\BusinessExpenseService\:\:syncLegacyPrimaryAttachment\(\) expects App\\Models\\BusinessExpense, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/BusinessExpenseService.php
+
+		-
+			message: '#^Property App\\Models\\BusinessExpense\:\:\$status \(string\) does not accept App\\Enums\\BusinessExpenseStatus\:\:Cancelled\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Invoicing/BusinessExpenseService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessExpenseStatus\:\:Cancelled will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 2
+			path: app/Services/Invoicing/BusinessExpenseService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$line_discount_percent\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$quantity\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$tax_rate\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$unit\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$unit_price\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Method App\\Services\\Invoicing\\BusinessRecurringProfileService\:\:serializeProfile\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{name\: string, description\: string\|null, quantity\: float, unit\: string, unit_price\: float, line_discount_percent\: float, tax_rate\: float, line_total\: float\}, Closure\(App\\Models\\BusinessRecurringProfileLine\)\: array\{name\: string, description\: string\|null, quantity\: float, unit\: string, unit_price\: float, line_discount_percent\: float, tax_rate\: float, line_total\: float\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\CanonicalInvoiceBuilder\:\:computeLineAmounts\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\DocumentTotalsCalculator\:\:calculate\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyAppSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Parameter \#3 \$contact of method App\\Services\\Invoicing\\CanonicalInvoiceBuilder\:\:computeLineAmounts\(\) expects App\\Models\\CompanyContact\|null, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Property App\\Models\\BusinessRecurringProfile\:\:\$subtotal \(float\) does not accept string\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Property App\\Models\\BusinessRecurringProfile\:\:\$tax_total \(float\) does not accept string\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Property App\\Models\\BusinessRecurringProfile\:\:\$total \(float\) does not accept string\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''invoice'' and ''proforma'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentType\:\:Proforma will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessRecurringProfileService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$app_settings\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CanonicalInvoiceBuilder.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\CanonicalInvoiceBuilder\:\:assemble\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/CanonicalInvoiceBuilder.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\CanonicalInvoiceBuilder\:\:computeLineFromModel\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/CanonicalInvoiceBuilder.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\UsSalesTax\\UsSalesTaxCalculationService\:\:applyIfNeeded\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/CanonicalInvoiceBuilder.php
+
+		-
+			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyAppSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Invoicing/CanonicalInvoiceBuilder.php
+
+		-
+			message: '#^Parameter \#2 \$line of method App\\Services\\Invoicing\\CanonicalInvoiceBuilder\:\:computeLineFromModel\(\) expects App\\Models\\BusinessDocumentLine, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/CanonicalInvoiceBuilder.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>currency" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Invoicing/CanonicalInvoiceBuilder.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and false will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/CompanyBrandingService.php
+
+		-
+			message: '#^Cannot call method diffInDays\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Invoicing/CompanyContactStatsService.php
+
+		-
+			message: '#^Cannot unset offset ''payment_days_count'' on array\{invoiced_total\: float, invoiced_count\: int, overdue_total\: float, overdue_count\: int, avg_payment_days\: int\|null\}\.$#'
+			identifier: unset.offset
+			count: 1
+			path: app/Services/Invoicing/CompanyContactStatsService.php
+
+		-
+			message: '#^Cannot unset offset ''payment_days_sum'' on array\{invoiced_total\: float, invoiced_count\: int, overdue_total\: float, overdue_count\: int, avg_payment_days\: int\|null\}\.$#'
+			identifier: unset.offset
+			count: 1
+			path: app/Services/Invoicing/CompanyContactStatsService.php
+
+		-
+			message: '#^Comparison operation "\>" between 0 and 0 is always false\.$#'
+			identifier: greater.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/CompanyContactStatsService.php
+
+		-
+			message: '#^Offset ''payment_days_count'' on array\{invoiced_total\: float, invoiced_count\: int, overdue_total\: float, overdue_count\: int, avg_payment_days\: int\|null, payment_days_sum\: \(float\|int\)\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Invoicing/CompanyContactStatsService.php
+
+		-
+			message: '#^Offset ''payment_days_count'' on array\{invoiced_total\: float, invoiced_count\: int, overdue_total\: float, overdue_count\: int, avg_payment_days\: int\|null\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Invoicing/CompanyContactStatsService.php
+
+		-
+			message: '#^Offset ''payment_days_sum'' on array\{invoiced_total\: float, invoiced_count\: int, overdue_total\: float, overdue_count\: int, avg_payment_days\: int\|null\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Invoicing/CompanyContactStatsService.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 2
+			path: app/Services/Invoicing/CompanyContactStatsService.php
+
+		-
+			message: '#^Result of \|\| is always true\.$#'
+			identifier: booleanOr.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/CompanyContactStatsService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Issued will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/CompanyContactStatsService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Paid will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/CompanyContactStatsService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Services/Invoicing/CompanyContactStatsService.php
+
+		-
+			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyEmailSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 4
+			path: app/Services/Invoicing/CompanyEmailSettingsService.php
+
+		-
+			message: '#^Property App\\Models\\Company\:\:\$email_settings \(string\|null\) does not accept array\<string, mixed\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Invoicing/CompanyEmailSettingsService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyEmailTemplateRenderer.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: app/Services/Invoicing/CompanyEmailTemplateRenderer.php
+
+		-
+			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyEmailSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/CompanyEmailTemplateRenderer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Invoicing/CompanyEmailTemplateRenderer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>number" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Invoicing/CompanyEmailTemplateRenderer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$app_settings\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyPdfFilenameBuilder.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Invoicing/CompanyPdfFilenameBuilder.php
+
+		-
+			message: '#^Parameter \#1 \$type of method App\\Services\\Invoicing\\CompanyPdfFilenameBuilder\:\:typeCode\(\) expects App\\Enums\\BusinessDocumentType, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/CompanyPdfFilenameBuilder.php
+
+		-
+			message: '#^Parameter \#1 \$type of method App\\Services\\Invoicing\\CompanyPdfFilenameBuilder\:\:typeLabel\(\) expects App\\Enums\\BusinessDocumentType, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/CompanyPdfFilenameBuilder.php
+
+		-
+			message: '#^Parameter \#3 \$company of method App\\Services\\Invoicing\\CompanyPdfFilenameBuilder\:\:replaceTokens\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/CompanyPdfFilenameBuilder.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Invoicing/CompanyPdfFilenameBuilder.php
+
+		-
+			message: '#^Method App\\Services\\Invoicing\\CompanyRegistryService\:\:coverageOptions\(\) should return list\<array\{value\: string, group\: string, provider\: string, label\: string, autocomplete\: bool\}\> but returns list\<array\{value\: string, group\: string, provider\: string, label\: string\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Invoicing/CompanyRegistryService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$deduct_on_issue\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyStockBalanceService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyStockBalanceService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyStockBalanceService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Invoicing/CompanyStockBalanceService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{warehouse_id\: string, warehouse_name\: mixed, warehouse_type\: mixed, deduct_on_issue\: mixed, quantity_on_hand\: float\}, Closure\(App\\Models\\CompanyStockBalance\)\: array\{warehouse_id\: string, warehouse_name\: mixed, warehouse_type\: mixed, deduct_on_issue\: mixed, quantity_on_hand\: float\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/CompanyStockBalanceService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Invoicing/CompanyStockItemImportService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$sku\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Invoicing/CompanyStockItemImportService.php
+
+		-
+			message: '#^Method App\\Services\\Invoicing\\CompanyStockItemImportService\:\:resolveImportWarehouse\(\) should return App\\Models\\CompanyWarehouse but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemImportService.php
+
+		-
+			message: '#^Parameter \#1 \$item of method App\\Services\\Invoicing\\CompanyStockMovementService\:\:recordImportChange\(\) expects App\\Models\\CompanyStockItem, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Invoicing/CompanyStockItemImportService.php
+
+		-
+			message: '#^Parameter \#2 \$item of method App\\Services\\Invoicing\\CompanyStockBalanceService\:\:getQuantity\(\) expects App\\Models\\CompanyStockItem, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemImportService.php
+
+		-
+			message: '#^Parameter \#2 \$item of method App\\Services\\Invoicing\\CompanyStockBalanceService\:\:setQuantity\(\) expects App\\Models\\CompanyStockItem, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Invoicing/CompanyStockItemImportService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$business_document_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$company_warehouse_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$document_number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$document_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$note\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$purchase_unit_price\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$quantity_after\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$quantity_delta\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$quantity_on_hand\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$sale_unit_price\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$source\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$track_inventory\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$warehouse\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\ConnectionInterface\:\:getDriverName\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Method App\\Services\\Invoicing\\CompanyStockItemService\:\:create\(\) should return App\\Models\\CompanyStockItem but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Method App\\Services\\Invoicing\\CompanyStockItemService\:\:findWarehouse\(\) should return App\\Models\\CompanyWarehouse but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Method App\\Services\\Invoicing\\CompanyStockItemService\:\:list\(\) should return array\{data\: Illuminate\\Support\\Collection\<int, App\\Models\\CompanyStockItem\>, meta\: array\<string, mixed\>\} but returns array\{data\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, meta\: array\<string, mixed\>\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\<string, mixed\>, Closure\(App\\Models\\CompanyStockItem\)\: array\<string, mixed\> given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Parameter \#1 \$item of method App\\Services\\Invoicing\\CompanyStockMovementService\:\:recordManualChange\(\) expects App\\Models\\CompanyStockItem, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Parameter \#2 \$item of method App\\Services\\Invoicing\\CompanyStockBalanceService\:\:setQuantity\(\) expects App\\Models\\CompanyStockItem, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Parameter \#2 \$item of method App\\Services\\Invoicing\\CompanyStockItemService\:\:syncBalances\(\) expects App\\Models\\CompanyStockItem, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Parameter \#2 \$items of method App\\Services\\Invoicing\\CompanyStockItemService\:\:summaryMeta\(\) expects Illuminate\\Support\\Collection\<int, App\\Models\\CompanyStockItem\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/CompanyStockItemService.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments string, array\{App\\Enums\\BusinessDocumentType\:\:Invoice, App\\Enums\\BusinessDocumentType\:\:CreditNote, App\\Enums\\BusinessDocumentType\:\:DeliveryNote\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 2
+			path: app/Services/Invoicing/CompanyStockMovementService.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Invoicing/CompanyStockMovementService.php
+
+		-
+			message: '#^Method App\\Services\\Invoicing\\CompanyStockMovementService\:\:resolveWarehouseForLine\(\) should return App\\Models\\CompanyWarehouse but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Invoicing/CompanyStockMovementService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 2
+			path: app/Services/Invoicing/CompanyStockMovementService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/CompanyWarehouseService.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Invoicing/CompanyWarehouseService.php
+
+		-
+			message: '#^Method App\\Services\\Invoicing\\CompanyWarehouseService\:\:create\(\) should return App\\Models\\CompanyWarehouse but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Invoicing/CompanyWarehouseService.php
+
+		-
+			message: '#^Method App\\Services\\Invoicing\\CompanyWarehouseService\:\:defaultWarehouse\(\) should return App\\Models\\CompanyWarehouse but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Invoicing/CompanyWarehouseService.php
+
+		-
+			message: '#^Method App\\Services\\Invoicing\\CompanyWarehouseService\:\:ensureDefaultForCompany\(\) should return App\\Models\\CompanyWarehouse but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Invoicing/CompanyWarehouseService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$line_total\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/DocumentTotalsCalculator.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$tax_rate\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/DocumentTotalsCalculator.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\CanonicalInvoiceBuilder\:\:fromLinePayloads\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/DocumentTotalsCalculator.php
+
+		-
+			message: '#^Property App\\Models\\BusinessDocument\:\:\$subtotal \(float\) does not accept string\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Invoicing/DocumentTotalsCalculator.php
+
+		-
+			message: '#^Property App\\Models\\BusinessDocument\:\:\$tax_total \(float\) does not accept string\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Invoicing/DocumentTotalsCalculator.php
+
+		-
+			message: '#^Property App\\Models\\BusinessDocument\:\:\$total \(float\) does not accept string\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Invoicing/DocumentTotalsCalculator.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$company\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/Efaktura/ComplianceStatusSyncService.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 2
+			path: app/Services/Invoicing/Efaktura/ComplianceStatusSyncService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\ComplianceSubmissionStatus\:\:Submitted will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/Efaktura/ComplianceStatusSyncService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between App\\Enums\\ComplianceSubmissionStatus and string will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/Efaktura/ComplianceStatusSyncService.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Http\\Client\\Response\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Invoicing/Efaktura/ComplianceStatusSyncService.php
+
+		-
+			message: '#^Parameter \#1 \$company of static method App\\Support\\Invoicing\\CompanyEfakturaSettings\:\:fromCompany\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/Efaktura/ComplianceSubmissionService.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Services/Invoicing/Efaktura/EfakturaInboundService.php
+
+		-
+			message: '#^Parameter \#1 \$company of static method App\\Support\\Invoicing\\CompanyEfakturaSettings\:\:fromCompany\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/Efaktura/EphemeralEfakturaSubmissionService.php
+
+		-
+			message: '#^Result of \|\| is always true\.$#'
+			identifier: booleanOr.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/Efaktura/EphemeralEfakturaSubmissionService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\ComplianceSubmissionStatus\:\:Submitted will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/Efaktura/EphemeralEfakturaSubmissionService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Services/Invoicing/Efaktura/EphemeralEfakturaSubmissionService.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Http\\Client\\Response\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Invoicing/Efaktura/EphemeralEfakturaSubmissionService.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/Invoicing/Efaktura/SapiSkClient.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Http\\Client\\Response\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Invoicing/Efaktura/SapiSkClient.php
+
+		-
+			message: '#^Parameter \#1 \$company of static method App\\Support\\Invoicing\\CompanyEfakturaSettings\:\:fromCompany\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/Efaktura/SapiSkComplianceGateway.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Issued will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/Efaktura/SapiSkComplianceGateway.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Services/Invoicing/Efaktura/SapiSkComplianceGateway.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Http\\Client\\Response\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Invoicing/Efaktura/SapiSkComplianceGateway.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Invoicing/EphemeralBtcpayCheckoutService.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Http\\Client\\Response\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Invoicing/OpenRegistryService.php
+
+		-
+			message: '#^Cannot call method supportsPayBySquare\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Invoicing/PayBySquareGenerator.php
+
+		-
+			message: '#^Cannot call method toDateTime\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Invoicing/PayBySquareGenerator.php
+
+		-
+			message: '#^Instantiated class chillerlan\\QRCode\\QROptions not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Services/Invoicing/PayBySquareGenerator.php
+
+		-
+			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyAppSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/PayBySquareGenerator.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/RecurringDocumentGeneratorService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$line_discount_percent\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/RecurringDocumentGeneratorService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/RecurringDocumentGeneratorService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$quantity\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/RecurringDocumentGeneratorService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$tax_rate\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/RecurringDocumentGeneratorService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$unit\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/RecurringDocumentGeneratorService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$unit_price\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/RecurringDocumentGeneratorService.php
+
+		-
+			message: '#^Offset ''line_discount…'' on array\{name\: string\|null, description\: string\|null, quantity\: float, unit\: mixed, unit_price\: float, line_discount_percent\: float, tax_rate\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Invoicing/RecurringDocumentGeneratorService.php
+
+		-
+			message: '#^Offset ''tax_rate'' on array\{name\: string\|null, description\: string\|null, quantity\: float, unit\: mixed, unit_price\: float, line_discount_percent\: float, tax_rate\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Invoicing/RecurringDocumentGeneratorService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Invoicing/RecurringDocumentGeneratorService.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\DocumentSequenceService\:\:previewNextNumber\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/RecurringDocumentGeneratorService.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Support\\Invoicing\\CompanyVatPolicy\:\:calculatesVatAmounts\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/RecurringDocumentGeneratorService.php
+
+		-
+			message: '#^Parameter \#1 \$company of method App\\Support\\Invoicing\\CompanyVatPolicy\:\:resolveLineTaxRate\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/RecurringDocumentGeneratorService.php
+
+		-
+			message: '#^Parameter \#2 \$contact of method App\\Support\\Invoicing\\CompanyVatPolicy\:\:calculatesVatAmounts\(\) expects App\\Models\\CompanyContact\|null, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/RecurringDocumentGeneratorService.php
+
+		-
+			message: '#^Parameter \#2 \$contact of method App\\Support\\Invoicing\\CompanyVatPolicy\:\:resolveLineTaxRate\(\) expects App\\Models\\CompanyContact\|null, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/RecurringDocumentGeneratorService.php
+
+		-
+			message: '#^Cannot call method gt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Invoicing/RecurringNextDateCalculator.php
+
+		-
+			message: '#^Cannot call method lt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Invoicing/RecurringNextDateCalculator.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Invoicing/RecurringNextDateCalculator.php
+
+		-
+			message: '#^Match arm comparison between string and App\\Enums\\RecurringInterval\:\:Monthly is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/RecurringNextDateCalculator.php
+
+		-
+			message: '#^Match arm comparison between string and App\\Enums\\RecurringInterval\:\:Yearly is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/RecurringNextDateCalculator.php
+
+		-
+			message: '#^Match expression does not handle remaining value\: string$#'
+			identifier: match.unhandled
+			count: 1
+			path: app/Services/Invoicing/RecurringNextDateCalculator.php
+
+		-
+			message: '#^Offset 1\|2\|3\|4\|5\|6\|7\|8\|9\|10\|11\|12 on array\{1\: ''január'', 2\: ''február'', 3\: ''marec'', 4\: ''apríl'', 5\: ''máj'', 6\: ''jún'', 7\: ''júl'', 8\: ''august'', \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Invoicing/RecurringPlaceholderResolver.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$company_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/ServerToEvoluMigrationExportService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Invoicing/ServerToEvoluMigrationExportService.php
+
+		-
+			message: '#^Offset ''include_branding'' on array\{include_attachment_content\?\: bool\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Invoicing/ServerToEvoluMigrationExportService.php
+
+		-
+			message: '#^PHPDoc tag @param for parameter \$mapper with type \(callable\)\|null is not subtype of native type callable\.$#'
+			identifier: parameter.phpDocType
+			count: 1
+			path: app/Services/Invoicing/ServerToEvoluMigrationExportService.php
+
+		-
+			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyAppSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/ServerToEvoluMigrationExportService.php
+
+		-
+			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyEmailSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/ServerToEvoluMigrationExportService.php
+
+		-
+			message: '#^Parameter &\$snapshot by\-ref type of method App\\Services\\Invoicing\\ServerToEvoluMigrationExportService\:\:loadExpenseAttachmentsIntoSnapshot\(\) expects array\<string, list\<array\<string, mixed\>\>\>, array given\.$#'
+			identifier: parameterByRef.type
+			count: 2
+			path: app/Services/Invoicing/ServerToEvoluMigrationExportService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between array\<string, mixed\> and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/ServerToEvoluMigrationExportService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between int\<0, max\> and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 7
+			path: app/Services/Invoicing/ServerToEvoluMigrationExportService.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Http\\Client\\Response\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Invoicing/SubjektRegistryService.php
+
+		-
+			message: '#^Parameter \#3 \$sender of method App\\Services\\Invoicing\\BusinessDocumentEmailService\:\:send\(\) expects App\\Models\\User\|null, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/SubscriptionBillingInvoiceService.php
+
+		-
+			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyAppSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Invoicing/UsSalesTax/StripeTaxUsSalesTaxCalculator.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\CompanyJurisdiction\:\:Us will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/UsSalesTax/StripeTaxUsSalesTaxCalculator.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/UsSalesTax/StripeTaxUsSalesTaxCalculator.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Services/Invoicing/UsSalesTax/StripeTaxUsSalesTaxCalculator.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>postal_code" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Invoicing/UsSalesTax/StripeTaxUsSalesTaxCalculator.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>state_region" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Invoicing/UsSalesTax/StripeTaxUsSalesTaxCalculator.php
+
+		-
+			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyAppSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Invoicing/UsSalesTax/UsSalesTaxCalculationService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\CompanyJurisdiction\:\:Us will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/UsSalesTax/UsSalesTaxCalculationService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<mixed, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/Invoicing/ViesVatValidationService.php
+
+		-
+			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyAppSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Invoicing/Wise/WiseBankSyncService.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Http\\Client\\Response\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Invoicing/Wise/WiseBankSyncService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/StatsService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/StatsService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$posTerminals\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/StatsService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/StatsService.php
+
+		-
+			message: '#^Parameter \#1 \$store of method App\\Services\\StatsService\:\:getBasicStoreStats\(\) expects App\\Models\\Store, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/StatsService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/StoreEmailRuleDispatcher.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Services/StoreEmailRuleDispatcher.php
+
+		-
+			message: '#^Offset ''support_url'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/StoreEmailRuleDispatcher.php
+
+		-
+			message: '#^Offset ''website'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/StoreEmailRuleDispatcher.php
+
+		-
+			message: '#^Offset ''website_url'' on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/StoreEmailRuleDispatcher.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
+			identifier: method.notFound
+			count: 5
+			path: app/Services/StoreInvoiceStatsService.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/SubscriptionCreditLedgerService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\SubscriptionCreditLedgerEntry\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/SubscriptionCreditLedgerService.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/SubscriptionCreditLedgerService.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments ''admin''\|''merchant''\|''support'', array\{''pro'', ''enterprise''\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Services/SubscriptionEntitlementService.php
+
+		-
+			message: '#^Method App\\Services\\SubscriptionEntitlementService\:\:entitledPlan\(\) should return App\\Models\\SubscriptionPlan\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/SubscriptionEntitlementService.php
+
+		-
+			message: '#^Property App\\Models\\User\:\:\$role \(''admin''\|''merchant''\|''support''\) does not accept ''free''\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/SubscriptionEntitlementService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>plan" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/SubscriptionEntitlementService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/Tickets/EventBundleService.php
+
+		-
+			message: '#^Negated boolean expression is always true\.$#'
+			identifier: booleanNot.alwaysTrue
+			count: 1
+			path: app/Services/Tickets/EventBundleService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/WalletConnectionService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/WalletConnectionService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/WalletConnectionService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/WalletConnectionService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:notify\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/WalletConnectionService.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments ''aqua_boltz''\|''blink'', array\{''blink'', ''aqua_boltz''\} and true will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/WalletConnectionService.php
+
+		-
+			message: '#^Offset ''success'' on array\{success\: bool, message\: string, data\?\: array\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/WalletConnectionService.php
+
+		-
+			message: '#^Parameter \#1 \$store of class App\\Notifications\\WalletConnectionNeedsSupportMerchantNotification constructor expects App\\Models\\Store, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/WalletConnectionService.php
+
+		-
+			message: '#^Parameter \#1 \$store of class App\\Notifications\\WalletConnectionReadyNotification constructor expects App\\Models\\Store, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/WalletConnectionService.php
+
+		-
+			message: '#^Parameter \#2 \$store of method App\\Services\\WalletConnectionService\:\:notifySupportNeeded\(\) expects App\\Models\\Store, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/WalletConnectionService.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type Illuminate\\Database\\Eloquent\\Model\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/WalletConnectionService.php
+
+		-
+			message: '#^PHPDoc tag @param for parameter \$hints with type list\<string\|null\> is incompatible with native type string\|null\.$#'
+			identifier: parameter.phpDocType
+			count: 1
+			path: app/Support/Invoicing/BankTransactionDirectionGuesser.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:balanceSnapshotsOnly\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/Invoicing/BankTransactionListSummary.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:excludingBalanceSnapshots\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Support/Invoicing/BankTransactionListSummary.php
+
+		-
+			message: '#^Method App\\Support\\Invoicing\\BusinessDocumentImportFields\:\:headerAliases\(\) should return array\<string, list\<string\>\> but returns non\-empty\-array\<string, ''amount''\|''client_city''\|''client_country''\|''client_email''\|''client_name''\|''client_phone''\|''client_postal_code''\|''client_registration…''\|''client_street''\|''client_tax_id''\|''client_vat_id''\|''constant_symbol''\|''currency''\|''delivery_date''\|''due_date''\|''invoice_number''\|''issue_date''\|''paid_at''\|''payment_method''\|''specific_symbol''\|''variable_symbol''\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Support/Invoicing/BusinessDocumentImportFields.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\CompanyJurisdiction\:\:EuSk will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Support/Invoicing/CompanyEfakturaEligibility.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Support/Invoicing/CompanyEfakturaEligibility.php
+
+		-
+			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyAppSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Invoicing/CompanyEfakturaSettings.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\CompanyJurisdiction\:\:Us will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 4
+			path: app/Support/Invoicing/CompanyVatPolicy.php
+
+		-
+			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyAppSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Invoicing/CompanyWiseSettings.php
+
+		-
+			message: '#^Parameter \#1 \$type of static method App\\Support\\Invoicing\\Efaktura\\SapiSkSendPayload\:\:documentTypeId\(\) expects App\\Enums\\BusinessDocumentType, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/Invoicing/Efaktura/SapiSkSendPayload.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$jurisdiction\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/Invoicing/EuStructuredDocumentExport.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments string, list\<App\\Enums\\BusinessDocumentType\> and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Support/Invoicing/EuStructuredDocumentExport.php
+
+		-
+			message: '#^Match arm comparison between string and App\\Enums\\CompanyJurisdiction\:\:EuCz is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Support/Invoicing/SkUblProfile.php
+
+		-
+			message: '#^Match arm comparison between string and App\\Enums\\CompanyJurisdiction\:\:EuSk is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Support/Invoicing/SkUblProfile.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Support/PiiRedaction.php

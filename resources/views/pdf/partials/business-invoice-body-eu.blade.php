@@ -1,4 +1,13 @@
 @php
+    use App\Support\Invoicing\InvoiceUnitLabel;
+
+    $isUs = !empty($isUs);
+    $dateFmt = $isUs ? 'm/d/Y' : 'd.m.Y';
+    $fmtAmount = static function (float $amount) use ($isUs): string {
+        return $isUs
+            ? number_format($amount, 2, '.', ',')
+            : number_format($amount, 2, ',', ' ');
+    };
     $docTitle = match ($document->type->value) {
         'proforma' => __('Proforma invoice'),
         'credit_note' => __('Credit note'),
@@ -33,8 +42,25 @@
             <div class="section-label">{{ __('Supplier') }}</div>
             <strong style="font-size:11px;color:#111827;">{{ $company->displayName() }}</strong><br>
             @if($company->street){{ $company->street }}<br>@endif
-            @if($company->postal_code || $company->city){{ $company->postal_code }} {{ $company->city }}@if($company->country), {{ $company->country }}@endif<br>@endif
-            @if($company->registration_number){{ __('Reg. no.') }}: {{ $company->registration_number }}<br>@endif
+            @if($isUs)
+                @if($company->city || $company->state_region || $company->postal_code)
+                    @if($company->city){{ $company->city }}@endif
+                    @if($company->city && ($company->state_region || $company->postal_code)), @endif
+                    {{ trim($company->state_region.' '.$company->postal_code) }}<br>
+                @endif
+                @if($company->country){{ $company->country }}<br>@endif
+            @else
+                @if($company->postal_code || $company->city)
+                    {{ $company->postal_code }} {{ $company->city }}@if($company->country), {{ $company->country }}@endif<br>
+                @endif
+            @endif
+            @if($company->registration_number)
+                @if($isUs)
+                    {{ __('EIN') }}: {{ $company->registration_number }}<br>
+                @else
+                    {{ __('Reg. no.') }}: {{ $company->registration_number }}<br>
+                @endif
+            @endif
             @if($company->tax_id){{ __('Tax no.') }}: {{ $company->tax_id }}<br>@endif
             @if($company->vat_number){{ __('VAT ID') }}: {{ $company->vat_number }}<br>@endif
             @if($company->commercial_register)<span class="muted">{{ $company->commercial_register }}</span><br>@endif
@@ -52,7 +78,9 @@
             @if($document->title && $document->title !== $docTitle.' '.$document->number)
                 <div class="doc-subtitle muted">{{ $document->title }}</div>
             @endif
-            <div style="margin-top:10px;font-size:8px;font-weight:bold;color:#4b6a8a;letter-spacing:0.06em;">ISDOC 6.0</div>
+            @if(! $isUs)
+                <div style="margin-top:10px;font-size:8px;font-weight:bold;color:#4b6a8a;letter-spacing:0.06em;">ISDOC 6.0</div>
+            @endif
         </td>
     </tr>
 </table>
@@ -86,25 +114,35 @@
             @if($contact)
                 <div class="customer-name">{{ $contact->name }}</div>
                 @if($contact->street){{ $contact->street }}<br>@endif
-                @if($contact->postal_code || $contact->city){{ $contact->postal_code }} {{ $contact->city }}<br>@endif
+                @if($contact->postal_code || $contact->city || ($isUs && $contact->state_region))
+                    @if($isUs)
+                        @if($contact->city || $contact->state_region || $contact->postal_code)
+                            @if($contact->city){{ $contact->city }}@endif
+                            @if($contact->city && ($contact->state_region || $contact->postal_code)), @endif
+                            {{ trim($contact->state_region.' '.$contact->postal_code) }}<br>
+                        @endif
+                    @else
+                        {{ $contact->postal_code }} {{ $contact->city }}<br>
+                    @endif
+                @endif
                 @if($contact->country){{ $contact->country }}<br>@endif
                 @if($contact->email){{ $contact->email }}<br>@endif
             @endif
             <table class="dates-table">
                 <tr>
                     <td class="date-label">{{ __('Issue date') }}:</td>
-                    <td class="date-value">{{ $document->issue_date?->format('d.m.Y') }}</td>
+                    <td class="date-value">{{ $document->issue_date?->format($dateFmt) }}</td>
                 </tr>
                 @if($document->delivery_date)
                     <tr>
                         <td class="date-label">{{ __('Delivery date') }}:</td>
-                        <td class="date-value">{{ $document->delivery_date->format('d.m.Y') }}</td>
+                        <td class="date-value">{{ $document->delivery_date->format($dateFmt) }}</td>
                     </tr>
                 @endif
                 @if($document->due_date)
                     <tr>
                         <td class="date-label">{{ $isQuote ? __('Quote valid until') : __('Due date') }}:</td>
-                        <td class="date-value">{{ $document->due_date->format('d.m.Y') }}</td>
+                        <td class="date-value">{{ $document->due_date->format($dateFmt) }}</td>
                     </tr>
                 @endif
             </table>
@@ -128,8 +166,10 @@
             <th class="col-item">{{ __('Item name and description') }}</th>
             <th class="col-qty">{{ __('Qty') }}</th>
             <th class="col-unit">{{ __('Unit') }}</th>
-            <th class="col-price">{{ __('Unit price') }}</th>
-            @if(!empty($showVatColumn))
+            <th class="col-price">{{ $isUs ? __('Rate') : __('Unit price') }}</th>
+            @if(!empty($showSalesTaxColumn))
+                <th class="col-vat">{{ __('Tax %') }}</th>
+            @elseif(!empty($showVatColumn))
                 <th class="col-vat">{{ __('VAT') }} %</th>
             @endif
             <th class="col-total">{{ __('Line total') }}</th>
@@ -143,12 +183,14 @@
                     @if($line->description)<div class="line-desc">{{ $line->description }}</div>@endif
                 </td>
                 <td class="col-qty">{{ $formatQty($line->quantity) }}</td>
-                <td class="col-unit">{{ $line->unit }}</td>
-                <td class="col-price">{{ number_format((float) $line->unit_price, 2, ',', ' ') }} {{ $document->currency }}</td>
-                @if(!empty($showVatColumn))
+                <td class="col-unit">{{ InvoiceUnitLabel::format($line->unit) }}</td>
+                <td class="col-price">{{ $fmtAmount((float) $line->unit_price) }} {{ $document->currency }}</td>
+                @if(!empty($showSalesTaxColumn))
+                    <td class="col-vat">{{ number_format((float) $line->tax_rate, 2, $isUs ? '.' : ',', $isUs ? ',' : ' ') }}%</td>
+                @elseif(!empty($showVatColumn))
                     <td class="col-vat">{{ number_format((float) $line->tax_rate, 0, ',', ' ') }} %</td>
                 @endif
-                <td class="col-total"><strong>{{ number_format((float) $line->line_total, 2, ',', ' ') }} {{ $document->currency }}</strong></td>
+                <td class="col-total"><strong>{{ $fmtAmount((float) $line->line_total) }} {{ $document->currency }}</strong></td>
             </tr>
         @endforeach
     </tbody>
@@ -173,45 +215,63 @@
                 @if(!empty($showVatBreakdown))
                     <tr>
                         <td class="label">{{ __('Subtotal') }}</td>
-                        <td class="value">{{ number_format((float) $document->subtotal, 2, ',', ' ') }} {{ $document->currency }}</td>
+                        <td class="value">{{ $fmtAmount((float) $document->subtotal) }} {{ $document->currency }}</td>
                     </tr>
                     @if(!empty($taxBreakdown))
                         @foreach($taxBreakdown as $row)
                             <tr>
                                 <td class="label">{{ __('VAT') }} {{ number_format($row->ratePercent, 0, ',', ' ') }} %</td>
-                                <td class="value">{{ number_format((float) $row->taxAmount, 2, ',', ' ') }} {{ $document->currency }}</td>
+                                <td class="value">{{ $fmtAmount((float) $row->taxAmount) }} {{ $document->currency }}</td>
                             </tr>
                         @endforeach
                     @else
                         <tr>
                             <td class="label">{{ __('VAT') }}</td>
-                            <td class="value">{{ number_format((float) $document->tax_total, 2, ',', ' ') }} {{ $document->currency }}</td>
+                            <td class="value">{{ $fmtAmount((float) $document->tax_total) }} {{ $document->currency }}</td>
+                        </tr>
+                    @endif
+                @elseif(!empty($showSalesTaxColumn))
+                    <tr>
+                        <td class="label">{{ __('Subtotal') }}</td>
+                        <td class="value">{{ $fmtAmount((float) $document->subtotal) }} {{ $document->currency }}</td>
+                    </tr>
+                    @if(!empty($taxBreakdown))
+                        @foreach($taxBreakdown as $row)
+                            <tr>
+                                <td class="label">{{ $row->label ?? (__('Sales tax').' '.number_format($row->ratePercent, 2, '.', '').'%') }}</td>
+                                <td class="value">{{ $fmtAmount((float) $row->taxAmount) }} {{ $document->currency }}</td>
+                            </tr>
+                        @endforeach
+                    @elseif((float) $document->tax_total > 0)
+                        <tr>
+                            <td class="label">{{ __('Sales tax') }}</td>
+                            <td class="value">{{ $fmtAmount((float) $document->tax_total) }} {{ $document->currency }}</td>
                         </tr>
                     @endif
                 @endif
                 <tr class="grand">
-                    <td class="label">{{ __('Grand total') }}</td>
-                    <td class="value">{{ number_format((float) $document->total, 2, ',', ' ') }} {{ $document->currency }}</td>
+                    <td class="label">{{ $isUs && ! $isQuote ? __('Total due') : __('Grand total') }}</td>
+                    <td class="value">{{ $fmtAmount((float) $document->total) }} {{ $document->currency }}</td>
                 </tr>
                 @if($showPaidInfo)
                     <tr class="paid-row">
                         <td class="label">{{ __('Paid') }}</td>
-                        <td class="value">{{ number_format((float) ($document->amount_paid ?? $document->total), 2, ',', ' ') }} {{ $document->currency }}</td>
+                        <td class="value">{{ $fmtAmount((float) ($document->amount_paid ?? $document->total)) }} {{ $document->currency }}</td>
                     </tr>
                     <tr class="due">
                         <td class="label">{{ __('Amount due') }}</td>
-                        <td class="value">0,00 {{ $document->currency }}</td>
+                        <td class="value">{{ $isUs ? '0.00' : '0,00' }} {{ $document->currency }}</td>
                     </tr>
                     @if($document->paid_at)
                         <tr>
                             <td class="label muted">{{ __('Payment date') }}</td>
-                            <td class="value muted">{{ $document->paid_at->format('d.m.Y') }}</td>
+                            <td class="value muted">{{ $document->paid_at->format($dateFmt) }}</td>
                         </tr>
                     @endif
                 @elseif($showPaymentTotals)
                     <tr class="due">
                         <td class="label">{{ __('Amount due') }}</td>
-                        <td class="value">{{ number_format($amountDue, 2, ',', ' ') }} {{ $document->currency }}</td>
+                        <td class="value">{{ $fmtAmount($amountDue) }} {{ $document->currency }}</td>
                     </tr>
                 @endif
             </table>
@@ -248,39 +308,15 @@
             @if($document->due_date)
                 <td>
                     <strong>{{ __('Due date') }}</strong>
-                    {{ $document->due_date->format('d.m.Y') }}
+                    {{ $document->due_date->format($dateFmt) }}
                 </td>
             @endif
             <td>
                 <strong>{{ __('Amount due') }}</strong>
-                <span class="amount">{{ number_format($showPaidInfo ? 0 : $amountDue, 2, ',', ' ') }} {{ $document->currency }}</span>
+                <span class="amount">{{ $fmtAmount($showPaidInfo ? 0 : $amountDue) }} {{ $document->currency }}</span>
             </td>
         </tr>
     </table>
 @endif
 
-@if($company->issuer_name || $company->issuer_email || $company->issuer_phone)
-    <div class="issuer-line">
-        {{ __('Issued by') }}: {{ $company->issuer_name }}
-        @if($company->issuer_phone) · {{ $company->issuer_phone }}@endif
-        @if($company->issuer_email) · {{ $company->issuer_email }}@endif
-    </div>
-@endif
-
-@if(! $isQuote && ($bankQr || $btcPayQr))
-    <div class="qr-block">
-        @if($bankQr)
-            <div class="qr-item">
-                <div class="qr-caption">{{ __('Pay by bank (QR)') }}</div>
-                <img src="{{ $bankQr }}" alt="">
-            </div>
-        @endif
-        @if($btcPayQr)
-            <div class="qr-item">
-                <div class="qr-caption">{{ __('Bitcoin / Lightning (payment link)') }}</div>
-                <img src="{{ $btcPayQr }}" alt="">
-                <div class="qr-hint">{{ __('BTC payment QR is a web link. Open in your browser - do not scan with a Lightning wallet.') }}</div>
-            </div>
-        @endif
-    </div>
-@endif
+@include('pdf.partials.business-invoice-qr-block')

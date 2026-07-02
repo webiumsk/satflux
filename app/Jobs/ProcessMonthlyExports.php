@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Export;
 use App\Models\Store;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -21,6 +21,17 @@ class ProcessMonthlyExports implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /** Safe to retry - the run is idempotent per store per month. */
+    public int $tries = 3;
+
+    /**
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [60, 300];
+    }
+
     public function __construct(
         public ?string $forMonth = null, // Y-m format; default previous month
         public ?string $storeId = null // optional local Store UUID filter
@@ -29,7 +40,7 @@ class ProcessMonthlyExports implements ShouldQueue
         $this->onQueue('exports');
     }
 
-    public function handle(SubscriptionService $subscriptionService): void
+    public function handle(SubscriptionEntitlementService $subscriptionService): void
     {
         $month = $this->forMonth ?? now()->subMonth()->format('Y-m');
         $dateFrom = "{$month}-01";

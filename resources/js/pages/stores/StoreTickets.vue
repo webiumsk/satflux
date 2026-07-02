@@ -18,8 +18,8 @@
     <StoreSidebar
       :store="store"
       :apps="appsStore.apps"
-      @show-settings="handleShowSettings"
-      @show-section="handleShowSection"
+      @show-settings="goSettings"
+      @show-section="goSection"
     />
     <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-l border-gray-800 bg-gray-900">
       <TicketsShow :store="store" :app="virtualApp" :event-limit="eventLimit" />
@@ -28,62 +28,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAppsStore } from '../../store/apps';
 import { useAccountLimits } from '../../composables/useAccountLimits';
-import api from '../../services/api';
+import { useStorePageShell } from '../../composables/useStorePageShell';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
 import TicketsShow from './TicketsShow.vue';
 
 const { t } = useI18n();
-const route = useRoute();
-const router = useRouter();
 const appsStore = useAppsStore();
 const { limits, load: loadLimits } = useAccountLimits();
-
-const storeId = computed(() => route.params.id as string);
-const store = ref<any>(null);
-const error = ref('');
+const { storeId, store, error, loadStore, goSettings, goSection } = useStorePageShell();
 
 const virtualApp = computed(() => ({ name: t('tickets.title') }));
 const eventLimit = computed(() => limits.value?.events?.unlimited ? null : (limits.value?.events?.max ?? null));
 
-function handleShowSettings() {
-  router.push({ name: 'stores-show', params: { id: storeId.value }, query: { section: 'settings' } });
-}
-
-function handleShowSection(section: string) {
-  router.push({ name: 'stores-show', params: { id: storeId.value }, query: { section } });
-}
-
-async function loadStore() {
-  error.value = '';
-  try {
-    const response = await api.get(`/stores/${storeId.value}`);
-    store.value = response.data.data;
-  } catch (err: any) {
-    error.value = err?.response?.data?.message || 'Failed to load store';
-  }
-}
-
 onMounted(async () => {
-  await loadStore();
   if (storeId.value) {
     await loadLimits(storeId.value);
   }
-  if (store.value) {
-    await appsStore.fetchApps(storeId.value);
-  }
 });
 
-watch(() => route.params.id, async (newId) => {
-  if (newId) {
-    await loadStore();
-    if (store.value) {
-      await appsStore.fetchApps(newId as string);
-    }
+watch(storeId, async (id) => {
+  if (id) {
+    await loadLimits(id);
   }
 });
 </script>

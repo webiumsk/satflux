@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\StatsService;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Http\Request;
 
 /**
@@ -13,7 +13,7 @@ class StatsController extends Controller
 {
     public function __construct(
         protected StatsService $statsService,
-        protected SubscriptionService $subscriptionService
+        protected SubscriptionEntitlementService $subscriptionService
     ) {}
 
     /**

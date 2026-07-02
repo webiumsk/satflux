@@ -348,6 +348,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::post('/ephemeral/pdf', [EphemeralBusinessDocumentController::class, 'pdfWithoutCompany']);
             Route::post('/ephemeral/email-preview', [EphemeralBusinessDocumentController::class, 'emailPreviewWithoutCompany']);
             Route::post('/ephemeral/send-email', [EphemeralBusinessDocumentController::class, 'sendEmailWithoutCompany']);
+            Route::post('/ephemeral/email-settings/test-smtp', [EphemeralBusinessDocumentController::class, 'testEmailSettingsSmtpWithoutCompany']);
             Route::post('/ephemeral/isdoc', [EphemeralBusinessDocumentController::class, 'isdocWithoutCompany']);
             Route::post('/ephemeral/ubl', [EphemeralBusinessDocumentController::class, 'ublWithoutCompany']);
             Route::post('/ephemeral/btcpay-checkout', [EphemeralBusinessDocumentController::class, 'btcpayCheckoutWithoutCompany']);
@@ -384,6 +385,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::delete('/companies/{company}/number-series/{sequence}', [CompanyDocumentSequenceController::class, 'destroy'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/email-settings/test-smtp', [CompanyEmailSettingsController::class, 'testSmtp'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/email-settings/ephemeral/test-smtp', [EphemeralBusinessDocumentController::class, 'testEmailSettingsSmtp'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/reset-data', [CompanyController::class, 'resetData'])
                 ->middleware(EnsureCompanyOwnership::class);
@@ -644,6 +647,12 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/bank-transactions/{bankTransaction}/create-expense', [\App\Http\Controllers\Invoicing\BankTransactionController::class, 'createExpense'])
                 ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/wise/status', [\App\Http\Controllers\Invoicing\WiseBankController::class, 'status'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/wise/connect', [\App\Http\Controllers\Invoicing\WiseBankController::class, 'connect'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/wise/sync', [\App\Http\Controllers\Invoicing\WiseBankController::class, 'sync'])
+                ->middleware(EnsureCompanyOwnership::class);
         });
 
     // Dashboard
@@ -659,32 +668,25 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
     Route::get('/stores/{store}', [StoreController::class, 'show'])
         ->middleware(EnsureStoreOwnership::class);
 
-    // Store Checklist
-    Route::get('/stores/{store}/checklist', [StoreChecklistController::class, 'index'])
-        ->middleware(EnsureStoreOwnership::class);
-    Route::put('/stores/{store}/checklist/{itemKey}', [StoreChecklistController::class, 'update'])
-        ->middleware(EnsureStoreOwnership::class);
+    Route::prefix('stores/{store}')->middleware(EnsureStoreOwnership::class)->group(function () {
+        // Store Checklist
+        Route::get('/checklist', [StoreChecklistController::class, 'index']);
+        Route::put('/checklist/{itemKey}', [StoreChecklistController::class, 'update']);
 
-    // Store Dashboard
-    Route::get('/stores/{store}/dashboard', [StoreDashboardController::class, 'show'])
-        ->middleware(EnsureStoreOwnership::class);
+        // Store Dashboard
+        Route::get('/dashboard', [StoreDashboardController::class, 'show']);
 
-    // Store Settings
-    Route::get('/stores/{store}/settings', [StoreSettingsController::class, 'show'])
-        ->middleware(EnsureStoreOwnership::class);
-    Route::put('/stores/{store}/settings', [StoreSettingsController::class, 'update'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':store.updated']);
+        // Store Settings
+        Route::get('/settings', [StoreSettingsController::class, 'show']);
+        Route::put('/settings', [StoreSettingsController::class, 'update'])
+            ->middleware(AuditLog::class.':store.updated');
 
-    Route::get('/stores/{store}/email-rules/triggers', [StoreEmailRuleController::class, 'triggers'])
-        ->middleware(EnsureStoreOwnership::class);
-    Route::get('/stores/{store}/email-rules', [StoreEmailRuleController::class, 'index'])
-        ->middleware(EnsureStoreOwnership::class);
-    Route::post('/stores/{store}/email-rules', [StoreEmailRuleController::class, 'store'])
-        ->middleware(EnsureStoreOwnership::class);
-    Route::put('/stores/{store}/email-rules/{store_email_rule}', [StoreEmailRuleController::class, 'update'])
-        ->middleware(EnsureStoreOwnership::class);
-    Route::delete('/stores/{store}/email-rules/{store_email_rule}', [StoreEmailRuleController::class, 'destroy'])
-        ->middleware(EnsureStoreOwnership::class);
+        Route::get('/email-rules/triggers', [StoreEmailRuleController::class, 'triggers']);
+        Route::get('/email-rules', [StoreEmailRuleController::class, 'index']);
+        Route::post('/email-rules', [StoreEmailRuleController::class, 'store']);
+        Route::put('/email-rules/{store_email_rule}', [StoreEmailRuleController::class, 'update']);
+        Route::delete('/email-rules/{store_email_rule}', [StoreEmailRuleController::class, 'destroy']);
+    });
 
     // Cashu (wallet_type=cashu)
     Route::middleware([EnsureStoreOwnership::class])->prefix('stores/{store}/cashu')->group(function () {
@@ -812,18 +814,18 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
         ->middleware('guest.restrict');
 
     // PoS terminals and orders
-    Route::get('/stores/{store}/pos-terminals', [PosTerminalController::class, 'index'])
-        ->middleware(EnsureStoreOwnership::class);
-    Route::post('/stores/{store}/pos-terminals', [PosTerminalController::class, 'store'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':pos-terminal.created']);
-    Route::put('/stores/{store}/pos-terminals/{pos_terminal}', [PosTerminalController::class, 'update'])
-        ->middleware([EnsureStoreOwnership::class, EnsurePlanAllowsOfflinePaymentMethods::class, AuditLog::class.':pos-terminal.updated']);
-    Route::delete('/stores/{store}/pos-terminals/{pos_terminal}', [PosTerminalController::class, 'destroy'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':pos-terminal.deleted']);
-    Route::get('/stores/{store}/pos-orders', [PosOrderController::class, 'index'])
-        ->middleware(EnsureStoreOwnership::class);
-    Route::post('/stores/{store}/pos-orders', [PosOrderController::class, 'store'])
-        ->middleware([EnsureStoreOwnership::class, AuditLog::class.':pos-order.created']);
+    Route::prefix('stores/{store}')->middleware(EnsureStoreOwnership::class)->group(function () {
+        Route::get('/pos-terminals', [PosTerminalController::class, 'index']);
+        Route::post('/pos-terminals', [PosTerminalController::class, 'store'])
+            ->middleware(AuditLog::class.':pos-terminal.created');
+        Route::put('/pos-terminals/{pos_terminal}', [PosTerminalController::class, 'update'])
+            ->middleware([EnsurePlanAllowsOfflinePaymentMethods::class, AuditLog::class.':pos-terminal.updated']);
+        Route::delete('/pos-terminals/{pos_terminal}', [PosTerminalController::class, 'destroy'])
+            ->middleware(AuditLog::class.':pos-terminal.deleted');
+        Route::get('/pos-orders', [PosOrderController::class, 'index']);
+        Route::post('/pos-orders', [PosOrderController::class, 'store'])
+            ->middleware(AuditLog::class.':pos-order.created');
+    });
 
     // Wallet Connections (Merchant)
     Route::get('/stores/{store}/wallet-connection', [WalletConnectionController::class, 'show'])

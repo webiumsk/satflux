@@ -9,33 +9,16 @@ class CashuService
 {
     public function __construct(protected BtcPayClient $client) {}
 
-    protected function withUserKey(?string $userApiKey, callable $fn)
-    {
-        $originalApiKey = null;
-        if ($userApiKey) {
-            $originalApiKey = $this->client->getApiKey();
-            $this->client->setApiKey($userApiKey);
-        }
-
-        try {
-            return $fn();
-        } finally {
-            if ($userApiKey && $originalApiKey) {
-                $this->client->setApiKey($originalApiKey);
-            }
-        }
-    }
-
     public function getSettings(string $storeId, string $apiKey): array
     {
-        return $this->withUserKey($apiKey, function () use ($storeId) {
+        return $this->client->withUserKey($apiKey, function () use ($storeId) {
             return $this->client->get("/api/v1/stores/{$storeId}/plugins/cashumelt/settings");
         });
     }
 
     public function saveSettings(string $storeId, array $data, string $apiKey): array
     {
-        return $this->withUserKey($apiKey, function () use ($storeId, $data) {
+        return $this->client->withUserKey($apiKey, function () use ($storeId, $data) {
             // $data = ['mintUrl' => ..., 'lightningAddress' => ..., 'enabled' => true]
             return $this->client->put("/api/v1/stores/{$storeId}/plugins/cashumelt/settings", $data);
         });
@@ -43,7 +26,7 @@ class CashuService
 
     public function listPayments(string $storeId, string $apiKey, array $params = []): array
     {
-        return $this->withUserKey($apiKey, function () use ($storeId, $params) {
+        return $this->client->withUserKey($apiKey, function () use ($storeId, $params) {
             // $params = ['limit' => ..., 'offset' => ..., 'settlementState' => 'SETTLED'|'PENDING'|'FAILED']
             return $this->client->get("/api/v1/stores/{$storeId}/plugins/cashumelt/payments", $params);
         });
@@ -51,7 +34,7 @@ class CashuService
 
     public function retryPayment(string $storeId, string $quoteId, string $apiKey): array
     {
-        return $this->withUserKey($apiKey, function () use ($storeId, $quoteId) {
+        return $this->client->withUserKey($apiKey, function () use ($storeId, $quoteId) {
             return $this->client->post(
                 "/api/v1/stores/{$storeId}/plugins/cashumelt/payments/{$quoteId}/retry",
                 []
@@ -68,7 +51,7 @@ class CashuService
      */
     public function tryRemoveCashuCheckoutPaymentMethods(string $storeId, string $userApiKey, array $paymentMethodIds = ['CASHU', 'CASHUMELT']): void
     {
-        $this->withUserKey($userApiKey, function () use ($storeId, $paymentMethodIds) {
+        $this->client->withUserKey($userApiKey, function () use ($storeId, $paymentMethodIds) {
             foreach ($paymentMethodIds as $paymentMethodId) {
                 try {
                     $this->client->delete('/api/v1/stores/'.$storeId.'/payment-methods/'.$paymentMethodId);

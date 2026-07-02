@@ -9,7 +9,7 @@ use App\Services\BtcPay\AppService;
 use App\Services\BtcPay\InvoiceService;
 use App\Services\InvoiceSourceService;
 use App\Services\StoreInvoiceStatsService;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +21,7 @@ class StoreDashboardController extends Controller
         protected AppService $appService,
         protected InvoiceSourceService $invoiceSourceService,
         protected StoreInvoiceStatsService $storeInvoiceStatsService,
-        protected SubscriptionService $subscriptionService
+        protected SubscriptionEntitlementService $subscriptionService
     ) {}
 
     /**

@@ -6,7 +6,7 @@ use App\Models\User;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\InvoiceService;
 use App\Services\Invoicing\SubscriptionBillingInvoiceService;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -22,7 +22,7 @@ class FulfillSubscriptionInvoice extends Command
 
     public function handle(
         InvoiceService $invoiceService,
-        SubscriptionService $subscriptionService,
+        SubscriptionEntitlementService $subscriptionService,
         SubscriptionBillingInvoiceService $billingInvoiceService,
     ): int {
         $invoiceId = $this->argument('invoiceId');

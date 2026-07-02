@@ -8,7 +8,10 @@ export interface InvoicingCompanyListItem {
     id: string;
     legal_name: string;
     trade_name: string | null;
+    registration_number?: string | null;
     documents_count: number;
+    logo_url?: string | null;
+    has_logo?: boolean;
 }
 
 export interface UseInvoicingCompaniesResult {

@@ -8,6 +8,7 @@ import { allDocumentEventsQuery } from '../evolu/client';
 import type { CompanyId, DocumentId } from '../evolu/schema';
 import type { DocumentSavePayload } from '../evolu/documentCrud';
 import { payloadFromApiDocument, markLocalDocumentPaid } from '../evolu/documentCrud';
+import { resolveLocalEmailSettingsForBridge } from '../evolu/companySettingsCrud';
 import { documentVariableSymbol } from '../evolu/documentNumber';
 import { documentHistoryFromEvents } from '../evolu/documentEventLog';
 import type { EvoluDocumentRow } from '../evolu/documentMap';
@@ -767,8 +768,17 @@ export function useInvoiceDocument() {
 
   function buildCurrentEphemeralSnapshot() {
     const p = payload();
+    let companyForSnapshot = company.value;
+    if (localFirst && local?.evolu && companyId.value && companyForSnapshot) {
+      const emailSettings = resolveLocalEmailSettingsForBridge(
+        local.evolu,
+        companyId.value as CompanyId,
+        {},
+      );
+      companyForSnapshot = { ...companyForSnapshot, email_settings: emailSettings };
+    }
     return buildEphemeralSnapshot(
-      company.value,
+      companyForSnapshot,
       selectedContact.value,
       {
         type: documentType.value,

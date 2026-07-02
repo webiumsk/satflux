@@ -37,4 +37,19 @@ class BankTransactionDirectionGuesserTest extends TestCase
 
         $this->assertSame(BankTransactionDirection::Debit, $direction);
     }
+
+    #[Test]
+    public function wise_direction_in_is_credit_and_out_is_debit(): void
+    {
+        $guesser = app(BankTransactionDirectionGuesser::class);
+
+        $this->assertSame(
+            BankTransactionDirection::Credit,
+            $guesser->fromAmountAndHints(100.0, 'IN'),
+        );
+        $this->assertSame(
+            BankTransactionDirection::Debit,
+            $guesser->fromAmountAndHints(100.0, 'OUT'),
+        );
+    }
 }

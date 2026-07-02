@@ -644,6 +644,7 @@ import RaffleTicketPricingFields from "../../components/stores/RaffleTicketPrici
 import UrlQrModal from "../../components/ui/UrlQrModal.vue";
 import DeleteAppModal from "../../components/stores/DeleteAppModal.vue";
 import { useStorePageShell } from "../../composables/useStorePageShell";
+import { useAppsStore } from "../../store/apps";
 import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
 import {
   useRafflesStore,
@@ -666,9 +667,11 @@ const route = useRoute();
 const router = useRouter();
 const flashStore = useFlashStore();
 const rafflesStore = useRafflesStore();
+const appsStore = useAppsStore();
 const { btcPayUrl, load: loadBtcPayUrl } = useBtcPayUrl();
-const { storeId, store, error, apps, loadStore, goSettings, goSection } =
+const { storeId, store, error, loadStore, goSettings, goSection } =
   useStorePageShell();
+const apps = computed(() => appsStore.apps);
 
 const raffleId = computed(() => route.params.raffleId as string);
 const raffle = ref<Raffle | null>(null);
@@ -1027,9 +1030,18 @@ watch(activeTab, (tab) => {
 });
 
 onMounted(async () => {
+  if (storeId.value) {
+    await appsStore.fetchApps(storeId.value);
+  }
   await loadBtcPayUrl();
   await loadDetail();
   await Promise.all([loadTickets(), loadDrawings()]);
+});
+
+watch(storeId, (id) => {
+  if (id) {
+    void appsStore.fetchApps(id);
+  }
 });
 
 watch(raffleId, async () => {

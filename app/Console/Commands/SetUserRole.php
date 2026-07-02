@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Console\Command;
 
 class SetUserRole extends Command
@@ -52,7 +52,7 @@ class SetUserRole extends Command
         $user->role = $role;
         $user->save();
 
-        app(SubscriptionService::class)->syncSubscriptionForAdminRole($user, $role);
+        app(SubscriptionEntitlementService::class)->syncSubscriptionForAdminRole($user, $role);
 
         $this->info('✓ User role updated successfully!');
         $this->line("  Email: {$user->email}");

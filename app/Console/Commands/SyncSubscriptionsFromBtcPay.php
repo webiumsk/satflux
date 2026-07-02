@@ -170,7 +170,7 @@ class SyncSubscriptionsFromBtcPay extends Command
                     }
                 }
 
-                $user->update($updateData);
+                $user->forceFill($updateData)->save();
                 $synced++;
 
                 Log::info('Synced subscription from BTCPay', [
@@ -322,7 +322,7 @@ class SyncSubscriptionsFromBtcPay extends Command
                     }
                 }
 
-                $user->update($updateData);
+                $user->forceFill($updateData)->save();
                 $synced++;
 
                 Log::info('Synced subscription from BTCPay via offerings/subscribers', [
@@ -453,7 +453,7 @@ class SyncSubscriptionsFromBtcPay extends Command
                         }
                     }
 
-                    $user->update($updateData);
+                    $user->forceFill($updateData)->save();
                     $synced++;
 
                 } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {

@@ -45,7 +45,7 @@ class CsvBankParser implements BankStatementParser
                 continue;
             }
             $cols = str_getcsv($line, $delimiter);
-            $row = $this->parseRow($cols, $map);
+            $row = $this->parseRow($cols, $map, $profile);
             if ($row !== null) {
                 $parsed[] = $row;
             }
@@ -87,6 +87,12 @@ class CsvBankParser implements BankStatementParser
             return 'tatra';
         }
 
+        if (str_contains($joined, 'direction')
+            && str_contains($joined, 'reference')
+            && (str_contains($joined, 'target amount') || str_contains($joined, 'source amount'))) {
+            return 'wise';
+        }
+
         return (string) config('bank_import.default_csv_profile', 'generic');
     }
 
@@ -112,7 +118,13 @@ class CsvBankParser implements BankStatementParser
             }
         }
 
-        if (! isset($map['date'], $map['amount'])) {
+        if ($profile === 'wise') {
+            if (! isset($map['date'], $map['direction'])) {
+                throw ValidationException::withMessages([
+                    'file' => ['Wise CSV must include date and direction columns.'],
+                ]);
+            }
+        } elseif (! isset($map['date'], $map['amount'])) {
             throw ValidationException::withMessages([
                 'file' => ['CSV must include date and amount columns.'],
             ]);
@@ -125,8 +137,12 @@ class CsvBankParser implements BankStatementParser
      * @param  list<string|null>  $cols
      * @param  array<string, int>  $map
      */
-    protected function parseRow(array $cols, array $map): ?ParsedBankTransaction
+    protected function parseRow(array $cols, array $map, string $profile = 'generic'): ?ParsedBankTransaction
     {
+        if ($profile === 'wise') {
+            return $this->parseWiseRow($cols, $map);
+        }
+
         $amountRaw = $this->col($cols, $map, 'amount');
         if ($amountRaw === null || $amountRaw === '') {
             return null;
@@ -153,17 +169,77 @@ class CsvBankParser implements BankStatementParser
         }
 
         $currency = strtoupper($this->col($cols, $map, 'currency') ?: 'EUR');
+        $variableSymbol = BankSymbolNormalizer::variableSymbol($this->col($cols, $map, 'variable_symbol'));
 
         return new ParsedBankTransaction(
             bookedAt: $this->parseDate($dateRaw),
             amount: abs($amount),
             currency: $currency,
             direction: $direction,
-            variableSymbol: BankSymbolNormalizer::variableSymbol($this->col($cols, $map, 'variable_symbol')),
+            variableSymbol: $variableSymbol,
             constantSymbol: BankSymbolNormalizer::constantSymbol($this->col($cols, $map, 'constant_symbol')),
             specificSymbol: BankSymbolNormalizer::specificSymbol($this->col($cols, $map, 'specific_symbol')),
             counterpartyName: $counterparty,
             reference: $reference,
+            bankTransactionId: $this->col($cols, $map, 'transaction_id'),
+        );
+    }
+
+    /**
+     * @param  list<string|null>  $cols
+     * @param  array<string, int>  $map
+     */
+    protected function parseWiseRow(array $cols, array $map): ?ParsedBankTransaction
+    {
+        $directionRaw = $this->col($cols, $map, 'direction');
+        $reference = $this->col($cols, $map, 'reference');
+        $isIncoming = $directionRaw !== null && in_array(strtoupper(trim($directionRaw)), ['IN', 'INCOMING'], true);
+
+        $amountRaw = $isIncoming
+            ? $this->col($cols, $map, 'target_amount')
+            : $this->col($cols, $map, 'source_amount');
+        if ($amountRaw === null || $amountRaw === '') {
+            return null;
+        }
+
+        $amount = $this->parseAmount($amountRaw);
+        if ($amount == 0.0) {
+            return null;
+        }
+
+        $currency = strtoupper(
+            ($isIncoming ? $this->col($cols, $map, 'target_currency') : $this->col($cols, $map, 'source_currency')) ?: 'USD'
+        );
+
+        $counterparty = $isIncoming
+            ? $this->col($cols, $map, 'counterparty')
+            : ($this->col($cols, $map, 'counterparty_out') ?: $this->col($cols, $map, 'counterparty'));
+
+        $direction = app(BankTransactionDirectionGuesser::class)->fromAmountAndHints(
+            $amount,
+            $directionRaw,
+            $counterparty,
+            $reference,
+        );
+
+        $dateRaw = $this->col($cols, $map, 'date');
+        if ($dateRaw === null || $dateRaw === '') {
+            return null;
+        }
+
+        $variableSymbol = null;
+
+        return new ParsedBankTransaction(
+            bookedAt: $this->parseDate($dateRaw),
+            amount: abs($amount),
+            currency: $currency,
+            direction: $direction,
+            variableSymbol: $variableSymbol,
+            constantSymbol: null,
+            specificSymbol: null,
+            counterpartyName: $counterparty,
+            reference: $reference,
+            bankTransactionId: $this->col($cols, $map, 'transaction_id'),
         );
     }
 
@@ -192,11 +268,15 @@ class CsvBankParser implements BankStatementParser
     protected function parseDate(string $raw): \DateTimeInterface
     {
         $raw = trim($raw);
-        $formats = ['d.m.Y', 'd.m.y', 'Y-m-d', 'd/m/Y', 'Y/m/d'];
+        $formats = ['d-m-Y', 'd.m.Y', 'd.m.y', 'Y-m-d', 'd/m/Y', 'Y/m/d'];
         foreach ($formats as $format) {
-            $dt = Carbon::createFromFormat('!'.$format, $raw);
-            if ($dt instanceof Carbon) {
-                return $dt;
+            try {
+                $dt = Carbon::createFromFormat('!'.$format, $raw);
+                if ($dt instanceof Carbon) {
+                    return $dt;
+                }
+            } catch (\Throwable) {
+                continue;
             }
         }
 

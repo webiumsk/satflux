@@ -11,7 +11,7 @@ export const evolu = createEvolu(createEvoluWebDepsWithReloadGuard())(InvoicingL
 
 export const useInvoicingEvolu = createUseEvolu(evolu);
 
-const companyListColumns = ["id", "legalName", "tradeName"] as const;
+const companyListColumns = ["id", "legalName", "tradeName", "registrationNumber", "logoDataUrl"] as const;
 
 const companyDetailColumns = [
     "id",
@@ -112,6 +112,7 @@ const documentColumns = [
     "tagsJson",
     "paidAt",
     "amountPaid",
+    "emailSentAt",
 ] as const;
 
 const documentLineColumns = [

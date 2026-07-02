@@ -214,6 +214,7 @@ class BusinessDocumentEmailService
 
         return [
             'sent_to' => $to,
+            'email_sent_at' => now()->toIso8601String(),
         ];
     }
 

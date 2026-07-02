@@ -121,14 +121,17 @@ import AppShowLayout from '../../components/stores/AppShowLayout.vue';
 import UpgradeModal from '../../components/stores/UpgradeModal.vue';
 import { useAccountLimits } from '../../composables/useAccountLimits';
 import { useStorePageShell } from '../../composables/useStorePageShell';
+import { useAppsStore } from '../../store/apps';
 import { useRafflesStore, type Raffle, type RaffleStatus } from '../../store/raffles';
 import { formatRaffleTicketPrice } from '../../utils/rafflePricing';
 
 const { t } = useI18n();
 const router = useRouter();
 const rafflesStore = useRafflesStore();
+const appsStore = useAppsStore();
 const { limits } = useAccountLimits();
-const { storeId, store, error, apps, loadStore, goSettings, goSection } = useStorePageShell();
+const { storeId, store, error, loadStore, goSettings, goSection } = useStorePageShell();
+const apps = computed(() => appsStore.apps);
 
 const virtualApp = computed(() => ({ name: t('raffles.title') }));
 
@@ -202,6 +205,9 @@ async function loadRaffles() {
 watch(storeId, (id) => {
     if (id) {
         loadRaffles();
+        appsStore.fetchApps(id).catch(() => {
+            // Sidebar apps are optional; avoid unhandled rejection if fetch fails.
+        });
     }
 }, { immediate: true });
 </script>

@@ -38,6 +38,9 @@ yarn-error.log
 /storage/app/private
 /storage/app/compliance/*.mmdb
 
+# PHPStan result cache (tmpDir in phpstan.neon.dist)
+/storage/phpstan
+
 # Generated exports (CSV/XLSX from jobs; mkdir in GenerateCsvExport / GenerateXlsxExport)
 /storage/app/exports/*.csv
 /storage/app/exports/*.xlsx

@@ -9,7 +9,7 @@ use App\Services\Invoicing\BusinessDocumentPaymentWebhookService;
 use App\Services\Invoicing\SubscriptionBillingInvoiceService;
 use App\Services\StoreEmailRuleDispatcher;
 use App\Services\SubscriptionCreditLedgerService;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -25,10 +25,26 @@ class ProcessBtcPayWebhook implements ShouldQueue
     /** Maximum number of seconds the job may run. */
     public int $timeout = 120;
 
+    /**
+     * Deliberately no retries: handle() claims the event by setting processed_at
+     * up front, so a retry would be a silent no-op anyway. BTCPay redelivers
+     * failed webhooks on its side; sub-service failures are logged per branch.
+     */
+    public int $tries = 1;
+
     public function __construct(
         public WebhookEvent $webhookEvent
     ) {
         $this->onQueue('webhooks');
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ProcessBtcPayWebhook failed permanently', [
+            'webhook_event_id' => $this->webhookEvent->id,
+            'event_type' => $this->webhookEvent->event_type,
+            'error' => $exception->getMessage(),
+        ]);
     }
 
     /**
@@ -236,7 +252,7 @@ class ProcessBtcPayWebhook implements ShouldQueue
                 return;
             }
 
-            $subscription = app(SubscriptionService::class)->activateSubscription(
+            $subscription = app(SubscriptionEntitlementService::class)->activateSubscription(
                 $user,
                 $planRole,
                 $subscriptionId,
@@ -343,7 +359,7 @@ class ProcessBtcPayWebhook implements ShouldQueue
                 ?? null;
 
             $btcpaySubscriptionService = app(\App\Services\BtcPay\SubscriptionService::class);
-            $subscriptionService = app(SubscriptionService::class);
+            $subscriptionService = app(SubscriptionEntitlementService::class);
 
             if ($btcpaySubscriptionService->subscriberIsInTrial($subscriber)) {
                 $subscription = $subscriptionService->activateTrialSubscription(
@@ -586,11 +602,11 @@ class ProcessBtcPayWebhook implements ShouldQueue
 
             // Update user role and subscription tracking
             if ($planRole) {
-                $user->update([
+                $user->forceFill([
                     'role' => $planRole,
                     'subscription_expires_at' => $subscriptionExpiresAt,
                     'subscription_grace_period_ends_at' => null, // BTCPay handles grace period
-                ]);
+                ])->save();
             } else {
                 $user->update([
                     'subscription_expires_at' => $subscriptionExpiresAt,
@@ -677,7 +693,7 @@ class ProcessBtcPayWebhook implements ShouldQueue
      */
     protected function downgradeUserRole(User $user, string $reason): void
     {
-        app(SubscriptionService::class)->expireSubscription($user, $reason);
+        app(SubscriptionEntitlementService::class)->expireSubscription($user, $reason);
     }
 
     protected function handleSubscriberCreditLedgerEvent(array $payload, string $eventType): void

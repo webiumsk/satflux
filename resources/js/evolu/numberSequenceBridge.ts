@@ -52,6 +52,12 @@ export async function previewNextDocumentNumberFromStore(
         const { data } = await api.get(`/invoicing/stores/${linkedStoreId}/number-series/preview`, {
             params,
         });
+        if (data?.error === "store_not_linked") {
+            return null;
+        }
+        if (!data?.data) {
+            throw new Error("number_series_preview_invalid_response");
+        }
         const nextCounter = data.data?.next_counter as number | undefined;
         if (
             nextCounter != null
@@ -94,6 +100,9 @@ export async function reserveNextDocumentNumberFromStore(
             body.local_high_counter = localHighCounter;
         }
         const { data } = await api.post(`/invoicing/stores/${linkedStoreId}/number-series/reserve`, body);
+        if (data?.error === "store_not_linked" || !data?.data) {
+            return { ok: false, error: "store_not_found" };
+        }
         const counter = data.data?.counter as number | undefined;
         const serverNumber = data.data?.number as string | undefined;
         if (counter == null || !serverNumber) {

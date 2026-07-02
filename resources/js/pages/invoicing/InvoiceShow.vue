@@ -1,6 +1,6 @@
 <template>
   <div class="invoicing-page">
-    <div class="sticky top-0 z-20 shadow-sm bg-gray-100">
+    <div class="invoicing-sticky-chrome">
       <InvoicingAppHeader
         :company-label="company?.trade_name || company?.legal_name"
         :show-filter-bar="false"
@@ -410,7 +410,14 @@ const ephemeralSnapshotForModal = computed(() => (localFirst ? buildCurrentEphem
 
 async function openSendEmail() {
   if (localFirst) {
-    ephemeralBridgeCompanyId.value = await resolveEphemeralBridgeCompanyId();
+    ephemeralBridgeCompanyId.value = await resolveEphemeralBridgeCompanyId(
+      company.value
+        ? {
+            legal_name: company.value.legal_name,
+            registration_number: company.value.registration_number ?? null,
+          }
+        : undefined,
+    );
   }
   sendEmailOpen.value = true;
 }

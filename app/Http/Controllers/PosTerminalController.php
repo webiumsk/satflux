@@ -4,13 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\PosTerminal;
 use App\Models\Store;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Http\Request;
 
 class PosTerminalController extends Controller
 {
     public function __construct(
-        protected SubscriptionService $subscriptionService
+        protected SubscriptionEntitlementService $subscriptionService
     ) {}
 
     /**
@@ -18,10 +18,6 @@ class PosTerminalController extends Controller
      */
     public function index(Request $request, Store $store)
     {
-        if ($store->user_id !== $request->user()->id) {
-            abort(403);
-        }
-
         $terminals = $store->posTerminals()->orderBy('name')->get()->map(fn (PosTerminal $t) => $this->formatTerminal($t));
 
         return response()->json(['data' => $terminals]);
@@ -32,10 +28,6 @@ class PosTerminalController extends Controller
      */
     public function store(Request $request, Store $store)
     {
-        if ($store->user_id !== $request->user()->id) {
-            abort(403);
-        }
-
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'enabled_payment_methods' => ['nullable', 'array'],
@@ -61,7 +53,7 @@ class PosTerminalController extends Controller
      */
     public function update(Request $request, Store $store, PosTerminal $posTerminal)
     {
-        if ($store->user_id !== $request->user()->id || $posTerminal->store_id !== $store->id) {
+        if ($posTerminal->store_id !== $store->id) {
             abort(403);
         }
 
@@ -93,7 +85,7 @@ class PosTerminalController extends Controller
      */
     public function destroy(Request $request, Store $store, PosTerminal $posTerminal)
     {
-        if ($store->user_id !== $request->user()->id || $posTerminal->store_id !== $store->id) {
+        if ($posTerminal->store_id !== $store->id) {
             abort(403);
         }
 

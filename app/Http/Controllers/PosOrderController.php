@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PosOrder;
 use App\Models\PosTerminal;
 use App\Models\Store;
-use App\Services\SubscriptionService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Http\Request;
 
 /**
@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 class PosOrderController extends Controller
 {
     public function __construct(
-        protected SubscriptionService $subscriptionService
+        protected SubscriptionEntitlementService $subscriptionService
     ) {}
 
     /**
@@ -22,10 +22,6 @@ class PosOrderController extends Controller
      */
     public function index(Request $request, Store $store)
     {
-        if ($store->user_id !== $request->user()->id) {
-            abort(403);
-        }
-
         $q = $store->posOrders()->with('posTerminal')->orderByDesc('created_at');
         if ($request->filled('pos_terminal_id')) {
             $q->where('pos_terminal_id', $request->input('pos_terminal_id'));
@@ -44,10 +40,6 @@ class PosOrderController extends Controller
      */
     public function store(Request $request, Store $store)
     {
-        if ($store->user_id !== $request->user()->id) {
-            abort(403);
-        }
-
         $request->validate([
             'pos_terminal_id' => ['required', 'uuid', 'exists:pos_terminals,id'],
             'amount' => ['required', 'numeric', 'min:0'],

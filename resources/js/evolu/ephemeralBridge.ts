@@ -1,7 +1,9 @@
 import api from "@/services/api";
+import { normalizeCompanyIdentityKey } from "@/evolu/duplicateCompanies";
 import { normalizeIsoCountryCode } from "@/utils/isoCountryCode";
 import type { DocumentSavePayload } from "./documentCrud";
-import type { DocumentId } from "./schema";
+import type { CompanyId, DocumentId } from "./schema";
+import { resolveLocalEmailSettingsForBridge } from "./companySettingsCrud";
 import type { useLocalInvoiceDocumentSupport } from "@/composables/useLocalInvoiceDocument";
 import type { AxiosResponse } from "axios";
 
@@ -24,6 +26,7 @@ export type EphemeralSnapshotOptions = {
 const EPHEMERAL_PDF_PATH = "/invoicing/ephemeral/pdf";
 const EPHEMERAL_EMAIL_PREVIEW_PATH = "/invoicing/ephemeral/email-preview";
 const EPHEMERAL_SEND_EMAIL_PATH = "/invoicing/ephemeral/send-email";
+const EPHEMERAL_EMAIL_SETTINGS_TEST_SMTP_PATH = "/invoicing/ephemeral/email-settings/test-smtp";
 const EPHEMERAL_ISDOC_PATH = "/invoicing/ephemeral/isdoc";
 const EPHEMERAL_UBL_PATH = "/invoicing/ephemeral/ubl";
 const EPHEMERAL_BTCPAY_CHECKOUT_PATH = "/invoicing/ephemeral/btcpay-checkout";
@@ -44,6 +47,10 @@ function companyScopedEphemeralEmailPreviewPath(bridgeCompanyId: string): string
 
 function companyScopedEphemeralSendEmailPath(bridgeCompanyId: string): string {
     return `/invoicing/companies/${bridgeCompanyId}/documents/ephemeral/send-email`;
+}
+
+function companyScopedEphemeralEmailSettingsTestSmtpPath(bridgeCompanyId: string): string {
+    return `/invoicing/companies/${bridgeCompanyId}/email-settings/ephemeral/test-smtp`;
 }
 
 function companyScopedEphemeralIsdocPath(bridgeCompanyId: string): string {
@@ -136,14 +143,65 @@ async function postWithCompanyScopedFallback<T>(
 }
 
 /** Resolve a server-owned company id for legacy company-scoped ephemeral bridge routes. */
-export async function resolveEphemeralBridgeCompanyId(): Promise<string | null> {
+export async function resolveEphemeralBridgeCompanyId(match?: {
+    legal_name?: string | null;
+    registration_number?: string | null;
+}): Promise<string | null> {
     try {
         const { data } = await api.get("/invoicing/companies");
-        const rows = data.data as Array<{ id: string }> | undefined;
-        return rows?.[0]?.id ?? null;
+        const rows = (data.data as Array<{
+            id: string;
+            legal_name: string;
+            registration_number?: string | null;
+        }>) ?? [];
+
+        if (match?.legal_name) {
+            const key = normalizeCompanyIdentityKey(match.legal_name, match.registration_number ?? null);
+            const found = rows.find((row) =>
+                normalizeCompanyIdentityKey(row.legal_name, row.registration_number ?? null) === key,
+            );
+            if (found) {
+                return found.id;
+            }
+        }
+
+        return rows[0]?.id ?? null;
     } catch {
         return null;
     }
+}
+
+function emailSettingsForEphemeralSnapshot(
+    company: Record<string, unknown> | null,
+): Record<string, unknown> | undefined {
+    const raw = company?.email_settings;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+        return undefined;
+    }
+
+    const settings = raw as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+
+    if (typeof settings.delivery_method === "string") {
+        out.delivery_method = settings.delivery_method;
+    }
+    if (settings.templates && typeof settings.templates === "object") {
+        out.templates = settings.templates;
+    }
+    if (settings.smtp && typeof settings.smtp === "object") {
+        const smtp = settings.smtp as Record<string, unknown>;
+        out.smtp = {
+            username: smtp.username,
+            host: smtp.host,
+            port: smtp.port,
+            from_name: smtp.from_name,
+            encryption: smtp.encryption,
+            use_smtp_email_as_from: smtp.use_smtp_email_as_from,
+            ...(typeof smtp.password === "string" && smtp.password ? { password: smtp.password } : {}),
+        };
+    }
+
+    return Object.keys(out).length > 0 ? out : undefined;
 }
 
 export function resolveEphemeralAmountPaid(value: unknown): number | undefined {
@@ -179,6 +237,7 @@ export function buildEphemeralSnapshot(
     }
 
     const amountPaid = resolveEphemeralAmountPaid(document.amount_paid);
+    const emailSettings = emailSettingsForEphemeralSnapshot(company);
 
     return {
         company: {
@@ -207,6 +266,7 @@ export function buildEphemeralSnapshot(
             issuer_email: company?.issuer_email,
             website: company?.website,
             app_settings: appSettings,
+            ...(emailSettings ? { email_settings: emailSettings } : {}),
             ...(company?.logo_url ? { logo_url: company.logo_url } : {}),
             ...(company?.signature_stamp_url ? { signature_stamp_url: company.signature_stamp_url } : {}),
         },
@@ -408,6 +468,27 @@ export async function sendEphemeralEmail(
     return res.data.data ?? {};
 }
 
+export async function testEphemeralEmailSmtp(
+    company: Record<string, unknown>,
+    emailSettings: Record<string, unknown>,
+    to: string,
+    bridgeCompanyId?: string | null,
+): Promise<{ message: string }> {
+    const res = await postWithCompanyScopedFallback<{ message: string }>(
+        EPHEMERAL_EMAIL_SETTINGS_TEST_SMTP_PATH,
+        bridgeCompanyId ? companyScopedEphemeralEmailSettingsTestSmtpPath(bridgeCompanyId) : null,
+        {
+            to,
+            company: {
+                ...company,
+                email_settings: emailSettings,
+            },
+        },
+    );
+
+    return { message: res.data.message ?? "Test email sent." };
+}
+
 export async function fetchEphemeralBtcpayStatus(
     evoluDocumentId: string,
     btcpayInvoiceId: string,
@@ -538,6 +619,12 @@ export async function buildBulkEphemeralRequest(
     const company = localDoc.companyApi(companyId);
     if (!company) return null;
 
+    const emailSettings = resolveLocalEmailSettingsForBridge(
+        localDoc.evolu,
+        companyId as CompanyId,
+        {},
+    );
+
     const documents: EphemeralBulkDocumentItem[] = [];
     let companyPayload: EphemeralBulkRequestBody["company"] | null = null;
 
@@ -550,7 +637,13 @@ export async function buildBulkEphemeralRequest(
             ? localDoc.contactsForCompany(companyId).find((c) => c.id === contactId) ?? null
             : null;
         const payload = localDoc.payloadFromApiDocument(doc);
-        const snapshot = buildEphemeralSnapshotFromApiDocument(company, contact, doc, payload.lines);
+        const snapshot = buildEphemeralSnapshotFromApiDocument(
+            company,
+            contact,
+            doc,
+            payload.lines,
+            emailSettings,
+        );
         if (!companyPayload) {
             companyPayload = snapshot.company;
         }
@@ -563,7 +656,10 @@ export async function buildBulkEphemeralRequest(
 
     if (documents.length === 0 || !companyPayload) return null;
 
-    const bridgeCompanyId = await resolveEphemeralBridgeCompanyId();
+    const bridgeCompanyId = await resolveEphemeralBridgeCompanyId({
+        legal_name: String(company.legal_name ?? ""),
+        registration_number: (company.registration_number as string | null | undefined) ?? null,
+    });
 
     return {
         bridgeCompanyId,
@@ -579,8 +675,13 @@ export function buildEphemeralSnapshotFromApiDocument(
     contact: Record<string, unknown> | null,
     doc: Record<string, unknown>,
     lines: DocumentSavePayload["lines"],
+    emailSettingsOverride?: Record<string, unknown>,
 ): EphemeralSnapshotPayload {
-    return buildEphemeralSnapshot(company, contact, {
+    const companyForSnapshot = emailSettingsOverride && company
+        ? { ...company, email_settings: emailSettingsOverride }
+        : company;
+
+    return buildEphemeralSnapshot(companyForSnapshot, contact, {
         type: doc.type,
         status: doc.status,
         title: doc.title,
@@ -625,10 +726,28 @@ export async function buildLocalDocumentEphemeralSnapshot(
         ? localDoc.contactsForCompany(companyId).find((c) => c.id === contactId) ?? null
         : null;
     const payload = localDoc.payloadFromApiDocument(doc);
-    const bridgeCompanyId = await resolveEphemeralBridgeCompanyId();
+    const emailSettings = resolveLocalEmailSettingsForBridge(
+        localDoc.evolu,
+        companyId as CompanyId,
+        {},
+    );
+    const bridgeCompanyId = await resolveEphemeralBridgeCompanyId(
+        company
+            ? {
+                legal_name: String(company.legal_name ?? ""),
+                registration_number: (company.registration_number as string | null | undefined) ?? null,
+            }
+            : undefined,
+    );
 
     return {
         bridgeCompanyId,
-        snapshot: buildEphemeralSnapshotFromApiDocument(company, contact, doc, payload.lines),
+        snapshot: buildEphemeralSnapshotFromApiDocument(
+            company,
+            contact,
+            doc,
+            payload.lines,
+            emailSettings,
+        ),
     };
 }

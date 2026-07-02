@@ -1,6 +1,6 @@
 <template>
   <div class="invoicing-page" :class="{ 'invoicing-page--embedded': embedded }">
-    <div class="sticky mb-4 top-0 z-20 shadow-sm bg-gray-100">
+    <div class="invoicing-sticky-chrome mb-4">
       <slot name="header" />
       <InvoicingDocumentSubNav v-if="isDocumentsArea" />
       <InvoicingToolsSubNav v-if="isToolsArea" />

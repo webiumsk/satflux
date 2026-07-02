@@ -20,7 +20,7 @@ class StripeService
      */
     public function getSettings(string $storeId, ?string $userApiKey = null): array
     {
-        return $this->withUserKey($userApiKey, function () use ($storeId) {
+        return $this->client->withUserKey($userApiKey, function () use ($storeId) {
             return $this->client->get("/api/v1/stores/{$storeId}/stripe/settings");
         });
     }
@@ -35,7 +35,7 @@ class StripeService
      */
     public function updateSettings(string $storeId, array $data, ?string $userApiKey = null): array
     {
-        return $this->withUserKey($userApiKey, function () use ($storeId, $data) {
+        return $this->client->withUserKey($userApiKey, function () use ($storeId, $data) {
             return $this->client->put("/api/v1/stores/{$storeId}/stripe/settings", $data);
         });
     }
@@ -48,7 +48,7 @@ class StripeService
      */
     public function deleteSettings(string $storeId, ?string $userApiKey = null): void
     {
-        $this->withUserKey($userApiKey, function () use ($storeId) {
+        $this->client->withUserKey($userApiKey, function () use ($storeId) {
             $this->client->delete("/api/v1/stores/{$storeId}/stripe/settings");
         });
     }
@@ -62,7 +62,7 @@ class StripeService
      */
     public function testConnection(string $storeId, ?string $userApiKey = null): array
     {
-        return $this->withUserKey($userApiKey, function () use ($storeId) {
+        return $this->client->withUserKey($userApiKey, function () use ($storeId) {
             return $this->client->post("/api/v1/stores/{$storeId}/stripe/test", []);
         });
     }
@@ -76,7 +76,7 @@ class StripeService
      */
     public function registerWebhook(string $storeId, ?string $userApiKey = null): array
     {
-        return $this->withUserKey($userApiKey, function () use ($storeId) {
+        return $this->client->withUserKey($userApiKey, function () use ($storeId) {
             return $this->client->post("/api/v1/stores/{$storeId}/stripe/webhook/register", []);
         });
     }
@@ -90,28 +90,8 @@ class StripeService
      */
     public function getWebhookStatus(string $storeId, ?string $userApiKey = null): array
     {
-        return $this->withUserKey($userApiKey, function () use ($storeId) {
+        return $this->client->withUserKey($userApiKey, function () use ($storeId) {
             return $this->client->get("/api/v1/stores/{$storeId}/stripe/webhook/status");
         });
-    }
-
-    /**
-     * Execute a closure with optional user API key, then restore original key.
-     */
-    protected function withUserKey(?string $userApiKey, callable $fn)
-    {
-        $originalApiKey = null;
-        if ($userApiKey) {
-            $originalApiKey = $this->client->getApiKey();
-            $this->client->setApiKey($userApiKey);
-        }
-
-        try {
-            return $fn();
-        } finally {
-            if ($userApiKey && $originalApiKey) {
-                $this->client->setApiKey($originalApiKey);
-            }
-        }
     }
 }
