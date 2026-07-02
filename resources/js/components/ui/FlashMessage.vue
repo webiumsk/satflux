@@ -40,7 +40,7 @@
         />
       </svg>
     </div>
-    <div class="pl-2 text-sm font-normal">{{ flash.message }}</div>
+    <div class="pl-2 text-sm font-normal">{{ flash.messageKey ? t(flash.messageKey) : flash.message }}</div>
     <button
       type="button"
       class="ml-auto -mx-1.5 -my-1.5 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-white/10 inline-flex h-8 w-8 text-white"
@@ -61,8 +61,10 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { useFlashStore } from "../../store/flash";
 
+const { t } = useI18n();
 const flash = useFlashStore();
 
 const bgClass = computed(() => {

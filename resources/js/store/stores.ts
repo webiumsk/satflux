@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import api from '../services/api';
+import { storesApi, type CreateStorePayload } from '../services/api';
 import type { BtcPayApp, StoreDashboardStats } from '../types/btcpay';
 
 export interface Store {
@@ -43,10 +43,10 @@ export const useStoresStore = defineStore('stores', () => {
     async function fetchStores(): Promise<boolean> {
         loading.value = true;
         try {
-            const response = await api.get('/stores');
-            stores.value = response.data.data || [];
+            stores.value = await storesApi.list();
             return true;
-        } catch (error: any) {
+        } catch {
+            // Global error flash covers network/5xx; callers branch on the boolean.
             stores.value = [];
             return false;
         } finally {
@@ -56,15 +56,15 @@ export const useStoresStore = defineStore('stores', () => {
 
     let fetchStoreGeneration = 0;
 
-    async function fetchStore(id: string) {
+    async function fetchStore(id: string): Promise<Store> {
         const generation = ++fetchStoreGeneration;
         loading.value = true;
         try {
-            const response = await api.get(`/stores/${id}`);
+            const store = await storesApi.get(id);
             if (generation === fetchStoreGeneration) {
-                currentStore.value = response.data.data;
+                currentStore.value = store;
             }
-            return response.data.data;
+            return store;
         } catch (e) {
             if (generation === fetchStoreGeneration) {
                 // Avoid showing the previous store when navigation fails (404/403/network).
@@ -78,22 +78,10 @@ export const useStoresStore = defineStore('stores', () => {
         }
     }
 
-    async function createStore(data: {
-        name: string;
-        default_currency: string;
-        timezone: string;
-        /** Omit on first-step create; configure wallet in a follow-up step. */
-        wallet_type?: 'blink' | 'aqua_boltz' | 'cashu' | null;
-        preferred_exchange?: string;
-        connection_string?: string;
-        mint_url?: string;
-        lightning_address?: string;
-    }) {
+    async function createStore(data: CreateStorePayload): Promise<Store> {
         loading.value = true;
         try {
-            // CSRF is already handled by api interceptor, no need for explicit fetch
-            const response = await api.post('/stores', data);
-            const store = response.data.data;
+            const store = await storesApi.create(data);
             stores.value.push(store);
             return store;
         } finally {
@@ -101,16 +89,13 @@ export const useStoresStore = defineStore('stores', () => {
         }
     }
 
-    async function fetchDashboard(storeId: string, params?: { source?: string; refresh?: boolean }) {
+    async function fetchDashboard(storeId: string, params?: { source?: string; refresh?: boolean }): Promise<DashboardData> {
         loading.value = true;
         try {
-            const apiParams: Record<string, string | number> = {};
-            if (params?.source) apiParams.source = params.source;
-            if (params?.refresh) apiParams.refresh = 1;
-            const response = await api.get(`/stores/${storeId}/dashboard`, { params: apiParams });
-            dashboard.value = response.data.data;
-            return dashboard.value;
-        } catch (error: any) {
+            const stats = await storesApi.dashboard(storeId, params);
+            dashboard.value = stats;
+            return stats;
+        } catch (error) {
             dashboard.value = null;
             throw error;
         } finally {
@@ -118,13 +103,12 @@ export const useStoresStore = defineStore('stores', () => {
         }
     }
 
-    async function fetchApps(storeId: string) {
+    async function fetchApps(storeId: string): Promise<BtcPayApp[]> {
         loading.value = true;
         try {
-            const response = await api.get(`/stores/${storeId}/apps`);
-            apps.value = response.data.data || [];
+            apps.value = await storesApi.apps(storeId);
             return apps.value;
-        } catch (error: any) {
+        } catch (error) {
             apps.value = [];
             throw error;
         } finally {
@@ -132,30 +116,21 @@ export const useStoresStore = defineStore('stores', () => {
         }
     }
 
-    async function deleteStore(storeId: string) {
+    async function deleteStore(storeId: string): Promise<{ message?: string; btcpay_deleted?: boolean }> {
         loading.value = true;
         try {
-            const response = await api.delete(`/stores/${storeId}`);
-            
-            // Remove store from local list
+            const result = await storesApi.delete(storeId);
+
             const index = stores.value.findIndex(s => s.id === storeId);
             if (index > -1) {
                 stores.value.splice(index, 1);
             }
-            // Clear current store if it was deleted
             if (currentStore.value?.id === storeId) {
                 currentStore.value = null;
             }
-            // Clear dashboard if it was for deleted store
-            if (dashboard.value) {
-                dashboard.value = null;
-            }
-            
-            // Return response (may contain btcpay_deleted flag)
-            return response;
-        } catch (error: any) {
-            // Re-throw error so it can be handled in the component
-            throw error;
+            dashboard.value = null;
+
+            return result;
         } finally {
             loading.value = false;
         }

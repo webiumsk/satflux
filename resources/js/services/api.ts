@@ -1,4 +1,20 @@
 import axios from 'axios';
+import { classifyApiErrorForFlash, GLOBAL_API_ERROR_MESSAGE_KEYS, type GlobalApiErrorKind } from './apiError';
+import type { Store } from '../store/stores';
+import type { BtcPayApp, StoreDashboardStats } from '../types/btcpay';
+
+declare module 'axios' {
+    export interface AxiosRequestConfig {
+        /** Set true when the caller fully handles errors itself - suppresses the global error flash. */
+        skipErrorFlash?: boolean;
+    }
+}
+
+/** Standard Laravel API response wrapper: { data: ..., message?: ... } */
+export interface ApiEnvelope<T> {
+    data: T;
+    message?: string;
+}
 
 const api = axios.create({
     baseURL: '/api',
@@ -79,6 +95,22 @@ api.interceptors.request.use(
     }
 );
 
+// Global error fallback: network failures, 5xx and 429 surface as a flash
+// message so silent catch blocks still give the user feedback. Callers that
+// fully handle errors themselves opt out with { skipErrorFlash: true }.
+// The flash store carries an i18n KEY (translated in FlashMessage.vue) so this
+// module never imports i18n - i18n.ts imports api.ts and would cycle.
+function notifyGlobalApiError(kind: GlobalApiErrorKind): void {
+    void (async () => {
+        try {
+            const { useFlashStore } = await import('../store/flash');
+            useFlashStore().errorKey(GLOBAL_API_ERROR_MESSAGE_KEYS[kind]);
+        } catch {
+            // Pinia not ready (boot-time failure) - nothing to show yet.
+        }
+    })();
+}
+
 // Response interceptor for error handling
 api.interceptors.response.use(
     (response) => response,
@@ -86,6 +118,10 @@ api.interceptors.response.use(
         // Don't redirect on 401 in interceptor - let router guard handle it
         // Redirecting here causes infinite loops when router guard calls fetchUser()
         // Router guard will handle authentication redirects properly
+        const kind = classifyApiErrorForFlash(error);
+        if (kind && !error?.config?.skipErrorFlash) {
+            notifyGlobalApiError(kind);
+        }
         return Promise.reject(error);
     }
 );
@@ -98,6 +134,50 @@ export const setLocale = async (locale: string): Promise<void> => {
         console.error('Failed to set locale:', error);
         throw error;
     }
+};
+
+export interface CreateStorePayload {
+    name: string;
+    default_currency: string;
+    timezone: string;
+    /** Omit on first-step create; configure wallet in a follow-up step. */
+    wallet_type?: 'blink' | 'aqua_boltz' | 'cashu' | null;
+    preferred_exchange?: string;
+    connection_string?: string;
+    mint_url?: string;
+    lightning_address?: string;
+}
+
+// Stores API - typed wrapper for /stores endpoints. New store-scoped calls
+// belong here (typed, one place to change URLs), not inline in components.
+export const storesApi = {
+    async list(): Promise<Store[]> {
+        const { data } = await api.get<ApiEnvelope<Store[]>>('/stores');
+        return data.data ?? [];
+    },
+    async get(storeId: string): Promise<Store> {
+        const { data } = await api.get<ApiEnvelope<Store>>(`/stores/${storeId}`);
+        return data.data;
+    },
+    async create(payload: CreateStorePayload): Promise<Store> {
+        const { data } = await api.post<ApiEnvelope<Store>>('/stores', payload);
+        return data.data;
+    },
+    async delete(storeId: string): Promise<{ message?: string; btcpay_deleted?: boolean }> {
+        const { data } = await api.delete<{ message?: string; btcpay_deleted?: boolean }>(`/stores/${storeId}`);
+        return data;
+    },
+    async dashboard(storeId: string, params?: { source?: string; refresh?: boolean }): Promise<StoreDashboardStats> {
+        const apiParams: Record<string, string | number> = {};
+        if (params?.source) apiParams.source = params.source;
+        if (params?.refresh) apiParams.refresh = 1;
+        const { data } = await api.get<ApiEnvelope<StoreDashboardStats>>(`/stores/${storeId}/dashboard`, { params: apiParams });
+        return data.data;
+    },
+    async apps(storeId: string): Promise<BtcPayApp[]> {
+        const { data } = await api.get<ApiEnvelope<BtcPayApp[]>>(`/stores/${storeId}/apps`);
+        return data.data ?? [];
+    },
 };
 
 // Documentation API (locale ensures correct language content from backend)

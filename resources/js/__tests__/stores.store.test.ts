@@ -9,9 +9,17 @@ vi.mock('../services/api', () => ({
         post: vi.fn(),
         delete: vi.fn(),
     },
+    storesApi: {
+        list: vi.fn(),
+        get: vi.fn(),
+        create: vi.fn(),
+        delete: vi.fn(),
+        dashboard: vi.fn(),
+        apps: vi.fn(),
+    },
 }));
 
-import api from '../services/api';
+import { storesApi } from '../services/api';
 
 describe('useStoresStore', () => {
     beforeEach(() => {
@@ -27,13 +35,13 @@ describe('useStoresStore', () => {
 
     it('reports whether the store list was loaded successfully', async () => {
         const mockStore = { id: 'abc-123', name: 'Test Store', wallet_type: null, created_at: '', updated_at: '' };
-        (api.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ data: { data: [mockStore] } });
+        (storesApi.list as ReturnType<typeof vi.fn>).mockResolvedValueOnce([mockStore]);
 
         const storeModule = useStoresStore();
         await expect(storeModule.fetchStores()).resolves.toBe(true);
         expect(storeModule.stores).toEqual([mockStore]);
 
-        (api.get as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('network'));
+        (storesApi.list as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('network'));
 
         await expect(storeModule.fetchStores()).resolves.toBe(false);
         expect(storeModule.stores).toEqual([]);
@@ -41,7 +49,7 @@ describe('useStoresStore', () => {
 
     it('fetchStore sets currentStore on success', async () => {
         const mockStore = { id: 'abc-123', name: 'Test Store', wallet_type: null, created_at: '', updated_at: '' };
-        (api.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ data: { data: mockStore } });
+        (storesApi.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockStore);
 
         const storeModule = useStoresStore();
         await storeModule.fetchStore('abc-123');
@@ -50,7 +58,7 @@ describe('useStoresStore', () => {
     });
 
     it('fetchStore sets currentStore to null on error', async () => {
-        (api.get as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('404'));
+        (storesApi.get as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('404'));
 
         const storeModule = useStoresStore();
         await expect(storeModule.fetchStore('bad-id')).rejects.toThrow('404');

@@ -1605,6 +1605,8 @@
   },
   "errors": {
     "generic": "Ocurrió un error",
+    "network": "Falló la conexión - comprueba tu conexión a internet e intenta nuevamente",
+    "rate_limited": "Demasiadas solicitudes - espera un momento e intenta nuevamente",
     "not_found": "No encontrado",
     "unauthorized": "No autorizado",
     "server_error": "Error del servidor",

@@ -2535,6 +2535,8 @@
   },
   "errors": {
     "generic": "Vyskytla sa chyba",
+    "network": "Spojenie zlyhalo - skontrolujte internetové pripojenie a skúste to znova",
+    "rate_limited": "Príliš veľa požiadaviek - chvíľu počkajte a skúste to znova",
     "not_found": "Nenájdené",
     "unauthorized": "Neoprávnený prístup",
     "server_error": "Chyba servera",
