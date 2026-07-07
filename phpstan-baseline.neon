@@ -181,48 +181,6 @@ parameters:
 			path: app/Http/Controllers/AdminController.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
-			identifier: method.notFound
-			count: 6
-			path: app/Http/Controllers/AppController.php
-
-		-
-			message: '#^Call to function is_string\(\) with array will always evaluate to false\.$#'
-			identifier: function.impossibleType
-			count: 1
-			path: app/Http/Controllers/AppController.php
-
-		-
-			message: '#^Cannot unset offset ''id'' on array\{\}\|string\.$#'
-			identifier: unset.offset
-			count: 1
-			path: app/Http/Controllers/AppController.php
-
-		-
-			message: '#^Cannot unset offset ''name'' on array\{appName\: mixed\}\.$#'
-			identifier: unset.offset
-			count: 1
-			path: app/Http/Controllers/AppController.php
-
-		-
-			message: '#^Expression on left side of \?\? is always null\.$#'
-			identifier: nullCoalesce.expr
-			count: 1
-			path: app/Http/Controllers/AppController.php
-
-		-
-			message: '#^Property App\\Models\\App\:\:\$config \(string\|null\) does not accept array\<mixed, mixed\>\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Http/Controllers/AppController.php
-
-		-
-			message: '#^Variable \$btcpayApp in empty\(\) always exists and is not falsy\.$#'
-			identifier: empty.variable
-			count: 1
-			path: app/Http/Controllers/AppController.php
-
-		-
 			message: '#^Binary operation "\-" between float\|int\|string and non\-empty\-array\|non\-falsy\-string results in an error\.$#'
 			identifier: binaryOp.invalid
 			count: 1
@@ -4121,6 +4079,12 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Services/StatsService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
+			identifier: method.notFound
+			count: 8
+			path: app/Services/StoreAppService.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
