@@ -103,7 +103,8 @@
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import api from '../../services/api';
+import { storesApi } from '../../services/api';
+import type { StoreSettings } from '../../types/btcpay';
 import { useFlashStore } from '../../store/flash';
 import { currencies } from '../../data/currencies';
 import { exchanges } from '../../data/exchanges';
@@ -116,7 +117,7 @@ const storeId = route.params.id as string;
 
 const loading = ref(false);
 const saving = ref(false);
-const settings = ref<any>(null);
+const settings = ref<StoreSettings | null>(null);
 const flashStore = useFlashStore();
 
 const form = ref({
@@ -184,12 +185,12 @@ const timezoneOptions = timezones.map(tz => ({ label: tz, value: tz }));
 async function fetchSettings() {
   loading.value = true;
   try {
-    const response = await api.get(`/stores/${storeId}/settings`);
-    settings.value = response.data.data;
-    form.value.name = settings.value.name;
-    form.value.default_currency = settings.value.default_currency || 'EUR';
-    form.value.timezone = settings.value.timezone || 'UTC';
-    form.value.preferred_exchange = settings.value.preferred_exchange || '';
+    const loaded = await storesApi.settings.get(storeId);
+    settings.value = loaded;
+    form.value.name = loaded.name;
+    form.value.default_currency = loaded.default_currency || 'EUR';
+    form.value.timezone = loaded.timezone || 'UTC';
+    form.value.preferred_exchange = loaded.preferred_exchange || '';
   } finally {
     loading.value = false;
   }
@@ -199,7 +200,7 @@ async function handleSubmit() {
   saving.value = true;
   flashStore.clear();
   try {
-    await api.put(`/stores/${storeId}/settings`, form.value);
+    await storesApi.settings.update(storeId, form.value);
     flashStore.success(t('settings.settings_updated'));
     await fetchSettings();
   } catch (err: any) {

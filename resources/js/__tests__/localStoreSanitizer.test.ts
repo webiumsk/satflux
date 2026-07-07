@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
-import api from "@/services/api";
+import { storesApi } from "@/services/api";
 import { useLocalStoreSanitizer } from "@/composables/useLocalStoreSanitizer";
 import { sanitizeLocalStoreReferences } from "@/evolu/sanitizeStoreReferences";
 
 vi.mock("@/services/api", () => ({
     default: {
         get: vi.fn(),
+    },
+    storesApi: {
+        list: vi.fn(),
     },
 }));
 
@@ -39,20 +42,16 @@ describe("useLocalStoreSanitizer", () => {
 
     it("does not clear local store references when store ownership cannot be loaded", async () => {
         const evolu = {};
-        (api.get as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("network"));
+        (storesApi.list as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("network"));
 
         const sanitizer = useLocalStoreSanitizer();
         await sanitizer.sanitizeIfNeeded(evolu as never);
 
         expect(sanitizeLocalStoreReferences).not.toHaveBeenCalled();
 
-        (api.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-            data: {
-                data: [
-                    { id: "store-1", name: "Store 1", wallet_type: null, created_at: "", updated_at: "" },
-                ],
-            },
-        });
+        (storesApi.list as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+            { id: "store-1", name: "Store 1", wallet_type: null, created_at: "", updated_at: "" },
+        ]);
 
         await sanitizer.sanitizeIfNeeded(evolu as never);
 

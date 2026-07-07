@@ -1,1 +1,1 @@
-export type { BtcPayApp, StoreDashboardStats, StoreDashboardApps, StoreInvoiceSummary } from './btcpay';
+export type { BtcPayApp, StoreDashboardStats, StoreDashboardApps, StoreInvoiceSummary, StoreSettings, StoreSettingsReceipt, UpdateStoreSettingsPayload } from './btcpay';

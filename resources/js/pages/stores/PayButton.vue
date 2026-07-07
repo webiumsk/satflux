@@ -94,7 +94,7 @@ import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
 import { useAppsStore } from '../../store/apps';
 import { useFlashStore } from '../../store/flash';
-import api from '../../services/api';
+import { storesApi } from '../../services/api';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
 import AppScrollPane from '../../components/layout/AppScrollPane.vue';
 import AppShowHeader from '../../components/stores/AppShowHeader.vue';
@@ -140,9 +140,16 @@ async function setPayButtonEnabled(enabled: boolean) {
   toggleSaving.value = true;
   flashStore.clear();
   try {
-    const { data } = await api.get(`/stores/${storeId}/settings`);
-    const payload = { ...data.data, anyone_can_create_invoice: enabled };
-    await api.put(`/stores/${storeId}/settings`, payload);
+    // Send only the toggle plus the fields backend validation requires
+    // (name/default_currency/timezone) - spreading the whole settings object
+    // would overwrite concurrent edits from StoreSettings or other tabs.
+    const current = await storesApi.settings.get(storeId);
+    await storesApi.settings.update(storeId, {
+      name: current.name,
+      default_currency: current.default_currency,
+      timezone: current.timezone,
+      anyone_can_create_invoice: enabled,
+    });
     await storesStore.fetchStore(storeId);
     store.value = storesStore.currentStore;
     flashStore.success(enabled ? t('stores.pay_button_enabled_success') : t('stores.pay_button_disabled_success'));
