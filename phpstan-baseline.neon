@@ -1789,18 +1789,6 @@ parameters:
 			path: app/Models/WebhookEvent.php
 
 		-
-			message: '#^Property App\\Models\\App\:\:\$config \(string\|null\) does not accept array\<mixed, mixed\>\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Services/AppResponseFormatter.php
-
-		-
-			message: '#^Variable \$btcpayApp in empty\(\) always exists and is not falsy\.$#'
-			identifier: empty.variable
-			count: 1
-			path: app/Services/AppResponseFormatter.php
-
-		-
 			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
 			identifier: larastan.noEnvCallsOutsideOfConfig
 			count: 1
@@ -4096,12 +4084,6 @@ parameters:
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
 			identifier: method.notFound
 			count: 8
-			path: app/Services/StoreAppService.php
-
-		-
-			message: '#^Cannot unset offset ''name'' on array\{appName\: string\}\.$#'
-			identifier: unset.offset
-			count: 1
 			path: app/Services/StoreAppService.php
 
 		-

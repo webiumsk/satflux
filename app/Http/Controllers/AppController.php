@@ -68,12 +68,18 @@ class AppController extends Controller
      */
     public function show(Request $request, Store $store, App $app)
     {
-        $data = $this->storeApps->getForStore($store, $app);
-        if ($data === null) {
+        // Belongs-to first (foreign apps stay 404), then the guest gate -
+        // both before the BTCPay fetch so rejected requests cost no API call.
+        if ($app->store_id !== $store->id) {
             return response()->json(['message' => 'App not found for this store.'], 404);
         }
         if ($guestGate = $this->guestGateResponse($store, $app)) {
             return $guestGate;
+        }
+
+        $data = $this->storeApps->getForStore($store, $app);
+        if ($data === null) {
+            return response()->json(['message' => 'App not found for this store.'], 404);
         }
 
         return response()->json(['data' => $data]);

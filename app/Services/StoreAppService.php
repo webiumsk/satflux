@@ -99,6 +99,10 @@ class StoreAppService
         if ($app->store_id !== $store->id) {
             return null;
         }
+        // Legacy record without a BTCPay app ID - a BTCPay lookup cannot succeed
+        if (! $app->btcpay_app_id) {
+            return $this->formatter->format($app);
+        }
         try {
             $userApiKey = $store->user->getBtcPayApiKeyOrFail();
             $btcpayApp = $this->appService->getApp(
@@ -227,23 +231,30 @@ class StoreAppService
 
         $btcpayAppId = $btcpayApp['id'] ?? $btcpayApp['appId'] ?? $btcpayApp['app_id'] ?? null;
 
-        if ($btcpayAppId) {
-            $app->update([
-                'btcpay_app_id' => $btcpayAppId,
-                'name' => $name ?? $app->name,
-                'config' => $btcpayApp,
-            ]);
-
-            Log::info('Created app in BTCPay and updated local record', [
+        // Same recovery + explicit failure as create(): a local record without
+        // btcpay_app_id makes later updates create duplicate apps.
+        if (empty($btcpayAppId)) {
+            Log::error('Failed to get BTCPay app ID after creation - trying apps list', [
                 'app_id' => $app->id,
-                'btcpay_app_id' => $btcpayAppId,
+                'btcpay_response_keys' => array_keys($btcpayApp),
             ]);
-        } else {
-            Log::error('Failed to get BTCPay app ID after creation', [
-                'app_id' => $app->id,
-                'btcpay_response' => $btcpayApp,
-            ]);
+            $btcpayAppId = $this->findAppIdByNameAndType($store, $app->app_type, $name ?? $app->name, $userApiKey, waitSeconds: 2);
         }
+
+        if (empty($btcpayAppId)) {
+            throw new \Exception('Failed to create app: BTCPay app ID is missing. Please try again.');
+        }
+
+        $app->update([
+            'btcpay_app_id' => $btcpayAppId,
+            'name' => $name ?? $app->name,
+            'config' => $btcpayApp,
+        ]);
+
+        Log::info('Created app in BTCPay and updated local record', [
+            'app_id' => $app->id,
+            'btcpay_app_id' => $btcpayAppId,
+        ]);
 
         return $this->formatter->format($app->fresh(), $btcpayApp);
     }
@@ -454,6 +465,13 @@ class StoreAppService
      */
     public function delete(Store $store, App $app): void
     {
+        // Legacy record without a BTCPay app ID - nothing to delete remotely
+        if (! $app->btcpay_app_id) {
+            $app->delete();
+
+            return;
+        }
+
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
         $this->appService->deleteApp(
@@ -534,10 +552,11 @@ class StoreAppService
     }
 
     /**
-     * Determine app type from BTCPay app data.
+     * Determine app type from BTCPay app data - same appType/type fallback
+     * as findAppIdByNameAndType() so import and matching agree.
      */
     protected function determineAppType(array $btcpayApp): string
     {
-        return $btcpayApp['appType'] ?? 'PointOfSale';
+        return $btcpayApp['appType'] ?? $btcpayApp['type'] ?? 'PointOfSale';
     }
 }

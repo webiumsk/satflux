@@ -7,6 +7,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property array<string, mixed>|null $config
+ * @property array<string, mixed>|null $metadata
+ */
 class App extends Model
 {
     use HasFactory, HasUuids;

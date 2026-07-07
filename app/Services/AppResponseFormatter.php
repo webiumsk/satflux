@@ -8,7 +8,7 @@ use App\Support\SatfluxStorageUrl;
 /**
  * Single place that decides what a BTCPay app looks like in API responses.
  * btcpay_app_id / btcpay_app_url are exposed deliberately - embed codes and
- * BTCPay deep links need them (same rationale as Store btcpay_store_id).
+ * BTCPay deep links need them.
  */
 class AppResponseFormatter
 {
@@ -57,10 +57,8 @@ class AppResponseFormatter
         if ($btcpayApp) {
             // Side effect kept from the original controller: persist the latest
             // BTCPay config onto the local record so template/products stay fresh.
-            if (! empty($btcpayApp)) {
-                $app->config = array_merge($app->config ?? [], $btcpayApp);
-                $app->save();
-            }
+            $app->config = array_merge($app->config ?? [], $btcpayApp);
+            $app->save();
 
             $btcpayAppId = $btcpayApp['id'] ?? $app->btcpay_app_id ?? null;
             if ($btcpayAppId) {
@@ -81,7 +79,7 @@ class AppResponseFormatter
      */
     public function generateAppUrl(string $appType, string $appId): string
     {
-        $basePath = config('services.btcpay.base_url').'/apps/'.$appId;
+        $basePath = rtrim((string) config('services.btcpay.base_url'), '/').'/apps/'.$appId;
 
         return match (strtolower($appType)) {
             'pointofsale' => $basePath.'/pos',
