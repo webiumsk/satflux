@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\App;
 use App\Models\Store;
+use App\Services\StoreAppService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -12,7 +13,8 @@ use Inertia\Response;
 class StoreAppPageController extends Controller
 {
     public function __construct(
-        protected AppController $appController
+        protected AppController $appController,
+        protected StoreAppService $storeApps,
     ) {}
 
     /**
@@ -21,7 +23,7 @@ class StoreAppPageController extends Controller
     public function index(Store $store): Response
     {
         $store->loadMissing(['checklistItems', 'walletConnection']);
-        $apps = $this->appController->getAppsForStore($store);
+        $apps = $this->storeApps->listForStore($store);
 
         return Inertia::render('stores/apps/Index', [
             'store' => $store,
@@ -55,7 +57,7 @@ class StoreAppPageController extends Controller
     public function create(Store $store): Response
     {
         $store->loadMissing(['checklistItems', 'walletConnection']);
-        $apps = $this->appController->getAppsForStore($store);
+        $apps = $this->storeApps->listForStore($store);
 
         return Inertia::render('stores/apps/Create', [
             'store' => $store,
@@ -72,11 +74,11 @@ class StoreAppPageController extends Controller
             abort(404);
         }
         $store->loadMissing(['checklistItems', 'walletConnection']);
-        $appData = $this->appController->getAppForStore($store, $app);
+        $appData = $this->storeApps->getForStore($store, $app);
         if ($appData === null) {
             abort(404);
         }
-        $apps = $this->appController->getAppsForStore($store);
+        $apps = $this->storeApps->listForStore($store);
 
         return Inertia::render('stores/apps/Show', [
             'store' => $store,

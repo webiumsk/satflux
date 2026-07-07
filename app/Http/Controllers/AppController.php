@@ -4,94 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Models\App;
 use App\Models\Store;
-use App\Services\BtcPay\AppService;
-use App\Support\SatfluxStorageUrl;
+use App\Services\BtcPay\Exceptions\BtcPayException;
+use App\Services\StoreAppService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class AppController extends Controller
 {
-    protected AppService $appService;
-
-    public function __construct(AppService $appService)
-    {
-        $this->appService = $appService;
-    }
-
-    /**
-     * Return apps list for a store (used by API index and Inertia page controller).
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    public function getAppsForStore(Store $store): array
-    {
-        $localApps = App::where('store_id', $store->id)
-            ->get()
-            ->keyBy('btcpay_app_id');
-
-        if ($localApps->isNotEmpty()) {
-            try {
-                $userApiKey = $store->user->getBtcPayApiKeyOrFail();
-                $btcpayApps = $this->appService->listApps($store->btcpay_store_id, $userApiKey);
-                $btcpayAppsMap = collect($btcpayApps)->keyBy('id');
-
-                return $localApps->map(function ($localApp) use ($btcpayAppsMap) {
-                    $btcpayApp = $btcpayAppsMap->get($localApp->btcpay_app_id);
-
-                    return $this->formatApp($localApp, $btcpayApp);
-                })->values()->all();
-            } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
-                Log::warning('BTCPay API failed when listing apps, using local apps only', [
-                    'store_id' => $store->id,
-                    'error' => $e->getMessage(),
-                ]);
-
-                return $localApps->map(fn ($app) => $this->formatApp($app))->values()->all();
-            }
-        }
-
-        try {
-            $userApiKey = $store->user->getBtcPayApiKeyOrFail();
-            $btcpayApps = $this->appService->listApps($store->btcpay_store_id, $userApiKey);
-            if (empty($btcpayApps)) {
-                return [];
-            }
-
-            return collect($btcpayApps)->map(function ($btcpayApp) use ($store) {
-                $btcpayAppId = $btcpayApp['id'] ?? null;
-                if (! $btcpayAppId) {
-                    return null;
-                }
-                $appType = $this->determineAppType($btcpayApp);
-                $localApp = App::create([
-                    'id' => (string) Str::uuid(),
-                    'store_id' => $store->id,
-                    'btcpay_app_id' => $btcpayAppId,
-                    'app_type' => $appType,
-                    'name' => $btcpayApp['appName'] ?? $btcpayApp['name'] ?? 'Untitled App',
-                    'config' => $btcpayApp,
-                ]);
-
-                return $this->formatApp($localApp, $btcpayApp);
-            })->filter()->values()->all();
-        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
-            Log::warning('BTCPay API failed when listing apps, no local apps found', [
-                'store_id' => $store->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return [];
-        }
-    }
+    public function __construct(protected StoreAppService $storeApps) {}
 
     /**
      * List all apps for a store.
      */
     public function index(Request $request, Store $store)
     {
-        return response()->json(['data' => $this->getAppsForStore($store)]);
+        return response()->json(['data' => $this->storeApps->listForStore($store)]);
     }
 
     /**
@@ -120,7 +47,7 @@ class AppController extends Controller
                     'code' => 'guest_feature_locked',
                 ], 403);
             }
-            if ($this->countActivePointOfSaleApps($store) >= 1) {
+            if ($this->storeApps->countActivePointOfSaleApps($store) >= 1) {
                 return response()->json([
                     'message' => __('auth.guest_pos_limit_one'),
                     'code' => 'guest_pos_limit',
@@ -128,179 +55,12 @@ class AppController extends Controller
             }
         }
 
-        return DB::transaction(function () use ($request, $store) {
-            // Load merchant API key from store owner
-            $userApiKey = $store->user->getBtcPayApiKeyOrFail();
+        $data = $this->storeApps->create($store, $request->app_type, $request->name, $request->config ?? []);
 
-            // Prepare app configuration
-            $config = $request->config ?? [];
-            $config['name'] = $request->name;
-
-            // If currency is not specified in config, use store's default currency
-            if (! isset($config['currency'])) {
-                $config['currency'] = $store->default_currency ?? 'EUR';
-            }
-
-            // Set default view for PointOfSale apps to Light (Keypad)
-            if ($request->app_type === 'PointOfSale' && ! isset($config['defaultView'])) {
-                $config['defaultView'] = 'Light';
-            }
-
-            // Create app in BTCPay
-            $btcpayApp = $this->appService->createApp(
-                $store->btcpay_store_id,
-                $request->app_type,
-                $config,
-                $userApiKey
-            );
-
-            // BTCPay may return app ID in different formats - check multiple possibilities
-            $btcpayAppId = $btcpayApp['id']
-                ?? $btcpayApp['appId']
-                ?? $btcpayApp['app_id']
-                ?? (is_string($btcpayApp) ? $btcpayApp : null)
-                ?? null;
-
-            // CRITICAL: Log if ID is missing - this is a serious problem
-            if (empty($btcpayAppId)) {
-                \Log::error('CRITICAL: BTCPay app creation response missing ID', [
-                    'store_id' => $store->btcpay_store_id,
-                    'app_type' => $request->app_type,
-                    'app_name' => $request->name,
-                    'response_keys' => array_keys($btcpayApp),
-                    'response' => $btcpayApp,
-                ]);
-
-                // Don't create local record without btcpay_app_id - wait for it to be fetched
-                // This prevents issues where update would create new apps
-            }
-
-            // If btcpay_app_id is missing from response, try to fetch it from apps list BEFORE creating local record
-            // This is critical to prevent creating records without btcpay_app_id
-            if (empty($btcpayAppId)) {
-                \Log::warning('BTCPay app creation response missing ID - fetching from apps list', [
-                    'store_id' => $store->btcpay_store_id,
-                    'app_type' => $request->app_type,
-                    'app_name' => $request->name,
-                ]);
-
-                try {
-                    // Wait a bit for BTCPay to index the new app
-                    sleep(2); // Increased wait time for better reliability
-
-                    $apps = $this->appService->listApps($store->btcpay_store_id, $userApiKey);
-                    $appName = $request->name;
-                    $appType = $request->app_type;
-
-                    // Find app with matching name and type (most recent first)
-                    $matchingApps = array_filter($apps, function ($a) use ($appName, $appType) {
-                        $nameMatches = ($a['name'] ?? $a['appName'] ?? '') === $appName;
-                        $typeMatches = ($a['appType'] ?? $a['type'] ?? '') === $appType;
-
-                        return $nameMatches && $typeMatches;
-                    });
-
-                    if (! empty($matchingApps)) {
-                        // Sort by created date (most recent first) to get the newly created app
-                        usort($matchingApps, function ($a, $b) {
-                            $aCreated = $a['created'] ?? $a['createdTime'] ?? 0;
-                            $bCreated = $b['created'] ?? $b['createdTime'] ?? 0;
-
-                            return $bCreated <=> $aCreated; // Descending order
-                        });
-
-                        $foundApp = reset($matchingApps);
-                        $foundAppId = $foundApp['id'] ?? null;
-                        if ($foundAppId) {
-                            $btcpayAppId = $foundAppId;
-                            \Log::info('Found BTCPay app ID from apps list', [
-                                'btcpay_app_id' => $btcpayAppId,
-                                'app_name' => $appName,
-                                'app_type' => $appType,
-                            ]);
-                        } else {
-                            \Log::warning('Found matching app but no ID in response', [
-                                'found_app' => $foundApp,
-                            ]);
-                        }
-                    } else {
-                        \Log::warning('No matching app found in apps list', [
-                            'app_name' => $appName,
-                            'app_type' => $appType,
-                            'total_apps' => count($apps),
-                        ]);
-                    }
-                } catch (\Exception $e) {
-                    \Log::error('Failed to fetch app ID from apps list after creation', [
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
-
-            // CRITICAL: Don't create local record if btcpay_app_id is still missing
-            // This prevents issues where update would create new apps instead of updating
-            if (empty($btcpayAppId)) {
-                \Log::error('CRITICAL: Cannot create local app record without btcpay_app_id', [
-                    'store_id' => $store->id,
-                    'app_type' => $request->app_type,
-                    'app_name' => $request->name,
-                ]);
-                throw new \Exception('Failed to create app: BTCPay app ID is missing. Please try again.');
-            }
-
-            // Create local app record - btcpay_app_id is now guaranteed to be set
-            $app = App::create([
-                'id' => (string) Str::uuid(),
-                'store_id' => $store->id,
-                'btcpay_app_id' => $btcpayAppId, // Now guaranteed to be set
-                'app_type' => $request->app_type,
-                'name' => $request->name,
-                'config' => $btcpayApp,
-            ]);
-
-            \Log::info('Local app record created with btcpay_app_id', [
-                'app_id' => $app->id,
-                'btcpay_app_id' => $btcpayAppId,
-                'app_name' => $request->name,
-                'app_type' => $request->app_type,
-            ]);
-
-            return response()->json([
-                'data' => $this->formatApp($app, $btcpayApp),
-                'message' => 'App created successfully',
-            ], 201);
-        });
-    }
-
-    /**
-     * Return formatted app for a store (used by API show and Inertia page controller).
-     *
-     * @return array<string, mixed>|null null if app does not belong to store
-     */
-    public function getAppForStore(Store $store, App $app): ?array
-    {
-        if ($app->store_id !== $store->id) {
-            return null;
-        }
-        try {
-            $userApiKey = $store->user->getBtcPayApiKeyOrFail();
-            $btcpayApp = $this->appService->getApp(
-                $store->btcpay_store_id,
-                $app->btcpay_app_id,
-                $app->app_type,
-                $userApiKey
-            );
-
-            return $this->formatApp($app, $btcpayApp);
-        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
-            Log::warning('BTCPay API failed when loading app, using local fallback', [
-                'app_id' => $app->id,
-                'btcpay_app_id' => $app->btcpay_app_id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return $this->formatApp($app);
-        }
+        return response()->json([
+            'data' => $data,
+            'message' => 'App created successfully',
+        ], 201);
     }
 
     /**
@@ -308,15 +68,12 @@ class AppController extends Controller
      */
     public function show(Request $request, Store $store, App $app)
     {
-        $data = $this->getAppForStore($store, $app);
+        $data = $this->storeApps->getForStore($store, $app);
         if ($data === null) {
             return response()->json(['message' => 'App not found for this store.'], 404);
         }
-        if ($store->user && (bool) ($store->user->is_guest ?? false) && $app->app_type !== 'PointOfSale') {
-            return response()->json([
-                'message' => __('auth.guest_feature_requires_account'),
-                'code' => 'guest_feature_locked',
-            ], 403);
+        if ($guestGate = $this->guestGateResponse($store, $app)) {
+            return $guestGate;
         }
 
         return response()->json(['data' => $data]);
@@ -333,330 +90,46 @@ class AppController extends Controller
             'archived' => ['sometimes', 'boolean'],
         ]);
 
-        // Verify app belongs to store
         if ($app->store_id !== $store->id) {
-            return response()->json([
-                'message' => 'App not found for this store.',
-            ], 404);
+            return response()->json(['message' => 'App not found for this store.'], 404);
+        }
+        if ($guestGate = $this->guestGateResponse($store, $app)) {
+            return $guestGate;
         }
 
-        if ($store->user && (bool) ($store->user->is_guest ?? false) && $app->app_type !== 'PointOfSale') {
-            return response()->json([
-                'message' => __('auth.guest_feature_requires_account'),
-                'code' => 'guest_feature_locked',
-            ], 403);
-        }
+        $name = $request->has('name') ? $request->input('name') : null;
+        $requestConfig = $request->has('config') ? $request->input('config') : null;
 
-        // Load merchant API key from store owner
-        $userApiKey = $store->user->getBtcPayApiKeyOrFail();
-
-        // If app doesn't have btcpay_app_id, we need to create it in BTCPay first
+        // Legacy records without btcpay_app_id: create the app in BTCPay first
         if (! $app->btcpay_app_id) {
-            Log::warning('App update called but btcpay_app_id is missing - creating app in BTCPay first', [
-                'app_id' => $app->id,
-                'store_id' => $store->id,
-                'app_type' => $app->app_type,
-            ]);
-
-            // Create app in BTCPay
-            $config = $app->config ?? [];
-
-            // Map 'name' to 'appName' for BTCPay API
-            if ($request->has('name')) {
-                $config['appName'] = $request->name;
-                unset($config['name']);
-            }
-
-            // Merge in any additional config fields from request
-            if ($request->has('config')) {
-                $requestConfig = $request->config;
-                if (isset($requestConfig['name']) && ! isset($requestConfig['appName'])) {
-                    $requestConfig['appName'] = $requestConfig['name'];
-                    unset($requestConfig['name']);
-                }
-                $config = array_merge($config, $requestConfig);
-            }
-
-            $btcpayApp = $this->appService->createApp(
-                $store->btcpay_store_id,
-                $app->app_type,
-                $config,
-                $userApiKey
-            );
-
-            // Get BTCPay app ID
-            $btcpayAppId = $btcpayApp['id'] ?? $btcpayApp['appId'] ?? $btcpayApp['app_id'] ?? null;
-
-            if ($btcpayAppId) {
-                // Update local record with BTCPay app ID
-                $app->update([
-                    'btcpay_app_id' => $btcpayAppId,
-                    'name' => $request->input('name', $app->name),
-                    'config' => $btcpayApp,
-                ]);
-
-                Log::info('Created app in BTCPay and updated local record', [
-                    'app_id' => $app->id,
-                    'btcpay_app_id' => $btcpayAppId,
-                ]);
-            } else {
-                Log::error('Failed to get BTCPay app ID after creation', [
-                    'app_id' => $app->id,
-                    'btcpay_response' => $btcpayApp,
-                ]);
-            }
-
             return response()->json([
-                'data' => $this->formatApp($app->fresh(), $btcpayApp),
+                'data' => $this->storeApps->createInBtcPayForLegacyApp($store, $app, $name, $requestConfig),
                 'message' => 'App created and updated successfully',
             ]);
         }
 
-        // Update app in BTCPay
-        // IMPORTANT: Start with request config first, then merge DB config as fallback
-        // This ensures new values from form take priority over old values in DB
-        $config = [];
-
-        // Start with request config if provided
-        if ($request->has('config')) {
-            $config = $request->config;
-
-            // CRITICAL: Remove ALL metadata fields from request config that could interfere
-            // These MUST be removed to prevent creating new app instead of updating
-            unset(
-                $config['id'],
-                $config['appType'],
-                $config['app_type'],
-                $config['storeId'],
-                $config['store_id'],
-                $config['archived'],
-                $config['created'],
-                $config['btcpay_app_id'] // Just in case
-            );
-
-            // Map 'name' to 'appName' in request config
-            if (isset($config['name']) && ! isset($config['appName'])) {
-                $config['appName'] = $config['name'];
-                unset($config['name']);
-            }
-        }
-
-        // Merge in existing DB config as fallback for fields not provided in request
-        $dbConfig = $app->config ?? [];
-
-        // CRITICAL: Remove ALL metadata fields from DB config
-        // These are BTCPay metadata fields that should NOT be sent in update requests
-        unset(
-            $dbConfig['id'],
-            $dbConfig['appType'],
-            $dbConfig['app_type'],
-            $dbConfig['storeId'],
-            $dbConfig['store_id'],
-            $dbConfig['archived'],
-            $dbConfig['created'],
-            $dbConfig['btcpay_app_id'] // Just in case
-        );
-
-        // Remove old 'title' and 'appName' from DB config if we have new ones in request
-        // This prevents old values from overriding new ones
-        if ($request->has('config')) {
-            if (isset($config['displayTitle']) || isset($config['title'])) {
-                unset($dbConfig['title'], $dbConfig['displayTitle']);
-            }
-            if (isset($config['appName']) || $request->has('name')) {
-                unset($dbConfig['appName'], $dbConfig['name']);
-            }
-        }
-
-        // Merge DB config as fallback (request config takes priority)
-        $config = array_merge($dbConfig, $config);
-
-        // FINAL CHECK: Remove id if it somehow got back in during merge
-        // This is a safety measure - id MUST come from $app->btcpay_app_id parameter
-        unset($config['id']);
-
-        // Map 'name' to 'appName' for BTCPay API (from request name field)
-        if ($request->has('name')) {
-            $config['appName'] = $request->name;
-            // Remove 'name' if it exists
-            unset($config['name']);
-        }
-
-        // Add archived from request (for Archive App action)
-        if ($request->has('archived')) {
-            $config['archived'] = filter_var($request->input('archived'), FILTER_VALIDATE_BOOLEAN);
-        } elseif ($request->has('config.archived')) {
-            $config['archived'] = filter_var($request->input('config.archived'), FILTER_VALIDATE_BOOLEAN);
-        }
-
-        // CRITICAL: Verify btcpay_app_id exists and is not empty before updating
-        // This is the most important check - without btcpay_app_id, we cannot update, only create new
-        if (empty($app->btcpay_app_id)) {
-            \Log::error('CRITICAL: Cannot update app - btcpay_app_id is missing or empty in DB', [
-                'app_id' => $app->id,
-                'store_id' => $store->id,
-                'app_name' => $app->name,
-                'app_type' => $app->app_type,
-                'btcpay_app_id_value' => $app->btcpay_app_id,
-                'btcpay_app_id_type' => gettype($app->btcpay_app_id),
-                'btcpay_app_id_empty' => empty($app->btcpay_app_id),
-            ]);
-            \Log::error('Cannot update app: btcpay_app_id is missing in DB', [
-                'app_id' => $app->id,
-                'store_id' => $store->id,
-            ]);
-
-            // Try to find the app in BTCPay by name and type before giving up
-            try {
-                $apps = $this->appService->listApps($store->btcpay_store_id, $userApiKey);
-                $appName = $app->name;
-                $appType = $app->app_type;
-
-                // Find app with matching name and type
-                $matchingApps = array_filter($apps, function ($a) use ($appName, $appType) {
-                    $nameMatches = ($a['name'] ?? $a['appName'] ?? '') === $appName;
-                    $typeMatches = ($a['appType'] ?? $a['type'] ?? '') === $appType;
-
-                    return $nameMatches && $typeMatches;
-                });
-
-                if (! empty($matchingApps)) {
-                    // Get the most recent matching app
-                    usort($matchingApps, function ($a, $b) {
-                        $aCreated = $a['created'] ?? $a['createdTime'] ?? 0;
-                        $bCreated = $b['created'] ?? $b['createdTime'] ?? 0;
-
-                        return $bCreated <=> $aCreated;
-                    });
-
-                    $foundApp = reset($matchingApps);
-                    $foundAppId = $foundApp['id'] ?? null;
-                    if ($foundAppId) {
-                        // Update local record with found btcpay_app_id
-                        $app->update(['btcpay_app_id' => $foundAppId]);
-                        \Log::info('Found and restored btcpay_app_id from BTCPay apps list', [
-                            'app_id' => $app->id,
-                            'btcpay_app_id' => $foundAppId,
-                        ]);
-                        // Continue with update using the found ID
-                        $app->refresh();
-                    }
-                }
-            } catch (\Exception $e) {
-                \Log::warning('Failed to find app in BTCPay apps list', [
-                    'app_id' => $app->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-
-            // If still no btcpay_app_id after trying to find it, return error
-            if (! $app->btcpay_app_id) {
-                return response()->json([
-                    'message' => 'Cannot update app: BTCPay app ID is missing. Please contact support.',
-                ], 400);
-            }
-        }
-
         // Greenfield has no PUT for Payment Button apps; only local archived flag is supported here.
         if (strtolower($app->app_type) === 'paymentbutton') {
-            $configPayload = $request->input('config');
-            $hasConfigBody = is_array($configPayload) && count($configPayload) > 0;
-            if ($request->filled('name') || $hasConfigBody) {
-                return response()->json([
-                    'message' => 'BTCPay Greenfield API does not expose PUT for Payment Button apps. Change settings in BTCPay Server UI or recreate the app.',
-                ], 422);
-            }
-            if (! $request->has('archived')) {
-                return response()->json([
-                    'message' => 'No updatable fields provided for this app type.',
-                ], 422);
-            }
-            $archived = filter_var($request->input('archived'), FILTER_VALIDATE_BOOLEAN);
-            $mergedConfig = array_merge($app->config ?? [], ['archived' => $archived]);
-            $app->update(['config' => $mergedConfig]);
+            return $this->updatePaymentButton($request, $app);
+        }
 
+        if (! $this->storeApps->recoverMissingBtcpayAppId($store, $app)) {
             return response()->json([
-                'data' => $this->formatApp($app->fresh()),
-                'message' => 'App updated successfully',
-            ]);
+                'message' => 'Cannot update app: BTCPay app ID is missing. Please contact support.',
+            ], 400);
         }
 
-        // Log to ensure we're using the correct btcpay_app_id
-        \Log::info('App update - calling updateApp with btcpay_app_id', [
-            'app_id' => $app->id,
-            'btcpay_app_id' => $app->btcpay_app_id,
-            'btcpay_app_id_length' => strlen($app->btcpay_app_id ?? ''),
-            'app_type' => $app->app_type,
-            'store_id' => $store->btcpay_store_id,
-            'config_keys' => array_keys($config),
-            'config_has_id' => isset($config['id']),
-            'config_id_value' => $config['id'] ?? null,
-        ]);
-
-        $btcpayApp = $this->appService->updateApp(
-            $store->btcpay_store_id,
-            $app->btcpay_app_id, // This MUST be set and correct, otherwise BTCPay will create new app
-            $config,
-            $app->app_type, // Pass app_type for correct endpoint
-            $userApiKey
-        );
-
-        // CRITICAL: Verify that update didn't create a new app by checking if returned ID matches
-        $returnedAppId = $btcpayApp['id'] ?? $btcpayApp['appId'] ?? $btcpayApp['app_id'] ?? null;
-        if ($returnedAppId && $returnedAppId !== $app->btcpay_app_id) {
-            \Log::error('CRITICAL: BTCPay returned different app ID - new app was created instead of update!', [
-                'expected_btcpay_app_id' => $app->btcpay_app_id,
-                'returned_app_id' => $returnedAppId,
-                'local_app_id' => $app->id,
-                'app_name' => $app->name,
-            ]);
-            // Update local record with new btcpay_app_id to prevent further duplicates
-            $app->update(['btcpay_app_id' => $returnedAppId]);
-            \Log::warning('Updated local btcpay_app_id to match BTCPay response to prevent further issues', [
-                'old_btcpay_app_id' => $app->getOriginal('btcpay_app_id'),
-                'new_btcpay_app_id' => $returnedAppId,
-            ]);
+        $archived = null;
+        if ($request->has('archived')) {
+            $archived = filter_var($request->input('archived'), FILTER_VALIDATE_BOOLEAN);
+        } elseif ($request->has('config.archived')) {
+            $archived = filter_var($request->input('config.archived'), FILTER_VALIDATE_BOOLEAN);
         }
 
-        // CRITICAL: Preserve btcpay_app_id when updating local record
-        // Extract btcpay_app_id from BTCPay response if available, otherwise keep existing
-        $btcpayAppIdFromResponse = $btcpayApp['id'] ?? $btcpayApp['appId'] ?? $btcpayApp['app_id'] ?? null;
-        $finalBtcpayAppId = $btcpayAppIdFromResponse ?: $app->btcpay_app_id;
-
-        // Update local record with fresh data from BTCPay
-        // IMPORTANT: Always preserve btcpay_app_id - never let it be null or overwritten
-        $app->update([
-            'name' => $request->input('name', $app->name),
-            'btcpay_app_id' => $finalBtcpayAppId, // Explicitly preserve/update btcpay_app_id
-            'config' => $btcpayApp,
-        ]);
-
-        // Reload fresh data from BTCPay to ensure we have the latest template/products
-        // This ensures that template is correctly formatted (as JSON string from BTCPay)
-        try {
-            $freshBtcpayApp = $this->appService->getApp(
-                $store->btcpay_store_id,
-                $finalBtcpayAppId, // Use the preserved/updated btcpay_app_id
-                $app->app_type,
-                $userApiKey
-            );
-            // Update local record again with fresh data, but preserve btcpay_app_id
-            $app->update([
-                'config' => $freshBtcpayApp,
-                'btcpay_app_id' => $finalBtcpayAppId, // Explicitly preserve btcpay_app_id
-            ]);
-        } catch (\Exception $e) {
-            // If reload fails, use the update response
-            \Log::warning('Failed to reload app data after update', [
-                'app_id' => $app->id,
-                'btcpay_app_id' => $finalBtcpayAppId,
-                'error' => $e->getMessage(),
-            ]);
-            $freshBtcpayApp = $btcpayApp;
-        }
+        $config = $this->storeApps->buildUpdateConfig($app, $requestConfig, $name, $archived);
 
         return response()->json([
-            'data' => $this->formatApp($app->fresh(), $freshBtcpayApp),
+            'data' => $this->storeApps->update($store, $app, $config, $name),
             'message' => 'App updated successfully',
         ]);
     }
@@ -666,41 +139,20 @@ class AppController extends Controller
      */
     public function destroy(Request $request, Store $store, App $app)
     {
-        // Verify app belongs to store
         if ($app->store_id !== $store->id) {
-            return response()->json([
-                'message' => 'App not found for this store.',
-            ], 404);
+            return response()->json(['message' => 'App not found for this store.'], 404);
         }
-
-        if ($store->user && (bool) ($store->user->is_guest ?? false) && $app->app_type !== 'PointOfSale') {
-            return response()->json([
-                'message' => __('auth.guest_feature_requires_account'),
-                'code' => 'guest_feature_locked',
-            ], 403);
+        if ($guestGate = $this->guestGateResponse($store, $app)) {
+            return $guestGate;
         }
-
-        // Load merchant API key from store owner
-        $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
         try {
-            // Delete app from BTCPay first
-            $this->appService->deleteApp(
-                $store->btcpay_store_id,
-                $app->btcpay_app_id,
-                $app->app_type, // Pass app_type for correct endpoint
-                $userApiKey
-            );
+            $this->storeApps->delete($store, $app);
 
-            // Only delete local record if BTCPay deletion succeeded
-            $app->delete();
-
-            return response()->json([
-                'message' => 'App deleted successfully',
-            ]);
-        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
-            // If BTCPay deletion fails, don't delete local record
-            \Illuminate\Support\Facades\Log::error('Failed to delete app from BTCPay', [
+            return response()->json(['message' => 'App deleted successfully']);
+        } catch (BtcPayException $e) {
+            // BTCPay deletion failed - the local record is kept
+            Log::error('Failed to delete app from BTCPay', [
                 'store_id' => $store->id,
                 'btcpay_store_id' => $store->btcpay_store_id,
                 'app_id' => $app->id,
@@ -717,175 +169,43 @@ class AppController extends Controller
     }
 
     /**
-     * Format app for API response (never expose btcpay_app_id).
+     * Guests may only touch PointOfSale apps.
      */
-    protected function formatApp(App $app, ?array $btcpayApp = null): array
+    protected function guestGateResponse(Store $store, App $app): ?\Illuminate\Http\JsonResponse
     {
-        // Get config from local DB or BTCPay API - prioritize BTCPay API data
-        $config = $btcpayApp ?? $app->config ?? [];
-
-        // BTCPay API may return products in 'items' field (GET) or 'template' field (POST/PUT)
-        // Normalize 'items' to 'template' for frontend consistency
-        if (isset($config['items']) && ! isset($config['template'])) {
-            $config['template'] = $config['items'];
+        if ($store->user && (bool) ($store->user->is_guest ?? false) && $app->app_type !== 'PointOfSale') {
+            return response()->json([
+                'message' => __('auth.guest_feature_requires_account'),
+                'code' => 'guest_feature_locked',
+            ], 403);
         }
 
-        // If template is a JSON string, decode it to array for frontend
-        if (isset($config['template']) && is_string($config['template'])) {
-            try {
-                $decoded = json_decode($config['template'], true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                    $config['template'] = $decoded;
-                }
-            } catch (\Exception $e) {
-                // If decoding fails, keep as is
-                \Log::warning('Failed to decode template JSON in formatApp', [
-                    'app_id' => $app->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
-
-        $config = $this->rewriteSatfluxStorageUrlsInAppConfig($config);
-
-        $archived = $config['archived'] ?? false;
-        if (is_string($archived)) {
-            $archived = strtolower($archived) === 'true' || $archived === '1';
-        }
-
-        $data = [
-            'id' => $app->id,
-            'name' => $app->name,
-            'app_type' => $app->app_type,
-            'archived' => (bool) $archived,
-            'config' => $config,
-            'metadata' => $app->metadata,
-            'created_at' => $app->created_at,
-            'updated_at' => $app->updated_at,
-        ];
-
-        // Merge BTCPay data if available
-        if ($btcpayApp) {
-            // Update local app config with BTCPay data (but keep local-only fields)
-            // This ensures we have the latest template/products from BTCPay
-            if (! empty($btcpayApp)) {
-                $app->config = array_merge($app->config ?? [], $btcpayApp);
-                $app->save();
-            }
-
-            // Add BTCPay-specific fields that are safe to expose
-            $btcpayAppId = $btcpayApp['id'] ?? $app->btcpay_app_id ?? null;
-            if ($btcpayAppId) {
-                // Generate app URL based on app type
-                $data['btcpay_app_url'] = $this->generateAppUrl($app->app_type, $btcpayAppId);
-                // Also include the app ID directly (it's needed for embed codes)
-                $data['btcpay_app_id'] = $btcpayAppId;
-            }
-        } elseif ($app->btcpay_app_id) {
-            // If we have btcpay_app_id but no $btcpayApp data, include it
-            $data['btcpay_app_url'] = $this->generateAppUrl($app->app_type, $app->btcpay_app_id);
-            $data['btcpay_app_id'] = $app->btcpay_app_id;
-        }
-
-        return $data;
+        return null;
     }
 
     /**
-     * Point /storage/… URLs in app config at the current APP_URL (fixes stale host after domain or env changes).
-     * Crowdfund perks embed image URLs inside a JSON string (perksTemplate); rewrite those too.
-     *
-     * @param  array<string, mixed>  $config
-     * @return array<string, mixed>
+     * Payment Button update: no Greenfield PUT exists, only the local archived flag.
      */
-    protected function rewriteSatfluxStorageUrlsInAppConfig(array $config): array
+    protected function updatePaymentButton(Request $request, App $app)
     {
-        $config = $this->rewriteStorageUrlsRecursive($config);
-
-        foreach (['perksTemplate'] as $jsonKey) {
-            if (! isset($config[$jsonKey]) || ! is_string($config[$jsonKey])) {
-                continue;
-            }
-            $decoded = json_decode($config[$jsonKey], true);
-            if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
-                continue;
-            }
-            $config[$jsonKey] = json_encode($this->rewriteStorageUrlsRecursive($decoded));
+        $configPayload = $request->input('config');
+        $hasConfigBody = is_array($configPayload) && count($configPayload) > 0;
+        if ($request->filled('name') || $hasConfigBody) {
+            return response()->json([
+                'message' => 'BTCPay Greenfield API does not expose PUT for Payment Button apps. Change settings in BTCPay Server UI or recreate the app.',
+            ], 422);
+        }
+        if (! $request->has('archived')) {
+            return response()->json([
+                'message' => 'No updatable fields provided for this app type.',
+            ], 422);
         }
 
-        return $config;
-    }
+        $archived = filter_var($request->input('archived'), FILTER_VALIDATE_BOOLEAN);
 
-    /**
-     * @param  array<int|string, mixed>  $data
-     * @return array<int|string, mixed>
-     */
-    protected function rewriteStorageUrlsRecursive(array $data): array
-    {
-        foreach ($data as $k => $v) {
-            if (is_string($v)) {
-                $data[$k] = SatfluxStorageUrl::rewriteToCurrentApp($v);
-            } elseif (is_array($v)) {
-                $data[$k] = $this->rewriteStorageUrlsRecursive($v);
-            }
-        }
-
-        return $data;
-    }
-
-    protected function countActivePointOfSaleApps(Store $store): int
-    {
-        return App::query()
-            ->where('store_id', $store->id)
-            ->where('app_type', 'PointOfSale')
-            ->get()
-            ->filter(function (App $app) {
-                $archived = data_get($app->config, 'archived', false);
-                if (is_string($archived)) {
-                    return ! (strtolower($archived) === 'true' || $archived === '1');
-                }
-
-                return ! (bool) $archived;
-            })
-            ->count();
-    }
-
-    /**
-     * Generate BTCPay app URL based on app type.
-     * Different app types have different URL patterns in BTCPay.
-     */
-    protected function generateAppUrl(string $appType, string $appId): string
-    {
-        $baseUrl = config('services.btcpay.base_url');
-        $basePath = $baseUrl.'/apps/'.$appId;
-
-        // Different app types have different URL patterns
-        switch (strtolower($appType)) {
-            case 'pointofsale':
-                return $basePath.'/pos';
-            case 'crowdfund':
-                return $basePath.'/crowdfund';
-            case 'paymentbutton':
-                return $basePath.'/paymentbutton';
-            case 'lightningaddress':
-                return $basePath.'/lnaddress';
-            default:
-                // Default to base path if app type is unknown
-                return $basePath;
-        }
-    }
-
-    /**
-     * Determine app type from BTCPay app data.
-     */
-    protected function determineAppType(array $btcpayApp): string
-    {
-        // Try to determine from BTCPay app data
-        // This may need adjustment based on actual BTCPay API response structure
-        if (isset($btcpayApp['appType'])) {
-            return $btcpayApp['appType'];
-        }
-
-        // Default fallback
-        return 'PointOfSale';
+        return response()->json([
+            'data' => $this->storeApps->archivePaymentButtonLocally($app, $archived),
+            'message' => 'App updated successfully',
+        ]);
     }
 }
