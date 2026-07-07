@@ -139,12 +139,6 @@ parameters:
 			path: app/Http/Controllers/AdminController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/AdminController.php
-
-		-
 			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
@@ -157,13 +151,7 @@ parameters:
 			path: app/Http/Controllers/AdminController.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/AdminController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{id\: string, name\: string, created_at\: Carbon\\Carbon\|null, wallet_type\: string\|null, pos_terminal_count\: int\<0, max\>, wallet_connection_status\: mixed\}, Closure\(App\\Models\\Store\)\: array\{id\: string, name\: string, created_at\: Carbon\\Carbon\|null, wallet_type\: string\|null, pos_terminal_count\: int\<0, max\>, wallet_connection_status\: mixed\} given\.$#'
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{id\: string, name\: string, created_at\: Carbon\\Carbon\|null, wallet_type\: string\|null, pos_terminal_count\: int\<0, max\>, wallet_connection_status\: ''connected''\|''needs_support''\|''pending''\|null\}, Closure\(App\\Models\\Store\)\: array\{id\: string, name\: string, created_at\: Carbon\\Carbon\|null, wallet_type\: string\|null, pos_terminal_count\: int\<0, max\>, wallet_connection_status\: ''connected''\|''needs_support''\|''pending''\|null\} given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/AdminController.php
@@ -271,7 +259,7 @@ parameters:
 			path: app/Http/Controllers/CashuController.php
 
 		-
-			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Database\\Eloquent\\Relations\\HasOne\. Use \-\> instead\.$#'
+			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Database\\Eloquent\\Relations\\HasOne\<App\\Models\\WalletConnection, App\\Models\\Store\>\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Http/Controllers/CashuController.php
@@ -955,105 +943,27 @@ parameters:
 			path: app/Http/Controllers/StoreApiKeyController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$completed_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/StoreChecklistController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$item_key\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Http/Controllers/StoreChecklistController.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isCompleted\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/StoreChecklistController.php
-
-		-
 			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
 			identifier: method.nonObject
-			count: 1
+			count: 2
 			path: app/Http/Controllers/StoreChecklistController.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\StoreChecklist\>\:\:map\(\) contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
 			count: 1
 			path: app/Http/Controllers/StoreChecklistController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$completed_at\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/StoreController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$item_key\.$#'
-			identifier: property.notFound
-			count: 6
-			path: app/Http/Controllers/StoreController.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isCompleted\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: app/Http/Controllers/StoreController.php
-
-		-
 			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
-			count: 2
+			count: 1
 			path: app/Http/Controllers/StoreController.php
 
 		-
 			message: '#^Call to function is_array\(\) with array\<mixed, mixed\> will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
-			path: app/Http/Controllers/StoreController.php
-
-		-
-			message: '#^Left side of && is always true\.$#'
-			identifier: booleanAnd.leftAlwaysTrue
-			count: 1
-			path: app/Http/Controllers/StoreController.php
-
-		-
-			message: '#^Offset ''default_currency'' on array\{id\: string, name\: mixed, default_currency\: mixed, timezone\: mixed, preferred_exchange\: mixed, wallet_type\: string\|null, created_at\: Carbon\\Carbon\|null, updated_at\: Carbon\\Carbon\|null, \.\.\.\} in isset\(\) always exists and is not nullable\.$#'
-			identifier: isset.offset
-			count: 1
-			path: app/Http/Controllers/StoreController.php
-
-		-
-			message: '#^Offset ''preferred_exchange'' on array\{id\: string, name\: mixed, default_currency\: mixed, timezone\: mixed, preferred_exchange\: mixed, wallet_type\: string\|null, created_at\: Carbon\\Carbon\|null, updated_at\: Carbon\\Carbon\|null, \.\.\.\} in isset\(\) always exists and is not nullable\.$#'
-			identifier: isset.offset
-			count: 1
-			path: app/Http/Controllers/StoreController.php
-
-		-
-			message: '#^Offset ''timezone'' on array\{id\: string, name\: mixed, default_currency\: mixed, timezone\: mixed, preferred_exchange\: mixed, wallet_type\: string\|null, created_at\: Carbon\\Carbon\|null, updated_at\: Carbon\\Carbon\|null, \.\.\.\} in isset\(\) always exists and is not nullable\.$#'
-			identifier: isset.offset
-			count: 1
-			path: app/Http/Controllers/StoreController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 2
-			path: app/Http/Controllers/StoreController.php
-
-		-
-			message: '#^Parameter \#2 \$walletConnection of method App\\Http\\Controllers\\StoreController\:\:formatWalletConnectionPayload\(\) expects App\\Models\\WalletConnection\|null, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/StoreController.php
-
-		-
-			message: '#^Ternary operator condition is always true\.$#'
-			identifier: ternary.alwaysTrue
-			count: 2
 			path: app/Http/Controllers/StoreController.php
 
 		-
@@ -4247,6 +4157,12 @@ parameters:
 			identifier: method.notFound
 			count: 5
 			path: app/Services/StoreInvoiceStatsService.php
+
+		-
+			message: '#^Method App\\Services\\StoreResponseFormatter\:\:checklistItemsPayload\(\) should return Illuminate\\Support\\Collection\<int, array\{key\: string, description\: mixed, link\: mixed, completed_at\: string\|null, is_completed\: bool\}\> but returns Illuminate\\Support\\Collection\<int, array\{key\: string, description\: mixed, link\: mixed, completed_at\: string\|null, is_completed\: bool\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/StoreResponseFormatter.php
 
 		-
 			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
