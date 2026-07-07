@@ -856,7 +856,7 @@ import { currencies } from "../../data/currencies";
 import { exchanges } from "../../data/exchanges";
 import Select from "../../components/ui/Select.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
-import api from "../../services/api";
+import { storesApi, walletApi } from "../../services/api";
 import { DEFAULT_CASHU_MINT_URL } from "../../constants/cashu";
 import { isValidAquaBoltzDescriptor } from "../../utils/aquaBoltzDescriptor";
 import {
@@ -1093,9 +1093,7 @@ async function cancelSamRockPairing() {
   const sid = createdStoreId.value;
   if (samrockOtp.value && sid) {
     try {
-      await api.delete(
-        `/stores/${sid}/samrock/otps/${encodeURIComponent(samrockOtp.value)}`
-      );
+      await walletApi.samrock.deleteOtp(sid, samrockOtp.value);
     } catch {
       /* ignore */
     }
@@ -1112,9 +1110,7 @@ async function startSamRockPairing() {
   if (!sid) return;
 
   try {
-    await api.patch(`/stores/${sid}/wallet-type`, {
-      wallet_type: "aqua_boltz",
-    });
+    await storesApi.setWalletType(sid, "aqua_boltz");
     await storesStore.fetchStore(sid);
   } catch (err: any) {
     samrockErrorMessage.value =
@@ -1130,13 +1126,12 @@ async function startSamRockPairing() {
   stopSamRockPolling();
 
   try {
-    const res = await api.post(`/stores/${sid}/samrock/otps`, {
+    const d = await walletApi.samrock.createOtp(sid, {
       btc: true,
       btcln: true,
       lbtc: false,
       expires_in_seconds: 300,
     });
-    const d = res.data?.data ?? {};
     const otp = d.otp ?? "";
     if (!otp) {
       samrockErrorMessage.value = t("stores.samrock_error");
@@ -1146,30 +1141,20 @@ async function startSamRockPairing() {
     samrockOtp.value = otp;
     samrockExpiresAt.value = d.expires_at ?? null;
 
-    const qrRes = await api.get(
-      `/stores/${sid}/samrock/otps/${encodeURIComponent(otp)}/qr`,
-      {
-        responseType: "blob",
-        params: { format: "png" },
-      }
-    );
-    samrockQrObjectUrl.value = URL.createObjectURL(qrRes.data);
+    const qrBlob = await walletApi.samrock.otpQr(sid, otp, { format: "png" });
+    samrockQrObjectUrl.value = URL.createObjectURL(qrBlob);
     samrockBusy.value = false;
     samrockPollStatus.value = "pending";
 
     const pollOnce = async () => {
       if (!samrockOtp.value || !sid) return;
       try {
-        const st = await api.get(
-          `/stores/${sid}/samrock/otps/${encodeURIComponent(samrockOtp.value)}`
-        );
-        const status = st.data?.data?.status ?? "";
+        const st = await walletApi.samrock.otpStatus(sid, samrockOtp.value);
+        const status = st.status ?? "";
         samrockPollStatus.value = status;
         if (status === "success") {
           stopSamRockPolling();
-          await api.post(`/stores/${sid}/samrock/complete`, {
-            otp: samrockOtp.value,
-          });
+          await walletApi.samrock.complete(sid, { otp: samrockOtp.value });
           revokeSamRockQr();
           samrockOtp.value = "";
           samrockWalletReady.value = true;
@@ -1177,7 +1162,7 @@ async function startSamRockPairing() {
         } else if (status === "error") {
           stopSamRockPolling();
           samrockErrorMessage.value =
-            st.data?.data?.error_message ?? t("stores.samrock_error");
+            st.error_message ?? t("stores.samrock_error");
         }
       } catch {
         /* ignore */
@@ -1208,8 +1193,7 @@ async function pollBotWalletConnectionOnce() {
   const sid = createdStoreId.value;
   if (!sid) return;
   try {
-    const res = await api.get(`/stores/${sid}/wallet-connection`);
-    const data = res.data?.data;
+    const data = await walletApi.connection.get(sid);
     const status = data?.status ?? "";
     if (status === "connected") {
       stopBotWaitTimers();
@@ -1304,7 +1288,7 @@ async function submitWalletConfiguration() {
 
   try {
     if (form.value.wallet_type === "cashu") {
-      await api.put(`/stores/${sid}/cashu/settings`, {
+      await walletApi.cashu.updateSettings(sid, {
         mint_url: form.value.mint_url,
         lightning_address: form.value.lightning_address,
         enabled: true,
@@ -1318,10 +1302,7 @@ async function submitWalletConfiguration() {
     const connType =
       form.value.wallet_type === "blink" ? "blink" : "aqua_descriptor";
 
-    await api.post(`/stores/${sid}/wallet-connection`, {
-      type: connType,
-      secret,
-    });
+    await walletApi.connection.create(sid, { type: connType, secret });
 
     await storesStore.fetchStore(sid);
     currentStep.value = 3;

@@ -77,7 +77,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
 import { useAppsStore } from '../../store/apps';
-import api from '../../services/api';
+import { walletApi } from '../../services/api';
 import AppScrollPane from '../../components/layout/AppScrollPane.vue';
 import WalletConnectionForm from '../../components/stores/WalletConnectionForm.vue';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
@@ -117,8 +117,7 @@ async function loadConnection() {
             connection.value = null;
             return;
         }
-        const response = await api.get(`/stores/${storeId.value}/wallet-connection`);
-        connection.value = response.data.data;
+        connection.value = await walletApi.connection.get(storeId.value);
     } catch (err: any) {
         if (err.response?.status !== 404) {
             error.value = err.response?.data?.message || 'Failed to load wallet connection';

@@ -1710,7 +1710,7 @@ import { ref, reactive, computed, watch, onUnmounted, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
-import api from "../../services/api";
+import api, { walletApi } from "../../services/api";
 import { DEFAULT_CASHU_MINT_URL } from "../../constants/cashu";
 import WalletTypeIcon from "../WalletTypeIcon.vue";
 import { isValidAquaBoltzDescriptor } from "../../utils/aquaBoltzDescriptor";
@@ -1900,9 +1900,7 @@ async function cancelSamRockPairing() {
   revokeSamRockQr();
   if (samrockOtp.value) {
     try {
-      await api.delete(
-        `/stores/${props.storeId}/samrock/otps/${encodeURIComponent(samrockOtp.value)}`,
-      );
+      await walletApi.samrock.deleteOtp(props.storeId, samrockOtp.value);
     } catch {
       /* ignore */
     }
@@ -1928,13 +1926,12 @@ async function startSamRockPairing() {
   stopSamRockPolling();
 
   try {
-    const res = await api.post(`/stores/${props.storeId}/samrock/otps`, {
+    const d = await walletApi.samrock.createOtp(props.storeId, {
       btc: true,
       btcln: true,
       lbtc: false,
       expires_in_seconds: 300,
     });
-    const d = res.data?.data ?? {};
     const otp = d.otp ?? "";
     if (!otp) {
       samrockErrorMessage.value = t("stores.samrock_error");
@@ -1944,30 +1941,20 @@ async function startSamRockPairing() {
     samrockOtp.value = otp;
     samrockExpiresAt.value = d.expires_at ?? null;
 
-    const qrRes = await api.get(
-      `/stores/${props.storeId}/samrock/otps/${encodeURIComponent(otp)}/qr`,
-      {
-        responseType: "blob",
-        params: { format: "png" },
-      },
-    );
-    samrockQrObjectUrl.value = URL.createObjectURL(qrRes.data);
+    const qrBlob = await walletApi.samrock.otpQr(props.storeId, otp, { format: "png" });
+    samrockQrObjectUrl.value = URL.createObjectURL(qrBlob);
     samrockBusy.value = false;
     samrockPollStatus.value = "pending";
 
     const pollOnce = async () => {
       if (!samrockOtp.value) return;
       try {
-        const st = await api.get(
-          `/stores/${props.storeId}/samrock/otps/${encodeURIComponent(samrockOtp.value)}`,
-        );
-        const status = st.data?.data?.status ?? "";
+        const st = await walletApi.samrock.otpStatus(props.storeId, samrockOtp.value);
+        const status = st.status ?? "";
         samrockPollStatus.value = status;
         if (status === "success") {
           stopSamRockPolling();
-          await api.post(`/stores/${props.storeId}/samrock/complete`, {
-            otp: samrockOtp.value,
-          });
+          await walletApi.samrock.complete(props.storeId, { otp: samrockOtp.value });
           revokeSamRockQr();
           samrockOtp.value = "";
           emit("submitted");
@@ -2124,8 +2111,7 @@ async function fetchCashuSettings() {
   resetCashuErrors();
 
   try {
-    const response = await api.get(`/stores/${props.storeId}/cashu/settings`);
-    const d = response.data?.data ?? {};
+    const d = await walletApi.cashu.getSettings(props.storeId);
 
     const mintFromApi = (d.mint_url ?? "").trim();
     cashuForm.mint_url = mintFromApi || DEFAULT_CASHU_MINT_URL;
@@ -2194,11 +2180,7 @@ async function handleSaveCashu() {
       ),
     };
 
-    const response = await api.put(
-      `/stores/${props.storeId}/cashu/settings`,
-      payload,
-    );
-    const d = response.data?.data ?? {};
+    const d = await walletApi.cashu.updateSettings(props.storeId, payload);
 
     cashuForm.mint_url = d.mint_url ?? cashuForm.mint_url;
     cashuForm.lightning_address =
@@ -2413,19 +2395,18 @@ async function fetchRevealChallengeAndOpen(): Promise<boolean> {
           lnurlRevealForCashuEdit.value = false;
           try {
             if (forCashuEdit) {
-              await api.post(`/stores/${props.storeId}/cashu/confirm-edit`, {
+              await walletApi.cashu.confirmEdit(props.storeId, {
                 confirm_via_lnurl: true,
               });
               cashuSectionMode.value = "editing";
             } else {
-              const response = await api.post(
-                `/stores/${props.storeId}/wallet-connection/reveal`,
-                { confirm_via_lnurl: true },
-              );
-              form.type = (response.data.data?.type ||
+              const reveal = await walletApi.connection.reveal(props.storeId, {
+                confirm_via_lnurl: true,
+              });
+              form.type = (reveal.type ||
                 props.existingConnection?.type ||
                 "blink") as "blink" | "aqua_descriptor";
-              form.secret = response.data.data?.secret || "";
+              form.secret = reveal.secret || "";
               sanitizeSecretForDeclaredType();
               syncWalletFormAquaTabAfterReveal();
               viewMode.value = "editing";
@@ -2548,14 +2529,11 @@ async function handleConfirmPassword() {
     const payload = canUsePasswordLogin.value
       ? { password: passwordInput.value }
       : {};
-    const response = await api.post(
-      `/stores/${props.storeId}/wallet-connection/reveal`,
-      payload,
-    );
-    form.type = (response.data.data?.type ||
+    const reveal = await walletApi.connection.reveal(props.storeId, payload);
+    form.type = (reveal.type ||
       props.existingConnection?.type ||
       "blink") as "blink" | "aqua_descriptor";
-    form.secret = response.data.data?.secret || "";
+    form.secret = reveal.secret || "";
     sanitizeSecretForDeclaredType();
     syncWalletFormAquaTabAfterReveal();
     passwordInput.value = "";
@@ -2579,7 +2557,7 @@ async function handleCashuConfirmPassword() {
     const payload = canUsePasswordLogin.value
       ? { password: passwordInput.value }
       : {};
-    await api.post(`/stores/${props.storeId}/cashu/confirm-edit`, payload);
+    await walletApi.cashu.confirmEdit(props.storeId, payload);
     passwordInput.value = "";
     cashuSectionMode.value = "editing";
   } catch (err: any) {
@@ -2727,17 +2705,14 @@ async function handleTestConnection() {
   testing.value = true;
   testResult.value = null;
   try {
-    const response = await api.post(
-      `/stores/${props.storeId}/wallet-connection/test`,
-      {
-        connection_string: form.secret,
-        crypto_code: "BTC",
-      },
-    );
+    const result = await walletApi.connection.test(props.storeId, {
+      connection_string: form.secret,
+      crypto_code: "BTC",
+    });
     testResult.value = {
-      success: response.data.success ?? false,
-      message: response.data.message || "Connection test completed",
-      requires_manual_config: response.data.requires_manual_config ?? false,
+      success: result.success ?? false,
+      message: result.message || "Connection test completed",
+      requires_manual_config: result.requires_manual_config ?? false,
     };
   } catch (err: any) {
     testResult.value = {
@@ -2768,7 +2743,7 @@ async function handleSubmit() {
   }
 
   try {
-    await api.post(`/stores/${props.storeId}/wallet-connection`, {
+    await walletApi.connection.create(props.storeId, {
       type: form.type,
       secret: form.secret,
     });

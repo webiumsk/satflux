@@ -1,6 +1,6 @@
 import { ref, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import api from '../services/api';
+import { walletApi } from '../services/api';
 import { getApiErrorMessage } from './useApiError';
 
 export function useSamRockPairing(storeId: () => string) {
@@ -39,9 +39,7 @@ export function useSamRockPairing(storeId: () => string) {
         pairingStoreId = null;
         if (sid && otp) {
             try {
-                await api.delete(
-                    `/stores/${sid}/samrock/otps/${encodeURIComponent(otp)}`,
-                );
+                await walletApi.samrock.deleteOtp(sid, otp);
             } catch {
                 // ignore cleanup errors
             }
@@ -61,13 +59,10 @@ export function useSamRockPairing(storeId: () => string) {
         const sid = pairingStoreId;
         const otp = samrockOtp.value;
         try {
-            const statusRes = await api.get(
-                `/stores/${sid}/samrock/otps/${encodeURIComponent(otp)}`,
-            );
-            const status = statusRes.data?.data?.status ?? '';
+            const { status } = await walletApi.samrock.otpStatus(sid, otp);
             if (status === 'completed') {
                 stopSamRockPolling();
-                await api.post(`/stores/${sid}/samrock/complete`, { otp });
+                await walletApi.samrock.complete(sid, { otp });
                 samrockOtp.value = '';
                 pairingStoreId = null;
                 revokeSamRockQr();
@@ -92,13 +87,12 @@ export function useSamRockPairing(storeId: () => string) {
         stopSamRockPolling();
 
         try {
-            const res = await api.post(`/stores/${sid}/samrock/otps`, {
+            const d = await walletApi.samrock.createOtp(sid, {
                 btc: true,
                 btcln: true,
                 lbtc: false,
                 expires_in_seconds: 300,
             });
-            const d = res.data?.data ?? {};
             const otp = d.otp ?? '';
             if (!otp) {
                 samrockErrorMessage.value = t('stores.samrock_error');
@@ -108,14 +102,12 @@ export function useSamRockPairing(storeId: () => string) {
             }
 
             samrockOtp.value = otp;
-            samrockExpiresAt.value = d.expiresAt ?? null;
+            // Backend returns snake_case expires_at (the old expiresAt read was always null)
+            samrockExpiresAt.value = d.expires_at ?? null;
 
-            const qrRes = await api.get(
-                `/stores/${sid}/samrock/otps/${encodeURIComponent(otp)}/qr`,
-                { responseType: 'blob' },
-            );
+            const qrBlob = await walletApi.samrock.otpQr(sid, otp);
             revokeSamRockQr();
-            samrockQrObjectUrl.value = URL.createObjectURL(qrRes.data);
+            samrockQrObjectUrl.value = URL.createObjectURL(qrBlob);
             samrockBusy.value = false;
             samrockPollStatus.value = t('stores.samrock_waiting_scan');
 
