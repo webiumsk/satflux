@@ -32,20 +32,34 @@ class StoreProvisioningService
     ) {}
 
     /**
-     * @param  array<string, mixed>  $data  Validated StoreCreateRequest payload
+     * @param array{
+     *     name: string,
+     *     default_currency: string,
+     *     timezone: string,
+     *     preferred_exchange?: string|null,
+     *     wallet_type?: string|null,
+     *     connection_string?: string|null,
+     *     mint_url?: string|null,
+     *     lightning_address?: string|null,
+     * } $data Validated StoreCreateRequest payload
      *
      * @throws ValidationException
      */
     public function create(User $user, array $data): Store
     {
+        $walletType = $data['wallet_type'] ?? null;
+        // One normalized value for both BTCPay and the local record: empty
+        // string means "no preference" (null = BTCPay exchange recommendation).
+        $preferredExchange = ($data['preferred_exchange'] ?? null) ?: null;
+
         Log::info('Store provisioning started', [
             'user_id' => $user->id,
             'store_name' => $data['name'],
-            'wallet_type' => $data['wallet_type'] ?? null,
+            'wallet_type' => $walletType,
             'has_connection_string' => ! empty($data['connection_string']),
         ]);
 
-        return DB::transaction(function () use ($user, $data) {
+        return DB::transaction(function () use ($user, $data, $walletType, $preferredExchange) {
             // Server-level API key (unrestricted) is required for provisioning.
             // StoreService's injected BtcPayClient defaults to it, so no key
             // juggling here - createStore(..., null) runs with the server key.
@@ -53,36 +67,51 @@ class StoreProvisioningService
                 abort(500, 'Server-level BTCPay API key not configured.');
             }
 
-            $btcpayStore = $this->createBtcPayStore($data);
+            // Preflight: a duplicate Aqua descriptor must fail BEFORE the BTCPay
+            // store exists, otherwise the rollback leaves an orphaned BTCPay store.
+            if ($walletType !== null && $walletType !== 'cashu' && ! empty($data['connection_string'])) {
+                $this->assertDescriptorAvailable($walletType, $data['connection_string']);
+            }
+
+            $btcpayStore = $this->createBtcPayStore($data, $preferredExchange);
             $btcpayStoreId = $btcpayStore['id'] ?? $btcpayStore['storeId'] ?? null;
             if (! $btcpayStoreId) {
                 abort(500, 'Failed to create store: BTCPay did not return a store ID.');
             }
 
-            $this->forgetStoreCaches($btcpayStoreId, $user);
-            $this->assignOwners($btcpayStoreId, $user);
+            // From here on the BTCPay store exists - if any later step throws,
+            // delete it so the DB rollback does not leave an orphan behind.
+            try {
+                $this->forgetStoreCaches($btcpayStoreId, $user);
+                $this->assignOwners($btcpayStoreId, $user);
 
-            $store = new Store([
-                'id' => (string) Str::uuid(),
-                'user_id' => $user->id,
-                'name' => $data['name'],
-                'default_currency' => $data['default_currency'] ?? 'EUR',
-                'timezone' => $data['timezone'] ?? 'Europe/Vienna',
-                'preferred_exchange' => $data['preferred_exchange'] ?? 'kraken',
-                'wallet_type' => $data['wallet_type'] ?? null,
-            ]);
-            $store->btcpay_store_id = $btcpayStoreId;
-            $store->save();
+                $store = new Store([
+                    'id' => (string) Str::uuid(),
+                    'user_id' => $user->id,
+                    'name' => $data['name'],
+                    // default_currency and timezone are required by StoreCreateRequest
+                    'default_currency' => $data['default_currency'],
+                    'timezone' => $data['timezone'],
+                    'preferred_exchange' => $preferredExchange ?? 'kraken',
+                    'wallet_type' => $walletType,
+                ]);
+                $store->btcpay_store_id = $btcpayStoreId;
+                $store->save();
 
-            if (($data['wallet_type'] ?? null) === 'cashu') {
-                $this->configureCashu($store, $user, $data);
+                if ($walletType === 'cashu') {
+                    $this->configureCashu($store, $user, $data);
+                }
+
+                if ($walletType !== null && $walletType !== 'cashu' && ! empty($data['connection_string'])) {
+                    $this->createWalletConnection($store, $user, $data);
+                }
+
+                StoreChecklistService::ensureChecklistInitialized($store);
+            } catch (\Throwable $e) {
+                $this->cleanupOrphanedBtcPayStore($btcpayStoreId, $e);
+                throw $e;
             }
 
-            if (($data['wallet_type'] ?? null) !== null && ($data['wallet_type'] ?? null) !== 'cashu' && ! empty($data['connection_string'])) {
-                $this->createWalletConnection($store, $user, $data);
-            }
-
-            StoreChecklistService::ensureChecklistInitialized($store);
             $store->load('checklistItems', 'walletConnection');
 
             $this->scheduleWebhookProvisioning($store->id);
@@ -99,10 +128,56 @@ class StoreProvisioningService
     }
 
     /**
+     * @throws ValidationException when an Aqua descriptor is already in use
+     */
+    protected function assertDescriptorAvailable(string $walletType, string $connectionString): void
+    {
+        if ($walletType === 'blink') {
+            return; // Blink tokens are not unique per store
+        }
+
+        $duplicateCheck = $this->walletConnectionService->checkDescriptorDuplicate($connectionString, null);
+        if ($duplicateCheck['exists']) {
+            Log::warning('Aqua descriptor already in use - aborting store creation before BTCPay call', [
+                'existing_store_id' => $duplicateCheck['existing_store_id'],
+                'existing_store_name' => $duplicateCheck['existing_store_name'],
+            ]);
+
+            throw ValidationException::withMessages([
+                'connection_string' => [
+                    'This descriptor is already in use by another store. '.
+                    'BTCPay allows each descriptor to be used only once. '.
+                    ($duplicateCheck['existing_store_name']
+                        ? "It is currently used by store: {$duplicateCheck['existing_store_name']}"
+                        : 'Please use a different wallet/descriptor.'),
+                ],
+            ]);
+        }
+    }
+
+    /** Best-effort compensation: the DB transaction rolls back, BTCPay does not. */
+    protected function cleanupOrphanedBtcPayStore(string $btcpayStoreId, \Throwable $cause): void
+    {
+        try {
+            $this->storeService->deleteStore($btcpayStoreId, null);
+            Log::info('Deleted orphaned BTCPay store after failed provisioning', [
+                'btcpay_store_id' => $btcpayStoreId,
+                'cause' => $cause->getMessage(),
+            ]);
+        } catch (\Throwable $deleteError) {
+            Log::error('Could not delete orphaned BTCPay store after failed provisioning', [
+                'btcpay_store_id' => $btcpayStoreId,
+                'provisioning_error' => $cause->getMessage(),
+                'delete_error' => $deleteError->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed> BTCPay store payload
      */
-    protected function createBtcPayStore(array $data): array
+    protected function createBtcPayStore(array $data, ?string $preferredExchange): array
     {
         $storeData = [
             'name' => $data['name'],
@@ -113,9 +188,9 @@ class StoreProvisioningService
             'recommendedFeeBlockTarget' => 1,
         ];
 
-        // Preferred exchange if provided (empty string means null = BTCPay recommendation)
+        // Preferred exchange if provided (null = BTCPay exchange recommendation)
         if (array_key_exists('preferred_exchange', $data)) {
-            $storeData['preferredExchange'] = $data['preferred_exchange'] ?: null;
+            $storeData['preferredExchange'] = $preferredExchange;
         }
 
         Log::info('Creating store in BTCPay', [

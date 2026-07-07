@@ -194,8 +194,9 @@ class StoreController extends Controller
         StoreChecklistService::ensureChecklistInitialized($store);
         $store->load('checklistItems', 'walletConnection');
 
+        // $store is current after update() + load() - fresh() would drop the loaded relations
         return response()->json([
-            'data' => $this->formatter->fromLocal($store->fresh()),
+            'data' => $this->formatter->fromLocal($store),
         ]);
     }
 

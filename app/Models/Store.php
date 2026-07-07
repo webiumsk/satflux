@@ -76,6 +76,8 @@ class Store extends Model
 
     /**
      * Get the checklist items for the store.
+     *
+     * @return HasMany<StoreChecklist, $this>
      */
     public function checklistItems(): HasMany
     {
@@ -100,6 +102,8 @@ class Store extends Model
 
     /**
      * Get the wallet connection for the store.
+     *
+     * @return HasOne<WalletConnection, $this>
      */
     public function walletConnection(): HasOne
     {

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Store;
+use App\Models\StoreChecklist;
 use App\Models\WalletConnection;
 use Illuminate\Support\Collection;
 
@@ -114,26 +115,29 @@ class StoreResponseFormatter
     }
 
     /**
-     * @return Collection<int, array<string, mixed>>
+     * @return Collection<int, array{key: string, description: mixed, link: mixed, completed_at: string|null, is_completed: bool}>
      */
     protected function checklistItemsPayload(Store $store): Collection
     {
-        if (! $store->checklistItems || $store->checklistItems->count() === 0) {
+        if ($store->checklistItems->isEmpty()) {
             return collect([]);
         }
 
         $definition = StoreChecklistService::getChecklistItems($store->wallet_type ?? '');
 
-        return $store->checklistItems->map(function ($item) use ($definition) {
-            $itemDef = $definition[$item->item_key] ?? null;
+        return $store->checklistItems
+            ->map(function (StoreChecklist $item) use ($definition): array {
+                $itemDef = $definition[$item->item_key] ?? null;
 
-            return [
-                'key' => $item->item_key,
-                'description' => $itemDef['description'] ?? $item->item_key,
-                'link' => $itemDef['link'] ?? null,
-                'completed_at' => $item->completed_at,
-                'is_completed' => $item->isCompleted(),
-            ];
-        })->values();
+                return [
+                    'key' => $item->item_key,
+                    'description' => $itemDef['description'] ?? $item->item_key,
+                    'link' => $itemDef['link'] ?? null,
+                    'completed_at' => $item->completed_at,
+                    'is_completed' => $item->isCompleted(),
+                ];
+            })
+            ->values()
+            ->toBase();
     }
 }
