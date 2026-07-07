@@ -20,6 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\TrustProxies::class,
             \App\Http\Middleware\SetLocale::class,
         ]);
+        // CSP on the SPA shell and web views (opt-in via CSP_ENABLED)
+        $middleware->web(append: [
+            \App\Http\Middleware\SetSecurityHeaders::class,
+        ]);
         $middleware->statefulApi();
 
         $middleware->alias([
