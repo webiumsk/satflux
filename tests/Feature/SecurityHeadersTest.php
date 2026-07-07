@@ -43,6 +43,8 @@ class SecurityHeadersTest extends TestCase
         $this->assertNotNull($policy);
         $this->assertStringContainsString("default-src 'self'", $policy);
         $this->assertStringContainsString("frame-ancestors 'self'", $policy);
+        // YouTube embeds (landing video, documentation) must stay allowed
+        $this->assertStringContainsString('https://www.youtube-nocookie.com', $policy);
     }
 
     #[Test]

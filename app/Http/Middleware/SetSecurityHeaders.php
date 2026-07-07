@@ -49,7 +49,8 @@ class SetSecurityHeaders
             // https:/wss: - Reverb websocket, user-configured Evolu relays, Matomo beacon.
             'connect-src' => ["'self'", 'https:', 'wss:'],
             'worker-src' => ["'self'", 'blob:'],
-            'frame-src' => ["'self'", 'blob:'],
+            // YouTube embeds: landing SK video + documentation articles (both use youtube-nocookie)
+            'frame-src' => ["'self'", 'blob:', 'https://www.youtube-nocookie.com', 'https://www.youtube.com'],
             'object-src' => ["'none'"],
             'base-uri' => ["'self'"],
             'form-action' => ["'self'"],
