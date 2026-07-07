@@ -57,6 +57,7 @@ class Store extends Model
         return [
             'metadata' => 'array',
             'auto_report_enabled' => 'boolean',
+            'webhook_secret' => 'encrypted', // Encrypt HMAC secret at rest (like User.btcpay_api_key)
         ];
     }
 
