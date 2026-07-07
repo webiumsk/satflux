@@ -92,6 +92,62 @@ class BusinessDocumentPdfService
     }
 
     /**
+     * ZIP archive with one PDF per document (invoice-{number|id}.pdf).
+     *
+     * @param  Collection<int, BusinessDocument>  $documents
+     */
+    public function renderZipBinary(Collection $documents): string
+    {
+        $zipPath = tempnam(sys_get_temp_dir(), 'invoices-');
+        if ($zipPath === false) {
+            throw new \RuntimeException('Could not create ZIP archive.');
+        }
+
+        try {
+            $zip = new \ZipArchive;
+            if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                throw new \RuntimeException('Could not create ZIP archive.');
+            }
+
+            foreach ($documents as $document) {
+                $pdf = $this->renderBinary($document);
+                $name = 'invoice-'.$this->safeZipEntrySegment((string) ($document->number ?: $document->id)).'.pdf';
+                if ($zip->addFromString($name, $pdf) === false) {
+                    throw new \RuntimeException('Could not add PDF to ZIP archive.');
+                }
+            }
+
+            if ($zip->close() !== true) {
+                throw new \RuntimeException('Could not finalize ZIP archive.');
+            }
+
+            $binary = file_get_contents($zipPath);
+            if ($binary === false) {
+                throw new \RuntimeException('Could not read generated ZIP archive.');
+            }
+
+            return $binary;
+        } finally {
+            if (file_exists($zipPath)) {
+                @unlink($zipPath);
+            }
+        }
+    }
+
+    /**
+     * Document numbers come from user payloads (ephemeral flow) - reduce them
+     * to a basename-safe segment so ZIP entries cannot carry path separators
+     * (same character class as CompanyPdfFilenameBuilder).
+     */
+    protected function safeZipEntrySegment(string $value): string
+    {
+        $segment = preg_replace('/[^A-Za-z0-9._\-]+/', '_', $value) ?? '';
+        $segment = trim($segment, '._-');
+
+        return $segment !== '' ? $segment : 'document';
+    }
+
+    /**
      * @return array<string, mixed>
      */
     protected function viewDataForDocument(BusinessDocument $document): array

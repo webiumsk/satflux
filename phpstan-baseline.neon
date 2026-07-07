@@ -571,18 +571,6 @@ parameters:
 			path: app/Http/Controllers/Invoicing/CompanyDocumentSequenceController.php
 
 		-
-			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
-			identifier: function.impossibleType
-			count: 1
-			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
-
-		-
-			message: '#^Call to function is_string\(\) with non\-falsy\-string will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
-
-		-
 			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
@@ -595,39 +583,15 @@ parameters:
 			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
 
 		-
-			message: '#^Property App\\Models\\Company\:\:\$app_settings \(string\|null\) does not accept array\<mixed\>\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
-
-		-
-			message: '#^Property App\\Models\\Company\:\:\$jurisdiction \(string\) does not accept App\\Enums\\CompanyJurisdiction\:\:EuSk\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
-
-		-
 			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Draft will always evaluate to true\.$#'
 			identifier: notIdentical.alwaysTrue
 			count: 2
 			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
 
 		-
-			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Issued will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
-
-		-
 			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Draft will always evaluate to false\.$#'
 			identifier: identical.alwaysFalse
 			count: 2
-			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
-
-		-
-			message: '#^Unreachable statement \- code above always terminates\.$#'
-			identifier: deadCode.unreachable
-			count: 1
 			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
 
 		-
@@ -3697,6 +3661,12 @@ parameters:
 			path: app/Services/Invoicing/Efaktura/EphemeralEfakturaSubmissionService.php
 
 		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Issued will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/Efaktura/EphemeralEfakturaSubmissionService.php
+
+		-
 			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\ComplianceSubmissionStatus\:\:Submitted will always evaluate to true\.$#'
 			identifier: notIdentical.alwaysTrue
 			count: 1
@@ -3705,7 +3675,7 @@ parameters:
 		-
 			message: '#^Unreachable statement \- code above always terminates\.$#'
 			identifier: deadCode.unreachable
-			count: 1
+			count: 2
 			path: app/Services/Invoicing/Efaktura/EphemeralEfakturaSubmissionService.php
 
 		-
@@ -3755,6 +3725,24 @@ parameters:
 			identifier: method.nonObject
 			count: 1
 			path: app/Services/Invoicing/EphemeralBtcpayCheckoutService.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Services/Invoicing/EphemeralDocumentFactory.php
+
+		-
+			message: '#^Property App\\Models\\Company\:\:\$app_settings \(string\|null\) does not accept array\<mixed\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Invoicing/EphemeralDocumentFactory.php
+
+		-
+			message: '#^Property App\\Models\\Company\:\:\$jurisdiction \(string\) does not accept App\\Enums\\CompanyJurisdiction\:\:EuSk\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Invoicing/EphemeralDocumentFactory.php
 
 		-
 			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Http\\Client\\Response\. Use \-\> instead\.$#'
