@@ -2,9 +2,7 @@
 
 namespace App\Http\Controllers\Invoicing;
 
-use App\Contracts\Invoicing\ComplianceSubmissionGateway;
 use App\Enums\BusinessDocumentStatus;
-use App\Enums\CompanyJurisdiction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Invoicing\EphemeralBusinessDocumentBtcpayRequest;
 use App\Http\Requests\Invoicing\EphemeralBusinessDocumentBulkRequest;
@@ -14,7 +12,6 @@ use App\Http\Requests\Invoicing\EphemeralBusinessDocumentPdfRequest;
 use App\Http\Requests\Invoicing\EphemeralCompanyEmailSmtpTestRequest;
 use App\Models\AuditLog;
 use App\Models\BusinessDocument;
-use App\Models\BusinessDocumentLine;
 use App\Models\Company;
 use App\Models\Store;
 use App\Models\User;
@@ -25,26 +22,20 @@ use App\Services\Invoicing\BusinessDocumentPdfService;
 use App\Services\Invoicing\BusinessDocumentUblService;
 use App\Services\Invoicing\CompanyEmailSettingsService;
 use App\Services\Invoicing\CompanyPdfFilenameBuilder;
-use App\Services\Invoicing\DocumentTotalsCalculator;
 use App\Services\Invoicing\Efaktura\EphemeralEfakturaSubmissionService;
 use App\Services\Invoicing\EphemeralBtcpayCheckoutService;
-use App\Support\Invoicing\BuyerSnapshot;
-use App\Support\Invoicing\CompanyEfakturaEligibility;
-use App\Support\Invoicing\CompanyEfakturaSettings;
+use App\Services\Invoicing\EphemeralDocumentFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
-use ZipArchive;
 
 class EphemeralBusinessDocumentController extends Controller
 {
     public function __construct(
-        protected DocumentTotalsCalculator $totalsCalculator,
+        protected EphemeralDocumentFactory $factory,
         protected BusinessDocumentPdfService $pdfService,
         protected BusinessDocumentIsdocService $isdocService,
         protected BusinessDocumentUblService $ublService,
@@ -58,7 +49,7 @@ class EphemeralBusinessDocumentController extends Controller
 
     public function pdf(EphemeralBusinessDocumentPdfRequest $request, Company $company): Response
     {
-        $snapshotCompany = $this->buildSnapshotCompany($company, (array) ($request->validated()['company'] ?? []));
+        $snapshotCompany = $this->factory->snapshotCompany($company, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithPdf($request, $snapshotCompany, $company);
     }
@@ -67,14 +58,14 @@ class EphemeralBusinessDocumentController extends Controller
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401);
-        $snapshotCompany = $this->resolveEphemeralCompany($user, (array) ($request->validated()['company'] ?? []));
+        $snapshotCompany = $this->factory->resolveCompany($user, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithPdf($request, $snapshotCompany);
     }
 
     public function emailPreview(EphemeralBusinessDocumentPdfRequest $request, Company $company): JsonResponse
     {
-        $snapshotCompany = $this->buildSnapshotCompany($company, (array) ($request->validated()['company'] ?? []));
+        $snapshotCompany = $this->factory->snapshotCompany($company, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithEmailPreview($request, $snapshotCompany, $company);
     }
@@ -83,14 +74,14 @@ class EphemeralBusinessDocumentController extends Controller
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401);
-        $snapshotCompany = $this->resolveEphemeralCompany($user, (array) ($request->validated()['company'] ?? []));
+        $snapshotCompany = $this->factory->resolveCompany($user, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithEmailPreview($request, $snapshotCompany);
     }
 
     public function sendEmail(EphemeralBusinessDocumentEmailRequest $request, Company $company): JsonResponse
     {
-        $snapshotCompany = $this->buildSnapshotCompany($company, (array) ($request->validated()['company'] ?? []));
+        $snapshotCompany = $this->factory->snapshotCompany($company, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithSendEmail($request, $snapshotCompany, $company);
     }
@@ -99,14 +90,14 @@ class EphemeralBusinessDocumentController extends Controller
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401);
-        $snapshotCompany = $this->resolveEphemeralCompany($user, (array) ($request->validated()['company'] ?? []));
+        $snapshotCompany = $this->factory->resolveCompany($user, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithSendEmail($request, $snapshotCompany);
     }
 
     public function testEmailSettingsSmtp(EphemeralCompanyEmailSmtpTestRequest $request, Company $company): JsonResponse
     {
-        $snapshotCompany = $this->buildSnapshotCompany($company, (array) ($request->validated()['company'] ?? []));
+        $snapshotCompany = $this->factory->snapshotCompany($company, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithEmailSettingsSmtpTest($request, $snapshotCompany);
     }
@@ -115,14 +106,14 @@ class EphemeralBusinessDocumentController extends Controller
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401);
-        $snapshotCompany = $this->resolveEphemeralCompany($user, (array) ($request->validated()['company'] ?? []));
+        $snapshotCompany = $this->factory->resolveCompany($user, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithEmailSettingsSmtpTest($request, $snapshotCompany);
     }
 
     public function isdoc(EphemeralBusinessDocumentPdfRequest $request, Company $company): Response
     {
-        $snapshotCompany = $this->buildSnapshotCompany($company, (array) ($request->validated()['company'] ?? []));
+        $snapshotCompany = $this->factory->snapshotCompany($company, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithIsdoc($request, $snapshotCompany, $company);
     }
@@ -131,14 +122,14 @@ class EphemeralBusinessDocumentController extends Controller
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401);
-        $snapshotCompany = $this->resolveEphemeralCompany($user, (array) ($request->validated()['company'] ?? []));
+        $snapshotCompany = $this->factory->resolveCompany($user, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithIsdoc($request, $snapshotCompany);
     }
 
     public function ubl(EphemeralBusinessDocumentPdfRequest $request, Company $company): Response
     {
-        $snapshotCompany = $this->buildSnapshotCompany($company, (array) ($request->validated()['company'] ?? []));
+        $snapshotCompany = $this->factory->snapshotCompany($company, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithUbl($request, $snapshotCompany, $company);
     }
@@ -147,14 +138,14 @@ class EphemeralBusinessDocumentController extends Controller
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401);
-        $snapshotCompany = $this->resolveEphemeralCompany($user, (array) ($request->validated()['company'] ?? []));
+        $snapshotCompany = $this->factory->resolveCompany($user, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithUbl($request, $snapshotCompany);
     }
 
     public function btcpayCheckout(EphemeralBusinessDocumentBtcpayRequest $request, Company $company): JsonResponse
     {
-        $snapshotCompany = $this->buildSnapshotCompany($company, (array) ($request->validated()['company'] ?? []));
+        $snapshotCompany = $this->factory->snapshotCompany($company, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithBtcpayCheckout($request, $snapshotCompany, $company);
     }
@@ -163,7 +154,7 @@ class EphemeralBusinessDocumentController extends Controller
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401);
-        $snapshotCompany = $this->resolveEphemeralCompany($user, (array) ($request->validated()['company'] ?? []));
+        $snapshotCompany = $this->factory->resolveCompany($user, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithBtcpayCheckout($request, $snapshotCompany);
     }
@@ -202,8 +193,8 @@ class EphemeralBusinessDocumentController extends Controller
 
     public function efakturaSend(EphemeralBusinessDocumentEfakturaRequest $request, Company $company): JsonResponse
     {
-        $this->assertEfakturaBridgeCompany($company);
-        $snapshotCompany = $this->buildSnapshotCompany($company, (array) ($request->validated()['company'] ?? []));
+        $this->efakturaService->assertCompanyConfigured($company);
+        $snapshotCompany = $this->factory->snapshotCompany($company, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithEfakturaSend($request, $snapshotCompany, $company, $company);
     }
@@ -213,7 +204,7 @@ class EphemeralBusinessDocumentController extends Controller
         $user = $request->user();
         abort_unless($user instanceof User, 401);
 
-        $snapshotCompany = $this->resolveEphemeralCompany(
+        $snapshotCompany = $this->factory->resolveCompany(
             $user,
             (array) ($request->validated()['company'] ?? []),
         );
@@ -225,7 +216,7 @@ class EphemeralBusinessDocumentController extends Controller
 
     public function efakturaRefresh(Request $request, Company $company): JsonResponse
     {
-        $this->assertEfakturaBridgeCompany($company);
+        $this->efakturaService->assertCompanyConfigured($company);
 
         return $this->respondWithEfakturaRefresh($request);
     }
@@ -243,14 +234,14 @@ class EphemeralBusinessDocumentController extends Controller
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401);
-        $snapshotCompany = $this->resolveEphemeralCompany($user, (array) ($request->validated()['company'] ?? []));
+        $snapshotCompany = $this->factory->resolveCompany($user, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithBulkPdfZip($request, $snapshotCompany);
     }
 
     public function bulkPdfZip(EphemeralBusinessDocumentBulkRequest $request, Company $company): Response
     {
-        $snapshotCompany = $this->buildSnapshotCompany($company, (array) ($request->validated()['company'] ?? []));
+        $snapshotCompany = $this->factory->snapshotCompany($company, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithBulkPdfZip($request, $snapshotCompany, $company);
     }
@@ -259,14 +250,14 @@ class EphemeralBusinessDocumentController extends Controller
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401);
-        $snapshotCompany = $this->resolveEphemeralCompany($user, (array) ($request->validated()['company'] ?? []));
+        $snapshotCompany = $this->factory->resolveCompany($user, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithBulkPdfMerge($request, $snapshotCompany);
     }
 
     public function bulkPdfMerge(EphemeralBusinessDocumentBulkRequest $request, Company $company): Response
     {
-        $snapshotCompany = $this->buildSnapshotCompany($company, (array) ($request->validated()['company'] ?? []));
+        $snapshotCompany = $this->factory->snapshotCompany($company, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithBulkPdfMerge($request, $snapshotCompany, $company);
     }
@@ -301,7 +292,7 @@ class EphemeralBusinessDocumentController extends Controller
         Company $snapshotCompany,
         ?Company $auditCompany = null,
     ): Response {
-        $document = $this->buildEphemeralDocument($snapshotCompany, $request->validated());
+        $document = $this->factory->document($snapshotCompany, $request->validated());
         $filename = $this->pdfFilenameBuilder->build($document);
         [$auditType, $auditId] = $this->auditTarget($request->user(), $auditCompany, $snapshotCompany);
 
@@ -322,7 +313,7 @@ class EphemeralBusinessDocumentController extends Controller
         Company $snapshotCompany,
         ?Company $auditCompany = null,
     ): JsonResponse {
-        $document = $this->buildEphemeralDocument($snapshotCompany, $request->validated());
+        $document = $this->factory->document($snapshotCompany, $request->validated());
 
         return response()->json([
             'data' => $this->emailService->previewEphemeral($snapshotCompany, $document, $request->user()),
@@ -334,7 +325,7 @@ class EphemeralBusinessDocumentController extends Controller
         Company $snapshotCompany,
         ?Company $auditCompany = null,
     ): JsonResponse {
-        $document = $this->buildEphemeralDocument($snapshotCompany, $request->validated());
+        $document = $this->factory->document($snapshotCompany, $request->validated());
 
         try {
             $result = $this->emailService->sendEphemeral(
@@ -387,7 +378,7 @@ class EphemeralBusinessDocumentController extends Controller
         Company $snapshotCompany,
         ?Company $auditCompany = null,
     ): Response {
-        $document = $this->buildEphemeralDocument($snapshotCompany, $request->validated());
+        $document = $this->factory->document($snapshotCompany, $request->validated());
         $this->assertStructuredExportAllowed($document);
 
         $filename = ($document->number ?: 'document').'.isdoc';
@@ -410,7 +401,7 @@ class EphemeralBusinessDocumentController extends Controller
         Company $snapshotCompany,
         ?Company $auditCompany = null,
     ): Response {
-        $document = $this->buildEphemeralDocument($snapshotCompany, $request->validated());
+        $document = $this->factory->document($snapshotCompany, $request->validated());
         $this->assertStructuredExportAllowed($document);
 
         $filename = ($document->number ?: 'document').'.xml';
@@ -443,7 +434,7 @@ class EphemeralBusinessDocumentController extends Controller
             ->with('user')
             ->firstOrFail();
 
-        $document = $this->buildEphemeralDocument($snapshotCompany, $request->validated());
+        $document = $this->factory->document($snapshotCompany, $request->validated());
         $document->payment_btc_enabled = (bool) ($request->input('document.payment_btc_enabled', true));
         $document->store_id = $store->id;
 
@@ -493,7 +484,7 @@ class EphemeralBusinessDocumentController extends Controller
         Company $snapshotCompany,
         ?Company $auditCompany = null,
     ): Response {
-        $documents = $this->buildEphemeralDocumentsFromBulk($snapshotCompany, $request->validated());
+        $documents = $this->factory->documentsFromBulk($snapshotCompany, $request->validated());
         $issued = $documents->filter(fn (BusinessDocument $document) => $document->status !== BusinessDocumentStatus::Draft);
 
         if ($issued->isEmpty()) {
@@ -502,50 +493,19 @@ class EphemeralBusinessDocumentController extends Controller
             ]);
         }
 
-        $zipPath = tempnam(sys_get_temp_dir(), 'invoices-');
-        if ($zipPath === false) {
-            throw new \RuntimeException('Could not create ZIP archive.');
-        }
+        $binary = $this->pdfService->renderZipBinary($issued);
 
-        try {
-            $zip = new ZipArchive;
-            if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-                throw new \RuntimeException('Could not create ZIP archive.');
-            }
+        [$auditType, $auditId] = $this->auditTarget($request->user(), $auditCompany, $snapshotCompany);
 
-            foreach ($issued as $document) {
-                $pdf = $this->pdfService->renderBinary($document);
-                $name = 'invoice-'.($document->number ?: $document->id).'.pdf';
-                if ($zip->addFromString($name, $pdf) === false) {
-                    throw new \RuntimeException('Could not add PDF to ZIP archive.');
-                }
-            }
+        AuditLog::log('business_document.ephemeral_bulk_pdf_zip', $auditType, $auditId, [
+            'count' => $issued->count(),
+            'company_less' => $auditCompany === null,
+        ], $request->user()?->id);
 
-            if ($zip->close() !== true) {
-                throw new \RuntimeException('Could not finalize ZIP archive.');
-            }
-
-            [$auditType, $auditId] = $this->auditTarget($request->user(), $auditCompany, $snapshotCompany);
-
-            AuditLog::log('business_document.ephemeral_bulk_pdf_zip', $auditType, $auditId, [
-                'count' => $issued->count(),
-                'company_less' => $auditCompany === null,
-            ], $request->user()?->id);
-
-            $binary = file_get_contents($zipPath);
-            if ($binary === false) {
-                abort(500, 'Could not read generated ZIP archive.');
-            }
-
-            return response($binary, 200, [
-                'Content-Type' => 'application/zip',
-                'Content-Disposition' => 'attachment; filename="invoices.zip"',
-            ]);
-        } finally {
-            if (is_string($zipPath) && file_exists($zipPath)) {
-                @unlink($zipPath);
-            }
-        }
+        return response($binary, 200, [
+            'Content-Type' => 'application/zip',
+            'Content-Disposition' => 'attachment; filename="invoices.zip"',
+        ]);
     }
 
     protected function respondWithBulkPdfMerge(
@@ -553,7 +513,7 @@ class EphemeralBusinessDocumentController extends Controller
         Company $snapshotCompany,
         ?Company $auditCompany = null,
     ): Response {
-        $documents = $this->buildEphemeralDocumentsFromBulk($snapshotCompany, $request->validated());
+        $documents = $this->factory->documentsFromBulk($snapshotCompany, $request->validated());
         $issued = $documents->filter(fn (BusinessDocument $document) => $document->status !== BusinessDocumentStatus::Draft);
 
         if ($issued->isEmpty()) {
@@ -577,25 +537,6 @@ class EphemeralBusinessDocumentController extends Controller
         ]);
     }
 
-    /**
-     * @param  array<string, mixed>  $validated
-     * @return Collection<int, BusinessDocument>
-     */
-    protected function buildEphemeralDocumentsFromBulk(Company $snapshotCompany, array $validated): Collection
-    {
-        /** @var array<int, array<string, mixed>> $items */
-        $items = array_values((array) ($validated['documents'] ?? []));
-
-        return collect($items)->map(function (array $item) use ($snapshotCompany, $validated) {
-            return $this->buildEphemeralDocument($snapshotCompany, [
-                'company' => $validated['company'] ?? [],
-                'contact' => $item['contact'] ?? null,
-                'document' => $item['document'] ?? [],
-                'lines' => $item['lines'] ?? [],
-            ]);
-        });
-    }
-
     protected function respondWithEfakturaSend(
         EphemeralBusinessDocumentEfakturaRequest $request,
         Company $snapshotCompany,
@@ -605,10 +546,10 @@ class EphemeralBusinessDocumentController extends Controller
         $user = $request->user();
         abort_unless($user instanceof User, 401);
 
-        $document = $this->buildEphemeralDocument($snapshotCompany, $request->validated());
+        $document = $this->factory->document($snapshotCompany, $request->validated());
         $evoluDocumentId = (string) $request->validated('evolu_document_id');
 
-        $this->assertEphemeralEfakturaDocument($document, $bridgeCompany);
+        $this->efakturaService->assertEphemeralDocumentEligible($document, $bridgeCompany);
 
         $result = $this->efakturaService->submit($user, $bridgeCompany, $document, $evoluDocumentId);
         $row = $this->efakturaService->latestForDocument($user, $evoluDocumentId);
@@ -639,61 +580,6 @@ class EphemeralBusinessDocumentController extends Controller
         ]);
     }
 
-    protected function assertEfakturaBridgeCompany(Company $company): void
-    {
-        if (! config('efaktura.enabled')) {
-            throw ValidationException::withMessages([
-                'efaktura' => ['E-faktura integration is disabled globally.'],
-            ]);
-        }
-
-        if (! app(CompanyEfakturaEligibility::class)->supportsCompany($company)) {
-            throw ValidationException::withMessages([
-                'efaktura' => ['E-faktura is available only for Slovak companies registered as full VAT payers.'],
-            ]);
-        }
-
-        if (! CompanyEfakturaSettings::fromCompany($company)->configured()) {
-            throw ValidationException::withMessages([
-                'efaktura' => ['E-faktura credentials are not configured for this company.'],
-            ]);
-        }
-    }
-
-    protected function assertEphemeralEfakturaDocument(BusinessDocument $document, Company $bridgeCompany): void
-    {
-        if ($document->status !== BusinessDocumentStatus::Issued) {
-            throw ValidationException::withMessages([
-                'status' => ['Issue the document before sending e-faktura.'],
-            ]);
-        }
-
-        $snapshotCompany = $document->company;
-        $credentialsCompany = $bridgeCompany->replicate();
-        $credentialsCompany->exists = false;
-        $credentialsCompany->id = $bridgeCompany->id;
-
-        $snapshotSettings = CompanyEfakturaSettings::fromCompany($snapshotCompany);
-        if ($snapshotSettings->configured()) {
-            $credentialsCompany->app_settings = is_array($snapshotCompany->app_settings)
-                ? $snapshotCompany->app_settings
-                : [];
-            $credentialsCompany->jurisdiction = $snapshotCompany->jurisdiction ?? $credentialsCompany->jurisdiction;
-            $credentialsCompany->vat_payer = $snapshotCompany->vat_payer ?? $credentialsCompany->vat_payer;
-            $credentialsCompany->vat_status = $snapshotCompany->vat_status ?? $credentialsCompany->vat_status;
-        }
-
-        $this->assertEfakturaBridgeCompany($credentialsCompany);
-
-        $document->setRelation('company', $credentialsCompany);
-
-        if (! app(ComplianceSubmissionGateway::class)->supports($document)) {
-            throw ValidationException::withMessages([
-                'document' => ['Document is not eligible for e-faktura (issued SK B2B invoice or credit note required).'],
-            ]);
-        }
-    }
-
     protected function assertStructuredExportAllowed(BusinessDocument $document): void
     {
         if ($document->status === BusinessDocumentStatus::Draft) {
@@ -720,225 +606,5 @@ class EphemeralBusinessDocumentController extends Controller
         }
 
         return [null, null];
-    }
-
-    /**
-     * @param  array<string, mixed>  $companyPayload
-     */
-    protected function resolveEphemeralCompany(User $user, array $companyPayload): Company
-    {
-        $template = Company::query()
-            ->where('user_id', $user->id)
-            ->orderBy('created_at')
-            ->first();
-
-        if ($template) {
-            return $this->buildSnapshotCompany($template, $companyPayload);
-        }
-
-        return $this->buildPayloadOnlyCompany($user, $companyPayload);
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    protected function buildPayloadOnlyCompany(User $user, array $payload): Company
-    {
-        $company = new Company([
-            'user_id' => $user->id,
-            'jurisdiction' => CompanyJurisdiction::EuSk,
-            'default_currency' => 'EUR',
-            'vat_payer' => false,
-        ]);
-        $company->exists = false;
-        $company->id = (string) Str::uuid();
-
-        $company->forceFill($this->companyPayloadAttributes($payload));
-
-        if (array_key_exists('logo_url', $payload)) {
-            $company->setAttribute('ephemeral_logo_url', $payload['logo_url'] ?: null);
-        }
-        if (array_key_exists('signature_stamp_url', $payload)) {
-            $company->setAttribute('ephemeral_signature_stamp_url', $payload['signature_stamp_url'] ?: null);
-        }
-
-        if (! $company->jurisdiction) {
-            $company->jurisdiction = CompanyJurisdiction::EuSk;
-        }
-
-        if (! $company->default_currency) {
-            $company->default_currency = 'EUR';
-        }
-
-        $this->mergeSnapshotAppSettings($company, $payload);
-        $this->mergeSnapshotEmailSettings($company, $payload);
-
-        return $company;
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    protected function buildEphemeralDocument(Company $company, array $payload): BusinessDocument
-    {
-        /** @var array<string, mixed> $documentPayload */
-        $documentPayload = (array) ($payload['document'] ?? []);
-        /** @var array<string, mixed>|null $contactPayload */
-        $contactPayload = isset($payload['contact']) && is_array($payload['contact']) ? $payload['contact'] : null;
-        /** @var array<int, array<string, mixed>> $linesPayload */
-        $linesPayload = array_values((array) ($payload['lines'] ?? []));
-
-        $document = new BusinessDocument([
-            'company_id' => $company->id,
-            'type' => $documentPayload['type'] ?? null,
-            'status' => $documentPayload['status'] ?? BusinessDocumentStatus::Issued->value,
-            'title' => $documentPayload['title'] ?? null,
-            'number' => $documentPayload['number'] ?? null,
-            'variable_symbol' => $documentPayload['variable_symbol'] ?? null,
-            'constant_symbol' => $documentPayload['constant_symbol'] ?? null,
-            'specific_symbol' => $documentPayload['specific_symbol'] ?? null,
-            'issue_date' => $documentPayload['issue_date'] ?? null,
-            'delivery_date' => $documentPayload['delivery_date'] ?? null,
-            'due_date' => $documentPayload['due_date'] ?? null,
-            'currency' => $documentPayload['currency'] ?? $company->default_currency,
-            'note_above_lines' => $documentPayload['note_above_lines'] ?? null,
-            'note_footer' => $documentPayload['note_footer'] ?? $company->legal_footer_note,
-            'internal_note' => $documentPayload['internal_note'] ?? null,
-            'pdf_locale' => $documentPayload['pdf_locale'] ?? null,
-            'pdf_show_signature' => (bool) ($documentPayload['pdf_show_signature'] ?? true),
-            'pdf_show_payment_info' => (bool) ($documentPayload['pdf_show_payment_info'] ?? true),
-            'payment_btc_enabled' => (bool) ($documentPayload['payment_btc_enabled'] ?? false),
-            'payment_bank_enabled' => (bool) ($documentPayload['payment_bank_enabled'] ?? true),
-            'amount_paid' => (float) ($documentPayload['amount_paid'] ?? 0),
-            'buyer_snapshot' => $contactPayload,
-        ]);
-
-        if (! empty($payload['store_id'])) {
-            $document->store_id = (string) $payload['store_id'];
-        }
-
-        if (! empty($payload['btcpay_checkout_link'])) {
-            $document->btcpay_checkout_link = (string) $payload['btcpay_checkout_link'];
-        }
-
-        if (! empty($payload['evolu_document_id'])) {
-            $document->setAttribute('ephemeral_evolu_document_id', (string) $payload['evolu_document_id']);
-        }
-
-        $document->exists = false;
-        $document->id = (string) Str::uuid();
-        $document->setRelation('company', $company);
-
-        if ($contactPayload !== null) {
-            $document->setRelation('contact', BuyerSnapshot::asContact($contactPayload));
-        } else {
-            $document->setRelation('contact', null);
-        }
-
-        $lineModels = collect($linesPayload)->values()->map(function (array $line, int $index) {
-            return new BusinessDocumentLine([
-                'sort_order' => $index,
-                'name' => (string) ($line['name'] ?? ''),
-                'description' => $line['description'] ?? null,
-                'quantity' => (float) ($line['quantity'] ?? 1),
-                'unit' => $line['unit'] ?? 'ks.',
-                'unit_price' => (float) ($line['unit_price'] ?? 0),
-                'line_discount_percent' => (float) ($line['line_discount_percent'] ?? 0),
-                'tax_rate' => isset($line['tax_rate']) ? (float) $line['tax_rate'] : 0,
-                'line_total' => 0,
-            ]);
-        });
-        $document->setRelation('lines', $lineModels);
-
-        $this->totalsCalculator->applyToDocument(
-            $document,
-            $linesPayload,
-            (float) ($documentPayload['discount_percent'] ?? 0)
-        );
-
-        return $document;
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    protected function buildSnapshotCompany(Company $company, array $payload): Company
-    {
-        $snapshot = $company->replicate();
-        $snapshot->exists = false;
-        $snapshot->id = $company->id;
-
-        $snapshot->forceFill($this->companyPayloadAttributes($payload));
-
-        if (array_key_exists('logo_url', $payload)) {
-            $snapshot->setAttribute('ephemeral_logo_url', $payload['logo_url'] ?: null);
-        }
-        if (array_key_exists('signature_stamp_url', $payload)) {
-            $snapshot->setAttribute('ephemeral_signature_stamp_url', $payload['signature_stamp_url'] ?: null);
-        }
-
-        $this->mergeSnapshotAppSettings($snapshot, $payload);
-        $this->mergeSnapshotEmailSettings($snapshot, $payload);
-
-        return $snapshot;
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    protected function mergeSnapshotAppSettings(Company $company, array $payload): void
-    {
-        if (! isset($payload['app_settings']) || ! is_array($payload['app_settings'])) {
-            return;
-        }
-
-        $current = is_array($company->app_settings) ? $company->app_settings : [];
-        $company->app_settings = array_merge($current, $payload['app_settings']);
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    protected function mergeSnapshotEmailSettings(Company $company, array $payload): void
-    {
-        if (! isset($payload['email_settings']) || ! is_array($payload['email_settings'])) {
-            return;
-        }
-
-        $this->emailSettingsService->applyIncomingToCompany($company, $payload['email_settings']);
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     * @return array<string, mixed>
-     */
-    protected function companyPayloadAttributes(array $payload): array
-    {
-        return Arr::only($payload, [
-            'legal_name',
-            'trade_name',
-            'registration_number',
-            'tax_id',
-            'vat_number',
-            'street',
-            'city',
-            'postal_code',
-            'country',
-            'state_region',
-            'iban',
-            'bic',
-            'bank_name',
-            'bank_account',
-            'bank_code',
-            'default_currency',
-            'jurisdiction',
-            'vat_payer',
-            'vat_rate_default',
-            'legal_footer_note',
-            'issuer_name',
-            'issuer_phone',
-            'issuer_email',
-            'website',
-        ]);
     }
 }

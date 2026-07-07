@@ -3,6 +3,7 @@
 namespace App\Services\Invoicing\Efaktura;
 
 use App\Contracts\Invoicing\ComplianceSubmissionGateway;
+use App\Enums\BusinessDocumentStatus;
 use App\Enums\ComplianceProvider;
 use App\Enums\ComplianceSubmissionStatus;
 use App\Models\AuditLog;
@@ -58,6 +59,74 @@ class EphemeralEfakturaSubmissionService
         }
 
         return $company;
+    }
+
+    /**
+     * Company must be globally enabled, eligible (SK full VAT payer) and configured.
+     *
+     * @throws ValidationException
+     */
+    public function assertCompanyConfigured(Company $company): void
+    {
+        if (! config('efaktura.enabled')) {
+            throw ValidationException::withMessages([
+                'efaktura' => ['E-faktura integration is disabled globally.'],
+            ]);
+        }
+
+        if (! $this->eligibility->supportsCompany($company)) {
+            throw ValidationException::withMessages([
+                'efaktura' => ['E-faktura is available only for Slovak companies registered as full VAT payers.'],
+            ]);
+        }
+
+        if (! CompanyEfakturaSettings::fromCompany($company)->configured()) {
+            throw ValidationException::withMessages([
+                'efaktura' => ['E-faktura credentials are not configured for this company.'],
+            ]);
+        }
+    }
+
+    /**
+     * Ephemeral e-faktura eligibility: the document must be issued, the
+     * credentials company (bridge merged with snapshot overrides) must be
+     * configured, and the gateway must support the document. Rebinds the
+     * document's company relation to the credentials company.
+     *
+     * @throws ValidationException
+     */
+    public function assertEphemeralDocumentEligible(BusinessDocument $document, Company $bridgeCompany): void
+    {
+        if ($document->status !== BusinessDocumentStatus::Issued) {
+            throw ValidationException::withMessages([
+                'status' => ['Issue the document before sending e-faktura.'],
+            ]);
+        }
+
+        $snapshotCompany = $document->company;
+        $credentialsCompany = $bridgeCompany->replicate();
+        $credentialsCompany->exists = false;
+        $credentialsCompany->id = $bridgeCompany->id;
+
+        $snapshotSettings = CompanyEfakturaSettings::fromCompany($snapshotCompany);
+        if ($snapshotSettings->configured()) {
+            $credentialsCompany->app_settings = is_array($snapshotCompany->app_settings)
+                ? $snapshotCompany->app_settings
+                : [];
+            $credentialsCompany->jurisdiction = $snapshotCompany->jurisdiction ?? $credentialsCompany->jurisdiction;
+            $credentialsCompany->vat_payer = $snapshotCompany->vat_payer ?? $credentialsCompany->vat_payer;
+            $credentialsCompany->vat_status = $snapshotCompany->vat_status ?? $credentialsCompany->vat_status;
+        }
+
+        $this->assertCompanyConfigured($credentialsCompany);
+
+        $document->setRelation('company', $credentialsCompany);
+
+        if (! $this->gateway->supports($document)) {
+            throw ValidationException::withMessages([
+                'document' => ['Document is not eligible for e-faktura (issued SK B2B invoice or credit note required).'],
+            ]);
+        }
     }
 
     public function submit(
