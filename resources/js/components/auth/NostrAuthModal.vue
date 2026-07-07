@@ -163,7 +163,7 @@ import { ref, computed, watch, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../store/auth';
-import api from '../../services/api';
+import api, { supportWalletApi, walletApi } from '../../services/api';
 import LegalConsentFields from '../legal/LegalConsentFields.vue';
 
 const props = withDefaults(
@@ -332,19 +332,19 @@ function startPolling() {
         stopPolling();
         if (props.mode === 'reveal' && (props.connectionId !== undefined || props.storeId !== undefined)) {
           try {
-            let res: { data?: { data?: { secret?: string; ok?: boolean } } };
+            let payload: { secret?: string; ok?: boolean };
             if (props.storeId !== undefined && props.confirmPurpose === 'cashu_edit') {
-              res = await api.post(`/stores/${props.storeId}/cashu/confirm-edit`, { confirm_via_nostr: true });
+              payload = await walletApi.cashu.confirmEdit(props.storeId, { confirm_via_nostr: true });
             } else if (props.storeId !== undefined) {
-              res = await api.post(`/stores/${props.storeId}/wallet-connection/reveal`, { confirm_via_nostr: true });
+              payload = await walletApi.connection.reveal(props.storeId, { confirm_via_nostr: true });
             } else if (props.connectionId !== undefined) {
-              res = await api.post(`/support/wallet-connections/${props.connectionId}/reveal`, { confirm_via_nostr: true });
+              payload = await supportWalletApi.reveal(props.connectionId, { confirm_via_nostr: true });
             } else {
               emit('success');
               handleClose();
               return;
             }
-            emit('success', res?.data?.data);
+            emit('success', payload);
             handleClose();
           } catch (e) {
             error.value = t('auth.error_occurred');

@@ -235,7 +235,7 @@
 import { ref, computed, onUnmounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../../store/auth';
-import api from '../../services/api';
+import api, { supportWalletApi } from '../../services/api';
 import WalletTypeIcon from '../WalletTypeIcon.vue';
 import LnurlQrModal from '../auth/LnurlQrModal.vue';
 import NostrAuthModal from '../auth/NostrAuthModal.vue';
@@ -325,8 +325,8 @@ async function fetchRevealChallengeAndOpen(): Promise<boolean> {
                     showLnurlRevealModal.value = false;
                     submitting.value = true;
                     try {
-                        const response = await api.post(`/support/wallet-connections/${props.connection.id}/reveal`, { confirm_via_lnurl: true });
-                        revealedSecret.value = response.data.data.secret;
+                        const reveal = await supportWalletApi.reveal(props.connection.id, { confirm_via_lnurl: true });
+                        revealedSecret.value = reveal.secret;
                         revealed.value = true;
                         await fetchBtcPayStoreUrl();
                         countdown.value = 60;
@@ -391,11 +391,11 @@ async function handleReveal() {
     errors.value = {};
 
     try {
-        const response = await api.post(`/support/wallet-connections/${props.connection.id}/reveal`, {
+        const reveal = await supportWalletApi.reveal(props.connection.id, {
             password: password.value,
         });
 
-        revealedSecret.value = response.data.data.secret;
+        revealedSecret.value = reveal.secret;
         revealed.value = true;
 
         // Fetch BTCPay Store URL
@@ -485,9 +485,9 @@ async function copyToClipboard() {
 
 async function fetchBtcPayStoreUrl() {
     try {
-        const response = await api.get(`/support/wallet-connections/${props.connection.id}/btcpay-store-url`);
-        btcPayStoreUrl.value = response.data.data.url;
-        btcPayStoreId.value = response.data.data.store_id;
+        const info = await supportWalletApi.btcpayStoreUrl(props.connection.id);
+        btcPayStoreUrl.value = info.url;
+        btcPayStoreId.value = info.store_id ?? null;
     } catch (err) {
         // If endpoint doesn't exist yet, btcPayStoreUrl will remain null
         console.warn('Could not fetch BTCPay store URL:', err);
@@ -501,7 +501,7 @@ async function handleMarkConnected() {
 
     markingConnected.value = true;
     try {
-        await api.put(`/support/wallet-connections/${props.connection.id}/mark-connected`);
+        await supportWalletApi.markConnected(props.connection.id);
         emit('close');
     } catch (err: any) {
         alert(err.response?.data?.message || 'Failed to mark connection as connected');

@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { invoicingRoutes } from './invoicingRoutes';
 import { useAuthStore } from '../store/auth';
 import { useStoresStore } from '../store/stores';
-import api from '../services/api';
+import { storesApi, walletApi } from '../services/api';
 import { updatePageMeta } from '../composables/usePageMeta';
 import { ensureEvoluBoundToAccountSeed } from '../evolu/bootstrap';
 import { getStoredAccountMnemonic } from '../services/accountSeed';
@@ -11,24 +11,21 @@ import { isInvoicingLocalFirst } from '../evolu/flags';
 /** Guest sessions are PoS-oriented: block the SPA until wallet (Lightning or Cashu) is actually configured. */
 async function isGuestWalletReady(storeId: string): Promise<boolean> {
     try {
-        const storeRes = await api.get(`/stores/${storeId}`);
-        const store = storeRes.data?.data;
-        const walletType = store?.wallet_type as string | null | undefined;
+        const store = await storesApi.get(storeId);
+        const walletType = store?.wallet_type;
 
-        if (walletType == null || walletType === '') {
+        if (walletType == null || (walletType as string) === '') {
             return false;
         }
 
         if (walletType === 'cashu') {
-            const cashuRes = await api.get(`/stores/${storeId}/cashu/settings`);
-            const s = cashuRes.data?.data;
-            const mint = typeof s?.mint_url === 'string' ? s.mint_url.trim() : '';
-            const lnAddr = typeof s?.lightning_address === 'string' ? s.lightning_address.trim() : '';
+            const s = await walletApi.cashu.getSettings(storeId);
+            const mint = typeof s.mint_url === 'string' ? s.mint_url.trim() : '';
+            const lnAddr = typeof s.lightning_address === 'string' ? s.lightning_address.trim() : '';
             return mint !== '' && lnAddr !== '';
         }
 
-        const connRes = await api.get(`/stores/${storeId}/wallet-connection`);
-        const conn = connRes.data?.data;
+        const conn = await walletApi.connection.get(storeId);
         return conn?.status === 'connected';
     } catch {
         return false;
@@ -41,8 +38,7 @@ async function resolveGuestPrimaryStoreId(): Promise<string | null> {
         return storesStore.stores[0].id;
     }
     try {
-        const res = await api.get('/stores');
-        const list = res.data?.data || [];
+        const list = await storesApi.list();
         storesStore.stores = list;
         return list[0]?.id ?? null;
     } catch {

@@ -167,6 +167,10 @@ export const storesApi = {
         const { data } = await api.delete<{ message?: string; btcpay_deleted?: boolean }>(`/stores/${storeId}`);
         return data;
     },
+    async setWalletType(storeId: string, walletType: 'blink' | 'aqua_boltz' | 'cashu'): Promise<Store> {
+        const { data } = await api.patch<ApiEnvelope<Store>>(`/stores/${storeId}/wallet-type`, { wallet_type: walletType });
+        return data.data;
+    },
     async dashboard(storeId: string, params?: { source?: string; refresh?: boolean }): Promise<StoreDashboardStats> {
         const apiParams: Record<string, string | number> = {};
         if (params?.source) apiParams.source = params.source;
@@ -198,6 +202,128 @@ export const storesApi = {
     },
     async deleteLogo(storeId: string): Promise<void> {
         await api.delete(`/stores/${storeId}/logo`);
+    },
+};
+
+export interface WalletConnectionDetails {
+    id: string;
+    type: string;
+    status: string;
+    configuration_source?: string | null;
+    masked_secret?: string | null;
+    submitted_at?: string | null;
+    secret_updated_at?: string | null;
+    submitted_by_user_id?: number | null;
+    bot_failure_message?: string | null;
+}
+
+/** Response of the owner/support secret reveal endpoints. */
+export interface WalletSecretReveal {
+    secret: string;
+    type: string;
+    masked_secret?: string | null;
+}
+
+/** Password or LNURL/Nostr confirmation for sensitive wallet actions. */
+export interface SensitiveActionConfirmation {
+    password?: string;
+    confirm_via_lnurl?: boolean;
+    confirm_via_nostr?: boolean;
+}
+
+export interface CashuSettings {
+    mint_url?: string | null;
+    lightning_address?: string | null;
+    trusted_mint_urls?: string[] | string | null;
+    enabled?: boolean;
+    max_melt_fee_reserve_sats?: number | string | null;
+    max_melt_fee_reserve_percent_of_minted?: number | string | null;
+}
+
+export interface SamRockOtp {
+    otp: string | null;
+    expires_at: string | null;
+    setup_url: string | null;
+}
+
+export interface SamRockCompleteResult extends SamRockOtp {
+    status: string | null;
+    error_message: string | null;
+}
+
+// Wallet domain API - wallet connection, Cashu plugin settings, SamRock pairing.
+// New wallet-scoped calls belong here, not inline in components.
+export const walletApi = {
+    connection: {
+        async get(storeId: string): Promise<WalletConnectionDetails | null> {
+            const { data } = await api.get<ApiEnvelope<WalletConnectionDetails | null>>(`/stores/${storeId}/wallet-connection`);
+            return data.data;
+        },
+        async create(storeId: string, payload: { type: string; secret: string }): Promise<void> {
+            await api.post(`/stores/${storeId}/wallet-connection`, payload);
+        },
+        async reveal(storeId: string, confirmation: SensitiveActionConfirmation): Promise<WalletSecretReveal> {
+            const { data } = await api.post<ApiEnvelope<WalletSecretReveal>>(`/stores/${storeId}/wallet-connection/reveal`, confirmation);
+            return data.data;
+        },
+        // Note: this endpoint responds without the { data } envelope
+        async test(storeId: string, payload: { connection_string: string; crypto_code: string }): Promise<{ success?: boolean; message?: string; requires_manual_config?: boolean }> {
+            const { data } = await api.post<{ success?: boolean; message?: string; requires_manual_config?: boolean }>(`/stores/${storeId}/wallet-connection/test`, payload);
+            return data;
+        },
+    },
+    cashu: {
+        async getSettings(storeId: string): Promise<CashuSettings> {
+            const { data } = await api.get<ApiEnvelope<CashuSettings | null>>(`/stores/${storeId}/cashu/settings`);
+            return data.data ?? {};
+        },
+        async updateSettings(storeId: string, payload: CashuSettings): Promise<CashuSettings> {
+            const { data } = await api.put<ApiEnvelope<CashuSettings | null>>(`/stores/${storeId}/cashu/settings`, payload);
+            return data.data ?? {};
+        },
+        async confirmEdit(storeId: string, confirmation: SensitiveActionConfirmation): Promise<{ ok?: boolean }> {
+            const { data } = await api.post<ApiEnvelope<{ ok?: boolean }>>(`/stores/${storeId}/cashu/confirm-edit`, confirmation);
+            return data.data ?? {};
+        },
+    },
+    samrock: {
+        async createOtp(
+            storeId: string,
+            payload: { btc?: boolean; btcln?: boolean; lbtc?: boolean; expires_in_seconds?: number } = {},
+        ): Promise<SamRockOtp> {
+            const { data } = await api.post<ApiEnvelope<SamRockOtp>>(`/stores/${storeId}/samrock/otps`, payload);
+            return data.data;
+        },
+        async otpStatus(storeId: string, otp: string): Promise<{ status?: string | null; error_message?: string | null }> {
+            const { data } = await api.get<ApiEnvelope<{ status?: string | null; error_message?: string | null }>>(`/stores/${storeId}/samrock/otps/${encodeURIComponent(otp)}`);
+            return data.data ?? {};
+        },
+        async deleteOtp(storeId: string, otp: string): Promise<void> {
+            await api.delete(`/stores/${storeId}/samrock/otps/${encodeURIComponent(otp)}`);
+        },
+        async otpQr(storeId: string, otp: string, params?: { format?: string }): Promise<Blob> {
+            const { data } = await api.get<Blob>(`/stores/${storeId}/samrock/otps/${encodeURIComponent(otp)}/qr`, { responseType: 'blob', params });
+            return data;
+        },
+        async complete(storeId: string, payload: { otp: string }): Promise<SamRockCompleteResult> {
+            const { data } = await api.post<ApiEnvelope<SamRockCompleteResult>>(`/stores/${storeId}/samrock/complete`, payload);
+            return data.data;
+        },
+    },
+};
+
+// Support wallet API - support/admin flows over wallet connections.
+export const supportWalletApi = {
+    async reveal(connectionId: string, confirmation: SensitiveActionConfirmation): Promise<WalletSecretReveal> {
+        const { data } = await api.post<ApiEnvelope<WalletSecretReveal>>(`/support/wallet-connections/${connectionId}/reveal`, confirmation);
+        return data.data;
+    },
+    async btcpayStoreUrl(connectionId: string): Promise<{ url: string; store_id?: string | null }> {
+        const { data } = await api.get<ApiEnvelope<{ url: string; store_id?: string | null }>>(`/support/wallet-connections/${connectionId}/btcpay-store-url`);
+        return data.data;
+    },
+    async markConnected(connectionId: string): Promise<void> {
+        await api.put(`/support/wallet-connections/${connectionId}/mark-connected`);
     },
 };
 
