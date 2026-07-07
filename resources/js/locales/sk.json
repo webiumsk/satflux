@@ -1951,6 +1951,8 @@
     "pay_button_disabled_success": "Pay Button bol vypnutý.",
     "pay_button_enable_failed": "Nepodarilo sa zapnúť Pay Button.",
     "pay_button_disable_failed": "Nepodarilo sa vypnúť Pay Button.",
+    "logo_uploaded": "Logo bolo úspešne nahrané",
+    "logo_deleted": "Logo bolo úspešne odstránené",
     "pay_button_copy_code": "Kopírovať kód",
     "pay_button_copied": "Skopírované!",
     "pay_button_general_settings": "Všeobecné nastavenia",

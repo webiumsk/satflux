@@ -1950,6 +1950,8 @@
     "pay_button_disabled_success": "Pay Button disabled.",
     "pay_button_enable_failed": "Failed to enable Pay Button.",
     "pay_button_disable_failed": "Failed to disable Pay Button.",
+    "logo_uploaded": "Logo uploaded successfully",
+    "logo_deleted": "Logo deleted successfully",
     "pay_button_copy_code": "Copy Code",
     "pay_button_copied": "Copied!",
     "pay_button_general_settings": "General Settings",

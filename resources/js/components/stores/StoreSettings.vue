@@ -828,7 +828,7 @@ async function handleLogoUpload(event: Event) {
     }
 
     flashStore.success(
-      t("stores.logo_uploaded") || "Logo uploaded successfully",
+      t("stores.logo_uploaded"),
     );
     emit("update-store");
   } catch (err: any) {
@@ -854,7 +854,7 @@ async function handleDeleteLogo() {
     if (settings.value && typeof settings.value === "object") {
       settings.value.logo_url = null;
     }
-    flashStore.success(t("stores.logo_deleted") || "Logo deleted successfully");
+    flashStore.success(t("stores.logo_deleted"));
     emit("update-store");
   } catch (err: any) {
     logoError.value = err.response?.data?.message || "Failed to delete logo";

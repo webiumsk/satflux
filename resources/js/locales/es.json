@@ -924,6 +924,8 @@
     "pay_button_disabled_success": "Botón de Pago desactivado.",
     "pay_button_enable_failed": "No se pudo activar el Botón de Pago.",
     "pay_button_disable_failed": "No se pudo desactivar el Botón de Pago.",
+    "logo_uploaded": "Logo subido correctamente",
+    "logo_deleted": "Logo eliminado correctamente",
     "pay_button_copy_code": "Copiar código",
     "pay_button_copied": "¡Copiado!",
     "pay_button_general_settings": "Ajustes generales",
