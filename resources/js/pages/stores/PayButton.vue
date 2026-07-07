@@ -140,8 +140,16 @@ async function setPayButtonEnabled(enabled: boolean) {
   toggleSaving.value = true;
   flashStore.clear();
   try {
+    // Send only the toggle plus the fields backend validation requires
+    // (name/default_currency/timezone) - spreading the whole settings object
+    // would overwrite concurrent edits from StoreSettings or other tabs.
     const current = await storesApi.settings.get(storeId);
-    await storesApi.settings.update(storeId, { ...current, anyone_can_create_invoice: enabled });
+    await storesApi.settings.update(storeId, {
+      name: current.name,
+      default_currency: current.default_currency,
+      timezone: current.timezone,
+      anyone_can_create_invoice: enabled,
+    });
     await storesStore.fetchStore(storeId);
     store.value = storesStore.currentStore;
     flashStore.success(enabled ? t('stores.pay_button_enabled_success') : t('stores.pay_button_disabled_success'));

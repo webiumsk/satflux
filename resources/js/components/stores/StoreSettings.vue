@@ -660,14 +660,11 @@ async function fetchSettings() {
     settingsForm.value.archived = !!d.archived;
     settingsForm.value.anyone_can_create_invoice =
       !!d.anyone_can_create_invoice;
+    // Backend normalizeReceipt() guarantees snake_case keys
     settingsForm.value.receipt = {
       enabled: d.receipt?.enabled !== false,
-      show_qr:
-        d.receipt?.show_qr ?? d.receipt?.showQR ?? d.receipt?.enabled !== false,
-      show_payments:
-        d.receipt?.show_payments ??
-        d.receipt?.showPayments ??
-        d.receipt?.enabled !== false,
+      show_qr: d.receipt?.show_qr ?? d.receipt?.enabled !== false,
+      show_payments: d.receipt?.show_payments ?? d.receipt?.enabled !== false,
     };
     settingsForm.value.lightning_amount_in_satoshi =
       !!d.lightning_amount_in_satoshi;
@@ -822,7 +819,13 @@ async function handleLogoUpload(event: Event) {
 
   try {
     const uploadedUrl = await storesApi.uploadLogo(props.store.id, file);
-    storeLogoUrl.value = uploadedUrl ?? storeLogoUrl.value;
+    if (uploadedUrl) {
+      storeLogoUrl.value = uploadedUrl;
+      // Keep settings state consistent for later reads/saves (mirrors handleDeleteLogo)
+      if (settings.value && typeof settings.value === "object") {
+        settings.value.logo_url = uploadedUrl;
+      }
+    }
 
     flashStore.success(
       t("stores.logo_uploaded") || "Logo uploaded successfully",

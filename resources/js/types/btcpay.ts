@@ -114,5 +114,5 @@ export interface StoreSettings {
     lnurl_allow_payee_comment: boolean;
 }
 
-/** PUT /stores/{id}/settings body - name is required, the rest is optional. */
-export type UpdateStoreSettingsPayload = Partial<StoreSettings> & { name: string };
+/** PUT /stores/{id}/settings body - name is required, id is never sent, the rest is optional. */
+export type UpdateStoreSettingsPayload = Partial<Omit<StoreSettings, 'id'>> & { name: string };
