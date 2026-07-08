@@ -442,7 +442,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
-import api from '../../services/api';
+import { invoicingApi } from "../../services/api";
 import CompanyEfakturaSettingsForm from './CompanyEfakturaSettingsForm.vue';
 import InvoicingJurisdictionSelect from './InvoicingJurisdictionSelect.vue';
 import RegistryLookupField from './RegistryLookupField.vue';
@@ -889,15 +889,15 @@ async function saveContact() {
       return;
     }
 
-    const res = await api.patch(`/invoicing/companies/${props.companyId}`, {
+    let payload = (await invoicingApi.companies.update(props.companyId, {
       ...contactForm,
       ...vatPayload(),
-    });
-    let payload = res.data.data as Record<string, any>;
+    })) as Record<string, any>;
     if (linkedStoreId.value !== savedLinkedStoreId.value) {
-      const storeRes = await api.patch(`/invoicing/companies/${props.companyId}/stores`, {
-        store_ids: linkedStoreId.value ? [linkedStoreId.value] : [],
-      });
+      await invoicingApi.companies.updateStores(
+        props.companyId,
+        linkedStoreId.value ? [linkedStoreId.value] : [],
+      );
       payload = {
         ...payload,
         stores: storeRes.data.data?.stores ?? storeRes.data.data,
@@ -962,8 +962,7 @@ async function saveBank() {
       return;
     }
 
-    const res = await api.patch(`/invoicing/companies/${props.companyId}`, payload);
-    emit('updated', res.data.data);
+    emit('updated', await invoicingApi.companies.update(props.companyId, payload));
     notifySaved();
   } catch (e: any) {
     saveError.value = extractSaveError(e);
@@ -993,10 +992,7 @@ async function uploadLogo(e: Event) {
       return;
     }
 
-    const fd = new FormData();
-    fd.append('image', file);
-    const res = await api.post(`/invoicing/companies/${props.companyId}/branding/logo`, fd);
-    emit('updated', res.data.data);
+    emit('updated', await invoicingApi.companies.branding.uploadLogo(props.companyId, file));
     notifySaved();
   } catch (err: any) {
     saveError.value = err?.message || err?.response?.data?.message || t('common.error');
@@ -1027,10 +1023,7 @@ async function uploadSignature(e: Event) {
       return;
     }
 
-    const fd = new FormData();
-    fd.append('image', file);
-    const res = await api.post(`/invoicing/companies/${props.companyId}/branding/signature-stamp`, fd);
-    emit('updated', res.data.data);
+    emit('updated', await invoicingApi.companies.branding.uploadSignatureStamp(props.companyId, file));
     notifySaved();
   } catch (err: any) {
     saveError.value = err?.message || err?.response?.data?.message || t('common.error');
@@ -1058,8 +1051,7 @@ async function removeLogo() {
       return;
     }
 
-    const res = await api.delete(`/invoicing/companies/${props.companyId}/branding/logo`);
-    emit('updated', res.data.data);
+    emit('updated', await invoicingApi.companies.branding.deleteLogo(props.companyId));
     notifySaved();
   } catch (err: any) {
     saveError.value = err?.response?.data?.message || t('common.error');
@@ -1086,8 +1078,7 @@ async function removeSignature() {
       return;
     }
 
-    const res = await api.delete(`/invoicing/companies/${props.companyId}/branding/signature-stamp`);
-    emit('updated', res.data.data);
+    emit('updated', await invoicingApi.companies.branding.deleteSignatureStamp(props.companyId));
     notifySaved();
   } catch (err: any) {
     saveError.value = err?.response?.data?.message || t('common.error');
@@ -1110,7 +1101,7 @@ async function resetCompanyData() {
       ]);
       resetLocalCompanyData(evolu, asCompanyId(props.companyId));
     } else {
-      await api.post(`/invoicing/companies/${props.companyId}/reset-data`, {
+      await invoicingApi.companies.resetData(props.companyId, {
         confirm_name: resetConfirmName.value.trim(),
       });
     }
@@ -1155,7 +1146,7 @@ async function deleteCompanyProfile() {
       await loadLocalCompanyDeleteQueries();
       deleteLocalCompany(evolu, asCompanyId(props.companyId));
     } else {
-      await api.delete(`/invoicing/companies/${props.companyId}`);
+      await invoicingApi.companies.delete(props.companyId);
     }
     showDeleteModal.value = false;
     deleteConfirmName.value = '';

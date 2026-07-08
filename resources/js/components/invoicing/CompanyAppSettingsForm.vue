@@ -187,7 +187,7 @@ import { allCompaniesDetailQuery, useInvoicingEvolu } from '../../evolu/client';
 import { evoluCompanyToApi, type EvoluCompanyRow } from '../../evolu/companyMap';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
 import { updateLocalAppSettings } from '../../evolu/companySettingsCrud';
-import api from '../../services/api';
+import { invoicingApi } from "../../services/api";
 import { useStoresStore } from '../../store/stores';
 import { useInvoicingSaveFeedback } from '../../composables/useInvoicingSaveFeedback';
 import CompanyAppTabsNav from './CompanyAppTabsNav.vue';
@@ -274,8 +274,7 @@ async function save() {
       return;
     }
 
-    const res = await api.patch(`/invoicing/companies/${props.companyId}/app-settings`, payload);
-    emit('updated', res.data.data);
+    emit('updated', await invoicingApi.companies.updateAppSettings(props.companyId, payload));
     notifySaved();
   } catch (e: any) {
     saveError.value = e?.response?.data?.message ?? t('common.error_generic');

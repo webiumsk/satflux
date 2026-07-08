@@ -1,7 +1,7 @@
 import { computed, ref, watch } from "vue";
 import { useQuery } from "@evolu/vue";
 import { useRoute } from "vue-router";
-import api from "@/services/api";
+import { invoicingApi } from "@/services/api";
 import { allCompaniesDetailQuery, useInvoicingEvolu } from "@/evolu/client";
 import {
     companyBankAccountLabel,
@@ -65,13 +65,13 @@ function useServerInvoicingCompanySummary() {
         }
 
         try {
-            const { data } = await api.get(`/invoicing/companies/${cid}/summary`);
+            const summary = await invoicingApi.companies.summary(cid);
             if (requestId !== summaryRequestSeq) return;
 
-            const name = data.data?.trade_name || data.data?.legal_name || "";
-            const bank = !!data.data?.has_bank_account;
-            const label = data.data?.bank_account_label || "";
-            const currency = data.data?.default_currency || "EUR";
+            const name = summary.trade_name || summary.legal_name || "";
+            const bank = !!summary.has_bank_account;
+            const label = summary.bank_account_label || "";
+            const currency = summary.default_currency || "EUR";
             const entry = { name, hasBankAccount: bank, bankAccountLabel: label, defaultCurrency: currency };
             summaryByCompany.set(cid, entry);
             companyName.value = name;

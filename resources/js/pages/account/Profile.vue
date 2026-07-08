@@ -1262,7 +1262,7 @@ import {
 } from "../../composables/usePricing";
 import { usePlanFeatures } from "../../composables/usePlanFeatures";
 import { useCurrentPlan } from "../../composables/useCurrentPlan";
-import api from "../../services/api";
+import api, { invoicingApi } from "../../services/api";
 import GuestBackupWizardModal from "../../components/auth/GuestBackupWizardModal.vue";
 import GuestUpgradeForm from "../../components/account/GuestUpgradeForm.vue";
 import {
@@ -1564,10 +1564,7 @@ onMounted(async () => {
 async function loadServerLegacyCompanies(): Promise<void> {
   serverLegacyLoading.value = true;
   try {
-    const response = await api.get<{ data: ServerLegacyCompany[] }>(
-      "/invoicing/companies",
-    );
-    serverLegacyCompanies.value = response.data?.data ?? [];
+    serverLegacyCompanies.value = await invoicingApi.companies.list<ServerLegacyCompany>();
   } catch {
     serverLegacyCompanies.value = [];
   } finally {
@@ -1581,7 +1578,7 @@ async function deleteServerLegacyCompany(companyId: string): Promise<void> {
   }
   serverLegacyDeleting.value = companyId;
   try {
-    await api.delete(`/invoicing/companies/${companyId}`);
+    await invoicingApi.companies.delete(companyId);
     serverLegacyCompanies.value = serverLegacyCompanies.value.filter(
       (row) => row.id !== companyId,
     );

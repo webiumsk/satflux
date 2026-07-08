@@ -1,7 +1,7 @@
 import type { Evolu } from "@evolu/common/local-first";
 import { computed, ref, watch, type ComputedRef, type Ref } from "vue";
 import { useQuery } from "@evolu/vue";
-import api from "@/services/api";
+import { invoicingApi } from "@/services/api";
 import { allContactsQuery, allDocumentsQuery, useInvoicingEvolu } from "@/evolu/client";
 import {
     availableContactLetters,
@@ -55,18 +55,16 @@ function useServerInvoicingContacts(companyId: Ref<string>): UseInvoicingContact
         }
         loading.value = true;
         try {
-            const res = await api.get(`/invoicing/companies/${companyId.value}/contacts`, {
-                params: {
-                    q: filters.q?.trim() || undefined,
-                    letter: filters.letter && filters.letter !== "all" ? filters.letter : undefined,
-                    page: filters.page ?? 1,
-                    per_page: filters.per_page ?? 25,
-                },
+            const res = await invoicingApi.contacts.list<CompanyContactRow>(companyId.value, {
+                q: filters.q?.trim() || undefined,
+                letter: filters.letter && filters.letter !== "all" ? filters.letter : undefined,
+                page: filters.page ?? 1,
+                per_page: filters.per_page ?? 25,
             });
-            contacts.value = res.data.data ?? [];
-            availableLetters.value = res.data.meta?.letters ?? [];
-            totalCount.value = res.data.meta?.total ?? contacts.value.length;
-            lastPage.value = res.data.meta?.last_page ?? 1;
+            contacts.value = res.data;
+            availableLetters.value = res.meta.letters ?? [];
+            totalCount.value = res.meta.total ?? contacts.value.length;
+            lastPage.value = res.meta.last_page ?? 1;
         } finally {
             loading.value = false;
         }
@@ -234,10 +232,10 @@ export function useInvoicingContact(
         }
         loading.value = true;
         try {
-            const res = await api.get(
-                `/invoicing/companies/${companyId.value}/contacts/${contactId.value}`,
+            contact.value = await invoicingApi.contacts.get<CompanyContactRow>(
+                companyId.value,
+                contactId.value,
             );
-            contact.value = res.data.data;
         } catch {
             contact.value = null;
         } finally {
@@ -247,7 +245,7 @@ export function useInvoicingContact(
 
     async function remove(): Promise<boolean> {
         if (!contactId.value || !companyId.value) return false;
-        await api.delete(`/invoicing/companies/${companyId.value}/contacts/${contactId.value}`);
+        await invoicingApi.contacts.delete(companyId.value, contactId.value);
         return true;
     }
 

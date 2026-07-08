@@ -1,4 +1,4 @@
-import api from "@/services/api";
+import api, { invoicingApi } from "@/services/api";
 import { normalizeCompanyIdentityKey } from "@/evolu/duplicateCompanies";
 import { normalizeIsoCountryCode } from "@/utils/isoCountryCode";
 import type { DocumentSavePayload } from "./documentCrud";
@@ -148,12 +148,11 @@ export async function resolveEphemeralBridgeCompanyId(match?: {
     registration_number?: string | null;
 }): Promise<string | null> {
     try {
-        const { data } = await api.get("/invoicing/companies");
-        const rows = (data.data as Array<{
+        const rows = await invoicingApi.companies.list<{
             id: string;
             legal_name: string;
             registration_number?: string | null;
-        }>) ?? [];
+        }>();
 
         if (match?.legal_name) {
             const key = normalizeCompanyIdentityKey(match.legal_name, match.registration_number ?? null);

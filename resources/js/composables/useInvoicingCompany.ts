@@ -1,6 +1,6 @@
 import { onMounted, ref, watch, type Ref } from "vue";
 import { useQuery } from "@evolu/vue";
-import api from "@/services/api";
+import { invoicingApi } from "@/services/api";
 import { allCompaniesDetailQuery, useInvoicingEvolu } from "@/evolu/client";
 import {
     evoluCompanyToApi,
@@ -30,8 +30,7 @@ function useServerInvoicingCompany(companyId: Ref<string>): UseInvoicingCompanyR
         }
         loading.value = true;
         try {
-            const res = await api.get(`/invoicing/companies/${companyId.value}`);
-            company.value = res.data.data;
+            company.value = await invoicingApi.companies.get<InvoicingCompanyRecord>(companyId.value);
         } catch {
             company.value = null;
         } finally {

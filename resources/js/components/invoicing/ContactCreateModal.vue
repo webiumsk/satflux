@@ -61,7 +61,7 @@ import { isInvoicingLocalFirst } from '../../evolu/flags';
 import { useInvoicingEvolu } from '../../evolu/client';
 import { insertLocalContactFromForm } from '../../evolu/contactCrud';
 import { contactPayloadFromForm, evoluContactToApi } from '../../evolu/contactMap';
-import api from '../../services/api';
+import { invoicingApi } from "../../services/api";
 
 const props = defineProps<{
   open: boolean;
@@ -140,8 +140,7 @@ async function save() {
     }
 
     const payload = formToPayload(form.value, showDelivery.value);
-    const res = await api.post(`/invoicing/companies/${props.companyId}/contacts`, payload);
-    emit('saved', res.data.data);
+    emit('saved', await invoicingApi.contacts.create(props.companyId, payload));
     emit('close');
   } catch (e: unknown) {
     const err = e as { response?: { data?: { message?: string } } };

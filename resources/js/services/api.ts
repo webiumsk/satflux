@@ -327,6 +327,128 @@ export const supportWalletApi = {
     },
 };
 
+export interface CompanySummary {
+    trade_name?: string | null;
+    legal_name?: string | null;
+    has_bank_account?: boolean;
+    bank_account_label?: string | null;
+    default_currency?: string | null;
+}
+
+export interface ContactListMeta {
+    letters?: string[];
+    total?: number;
+    last_page?: number;
+}
+
+export interface ContactListParams {
+    q?: string;
+    letter?: string;
+    page?: number;
+    per_page?: number;
+}
+
+/**
+ * Invoicing domain API - companies core cluster (record, settings, branding,
+ * contacts). Documents/expenses/stock/wise/efaktura endpoints migrate here in
+ * follow-ups; new invoicing calls belong here, not inline in components.
+ * Company records are dynamic form payloads - responses are kept as
+ * Record<string, unknown> equivalents (InvoicingCompanyRecord lives in
+ * evolu/companyMap and is imported type-only by callers that need it).
+ */
+export const invoicingApi = {
+    companies: {
+        async list<T = unknown>(): Promise<T[]> {
+            const { data } = await api.get<ApiEnvelope<T[]>>('/invoicing/companies');
+            return data.data ?? [];
+        },
+        async get<T = unknown>(companyId: string): Promise<T> {
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}`);
+            return data.data;
+        },
+        async update<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.patch<ApiEnvelope<T>>(`/invoicing/companies/${companyId}`, payload);
+            return data.data;
+        },
+        async delete(companyId: string): Promise<void> {
+            await api.delete(`/invoicing/companies/${companyId}`);
+        },
+        async summary(companyId: string): Promise<CompanySummary> {
+            const { data } = await api.get<ApiEnvelope<CompanySummary | null>>(`/invoicing/companies/${companyId}/summary`);
+            return data.data ?? {};
+        },
+        async updateStores(companyId: string, storeIds: string[]): Promise<void> {
+            await api.patch(`/invoicing/companies/${companyId}/stores`, { store_ids: storeIds });
+        },
+        async resetData(companyId: string, payload: Record<string, unknown>): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/reset-data`, payload);
+        },
+        async updateAppSettings<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.patch<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/app-settings`, payload);
+            return data.data;
+        },
+        async updateEmailSettings<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.patch<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/email-settings`, payload);
+            return data.data;
+        },
+        async testSmtp(companyId: string, payload: { to: string }): Promise<{ message?: string }> {
+            const { data } = await api.post<{ message?: string }>(`/invoicing/companies/${companyId}/email-settings/test-smtp`, payload);
+            return data;
+        },
+        branding: {
+            async uploadLogo<T = unknown>(companyId: string, file: File): Promise<T> {
+                const fd = new FormData();
+                fd.append('image', file);
+                const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/branding/logo`, fd);
+                return data.data;
+            },
+            async deleteLogo<T = unknown>(companyId: string): Promise<T> {
+                const { data } = await api.delete<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/branding/logo`);
+                return data.data;
+            },
+            async uploadSignatureStamp<T = unknown>(companyId: string, file: File): Promise<T> {
+                const fd = new FormData();
+                fd.append('image', file);
+                const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/branding/signature-stamp`, fd);
+                return data.data;
+            },
+            async deleteSignatureStamp<T = unknown>(companyId: string): Promise<T> {
+                const { data } = await api.delete<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/branding/signature-stamp`);
+                return data.data;
+            },
+        },
+    },
+    contacts: {
+        async list<T = unknown>(companyId: string, params: ContactListParams = {}): Promise<{ data: T[]; meta: ContactListMeta }> {
+            const { data } = await api.get<{ data?: T[]; meta?: ContactListMeta }>(`/invoicing/companies/${companyId}/contacts`, { params });
+            return { data: data.data ?? [], meta: data.meta ?? {} };
+        },
+        async get<T = unknown>(companyId: string, contactId: string): Promise<T> {
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/contacts/${contactId}`);
+            return data.data;
+        },
+        async create<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/contacts`, payload);
+            return data.data;
+        },
+        async update<T = unknown>(companyId: string, contactId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.patch<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/contacts/${contactId}`, payload);
+            return data.data;
+        },
+        async delete(companyId: string, contactId: string): Promise<void> {
+            await api.delete(`/invoicing/companies/${companyId}/contacts/${contactId}`);
+        },
+        async bulk<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.post<T>(`/invoicing/companies/${companyId}/contacts/bulk`, payload);
+            return data;
+        },
+        async bulkExport(companyId: string, payload: Record<string, unknown>): Promise<Blob> {
+            const { data } = await api.post<Blob>(`/invoicing/companies/${companyId}/contacts/bulk`, payload, { responseType: 'blob' });
+            return data;
+        },
+    },
+};
+
 // Documentation API (locale ensures correct language content from backend)
 export const documentationApi = {
     index: (params?: { category_id?: string; search?: string; locale?: string }) =>
