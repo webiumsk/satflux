@@ -55,17 +55,17 @@
     "lowlight": "^3.1.0",
     "nostr-tools": "^2.23.1",
     "pinia": "^2.1.7",
-    "pusher-js": "^8.4.0-rc2",
+    "pusher-js": "^8.4.3",
     "qrcode": "^1.5.4",
     "vue": "^3.4.0",
     "vue-i18n": "^9.9.1",
     "vue-router": "^4.3.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "@types/dompurify": "^3.0.5",
-    "@types/node": "^20.11.0",
+    "@types/node": "^22.0.0",
     "@vitejs/plugin-vue": "^5.0.0",
     "@vitest/coverage-v8": "^4.1.7",
     "@vue/eslint-config-typescript": "^13.0.0",
