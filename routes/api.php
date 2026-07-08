@@ -298,6 +298,9 @@ Route::any('/chorala-proxy/v1/{path}', [ChoralaProxyController::class, 'forward'
     ->where('path', '.*')
     ->middleware(['throttle:60,1']);
 
+Route::get('/chorala/widget-settings', [ChoralaController::class, 'widgetSettings'])
+    ->middleware(['throttle:60,1']);
+
 // Authenticated routes (email must be verified - classic registration and API use)
 Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-user'])->group(function () {
     // User/Account routes

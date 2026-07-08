@@ -13,6 +13,7 @@ import router from './router';
 import i18n, { initLocaleFromBackend, preloadActiveLocale } from './i18n';
 import App from './App.vue';
 import GuestUpgradeModal from './components/account/GuestUpgradeModal.vue';
+import ChoralaPeekLauncher from './components/feedback/ChoralaPeekLauncher.vue';
 
 const el = document.getElementById('app');
 const isInertia = el?.hasAttribute('data-page');
@@ -38,6 +39,7 @@ function mountInertia(): void {
                 render: () => h(Fragment, null, [
                     h(InertiaApp, props),
                     h(GuestUpgradeModal),
+                    h(ChoralaPeekLauncher),
                 ]),
             });
             app.use(plugin);
