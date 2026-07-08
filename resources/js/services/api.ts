@@ -446,8 +446,355 @@ export const invoicingApi = {
             const { data } = await api.post<Blob>(`/invoicing/companies/${companyId}/contacts/bulk`, payload, { responseType: 'blob' });
             return data;
         },
+        import: spreadsheetImportGroup('contacts/import'),
+    },
+    documents: {
+        async list<T = unknown>(companyId: string, params: Record<string, unknown> = {}): Promise<T[]> {
+            const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/documents`, { params });
+            return data.data ?? [];
+        },
+        async get<T = unknown>(companyId: string, documentId: string): Promise<T> {
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/documents/${documentId}`);
+            return data.data;
+        },
+        async create<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/documents`, payload);
+            return data.data;
+        },
+        async update<T = unknown>(companyId: string, documentId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.patch<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/documents/${documentId}`, payload);
+            return data.data;
+        },
+        async delete(companyId: string, documentId: string): Promise<void> {
+            await api.delete(`/invoicing/companies/${companyId}/documents/${documentId}`);
+        },
+        // Lifecycle actions (issue/cancel/mark-paid/...) share one POST shape
+        action: documentAction,
+        async history<T = unknown>(companyId: string, documentId: string): Promise<T[]> {
+            const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/documents/${documentId}/history`);
+            return data.data ?? [];
+        },
+        async creditNoteFromInvoice<T = unknown>(companyId: string, invoiceId: string): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/documents/credit-note-from-invoice`, { invoice_id: invoiceId });
+            return data.data;
+        },
+        async emailPreview<T = unknown>(companyId: string, documentId: string): Promise<T> {
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/documents/${documentId}/email-preview`);
+            return data.data;
+        },
+        async sendEmail<T = unknown>(companyId: string, documentId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/documents/${documentId}/send-email`, payload);
+            return data.data;
+        },
+        async bulk<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.post<T>(`/invoicing/companies/${companyId}/documents/bulk`, payload);
+            return data;
+        },
+        async bulkExport(companyId: string, payload: Record<string, unknown>): Promise<Blob> {
+            const { data } = await api.post<Blob>(`/invoicing/companies/${companyId}/documents/bulk`, payload, { responseType: 'blob' });
+            return data;
+        },
+        import: spreadsheetImportGroup('documents/import'),
+        efaktura: {
+            async compliance<T = unknown>(companyId: string, documentId: string): Promise<T[]> {
+                const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/documents/${documentId}/efaktura/compliance`);
+                return data.data ?? [];
+            },
+            async refresh(companyId: string, documentId: string): Promise<void> {
+                await api.post(`/invoicing/companies/${companyId}/documents/${documentId}/efaktura/compliance/refresh`);
+            },
+            async send<T = unknown>(companyId: string, documentId: string): Promise<T> {
+                const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/documents/${documentId}/efaktura/send`);
+                return data.data ?? ({} as T);
+            },
+        },
+    },
+    expenses: {
+        async list<T = unknown>(companyId: string, params: Record<string, unknown> = {}): Promise<T[]> {
+            const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/expenses`, { params });
+            return data.data ?? [];
+        },
+        async get<T = unknown>(companyId: string, expenseId: string): Promise<T> {
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/expenses/${expenseId}`);
+            return data.data;
+        },
+        async create<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/expenses`, payload);
+            return data.data;
+        },
+        async update<T = unknown>(companyId: string, expenseId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.patch<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/expenses/${expenseId}`, payload);
+            return data.data;
+        },
+        async delete(companyId: string, expenseId: string): Promise<void> {
+            await api.delete(`/invoicing/companies/${companyId}/expenses/${expenseId}`);
+        },
+        action: expenseAction,
+        async history<T = unknown>(companyId: string, expenseId: string): Promise<T[]> {
+            const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/expenses/${expenseId}/history`);
+            return data.data ?? [];
+        },
+        async uploadAttachment(companyId: string, expenseId: string, formData: FormData): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/expenses/${expenseId}/attachment`, formData);
+        },
+        async deleteAttachment<T = unknown>(companyId: string, expenseId: string, attachmentId: string): Promise<T> {
+            const { data } = await api.delete<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/expenses/${expenseId}/attachments/${attachmentId}`);
+            return data.data;
+        },
+        async detectIsdoc<T = unknown>(companyId: string, formData: FormData): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/expenses/detect-isdoc`, formData);
+            return data.data;
+        },
+        /** Returns the full body: callers read both data (draft) and quota. */
+        async extract<T = unknown>(companyId: string, formData: FormData): Promise<{ data: T; quota?: unknown }> {
+            const { data } = await api.post<{ data: T; quota?: unknown }>(`/invoicing/companies/${companyId}/expenses/extract`, formData);
+            return data;
+        },
+        async isdocQuota<T = unknown>(companyId: string): Promise<T> {
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/expenses/isdoc-extract-quota`);
+            return data.data;
+        },
+        async purchaseIsdocPack<T = unknown>(companyId: string, credits: number): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/expenses/isdoc-packs/purchase`, { credits });
+            return data.data;
+        },
+        async bulk<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.post<T>(`/invoicing/companies/${companyId}/expenses/bulk`, payload);
+            return data;
+        },
+        async bulkExport(companyId: string, payload: Record<string, unknown>): Promise<Blob> {
+            const { data } = await api.post<Blob>(`/invoicing/companies/${companyId}/expenses/bulk`, payload, { responseType: 'blob' });
+            return data;
+        },
+        import: spreadsheetImportGroup('expenses/import/excel'),
+        importAttachments: {
+            async preview<T = unknown>(companyId: string, formData: FormData): Promise<T> {
+                const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/expenses/import/attachments/preview`, formData);
+                return data.data;
+            },
+            async run<T = unknown>(companyId: string, formData: FormData): Promise<T> {
+                const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/expenses/import/attachments`, formData);
+                return data.data;
+            },
+        },
+    },
+    stockItems: {
+        async list<T = unknown>(companyId: string, params: Record<string, unknown> = {}): Promise<{ data: T[]; meta: unknown }> {
+            const { data } = await api.get<{ data?: T[]; meta?: unknown }>(`/invoicing/companies/${companyId}/stock-items`, { params });
+            return { data: data.data ?? [], meta: data.meta ?? null };
+        },
+        async get<T = unknown>(companyId: string, stockItemId: string): Promise<T> {
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/stock-items/${stockItemId}`);
+            return data.data;
+        },
+        async create<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/stock-items`, payload);
+            return data.data;
+        },
+        async update<T = unknown>(companyId: string, stockItemId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.patch<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/stock-items/${stockItemId}`, payload);
+            return data.data;
+        },
+        async delete(companyId: string, stockItemId: string): Promise<void> {
+            await api.delete(`/invoicing/companies/${companyId}/stock-items/${stockItemId}`);
+        },
+        async search<T = unknown>(companyId: string, params: Record<string, unknown>): Promise<T[]> {
+            const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/stock-items/search`, { params });
+            return data.data ?? [];
+        },
+        async transfer(companyId: string, stockItemId: string, payload: Record<string, unknown>): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/stock-items/${stockItemId}/transfer`, payload);
+        },
+        import: spreadsheetImportGroup('stock-items/import'),
+    },
+    warehouses: {
+        async list<T = unknown>(companyId: string, params?: Record<string, unknown>): Promise<T[]> {
+            const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/warehouses`, { params });
+            return data.data ?? [];
+        },
+        async get<T = unknown>(companyId: string, warehouseId: string): Promise<T> {
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/warehouses/${warehouseId}`);
+            return data.data;
+        },
+        async create<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/warehouses`, payload);
+            return data.data;
+        },
+        async update<T = unknown>(companyId: string, warehouseId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.patch<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/warehouses/${warehouseId}`, payload);
+            return data.data;
+        },
+        async delete(companyId: string, warehouseId: string): Promise<void> {
+            await api.delete(`/invoicing/companies/${companyId}/warehouses/${warehouseId}`);
+        },
+    },
+    numberSeries: {
+        async list<T = unknown>(companyId: string): Promise<T[]> {
+            const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/number-series`);
+            return data.data ?? [];
+        },
+        async create(companyId: string, payload: Record<string, unknown>): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/number-series`, payload);
+        },
+        async update(companyId: string, seriesId: string, payload: Record<string, unknown>): Promise<void> {
+            await api.patch(`/invoicing/companies/${companyId}/number-series/${seriesId}`, payload);
+        },
+        async delete(companyId: string, seriesId: string): Promise<void> {
+            await api.delete(`/invoicing/companies/${companyId}/number-series/${seriesId}`);
+        },
+        async preview<T = unknown>(companyId: string, params: Record<string, unknown>): Promise<T> {
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/number-series/preview`, { params });
+            return data.data;
+        },
+    },
+    // Store-scoped series bridge for local-first numbering; responses carry a
+    // top-level error field, so the full body is returned unwrapped.
+    storeNumberSeries: {
+        async preview<T = unknown>(storeId: string, params: Record<string, unknown>): Promise<{ data?: T; error?: string }> {
+            const { data } = await api.get<{ data?: T; error?: string }>(`/invoicing/stores/${storeId}/number-series/preview`, { params });
+            return data;
+        },
+        async reserve<T = unknown>(storeId: string, payload: Record<string, unknown>): Promise<{ data?: T; error?: string }> {
+            const { data } = await api.post<{ data?: T; error?: string }>(`/invoicing/stores/${storeId}/number-series/reserve`, payload);
+            return data;
+        },
+    },
+    recurringProfiles: {
+        async list<T = unknown>(companyId: string, params: Record<string, unknown> = {}): Promise<T[]> {
+            const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/recurring-profiles`, { params });
+            return data.data ?? [];
+        },
+        async get<T = unknown>(companyId: string, profileId: string): Promise<T> {
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/recurring-profiles/${profileId}`);
+            return data.data;
+        },
+        async create<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/recurring-profiles`, payload);
+            return data.data;
+        },
+        async update<T = unknown>(companyId: string, profileId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.patch<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/recurring-profiles/${profileId}`, payload);
+            return data.data;
+        },
+        async delete(companyId: string, profileId: string): Promise<void> {
+            await api.delete(`/invoicing/companies/${companyId}/recurring-profiles/${profileId}`);
+        },
+        async generate<T = unknown>(companyId: string, profileId: string): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/recurring-profiles/${profileId}/generate`);
+            return data.data;
+        },
+    },
+    bankTransactions: {
+        async list<T = unknown>(companyId: string, params: Record<string, unknown> = {}): Promise<{ data: T[]; meta?: { summary?: unknown; last_page?: number } }> {
+            const { data } = await api.get<{ data?: T[]; meta?: { summary?: unknown; last_page?: number } }>(`/invoicing/companies/${companyId}/bank-transactions`, { params });
+            return { data: data.data ?? [], meta: data.meta };
+        },
+        async batches<T = unknown>(companyId: string): Promise<T[]> {
+            const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/bank-transactions/batches`);
+            return data.data ?? [];
+        },
+        async inboundEmail<T = unknown>(companyId: string): Promise<T> {
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/bank-transactions/inbound-email`);
+            return data.data;
+        },
+        async import<T = unknown>(companyId: string, formData: FormData): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/bank-transactions/import`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            return data.data;
+        },
+        async autoMatchBatch(companyId: string, batchId: string): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/bank-transactions/batches/${batchId}/auto-match`);
+        },
+        async suggestions<T = unknown>(companyId: string, transactionId: string): Promise<T[]> {
+            const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/suggestions`);
+            return data.data ?? [];
+        },
+        async match(companyId: string, transactionId: string, businessDocumentId: string): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/match`, { business_document_id: businessDocumentId });
+        },
+        async ignore(companyId: string, transactionId: string): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/ignore`);
+        },
+        async unmatch(companyId: string, transactionId: string): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/unmatch`);
+        },
+        async createExpense(companyId: string, transactionId: string, payload: Record<string, unknown>): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/create-expense`, payload);
+        },
+    },
+    wise: {
+        async status<T = unknown>(companyId: string): Promise<T> {
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/wise/status`);
+            return data.data;
+        },
+        async connect(companyId: string, wiseApiToken: string): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/wise/connect`, { wise_api_token: wiseApiToken });
+        },
+        async sync<T = unknown>(companyId: string, payload: Record<string, unknown> = {}): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/wise/sync`, payload);
+            return data.data;
+        },
+    },
+    efaktura: {
+        async pollInbound<T = unknown>(companyId: string): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/efaktura/poll-inbound`);
+            return data.data ?? ({} as T);
+        },
+    },
+    usSalesTax: {
+        async preview<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/us-sales-tax/preview`, payload);
+            return data.data;
+        },
+    },
+    registry: {
+        async coverage<T = unknown>(): Promise<T | null> {
+            const { data } = await api.get<ApiEnvelope<T | null>>('/invoicing/company-registry/coverage');
+            return data.data ?? null;
+        },
+        async search<T = unknown>(params: { q: string; country: string; limit?: number }): Promise<T | null> {
+            const { data } = await api.get<ApiEnvelope<T | null>>('/invoicing/company-registry/search', { params });
+            return data.data ?? null;
+        },
+        async entity<T = unknown>(entityId: string, country: string): Promise<T | null> {
+            const { data } = await api.get<ApiEnvelope<T | null>>(`/invoicing/company-registry/entities/${encodeURIComponent(entityId)}`, { params: { country } });
+            return data.data ?? null;
+        },
     },
 };
+
+/** Excel-style import trio shared by contacts/expenses/stock-items/documents. */
+function spreadsheetImportGroup(basePath: string) {
+    return {
+        async preview<T = unknown>(companyId: string, formData: FormData): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/${basePath}/preview`, formData);
+            return data.data;
+        },
+        async run<T = unknown>(companyId: string, formData: FormData): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/${basePath}`, formData);
+            return data.data;
+        },
+        async example(companyId: string): Promise<Blob> {
+            const { data } = await api.get<Blob>(`/invoicing/companies/${companyId}/${basePath}/example`, { responseType: 'blob' });
+            return data;
+        },
+    };
+}
+
+type DocumentLifecycleAction = 'issue' | 'cancel' | 'mark-paid' | 'unmark-paid' | 'duplicate' | 'approve-quote' | 'reject-quote' | 'create-invoice-from-quote' | 'create-final-invoice';
+
+async function documentAction<T = unknown>(companyId: string, documentId: string, action: DocumentLifecycleAction): Promise<T> {
+    const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/documents/${documentId}/${action}`);
+    return data.data ?? ({} as T);
+}
+
+type ExpenseLifecycleAction = 'mark-paid' | 'unmark-paid' | 'duplicate';
+
+async function expenseAction<T = unknown>(companyId: string, expenseId: string, action: ExpenseLifecycleAction): Promise<T> {
+    const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/expenses/${expenseId}/${action}`);
+    return data.data ?? ({} as T);
+}
 
 // Documentation API (locale ensures correct language content from backend)
 export const documentationApi = {

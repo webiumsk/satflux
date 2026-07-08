@@ -1,7 +1,7 @@
 import type { Evolu } from "@evolu/common/local-first";
 import { computed, ref, watch, type ComputedRef, type Ref } from "vue";
 import { useQuery } from "@evolu/vue";
-import api from "@/services/api";
+import { invoicingApi } from "@/services/api";
 import type { StockItemRow, StockSummaryMeta } from "@/composables/useCompanyStockItem";
 import {
     allCompanyStockBalancesQuery,
@@ -57,14 +57,12 @@ function useServerStockItems(companyId: Ref<string>): UseInvoicingStockItemsResu
         }
         loading.value = true;
         try {
-            const res = await api.get(`/invoicing/companies/${companyId.value}/stock-items`, {
-                params: {
-                    q: filters.q || undefined,
-                    warehouse_id: filters.warehouse_id || undefined,
-                },
+            const res = await invoicingApi.stockItems.list(companyId.value, {
+                q: filters.q || undefined,
+                warehouse_id: filters.warehouse_id || undefined,
             });
-            items.value = res.data.data ?? [];
-            meta.value = res.data.meta ?? null;
+            items.value = res.data;
+            meta.value = (res.meta as typeof meta.value) ?? null;
         } finally {
             loading.value = false;
         }

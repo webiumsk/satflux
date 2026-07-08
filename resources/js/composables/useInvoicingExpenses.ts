@@ -1,7 +1,7 @@
 import type { Evolu } from "@evolu/common/local-first";
 import { computed, ref, watch, type ComputedRef, type Ref } from "vue";
 import { useQuery } from "@evolu/vue";
-import api from "@/services/api";
+import { invoicingApi } from "@/services/api";
 import { allExpensesQuery, allExpenseAttachmentsQuery, useInvoicingEvolu } from "@/evolu/client";
 import {
     evoluExpenseToApi,
@@ -38,14 +38,11 @@ function useServerInvoicingExpenses(companyId: Ref<string>): UseInvoicingExpense
         }
         loading.value = true;
         try {
-            const res = await api.get(`/invoicing/companies/${companyId.value}/expenses`, {
-                params: {
-                    filter: filters.filter === "all" ? undefined : filters.filter,
-                    year: filters.year,
-                    per_page: 500,
-                },
+            expenses.value = await invoicingApi.expenses.list(companyId.value, {
+                filter: filters.filter === "all" ? undefined : filters.filter,
+                year: filters.year,
+                per_page: 500,
             });
-            expenses.value = res.data.data ?? [];
         } finally {
             loading.value = false;
         }
@@ -175,10 +172,7 @@ export function useInvoicingExpense(
         }
         loading.value = true;
         try {
-            const res = await api.get(
-                `/invoicing/companies/${companyId.value}/expenses/${expenseId.value}`,
-            );
-            expense.value = res.data.data;
+            expense.value = await invoicingApi.expenses.get(companyId.value, expenseId.value);
         } catch {
             expense.value = null;
         } finally {

@@ -1,4 +1,4 @@
-import api from "@/services/api";
+import { invoicingApi } from "@/services/api";
 import type { EvoluDocumentRow } from "./documentMap";
 import {
     highestIssuedDocumentCounter,
@@ -49,9 +49,7 @@ export async function previewNextDocumentNumberFromStore(
         if (localHighCounter != null && localHighCounter > 0) {
             params.local_high_counter = localHighCounter;
         }
-        const { data } = await api.get(`/invoicing/stores/${linkedStoreId}/number-series/preview`, {
-            params,
-        });
+        const data = await invoicingApi.storeNumberSeries.preview(linkedStoreId, params);
         if (data?.error === "store_not_linked") {
             return null;
         }
@@ -99,7 +97,7 @@ export async function reserveNextDocumentNumberFromStore(
         if (localHighCounter != null && localHighCounter > 0) {
             body.local_high_counter = localHighCounter;
         }
-        const { data } = await api.post(`/invoicing/stores/${linkedStoreId}/number-series/reserve`, body);
+        const data = await invoicingApi.storeNumberSeries.reserve(linkedStoreId, body);
         if (data?.error === "store_not_linked" || !data?.data) {
             return { ok: false, error: "store_not_found" };
         }

@@ -102,8 +102,7 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>) {
   }
 
   async function loadQuota() {
-    const res = await api.get(`/invoicing/companies/${companyId.value}/expenses/isdoc-extract-quota`);
-    quota.value = res.data.data;
+    quota.value = await invoicingApi.expenses.isdocQuota(companyId.value);
   }
 
   async function addDocument(file: File) {
@@ -123,9 +122,9 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>) {
     fd.append('file', file);
 
     try {
-      const res = await api.post(`/invoicing/companies/${companyId.value}/expenses/detect-isdoc`, fd);
-      quota.value = res.data.data.quota ?? quota.value;
-      const hasIsdoc = Boolean(res.data.data.has_isdoc);
+      const detected = await invoicingApi.expenses.detectIsdoc<{ quota?: unknown; has_isdoc?: boolean }>(companyId.value, fd);
+      quota.value = (detected.quota as typeof quota.value) ?? quota.value;
+      const hasIsdoc = Boolean(detected.has_isdoc);
       updatePendingEntry(id, { hasIsdoc });
       if (hasIsdoc && !showExtractModal.value) {
         isdocModalFileId.value = id;
@@ -195,12 +194,12 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>) {
     const fd = new FormData();
     fd.append('file', entry.file);
     try {
-      const res = await api.post(`/invoicing/companies/${companyId.value}/expenses/extract`, fd);
-      quota.value = res.data.quota ?? quota.value;
+      const res = await invoicingApi.expenses.extract<ExpenseImportDraft>(companyId.value, fd);
+      quota.value = (res.quota as typeof quota.value) ?? quota.value;
       showExtractModal.value = false;
       isdocModalFileId.value = null;
 
-      return res.data.data as ExpenseImportDraft;
+      return res.data;
     } finally {
       extracting.value = false;
     }
@@ -214,11 +213,8 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>) {
   async function purchasePack(credits: number) {
     purchasing.value = true;
     try {
-      const res = await api.post(
-        `/invoicing/companies/${companyId.value}/expenses/isdoc-packs/purchase`,
-        { credits },
-      );
-      const url = res.data.data?.checkoutLink;
+      const purchase = await invoicingApi.expenses.purchaseIsdocPack<{ checkoutLink?: string }>(companyId.value, credits);
+      const url = purchase?.checkoutLink;
       if (url) {
         window.open(url, '_blank', 'noopener');
       }
@@ -265,7 +261,7 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>) {
 
       const fd = new FormData();
       fd.append('file', entry.file);
-      await api.post(`/invoicing/companies/${companyId.value}/expenses/${expenseId}/attachment`, fd);
+      await invoicingApi.expenses.uploadAttachment(companyId.value, expenseId, fd);
     }
   }
 
