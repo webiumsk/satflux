@@ -1,7 +1,7 @@
 import type { Evolu } from "@evolu/common/local-first";
 import { computed, ref, watch, type ComputedRef, type Ref } from "vue";
 import { useQuery } from "@evolu/vue";
-import api from "@/services/api";
+import { invoicingApi } from "@/services/api";
 import {
     allCompanyStockBalancesQuery,
     allCompanyWarehousesQuery,
@@ -39,10 +39,10 @@ function useServerWarehouses(companyId: Ref<string>): UseInvoicingWarehousesResu
         }
         loading.value = true;
         try {
-            const res = await api.get(`/invoicing/companies/${companyId.value}/warehouses`, {
-                params: activeOnly ? { active_only: 1 } : undefined,
-            });
-            warehouses.value = res.data.data ?? [];
+            warehouses.value = await invoicingApi.warehouses.list(
+                companyId.value,
+                activeOnly ? { active_only: 1 } : undefined,
+            );
         } finally {
             loading.value = false;
         }

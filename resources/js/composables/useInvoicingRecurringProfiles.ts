@@ -1,7 +1,7 @@
 import type { Evolu } from "@evolu/common/local-first";
 import { computed, ref, watch, type ComputedRef, type Ref } from "vue";
 import { useQuery } from "@evolu/vue";
-import api from "@/services/api";
+import { invoicingApi } from "@/services/api";
 import {
     allContactsQuery,
     allRecurringProfileLinesQuery,
@@ -42,10 +42,10 @@ function useServerRecurringProfiles(companyId: Ref<string>): UseInvoicingRecurri
         }
         loading.value = true;
         try {
-            const res = await api.get(`/invoicing/companies/${companyId.value}/recurring-profiles`, {
-                params: { filter, per_page: 100 },
+            profiles.value = await invoicingApi.recurringProfiles.list(companyId.value, {
+                filter,
+                per_page: 100,
             });
-            profiles.value = res.data.data ?? [];
         } finally {
             loading.value = false;
         }

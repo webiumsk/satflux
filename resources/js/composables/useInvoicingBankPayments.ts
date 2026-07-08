@@ -1,7 +1,7 @@
 import type { Evolu } from "@evolu/common/local-first";
 import { computed, ref, watch, type ComputedRef, type Ref } from "vue";
 import { useQuery } from "@evolu/vue";
-import api from "@/services/api";
+import { invoicingApi } from "@/services/api";
 import {
     allBankImportBatchesQuery,
     allBankTransactionMatchesQuery,
@@ -124,11 +124,9 @@ function useServerInvoicingBankPayments(
         try {
             const params: Record<string, string | number> = { per_page: 50 };
             if (matchFilter !== "all") params.match_status = matchFilter;
-            const { data } = await api.get(`/invoicing/companies/${cid}/bank-transactions`, {
-                params,
-            });
-            transactions.value = data.data || [];
-            summary.value = data.meta?.summary || emptySummary(defaultCurrency.value);
+            const res = await invoicingApi.bankTransactions.list<ServerBankTransactionRow>(cid, params);
+            transactions.value = res.data;
+            summary.value = (res.meta?.summary as typeof summary.value) || emptySummary(defaultCurrency.value);
         } finally {
             loading.value = false;
         }
@@ -140,10 +138,7 @@ function useServerInvoicingBankPayments(
             batches.value = [];
             return;
         }
-        const { data } = await api.get(
-            `/invoicing/companies/${cid}/bank-transactions/batches`,
-        );
-        batches.value = data.data || [];
+        batches.value = await invoicingApi.bankTransactions.batches(cid);
     }
 
     async function loadInbound() {
@@ -153,10 +148,8 @@ function useServerInvoicingBankPayments(
             return;
         }
         try {
-            const { data } = await api.get(
-                `/invoicing/companies/${cid}/bank-transactions/inbound-email`,
-            );
-            inboundEmail.value = data.data?.address || "";
+            const inbound = await invoicingApi.bankTransactions.inboundEmail<{ address?: string }>(cid);
+            inboundEmail.value = inbound?.address || "";
         } catch {
             inboundEmail.value = "";
         }
@@ -170,65 +163,47 @@ function useServerInvoicingBankPayments(
         const form = new FormData();
         form.append("file", file);
         if (format) form.append("format", format);
-        const { data } = await api.post(
-            `/invoicing/companies/${cid}/bank-transactions/import`,
-            form,
-            { headers: { "Content-Type": "multipart/form-data" } },
-        );
+        const result = await invoicingApi.bankTransactions.import<{ imported: number; auto_matched: number }>(cid, form);
         return {
-            imported: data.data.imported,
-            auto_matched: data.data.auto_matched,
+            imported: result.imported,
+            auto_matched: result.auto_matched,
         };
     }
 
     async function autoMatchBatch(batchId: string) {
         const cid = requireCompanyId();
         if (!cid) return;
-        await api.post(
-            `/invoicing/companies/${cid}/bank-transactions/batches/${batchId}/auto-match`,
-        );
+        await invoicingApi.bankTransactions.autoMatchBatch(cid, batchId);
     }
 
     async function fetchSuggestions(transactionId: string): Promise<BankMatchSuggestion[]> {
         const cid = requireCompanyId();
         if (!cid) return [];
-        const { data } = await api.get(
-            `/invoicing/companies/${cid}/bank-transactions/${transactionId}/suggestions`,
-        );
-        return data.data || [];
+        return invoicingApi.bankTransactions.suggestions<BankMatchSuggestion>(cid, transactionId);
     }
 
     async function matchTransaction(transactionId: string, documentId: string) {
         const cid = requireCompanyId();
         if (!cid) return;
-        await api.post(
-            `/invoicing/companies/${cid}/bank-transactions/${transactionId}/match`,
-            { business_document_id: documentId },
-        );
+        await invoicingApi.bankTransactions.match(cid, transactionId, documentId);
     }
 
     async function ignoreTransaction(transactionId: string) {
         const cid = requireCompanyId();
         if (!cid) return;
-        await api.post(
-            `/invoicing/companies/${cid}/bank-transactions/${transactionId}/ignore`,
-        );
+        await invoicingApi.bankTransactions.ignore(cid, transactionId);
     }
 
     async function unmatchTransaction(transactionId: string) {
         const cid = requireCompanyId();
         if (!cid) return;
-        await api.post(
-            `/invoicing/companies/${cid}/bank-transactions/${transactionId}/unmatch`,
-        );
+        await invoicingApi.bankTransactions.unmatch(cid, transactionId);
     }
 
     async function createExpenseFromTransaction(transactionId: string, draft: BankExpenseDraft) {
         const cid = requireCompanyId();
         if (!cid) return;
-        await api.post(
-            `/invoicing/companies/${cid}/bank-transactions/${transactionId}/create-expense`,
-            {
+        await invoicingApi.bankTransactions.createExpense(cid, transactionId, {
                 title: draft.title,
                 supplier: draft.supplier || undefined,
                 category: draft.category || undefined,
@@ -252,8 +227,7 @@ function useServerInvoicingBankPayments(
             return;
         }
         try {
-            const { data } = await api.get(`/invoicing/companies/${cid}/wise/status`);
-            wiseStatus.value = data.data as WiseStatus;
+            wiseStatus.value = await invoicingApi.wise.status<WiseStatus>(cid);
         } catch {
             wiseStatus.value = null;
         }
@@ -263,9 +237,7 @@ function useServerInvoicingBankPayments(
     async function connectWise(token: string) {
         const cid = requireCompanyId();
         if (!cid) return;
-        await api.post(`/invoicing/companies/${cid}/wise/connect`, {
-            wise_api_token: token,
-        });
+        await invoicingApi.wise.connect(cid, token);
         await fetchWiseStatus();
     }
 
@@ -274,13 +246,13 @@ function useServerInvoicingBankPayments(
         if (!cid) {
             return { imported: 0, auto_matched: 0, skipped_duplicates: 0 };
         }
-        const { data } = await api.post(`/invoicing/companies/${cid}/wise/sync`, {});
+        const result = await invoicingApi.wise.sync<{ imported?: number; auto_matched?: number; skipped_duplicates?: number }>(cid, {});
         await load(lastFilter);
         await loadBatches();
         return {
-            imported: data.data.imported ?? 0,
-            auto_matched: data.data.auto_matched ?? 0,
-            skipped_duplicates: data.data.skipped_duplicates ?? 0,
+            imported: result.imported ?? 0,
+            auto_matched: result.auto_matched ?? 0,
+            skipped_duplicates: result.skipped_duplicates ?? 0,
         };
     }
 
@@ -392,12 +364,9 @@ function useLocalInvoicingBankPayments(
         let page = 1;
         let lastPage = 1;
         do {
-            const { data } = await api.get(`/invoicing/companies/${bridgeId}/bank-transactions`, {
-                params: { source: "email", per_page: 100, page },
-            });
-            const pageRows = (data.data || []) as ServerBankTransactionRow[];
-            rows.push(...pageRows);
-            lastPage = data.meta?.last_page ?? 1;
+            const res = await invoicingApi.bankTransactions.list<ServerBankTransactionRow>(bridgeId, { source: "email", per_page: 100, page });
+            rows.push(...res.data);
+            lastPage = res.meta?.last_page ?? 1;
             page += 1;
         } while (page <= lastPage);
         return rows;
@@ -454,8 +423,7 @@ function useLocalInvoicingBankPayments(
             return;
         }
         try {
-            const { data } = await api.get(`/invoicing/companies/${bridgeId}/wise/status`);
-            wiseStatus.value = data.data as WiseStatus;
+            wiseStatus.value = await invoicingApi.wise.status<WiseStatus>(bridgeId);
         } catch {
             wiseStatus.value = null;
         }
@@ -464,9 +432,7 @@ function useLocalInvoicingBankPayments(
     async function connectWise(token: string) {
         const bridgeId = await resolveBridgeCompanyId();
         if (!bridgeId) return;
-        await api.post(`/invoicing/companies/${bridgeId}/wise/connect`, {
-            wise_api_token: token,
-        });
+        await invoicingApi.wise.connect(bridgeId, token);
         await fetchWiseStatus();
     }
 
@@ -475,10 +441,13 @@ function useLocalInvoicingBankPayments(
         if (!bridgeId) {
             return { imported: 0, auto_matched: 0, skipped_duplicates: 0 };
         }
-        const { data } = await api.post(`/invoicing/companies/${bridgeId}/wise/sync`, {
+        const syncResult = await invoicingApi.wise.sync<{
+            rows?: WiseBankRowInput[];
+            skipped_duplicates?: number;
+        }>(bridgeId, {
             local_first: true,
         });
-        const rows = (data.data?.rows || []) as WiseBankRowInput[];
+        const rows = syncResult?.rows || [];
         let autoMatched = 0;
         if (rows.length > 0) {
             const result = await importLocalBankRows(
@@ -495,7 +464,7 @@ function useLocalInvoicingBankPayments(
         return {
             imported: rows.length,
             auto_matched: autoMatched,
-            skipped_duplicates: data.data?.skipped_duplicates ?? 0,
+            skipped_duplicates: syncResult?.skipped_duplicates ?? 0,
         };
     }
 

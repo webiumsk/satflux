@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import api from '../services/api';
+import { invoicingApi } from '../services/api';
 import type { ContactFormState } from './useCompanyContact';
 import {
   DEFAULT_REGISTRY_OPTIONS,
@@ -62,8 +62,8 @@ export function useCompanyRegistryLookup() {
   async function loadCoverage() {
     if (coverageLoaded) return;
     try {
-      const res = await api.get('/invoicing/company-registry/coverage');
-      const options = res.data.data?.options;
+      const coverage = await invoicingApi.registry.coverage<{ options?: typeof registryOptions.value }>();
+      const options = coverage?.options;
       if (Array.isArray(options) && options.length) {
         registryOptions.value = options;
       }
@@ -105,15 +105,16 @@ export function useCompanyRegistryLookup() {
         }
       }
 
-      const res = await api.get('/invoicing/company-registry/search', {
-        params: { q, country: c, limit: 8 },
-      });
-      suggestions.value = res.data.data?.results ?? [];
+      const result = await invoicingApi.registry.search<{
+        results?: typeof suggestions.value;
+        error?: string;
+      }>({ q, country: c, limit: 8 });
+      suggestions.value = result?.results ?? [];
       showSuggestions.value = suggestions.value.length > 0;
       if (
-        res.data.data?.error === 'search_unavailable' ||
-        res.data.data?.error === 'auth_required' ||
-        res.data.data?.error === 'rate_limited'
+        result?.error === 'search_unavailable' ||
+        result?.error === 'auth_required' ||
+        result?.error === 'rate_limited'
       ) {
         registryError.value = 'unavailable';
       }
@@ -138,10 +139,7 @@ export function useCompanyRegistryLookup() {
 
   async function fetchDetail(id: string, country: string): Promise<RegistryDetail | null> {
     try {
-      const res = await api.get(`/invoicing/company-registry/entities/${encodeURIComponent(id)}`, {
-        params: { country: country.toLowerCase() },
-      });
-      return res.data.data ?? null;
+      return await invoicingApi.registry.entity(id, country.toLowerCase());
     } catch {
       return null;
     }
