@@ -13,6 +13,7 @@
   <LegacyRecoveryMigrationGate />
   <FlashMessage />
   <CookieConsentBanner />
+  <ChoralaPeekLauncher />
 </template>
 
 <script setup lang="ts">
@@ -23,6 +24,7 @@ import GuestUpgradeModal from "./components/account/GuestUpgradeModal.vue";
 import LegacyRecoveryMigrationGate from "./components/auth/LegacyRecoveryMigrationGate.vue";
 import FlashMessage from "./components/ui/FlashMessage.vue";
 import CookieConsentBanner from "./components/legal/CookieConsentBanner.vue";
+import ChoralaPeekLauncher from "./components/feedback/ChoralaPeekLauncher.vue";
 import { useAppLayoutScroll } from "./composables/useAppLayoutScroll";
 
 const route = useRoute();

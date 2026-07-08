@@ -77,6 +77,10 @@ return [
 
     'chorala' => [
         'project_key' => env('CHORALA_PROJECT_KEY'),
+        'project_id' => env('CHORALA_PROJECT_ID'),
+        'api_key' => env('CHORALA_API_KEY'),
+        'widget_theme' => env('CHORALA_WIDGET_THEME'),
+        'widget_primary_color' => env('CHORALA_WIDGET_PRIMARY_COLOR'),
         'widget_url' => rtrim((string) env('CHORALA_WIDGET_URL', 'https://chorala.com'), '/'),
         'end_user_jwt_secret' => env('CHORALA_END_USER_JWT_SECRET'),
     ],

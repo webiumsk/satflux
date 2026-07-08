@@ -2,6 +2,13 @@ import api from './api';
 import i18n from '../i18n';
 import { useAuthStore } from '../store/auth';
 
+type ChoralaWidgetSettings = {
+    theme?: 'light' | 'dark';
+    primaryColor?: string;
+    position?: 'bottom-left' | 'bottom-right';
+    mode?: 'floating' | 'inline' | 'manual';
+};
+
 declare global {
     interface Window {
         Chorala?: ((command: string, ...args: unknown[]) => void) & { q?: unknown[][] };
@@ -11,6 +18,27 @@ declare global {
 let choralaLoaded = false;
 let choralaScriptLoading: Promise<void> | null = null;
 let lastSyncedUserId: string | null = null;
+let widgetSettingsPromise: Promise<ChoralaWidgetSettings> | null = null;
+
+function getSatfluxWidgetOverrides(): ChoralaWidgetSettings {
+    return {
+        position: 'bottom-left',
+        mode: 'manual',
+    };
+}
+
+async function fetchWidgetSettings(): Promise<ChoralaWidgetSettings> {
+    if (!widgetSettingsPromise) {
+        widgetSettingsPromise = api.get<{ settings: ChoralaWidgetSettings }>('/chorala/widget-settings')
+            .then((response) => ({
+                ...response.data.settings,
+                ...getSatfluxWidgetOverrides(),
+            }))
+            .catch(() => getSatfluxWidgetOverrides());
+    }
+
+    return widgetSettingsPromise;
+}
 
 function getChoralaConfig(): { key: string; widgetUrl: string } | null {
     const key = document.querySelector('meta[name="satflux-chorala-key"]')?.getAttribute('content')?.trim();
@@ -54,13 +82,15 @@ function getAppVersion(): string | undefined {
     return undefined;
 }
 
-function queueChoralaInit(config: { key: string }): void {
+async function queueChoralaInit(config: { key: string }): Promise<void> {
     const appVersion = getAppVersion();
     const apiUrl = getChoralaApiUrl();
+    const settings = await fetchWidgetSettings();
 
     const initOptions = {
         projectKey: config.key,
         locale: i18n.global.locale.value,
+        settings,
         ...(appVersion ? { appVersion } : {}),
         ...(apiUrl ? { apiUrl } : {}),
     };
@@ -94,26 +124,52 @@ function loadChoralaScript(config: { key: string; widgetUrl: string }): Promise<
     }
 
     choralaScriptLoading = new Promise((resolve, reject) => {
-        queueChoralaInit(config);
+        void queueChoralaInit(config)
+            .then(() => {
+                const script = document.createElement('script');
+                script.async = true;
+                script.src = `${config.widgetUrl}/widget.js`;
+                script.setAttribute('data-chorala-key', config.key);
 
-        const script = document.createElement('script');
-        script.async = true;
-        script.src = `${config.widgetUrl}/widget.js`;
-        script.setAttribute('data-chorala-key', config.key);
+                script.onload = () => {
+                    choralaLoaded = true;
+                    resolve();
+                };
+                script.onerror = () => {
+                    choralaScriptLoading = null;
+                    reject(new Error('Failed to load Chorala widget script'));
+                };
 
-        script.onload = () => {
-            choralaLoaded = true;
-            resolve();
-        };
-        script.onerror = () => {
-            choralaScriptLoading = null;
-            reject(new Error('Failed to load Chorala widget script'));
-        };
-
-        document.head.appendChild(script);
+                document.head.appendChild(script);
+            })
+            .catch((error) => {
+                choralaScriptLoading = null;
+                reject(error instanceof Error ? error : new Error('Failed to initialize Chorala widget'));
+            });
     });
 
     return choralaScriptLoading;
+}
+
+export function isChoralaConfigured(): boolean {
+    return getChoralaConfig() !== null;
+}
+
+export async function openChoralaWidget(): Promise<void> {
+    if (!isChoralaConfigured()) {
+        return;
+    }
+
+    const config = getChoralaConfig();
+    if (!config) {
+        return;
+    }
+
+    await loadChoralaScript(config);
+
+    if (typeof window.Chorala === 'function') {
+        window.Chorala('open');
+    }
 }
 
 export async function loadChoralaWidget(): Promise<void> {
