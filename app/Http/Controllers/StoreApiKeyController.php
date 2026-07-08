@@ -117,10 +117,8 @@ class StoreApiKeyController extends Controller
     /**
      * Get a specific API key (metadata only, not the actual key).
      */
-    public function show(Request $request, Store $store, string $apiKeyId)
+    public function show(Request $request, Store $store, StoreApiKey $apiKey)
     {
-        $apiKey = StoreApiKey::where('store_id', $store->id)
-            ->findOrFail($apiKeyId);
 
         return response()->json([
             'data' => [
@@ -140,16 +138,15 @@ class StoreApiKeyController extends Controller
     /**
      * Delete (revoke) an API key.
      */
-    public function destroy(Request $request, Store $store, string $apiKeyId)
+    public function destroy(Request $request, Store $store, StoreApiKey $apiKey)
     {
-        $apiKey = StoreApiKey::where('store_id', $store->id)->findOrFail($apiKeyId);
 
         try {
             $this->storeApiKeyService->revokeApiKey($apiKey);
 
             Log::info('Store API key revoked via controller', [
                 'store_id' => $store->id,
-                'api_key_id' => $apiKeyId,
+                'api_key_id' => $apiKey->id,
                 'user_id' => auth()->id(),
             ]);
 
@@ -159,7 +156,7 @@ class StoreApiKeyController extends Controller
         } catch (\Exception $e) {
             Log::error('Failed to revoke store API key', [
                 'store_id' => $store->id,
-                'api_key_id' => $apiKeyId,
+                'api_key_id' => $apiKey->id,
                 'error' => $e->getMessage(),
                 'user_id' => auth()->id(),
             ]);
@@ -173,9 +170,8 @@ class StoreApiKeyController extends Controller
     /**
      * Regenerate an API key.
      */
-    public function regenerate(Request $request, Store $store, string $apiKeyId)
+    public function regenerate(Request $request, Store $store, StoreApiKey $apiKey)
     {
-        $apiKey = StoreApiKey::where('store_id', $store->id)->findOrFail($apiKeyId);
 
         $validated = $request->validate([
             'permissions' => ['sometimes', 'array'],
@@ -194,7 +190,7 @@ class StoreApiKeyController extends Controller
 
             Log::info('Store API key regenerated via controller', [
                 'store_id' => $store->id,
-                'old_api_key_id' => $apiKeyId,
+                'old_api_key_id' => $apiKey->id,
                 'new_api_key_id' => $newApiKey->id,
                 'user_id' => auth()->id(),
             ]);
@@ -216,7 +212,7 @@ class StoreApiKeyController extends Controller
         } catch (\Exception $e) {
             Log::error('Failed to regenerate store API key', [
                 'store_id' => $store->id,
-                'api_key_id' => $apiKeyId,
+                'api_key_id' => $apiKey->id,
                 'error' => $e->getMessage(),
                 'user_id' => auth()->id(),
             ]);

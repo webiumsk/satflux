@@ -43,46 +43,7 @@ class AppServiceProvider extends ServiceProvider
         // Authorization policies
         Gate::policy(Store::class, StorePolicy::class);
 
-        // Custom route model binding for Store (UUID)
-        Route::bind('store', function ($value) {
-            return \App\Models\Store::where('id', $value)->firstOrFail();
-        });
-
-        // Custom route model binding for App (UUID)
-        Route::bind('app', function ($value) {
-            return \App\Models\App::where('id', $value)->firstOrFail();
-        });
-
-        // Custom route model binding for WalletConnection (UUID)
-        Route::bind('connection', function ($value) {
-            return \App\Models\WalletConnection::where('id', $value)->firstOrFail();
-        });
-
-        Route::bind('company', function ($value) {
-            return \App\Models\Company::where('id', $value)->firstOrFail();
-        });
-
-        Route::bind('businessDocument', function ($value, $route) {
-            $company = $route->parameter('company');
-            if ($company instanceof \App\Models\Company) {
-                return \App\Models\BusinessDocument::where('id', $value)
-                    ->where('company_id', $company->id)
-                    ->firstOrFail();
-            }
-
-            return \App\Models\BusinessDocument::where('id', $value)->firstOrFail();
-        });
-
-        Route::bind('contact', function ($value, $route) {
-            $company = $route->parameter('company');
-            if ($company instanceof \App\Models\Company) {
-                return \App\Models\CompanyContact::where('id', $value)
-                    ->where('company_id', $company->id)
-                    ->firstOrFail();
-            }
-
-            return \App\Models\CompanyContact::where('id', $value)->firstOrFail();
-        });
+        $this->registerRouteBindings();
 
         // Define rate limiters
         RateLimiter::for('auth', function (Request $request) {
@@ -97,6 +58,69 @@ class AppServiceProvider extends ServiceProvider
             return $request->user()
                 ? Limit::perMinute(120)->by('user:'.$request->user()->id)
                 : Limit::perMinute(30)->by($request->ip());
+        });
+    }
+
+    /**
+     * Route-model bindings. Nested resources are scoped to their route parent
+     * (declarative IDOR protection) - a child belonging to a different
+     * company/store/expense 404s at binding time. In-controller ownership
+     * asserts stay as defense in depth.
+     *
+     * Deliberately unscoped: 'connection' (support routes only, role-gated),
+     * integration-inbox '{inbox}' (no direct FK - linked via
+     * store_integration_id, asserted in the inbox service) and '{export}'
+     * (no route parent; ExportController keeps the 403 contract).
+     */
+    protected function registerRouteBindings(): void
+    {
+        // Root bindings (UUID lookup; ownership enforced by middleware)
+        Route::bind('store', fn ($value) => \App\Models\Store::where('id', $value)->firstOrFail());
+        Route::bind('company', fn ($value) => \App\Models\Company::where('id', $value)->firstOrFail());
+        Route::bind('connection', fn ($value) => \App\Models\WalletConnection::where('id', $value)->firstOrFail());
+
+        // Children scoped to {company}
+        $this->bindScopedToParent('businessDocument', \App\Models\BusinessDocument::class, 'company', 'company_id');
+        $this->bindScopedToParent('contact', \App\Models\CompanyContact::class, 'company', 'company_id');
+        $this->bindScopedToParent('businessExpense', \App\Models\BusinessExpense::class, 'company', 'company_id');
+        $this->bindScopedToParent('bankTransaction', \App\Models\BankTransaction::class, 'company', 'company_id');
+        $this->bindScopedToParent('stockItem', \App\Models\CompanyStockItem::class, 'company', 'company_id');
+        $this->bindScopedToParent('warehouse', \App\Models\CompanyWarehouse::class, 'company', 'company_id');
+        $this->bindScopedToParent('recurringProfile', \App\Models\BusinessRecurringProfile::class, 'company', 'company_id');
+        $this->bindScopedToParent('sequence', \App\Models\CompanyDocumentSequence::class, 'company', 'company_id');
+        $this->bindScopedToParent('batch', \App\Models\BankImportBatch::class, 'company', 'company_id');
+
+        // Children scoped to {store}
+        $this->bindScopedToParent('app', \App\Models\App::class, 'store', 'store_id');
+        $this->bindScopedToParent('apiKey', \App\Models\StoreApiKey::class, 'store', 'store_id');
+        $this->bindScopedToParent('store_email_rule', \App\Models\StoreEmailRule::class, 'store', 'store_id');
+        $this->bindScopedToParent('pos_terminal', \App\Models\PosTerminal::class, 'store', 'store_id');
+
+        // Attachment scoped to {businessExpense}
+        $this->bindScopedToParent('businessExpenseAttachment', \App\Models\BusinessExpenseAttachment::class, 'businessExpense', 'business_expense_id');
+
+        // {export} stays unscoped on purpose: it has no route parent and the
+        // API contract is 403 for foreign exports (ExportController checks).
+    }
+
+    /**
+     * Bind a child route parameter scoped by the parent route parameter's id
+     * when the parent is present on the route (parents resolve first - they
+     * appear earlier in the URI).
+     *
+     * @param  class-string<\Illuminate\Database\Eloquent\Model>  $modelClass
+     */
+    protected function bindScopedToParent(string $param, string $modelClass, string $parentParam, string $foreignKey): void
+    {
+        Route::bind($param, function ($value, $route) use ($modelClass, $parentParam, $foreignKey) {
+            $query = $modelClass::query()->where('id', $value);
+
+            $parent = $route->parameter($parentParam);
+            if ($parent instanceof \Illuminate\Database\Eloquent\Model) {
+                $query->where($foreignKey, $parent->getKey());
+            }
+
+            return $query->firstOrFail();
         });
     }
 }
