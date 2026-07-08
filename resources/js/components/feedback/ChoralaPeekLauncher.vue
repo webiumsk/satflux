@@ -41,6 +41,12 @@ onMounted(() => {
 });
 
 async function handleOpen(): Promise<void> {
-    await openChoralaWidget();
+    try {
+        await openChoralaWidget();
+    } catch (error) {
+        if (import.meta.env.DEV) {
+            console.warn('[chorala] Failed to open widget from launcher.', error);
+        }
+    }
 }
 </script>

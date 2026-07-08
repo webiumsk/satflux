@@ -166,10 +166,6 @@ class ChoralaWidgetSettingsService
         }
 
         foreach ($projects as $project) {
-            if (! is_array($project)) {
-                continue;
-            }
-
             if (($project['publicKey'] ?? null) === $publicKey) {
                 return $project;
             }

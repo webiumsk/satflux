@@ -124,23 +124,28 @@ function loadChoralaScript(config: { key: string; widgetUrl: string }): Promise<
     }
 
     choralaScriptLoading = new Promise((resolve, reject) => {
-        void queueChoralaInit(config).then(() => {
-            const script = document.createElement('script');
-            script.async = true;
-            script.src = `${config.widgetUrl}/widget.js`;
-            script.setAttribute('data-chorala-key', config.key);
+        void queueChoralaInit(config)
+            .then(() => {
+                const script = document.createElement('script');
+                script.async = true;
+                script.src = `${config.widgetUrl}/widget.js`;
+                script.setAttribute('data-chorala-key', config.key);
 
-            script.onload = () => {
-                choralaLoaded = true;
-                resolve();
-            };
-            script.onerror = () => {
+                script.onload = () => {
+                    choralaLoaded = true;
+                    resolve();
+                };
+                script.onerror = () => {
+                    choralaScriptLoading = null;
+                    reject(new Error('Failed to load Chorala widget script'));
+                };
+
+                document.head.appendChild(script);
+            })
+            .catch((error) => {
                 choralaScriptLoading = null;
-                reject(new Error('Failed to load Chorala widget script'));
-            };
-
-            document.head.appendChild(script);
-        });
+                reject(error instanceof Error ? error : new Error('Failed to initialize Chorala widget'));
+            });
     });
 
     return choralaScriptLoading;
@@ -155,7 +160,12 @@ export async function openChoralaWidget(): Promise<void> {
         return;
     }
 
-    await loadChoralaWidget();
+    const config = getChoralaConfig();
+    if (!config) {
+        return;
+    }
+
+    await loadChoralaScript(config);
 
     if (typeof window.Chorala === 'function') {
         window.Chorala('open');
