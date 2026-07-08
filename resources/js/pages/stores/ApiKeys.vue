@@ -353,7 +353,7 @@
                       class="text-lg leading-6 font-bold text-white"
                       id="modal-title"
                     >
-                      API Key Created Successfully
+                      {{ apiKeyModalRegenerated ? t('stores.api_key_regenerated_title') : t('stores.api_key_created') }}
                     </h3>
                   </div>
 
@@ -563,6 +563,7 @@ const limit = ref<{
 } | null>(null);
 const showModal = ref(false);
 const showApiKeyModal = ref(false);
+const apiKeyModalRegenerated = ref(false);
 const showUpgradeModal = ref(false);
 const saving = ref(false);
 const createdApiKey = ref<any>(null);
@@ -669,6 +670,7 @@ async function handleSubmit() {
 
     createdApiKey.value = response.data.data;
     showModal.value = false;
+    apiKeyModalRegenerated.value = false;
     showApiKeyModal.value = true;
     showApiKey.value = false;
     flashStore.success(t("stores.api_key_created"));
@@ -718,7 +720,12 @@ async function copyToClipboard(text: string) {
   }
 }
 
-function handleRegenerate() {
+function handleRegenerate(revealed: { api_key: string; store_id?: string | null }) {
+  // Reuse the create-flow modal: it lives here, so it survives the list refresh.
+  createdApiKey.value = revealed;
+  apiKeyModalRegenerated.value = true;
+  showApiKeyModal.value = true;
+  showApiKey.value = false;
   fetchApiKeys();
 }
 
