@@ -179,7 +179,7 @@ import { evoluCompanyToApi, type EvoluCompanyRow } from '../../evolu/companyMap'
 import { isInvoicingLocalFirst } from '../../evolu/flags';
 import { updateLocalEmailSettings, resolveLocalEmailSettingsForBridge } from '../../evolu/companySettingsCrud';
 import { resolveEphemeralBridgeCompanyId, testEphemeralEmailSmtp } from '../../evolu/ephemeralBridge';
-import api from '../../services/api';
+import { invoicingApi } from "../../services/api";
 import { useStoresStore } from '../../store/stores';
 import { useInvoicingSaveFeedback } from '../../composables/useInvoicingSaveFeedback';
 import CompanyAppTabsNav from './CompanyAppTabsNav.vue';
@@ -300,11 +300,13 @@ async function saveAll() {
       return;
     }
 
-    const res = await api.patch(`/invoicing/companies/${props.companyId}/email-settings`, payload);
-    emit('updated', res.data.data);
+    const updated = await invoicingApi.companies.updateEmailSettings<{
+      email_settings?: { smtp?: { password_set?: boolean } };
+    }>(props.companyId, payload);
+    emit('updated', updated);
     form.smtp.password = '';
-    if (res.data.data.email_settings?.smtp) {
-      form.smtp.password_set = res.data.data.email_settings.smtp.password_set;
+    if (updated.email_settings?.smtp) {
+      form.smtp.password_set = updated.email_settings.smtp.password_set;
     }
     notifySaved();
   } catch (e: any) {
@@ -348,13 +350,11 @@ async function testSmtp() {
     }
 
     if (form.smtp.password || form.delivery_method === 'smtp') {
-      await api.patch(`/invoicing/companies/${props.companyId}/email-settings`, buildPayload());
+      await invoicingApi.companies.updateEmailSettings(props.companyId, buildPayload());
     }
-    const res = await api.post(`/invoicing/companies/${props.companyId}/email-settings/test-smtp`, {
-      to,
-    });
+    const res = await invoicingApi.companies.testSmtp(props.companyId, { to });
     smtpTestOk.value = true;
-    smtpTestMessage.value = res.data.message ?? t('invoicing.email_smtp_test_ok');
+    smtpTestMessage.value = res.message ?? t('invoicing.email_smtp_test_ok');
   } catch (e: any) {
     smtpTestOk.value = false;
     smtpTestMessage.value = e?.message ?? e?.response?.data?.message ?? t('common.error_generic');

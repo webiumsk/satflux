@@ -1,5 +1,5 @@
 import { onMounted, ref, type ComputedRef, type Ref } from "vue";
-import api from "@/services/api";
+import { invoicingApi } from "@/services/api";
 import { isInvoicingLocalFirst } from "@/evolu/flags";
 import { useLocalInvoicingCompanies } from "./useInvoicingCompaniesLocal";
 
@@ -33,8 +33,7 @@ function useServerInvoicingCompanies(): UseInvoicingCompaniesResult {
         loading.value = true;
         forbidden.value = false;
         try {
-            const res = await api.get("/invoicing/companies");
-            companies.value = res.data.data ?? [];
+            companies.value = await invoicingApi.companies.list<InvoicingCompanyListItem>();
         } catch (e: unknown) {
             const status = (e as { response?: { status?: number } })?.response?.status;
             if (status === 403) {

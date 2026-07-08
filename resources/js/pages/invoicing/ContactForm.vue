@@ -83,7 +83,7 @@ import {
   updateLocalContactFromForm,
 } from '../../evolu/contactCrud';
 import type { ContactId } from '../../evolu/schema';
-import api from '../../services/api';
+import { invoicingApi } from '../../services/api';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -158,10 +158,10 @@ async function save() {
 
     const payload = formToPayload(form.value, showDelivery.value);
     if (isNew.value) {
-      const res = await api.post(`/invoicing/companies/${companyId.value}/contacts`, payload);
-      await router.push(contactShowTo(res.data.data.id));
+      const created = await invoicingApi.contacts.create<{ id: string }>(companyId.value, payload);
+      await router.push(contactShowTo(created.id));
     } else {
-      await api.patch(`/invoicing/companies/${companyId.value}/contacts/${contactId.value}`, payload);
+      await invoicingApi.contacts.update(companyId.value, contactId.value!, payload);
       await router.push(contactShowTo(contactId.value!));
     }
   } catch (e: any) {

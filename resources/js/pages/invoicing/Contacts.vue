@@ -398,7 +398,7 @@ import {
   useContactRoutes,
   type CompanyContactRow,
 } from "../../composables/useCompanyContact";
-import api from "../../services/api";
+import { invoicingApi } from "../../services/api";
 import {
   bulkDeleteLocalContacts,
   buildContactsCsvBlob,
@@ -645,14 +645,12 @@ async function runBulk(action: "export_xlsx" | "delete") {
   loading.value = true;
   try {
     const isFile = action === "export_xlsx";
-    const res = await api.post(
-      `/invoicing/companies/${companyId.value}/contacts/bulk`,
-      bulkPayload(action),
-      isFile ? { responseType: "blob" } : {},
-    );
+    const res = isFile
+      ? await invoicingApi.contacts.bulkExport(companyId.value, bulkPayload(action))
+      : await invoicingApi.contacts.bulk(companyId.value, bulkPayload(action));
 
     if (isFile) {
-      const url = URL.createObjectURL(res.data as Blob);
+      const url = URL.createObjectURL(res as Blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = "contacts.xlsx";
