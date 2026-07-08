@@ -579,8 +579,8 @@ export const invoicingApi = {
         },
     },
     stockItems: {
-        async list<T = unknown>(companyId: string, params: Record<string, unknown> = {}): Promise<{ data: T[]; meta: unknown }> {
-            const { data } = await api.get<{ data?: T[]; meta?: unknown }>(`/invoicing/companies/${companyId}/stock-items`, { params });
+        async list<T = unknown, M = unknown>(companyId: string, params: Record<string, unknown> = {}): Promise<{ data: T[]; meta: M | null }> {
+            const { data } = await api.get<{ data?: T[]; meta?: M }>(`/invoicing/companies/${companyId}/stock-items`, { params });
             return { data: data.data ?? [], meta: data.meta ?? null };
         },
         async get<T = unknown>(companyId: string, stockItemId: string): Promise<T> {

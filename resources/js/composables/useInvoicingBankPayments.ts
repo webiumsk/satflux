@@ -441,7 +441,10 @@ function useLocalInvoicingBankPayments(
         if (!bridgeId) {
             return { imported: 0, auto_matched: 0, skipped_duplicates: 0 };
         }
-        const syncResult = await invoicingApi.wise.sync<{ rows?: WiseBankRowInput[] }>(bridgeId, {
+        const syncResult = await invoicingApi.wise.sync<{
+            rows?: WiseBankRowInput[];
+            skipped_duplicates?: number;
+        }>(bridgeId, {
             local_first: true,
         });
         const rows = syncResult?.rows || [];
@@ -461,7 +464,7 @@ function useLocalInvoicingBankPayments(
         return {
             imported: rows.length,
             auto_matched: autoMatched,
-            skipped_duplicates: data.data?.skipped_duplicates ?? 0,
+            skipped_duplicates: syncResult?.skipped_duplicates ?? 0,
         };
     }
 

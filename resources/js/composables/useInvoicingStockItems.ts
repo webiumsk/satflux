@@ -57,12 +57,12 @@ function useServerStockItems(companyId: Ref<string>): UseInvoicingStockItemsResu
         }
         loading.value = true;
         try {
-            const res = await invoicingApi.stockItems.list(companyId.value, {
+            const res = await invoicingApi.stockItems.list<StockItemRow, StockSummaryMeta>(companyId.value, {
                 q: filters.q || undefined,
                 warehouse_id: filters.warehouse_id || undefined,
             });
             items.value = res.data;
-            meta.value = (res.meta as typeof meta.value) ?? null;
+            meta.value = res.meta;
         } finally {
             loading.value = false;
         }
