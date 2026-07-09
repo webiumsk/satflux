@@ -35,6 +35,7 @@ yarn-error.log
 !/storage/logs/.gitkeep
 
 # Runtime-only app storage (Docker often uses www-data; ESLint skips via --ignore-path)
+/storage/app/temp
 /storage/app/private
 /storage/app/compliance/*.mmdb
 
