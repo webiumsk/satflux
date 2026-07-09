@@ -258,12 +258,15 @@
           <button
             type="button"
             class="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700 font-medium text-sm transition-colors"
+            :aria-expanded="showEnterpriseContact"
+            aria-controls="landing-enterprise-contact"
             @click="showEnterpriseContact = true"
           >
             {{ t("landing.pricing_need_more_cta") }}
           </button>
           <div
             v-if="showEnterpriseContact"
+            id="landing-enterprise-contact"
             class="mt-6 rounded-xl border border-gray-600 bg-gray-900/80 p-5 text-left"
           >
             <h4 class="text-base font-semibold text-white mb-3">
@@ -281,6 +284,7 @@
       <!-- Error message -->
       <div v-if="subscribeError" class="mt-8 max-w-md mx-auto">
         <div
+          role="alert"
           class="bg-red-900/50 border border-red-500/50 rounded-lg p-4 text-center"
         >
           <p class="text-sm text-red-200">{{ subscribeError }}</p>
