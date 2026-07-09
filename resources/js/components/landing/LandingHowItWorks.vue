@@ -481,7 +481,10 @@
                 <p class="hidden text-sm text-emerald-400/85 md:block">
                   {{ t("landing.how_it_works_demo_real") }}
                 </p>
-                <div class="mt-4 flex justify-center md:hidden">
+                <div
+                  v-if="posDemoUrl"
+                  class="mt-4 flex justify-center md:hidden"
+                >
                   <button
                     type="button"
                     class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-6 py-3 text-base font-bold text-white shadow-lg transition-all hover:bg-indigo-500"
