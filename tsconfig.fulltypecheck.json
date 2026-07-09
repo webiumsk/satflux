@@ -1,0 +1,9 @@
+{
+    "extends": "./tsconfig.typecheck.json",
+    "include": [
+        "resources/js/**/*.ts",
+        "resources/js/**/*.vue",
+        "resources/js/vite-env.d.ts"
+    ],
+    "exclude": []
+}

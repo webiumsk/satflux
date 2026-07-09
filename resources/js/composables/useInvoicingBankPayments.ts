@@ -124,7 +124,7 @@ function useServerInvoicingBankPayments(
         try {
             const params: Record<string, string | number> = { per_page: 50 };
             if (matchFilter !== "all") params.match_status = matchFilter;
-            const res = await invoicingApi.bankTransactions.list<ServerBankTransactionRow>(cid, params);
+            const res = await invoicingApi.bankTransactions.list<BankTxApiRow>(cid, params);
             transactions.value = res.data;
             summary.value = (res.meta?.summary as typeof summary.value) || emptySummary(defaultCurrency.value);
         } finally {
