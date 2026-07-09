@@ -414,7 +414,7 @@ async function loadItem() {
     movements.value = data.movements ?? [];
     return;
   }
-  const data = await invoicingApi.stockItems.get<Record<string, any>>(companyId.value, itemId.value!);
+  const data = await invoicingApi.stockItems.get<Parameters<typeof stockItemToForm>[0] & { neighbor_ids?: string[]; movements?: typeof movements.value }>(companyId.value, itemId.value!);
   Object.assign(
     form,
     stockItemToForm(data, saleCurrency.value, warehouses.value),

@@ -7,6 +7,8 @@ export interface Store {
     id: string;
     name: string;
     archived?: boolean;
+    default_currency?: string;
+    timezone?: string;
     wallet_type: 'blink' | 'aqua_boltz' | 'cashu' | null;
     created_at: string;
     updated_at: string;

@@ -204,7 +204,11 @@ function emitUpdatedFromEvoluRow() {
     evoluCompanyToApi(row as EvoluCompanyRow, (storeId) => {
       const store = storesStore.stores.find((s) => s.id === storeId);
       return store
-        ? { id: store.id, name: store.name, default_currency: store.default_currency }
+        ? {
+            id: store.id,
+            name: store.name,
+            ...(store.default_currency !== undefined ? { default_currency: store.default_currency } : {}),
+          }
         : undefined;
     }),
   );
@@ -270,7 +274,11 @@ async function save() {
           evoluCompanyToApi(row as EvoluCompanyRow, (storeId) => {
             const store = storesStore.stores.find((s) => s.id === storeId);
             return store
-              ? { id: store.id, name: store.name, default_currency: store.default_currency }
+              ? {
+                  id: store.id,
+                  name: store.name,
+                  ...(store.default_currency !== undefined ? { default_currency: store.default_currency } : {}),
+                }
               : undefined;
           }),
         );
@@ -279,7 +287,7 @@ async function save() {
       return;
     }
 
-    const updated = await invoicingApi.companies.updateAppSettings(props.companyId, payload);
+    const updated = await invoicingApi.companies.updateAppSettings<Record<string, unknown>>(props.companyId, payload);
     emit('updated', updated);
     form.efaktura_sapi_client_secret = '';
     secretSet.value = efakturaSecretIsSet(updated);

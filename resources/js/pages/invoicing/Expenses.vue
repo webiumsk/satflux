@@ -426,7 +426,7 @@ async function runBulk(action: string) {
         export_xlsx: 'expenses.xlsx',
         attachments_zip: 'expense-attachments.zip',
       };
-      const blob = res.data as Blob;
+      const blob = res as Blob;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -434,7 +434,7 @@ async function runBulk(action: string) {
       a.click();
       URL.revokeObjectURL(url);
     } else {
-      const data = res.data.data;
+      const data = res as { processed?: number; skipped?: number };
       success.value = t('invoicing.bulk_result', {
         processed: data.processed ?? 0,
         skipped: data.skipped ?? 0,
@@ -554,12 +554,12 @@ async function load() {
       return;
     }
 
-    const listRows = await invoicingApi.expenses.list<ExpenseListRow & { attachment_path?: string | null; attachments_count?: number }>(companyId.value, {
+    const listRes = await invoicingApi.expenses.listPaged<ExpenseListRow & { attachment_path?: string | null; attachments_count?: number }>(companyId.value, {
       ...listFilterParams(),
       page: page.value,
     });
     const today = new Date().toISOString().slice(0, 10);
-    const rows = listRows;
+    const rows = listRes.data ?? [];
     expenses.value = rows.map((e: ExpenseListRow & { attachment_path?: string | null; attachments_count?: number }) => ({
       ...e,
       is_overdue:
@@ -569,9 +569,9 @@ async function load() {
         && expenseOverdueDays(e.due_date) !== null,
       has_attachment: (e.attachments_count ?? 0) > 0 || Boolean(e.attachment_path),
     }));
-    lastPage.value = listRes.data.last_page ?? 1;
-    page.value = listRes.data.current_page ?? 1;
-    totalCount.value = listRes.data.total ?? expenses.value.length;
+    lastPage.value = listRes.last_page ?? 1;
+    page.value = listRes.current_page ?? 1;
+    totalCount.value = listRes.total ?? expenses.value.length;
   } finally {
     loading.value = false;
   }

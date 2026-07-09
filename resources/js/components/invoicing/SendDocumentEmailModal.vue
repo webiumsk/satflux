@@ -170,7 +170,7 @@ async function send() {
       subject: subject.value,
       body: body.value,
     });
-    emit('sent', { email_sent_at: sent?.email_sent_at });
+    emit('sent', sent?.email_sent_at ? { email_sent_at: sent.email_sent_at } : {});
     close();
   } catch (e: unknown) {
     error.value = extractError(e);

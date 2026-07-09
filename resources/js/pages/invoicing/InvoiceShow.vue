@@ -281,11 +281,12 @@ import { useEfakturaFeature } from '../../composables/useEfakturaFeature';
 import { isCompanyEfakturaEligible } from '../../composables/useCompanyEfakturaSettings';
 import { useInvoiceDocument } from '../../composables/useInvoiceDocument';
 import { invoicingDocumentRoutesForType } from '../../composables/useInvoicingDocumentRoutes';
-import api, {
+import {
   businessDocumentIsdocPath,
   businessDocumentPdfPath,
   businessDocumentUblPath,
   getWebBlob,
+  invoicingApi,
 } from '../../services/api';
 import {
   downloadEphemeralIsdoc,

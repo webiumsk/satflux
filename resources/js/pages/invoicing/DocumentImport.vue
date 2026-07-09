@@ -482,7 +482,7 @@ function localCompanyApi() {
       ? {
           id: store.id,
           name: store.name,
-          default_currency: store.default_currency,
+          ...(store.default_currency !== undefined ? { default_currency: store.default_currency } : {}),
         }
       : undefined;
   });
@@ -579,7 +579,7 @@ async function loadPreview() {
     const data = await invoicingApi.documents.import.preview<{
       headers?: string[];
       row_count?: number;
-      suggested_mapping?: Record<string, string | null>;
+      suggested_mapping?: Record<string, number | null>;
     }>(companyId.value, buildFormData(false));
     headers.value = data.headers ?? [];
     rowCount.value = data.row_count ?? 0;
@@ -681,7 +681,7 @@ async function runImport() {
       return;
     }
 
-    const result = await invoicingApi.documents.import.run<Record<string, number | undefined>>(companyId.value, buildFormData(true));
+    const result = await invoicingApi.documents.import.run<Partial<ImportResult>>(companyId.value, buildFormData(true));
     importResult.value = {
       imported: result.imported ?? 0,
       skipped: result.skipped ?? 0,

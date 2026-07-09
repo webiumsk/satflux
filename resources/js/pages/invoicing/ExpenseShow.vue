@@ -339,7 +339,7 @@ import {
 } from "../../evolu/expenseAttachmentCrud";
 import { isInvoicingLocalFirst } from "../../evolu/flags";
 import type { ExpenseAttachmentId, ExpenseId } from "../../evolu/schema";
-import api, { getWebBlob } from "../../services/api";
+import { getWebBlob, invoicingApi } from "../../services/api";
 import { useInvoicingSaveFeedback } from "../../composables/useInvoicingSaveFeedback";
 
 type ExpenseAttachment = {

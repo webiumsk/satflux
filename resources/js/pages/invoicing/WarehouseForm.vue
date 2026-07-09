@@ -151,8 +151,8 @@ async function loadContacts() {
       .map((c) => ({ id: c.id, name: c.name }));
     return;
   }
-  const contactRows = await invoicingApi.contacts.list<{ id: string; name: string }>(companyId.value);
-  contacts.value = contactRows.data.map((c) => ({
+  const serverContacts = await invoicingApi.contacts.list<{ id: string; name: string }>(companyId.value);
+  contacts.value = serverContacts.data.map((c) => ({
     id: c.id,
     name: c.name,
   }));
@@ -171,7 +171,7 @@ async function loadWarehouse() {
     if (row) Object.assign(form, warehouseToForm(row));
     return;
   }
-  Object.assign(form, warehouseToForm(await invoicingApi.warehouses.get(companyId.value, warehouseId.value!)));
+  Object.assign(form, warehouseToForm(await invoicingApi.warehouses.get<Parameters<typeof warehouseToForm>[0]>(companyId.value, warehouseId.value!)));
 }
 
 async function save() {

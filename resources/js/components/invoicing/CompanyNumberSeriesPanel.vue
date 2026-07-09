@@ -341,7 +341,7 @@ async function saveModalServer() {
   const payload = { ...form, format: form.format.toUpperCase() };
   try {
     if (editingId.value) {
-      await invoicingApi.numberSeries.update(props.companyId, editingId.value, payload);
+      await invoicingApi.numberSeries.update(props.companyId, String(editingId.value), payload);
     } else {
       await invoicingApi.numberSeries.create(props.companyId, payload);
     }
@@ -378,7 +378,7 @@ async function removeLocal(row: NumberSeriesRow) {
 
 async function removeServer(row: NumberSeriesRow) {
   try {
-    await invoicingApi.numberSeries.delete(props.companyId, row.id);
+    await invoicingApi.numberSeries.delete(props.companyId, String(row.id));
     await loadServer();
     notifySaved('invoicing.series_saved');
   } catch (e: any) {

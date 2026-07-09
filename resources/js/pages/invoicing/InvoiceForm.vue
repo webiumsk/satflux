@@ -462,7 +462,7 @@ import StockWarehouseSelect from '../../components/invoicing/StockWarehouseSelec
 import type { InvoiceLineForm } from '../../components/invoicing/InvoiceLivePreview.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
-import api, { businessDocumentPdfPath, getWebBlob } from '../../services/api';
+import { businessDocumentPdfPath, getWebBlob, invoicingApi } from '../../services/api';
 import {
   downloadEphemeralPdf,
   resolveEphemeralBridgeCompanyId,

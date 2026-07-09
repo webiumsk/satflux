@@ -1196,7 +1196,7 @@ import type { EvoluNumberSeriesRow } from "../../evolu/numberSeriesMap";
 import CreditNotePickInvoiceModal from "../../components/invoicing/CreditNotePickInvoiceModal.vue";
 import CreditNoteStartModal from "../../components/invoicing/CreditNoteStartModal.vue";
 import SendDocumentEmailModal from "../../components/invoicing/SendDocumentEmailModal.vue";
-import api, { businessDocumentPdfPath, getWebBlob } from "../../services/api";
+import { businessDocumentPdfPath, getWebBlob, invoicingApi } from "../../services/api";
 import {
   buildBulkEphemeralRequest,
   buildLocalDocumentEphemeralSnapshot,
@@ -2138,7 +2138,7 @@ async function runBulk(action: string) {
       a.click();
       URL.revokeObjectURL(url);
     } else {
-      const data = res.data.data;
+      const data = res as { processed?: number; skipped?: number };
       success.value = t("invoicing.bulk_result", {
         processed: data.processed ?? 0,
         skipped: data.skipped ?? 0,
@@ -2243,13 +2243,13 @@ async function load() {
 
     const [summary, docs] = await Promise.all([
       invoicingApi.companies.summary(companyId.value),
-      invoicingApi.documents.list<DocumentListRow>(companyId.value, listQueryParams()),
+      invoicingApi.documents.listPaged(companyId.value, listQueryParams()),
     ]);
     companyName.value = summary.trade_name || summary.legal_name || "";
-    documents.value = docs;
-    totalCount.value = docsRes.data.total ?? documents.value.length;
-    currentPage.value = docsRes.data.current_page ?? 1;
-    lastPage.value = docsRes.data.last_page ?? 1;
+    documents.value = docs.data ?? [];
+    totalCount.value = docs.total ?? documents.value.length;
+    currentPage.value = docs.current_page ?? 1;
+    lastPage.value = docs.last_page ?? 1;
   } catch (e: unknown) {
     const err = e as { response?: { data?: { message?: string } }; message?: string };
     error.value = err?.response?.data?.message || err?.message || t("common.error");

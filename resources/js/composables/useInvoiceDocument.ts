@@ -293,7 +293,12 @@ export function useInvoiceDocument() {
       return;
     }
     try {
-      const res = await invoicingApi.usSalesTax.preview<Record<string, unknown>>(companyId.value, {
+      const res = await invoicingApi.usSalesTax.preview<{
+        subtotal: string;
+        tax_total: string;
+        total: string;
+        tax_breakdown?: { label?: string | null; tax_amount: string }[];
+      }>(companyId.value, {
         company_contact_id: form.company_contact_id || null,
         currency: form.currency,
         discount_percent: form.discount_percent,
@@ -307,7 +312,7 @@ export function useInvoiceDocument() {
           tax_rate: l.tax_rate ?? defaultVat.value,
         })),
       });
-      const data = res.data.data;
+      const data = res;
       serverTotals.value = {
         subtotal: parseFloat(data.subtotal),
         tax: parseFloat(data.tax_total),

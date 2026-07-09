@@ -322,7 +322,7 @@ async function loadPreview() {
     const data = await invoicingApi.stockItems.import.preview<{
       headers?: string[];
       row_count?: number;
-      suggested_mapping?: Record<string, string | null>;
+      suggested_mapping?: Record<string, number | null>;
     }>(props.companyId, buildFormData(false));
     headers.value = data.headers ?? [];
     rowCount.value = data.row_count ?? 0;

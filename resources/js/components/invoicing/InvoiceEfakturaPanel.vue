@@ -261,7 +261,7 @@ async function loadCompliance() {
       return;
     }
 
-    rows.value = await invoicingApi.documents.efaktura.compliance(props.companyId, props.documentId);
+    rows.value = await invoicingApi.documents.efaktura.compliance<ComplianceRow>(props.companyId, props.documentId);
   } catch {
     rows.value = [];
   } finally {
