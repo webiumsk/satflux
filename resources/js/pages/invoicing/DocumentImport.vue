@@ -380,7 +380,7 @@ import { isInvoicingLocalFirst } from "../../evolu/flags";
 import type { CompanyId } from "../../evolu/schema";
 import { useInvoicingLayout } from "../../composables/useInvoicingLayout";
 import { useStoresStore } from "../../store/stores";
-import api from "../../services/api";
+import { invoicingApi } from "../../services/api";
 
 const { t } = useI18n();
 const localFirst = isInvoicingLocalFirst();
@@ -576,13 +576,14 @@ async function loadPreview() {
       return;
     }
 
-    const { data } = await api.post(
-      `/invoicing/companies/${companyId.value}/documents/import/preview`,
-      buildFormData(false),
-    );
-    headers.value = data.data.headers ?? [];
-    rowCount.value = data.data.row_count ?? 0;
-    const suggested = data.data.suggested_mapping ?? {};
+    const data = await invoicingApi.documents.import.preview<{
+      headers?: string[];
+      row_count?: number;
+      suggested_mapping?: Record<string, string | null>;
+    }>(companyId.value, buildFormData(false));
+    headers.value = data.headers ?? [];
+    rowCount.value = data.row_count ?? 0;
+    const suggested = data.suggested_mapping ?? {};
     for (const field of DOCUMENT_IMPORT_FIELD_KEYS) {
       mapping[field] = suggested[field] ?? null;
     }
@@ -624,12 +625,12 @@ async function goToConfirm() {
       return;
     }
 
-    const { data } = await api.post(
-      `/invoicing/companies/${companyId.value}/documents/import/preview`,
-      buildFormData(true),
-    );
-    previewRows.value = data.data.preview ?? [];
-    rowCount.value = data.data.row_count ?? 0;
+    const data = await invoicingApi.documents.import.preview<{
+      preview?: typeof previewRows.value;
+      row_count?: number;
+    }>(companyId.value, buildFormData(true));
+    previewRows.value = data.preview ?? [];
+    rowCount.value = data.row_count ?? 0;
     step.value = 3;
   } catch (e: any) {
     error.value = e?.response?.data?.message || t("errors.generic");
@@ -680,11 +681,7 @@ async function runImport() {
       return;
     }
 
-    const { data } = await api.post(
-      `/invoicing/companies/${companyId.value}/documents/import`,
-      buildFormData(true),
-    );
-    const result = data.data;
+    const result = await invoicingApi.documents.import.run<Record<string, number | undefined>>(companyId.value, buildFormData(true));
     importResult.value = {
       imported: result.imported ?? 0,
       skipped: result.skipped ?? 0,
@@ -710,12 +707,7 @@ async function downloadExample() {
   }
 
   try {
-    const { data } = await api.get(
-      `/invoicing/companies/${companyId.value}/documents/import/example`,
-      {
-        responseType: "blob",
-      },
-    );
+    const data = await invoicingApi.documents.import.example(companyId.value);
     const url = URL.createObjectURL(data);
     const a = document.createElement("a");
     a.href = url;

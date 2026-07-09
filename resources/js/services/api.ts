@@ -748,6 +748,13 @@ export const invoicingApi = {
             return data.data;
         },
     },
+    integrationInbox: {
+        async deeplink<T = unknown>(params: URLSearchParams | Record<string, string>): Promise<T> {
+            const qs = params instanceof URLSearchParams ? params.toString() : new URLSearchParams(params).toString();
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/integration-inbox/deeplink?${qs}`);
+            return data.data;
+        },
+    },
     registry: {
         async coverage<T = unknown>(): Promise<T | null> {
             const { data } = await api.get<ApiEnvelope<T | null>>('/invoicing/company-registry/coverage');

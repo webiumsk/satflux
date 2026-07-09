@@ -208,7 +208,7 @@ import InvoicingAppHeader from "../../components/invoicing/InvoicingAppHeader.vu
 import InvoicingPageShell from "../../components/invoicing/InvoicingPageShell.vue";
 import InvoicingMobileCard from "../../components/invoicing/InvoicingMobileCard.vue";
 import InvoicingIcons from "../../components/invoicing/icons/InvoicingIcons.vue";
-import api from "../../services/api";
+import { invoicingApi } from "../../services/api";
 import {
   INVOICING_CONTAINER_CLASS,
   useInvoicingLayout,
@@ -279,14 +279,11 @@ async function load() {
       await invoicingRecurring.refresh(activeFilter.value);
       return;
     }
-    const [companyRes] = await Promise.all([
-      api.get(`/invoicing/companies/${companyId.value}/summary`),
+    const [summary] = await Promise.all([
+      invoicingApi.companies.summary(companyId.value),
       invoicingRecurring.refresh(activeFilter.value),
     ]);
-    companyName.value =
-      companyRes.data.data?.trade_name ||
-      companyRes.data.data?.legal_name ||
-      "";
+    companyName.value = summary.trade_name || summary.legal_name || "";
   } catch (e: any) {
     error.value = e?.response?.data?.message || t("common.error");
   }

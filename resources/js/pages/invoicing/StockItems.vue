@@ -338,7 +338,7 @@ import {
 } from "../../composables/useCompanyStockItem";
 import { useWarehouseRoutes } from "../../composables/useCompanyWarehouse";
 import { useInvoicingLayout } from "../../composables/useInvoicingLayout";
-import api from "../../services/api";
+import { invoicingApi } from "../../services/api";
 
 const { t } = useI18n();
 const localFirst = isInvoicingLocalFirst();
@@ -485,9 +485,7 @@ async function bulkDelete() {
   } else {
     for (const id of ids) {
       try {
-        await api.delete(
-          `/invoicing/companies/${companyId.value}/stock-items/${id}`,
-        );
+        await invoicingApi.stockItems.delete(companyId.value, id);
         deleted++;
       } catch {
         /* skip items that cannot be deleted */

@@ -12,7 +12,7 @@ import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import InvoicingPageShell from '@/components/invoicing/InvoicingPageShell.vue';
-import api from '@/services/api';
+import { invoicingApi } from '@/services/api';
 import { ensureEvoluBoundToAccountSeed } from '@/evolu/bootstrap';
 import { isInvoicingLocalFirst } from '@/evolu/flags';
 
@@ -67,10 +67,7 @@ onMounted(async () => {
       params.set('company', companyRef);
     }
 
-    const { data: res } = await api.get<{ data: DeepLinkPayload }>(
-      `/invoicing/integration-inbox/deeplink?${params.toString()}`,
-    );
-    const payload = res.data;
+    const payload = await invoicingApi.integrationInbox.deeplink<DeepLinkPayload>(params);
     const targetPath = await resolveTargetPath(payload);
 
     await router.replace({

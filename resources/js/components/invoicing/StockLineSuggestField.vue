@@ -58,7 +58,7 @@ import { useI18n } from 'vue-i18n';
 import { DEFAULT_INVOICE_LINE_UNIT } from '../../composables/useInvoiceLineUnits';
 import { useInvoicingStockItems } from '../../composables/useInvoicingStockItems';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
-import api from '../../services/api';
+import { invoicingApi } from '../../services/api';
 
 export type StockSuggestItem = {
   id: string;
@@ -214,14 +214,11 @@ async function fetchSuggestions(q: string) {
       }
       return;
     }
-    const { data } = await api.get(`/invoicing/companies/${props.companyId}/stock-items/search`, {
-      params: {
-        q,
-        limit: 10,
-        warehouse_id: props.warehouseId || undefined,
-      },
+    suggestions.value = await invoicingApi.stockItems.search(props.companyId, {
+      q,
+      limit: 10,
+      warehouse_id: props.warehouseId || undefined,
     });
-    suggestions.value = data.data ?? [];
     showSuggestions.value = suggestions.value.length > 0;
     if (showSuggestions.value) {
       await nextTick();

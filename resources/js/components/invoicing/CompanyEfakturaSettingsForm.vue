@@ -135,7 +135,7 @@ import { allCompaniesDetailQuery, useInvoicingEvolu } from '../../evolu/client';
 import { evoluCompanyToApi, type EvoluCompanyRow } from '../../evolu/companyMap';
 import { updateLocalEfakturaSettings } from '../../evolu/companySettingsCrud';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
-import api from '../../services/api';
+import { invoicingApi } from '../../services/api';
 import { useStoresStore } from '../../store/stores';
 import { useInvoicingSaveFeedback } from '../../composables/useInvoicingSaveFeedback';
 import {
@@ -221,8 +221,9 @@ async function pollInboundNow() {
   pollMessage.value = '';
   pollError.value = false;
   try {
-    const res = await api.post(`/invoicing/companies/${props.companyId}/efaktura/poll-inbound`);
-    const data = res.data?.data ?? {};
+    const data = await invoicingApi.efaktura.pollInbound<{
+      imported?: unknown; acknowledged?: unknown; skipped?: unknown; failed?: unknown; polled_at?: unknown;
+    }>(props.companyId);
     const stats: EfakturaInboundPollStats = {
       imported: Number(data.imported ?? 0),
       acknowledged: Number(data.acknowledged ?? 0),
@@ -278,10 +279,10 @@ async function save() {
       return;
     }
 
-    const res = await api.patch(`/invoicing/companies/${props.companyId}/app-settings`, payload);
-    emit('updated', res.data.data);
+    const updated = await invoicingApi.companies.updateAppSettings(props.companyId, payload);
+    emit('updated', updated);
     form.efaktura_sapi_client_secret = '';
-    secretSet.value = efakturaSecretIsSet(res.data.data);
+    secretSet.value = efakturaSecretIsSet(updated);
     notifySaved();
   } catch (e: any) {
     saveError.value = e?.response?.data?.message ?? t('common.error_generic');

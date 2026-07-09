@@ -48,7 +48,7 @@ import { isInvoicingLocalFirst } from '../../evolu/flags';
 import { transferLocalStock } from '../../evolu/stockCrud';
 import type { CompanyId, StockItemId, WarehouseId } from '../../evolu/schema';
 import type { EvoluStockBalanceRow, EvoluStockItemRow } from '../../evolu/stockMap';
-import api from '../../services/api';
+import { invoicingApi } from '../../services/api';
 
 const props = defineProps<{
   open: boolean;
@@ -137,7 +137,7 @@ async function submit() {
       error.value = t('errors.generic');
       return;
     }
-    await api.post(`/invoicing/companies/${props.companyId}/stock-items/${props.stockItemId}/transfer`, {
+    await invoicingApi.stockItems.transfer(props.companyId, props.stockItemId, {
       from_warehouse_id: fromId.value,
       to_warehouse_id: toId.value,
       quantity: qty,

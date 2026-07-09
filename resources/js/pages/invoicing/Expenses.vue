@@ -213,7 +213,7 @@ import { expenseOverdueDays, type ExpenseListRow } from '../../composables/useEx
 import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompanySummary';
 import { useInvoicingExpenses } from '../../composables/useInvoicingExpenses';
 import { INVOICING_CONTAINER_CLASS, useInvoicingLayout } from '../../composables/useInvoicingLayout';
-import api from '../../services/api';
+import { invoicingApi } from '../../services/api';
 
 const { t } = useI18n();
 const localFirst = isInvoicingLocalFirst();
@@ -417,11 +417,9 @@ async function runBulk(action: string) {
     }
 
     const isFile = fileActions.has(action);
-    const res = await api.post(
-      `/invoicing/companies/${companyId.value}/expenses/bulk`,
-      bulkPayload(action),
-      isFile ? { responseType: 'blob' } : {},
-    );
+    const res = isFile
+      ? await invoicingApi.expenses.bulkExport(companyId.value, bulkPayload(action))
+      : await invoicingApi.expenses.bulk(companyId.value, bulkPayload(action));
 
     if (isFile) {
       const names: Record<string, string> = {
@@ -470,7 +468,7 @@ async function markPaidRow(expenseId: string) {
       await load();
       return;
     }
-    await api.post(`/invoicing/companies/${companyId.value}/expenses/${expenseId}/mark-paid`);
+    await invoicingApi.expenses.action(companyId.value, expenseId, 'mark-paid');
     await load();
   } catch (e: any) {
     error.value = e?.response?.data?.message || t('common.error');
@@ -498,10 +496,10 @@ async function duplicateRow(expenseId: string) {
       });
       return;
     }
-    const res = await api.post(`/invoicing/companies/${companyId.value}/expenses/${expenseId}/duplicate`);
+    const res = await invoicingApi.expenses.action<{ id: string }>(companyId.value, expenseId, 'duplicate');
     await router.push({
       name: 'invoicing-expense-edit',
-      params: { companyId: companyId.value, expenseId: res.data.data.id },
+      params: { companyId: companyId.value, expenseId: res.id },
     });
   } catch (e: any) {
     error.value = e?.response?.data?.message || t('common.error');
@@ -519,7 +517,7 @@ async function cancelRow(expenseId: string) {
       await load();
       return;
     }
-    await api.delete(`/invoicing/companies/${companyId.value}/expenses/${expenseId}`);
+    await invoicingApi.expenses.delete(companyId.value, expenseId);
     await load();
   } catch (e: any) {
     error.value = e?.response?.data?.message || t('common.error');
@@ -556,14 +554,12 @@ async function load() {
       return;
     }
 
-    const listRes = await api.get(`/invoicing/companies/${companyId.value}/expenses`, {
-      params: {
-        ...listFilterParams(),
-        page: page.value,
-      },
+    const listRows = await invoicingApi.expenses.list<ExpenseListRow & { attachment_path?: string | null; attachments_count?: number }>(companyId.value, {
+      ...listFilterParams(),
+      page: page.value,
     });
     const today = new Date().toISOString().slice(0, 10);
-    const rows = listRes.data.data ?? [];
+    const rows = listRows;
     expenses.value = rows.map((e: ExpenseListRow & { attachment_path?: string | null; attachments_count?: number }) => ({
       ...e,
       is_overdue:

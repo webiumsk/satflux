@@ -148,7 +148,7 @@ import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import { insertLocalExpense, updateLocalExpense } from '../../evolu/expenseCrud';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
 import type { CompanyId, ExpenseId } from '../../evolu/schema';
-import api from '../../services/api';
+import { invoicingApi } from '../../services/api';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -289,8 +289,7 @@ async function loadExpense() {
     };
     return;
   }
-  const res = await api.get(`/invoicing/companies/${companyId.value}/expenses/${expenseId.value}`);
-  const e = res.data.data;
+  const e = await invoicingApi.expenses.get<Record<string, any>>(companyId.value, expenseId.value!);
   internalNumber.value = e.internal_number;
   expenseLabel.value = e.internal_number + (e.title ? ` · ${e.title}` : '');
   form.value = {
@@ -363,10 +362,10 @@ async function save() {
       return;
     }
     if (isNew.value) {
-      const res = await api.post(`/invoicing/companies/${companyId.value}/expenses`, payload);
-      savedId = res.data.data.id;
+      const created = await invoicingApi.expenses.create<{ id: string }>(companyId.value, payload);
+      savedId = created.id;
     } else {
-      await api.patch(`/invoicing/companies/${companyId.value}/expenses/${expenseId.value}`, payload);
+      await invoicingApi.expenses.update(companyId.value, expenseId.value!, payload);
       savedId = expenseId.value!;
     }
     await uploadAllPendingAttachments(savedId);
@@ -383,8 +382,8 @@ onMounted(async () => {
   rememberCompany(companyId.value);
   if (!localFirst) {
     await loadQuota();
-    const companyRes = await api.get(`/invoicing/companies/${companyId.value}`);
-    form.value.currency = companyRes.data.data?.default_currency || 'EUR';
+    const companyRec = await invoicingApi.companies.get<{ default_currency?: string }>(companyId.value);
+    form.value.currency = companyRec?.default_currency || 'EUR';
   } else {
     form.value.currency = defaultCurrency.value || 'EUR';
   }

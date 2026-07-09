@@ -84,7 +84,7 @@ import {
   sendEphemeralEfaktura,
   type EphemeralSnapshotPayload,
 } from '../../evolu/ephemeralBridge';
-import api from '../../services/api';
+import { invoicingApi } from '../../services/api';
 
 type ComplianceRow = {
   id: string;
@@ -261,10 +261,7 @@ async function loadCompliance() {
       return;
     }
 
-    const res = await api.get(
-      `/invoicing/companies/${props.companyId}/documents/${props.documentId}/efaktura/compliance`,
-    );
-    rows.value = Array.isArray(res.data?.data) ? res.data.data : [];
+    rows.value = await invoicingApi.documents.efaktura.compliance(props.companyId, props.documentId);
   } catch {
     rows.value = [];
   } finally {
@@ -291,9 +288,7 @@ async function refreshStatus() {
         effectiveBridgeCompanyId.value,
       );
     } else {
-      await api.post(
-        `/invoicing/companies/${props.companyId}/documents/${props.documentId}/efaktura/compliance/refresh`,
-      );
+      await invoicingApi.documents.efaktura.refresh(props.companyId, props.documentId);
       await loadCompliance();
     }
     panelSuccess.value = t('invoicing.efaktura_panel_refresh_success');
@@ -329,10 +324,7 @@ async function send() {
       }
       rows.value = data ? [data] : [];
     } else {
-      const res = await api.post(
-        `/invoicing/companies/${props.companyId}/documents/${props.documentId}/efaktura/send`,
-      );
-      const data = res.data?.data ?? {};
+      const data = await invoicingApi.documents.efaktura.send<{ message?: string }>(props.companyId, props.documentId);
       panelSuccess.value = t('invoicing.efaktura_panel_send_success');
       if (typeof data.message === 'string' && data.message) {
         panelSuccess.value = data.message;

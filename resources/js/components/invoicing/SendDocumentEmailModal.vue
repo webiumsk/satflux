@@ -65,7 +65,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import api from '../../services/api';
+import { invoicingApi } from '../../services/api';
 import {
   previewEphemeralEmail,
   sendEphemeralEmail,
@@ -130,10 +130,12 @@ async function loadPreview() {
       attachmentName.value = data.attachment_filename ?? '';
       return;
     }
-    const res = await api.get(
-      `/invoicing/companies/${props.companyId}/documents/${props.documentId}/email-preview`
-    );
-    const data = res.data.data;
+    const data = await invoicingApi.documents.emailPreview<{
+      to?: string;
+      subject?: string;
+      body?: string;
+      attachment_filename?: string;
+    }>(props.companyId, props.documentId);
     toInput.value = data.to ?? '';
     subject.value = data.subject ?? '';
     body.value = data.body ?? '';
@@ -161,17 +163,14 @@ async function send() {
       close();
       return;
     }
-    const res = await api.post(
-      `/invoicing/companies/${props.companyId}/documents/${props.documentId}/send-email`,
-      {
-        to: toInput.value,
-        cc: ccInput.value || undefined,
-        bcc: bccInput.value || undefined,
-        subject: subject.value,
-        body: body.value,
-      }
-    );
-    emit('sent', { email_sent_at: res.data.data?.email_sent_at });
+    const sent = await invoicingApi.documents.sendEmail<{ email_sent_at?: string }>(props.companyId, props.documentId, {
+      to: toInput.value,
+      cc: ccInput.value || undefined,
+      bcc: bccInput.value || undefined,
+      subject: subject.value,
+      body: body.value,
+    });
+    emit('sent', { email_sent_at: sent?.email_sent_at });
     close();
   } catch (e: unknown) {
     error.value = extractError(e);

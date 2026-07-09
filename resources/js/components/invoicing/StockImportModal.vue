@@ -181,7 +181,7 @@ import {
   type StockImportFieldKey,
   type StockImportMapping,
 } from "../../composables/useStockImportFields";
-import api from "../../services/api";
+import { invoicingApi } from "../../services/api";
 
 const props = defineProps<{
   open: boolean;
@@ -319,13 +319,14 @@ async function loadPreview() {
   loadingPreview.value = true;
   error.value = "";
   try {
-    const { data } = await api.post(
-      `/invoicing/companies/${props.companyId}/stock-items/import/preview`,
-      buildFormData(false),
-    );
-    headers.value = data.data.headers ?? [];
-    rowCount.value = data.data.row_count ?? 0;
-    const suggested = data.data.suggested_mapping ?? {};
+    const data = await invoicingApi.stockItems.import.preview<{
+      headers?: string[];
+      row_count?: number;
+      suggested_mapping?: Record<string, string | null>;
+    }>(props.companyId, buildFormData(false));
+    headers.value = data.headers ?? [];
+    rowCount.value = data.row_count ?? 0;
+    const suggested = data.suggested_mapping ?? {};
     for (const field of STOCK_IMPORT_FIELD_KEYS) {
       mapping[field] = suggested[field] ?? null;
     }
@@ -340,12 +341,7 @@ async function loadPreview() {
 
 async function downloadExample() {
   try {
-    const { data } = await api.get(
-      `/invoicing/companies/${props.companyId}/stock-items/import/example`,
-      {
-        responseType: "blob",
-      },
-    );
+    const data = await invoicingApi.stockItems.import.example(props.companyId);
     const url = URL.createObjectURL(data);
     const a = document.createElement("a");
     a.href = url;
@@ -362,12 +358,9 @@ async function submitImport() {
   importing.value = true;
   error.value = "";
   try {
-    const { data } = await api.post(
-      `/invoicing/companies/${props.companyId}/stock-items/import`,
-      buildFormData(true),
-    );
-    result.value = data.data;
-    if (data.data.imported > 0 || data.data.updated > 0) {
+    const data = await invoicingApi.stockItems.import.run<NonNullable<typeof result.value>>(props.companyId, buildFormData(true));
+    result.value = data;
+    if ((data.imported ?? 0) > 0 || (data.updated ?? 0) > 0) {
       emit("imported");
     }
   } catch (e: any) {
