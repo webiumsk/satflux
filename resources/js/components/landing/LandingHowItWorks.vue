@@ -343,7 +343,7 @@
                     </div>
                     <span
                       class="pointer-events-none absolute right-3 top-3 z-40 rounded-full bg-amber-400 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-gray-900 shadow-lg ring-2 ring-gray-900 transition-all duration-300 group-hover/card:right-4 group-hover/card:top-4"
-                      aria-label="Beta"
+                      :aria-label="t('landing.cashu_beta_badge')"
                     >
                       {{ t("landing.cashu_beta_badge") }}
                     </span>
@@ -485,7 +485,7 @@
                   <button
                     type="button"
                     class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-6 py-3 text-base font-bold text-white shadow-lg transition-all hover:bg-indigo-500"
-                    @click="showPosModal = true"
+                    @click="openPosModal"
                   >
                     {{ t("landing.how_it_works_open_pos_mobile") }}
                   </button>
@@ -505,11 +505,17 @@
                 ></div>
                 <!-- Iframe -->
                 <iframe
+                  v-if="posDemoUrl"
                   :src="posDemoUrl"
                   title="SATFLUX PoS Demo"
                   class="w-full h-full border-0 bg-gray-900"
                   allow="payment"
                   loading="lazy"
+                />
+                <div
+                  v-else
+                  class="flex h-full w-full items-center justify-center bg-gray-900"
+                  aria-hidden="true"
                 />
                 <!-- Overlay hint -->
                 <div
@@ -1511,14 +1517,18 @@
         role="dialog"
         aria-modal="true"
         aria-labelledby="pos-modal-title"
+        @keydown.escape="closePosModal"
+        @keydown="onModalKeydown"
       >
         <div
           class="fixed inset-0 bg-gray-900/90 backdrop-blur-sm"
-          @click="showPosModal = false"
+          @click="closePosModal"
         />
         <div class="flex min-h-full items-center justify-center p-4">
           <div
-            class="relative w-full max-w-lg transform rounded-2xl bg-gray-800 border border-gray-700 shadow-2xl transition-all"
+            ref="modalRef"
+            tabindex="-1"
+            class="relative w-full max-w-lg transform rounded-2xl bg-gray-800 border border-gray-700 shadow-2xl transition-all focus:outline-none"
           >
             <div
               class="flex items-center justify-between px-4 py-3 border-b border-gray-700"
@@ -1531,7 +1541,7 @@
               </h2>
               <button
                 type="button"
-                @click="showPosModal = false"
+                @click="closePosModal"
                 class="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 :aria-label="t('landing.how_it_works_close_modal')"
               >
@@ -1555,6 +1565,7 @@
               style="min-height: 500px"
             >
               <iframe
+                v-if="posDemoUrl"
                 :src="posDemoUrl"
                 title="SATFLUX PoS Demo"
                 class="w-full h-[500px] rounded-lg border-0"
@@ -1570,7 +1581,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, watch, nextTick } from "vue";
 import { useI18n } from "vue-i18n";
 import LandingPayButtonEmbed from "./LandingPayButtonEmbed.vue";
 import LandingRafflePresenterPreview from "./LandingRafflePresenterPreview.vue";
@@ -1580,6 +1591,76 @@ const { t } = useI18n();
 const { btcPayUrl, displayLightningDomain } = useBtcPayUrl();
 
 const showPosModal = ref(false);
+const modalRef = ref<HTMLElement | null>(null);
+const previousActiveElement = ref<HTMLElement | null>(null);
+
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), iframe, [tabindex]:not([tabindex="-1"])';
+
+function getModalFocusableElements(): HTMLElement[] {
+  if (!modalRef.value) return [];
+  return Array.from(
+    modalRef.value.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+  ).filter(
+    (el: HTMLElement) =>
+      el.offsetParent !== null || el === document.activeElement,
+  );
+}
+
+function openPosModal() {
+  previousActiveElement.value =
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+  showPosModal.value = true;
+}
+
+function closePosModal() {
+  showPosModal.value = false;
+  const restore = previousActiveElement.value;
+  previousActiveElement.value = null;
+  if (restore) {
+    requestAnimationFrame(() => restore.focus());
+  }
+}
+
+function onModalKeydown(event: KeyboardEvent) {
+  if (event.key !== "Tab" || !modalRef.value) return;
+
+  const focusable = getModalFocusableElements();
+  if (focusable.length === 0) {
+    event.preventDefault();
+    modalRef.value.focus();
+    return;
+  }
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const active = document.activeElement;
+
+  if (focusable.length === 1) {
+    event.preventDefault();
+    first.focus();
+    return;
+  }
+
+  if (event.shiftKey) {
+    if (active === first || active === modalRef.value) {
+      event.preventDefault();
+      last.focus();
+    }
+  } else if (active === last || active === modalRef.value) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+watch(showPosModal, (isOpen: boolean) => {
+  if (!isOpen) return;
+  void nextTick(() => {
+    requestAnimationFrame(() => modalRef.value?.focus());
+  });
+});
 
 /** Prefer `VITE_POS_DEMO_URL`; otherwise uses `BTCPAY_BASE_URL` from the server via `/api/config`. */
 const posDemoUrl = computed(() => {
