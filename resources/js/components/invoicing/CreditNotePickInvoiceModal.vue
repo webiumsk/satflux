@@ -140,7 +140,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import api from "../../services/api";
+import { invoicingApi } from "../../services/api";
 import {
   resolveIssuePeriodRange,
   defaultIssuePeriodState,
@@ -276,11 +276,8 @@ async function loadInvoices() {
     if (range.from) params.issue_from = range.from;
     if (range.to) params.issue_to = range.to;
 
-    const res = await api.get(
-      `/invoicing/companies/${props.companyId}/documents`,
-      { params },
-    );
-    invoices.value = (res.data.data ?? []).filter(
+    const docs = await invoicingApi.documents.list<{ status: string; number?: string }>(props.companyId, params);
+    invoices.value = docs.filter(
       (d: { status: string; number?: string }) =>
         d.status !== "cancelled" && d.status !== "draft",
     );
@@ -372,11 +369,8 @@ async function confirmSelected() {
       return;
     }
 
-    const res = await api.post(
-      `/invoicing/companies/${props.companyId}/documents/credit-note-from-invoice`,
-      { invoice_id: selectedId.value },
-    );
-    emit("selected", res.data.data.id);
+    const created = await invoicingApi.documents.creditNoteFromInvoice<{ id: string }>(props.companyId, selectedId.value);
+    emit("selected", created.id);
   } catch (e: any) {
     error.value =
       e?.response?.data?.message ||

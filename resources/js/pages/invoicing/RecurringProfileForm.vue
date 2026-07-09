@@ -380,7 +380,7 @@ import { defaultWarehouseId, type WarehouseRow } from '../../composables/useComp
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import { DEFAULT_INVOICE_LINE_UNIT } from '../../composables/useInvoiceLineUnits';
 import { useLocalRecurringProfileSupport } from '../../composables/useLocalRecurringProfile';
-import api from '../../services/api';
+import { invoicingApi } from '../../services/api';
 import { useInvoicingSaveFeedback } from '../../composables/useInvoicingSaveFeedback';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import { appSettingsFromCompany } from '../../composables/useCompanyAppSettings';
@@ -670,15 +670,12 @@ async function loadCompany() {
     applyPaymentDefaults();
     return;
   }
-  const res = await api.get(`/invoicing/companies/${companyId.value}`);
-  company.value = res.data.data;
+  company.value = await invoicingApi.companies.get(companyId.value);
   linkedStores.value = company.value?.stores ?? [];
-  contacts.value = (
-    await api.get(`/invoicing/companies/${companyId.value}/contacts`)
-  ).data.data ?? [];
-  warehouses.value = (
-    await api.get(`/invoicing/companies/${companyId.value}/warehouses`)
-  ).data.data?.filter((w: WarehouseRow) => w.is_active) ?? [];
+  contacts.value = (await invoicingApi.contacts.list(companyId.value)).data;
+  warehouses.value = (await invoicingApi.warehouses.list<WarehouseRow>(companyId.value)).filter(
+    (w) => w.is_active,
+  );
   const app = appSettingsFromCompany(company.value);
   if (!form.constant_symbol) form.constant_symbol = app.default_constant_symbol;
   if (!form.note_footer) form.note_footer = company.value?.legal_footer_note || '';
@@ -696,10 +693,7 @@ async function loadProfile() {
     applyProfileData(d);
     return;
   }
-  const res = await api.get(
-    `/invoicing/companies/${companyId.value}/recurring-profiles/${profileId.value}`
-  );
-  applyProfileData(res.data.data);
+  applyProfileData(await invoicingApi.recurringProfiles.get(companyId.value, profileId.value!));
 }
 
 function applyProfileData(d: Record<string, any>) {
@@ -776,19 +770,13 @@ async function save() {
       return;
     }
     if (isNew.value) {
-      const res = await api.post(
-        `/invoicing/companies/${companyId.value}/recurring-profiles`,
-        serverPayload()
-      );
+      const created = await invoicingApi.recurringProfiles.create<{ id: string }>(companyId.value, serverPayload());
       router.push({
         name: 'invoicing-recurring-edit',
-        params: { companyId: companyId.value, profileId: res.data.data.id },
+        params: { companyId: companyId.value, profileId: created.id },
       });
     } else {
-      await api.patch(
-        `/invoicing/companies/${companyId.value}/recurring-profiles/${profileId.value}`,
-        serverPayload()
-      );
+      await invoicingApi.recurringProfiles.update(companyId.value, profileId.value!, serverPayload());
       await loadProfile();
       notifySaved('invoicing.changes_saved');
     }
@@ -818,10 +806,8 @@ async function generateNow() {
       });
       return;
     }
-    const res = await api.post(
-      `/invoicing/companies/${companyId.value}/recurring-profiles/${profileId.value}/generate`
-    );
-    const doc = res.data.data.document;
+    const generated = await invoicingApi.recurringProfiles.generate<{ document: { id: string; type: string } }>(companyId.value, profileId.value!);
+    const doc = generated.document;
     const routeName =
       doc.type === 'proforma' ? 'invoicing-proforma-show' : 'invoicing-invoice-show';
     router.push({
@@ -846,9 +832,7 @@ async function remove() {
     router.push({ name: 'invoicing-recurring', params: { companyId: companyId.value } });
     return;
   }
-  await api.delete(
-    `/invoicing/companies/${companyId.value}/recurring-profiles/${profileId.value}`
-  );
+  await invoicingApi.recurringProfiles.delete(companyId.value, profileId.value!);
   router.push({ name: 'invoicing-recurring', params: { companyId: companyId.value } });
 }
 

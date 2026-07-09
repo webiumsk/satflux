@@ -191,7 +191,7 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import api from "../../services/api";
+import { invoicingApi } from "../../services/api";
 
 const props = defineProps<{
   open: boolean;
@@ -292,11 +292,7 @@ async function loadPreview() {
   try {
     const form = new FormData();
     form.append("file", selectedFile.value);
-    const { data } = await api.post(
-      `/invoicing/companies/${props.companyId}/expenses/import/attachments/preview`,
-      form,
-    );
-    preview.value = data.data;
+    preview.value = await invoicingApi.expenses.importAttachments.preview<NonNullable<typeof preview.value>>(props.companyId, form);
   } catch (e: any) {
     error.value = e?.response?.data?.message || t("errors.generic");
     preview.value = null;
@@ -312,12 +308,9 @@ async function submitImport() {
   try {
     const form = new FormData();
     form.append("file", selectedFile.value);
-    const { data } = await api.post(
-      `/invoicing/companies/${props.companyId}/expenses/import/attachments`,
-      form,
-    );
-    result.value = data.data;
-    if (data.data.attached > 0) {
+    const data = await invoicingApi.expenses.importAttachments.run<NonNullable<typeof result.value>>(props.companyId, form);
+    result.value = data;
+    if ((data.attached ?? 0) > 0) {
       emit("imported");
     }
   } catch (e: any) {

@@ -777,7 +777,7 @@ import { useInvoicingCompanySummary } from "../../composables/useInvoicingCompan
 import { useInvoicingBankPayments } from "../../composables/useInvoicingBankPayments";
 import { invoicingDocumentRoutesForType } from "../../composables/useInvoicingDocumentRoutes";
 import { useFlashStore } from "../../store/flash";
-import api from "../../services/api";
+import { invoicingApi } from "../../services/api";
 import { resolveEphemeralBridgeCompanyId } from "../../evolu/ephemeralBridge";
 
 type LinkedDocument = { id: string; number?: string; type?: string };
@@ -1008,13 +1008,16 @@ async function loadInbound() {
     return;
   }
   try {
-    const { data } = await api.get(
-      `/invoicing/companies/${cid}/bank-transactions/inbound-email`,
-    );
-    inboundEmail.value = data.data?.address || "";
-    inboundEnabled.value = !!data.data?.enabled;
-    inboundLength.value = data.data?.length ?? inboundEmail.value.length;
-    inboundMaxLength.value = data.data?.max_length ?? 50;
+    const inbound = await invoicingApi.bankTransactions.inboundEmail<{
+      address?: string;
+      enabled?: boolean;
+      length?: number;
+      max_length?: number;
+    }>(cid);
+    inboundEmail.value = inbound?.address || "";
+    inboundEnabled.value = !!inbound?.enabled;
+    inboundLength.value = inbound?.length ?? inboundEmail.value.length;
+    inboundMaxLength.value = inbound?.max_length ?? 50;
     inboundCopied.value = false;
   } catch {
     inboundEmail.value = "";

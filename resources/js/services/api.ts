@@ -16,6 +16,14 @@ export interface ApiEnvelope<T> {
     message?: string;
 }
 
+/** Laravel paginator body: rows in data, pagination fields alongside. */
+export interface PagedList<T> {
+    data?: T[];
+    total?: number;
+    current_page?: number;
+    last_page?: number;
+}
+
 const api = axios.create({
     baseURL: '/api',
     headers: {
@@ -453,6 +461,11 @@ export const invoicingApi = {
             const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/documents`, { params });
             return data.data ?? [];
         },
+        /** Paginated variant: Laravel paginator fields live next to data. */
+        async listPaged<T = unknown>(companyId: string, params: Record<string, unknown> = {}): Promise<PagedList<T>> {
+            const { data } = await api.get<PagedList<T>>(`/invoicing/companies/${companyId}/documents`, { params });
+            return data;
+        },
         async get<T = unknown>(companyId: string, documentId: string): Promise<T> {
             const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/documents/${documentId}`);
             return data.data;
@@ -513,6 +526,11 @@ export const invoicingApi = {
         async list<T = unknown>(companyId: string, params: Record<string, unknown> = {}): Promise<T[]> {
             const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/expenses`, { params });
             return data.data ?? [];
+        },
+        /** Paginated variant: Laravel paginator fields live next to data. */
+        async listPaged<T = unknown>(companyId: string, params: Record<string, unknown> = {}): Promise<PagedList<T>> {
+            const { data } = await api.get<PagedList<T>>(`/invoicing/companies/${companyId}/expenses`, { params });
+            return data;
         },
         async get<T = unknown>(companyId: string, expenseId: string): Promise<T> {
             const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/expenses/${expenseId}`);
@@ -745,6 +763,13 @@ export const invoicingApi = {
     usSalesTax: {
         async preview<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
             const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/us-sales-tax/preview`, payload);
+            return data.data;
+        },
+    },
+    integrationInbox: {
+        async deeplink<T = unknown>(params: URLSearchParams | Record<string, string>): Promise<T> {
+            const qs = params instanceof URLSearchParams ? params.toString() : new URLSearchParams(params).toString();
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/integration-inbox/deeplink?${qs}`);
             return data.data;
         },
     },

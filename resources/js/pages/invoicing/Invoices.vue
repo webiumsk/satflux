@@ -1196,7 +1196,7 @@ import type { EvoluNumberSeriesRow } from "../../evolu/numberSeriesMap";
 import CreditNotePickInvoiceModal from "../../components/invoicing/CreditNotePickInvoiceModal.vue";
 import CreditNoteStartModal from "../../components/invoicing/CreditNoteStartModal.vue";
 import SendDocumentEmailModal from "../../components/invoicing/SendDocumentEmailModal.vue";
-import api, { businessDocumentPdfPath, getWebBlob } from "../../services/api";
+import { businessDocumentPdfPath, getWebBlob, invoicingApi } from "../../services/api";
 import {
   buildBulkEphemeralRequest,
   buildLocalDocumentEphemeralSnapshot,
@@ -1678,9 +1678,7 @@ async function approveQuote(d: { id: string }) {
       await load();
       return;
     }
-    await api.post(
-      `/invoicing/companies/${companyId.value}/documents/${d.id}/approve-quote`,
-    );
+    await invoicingApi.documents.action(companyId.value, d.id, 'approve-quote');
     success.value = t("invoicing.quote_approved_success");
     await load();
   } catch (e: any) {
@@ -1700,9 +1698,7 @@ async function rejectQuote(d: { id: string }) {
       await load();
       return;
     }
-    await api.post(
-      `/invoicing/companies/${companyId.value}/documents/${d.id}/reject-quote`,
-    );
+    await invoicingApi.documents.action(companyId.value, d.id, 'reject-quote');
     success.value = t("invoicing.quote_rejected_success");
     await load();
   } catch (e: any) {
@@ -1752,12 +1748,10 @@ async function createInvoiceFromQuote(d: { id: string }) {
       });
       return;
     }
-    const res = await api.post(
-      `/invoicing/companies/${companyId.value}/documents/${d.id}/create-invoice-from-quote`,
-    );
+    const res = await invoicingApi.documents.action<{ id: string }>(companyId.value, d.id, 'create-invoice-from-quote');
     router.push({
       name: "invoicing-invoice-edit",
-      params: { companyId: companyId.value, documentId: res.data.data.id },
+      params: { companyId: companyId.value, documentId: res.id },
     });
   } catch (e: any) {
     error.value =
@@ -1818,12 +1812,10 @@ async function createFinalInvoice(d: { id: string }) {
       });
       return;
     }
-    const res = await api.post(
-      `/invoicing/companies/${companyId.value}/documents/${d.id}/create-final-invoice`,
-    );
+    const res = await invoicingApi.documents.action<{ id: string }>(companyId.value, d.id, 'create-final-invoice');
     router.push({
       name: "invoicing-invoice-edit",
-      params: { companyId: companyId.value, documentId: res.data.data.id },
+      params: { companyId: companyId.value, documentId: res.id },
     });
   } catch (e: any) {
     error.value =
@@ -2128,14 +2120,12 @@ async function runBulk(action: string) {
     }
 
     const isFile = fileActions.has(action);
-    const res = await api.post(
-      `/invoicing/companies/${companyId.value}/documents/bulk`,
-      bulkPayload(action),
-      isFile ? { responseType: "blob" } : {},
-    );
+    const res = isFile
+      ? await invoicingApi.documents.bulkExport(companyId.value, bulkPayload(action))
+      : await invoicingApi.documents.bulk(companyId.value, bulkPayload(action));
 
     if (isFile) {
-      const blob = res.data as Blob;
+      const blob = res as Blob;
       const names: Record<string, string> = {
         pdf_zip: "invoices.zip",
         pdf_merge: "invoices-merged.pdf",
@@ -2148,7 +2138,7 @@ async function runBulk(action: string) {
       a.click();
       URL.revokeObjectURL(url);
     } else {
-      const data = res.data.data;
+      const data = res as { processed?: number; skipped?: number };
       success.value = t("invoicing.bulk_result", {
         processed: data.processed ?? 0,
         skipped: data.skipped ?? 0,
@@ -2251,20 +2241,15 @@ async function load() {
       return;
     }
 
-    const [companyRes, docsRes] = await Promise.all([
-      api.get(`/invoicing/companies/${companyId.value}/summary`),
-      api.get(`/invoicing/companies/${companyId.value}/documents`, {
-        params: listQueryParams(),
-      }),
+    const [summary, docs] = await Promise.all([
+      invoicingApi.companies.summary(companyId.value),
+      invoicingApi.documents.listPaged(companyId.value, listQueryParams()),
     ]);
-    companyName.value =
-      companyRes.data.data?.trade_name ||
-      companyRes.data.data?.legal_name ||
-      "";
-    documents.value = docsRes.data.data ?? [];
-    totalCount.value = docsRes.data.total ?? documents.value.length;
-    currentPage.value = docsRes.data.current_page ?? 1;
-    lastPage.value = docsRes.data.last_page ?? 1;
+    companyName.value = summary.trade_name || summary.legal_name || "";
+    documents.value = docs.data ?? [];
+    totalCount.value = docs.total ?? documents.value.length;
+    currentPage.value = docs.current_page ?? 1;
+    lastPage.value = docs.last_page ?? 1;
   } catch (e: unknown) {
     const err = e as { response?: { data?: { message?: string } }; message?: string };
     error.value = err?.response?.data?.message || err?.message || t("common.error");
@@ -2339,9 +2324,7 @@ async function issueDoc(d: { id: string }) {
       await load();
       return;
     }
-    await api.post(
-      `/invoicing/companies/${companyId.value}/documents/${d.id}/issue`,
-    );
+    await invoicingApi.documents.action(companyId.value, d.id, 'issue');
     await load();
   } catch (e: any) {
     error.value = e?.response?.data?.message || t("common.error");
@@ -2363,9 +2346,7 @@ async function markPaid(d: { id: string }) {
       await load();
       return;
     }
-    await api.post(
-      `/invoicing/companies/${companyId.value}/documents/${d.id}/mark-paid`,
-    );
+    await invoicingApi.documents.action(companyId.value, d.id, 'mark-paid');
     await load();
   } catch (e: any) {
     error.value = e?.response?.data?.message || t("common.error");
@@ -2383,9 +2364,7 @@ async function unmarkPaid(d: { id: string }) {
       await load();
       return;
     }
-    await api.post(
-      `/invoicing/companies/${companyId.value}/documents/${d.id}/unmark-paid`,
-    );
+    await invoicingApi.documents.action(companyId.value, d.id, 'unmark-paid');
     await load();
   } catch (e: any) {
     error.value = e?.response?.data?.message || t("common.error");
@@ -2525,13 +2504,11 @@ async function duplicateDoc(d: { id: string; type?: string }) {
       return;
     }
 
-    const res = await api.post(
-      `/invoicing/companies/${companyId.value}/documents/${d.id}/duplicate`,
-    );
-    const routes = invoicingDocumentRoutesForType(res.data.data.type);
+    const res = await invoicingApi.documents.action<{ id: string; type: string }>(companyId.value, d.id, 'duplicate');
+    const routes = invoicingDocumentRoutesForType(res.type);
     router.push({
       name: routes.edit,
-      params: { companyId: companyId.value, documentId: res.data.data.id },
+      params: { companyId: companyId.value, documentId: res.id },
     });
   } catch (e: any) {
     error.value = e?.response?.data?.message || t("common.error");
@@ -2562,9 +2539,7 @@ async function deleteDoc(d: {
       await load();
       return;
     }
-    await api.delete(
-      `/invoicing/companies/${companyId.value}/documents/${d.id}`,
-    );
+    await invoicingApi.documents.delete(companyId.value, d.id);
     await load();
   } catch (e: any) {
     error.value = e?.response?.data?.message || t("common.error");
@@ -2586,9 +2561,7 @@ async function cancelDoc(d: { id: string }) {
       await load();
       return;
     }
-    await api.post(
-      `/invoicing/companies/${companyId.value}/documents/${d.id}/cancel`,
-    );
+    await invoicingApi.documents.action(companyId.value, d.id, 'cancel');
     await load();
   } catch (e: any) {
     error.value = e?.response?.data?.message || t("common.error");

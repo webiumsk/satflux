@@ -281,11 +281,12 @@ import { useEfakturaFeature } from '../../composables/useEfakturaFeature';
 import { isCompanyEfakturaEligible } from '../../composables/useCompanyEfakturaSettings';
 import { useInvoiceDocument } from '../../composables/useInvoiceDocument';
 import { invoicingDocumentRoutesForType } from '../../composables/useInvoicingDocumentRoutes';
-import api, {
+import {
   businessDocumentIsdocPath,
   businessDocumentPdfPath,
   businessDocumentUblPath,
   getWebBlob,
+  invoicingApi,
 } from '../../services/api';
 import {
   downloadEphemeralIsdoc,
@@ -463,10 +464,7 @@ async function persistPdfOptions() {
     return;
   }
   try {
-    await api.patch(
-      `/invoicing/companies/${companyId.value}/documents/${documentId.value}`,
-      payload()
-    );
+    await invoicingApi.documents.update(companyId.value, documentId.value!, payload());
   } catch {
     /* ignore */
   }
@@ -587,13 +585,11 @@ async function duplicateCurrent() {
     });
     return;
   }
-  const res = await api.post(
-    `/invoicing/companies/${companyId.value}/documents/${documentId.value}/duplicate`
-  );
-  const routes = invoicingDocumentRoutesForType(res.data.data.type);
+  const dup = await invoicingApi.documents.action<{ id: string; type: string }>(companyId.value, documentId.value!, 'duplicate');
+  const routes = invoicingDocumentRoutesForType(dup.type);
   router.push({
     name: routes.edit,
-    params: { companyId: companyId.value, documentId: res.data.data.id },
+    params: { companyId: companyId.value, documentId: dup.id },
   });
 }
 
@@ -620,9 +616,7 @@ async function issueDocument() {
       await reloadDocument();
       return;
     }
-    await api.post(
-      `/invoicing/companies/${companyId.value}/documents/${documentId.value}/issue`
-    );
+    await invoicingApi.documents.action(companyId.value, documentId.value!, 'issue');
     success.value = t('invoicing.issue_success');
     await reloadDocument();
     await loadHistory();
@@ -657,12 +651,10 @@ async function createFinalInvoice() {
       });
       return;
     }
-    const res = await api.post(
-      `/invoicing/companies/${companyId.value}/documents/${documentId.value}/create-final-invoice`
-    );
+    const res = await invoicingApi.documents.action<{ id: string }>(companyId.value, documentId.value!, 'create-final-invoice');
     router.push({
       name: 'invoicing-invoice-edit',
-      params: { companyId: companyId.value, documentId: res.data.data.id },
+      params: { companyId: companyId.value, documentId: res.id },
     });
   } catch (e: any) {
     error.value = extractError(e);
@@ -682,9 +674,7 @@ async function approveQuote() {
       await reloadDocument();
       return;
     }
-    await api.post(
-      `/invoicing/companies/${companyId.value}/documents/${documentId.value}/approve-quote`
-    );
+    await invoicingApi.documents.action(companyId.value, documentId.value!, 'approve-quote');
     success.value = t('invoicing.quote_approved_success');
     await reloadDocument();
     await loadHistory();
@@ -706,9 +696,7 @@ async function rejectQuote() {
       await reloadDocument();
       return;
     }
-    await api.post(
-      `/invoicing/companies/${companyId.value}/documents/${documentId.value}/reject-quote`
-    );
+    await invoicingApi.documents.action(companyId.value, documentId.value!, 'reject-quote');
     success.value = t('invoicing.quote_rejected_success');
     await reloadDocument();
     await loadHistory();
@@ -743,12 +731,10 @@ async function createInvoiceFromQuote() {
       });
       return;
     }
-    const res = await api.post(
-      `/invoicing/companies/${companyId.value}/documents/${documentId.value}/create-invoice-from-quote`
-    );
+    const res = await invoicingApi.documents.action<{ id: string }>(companyId.value, documentId.value!, 'create-invoice-from-quote');
     router.push({
       name: 'invoicing-invoice-edit',
-      params: { companyId: companyId.value, documentId: res.data.data.id },
+      params: { companyId: companyId.value, documentId: res.id },
     });
   } catch (e: any) {
     error.value = extractError(e);
@@ -774,7 +760,7 @@ async function deleteDoc() {
     router.push({ name: documentRoutes.value.list, params: { companyId: companyId.value } });
     return;
   }
-  await api.delete(`/invoicing/companies/${companyId.value}/documents/${documentId.value}`);
+  await invoicingApi.documents.delete(companyId.value, documentId.value!);
   router.push({ name: documentRoutes.value.list, params: { companyId: companyId.value } });
 }
 
@@ -789,7 +775,7 @@ async function cancelDoc() {
     await reloadDocument();
     return;
   }
-  await api.post(`/invoicing/companies/${companyId.value}/documents/${documentId.value}/cancel`);
+  await invoicingApi.documents.action(companyId.value, documentId.value!, 'cancel');
   await reloadDocument();
   await loadHistory();
 }
@@ -808,7 +794,7 @@ async function markPaid() {
       await reloadDocument();
       return;
     }
-    await api.post(`/invoicing/companies/${companyId.value}/documents/${documentId.value}/mark-paid`);
+    await invoicingApi.documents.action(companyId.value, documentId.value!, 'mark-paid');
     await reloadDocument();
     await loadHistory();
   } catch (e: any) {
@@ -831,7 +817,7 @@ async function unmarkPaid() {
       await reloadDocument();
       return;
     }
-    await api.post(`/invoicing/companies/${companyId.value}/documents/${documentId.value}/unmark-paid`);
+    await invoicingApi.documents.action(companyId.value, documentId.value!, 'unmark-paid');
     await reloadDocument();
     await loadHistory();
   } catch (e: any) {

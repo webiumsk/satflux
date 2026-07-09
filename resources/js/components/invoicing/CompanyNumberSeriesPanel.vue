@@ -146,7 +146,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useQuery } from '@evolu/vue';
-import api from '../../services/api';
+import { invoicingApi } from '../../services/api';
 import { useInvoicingSaveFeedback } from '../../composables/useInvoicingSaveFeedback';
 import CompanyAppTabsNav from './CompanyAppTabsNav.vue';
 import {
@@ -260,8 +260,7 @@ async function loadServer() {
   loading.value = true;
   saveError.value = '';
   try {
-    const res = await api.get(`/invoicing/companies/${props.companyId}/number-series`);
-    series.value = res.data.data ?? [];
+    series.value = await invoicingApi.numberSeries.list(props.companyId);
   } catch (e: any) {
     saveError.value = e?.response?.data?.message ?? t('common.error_generic');
   } finally {
@@ -342,12 +341,9 @@ async function saveModalServer() {
   const payload = { ...form, format: form.format.toUpperCase() };
   try {
     if (editingId.value) {
-      await api.patch(
-        `/invoicing/companies/${props.companyId}/number-series/${editingId.value}`,
-        payload,
-      );
+      await invoicingApi.numberSeries.update(props.companyId, String(editingId.value), payload);
     } else {
-      await api.post(`/invoicing/companies/${props.companyId}/number-series`, payload);
+      await invoicingApi.numberSeries.create(props.companyId, payload);
     }
     closeModal();
     await loadServer();
@@ -382,7 +378,7 @@ async function removeLocal(row: NumberSeriesRow) {
 
 async function removeServer(row: NumberSeriesRow) {
   try {
-    await api.delete(`/invoicing/companies/${props.companyId}/number-series/${row.id}`);
+    await invoicingApi.numberSeries.delete(props.companyId, String(row.id));
     await loadServer();
     notifySaved('invoicing.series_saved');
   } catch (e: any) {

@@ -182,7 +182,7 @@ import {
   type ExpenseImportMapping,
 } from "../../composables/useExpenseImportFields";
 import { useInvoicingExpenses } from "../../composables/useInvoicingExpenses";
-import api from "../../services/api";
+import { invoicingApi } from "../../services/api";
 import { useInvoicingEvolu } from "../../evolu/client";
 import {
   downloadExpenseImportExampleCsv,
@@ -322,13 +322,14 @@ async function loadPreview() {
       }
       return;
     }
-    const { data } = await api.post(
-      `/invoicing/companies/${props.companyId}/expenses/import/excel/preview`,
-      buildFormData(false),
-    );
-    headers.value = data.data.headers ?? [];
-    rowCount.value = data.data.row_count ?? 0;
-    const suggested = data.data.suggested_mapping ?? {};
+    const data = await invoicingApi.expenses.import.preview<{
+      headers?: string[];
+      row_count?: number;
+      suggested_mapping?: Record<string, number | null>;
+    }>(props.companyId, buildFormData(false));
+    headers.value = data.headers ?? [];
+    rowCount.value = data.row_count ?? 0;
+    const suggested = data.suggested_mapping ?? {};
     for (const field of EXPENSE_IMPORT_FIELD_KEYS) {
       mapping[field] = suggested[field] ?? null;
     }
@@ -347,12 +348,7 @@ async function downloadExample() {
       downloadExpenseImportExampleCsv();
       return;
     }
-    const { data } = await api.get(
-      `/invoicing/companies/${props.companyId}/expenses/import/excel/example`,
-      {
-        responseType: "blob",
-      },
-    );
+    const data = await invoicingApi.expenses.import.example(props.companyId);
     const url = URL.createObjectURL(data);
     const a = document.createElement("a");
     a.href = url;
@@ -384,12 +380,9 @@ async function submitImport() {
       }
       return;
     }
-    const { data } = await api.post(
-      `/invoicing/companies/${props.companyId}/expenses/import/excel`,
-      buildFormData(true),
-    );
-    result.value = data.data;
-    if (data.data.imported > 0) {
+    const data = await invoicingApi.expenses.import.run<NonNullable<typeof result.value>>(props.companyId, buildFormData(true));
+    result.value = data;
+    if ((data.imported ?? 0) > 0) {
       emit("imported");
     }
   } catch (e: any) {

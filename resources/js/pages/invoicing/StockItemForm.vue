@@ -329,7 +329,7 @@ import type {
   EvoluStockItemRow,
 } from "../../evolu/stockMap";
 import type { StockItemSavePayload } from "../../evolu/stockMap";
-import api from "../../services/api";
+import { invoicingApi } from "../../services/api";
 import { useInvoicingSaveFeedback } from "../../composables/useInvoicingSaveFeedback";
 
 const { t, locale } = useI18n();
@@ -372,11 +372,8 @@ async function loadWarehouses() {
     );
     return;
   }
-  const res = await api.get(
-    `/invoicing/companies/${companyId.value}/warehouses`,
-  );
-  warehouses.value = (res.data.data ?? []).filter(
-    (w: WarehouseRow) => w.is_active,
+  warehouses.value = (await invoicingApi.warehouses.list<WarehouseRow>(companyId.value)).filter(
+    (w) => w.is_active,
   );
 }
 
@@ -396,8 +393,8 @@ async function loadCompany() {
     if (isNew.value) initBalancesForNew();
     return;
   }
-  const res = await api.get(`/invoicing/companies/${companyId.value}/summary`);
-  saleCurrency.value = res.data.data?.default_currency || "EUR";
+  const summary = await invoicingApi.companies.summary(companyId.value);
+  saleCurrency.value = summary.default_currency || "EUR";
   Object.assign(form, emptyStockItemForm(saleCurrency.value));
   await loadWarehouses();
   if (isNew.value) initBalancesForNew();
@@ -417,10 +414,7 @@ async function loadItem() {
     movements.value = data.movements ?? [];
     return;
   }
-  const res = await api.get(
-    `/invoicing/companies/${companyId.value}/stock-items/${itemId.value}`,
-  );
-  const data = res.data.data;
+  const data = await invoicingApi.stockItems.get<Parameters<typeof stockItemToForm>[0] & { neighbor_ids?: string[]; movements?: typeof movements.value }>(companyId.value, itemId.value!);
   Object.assign(
     form,
     stockItemToForm(data, saleCurrency.value, warehouses.value),
@@ -484,16 +478,10 @@ async function save() {
     }
     const payload = formToStockPayload(form);
     if (isNew.value) {
-      const res = await api.post(
-        `/invoicing/companies/${companyId.value}/stock-items`,
-        payload,
-      );
-      await router.push(stockEditTo(res.data.data.id));
+      const created = await invoicingApi.stockItems.create<{ id: string }>(companyId.value, payload);
+      await router.push(stockEditTo(created.id));
     } else {
-      await api.patch(
-        `/invoicing/companies/${companyId.value}/stock-items/${itemId.value}`,
-        payload,
-      );
+      await invoicingApi.stockItems.update(companyId.value, itemId.value!, payload);
       await loadItem();
       notifySaved("invoicing.changes_saved");
     }

@@ -117,7 +117,7 @@ import { isInvoicingLocalFirst } from '../../evolu/flags';
 import { deleteLocalWarehouse, localWarehouseApi, saveLocalWarehouse } from '../../evolu/warehouseCrud';
 import type { CompanyId, WarehouseId } from '../../evolu/schema';
 import { allCompanyStockBalancesQuery } from '../../evolu/client';
-import api from '../../services/api';
+import { invoicingApi } from '../../services/api';
 
 const { t } = useI18n();
 const router = useRouter();
@@ -151,8 +151,8 @@ async function loadContacts() {
       .map((c) => ({ id: c.id, name: c.name }));
     return;
   }
-  const res = await api.get(`/invoicing/companies/${companyId.value}/contacts`);
-  contacts.value = (res.data.data ?? []).map((c: { id: string; name: string }) => ({
+  const serverContacts = await invoicingApi.contacts.list<{ id: string; name: string }>(companyId.value);
+  contacts.value = serverContacts.data.map((c) => ({
     id: c.id,
     name: c.name,
   }));
@@ -171,8 +171,7 @@ async function loadWarehouse() {
     if (row) Object.assign(form, warehouseToForm(row));
     return;
   }
-  const res = await api.get(`/invoicing/companies/${companyId.value}/warehouses/${warehouseId.value}`);
-  Object.assign(form, warehouseToForm(res.data.data));
+  Object.assign(form, warehouseToForm(await invoicingApi.warehouses.get<Parameters<typeof warehouseToForm>[0]>(companyId.value, warehouseId.value!)));
 }
 
 async function save() {
@@ -198,9 +197,9 @@ async function save() {
       return;
     }
     if (isNew.value) {
-      await api.post(`/invoicing/companies/${companyId.value}/warehouses`, payload);
+      await invoicingApi.warehouses.create(companyId.value, payload);
     } else {
-      await api.patch(`/invoicing/companies/${companyId.value}/warehouses/${warehouseId.value}`, payload);
+      await invoicingApi.warehouses.update(companyId.value, warehouseId.value!, payload);
     }
     await router.push(warehouseListTo());
   } catch (e: unknown) {
@@ -241,7 +240,7 @@ async function remove() {
       await router.push(warehouseListTo());
       return;
     }
-    await api.delete(`/invoicing/companies/${companyId.value}/warehouses/${warehouseId.value}`);
+    await invoicingApi.warehouses.delete(companyId.value, warehouseId.value!);
     await router.push(warehouseListTo());
   } catch (e: unknown) {
     error.value =

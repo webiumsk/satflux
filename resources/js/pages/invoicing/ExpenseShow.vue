@@ -339,7 +339,7 @@ import {
 } from "../../evolu/expenseAttachmentCrud";
 import { isInvoicingLocalFirst } from "../../evolu/flags";
 import type { ExpenseAttachmentId, ExpenseId } from "../../evolu/schema";
-import api, { getWebBlob } from "../../services/api";
+import { getWebBlob, invoicingApi } from "../../services/api";
 import { useInvoicingSaveFeedback } from "../../composables/useInvoicingSaveFeedback";
 
 type ExpenseAttachment = {
@@ -568,13 +568,11 @@ async function loadNeighbors() {
     neighborIds.value = rows.map((row) => row.id);
     return;
   }
-  const res = await api.get(
-    `/invoicing/companies/${companyId.value}/expenses`,
-    {
-      params: { per_page: 200, year: new Date().getFullYear() },
-    },
-  );
-  neighborIds.value = (res.data.data ?? []).map((e: { id: string }) => e.id);
+  const list = await invoicingApi.expenses.list<{ id: string }>(companyId.value, {
+    per_page: 200,
+    year: new Date().getFullYear(),
+  });
+  neighborIds.value = list.map((e) => e.id);
 }
 
 function goNeighbor(delta: number) {
@@ -599,15 +597,11 @@ async function load() {
       return;
     }
     const [expRes, histRes] = await Promise.all([
-      api.get(
-        `/invoicing/companies/${companyId.value}/expenses/${expenseId.value}`,
-      ),
-      api.get(
-        `/invoicing/companies/${companyId.value}/expenses/${expenseId.value}/history`,
-      ),
+      invoicingApi.expenses.get<NonNullable<typeof expense.value>>(companyId.value, expenseId.value!),
+      invoicingApi.expenses.history<HistoryRow>(companyId.value, expenseId.value!),
     ]);
-    expense.value = expRes.data.data;
-    history.value = histRes.data.data ?? [];
+    expense.value = expRes;
+    history.value = histRes;
     selectedAttachmentId.value = expense.value?.attachments?.[0]?.id ?? null;
     await loadSavedPreview();
   } finally {
@@ -737,10 +731,7 @@ async function onRemoveSavedAttachment(id: string) {
       await loadSavedPreview();
       return;
     }
-    const res = await api.delete(
-      `/invoicing/companies/${companyId.value}/expenses/${expenseId.value}/attachments/${id}`,
-    );
-    expense.value = res.data.data;
+    expense.value = await invoicingApi.expenses.deleteAttachment<NonNullable<typeof expense.value>>(companyId.value, expenseId.value!, id);
     if (selectedAttachmentId.value === id) {
       selectedAttachmentId.value = expense.value?.attachments?.[0]?.id ?? null;
     }
@@ -778,13 +769,9 @@ async function saveNote() {
       notifySaved('invoicing.changes_saved');
       return;
     }
-    const res = await api.patch(
-      `/invoicing/companies/${companyId.value}/expenses/${expenseId.value}`,
-      {
-        internal_note: noteDraft.value,
-      },
-    );
-    expense.value = res.data.data;
+    expense.value = await invoicingApi.expenses.update<NonNullable<typeof expense.value>>(companyId.value, expenseId.value!, {
+      internal_note: noteDraft.value,
+    });
     notifySaved('invoicing.changes_saved');
   } finally {
     noteSaving.value = false;
@@ -811,12 +798,10 @@ async function duplicate() {
       });
       return;
     }
-    const res = await api.post(
-      `/invoicing/companies/${companyId.value}/expenses/${expenseId.value}/duplicate`,
-    );
+    const res = await invoicingApi.expenses.action<{ id: string }>(companyId.value, expenseId.value!, 'duplicate');
     await router.push({
       name: "invoicing-expense-edit",
-      params: { companyId: companyId.value, expenseId: res.data.data.id },
+      params: { companyId: companyId.value, expenseId: res.id },
     });
   } finally {
     duplicating.value = false;
@@ -831,14 +816,8 @@ async function markPaid() {
       await load();
       return;
     }
-    const res = await api.post(
-      `/invoicing/companies/${companyId.value}/expenses/${expenseId.value}/mark-paid`,
-    );
-    expense.value = res.data.data;
-    const histRes = await api.get(
-      `/invoicing/companies/${companyId.value}/expenses/${expenseId.value}/history`,
-    );
-    history.value = histRes.data.data ?? [];
+    expense.value = await invoicingApi.expenses.action<NonNullable<typeof expense.value>>(companyId.value, expenseId.value!, 'mark-paid');
+    history.value = await invoicingApi.expenses.history<HistoryRow>(companyId.value, expenseId.value!);
   } finally {
     acting.value = false;
   }
@@ -855,10 +834,7 @@ async function unmarkPaid() {
       await load();
       return;
     }
-    const res = await api.post(
-      `/invoicing/companies/${companyId.value}/expenses/${expenseId.value}/unmark-paid`,
-    );
-    expense.value = res.data.data;
+    expense.value = await invoicingApi.expenses.action<NonNullable<typeof expense.value>>(companyId.value, expenseId.value!, 'unmark-paid');
   } finally {
     acting.value = false;
   }
@@ -873,9 +849,7 @@ async function cancelExpense() {
       await router.push(expenseListTo());
       return;
     }
-    await api.delete(
-      `/invoicing/companies/${companyId.value}/expenses/${expenseId.value}`,
-    );
+    await invoicingApi.expenses.delete(companyId.value, expenseId.value!);
     await router.push(expenseListTo());
   } finally {
     acting.value = false;
@@ -904,10 +878,7 @@ async function uploadAttachmentOnly() {
   uploading.value = true;
   try {
     await uploadAllPendingAttachments(expenseId.value);
-    const res = await api.get(
-      `/invoicing/companies/${companyId.value}/expenses/${expenseId.value}`,
-    );
-    expense.value = res.data.data;
+    expense.value = await invoicingApi.expenses.get<NonNullable<typeof expense.value>>(companyId.value, expenseId.value!);
     selectedAttachmentId.value =
       expense.value?.attachments?.at(-1)?.id ??
       expense.value?.attachments?.[0]?.id ??
@@ -953,11 +924,7 @@ async function onConfirmExtract() {
   try {
     const draft = await confirmExtract();
     if (draft) {
-      const res = await api.patch(
-        `/invoicing/companies/${companyId.value}/expenses/${expenseId.value}`,
-        draftToPayload(draft),
-      );
-      expense.value = res.data.data;
+      expense.value = await invoicingApi.expenses.update<NonNullable<typeof expense.value>>(companyId.value, expenseId.value!, draftToPayload(draft));
     }
     await uploadAttachmentOnly();
   } catch (e: unknown) {

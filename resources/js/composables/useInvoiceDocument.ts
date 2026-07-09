@@ -2,7 +2,7 @@ import { computed, onUnmounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import type { InvoiceLineForm } from '../components/invoicing/InvoiceLivePreview.vue';
-import api from '../services/api';
+import { invoicingApi } from '../services/api';
 import { isInvoicingLocalFirst } from '../evolu/flags';
 import { allDocumentEventsQuery } from '../evolu/client';
 import type { CompanyId, DocumentId } from '../evolu/schema';
@@ -293,7 +293,12 @@ export function useInvoiceDocument() {
       return;
     }
     try {
-      const res = await api.post(`/invoicing/companies/${companyId.value}/us-sales-tax/preview`, {
+      const res = await invoicingApi.usSalesTax.preview<{
+        subtotal: string;
+        tax_total: string;
+        total: string;
+        tax_breakdown?: { label?: string | null; tax_amount: string }[];
+      }>(companyId.value, {
         company_contact_id: form.company_contact_id || null,
         currency: form.currency,
         discount_percent: form.discount_percent,
@@ -307,7 +312,7 @@ export function useInvoiceDocument() {
           tax_rate: l.tax_rate ?? defaultVat.value,
         })),
       });
-      const data = res.data.data;
+      const data = res;
       serverTotals.value = {
         subtotal: parseFloat(data.subtotal),
         tax: parseFloat(data.tax_total),
@@ -544,11 +549,11 @@ export function useInvoiceDocument() {
       );
     } else {
       try {
-        const res = await api.get(
-          `/invoicing/companies/${companyId.value}/number-series/preview`,
-          { params: { type: documentType.value } }
+        const preview = await invoicingApi.numberSeries.preview<{ next_number?: string }>(
+          companyId.value,
+          { type: documentType.value },
         );
-        nextNumberPreview.value = res.data.data?.next_number ?? '';
+        nextNumberPreview.value = preview?.next_number ?? '';
       } catch {
         nextNumberPreview.value = '';
       }
@@ -696,8 +701,7 @@ export function useInvoiceDocument() {
       return;
     }
 
-    const companyRes = await api.get(`/invoicing/companies/${companyId.value}`);
-    company.value = companyRes.data.data;
+    company.value = await invoicingApi.companies.get(companyId.value);
     linkedStores.value = company.value?.stores ?? [];
     form.currency = company.value?.default_currency || 'EUR';
     if (!form.note_footer) form.note_footer = company.value?.legal_footer_note || '';
@@ -718,11 +722,11 @@ export function useInvoiceDocument() {
       applyQuoteDueDefault();
     }
 
-    const contactsRes = await api.get(`/invoicing/companies/${companyId.value}/contacts`);
-    contacts.value = contactsRes.data.data ?? [];
+    contacts.value = (await invoicingApi.contacts.list(companyId.value)).data;
 
-    const whRes = await api.get(`/invoicing/companies/${companyId.value}/warehouses`);
-    warehouses.value = (whRes.data.data ?? []).filter((w: WarehouseRow) => w.is_active);
+    warehouses.value = (await invoicingApi.warehouses.list<WarehouseRow>(companyId.value)).filter(
+      (w) => w.is_active,
+    );
   }
 
   watch(documentType, async () => {
@@ -760,10 +764,7 @@ export function useInvoiceDocument() {
       await loadLocalBtcpayCheckout();
       return;
     }
-    const docRes = await api.get(
-      `/invoicing/companies/${companyId.value}/documents/${documentId.value}`
-    );
-    await applyDocument(docRes.data.data);
+    await applyDocument(await invoicingApi.documents.get(companyId.value, documentId.value));
   }
 
   function buildCurrentEphemeralSnapshot() {
@@ -912,10 +913,7 @@ export function useInvoiceDocument() {
       history.value = documentHistoryFromEvents(events);
       return;
     }
-    const res = await api.get(
-      `/invoicing/companies/${companyId.value}/documents/${documentId.value}/history`
-    );
-    history.value = res.data.data ?? [];
+    history.value = await invoicingApi.documents.history(companyId.value, documentId.value);
   }
 
   async function loadNeighbors() {
@@ -930,10 +928,11 @@ export function useInvoiceDocument() {
         .map((d) => d.id);
       return;
     }
-    const res = await api.get(`/invoicing/companies/${companyId.value}/documents`, {
-      params: { type: documentType.value, per_page: 100 },
+    const docs = await invoicingApi.documents.list<{ id: string }>(companyId.value, {
+      type: documentType.value,
+      per_page: 100,
     });
-    neighborIds.value = (res.data.data ?? []).map((d: { id: string }) => d.id);
+    neighborIds.value = docs.map((d) => d.id);
   }
 
   function goNeighbor(delta: number, routeName: string) {

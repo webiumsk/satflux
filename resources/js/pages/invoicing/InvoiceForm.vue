@@ -462,7 +462,7 @@ import StockWarehouseSelect from '../../components/invoicing/StockWarehouseSelec
 import type { InvoiceLineForm } from '../../components/invoicing/InvoiceLivePreview.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
-import api, { businessDocumentPdfPath, getWebBlob } from '../../services/api';
+import { businessDocumentPdfPath, getWebBlob, invoicingApi } from '../../services/api';
 import {
   downloadEphemeralPdf,
   resolveEphemeralBridgeCompanyId,
@@ -672,16 +672,14 @@ async function save(downloadPdf: boolean) {
     const wasDraft = isNew.value || documentStatus.value === 'draft';
     let docId = documentId.value;
     if (!isNew.value && docId) {
-      await api.patch(`/invoicing/companies/${companyId.value}/documents/${docId}`, payload());
+      await invoicingApi.documents.update(companyId.value, docId, payload());
     } else {
-      const res = await api.post(`/invoicing/companies/${companyId.value}/documents`, payload());
-      docId = res.data.data.id;
+      const created = await invoicingApi.documents.create<{ id: string }>(companyId.value, payload());
+      docId = created.id;
     }
     if (wasDraft && docId) {
-      const issueRes = await api.post(
-        `/invoicing/companies/${companyId.value}/documents/${docId}/issue`
-      );
-      await applyDocument(issueRes.data.data);
+      const issued = await invoicingApi.documents.action(companyId.value, docId, 'issue');
+      await applyDocument(issued);
     }
     if (downloadPdf && docId) {
       const blob = await getWebBlob(businessDocumentPdfPath(companyId.value, docId));
