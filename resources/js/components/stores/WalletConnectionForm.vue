@@ -1005,7 +1005,12 @@ import {
   detectWalletConnectionInput,
   isValidCashuLightningAddress,
 } from "../../utils/detectWalletConnectionInput";
-import { isCashuWalletNwcUri, normalizeNwcUri } from "../../utils/walletNwcHelpers";
+import {
+  isCashuWalletNwcUri,
+  normalizeNwcUri,
+  validateBlinkConnectionString,
+  validateNwcUri,
+} from "../../utils/walletNwcHelpers";
 import {
   detectWalletBrandFromDescriptor,
   type AquaBoltzWalletBrand,
@@ -1900,31 +1905,6 @@ function handleCancelEdit() {
   Object.keys(errors).forEach((k) => delete errors[k]);
 }
 
-function validateBlinkConnectionString(connectionString: string): boolean {
-  const trimmed = connectionString.trim();
-  if (!trimmed) return false;
-  if (!trimmed.includes(";")) return false;
-  const parts = trimmed
-    .split(";")
-    .map((p) => p.trim())
-    .filter(Boolean);
-  let typeVal = "";
-  let serverVal = "";
-  let apiKeyVal = "";
-  let walletIdVal = "";
-  for (const part of parts) {
-    const eq = part.indexOf("=");
-    if (eq === -1) continue;
-    const key = part.slice(0, eq).trim().toLowerCase();
-    const value = part.slice(eq + 1).trim();
-    if (key === "type") typeVal = value;
-    if (key === "server") serverVal = value;
-    if (key === "api-key" || key === "apikey") apiKeyVal = value;
-    if (key === "wallet-id" || key === "walletid") walletIdVal = value;
-  }
-  return typeVal === "blink" && !!serverVal && !!apiKeyVal && !!walletIdVal;
-}
-
 function validateDescriptor(descriptor: string): boolean {
   if (!isValidAquaBoltzDescriptor(descriptor)) {
     return false;
@@ -2045,21 +2025,6 @@ async function handleTestConnection() {
   } finally {
     testing.value = false;
   }
-}
-
-function validateNwcUri(value: string): boolean {
-  if (isCashuWalletNwcUri(value)) {
-    return false;
-  }
-  const uri = normalizeNwcUri(value);
-  const lower = uri.toLowerCase();
-  return (
-    lower.startsWith("nostr+walletconnect:") &&
-    uri.length >= 80 &&
-    lower.includes("relay=") &&
-    lower.includes("secret=") &&
-    !/\s/.test(uri)
-  );
 }
 
 function formatConnectionStringForApi(value: string, type: string): string {
