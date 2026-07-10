@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BlinkMigrationAlertController;
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin\DocumentationArticleController;
 use App\Http\Controllers\Admin\DocumentationCategoryController;
 use App\Http\Controllers\Admin\DocumentationImageController;
