@@ -60,7 +60,7 @@ export function useSamRockPairing(storeId: () => string) {
         const otp = samrockOtp.value;
         try {
             const { status } = await walletApi.samrock.otpStatus(sid, otp);
-            if (status === 'completed') {
+            if (status === 'success') {
                 stopSamRockPolling();
                 await walletApi.samrock.complete(sid, { otp });
                 samrockOtp.value = '';

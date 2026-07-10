@@ -590,23 +590,20 @@ const availablePermissions = [
     value: "btcpay.store.canmodifystoresettings",
     label: "Modify store settings",
   },
-  {
-    value: "btcpay.store.cancreatenonapprovedpullpayments",
-    label: "Create non-approved pull payments in selected stores",
-  },
+];
+
+const defaultApiKeyPermissions = [
+  "btcpay.store.canviewinvoices",
+  "btcpay.store.cancreateinvoice",
+  "btcpay.store.canmodifyinvoices",
+  "btcpay.store.webhooks.canmodifywebhooks",
+  "btcpay.store.canviewstoresettings",
+  "btcpay.store.canmodifystoresettings",
 ];
 
 const form = ref({
   label: "",
-  permissions: [
-    "btcpay.store.canviewinvoices",
-    "btcpay.store.cancreateinvoice",
-    "btcpay.store.canmodifyinvoices",
-    "btcpay.store.canmodifywebhooks",
-    "btcpay.store.canviewstoresettings",
-    "btcpay.store.canmodifystoresettings",
-    "btcpay.store.canmodifypullpayments",
-  ],
+  permissions: [...defaultApiKeyPermissions],
   callback_url: "",
 });
 
@@ -640,15 +637,7 @@ function openCreateForm() {
   }
   form.value = {
     label: "",
-    permissions: [
-      "btcpay.store.canviewinvoices",
-      "btcpay.store.cancreateinvoice",
-      "btcpay.store.canmodifyinvoices",
-      "btcpay.store.webhooks.canmodifywebhooks",
-      "btcpay.store.canviewstoresettings",
-      "btcpay.store.canmodifystoresettings",
-      "btcpay.store.cancreatenonapprovedpullpayments",
-    ],
+    permissions: [...defaultApiKeyPermissions],
     callback_url: "",
   };
   showModal.value = true;

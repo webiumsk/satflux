@@ -182,6 +182,66 @@ class WalletConnectionTest extends TestCase
     }
 
     #[Test]
+    public function aqua_descriptor_marks_connected_when_boltz_greenfield_import_succeeds(): void
+    {
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+        $btcpayStoreId = 'store-boltz-greenfield';
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($btcpayStoreId) {
+            $url = $request->url();
+
+            if (str_contains($url, "/api/v1/stores/{$btcpayStoreId}/boltz/wallets") && $request->method() === 'POST') {
+                return Http::response(['id' => 'wallet-1', 'name' => 'boltz-test'], 200);
+            }
+
+            if (str_contains($url, "/api/v1/stores/{$btcpayStoreId}/boltz/setup") && $request->method() === 'POST') {
+                return Http::response(['enabled' => true], 200);
+            }
+
+            if (str_contains($url, '/plugins/cashumelt/settings') && $request->method() === 'GET') {
+                return Http::response(['message' => 'not configured'], 404);
+            }
+
+            if (str_contains($url, '/payment-methods/') && $request->method() === 'DELETE') {
+                return Http::response([], 404);
+            }
+
+            return Http::response(['message' => 'unexpected'], 404);
+        });
+
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-boltz-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'aqua_boltz',
+            'btcpay_store_id' => $btcpayStoreId,
+        ]);
+
+        $response = $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", [
+            'type' => 'aqua_descriptor',
+            'secret' => self::VALID_AQUA_DESCRIPTOR,
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.type', 'aqua_descriptor')
+            ->assertJsonPath('data.status', 'connected');
+
+        $this->assertDatabaseHas('wallet_connections', [
+            'store_id' => $store->id,
+            'type' => 'aqua_descriptor',
+            'status' => 'connected',
+        ]);
+
+        Http::assertSent(function (\Illuminate\Http\Client\Request $request) use ($btcpayStoreId) {
+            return $request->method() === 'POST'
+                && str_contains($request->url(), "/api/v1/stores/{$btcpayStoreId}/boltz/wallets");
+        });
+        Http::assertSent(function (\Illuminate\Http\Client\Request $request) use ($btcpayStoreId) {
+            return $request->method() === 'POST'
+                && str_contains($request->url(), "/api/v1/stores/{$btcpayStoreId}/boltz/setup");
+        });
+    }
+
+    #[Test]
     public function wallet_connection_store_validates_type_and_secret(): void
     {
         $user = User::factory()->create();
