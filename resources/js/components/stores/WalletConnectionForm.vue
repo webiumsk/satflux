@@ -654,6 +654,7 @@
 
     <!-- Unified wallet setup (paste first, SamRock second - same as create store) -->
     <template v-else-if="showWalletSetupForm">
+      <div class="space-y-6">
       <div
         v-if="showWalletSetupTabs"
         class="flex gap-1 p-1 rounded-xl bg-gray-800/90 border border-gray-600 w-full sm:w-fit"
@@ -788,47 +789,6 @@
             </div>
           </div>
         </div>
-
-        <div
-          class="flex flex-col-reverse sm:flex-row justify-between items-center gap-4 pt-4 border-t border-gray-700"
-        >
-          <div class="flex w-full sm:w-auto gap-4">
-            <button
-              type="button"
-              @click="handleTestConnection"
-              :disabled="testing || !form.secret.trim()"
-              class="w-full sm:w-auto px-6 py-3 border border-gray-600 rounded-xl shadow-sm text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              {{ testing ? t("stores.testing") : t("stores.test_connection") }}
-            </button>
-          </div>
-          <div class="flex w-full sm:w-auto gap-4">
-            <button
-              v-if="existingConnection && viewMode === 'editing'"
-              type="button"
-              @click="handleCancelEdit"
-              class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all"
-            >
-              {{ t("common.cancel") }}
-            </button>
-            <button
-              v-else
-              type="button"
-              @click="$emit('cancel')"
-              class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all"
-            >
-              {{ t("common.cancel") }}
-            </button>
-            <button
-              type="button"
-              :disabled="submitting"
-              class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-xl shadow-lg shadow-indigo-600/20 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              @click="handleSubmit"
-            >
-              {{ submitting ? t("common.loading") : t("stores.save_connection") }}
-            </button>
-          </div>
-        </div>
       </div>
 
       <div
@@ -949,6 +909,49 @@
         "
         :highlight-brand="walletPasteDetection.brand"
       />
+
+      <div
+        v-show="!showWalletSetupTabs || walletSetupTab === 'paste'"
+        class="flex flex-col-reverse sm:flex-row justify-between items-center gap-4 pt-2"
+      >
+        <div class="flex w-full sm:w-auto gap-4">
+          <button
+            type="button"
+            @click="handleTestConnection"
+            :disabled="testing || !form.secret.trim()"
+            class="w-full sm:w-auto px-6 py-3 border border-gray-600 rounded-xl shadow-sm text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            {{ testing ? t("stores.testing") : t("stores.test_connection") }}
+          </button>
+        </div>
+        <div class="flex w-full sm:w-auto gap-4">
+          <button
+            v-if="existingConnection && viewMode === 'editing'"
+            type="button"
+            @click="handleCancelEdit"
+            class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all"
+          >
+            {{ t("common.cancel") }}
+          </button>
+          <button
+            v-else
+            type="button"
+            @click="$emit('cancel')"
+            class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all"
+          >
+            {{ t("common.cancel") }}
+          </button>
+          <button
+            type="button"
+            :disabled="submitting"
+            class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-xl shadow-lg shadow-indigo-600/20 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            @click="handleSubmit"
+          >
+            {{ submitting ? t("common.loading") : t("stores.save_connection") }}
+          </button>
+        </div>
+      </div>
+      </div>
     </template>
 
     <div
