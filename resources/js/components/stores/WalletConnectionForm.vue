@@ -799,7 +799,8 @@
           v-if="
             viewMode === 'editing' &&
             existingConnection &&
-            existingConnection.status === 'connected'
+            existingConnection.status === 'connected' &&
+            walletType === 'aqua_boltz'
           "
           class="p-4 rounded-xl border border-green-500/25 bg-green-500/10 text-sm text-green-100 space-y-1"
         >
@@ -1059,10 +1060,8 @@ const showWalletSetupForm = computed(() => {
   return false;
 });
 
-const showWalletSetupTabs = computed(() => {
-  const wt = props.walletType;
-  return wt === "aqua_boltz" || isUnsetWalletType.value;
-});
+/** SamRock can (re)provision Aqua/Bull for any non-Cashu store (backend allows the Blink/NWC → Aqua switch). */
+const showWalletSetupTabs = computed(() => !isCashuFlow.value);
 
 const showAquaDescriptorWarnings = computed(() => {
   if (props.walletType === "nwc" || props.walletType === "blink") return false;
