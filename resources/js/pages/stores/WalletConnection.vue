@@ -20,8 +20,9 @@
     />
 
     <!-- Main Content -->
-    <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-l border-gray-800 bg-gray-900">
-      <AppScrollPane>
+    <div
+      class="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-y-contain custom-scrollbar border-l border-gray-800 bg-gray-900"
+    >
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-16">
           <div class="mb-8">
             <h1 class="text-3xl font-bold text-white">
@@ -68,7 +69,6 @@
             />
           </div>
         </div>
-      </AppScrollPane>
     </div>
   </div>
 
@@ -91,7 +91,6 @@ import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
 import { useAppsStore } from '../../store/apps';
 import { walletApi } from '../../services/api';
-import AppScrollPane from '../../components/layout/AppScrollPane.vue';
 import WalletConnectionForm from '../../components/stores/WalletConnectionForm.vue';
 import BlinkMigrationAlertModal from '../../components/stores/BlinkMigrationAlertModal.vue';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';

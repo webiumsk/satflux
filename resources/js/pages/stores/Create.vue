@@ -560,7 +560,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch, defineAsyncComponent } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useStoresStore } from "../../store/stores";
@@ -575,8 +575,14 @@ import { DEFAULT_CASHU_MINT_URL } from "../../constants/cashu";
 import { isValidAquaBoltzDescriptor } from "../../utils/aquaBoltzDescriptor";
 import { detectWalletConnectionInput, isValidCashuLightningAddress } from "../../utils/detectWalletConnectionInput";
 import { isCashuWalletNwcUri, normalizeNwcUri } from "../../utils/walletNwcHelpers";
-import WalletConnectionSmartPaste from "../../components/stores/WalletConnectionSmartPaste.vue";
-import WalletConnectionTypeGuide from "../../components/stores/WalletConnectionTypeGuide.vue";
+
+/** Async so edit wallet page bundles guide + smart paste in its route chunk (not a shared stale chunk). */
+const WalletConnectionSmartPaste = defineAsyncComponent(
+  () => import("../../components/stores/WalletConnectionSmartPaste.vue"),
+);
+const WalletConnectionTypeGuide = defineAsyncComponent(
+  () => import("../../components/stores/WalletConnectionTypeGuide.vue"),
+);
 
 const { t } = useI18n();
 

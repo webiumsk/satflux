@@ -42,6 +42,14 @@ export default defineConfig({
                 assetFileNames: 'assets/[name]-[hash].[ext]',
                 format: 'es',
                 manualChunks(id) {
+                    // Bundle guide + smart paste into the WalletConnection route chunk (not a tiny
+                    // shared file that breaks when browsers cache an older route chunk hash).
+                    if (
+                        id.includes('WalletConnectionTypeGuide')
+                        || id.includes('WalletConnectionSmartPaste')
+                    ) {
+                        return 'WalletConnection';
+                    }
                     if (id.includes('node_modules/vue/') || id.includes('node_modules/@vue/')) {
                         return 'vue';
                     }
