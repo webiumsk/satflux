@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Store;
 use App\Models\User;
 use App\Models\WalletConnection;
+use App\Services\BtcPay\BoltzService;
+use App\Services\WalletConnectionValidator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
@@ -212,9 +214,13 @@ class WalletConnectionTest extends TestCase
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-boltz-key']);
         $store = Store::factory()->create([
             'user_id' => $user->id,
+            'name' => 'Acme Store',
             'wallet_type' => 'aqua_boltz',
             'btcpay_store_id' => $btcpayStoreId,
         ]);
+        $walletName = app(BoltzService::class)->buildWalletName($store);
+        $expectedDescriptor = app(WalletConnectionValidator::class)
+            ->stripDescriptorChecksum(trim(self::VALID_AQUA_DESCRIPTOR));
 
         $response = $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", [
             'type' => 'aqua_descriptor',
@@ -231,13 +237,23 @@ class WalletConnectionTest extends TestCase
             'status' => 'connected',
         ]);
 
-        Http::assertSent(function (\Illuminate\Http\Client\Request $request) use ($btcpayStoreId) {
-            return $request->method() === 'POST'
-                && str_contains($request->url(), "/api/v1/stores/{$btcpayStoreId}/boltz/wallets");
+        Http::assertSent(function (\Illuminate\Http\Client\Request $request) use ($btcpayStoreId, $walletName, $expectedDescriptor) {
+            if ($request->method() !== 'POST' || ! str_contains($request->url(), "/api/v1/stores/{$btcpayStoreId}/boltz/wallets")) {
+                return false;
+            }
+            $body = $request->data();
+
+            return ($body['name'] ?? null) === $walletName
+                && ($body['currency'] ?? null) === 'LBTC'
+                && ($body['coreDescriptor'] ?? null) === $expectedDescriptor;
         });
-        Http::assertSent(function (\Illuminate\Http\Client\Request $request) use ($btcpayStoreId) {
-            return $request->method() === 'POST'
-                && str_contains($request->url(), "/api/v1/stores/{$btcpayStoreId}/boltz/setup");
+        Http::assertSent(function (\Illuminate\Http\Client\Request $request) use ($btcpayStoreId, $walletName) {
+            if ($request->method() !== 'POST' || ! str_contains($request->url(), "/api/v1/stores/{$btcpayStoreId}/boltz/setup")) {
+                return false;
+            }
+            $body = $request->data();
+
+            return ($body['walletName'] ?? null) === $walletName;
         });
     }
 
