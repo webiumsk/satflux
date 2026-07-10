@@ -660,7 +660,12 @@ class WalletConnectionService
      */
     public function syncStatusFromBtcpay(Store $store, WalletConnection $connection, User $user): bool
     {
-        $userApiKey = $store->user?->btcpay_api_key;
+        $owner = $store->user;
+        if (! $owner instanceof User) {
+            return false;
+        }
+
+        $userApiKey = $owner->btcpay_api_key;
         if (! filled($userApiKey)) {
             return false;
         }

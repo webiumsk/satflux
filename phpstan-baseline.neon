@@ -145,13 +145,7 @@ parameters:
 			path: app/Http/Controllers/AdminController.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Store\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/AdminController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{id\: string, name\: string, created_at\: Carbon\\Carbon\|null, wallet_type\: string\|null, pos_terminal_count\: int\<0, max\>, wallet_connection_status\: ''connected''\|''needs_support''\|''pending''\|null\}, Closure\(App\\Models\\Store\)\: array\{id\: string, name\: string, created_at\: Carbon\\Carbon\|null, wallet_type\: string\|null, pos_terminal_count\: int\<0, max\>, wallet_connection_status\: ''connected''\|''needs_support''\|''pending''\|null\} given\.$#'
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{id\: string, name\: string, created_at\: Carbon\\Carbon\|null, wallet_type\: string\|null, wallet_brand\: ''aqua''\|''bull''\|null, pos_terminal_count\: int\<0, max\>, wallet_connection_status\: ''connected''\|''needs_support''\|''pending''\|null\}, Closure\(App\\Models\\Store\)\: array\{id\: string, name\: string, created_at\: Carbon\\Carbon\|null, wallet_type\: string\|null, wallet_brand\: ''aqua''\|''bull''\|null, pos_terminal_count\: int\<0, max\>, wallet_connection_status\: ''connected''\|''needs_support''\|''pending''\|null\} given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/AdminController.php
@@ -4197,12 +4191,6 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:notify\(\)\.$#'
 			identifier: method.notFound
-			count: 1
-			path: app/Services/WalletConnectionService.php
-
-		-
-			message: '#^Call to function in_array\(\) with arguments ''aqua_boltz''\|''blink'', array\{''blink'', ''aqua_boltz''\} and true will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
 			count: 1
 			path: app/Services/WalletConnectionService.php
 

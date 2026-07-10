@@ -9,6 +9,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property \Illuminate\Support\Carbon|null $blink_alert_snoozed_until
+ * @property \Illuminate\Support\Carbon|null $blink_alert_dismissed_at
+ */
 class Store extends Model
 {
     use HasFactory, HasUuids;
