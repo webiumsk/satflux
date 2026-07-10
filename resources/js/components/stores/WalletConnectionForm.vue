@@ -1022,9 +1022,9 @@ import NostrAuthModal from "../auth/NostrAuthModal.vue";
 interface Props {
   storeId: string;
   existingConnection?: any;
-  walletType?: "blink" | "aqua_boltz" | "cashu" | "nwc" | string | null;
+  walletType?: "blink" | "aqua_boltz" | "cashu" | "nwc" | string | null | undefined;
   /** When wallet_type is aqua_boltz: Aqua vs Bull (from API) */
-  walletBrand?: AquaBoltzWalletBrand | null;
+  walletBrand?: AquaBoltzWalletBrand | null | undefined;
   /** After create-store redirect: auto-open SamRock QR flow */
   autoSamrock?: boolean;
 }
@@ -1275,7 +1275,7 @@ async function startSamRockPairing() {
         } else if (status === "error") {
           stopSamRockPolling();
           samrockErrorMessage.value =
-            st.data?.data?.error_message ?? t("stores.samrock_error");
+            st.error_message ?? t("stores.samrock_error");
         }
       } catch {
         /* ignore */
@@ -1791,11 +1791,11 @@ async function requestNewRevealChallenge() {
   await fetchRevealChallengeAndOpen();
 }
 
-function onNostrRevealSuccess(payload?: {
-  secret?: string;
-  type?: string;
-  ok?: boolean;
-}) {
+function onNostrRevealSuccess(rawPayload?: unknown) {
+  // NostrAuthModal emits `unknown`; narrow to the reveal payload shape.
+  const payload = (rawPayload ?? undefined) as
+    | { secret?: string; type?: string; ok?: boolean }
+    | undefined;
   showNostrRevealModal.value = false;
   if (props.walletType === "cashu" && cashuSectionMode.value === "password") {
     cashuSectionMode.value = "editing";

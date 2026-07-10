@@ -38,7 +38,7 @@ const props = withDefaults(
     /** store.wallet_type or connection.type */
     type: 'blink' | 'aqua_boltz' | 'cashu' | 'nwc' | 'aqua_descriptor' | null | undefined;
     /** When type is aqua_boltz / aqua_descriptor: which wallet logo to show */
-    brand?: AquaBoltzWalletBrand | null;
+    brand?: AquaBoltzWalletBrand | null | undefined;
     size?: 'sm' | 'md' | 'lg';
     showLabel?: boolean;
     fallbackText?: string;
