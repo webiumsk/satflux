@@ -105,8 +105,12 @@ class BlinkMigrationAlertTest extends TestCase
         $store = Store::factory()->withBlink()->create([
             'user_id' => $user->id,
             'btcpay_store_id' => 'btcpay-store-1',
-            'blink_alert_dismissed_at' => now(),
         ]);
+
+        $this->actingAs($user)
+            ->getJson("/api/stores/{$store->id}")
+            ->assertOk()
+            ->assertJsonPath('data.blink_migration_alert.active', true);
 
         $store->update(['wallet_type' => 'aqua_boltz']);
 

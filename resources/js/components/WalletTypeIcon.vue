@@ -73,23 +73,18 @@ const iconSrc = computed(() => {
   return null;
 });
 
-const altText = computed(() => {
+function walletTypeLabel(): string {
   if (!props.type) return props.fallbackText ?? '';
   if (props.type === 'nwc') return t('create_store.wallet_type_nwc');
   if (props.type === 'blink') return t('create_store.wallet_type_blink');
   if (props.type === 'cashu') return t('create_store.wallet_type_cashu');
   if (resolvedBrand.value === 'bull') return t('create_store.wallet_type_bull');
   return t('create_store.wallet_type_aqua');
-});
+}
 
-const labelText = computed(() => {
-  if (!props.type) return props.fallbackText ?? '';
-  if (props.type === 'nwc') return t('create_store.wallet_type_nwc');
-  if (props.type === 'blink') return t('create_store.wallet_type_blink');
-  if (props.type === 'cashu') return t('create_store.wallet_type_cashu');
-  if (resolvedBrand.value === 'bull') return t('create_store.wallet_type_bull');
-  return t('create_store.wallet_type_aqua');
-});
+const altText = computed(() => walletTypeLabel());
+
+const labelText = computed(() => walletTypeLabel());
 
 const imgSizeClass = computed(() => {
   const isBull =

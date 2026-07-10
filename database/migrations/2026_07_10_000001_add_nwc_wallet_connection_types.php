@@ -13,10 +13,32 @@ return new class extends Migration
 
         if ($driver === 'sqlite') {
             Schema::table('wallet_connections', function (Blueprint $table) {
+                $table->string('type_backup')->nullable();
+            });
+
+            foreach (DB::table('wallet_connections')->get(['id', 'type']) as $row) {
+                DB::table('wallet_connections')
+                    ->where('id', $row->id)
+                    ->update(['type_backup' => $row->type]);
+            }
+
+            Schema::table('wallet_connections', function (Blueprint $table) {
                 $table->dropColumn('type');
             });
             Schema::table('wallet_connections', function (Blueprint $table) {
                 $table->string('type');
+            });
+
+            foreach (DB::table('wallet_connections')->get(['id', 'type_backup']) as $row) {
+                if ($row->type_backup !== null) {
+                    DB::table('wallet_connections')
+                        ->where('id', $row->id)
+                        ->update(['type' => $row->type_backup]);
+                }
+            }
+
+            Schema::table('wallet_connections', function (Blueprint $table) {
+                $table->dropColumn('type_backup');
             });
 
             return;
@@ -58,7 +80,7 @@ return new class extends Migration
 
             DB::statement('ALTER TABLE stores DROP CONSTRAINT IF EXISTS stores_wallet_type_check');
             DB::statement("ALTER TABLE stores ADD CONSTRAINT stores_wallet_type_check CHECK (
-                wallet_type IS NULL OR (wallet_type::text = ANY (ARRAY['blink'::text, 'aqua_boltz'::text, 'nwc'::text, 'cashu'::text]))
+                wallet_type IS NULL OR (wallet_type::text = ANY (ARRAY['blink'::text, 'aqua_boltz'::text, 'cashu'::text]))
             )");
 
             return;

@@ -1003,7 +1003,7 @@ import {
   detectWalletConnectionInput,
   isValidCashuLightningAddress,
 } from "../../utils/detectWalletConnectionInput";
-import { isCashuWalletNwcUri } from "../../utils/walletNwcHelpers";
+import { isCashuWalletNwcUri, normalizeNwcUri } from "../../utils/walletNwcHelpers";
 import {
   detectWalletBrandFromDescriptor,
   type AquaBoltzWalletBrand,
@@ -2033,11 +2033,7 @@ function validateNwcUri(value: string): boolean {
   if (isCashuWalletNwcUri(value)) {
     return false;
   }
-  let uri = value.trim();
-  if (uri.toLowerCase().startsWith("type=nwc;")) {
-    uri = uri.replace(/^type=nwc;key=/i, "");
-  }
-  uri = uri.replace("nostr+walletconnect://", "nostr+walletconnect:");
+  const uri = normalizeNwcUri(value);
   const lower = uri.toLowerCase();
   return (
     lower.startsWith("nostr+walletconnect:") &&
@@ -2090,10 +2086,8 @@ async function handleSubmit() {
     return;
   }
   if (form.type === "nwc" && isCashuWalletNwcUri(form.secret)) {
-    testResult.value = {
-      success: false,
-      message: t("stores.wallet_cashu_nwc_rejected"),
-    };
+    errors.secret = t("stores.wallet_cashu_nwc_rejected");
+    submitting.value = false;
     return;
   }
   if (form.type === "nwc" && !validateNwcUri(form.secret)) {
@@ -2104,12 +2098,7 @@ async function handleSubmit() {
 
   try {
     const secretPayload =
-      form.type === "nwc"
-        ? form.secret
-            .trim()
-            .replace(/^type=nwc;key=/i, "")
-            .replace("nostr+walletconnect://", "nostr+walletconnect:")
-        : form.secret.trim();
+      form.type === "nwc" ? normalizeNwcUri(form.secret) : form.secret.trim();
 
     await walletApi.connection.create(props.storeId, {
       type: form.type,

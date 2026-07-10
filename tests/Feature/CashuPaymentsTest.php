@@ -192,7 +192,12 @@ class CashuPaymentsTest extends TestCase
         $this->getJson("/api/stores/{$store->id}/cashu/settings")
             ->assertOk()
             ->assertJsonPath('data.mint_url', null)
-            ->assertJsonPath('data.lightning_address', null);
+            ->assertJsonPath('data.lightning_address', null)
+            ->assertJsonPath('data.enabled', true)
+            ->assertJsonPath('data.unit', null)
+            ->assertJsonPath('data.trusted_mint_urls', null)
+            ->assertJsonPath('data.max_melt_fee_reserve_sats', null)
+            ->assertJsonPath('data.max_melt_fee_reserve_percent_of_minted', null);
     }
 
     public function test_list_payments_includes_mint_quote_poll_url_from_plugin(): void

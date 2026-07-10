@@ -41,7 +41,7 @@ class StoreCreateRequest extends FormRequest
 
             // Cashu plugin settings.
             'mint_url' => ['required_if:wallet_type,cashu', 'string', 'url', 'starts_with:https://'],
-            'lightning_address' => ['required_if:wallet_type,cashu', 'string', 'regex:/^[^@\s]+@[^@\s]*\.[^@\s]{2,}$/'],
+            'lightning_address' => ['required_if:wallet_type,cashu', 'string', 'regex:/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/'],
         ];
     }
 

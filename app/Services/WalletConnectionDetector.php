@@ -133,14 +133,7 @@ class WalletConnectionDetector
 
     protected function detectDescriptorBrand(string $descriptorBody): ?string
     {
-        if (preg_match('/,\s*elwpkh\s*\(/i', $descriptorBody)) {
-            return 'bull';
-        }
-        if (preg_match('/,\s*elsh\s*\(\s*wpkh\s*\(/i', $descriptorBody)) {
-            return 'aqua';
-        }
-
-        return null;
+        return $this->validator->detectAquaBrandFromDescriptor($descriptorBody);
     }
 
     /**

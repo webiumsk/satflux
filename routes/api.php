@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\BlinkMigrationAlertController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin\DocumentationArticleController;
 use App\Http\Controllers\Admin\DocumentationCategoryController;
@@ -15,6 +14,7 @@ use App\Http\Controllers\Auth\LnurlAuthController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\NostrAuthController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\BlinkMigrationAlertController;
 use App\Http\Controllers\CashuController;
 use App\Http\Controllers\ChoralaController;
 use App\Http\Controllers\ChoralaProxyController;

@@ -3,12 +3,12 @@ import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import WalletTypeIcon from '../WalletTypeIcon.vue';
 import type { DetectedWalletKind } from '../../utils/detectWalletConnectionInput';
-import type { AquaBoltzBrand } from '../../utils/aquaBoltzWalletBrand';
+import type { AquaBoltzWalletBrand } from '../../utils/aquaBoltzWalletBrand';
 
 const props = withDefaults(
   defineProps<{
     highlightKind?: DetectedWalletKind | null;
-    highlightBrand?: AquaBoltzBrand | null;
+    highlightBrand?: AquaBoltzWalletBrand | null;
   }>(),
   {
     highlightKind: null,
@@ -26,7 +26,7 @@ const items: Array<{
   id: GuideId;
   titleKey: string;
   iconType: 'nwc' | 'blink' | 'aqua_boltz' | 'cashu';
-  brand?: AquaBoltzBrand;
+  brand?: AquaBoltzWalletBrand;
   recommended?: boolean;
 }> = [
   {
@@ -74,7 +74,7 @@ function toggle(id: GuideId): void {
 
 function guideIdFromDetection(
   kind: DetectedWalletKind | null | undefined,
-  brand: AquaBoltzBrand | null | undefined,
+  brand: AquaBoltzWalletBrand | null | undefined,
 ): GuideId | null {
   if (!kind || kind === 'unknown') return null;
   if (kind === 'nwc') return 'nwc';

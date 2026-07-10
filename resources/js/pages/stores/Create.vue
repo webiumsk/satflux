@@ -574,7 +574,7 @@ import { storesApi, walletApi } from "../../services/api";
 import { DEFAULT_CASHU_MINT_URL } from "../../constants/cashu";
 import { isValidAquaBoltzDescriptor } from "../../utils/aquaBoltzDescriptor";
 import { detectWalletConnectionInput, isValidCashuLightningAddress } from "../../utils/detectWalletConnectionInput";
-import { isCashuWalletNwcUri } from "../../utils/walletNwcHelpers";
+import { isCashuWalletNwcUri, normalizeNwcUri } from "../../utils/walletNwcHelpers";
 import WalletConnectionSmartPaste from "../../components/stores/WalletConnectionSmartPaste.vue";
 import WalletConnectionTypeGuide from "../../components/stores/WalletConnectionTypeGuide.vue";
 
@@ -658,11 +658,7 @@ function validateNwcUri(value: string): boolean {
   if (isCashuWalletNwcUri(value)) {
     return false;
   }
-  let uri = value.trim();
-  if (uri.toLowerCase().startsWith("type=nwc;")) {
-    uri = uri.replace(/^type=nwc;key=/i, "");
-  }
-  uri = uri.replace("nostr+walletconnect://", "nostr+walletconnect:");
+  const uri = normalizeNwcUri(value);
   const lower = uri.toLowerCase();
   return (
     lower.startsWith("nostr+walletconnect:") &&
@@ -1025,12 +1021,8 @@ async function submitWalletConfiguration() {
     }
 
     const rawSecret = (form.value.connection_string ?? "").trim();
-    let secret = rawSecret;
-    if (connectionType.value === "nwc") {
-      secret = rawSecret
-        .replace(/^type=nwc;key=/i, "")
-        .replace("nostr+walletconnect://", "nostr+walletconnect:");
-    }
+    const secret =
+      connectionType.value === "nwc" ? normalizeNwcUri(rawSecret) : rawSecret;
 
     await walletApi.connection.create(sid, {
       type: connectionType.value,
