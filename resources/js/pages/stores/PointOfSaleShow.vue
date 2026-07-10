@@ -447,6 +447,24 @@
                             </div>
                           </div>
                         </div>
+                        <div
+                          class="flex items-start bg-gray-900 border border-gray-700 p-4 rounded-xl mt-4"
+                        >
+                          <input
+                            id="taxIncludedInPrice"
+                            v-model="form.taxIncludedInPrice"
+                            type="checkbox"
+                            class="h-5 w-5 mt-0.5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
+                          />
+                          <label for="taxIncludedInPrice" class="ml-3 block">
+                            <span class="text-sm font-medium text-gray-200">
+                              {{ t("apps.pos_tax_included_in_price") }}
+                            </span>
+                            <span class="block text-xs text-gray-500 mt-1">
+                              {{ t("apps.pos_tax_included_in_price_hint") }}
+                            </span>
+                          </label>
+                        </div>
                       </div>
 
                       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 py-4">
@@ -467,21 +485,57 @@
                             </label>
                           </div>
 
-                          <div v-if="form.enableTips">
-                            <label
-                              for="tipsMessage"
-                              class="block text-xs font-medium text-gray-400 mb-1"
-                            >
-                              {{ t("apps.pos_tip_message") }}
-                              <span class="text-red-400">*</span>
-                            </label>
-                            <input
-                              id="tipsMessage"
-                              v-model="form.tipsMessage"
-                              type="text"
-                              required
-                              class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-                            />
+                          <div v-if="form.enableTips" class="space-y-4">
+                            <div>
+                              <label
+                                for="tipsMessage"
+                                class="block text-xs font-medium text-gray-400 mb-1"
+                              >
+                                {{ t("apps.pos_tip_message") }}
+                                <span class="text-red-400">*</span>
+                              </label>
+                              <input
+                                id="tipsMessage"
+                                v-model="form.tipsMessage"
+                                type="text"
+                                required
+                                class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label
+                                for="tipTaxRate"
+                                class="block text-xs font-medium text-gray-400 mb-1"
+                              >
+                                {{ t("apps.pos_tip_tax_rate") }}
+                              </label>
+                              <div class="flex rounded-lg shadow-sm">
+                                <input
+                                  id="tipTaxRate"
+                                  :value="
+                                    form.tipTaxRate === null ||
+                                    form.tipTaxRate === undefined
+                                      ? ''
+                                      : form.tipTaxRate
+                                  "
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  max="100"
+                                  class="flex-1 min-w-0 block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-l-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                                  placeholder="0.00"
+                                  @input="onTipTaxRateInput"
+                                />
+                                <span
+                                  class="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-gray-600 bg-gray-700 text-gray-300 text-sm"
+                                >
+                                  %
+                                </span>
+                              </div>
+                              <p class="mt-1 text-xs text-gray-500">
+                                {{ t("apps.pos_tip_tax_rate_hint") }}
+                              </p>
+                            </div>
                           </div>
                         </div>
 
@@ -1192,6 +1246,8 @@ const form = ref({
   enableTips: false,
   tipsMessage: "Do you want to leave a tip?",
   defaultTaxRate: 0,
+  tipTaxRate: null as number | null,
+  taxIncludedInPrice: false,
   requestCustomerData: "",
   fixedAmountPayButtonText: "Buy for {0}",
   customAmountPayButtonText: "Pay",
@@ -1310,6 +1366,19 @@ const currentProduct = computed(() => {
   return null;
 });
 
+function parseOptionalTaxRate(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  const parsed = parseFloat(String(value));
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function onTipTaxRateInput(event: Event) {
+  const raw = (event.target as HTMLInputElement).value;
+  form.value.tipTaxRate = raw === "" ? null : parseOptionalTaxRate(raw);
+}
+
 // Helper function to parse boolean values from BTCPay API response
 // BTCPay might return booleans, strings ("true"/"false"), numbers (1/0), or null/undefined
 function parseBoolean(value: any, defaultValue: boolean = false): boolean {
@@ -1381,6 +1450,11 @@ async function loadApp(clearErrors: boolean = true) {
     form.value.defaultTaxRate = config.defaultTaxRate
       ? parseFloat(String(config.defaultTaxRate))
       : 0;
+    form.value.tipTaxRate = parseOptionalTaxRate(config.tipTaxRate);
+    form.value.taxIncludedInPrice = parseBoolean(
+      config.taxIncludedInPrice,
+      false,
+    );
     form.value.requestCustomerData = config.requestCustomerData || "";
     form.value.fixedAmountPayButtonText =
       config.fixedAmountPayButtonText || "Buy for {0}";
@@ -1576,6 +1650,11 @@ async function handleSubmit() {
       defaultTaxRate: form.value.defaultTaxRate
         ? String(form.value.defaultTaxRate)
         : null,
+      tipTaxRate:
+        form.value.tipTaxRate !== null && form.value.tipTaxRate !== undefined
+          ? String(form.value.tipTaxRate)
+          : null,
+      taxIncludedInPrice: form.value.taxIncludedInPrice,
       requestCustomerData: form.value.requestCustomerData || null,
       fixedAmountPayButtonText: form.value.fixedAmountPayButtonText,
       customAmountPayButtonText: form.value.customAmountPayButtonText,
@@ -1654,6 +1733,8 @@ async function handleSubmit() {
         enableTips: form.value.enableTips,
         tipsMessage: form.value.tipsMessage,
         defaultTaxRate: form.value.defaultTaxRate,
+        tipTaxRate: form.value.tipTaxRate,
+        taxIncludedInPrice: form.value.taxIncludedInPrice,
         requestCustomerData: form.value.requestCustomerData,
         fixedAmountPayButtonText: form.value.fixedAmountPayButtonText,
         customAmountPayButtonText: form.value.customAmountPayButtonText,

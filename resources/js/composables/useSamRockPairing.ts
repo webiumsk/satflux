@@ -59,8 +59,8 @@ export function useSamRockPairing(storeId: () => string) {
         const sid = pairingStoreId;
         const otp = samrockOtp.value;
         try {
-            const { status } = await walletApi.samrock.otpStatus(sid, otp);
-            if (status === 'completed') {
+            const { status, error_message } = await walletApi.samrock.otpStatus(sid, otp);
+            if (status === 'success') {
                 stopSamRockPolling();
                 await walletApi.samrock.complete(sid, { otp });
                 samrockOtp.value = '';
@@ -68,6 +68,9 @@ export function useSamRockPairing(storeId: () => string) {
                 revokeSamRockQr();
                 samrockPollStatus.value = t('stores.samrock_pairing_complete');
                 await onComplete();
+            } else if (status === 'error') {
+                stopSamRockPolling();
+                samrockErrorMessage.value = error_message ?? t('stores.samrock_error');
             }
         } catch (err: unknown) {
             samrockErrorMessage.value = getApiErrorMessage(err, t('stores.samrock_error'));

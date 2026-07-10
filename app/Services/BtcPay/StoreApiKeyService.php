@@ -47,7 +47,6 @@ class StoreApiKeyService
             'btcpay.store.webhooks.canmodifywebhooks',
             'btcpay.store.canviewstoresettings',
             'btcpay.store.canmodifystoresettings',
-            'btcpay.store.cancreatenonapprovedpullpayments',
         ];
 
         $finalPermissions = ! empty($permissions) ? $permissions : $defaultPermissions;

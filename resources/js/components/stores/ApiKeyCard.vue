@@ -231,7 +231,6 @@ function formatPermissions(permissions: string[]): string {
     'btcpay.store.webhooks.canmodifywebhooks': "Modify selected stores' webhooks",
     'btcpay.store.canviewstoresettings': 'View your stores',
     'btcpay.store.canmodifystoresettings': 'Modify store settings',
-    'btcpay.store.cancreatenonapprovedpullpayments': 'Create non-approved pull payments in selected stores',
   };
 
   return permissions
