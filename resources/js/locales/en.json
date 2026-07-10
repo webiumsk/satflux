@@ -2621,7 +2621,7 @@
     "step_confirm": "Confirm",
     "step_provisioning": "Provisioning",
     "store_created_hint": "Your store is created. Choose how you want to receive payments.",
-    "wallet_paste_hint": "Odporúčame Aqua/Bull cez SamRock (QR) alebo deskriptor. Prípadne Blink, Cashu (LN adresa + mint), alebo NWC z vlastného Alby Hubu.",
+    "wallet_paste_hint": "We recommend Aqua/Bull via SamRock (QR) or descriptor. Alternatively Blink, Cashu (LN address + mint) or NWC from your own Alby Hub.",
     "continue_setup": "Continue",
     "continue_to_store": "Continue to store",
     "bot_wait_title": "Configuring your wallet on BTCPay",
