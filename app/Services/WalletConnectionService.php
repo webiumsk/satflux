@@ -152,8 +152,7 @@ class WalletConnectionService
             ]);
 
             // Keep stores.wallet_type in sync with wallet_connection type
-            // wallet_connections.type: 'blink' | 'aqua_descriptor'  ->  stores.wallet_type: 'blink' | 'aqua_boltz'
-            $storeWalletType = $connection->type === 'aqua_descriptor' ? 'aqua_boltz' : 'blink';
+            $storeWalletType = $this->resolveStoreWalletType($connection->type);
             $store->update(['wallet_type' => $storeWalletType]);
             $store->refresh();
             StoreChecklistService::ensureChecklistInitialized($store);
@@ -163,7 +162,7 @@ class WalletConnectionService
                 'wallet_type' => $storeWalletType,
             ]);
 
-            if (in_array($storeWalletType, ['blink', 'aqua_boltz'], true)) {
+            if (in_array($storeWalletType, ['blink', 'aqua_boltz', 'nwc'], true)) {
                 $merchant = $store->user;
                 $userApiKey = ($merchant && filled($merchant->btcpay_api_key ?? null))
                     ? $merchant->btcpay_api_key
@@ -203,64 +202,14 @@ class WalletConnectionService
                         ]);
                     }
 
-                    // Replace stale Boltz/Aqua (or host default) LN with Blink via API when possible.
-                    // Best-effort DELETE first so PUT/POST connect is not ignored when BTCPay already has type=boltz;...
-                    if ($type === 'blink' && $initialStatus === 'pending') {
-                        try {
-                            $this->lightningService->tryRemoveStoreLightningNodeConfiguration(
-                                $store->btcpay_store_id,
-                                'BTC',
-                                $userApiKey
-                            );
-                        } catch (\Throwable $e) {
-                            Log::info('Best-effort clear BTCPay Lightning before Blink connect', [
-                                'store_id' => $store->id,
-                                'message' => $e->getMessage(),
-                            ]);
-                        }
-                        try {
-                            $apiResult = $this->lightningService->connectLightningNode(
-                                $store->btcpay_store_id,
-                                'BTC',
-                                $secret,
-                                $userApiKey
-                            );
-                            if ($apiResult['success'] ?? false) {
-                                $connection->refresh();
-                                if ($connection->status === 'pending') {
-                                    $this->markConnected($connection, $user);
-                                }
-                            }
-                        } catch (\Throwable $e) {
-                            Log::info('Blink Greenfield connect not applied; config bot may configure', [
-                                'store_id' => $store->id,
-                                'message' => $e->getMessage(),
-                            ]);
-                        }
-                    }
-
-                    if ($type === 'aqua_descriptor' && $initialStatus === 'pending') {
-                        try {
-                            $walletName = $this->boltzService->buildWalletName($store);
-                            $boltzResult = $this->boltzService->importDescriptorAndEnableSetup(
-                                $store->btcpay_store_id,
-                                $walletName,
-                                $secret,
-                                $userApiKey
-                            );
-                            if ($boltzResult['success'] ?? false) {
-                                $connection->refresh();
-                                if ($connection->status === 'pending') {
-                                    $this->markConnected($connection, $user);
-                                }
-                            }
-                        } catch (\Throwable $e) {
-                            Log::info('Boltz Greenfield import not applied; config bot may configure', [
-                                'store_id' => $store->id,
-                                'message' => $e->getMessage(),
-                            ]);
-                        }
-                    }
+                    $this->attemptBtcpayWalletSync(
+                        $store,
+                        $connection,
+                        $type,
+                        $secret,
+                        $user,
+                        $userApiKey,
+                    );
                 }
             }
 
@@ -562,5 +511,165 @@ class WalletConnectionService
             'marked_by' => $markedBy->id,
             'was_needs_support' => $wasNeedsSupport,
         ]);
+    }
+
+    protected function resolveStoreWalletType(string $connectionType): string
+    {
+        return match ($connectionType) {
+            'aqua_descriptor' => 'aqua_boltz',
+            'nwc' => 'nwc',
+            default => 'blink',
+        };
+    }
+
+    protected function attemptBtcpayWalletSync(
+        Store $store,
+        WalletConnection $connection,
+        string $type,
+        string $secret,
+        User $user,
+        string $userApiKey,
+    ): void {
+        if ($connection->status !== 'pending') {
+            return;
+        }
+
+        if ($type === 'blink') {
+            try {
+                $this->lightningService->tryRemoveStoreLightningNodeConfiguration(
+                    $store->btcpay_store_id,
+                    'BTC',
+                    $userApiKey
+                );
+            } catch (\Throwable $e) {
+                Log::info('Best-effort clear BTCPay Lightning before Blink connect', [
+                    'store_id' => $store->id,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+
+            $this->tryConnectLightningAndMarkConnected($store, $connection, $secret, $user, $userApiKey);
+
+            return;
+        }
+
+        if ($type === 'nwc') {
+            $btcpayString = $this->validator->formatBtcpayNwcConnectionString($secret);
+            $this->tryConnectLightningAndMarkConnected($store, $connection, $btcpayString, $user, $userApiKey);
+            $this->markConnectedIfBtcpayLightningActive($store, $connection, $user, $userApiKey);
+
+            return;
+        }
+
+        if ($type === 'aqua_descriptor') {
+            try {
+                $walletName = $this->boltzService->buildWalletName($store);
+                $boltzResult = $this->boltzService->importDescriptorAndEnableSetup(
+                    $store->btcpay_store_id,
+                    $walletName,
+                    $secret,
+                    $userApiKey
+                );
+                if ($boltzResult['success'] ?? false) {
+                    $connection->refresh();
+                    if ($connection->status === 'pending') {
+                        $this->markConnected($connection, $user);
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::info('Boltz Greenfield import not applied; trying direct Lightning connect', [
+                    'store_id' => $store->id,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+
+            if ($connection->fresh()->status === 'pending') {
+                $descriptor = $this->validator->stripDescriptorChecksum(trim($secret));
+                $this->tryConnectLightningAndMarkConnected($store, $connection, $descriptor, $user, $userApiKey);
+            }
+
+            $this->markConnectedIfBtcpayLightningActive($store, $connection->fresh(), $user, $userApiKey);
+        }
+    }
+
+    protected function tryConnectLightningAndMarkConnected(
+        Store $store,
+        WalletConnection $connection,
+        string $connectionString,
+        User $user,
+        string $userApiKey,
+    ): void {
+        try {
+            $apiResult = $this->lightningService->connectLightningNode(
+                $store->btcpay_store_id,
+                'BTC',
+                $connectionString,
+                $userApiKey
+            );
+            if ($apiResult['success'] ?? false) {
+                $connection->refresh();
+                if ($connection->status === 'pending') {
+                    $this->markConnected($connection, $user);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::info('Greenfield Lightning connect not applied; config bot may configure', [
+                'store_id' => $store->id,
+                'connection_type' => $connection->type,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    protected function markConnectedIfBtcpayLightningActive(
+        Store $store,
+        WalletConnection $connection,
+        User $user,
+        string $userApiKey,
+    ): bool {
+        if ($connection->status !== 'pending') {
+            return false;
+        }
+
+        try {
+            $nodeInfo = $this->lightningService->getLightningNodeInfo(
+                $store->btcpay_store_id,
+                'BTC',
+                $userApiKey
+            );
+            if ($nodeInfo === []) {
+                return false;
+            }
+
+            $this->markConnected($connection, $user);
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::info('BTCPay Lightning probe did not mark connection connected', [
+                'store_id' => $store->id,
+                'connection_id' => $connection->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Reconcile local wallet connection status with BTCPay Lightning state.
+     */
+    public function syncStatusFromBtcpay(Store $store, WalletConnection $connection, User $user): bool
+    {
+        $owner = $store->user;
+        if (! $owner instanceof User) {
+            return false;
+        }
+
+        $userApiKey = $owner->btcpay_api_key;
+        if (! filled($userApiKey)) {
+            return false;
+        }
+
+        return $this->markConnectedIfBtcpayLightningActive($store, $connection, $user, $userApiKey);
     }
 }

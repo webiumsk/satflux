@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { classifyApiErrorForFlash, GLOBAL_API_ERROR_MESSAGE_KEYS, type GlobalApiErrorKind } from './apiError';
-import type { Store } from '../store/stores';
+import type { BlinkMigrationAlert, Store } from '../store/stores';
 import type { BtcPayApp, StoreDashboardStats, StoreSettings, UpdateStoreSettingsPayload } from '../types/btcpay';
 
 declare module 'axios' {
@@ -179,6 +179,18 @@ export const storesApi = {
         const { data } = await api.patch<ApiEnvelope<Store>>(`/stores/${storeId}/wallet-type`, { wallet_type: walletType });
         return data.data;
     },
+    async snoozeBlinkMigrationAlert(storeId: string): Promise<{ blink_migration_alert: BlinkMigrationAlert }> {
+        const { data } = await api.post<ApiEnvelope<{ blink_migration_alert: BlinkMigrationAlert }>>(
+            `/stores/${storeId}/blink-migration-alert/snooze`,
+        );
+        return data.data;
+    },
+    async dismissBlinkMigrationAlert(storeId: string): Promise<{ blink_migration_alert: BlinkMigrationAlert }> {
+        const { data } = await api.post<ApiEnvelope<{ blink_migration_alert: BlinkMigrationAlert }>>(
+            `/stores/${storeId}/blink-migration-alert/dismiss`,
+        );
+        return data.data;
+    },
     async dashboard(storeId: string, params?: { source?: string; refresh?: boolean }): Promise<StoreDashboardStats> {
         const apiParams: Record<string, string | number> = {};
         if (params?.source) apiParams.source = params.source;
@@ -218,6 +230,7 @@ export interface WalletConnectionDetails {
     type: string;
     status: string;
     configuration_source?: string | null;
+    brand?: 'aqua' | 'bull' | null;
     masked_secret?: string | null;
     submitted_at?: string | null;
     secret_updated_at?: string | null;

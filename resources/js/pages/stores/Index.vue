@@ -108,6 +108,14 @@
             class="absolute inset-0 bg-gradient-to-br from-indigo-600/5 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity"
           ></div>
 
+          <BlinkMigrationBanner
+            v-if="store.blink_migration_alert?.active"
+            :store-id="store.id"
+            :active="true"
+            class="relative z-10 mb-4"
+            @click.stop
+          />
+
           <div class="flex items-start justify-between relative z-10">
             <div class="flex-1">
               <h3
@@ -123,6 +131,7 @@
                   }}</span>
                   <WalletTypeIcon
                     :type="store.wallet_type"
+                    :brand="resolveStoreWalletBrand(store)"
                     size="lg"
                     :show-label="false"
                     :fallback-text="t('stores.not_set')"
@@ -202,6 +211,8 @@ import { storeToRefs } from "pinia";
 import { useStoresStore } from "../../store/stores";
 import { useAccountLimits } from "../../composables/useAccountLimits";
 import WalletTypeIcon from "../../components/WalletTypeIcon.vue";
+import BlinkMigrationBanner from "../../components/stores/BlinkMigrationBanner.vue";
+import { resolveStoreWalletBrand } from "../../utils/storeWalletBrand";
 
 const { t } = useI18n();
 

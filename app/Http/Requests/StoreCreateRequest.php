@@ -28,7 +28,7 @@ class StoreCreateRequest extends FormRequest
             'timezone' => ['required', 'string', 'timezone'],
             'preferred_exchange' => ['nullable', 'string', 'max:255'],
             // Omit on first-step create; set later when user picks Blink / Aqua / Cashu.
-            'wallet_type' => ['nullable', 'string', Rule::in(['blink', 'aqua_boltz', 'cashu'])],
+            'wallet_type' => ['nullable', 'string', Rule::in(['blink', 'aqua_boltz', 'cashu', 'nwc'])],
 
             // Blink/Aqua wallet connection string (Blink token or Aqua descriptor).
             'connection_string' => [
@@ -41,7 +41,7 @@ class StoreCreateRequest extends FormRequest
 
             // Cashu plugin settings.
             'mint_url' => ['required_if:wallet_type,cashu', 'string', 'url', 'starts_with:https://'],
-            'lightning_address' => ['required_if:wallet_type,cashu', 'string', 'regex:/^[^@]+@[^@]+$/'],
+            'lightning_address' => ['required_if:wallet_type,cashu', 'string', 'regex:/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/'],
         ];
     }
 

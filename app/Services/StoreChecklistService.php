@@ -97,6 +97,20 @@ class StoreChecklistService
                     'order' => 3,
                 ],
             ],
+            'nwc' => [
+                'connect_nwc' => [
+                    'key' => 'connect_nwc',
+                    'description' => 'Confirm NWC (Lightning) wallet connection is saved and status shows connected or pending',
+                    'link' => null,
+                    'order' => 1,
+                ],
+                'test_lightning_invoice' => [
+                    'key' => 'test_lightning_invoice',
+                    'description' => 'Create and pay a small test Lightning invoice',
+                    'link' => null,
+                    'order' => 2,
+                ],
+            ],
         ];
     }
 

@@ -32,9 +32,10 @@ import { watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import StoreSidebar from './StoreSidebar.vue';
 import { useAccountLimits } from '../../composables/useAccountLimits';
+import type { Store } from '../../store/stores';
 
 const props = defineProps<{
-  store: Record<string, unknown> | null;
+  store: Store | null;
   apps: Array<{ id: string; name: string; app_type: string }>;
   error?: string;
 }>();

@@ -9,6 +9,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property \Illuminate\Support\Carbon|null $blink_alert_snoozed_until
+ * @property \Illuminate\Support\Carbon|null $blink_alert_dismissed_at
+ */
 class Store extends Model
 {
     use HasFactory, HasUuids;
@@ -26,6 +30,8 @@ class Store extends Model
         'timezone',
         'preferred_exchange',
         'wallet_type',
+        'blink_alert_snoozed_until',
+        'blink_alert_dismissed_at',
         'metadata',
         'auto_report_enabled',
         'auto_report_email',
@@ -57,6 +63,8 @@ class Store extends Model
         return [
             'metadata' => 'array',
             'auto_report_enabled' => 'boolean',
+            'blink_alert_snoozed_until' => 'datetime',
+            'blink_alert_dismissed_at' => 'datetime',
             'webhook_secret' => 'encrypted', // Encrypt HMAC secret at rest (like User.btcpay_api_key)
         ];
     }

@@ -30,6 +30,7 @@
                   {{ t('stores.complete_steps_setup') }}
                   <WalletTypeIcon
                     :type="store.wallet_type"
+                    :brand="resolveStoreWalletBrand(store)"
                     size="sm"
                     :show-label="true"
                     class="text-indigo-400 font-semibold"
@@ -85,6 +86,7 @@ import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
 import WalletChecklist from '../../components/stores/WalletChecklist.vue';
 import WalletTypeIcon from '../../components/WalletTypeIcon.vue';
+import { resolveStoreWalletBrand } from '../../utils/storeWalletBrand';
 import AppScrollPane from '../../components/layout/AppScrollPane.vue';
 
 const { t } = useI18n();

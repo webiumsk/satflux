@@ -66,6 +66,25 @@ class WalletConnectionValidatorTest extends TestCase
         $this->assertTrue($result['valid']);
     }
 
+    public function test_valid_nwc_uri(): void
+    {
+        $uri = 'nostr+walletconnect://abc1234567890123456789012345678901234567890123456789012345678901234?relay=wss%3A%2F%2Frelay.example.com&secret=deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
+
+        $result = $this->validator->validate('nwc', $uri);
+
+        $this->assertTrue($result['valid']);
+        $this->assertSame('nwc', $result['type']);
+    }
+
+    public function test_formats_btcpay_nwc_connection_string(): void
+    {
+        $uri = 'nostr+walletconnect:abc1234567890123456789012345678901234567890123456789012345678901234?relay=wss%3A%2F%2Frelay.example.com&secret=deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
+
+        $formatted = $this->validator->formatBtcpayNwcConnectionString($uri);
+
+        $this->assertStringStartsWith('type=nwc;key=nostr+walletconnect:', $formatted);
+    }
+
     public function test_rejects_descriptor_without_ct_slip77(): void
     {
         $descriptor = 'wpkh(xpub6D4BDPcP2GT577Vvch3Reb8P8CH)';
@@ -103,5 +122,19 @@ class WalletConnectionValidatorTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
 
         $this->validator->validate('unsupported_type', 'test');
+    }
+
+    public function test_detect_aqua_brand_from_descriptor(): void
+    {
+        $descriptor = 'ct(slip77(xpub6D4BDPcP2GT577Vvch3Reb8P8CH),elsh(wpkh(xpub6E8...)))';
+
+        $this->assertSame('aqua', $this->validator->detectAquaBrandFromDescriptor($descriptor));
+    }
+
+    public function test_detect_bull_brand_from_descriptor(): void
+    {
+        $descriptor = 'ct(slip77(5bd88956b5c0782248ad31f92d24712cff8c4cd761759dd629c08e2b60c9e6a7),elwpkh([0eb9c7d5/84h/1776h/0h]xpub6CE9h9pKdmMzM11sbeuRA1AAnmL3k6PWNzPDNw2gAGHMthvbVChXbhAADsKanndLJ7neMMBeC3oEA4uqadycLz8xYQbCdMF2NoMVZjJU7rB/<0;1>/*))#hw28w0rx';
+
+        $this->assertSame('bull', $this->validator->detectAquaBrandFromDescriptor($descriptor));
     }
 }

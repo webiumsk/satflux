@@ -35,10 +35,10 @@ import type { AquaBoltzWalletBrand } from '../utils/aquaBoltzWalletBrand';
 
 const props = withDefaults(
   defineProps<{
-    /** store.wallet_type: 'blink' | 'aqua_boltz' | null, or connection.type: 'blink' | 'aqua_descriptor' */
-    type: 'blink' | 'aqua_boltz' | 'cashu' | 'aqua_descriptor' | null | undefined;
+    /** store.wallet_type or connection.type */
+    type: 'blink' | 'aqua_boltz' | 'cashu' | 'nwc' | 'aqua_descriptor' | null | undefined;
     /** When type is aqua_boltz / aqua_descriptor: which wallet logo to show */
-    brand?: AquaBoltzWalletBrand | null;
+    brand?: AquaBoltzWalletBrand | null | undefined;
     size?: 'sm' | 'md' | 'lg';
     showLabel?: boolean;
     fallbackText?: string;
@@ -69,24 +69,22 @@ const iconSrc = computed(() => {
       : '/img/wallets/aqua-64.webp';
   }
   if (props.type === 'cashu') return null;
+  if (props.type === 'nwc') return null;
   return null;
 });
 
-const altText = computed(() => {
+function walletTypeLabel(): string {
   if (!props.type) return props.fallbackText ?? '';
+  if (props.type === 'nwc') return t('create_store.wallet_type_nwc');
   if (props.type === 'blink') return t('create_store.wallet_type_blink');
   if (props.type === 'cashu') return t('create_store.wallet_type_cashu');
   if (resolvedBrand.value === 'bull') return t('create_store.wallet_type_bull');
   return t('create_store.wallet_type_aqua');
-});
+}
 
-const labelText = computed(() => {
-  if (!props.type) return props.fallbackText ?? '';
-  if (props.type === 'blink') return t('create_store.wallet_type_blink');
-  if (props.type === 'cashu') return t('create_store.wallet_type_cashu');
-  if (resolvedBrand.value === 'bull') return t('create_store.wallet_type_bull');
-  return t('create_store.wallet_type_aqua');
-});
+const altText = computed(() => walletTypeLabel());
+
+const labelText = computed(() => walletTypeLabel());
 
 const imgSizeClass = computed(() => {
   const isBull =

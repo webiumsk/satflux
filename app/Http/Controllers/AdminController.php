@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\WalletConnection;
 use App\Services\StatsService;
 use App\Services\SubscriptionEntitlementService;
+use App\Services\WalletConnectionValidator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -236,24 +237,26 @@ class AdminController extends Controller
         }
 
         // Top stores by paid PoS orders (with amounts by currency), only stores with at least 1 order
-        $topStoresByPosOrders = Store::whereHas('posOrders', fn ($q) => $q->where('status', PosOrder::STATUS_PAID))
+        $topStoresQuery = Store::whereHas('posOrders', fn ($q) => $q->where('status', PosOrder::STATUS_PAID))
             ->withCount(['posOrders' => fn ($q) => $q->where('status', PosOrder::STATUS_PAID)])
             ->withSum(['posOrders as pos_amount_sats' => fn ($q) => $q->where('status', PosOrder::STATUS_PAID)->whereRaw("UPPER(TRIM(COALESCE(currency, ''))) = ?", ['SATS'])], 'amount')
             ->withSum(['posOrders as pos_amount_eur' => fn ($q) => $q->where('status', PosOrder::STATUS_PAID)->whereRaw("UPPER(TRIM(COALESCE(currency, ''))) != ?", ['SATS'])], 'amount')
             ->with('user:id,email')
             ->orderByDesc('pos_orders_count')
             ->take(10)
-            ->get(['id', 'name', 'user_id'])
-            ->map(fn ($s) => [
+            ->get(['id', 'name', 'user_id']);
+
+        $topStoresByPosOrders = [];
+        foreach ($topStoresQuery as $s) {
+            $topStoresByPosOrders[] = [
                 'store_id' => $s->id,
                 'store_name' => $s->name,
                 'user_email' => $s->user?->email ?? null,
                 'pos_orders_paid' => (int) $s->pos_orders_count,
                 'pos_amount_sats' => round((float) ($s->pos_amount_sats ?? 0), 0),
                 'pos_amount_eur' => round((float) ($s->pos_amount_eur ?? 0), 2),
-            ])
-            ->values()
-            ->toArray();
+            ];
+        }
 
         return [
             'users_total' => $usersTotal,
@@ -325,12 +328,17 @@ class AdminController extends Controller
     {
         $user->load(['stores.walletConnection', 'stores.posTerminals']);
 
-        $stores = $user->stores->map(function (Store $store) {
+        $validator = app(WalletConnectionValidator::class);
+
+        $stores = $user->stores->map(function (Store $store) use ($validator): array {
             return [
                 'id' => $store->id,
                 'name' => $store->name,
                 'created_at' => $store->created_at,
                 'wallet_type' => $store->wallet_type,
+                'wallet_brand' => ($store->wallet_type ?? null) === 'aqua_boltz'
+                    ? $validator->resolveAquaBoltzBrand($store->walletConnection)
+                    : null,
                 'pos_terminal_count' => $store->posTerminals->count(),
                 'wallet_connection_status' => $store->walletConnection?->status ?? null,
             ];

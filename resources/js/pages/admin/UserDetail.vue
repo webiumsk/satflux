@@ -205,6 +205,7 @@
                 >
                   <WalletTypeIcon
                     :type="store.wallet_type"
+                    :brand="store.wallet_brand ?? undefined"
                     size="sm"
                     :show-label="true"
                     fallback-text="-"

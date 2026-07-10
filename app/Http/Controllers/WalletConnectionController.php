@@ -37,12 +37,15 @@ class WalletConnectionController extends Controller
             return response()->json(['data' => null]);
         }
 
+        $brand = app(WalletConnectionValidator::class)->resolveAquaBoltzBrand($connection);
+
         return response()->json([
             'data' => [
                 'id' => $connection->id,
                 'type' => $connection->type,
                 'status' => $connection->status,
                 'configuration_source' => $connection->configuration_source,
+                'brand' => $brand,
                 'masked_secret' => $connection->masked_secret,
                 'submitted_at' => $connection->created_at,
                 'secret_updated_at' => $connection->secret_updated_at,
@@ -266,14 +269,16 @@ class WalletConnectionController extends Controller
         }
 
         $connections = $query->get();
+        $validator = app(WalletConnectionValidator::class);
 
         return response()->json([
-            'data' => $connections->map(function ($connection) {
+            'data' => $connections->map(function ($connection) use ($validator) {
                 return [
                     'id' => $connection->id,
                     'store_id' => $connection->store_id,
                     'store_name' => $connection->store->name ?? 'Unknown',
                     'type' => $connection->type,
+                    'brand' => $validator->resolveAquaBoltzBrand($connection),
                     'status' => $connection->status,
                     'masked_secret' => $connection->masked_secret,
                     'submitted_by' => $connection->submittedBy->email ?? 'Unknown',

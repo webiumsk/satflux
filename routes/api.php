@@ -14,6 +14,7 @@ use App\Http\Controllers\Auth\LnurlAuthController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\NostrAuthController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\BlinkMigrationAlertController;
 use App\Http\Controllers\CashuController;
 use App\Http\Controllers\ChoralaController;
 use App\Http\Controllers\ChoralaProxyController;
@@ -689,6 +690,9 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
         Route::post('/email-rules', [StoreEmailRuleController::class, 'store']);
         Route::put('/email-rules/{store_email_rule}', [StoreEmailRuleController::class, 'update']);
         Route::delete('/email-rules/{store_email_rule}', [StoreEmailRuleController::class, 'destroy']);
+
+        Route::post('/blink-migration-alert/snooze', [BlinkMigrationAlertController::class, 'snooze']);
+        Route::post('/blink-migration-alert/dismiss', [BlinkMigrationAlertController::class, 'dismiss']);
     });
 
     // Cashu (wallet_type=cashu)

@@ -213,9 +213,103 @@ class WalletConnectionValidator
     }
 
     /**
+     * Normalize merchant NWC URI (strip type=nwc; prefix, unify scheme).
+     */
+    public function normalizeNwcUri(string $value): string
+    {
+        $value = trim($value);
+        if (str_starts_with(strtolower($value), 'type=nwc;')) {
+            $value = preg_replace('/^type=nwc;key=/i', '', $value) ?? $value;
+        }
+
+        return str_replace('nostr+walletconnect://', 'nostr+walletconnect:', $value);
+    }
+
+    /**
+     * NWC export from Cashu/ecash wallets (Minibits, Coinos, …) - not valid for BTCPay store Lightning.
+     */
+    public function isCashuWalletNwcUri(string $value): bool
+    {
+        $uri = strtolower($this->normalizeNwcUri($value));
+
+        if (! str_starts_with($uri, 'nostr+walletconnect:')) {
+            return false;
+        }
+
+        $markers = ['minibits', 'coinos.io', 'coinos.', 'cashu.space', 'mint.coinos'];
+        foreach ($markers as $marker) {
+            if (str_contains($uri, $marker)) {
+                return true;
+            }
+        }
+
+        if (preg_match('/[?&]lud16=([^&]+)/i', $uri, $matches)) {
+            $lud16 = urldecode($matches[1]);
+            $domain = strtolower((string) str($lud16)->after('@'));
+            foreach (['minibits.cash', 'coinos.io'] as $cashuDomain) {
+                if ($domain === $cashuDomain || str_ends_with($domain, '.'.$cashuDomain)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public function extractNwcLud16(string $value): ?string
+    {
+        $uri = $this->normalizeNwcUri($value);
+        if (! preg_match('/[?&]lud16=([^&]+)/i', $uri, $matches)) {
+            return null;
+        }
+
+        $decoded = urldecode($matches[1]);
+
+        return trim($decoded) !== '' ? trim($decoded) : null;
+    }
+
+    /**
+     * Format stored NWC URI for BTCPay Lightning connection string field.
+     */
+    public function formatBtcpayNwcConnectionString(string $value): string
+    {
+        $trimmed = trim($value);
+        if (str_starts_with(strtolower($trimmed), 'type=nwc;')) {
+            return $trimmed;
+        }
+
+        return 'type=nwc;key='.$this->normalizeNwcUri($trimmed);
+    }
+
+    /**
+     * Validate Nostr Wallet Connect URI.
+     */
+    public function validateNwcUri(string $value): bool
+    {
+        if ($this->isCashuWalletNwcUri($value)) {
+            return false;
+        }
+
+        $uri = $this->normalizeNwcUri($value);
+        $lower = strtolower($uri);
+
+        if (! str_starts_with($lower, 'nostr+walletconnect:')) {
+            return false;
+        }
+        if (strlen($uri) < 80) {
+            return false;
+        }
+        if (! str_contains($lower, 'relay=') || ! str_contains($lower, 'secret=')) {
+            return false;
+        }
+
+        return ! preg_match('/\s/', $uri);
+    }
+
+    /**
      * Validate wallet connection based on type.
      *
-     * @param  string  $type  Connection type ('blink' or 'aqua_descriptor')
+     * @param  string  $type  Connection type ('blink', 'aqua_descriptor', or 'nwc')
      * @param  string  $value  Secret value to validate
      * @return array ['valid' => bool, 'type' => string|null, 'errors' => array, 'error' => string|null]
      */
@@ -265,6 +359,11 @@ class WalletConnectionValidator
             if (! $isValid) {
                 $errors[] = 'Invalid descriptor format. Must be a valid Aqua/Bull (Boltz) watch-only descriptor: ct(slip77(...),elsh(wpkh(...))) or ct(slip77(...),elwpkh(...)). Must not contain private keys.';
             }
+        } elseif ($type === 'nwc') {
+            $returnType = 'nwc';
+            if (! $this->validateNwcUri($value)) {
+                $errors[] = 'Invalid NWC connection. Must start with nostr+walletconnect: and include relay= and secret= parameters.';
+            }
         } else {
             \Illuminate\Support\Facades\Log::error('Unsupported wallet connection type', [
                 'type' => $type,
@@ -287,5 +386,60 @@ class WalletConnectionValidator
         ]);
 
         return $result;
+    }
+
+    /**
+     * Lightning Address for Cashu: local@domain.tld with at least 2 chars after the last dot.
+     */
+    public function validateCashuLightningAddress(string $value): bool
+    {
+        return (bool) preg_match('/^[^@\s]+@[^@\s]*\.[^@\s]{2,}$/', trim($value));
+    }
+
+    /**
+     * Detect Aqua vs Bull Bitcoin from a watch-only descriptor body.
+     *
+     * @return 'aqua'|'bull'|null
+     */
+    public function detectAquaBrandFromDescriptor(string $descriptor): ?string
+    {
+        $body = $this->stripDescriptorChecksum($descriptor);
+        if ($body === '') {
+            return null;
+        }
+        if (preg_match('/,\s*elwpkh\s*\(/i', $body)) {
+            return 'bull';
+        }
+        if (preg_match('/,\s*elsh\s*\(\s*wpkh\s*\(/i', $body)) {
+            return 'aqua';
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve wallet brand for aqua_boltz stores from the stored connection.
+     *
+     * @return 'aqua'|'bull'|null
+     */
+    public function resolveAquaBoltzBrand(?\App\Models\WalletConnection $connection): ?string
+    {
+        if (! $connection) {
+            return null;
+        }
+
+        if ($connection->configuration_source === 'samrock') {
+            return 'aqua';
+        }
+
+        if ($connection->type !== 'aqua_descriptor') {
+            return null;
+        }
+
+        try {
+            return $this->detectAquaBrandFromDescriptor($connection->reveal()) ?? 'aqua';
+        } catch (\Throwable) {
+            return 'aqua';
+        }
     }
 }

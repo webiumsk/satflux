@@ -14,6 +14,11 @@ use Illuminate\Support\Collection;
  */
 class StoreResponseFormatter
 {
+    public function __construct(
+        protected WalletConnectionValidator $validator,
+        protected BlinkMigrationAlertService $blinkMigrationAlertService,
+    ) {}
+
     /**
      * Format from the local Store model only (BTCPay API unavailable or not needed).
      *
@@ -29,12 +34,14 @@ class StoreResponseFormatter
             'timezone' => $store->timezone ?? 'Europe/Vienna',
             'preferred_exchange' => $store->preferred_exchange ?? 'kraken',
             'wallet_type' => $store->wallet_type,
+            'wallet_brand' => $this->walletBrandPayload($store, $store->walletConnection),
             'created_at' => $store->created_at,
             'updated_at' => $store->updated_at,
             'logo_url' => null, // Not available from local DB only (would need BTCPay API)
             'anyone_can_create_invoice' => false, // Unknown when BTCPay API failed; safe default
             'checklist_items' => $this->checklistItemsPayload($store),
             'wallet_connection' => $this->walletConnectionPayload($store, $store->walletConnection),
+            'blink_migration_alert' => $this->blinkMigrationAlertService->payload($store),
         ];
     }
 
@@ -54,10 +61,12 @@ class StoreResponseFormatter
             'timezone' => $localStore->timezone ?? ($btcpayStore['timeZone'] ?? 'Europe/Vienna'),
             'preferred_exchange' => $localStore->preferred_exchange ?? ($btcpayStore['preferredExchange'] ?? 'kraken'),
             'wallet_type' => $localStore->wallet_type,
+            'wallet_brand' => $this->walletBrandPayload($localStore, $localStore->walletConnection),
             'created_at' => $localStore->created_at,
             'updated_at' => $localStore->updated_at,
             'checklist_items' => $this->checklistItemsPayload($localStore),
             'wallet_connection' => $this->walletConnectionPayload($localStore, $localStore->walletConnection),
+            'blink_migration_alert' => $this->blinkMigrationAlertService->payload($localStore),
             'btcpay_store_id' => $localStore->btcpay_store_id,
             // Pay Button: anyone can create invoice (needed for Pay Button page)
             'anyone_can_create_invoice' => $btcpayStore['anyoneCanCreateInvoice'] ?? false,
@@ -102,7 +111,7 @@ class StoreResponseFormatter
             return null;
         }
 
-        return [
+        $payload = [
             'id' => $walletConnection->id,
             'type' => $walletConnection->type,
             'status' => $walletConnection->status,
@@ -112,6 +121,25 @@ class StoreResponseFormatter
             'secret_updated_at' => $walletConnection->secret_updated_at,
             'submitted_by_user_id' => $walletConnection->submitted_by_user_id,
         ];
+
+        $brand = $this->validator->resolveAquaBoltzBrand($walletConnection);
+        if ($brand !== null) {
+            $payload['brand'] = $brand;
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @return 'aqua'|'bull'|null
+     */
+    protected function walletBrandPayload(Store $store, ?WalletConnection $walletConnection): ?string
+    {
+        if (($store->wallet_type ?? null) !== 'aqua_boltz') {
+            return null;
+        }
+
+        return $this->validator->resolveAquaBoltzBrand($walletConnection);
     }
 
     /**

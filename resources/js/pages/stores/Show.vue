@@ -79,8 +79,9 @@
                     <span class="text-xs text-gray-500 uppercase tracking-wider mr-2 font-semibold">{{ t('stores.wallet_type') }}</span>
                     <WalletTypeIcon
                       :type="store.wallet_type"
+                      :brand="resolveStoreWalletBrand(store)"
                       size="lg"
-                      :show-label="store.wallet_type === 'cashu'"
+                      :show-label="store.wallet_type === 'cashu' || store.wallet_type === 'aqua_boltz'"
                       :fallback-text="t('stores.not_configured')"
                       class="text-indigo-400"
                     />
@@ -262,6 +263,17 @@
     @close="handleCloseSetupWizard"
     @restart-pos-tour="handleRestartPosTour"
   />
+
+  <BlinkMigrationAlertModal
+    v-if="store"
+    :open="blinkAlertModalOpen"
+    :store-id="store.id"
+    :store-name="store.name"
+    :loading="blinkAlertLoading"
+    @close="blinkAlertModalOpen = false"
+    @acknowledge="blinkAlertAcknowledge"
+    @outside-eu="blinkAlertDismissOutsideEu"
+  />
 </template>
 
 <script setup lang="ts">
@@ -273,6 +285,7 @@ import { useAppsStore } from '../../store/apps';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
 import AppScrollPane from '../../components/layout/AppScrollPane.vue';
 import WalletTypeIcon from '../../components/WalletTypeIcon.vue';
+import { resolveStoreWalletBrand } from '../../utils/storeWalletBrand';
 import DashboardStats from '../../components/stores/DashboardStats.vue';
 import RecentInvoices from '../../components/stores/RecentInvoices.vue';
 import SalesChart from '../../components/stores/SalesChart.vue';
@@ -283,6 +296,8 @@ import StoreInvoices from '../../components/stores/StoreInvoices.vue';
 import StoreCashuPayments from '../../components/stores/StoreCashuPayments.vue';
 import StoreReports from '../../components/stores/StoreReports.vue';
 import SetupWizardModal from '../../components/stores/SetupWizardModal.vue';
+import BlinkMigrationAlertModal from '../../components/stores/BlinkMigrationAlertModal.vue';
+import { useBlinkMigrationAlert } from '../../composables/useBlinkMigrationAlert';
 import { useOnboardingStore } from '../../store/onboarding';
 
 const { t } = useI18n();
@@ -293,6 +308,14 @@ const appsStore = useAppsStore();
 
 const loading = ref(false);
 const store = ref<any>(null);
+
+const {
+  modalOpen: blinkAlertModalOpen,
+  loading: blinkAlertLoading,
+  syncModalFromStore,
+  acknowledge: blinkAlertAcknowledge,
+  dismissOutsideEu: blinkAlertDismissOutsideEu,
+} = useBlinkMigrationAlert(store);
 const showSettings = ref(false);
 const showInvoices = ref(false);
 const showCashu = ref(false);
@@ -333,7 +356,7 @@ watch(() => route.params.id, async (newStoreId, oldStoreId) => {
     dashboardSourceFilter.value = 'all';
     try {
       store.value = await storesStore.fetchStore(newStoreId as string);
-      
+      syncModalFromStore();
       // Load appropriate view based on query
       const currSection = route.query.section as string;
       updateSection(currSection);
@@ -380,7 +403,7 @@ onMounted(async () => {
   loading.value = true;
   try {
     store.value = await storesStore.fetchStore(storeId);
-    
+    syncModalFromStore();
     const section = route.query.section as string;
     updateSection(section);
     

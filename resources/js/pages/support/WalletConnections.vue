@@ -141,7 +141,11 @@
                         : 'bg-green-500/20 text-green-400'
                     "
                   >
-                    <WalletTypeIcon :type="connection.type" size="lg" />
+                    <WalletTypeIcon
+                      :type="connection.type"
+                      :brand="connection.type === 'aqua_descriptor' ? (connection.brand ?? undefined) : undefined"
+                      size="lg"
+                    />
                   </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
@@ -260,7 +264,11 @@
                       : 'bg-green-500/20 text-green-400'
                   "
                 >
-                  <WalletTypeIcon :type="connection.type" size="lg" />
+                  <WalletTypeIcon
+                    :type="connection.type"
+                    :brand="connection.type === 'aqua_descriptor' ? (connection.brand ?? undefined) : undefined"
+                    size="lg"
+                  />
                 </span>
                 <span
                   class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"

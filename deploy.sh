@@ -196,6 +196,9 @@ fi
 # Vite bakes VITE_* at build time; pass deploy env file so flags in .env.standalone win over a stale .env on disk
 docker exec --env-file "$ENV_FILE" --user root "$PHP_CONTAINER" npm run build
 
+echo -e "${YELLOW}Frontend WalletConnection route chunk (verify after deploy):${NC}"
+docker exec "$PHP_CONTAINER" sh -c 'grep "pages/stores/WalletConnection.vue" public/build/manifest.json | head -3 || true'
+
 # Step 5: Run database migrations
 echo -e "${YELLOW}Step 5: Running database migrations...${NC}"
 docker exec --user root "$PHP_CONTAINER" php artisan migrate --force

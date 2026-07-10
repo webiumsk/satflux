@@ -20,9 +20,10 @@
     />
 
     <!-- Main Content -->
-    <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-l border-gray-800 bg-gray-900">
-      <AppScrollPane>
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div
+      class="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-y-contain custom-scrollbar border-l border-gray-800 bg-gray-900"
+    >
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-16">
           <div class="mb-8">
             <h1 class="text-3xl font-bold text-white">
               {{
@@ -33,8 +34,8 @@
             </h1>
             <p class="mt-2 text-sm text-gray-400">
               {{ store.wallet_type === 'cashu'
-                ? 'Configure Cashu Mint URL + Lightning Address'
-                : t('stores.configure_wallet_connection') }}
+                ? t('stores.cashu_description')
+                : t('create_store.wallet_paste_hint') }}
               <span v-if="store.wallet_type !== 'cashu'" class="text-indigo-400 font-semibold">{{ store.name }}</span>
             </p>
           </div>
@@ -53,22 +54,34 @@
             </div>
           </div>
 
-          <div v-else class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
-            <div class="p-8">
-              <WalletConnectionForm
-                :store-id="storeId"
-                :existing-connection="connection"
-                :wallet-type="store?.wallet_type"
-                :auto-samrock="route.query.samrock === '1'"
-                @submitted="handleSubmitted"
-                @cancel="handleCancel"
-              />
-            </div>
+          <div
+            v-else
+            class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 p-8"
+          >
+            <WalletConnectionForm
+              :store-id="storeId"
+              :existing-connection="connection"
+              :wallet-type="store?.wallet_type"
+              :wallet-brand="resolveStoreWalletBrand(store)"
+              :auto-samrock="route.query.samrock === '1'"
+              @submitted="handleSubmitted"
+              @cancel="handleCancel"
+            />
           </div>
         </div>
-      </AppScrollPane>
     </div>
   </div>
+
+  <BlinkMigrationAlertModal
+    v-if="store"
+    :open="blinkAlertModalOpen"
+    :store-id="store.id"
+    :store-name="store.name"
+    :loading="blinkAlertLoading"
+    @close="blinkAlertModalOpen = false"
+    @acknowledge="blinkAlertAcknowledge"
+    @outside-eu="blinkAlertDismissOutsideEu"
+  />
 </template>
 
 <script setup lang="ts">
@@ -78,9 +91,11 @@ import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
 import { useAppsStore } from '../../store/apps';
 import { walletApi } from '../../services/api';
-import AppScrollPane from '../../components/layout/AppScrollPane.vue';
 import WalletConnectionForm from '../../components/stores/WalletConnectionForm.vue';
+import BlinkMigrationAlertModal from '../../components/stores/BlinkMigrationAlertModal.vue';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
+import { useBlinkMigrationAlert } from '../../composables/useBlinkMigrationAlert';
+import { resolveStoreWalletBrand } from '../../utils/storeWalletBrand';
 
 const { t } = useI18n();
 
@@ -91,6 +106,15 @@ const appsStore = useAppsStore();
 
 const storeId = computed(() => route.params.id as string);
 const store = ref<any>(null);
+
+const {
+  modalOpen: blinkAlertModalOpen,
+  loading: blinkAlertLoading,
+  syncModalFromStore,
+  acknowledge: blinkAlertAcknowledge,
+  dismissOutsideEu: blinkAlertDismissOutsideEu,
+} = useBlinkMigrationAlert(store);
+
 const storeLoading = ref(true);
 const loading = ref(true);
 const error = ref<string | null>(null);
@@ -102,6 +126,7 @@ async function loadStore() {
     storeLoading.value = true;
     try {
         store.value = await storesStore.fetchStore(storeId.value);
+        syncModalFromStore();
     } catch (err) {
         console.error('Failed to load store:', err);
     } finally {

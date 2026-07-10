@@ -23,7 +23,7 @@ class WalletConnectionStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => ['required', 'string', 'in:blink,aqua_descriptor'],
+            'type' => ['required', 'string', 'in:blink,aqua_descriptor,nwc'],
             'secret' => ['required', 'string', 'min:10'],
         ];
     }
