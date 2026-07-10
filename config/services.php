@@ -70,6 +70,23 @@ return [
         // Note: Grace period is configured per plan in BTCPay Server, not here
     ],
 
+    'boltz' => [
+        // Upstream Boltz backend REST API (read-only; pairs/limits/fees). Informational only -
+        // the authoritative per-invoice validation happens in the BTCPay Boltz plugin.
+        'api_url' => rtrim((string) env('BOLTZ_API_URL', 'https://api.boltz.exchange'), '/'),
+        'timeout' => (int) env('BOLTZ_API_TIMEOUT', 8),
+        // Seconds a fetched pair snapshot counts as fresh (avoid hammering the public API).
+        'pairs_cache_ttl' => (int) env('BOLTZ_PAIRS_CACHE_TTL', 120),
+        // Seconds after which the last good snapshot is flagged stale in readiness output.
+        'pairs_stale_after' => (int) env('BOLTZ_PAIRS_STALE_AFTER', 900),
+        // Seconds the last good snapshot is kept for stale display before "unavailable".
+        'pairs_keep_last_good' => (int) env('BOLTZ_PAIRS_KEEP_LAST_GOOD', 86400),
+        // Seconds to back off from the public API after a failed fetch.
+        'failure_backoff' => (int) env('BOLTZ_API_FAILURE_BACKOFF', 30),
+        // Seconds a per-store readiness snapshot is cached.
+        'readiness_cache_ttl' => (int) env('BOLTZ_READINESS_CACHE_TTL', 60),
+    ],
+
     'matomo' => [
         'url' => env('MATOMO_URL'),
         'site_id' => env('MATOMO_SITE_ID'),

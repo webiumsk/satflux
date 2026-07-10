@@ -152,6 +152,9 @@
               </div>
             </div>
 
+            <!-- Boltz readiness (informational snapshot; authoritative check happens in BTCPay) -->
+            <BoltzReadinessCard v-if="store.wallet_type === 'aqua_boltz'" :store-id="store.id" />
+
             <!-- Pro: Filter by payment method + Refresh -->
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div v-if="dashboard?.can_filter_by_source" class="flex flex-wrap items-center gap-3">
@@ -291,6 +294,7 @@ import RecentInvoices from '../../components/stores/RecentInvoices.vue';
 import SalesChart from '../../components/stores/SalesChart.vue';
 import TopItems from '../../components/stores/TopItems.vue';
 import StoreSettings from '../../components/stores/StoreSettings.vue';
+import BoltzReadinessCard from '../../components/stores/BoltzReadinessCard.vue';
 import ArchivedStoreBanner from '../../components/stores/ArchivedStoreBanner.vue';
 import StoreInvoices from '../../components/stores/StoreInvoices.vue';
 import StoreCashuPayments from '../../components/stores/StoreCashuPayments.vue';
