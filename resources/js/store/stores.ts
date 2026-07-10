@@ -3,13 +3,24 @@ import { ref } from 'vue';
 import { storesApi, type CreateStorePayload } from '../services/api';
 import type { BtcPayApp, StoreDashboardStats } from '../types/btcpay';
 
+import type { AquaBoltzWalletBrand } from '../utils/aquaBoltzWalletBrand';
+
+export interface BlinkMigrationAlert {
+    active: boolean;
+    snoozed_until?: string | null;
+    dismissed_at?: string | null;
+}
+
 export interface Store {
     id: string;
     name: string;
     archived?: boolean;
     default_currency?: string;
     timezone?: string;
-    wallet_type: 'blink' | 'aqua_boltz' | 'cashu' | null;
+    wallet_type: 'blink' | 'aqua_boltz' | 'cashu' | 'nwc' | null;
+    /** Aqua vs Bull when wallet_type is aqua_boltz */
+    wallet_brand?: AquaBoltzWalletBrand | null;
+    blink_migration_alert?: BlinkMigrationAlert | null;
     created_at: string;
     updated_at: string;
     logo_url?: string | null;
@@ -18,6 +29,7 @@ export interface Store {
         id: string;
         type: 'blink' | 'aqua_descriptor';
         status: 'pending' | 'needs_support' | 'connected';
+        brand?: AquaBoltzWalletBrand | null;
         masked_secret?: string;
         submitted_at?: string;
     };

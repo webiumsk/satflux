@@ -325,12 +325,17 @@ class AdminController extends Controller
     {
         $user->load(['stores.walletConnection', 'stores.posTerminals']);
 
-        $stores = $user->stores->map(function (Store $store) {
+        $validator = app(WalletConnectionValidator::class);
+
+        $stores = $user->stores->map(function (Store $store) use ($validator) {
             return [
                 'id' => $store->id,
                 'name' => $store->name,
                 'created_at' => $store->created_at,
                 'wallet_type' => $store->wallet_type,
+                'wallet_brand' => ($store->wallet_type ?? null) === 'aqua_boltz'
+                    ? $validator->resolveAquaBoltzBrand($store->walletConnection)
+                    : null,
                 'pos_terminal_count' => $store->posTerminals->count(),
                 'wallet_connection_status' => $store->walletConnection?->status ?? null,
             ];

@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\AccountController;
+use App\Http\Controllers\BlinkMigrationAlertController;
 use App\Http\Controllers\Admin\DocumentationArticleController;
 use App\Http\Controllers\Admin\DocumentationCategoryController;
 use App\Http\Controllers\Admin\DocumentationImageController;
@@ -689,6 +689,9 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
         Route::post('/email-rules', [StoreEmailRuleController::class, 'store']);
         Route::put('/email-rules/{store_email_rule}', [StoreEmailRuleController::class, 'update']);
         Route::delete('/email-rules/{store_email_rule}', [StoreEmailRuleController::class, 'destroy']);
+
+        Route::post('/blink-migration-alert/snooze', [BlinkMigrationAlertController::class, 'snooze']);
+        Route::post('/blink-migration-alert/dismiss', [BlinkMigrationAlertController::class, 'dismiss']);
     });
 
     // Cashu (wallet_type=cashu)

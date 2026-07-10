@@ -179,6 +179,22 @@ class CashuPaymentsTest extends TestCase
             ->assertJsonPath('data.max_melt_fee_reserve_percent_of_minted', null);
     }
 
+    public function test_cashu_get_settings_returns_defaults_for_nwc_store(): void
+    {
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'nwc',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson("/api/stores/{$store->id}/cashu/settings")
+            ->assertOk()
+            ->assertJsonPath('data.mint_url', null)
+            ->assertJsonPath('data.lightning_address', null);
+    }
+
     public function test_list_payments_includes_mint_quote_poll_url_from_plugin(): void
     {
         $baseUrl = rtrim(config('services.btcpay.base_url'), '/');
@@ -359,6 +375,52 @@ class CashuPaymentsTest extends TestCase
 
         sort($deletedMethods);
         $this->assertSame(['BTC-LN', 'BTC-LNURL'], $deletedMethods);
+    }
+
+    public function test_saving_cashu_from_nwc_deletes_wallet_connection(): void
+    {
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) {
+            $url = $request->url();
+
+            if (str_contains($url, 'cashumelt/settings') && $request->method() === 'PUT') {
+                return Http::response([
+                    'mintUrl' => 'https://mint.example/m',
+                    'lightningAddress' => 'z@example.com',
+                    'enabled' => true,
+                ], 200);
+            }
+
+            if ($request->method() === 'DELETE' && preg_match('#/stores/[^/]+/payment-methods/(BTC-LN|BTC-LNURL)$#', $url)) {
+                return Http::response([], 200);
+            }
+
+            return Http::response(['error' => 'unexpected URL: '.$url], 500);
+        });
+
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'nwc',
+            'btcpay_store_id' => 'store-btcpay-nwc-to-cashu',
+        ]);
+        WalletConnection::factory()->create([
+            'store_id' => $store->id,
+            'submitted_by_user_id' => $user->id,
+            'type' => 'nwc',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->putJson("/api/stores/{$store->id}/cashu/settings", [
+            'mint_url' => 'https://mint.example/m',
+            'lightning_address' => 'z@example.com',
+        ])->assertOk();
+
+        $store->refresh();
+        $this->assertSame('cashu', $store->wallet_type);
+        $this->assertNull($store->walletConnection);
     }
 
     public function test_cashu_settings_put_maps_broken_plugin_json_binding_error(): void

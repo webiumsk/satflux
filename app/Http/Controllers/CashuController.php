@@ -48,7 +48,7 @@ class CashuController extends Controller
     {
         $wt = $store->wallet_type ?? null;
 
-        if ($wt === null || $wt === 'blink' || $wt === 'aqua_boltz') {
+        if ($this->isLightningWalletTypeForCashuSwitch($wt)) {
             return response()->json([
                 'data' => $this->emptyCashuSettingsPayload(),
             ]);
@@ -68,7 +68,8 @@ class CashuController extends Controller
     public function updateSettings(Request $request, Store $store): \Illuminate\Http\JsonResponse
     {
         $previousWalletType = $store->wallet_type ?? null;
-        $switchingFromLightning = in_array($previousWalletType, ['blink', 'aqua_boltz'], true);
+        $switchingFromLightning = $this->isLightningWalletTypeForCashuSwitch($previousWalletType)
+            && $previousWalletType !== null;
 
         $allowed = $previousWalletType === null
             || $previousWalletType === 'cashu'
@@ -80,7 +81,7 @@ class CashuController extends Controller
 
         $request->validate([
             'mint_url' => ['required', 'string', 'url', 'starts_with:https://'],
-            'lightning_address' => ['required', 'string', 'regex:/^[^@]+@[^@]+$/'],
+            'lightning_address' => ['required', 'string', 'regex:/^[^@\s]+@[^@\s]*\.[^@\s]{2,}$/'],
             'enabled' => ['sometimes', 'boolean'],
             'unit' => ['sometimes', 'nullable', Rule::in(['sat', 'usd'])],
             'trusted_mint_urls' => ['sometimes', 'nullable', 'string'],
@@ -214,6 +215,15 @@ class CashuController extends Controller
         if (($store->wallet_type ?? null) !== 'cashu') {
             abort(404, 'Cashu wallet is not configured for this store.');
         }
+    }
+
+    /**
+     * Lightning wallet types that may load empty Cashu defaults or switch to Cashu via updateSettings.
+     */
+    private function isLightningWalletTypeForCashuSwitch(?string $walletType): bool
+    {
+        return $walletType === null
+            || in_array($walletType, ['blink', 'aqua_boltz', 'nwc'], true);
     }
 
     /**

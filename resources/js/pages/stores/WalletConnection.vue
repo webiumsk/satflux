@@ -33,8 +33,8 @@
             </h1>
             <p class="mt-2 text-sm text-gray-400">
               {{ store.wallet_type === 'cashu'
-                ? 'Configure Cashu Mint URL + Lightning Address'
-                : t('stores.configure_wallet_connection') }}
+                ? t('stores.cashu_description')
+                : t('create_store.wallet_paste_hint') }}
               <span v-if="store.wallet_type !== 'cashu'" class="text-indigo-400 font-semibold">{{ store.name }}</span>
             </p>
           </div>
@@ -59,6 +59,7 @@
                 :store-id="storeId"
                 :existing-connection="connection"
                 :wallet-type="store?.wallet_type"
+                :wallet-brand="resolveStoreWalletBrand(store)"
                 :auto-samrock="route.query.samrock === '1'"
                 @submitted="handleSubmitted"
                 @cancel="handleCancel"
@@ -69,6 +70,17 @@
       </AppScrollPane>
     </div>
   </div>
+
+  <BlinkMigrationAlertModal
+    v-if="store"
+    :open="blinkAlertModalOpen"
+    :store-id="store.id"
+    :store-name="store.name"
+    :loading="blinkAlertLoading"
+    @close="blinkAlertModalOpen = false"
+    @acknowledge="blinkAlertAcknowledge"
+    @outside-eu="blinkAlertDismissOutsideEu"
+  />
 </template>
 
 <script setup lang="ts">
@@ -80,7 +92,10 @@ import { useAppsStore } from '../../store/apps';
 import { walletApi } from '../../services/api';
 import AppScrollPane from '../../components/layout/AppScrollPane.vue';
 import WalletConnectionForm from '../../components/stores/WalletConnectionForm.vue';
+import BlinkMigrationAlertModal from '../../components/stores/BlinkMigrationAlertModal.vue';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
+import { useBlinkMigrationAlert } from '../../composables/useBlinkMigrationAlert';
+import { resolveStoreWalletBrand } from '../../utils/storeWalletBrand';
 
 const { t } = useI18n();
 
@@ -91,6 +106,15 @@ const appsStore = useAppsStore();
 
 const storeId = computed(() => route.params.id as string);
 const store = ref<any>(null);
+
+const {
+  modalOpen: blinkAlertModalOpen,
+  loading: blinkAlertLoading,
+  syncModalFromStore,
+  acknowledge: blinkAlertAcknowledge,
+  dismissOutsideEu: blinkAlertDismissOutsideEu,
+} = useBlinkMigrationAlert(store);
+
 const storeLoading = ref(true);
 const loading = ref(true);
 const error = ref<string | null>(null);
@@ -102,6 +126,7 @@ async function loadStore() {
     storeLoading.value = true;
     try {
         store.value = await storesStore.fetchStore(storeId.value);
+        syncModalFromStore();
     } catch (err) {
         console.error('Failed to load store:', err);
     } finally {

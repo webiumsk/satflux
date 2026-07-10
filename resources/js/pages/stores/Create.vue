@@ -209,160 +209,66 @@
           </div>
         </div>
 
-        <!-- Step 2: Wallet Type -->
+        <!-- Step 2: Wallet connection -->
         <div v-if="currentStep === 2" class="space-y-6">
-          <div>
-            <p
-              class="text-sm font-medium text-gray-300 mb-4 uppercase tracking-wider"
+          <p class="text-sm text-gray-300 leading-relaxed">
+            {{ t("create_store.wallet_paste_hint") }}
+          </p>
+
+          <div class="flex gap-1 p-1 rounded-xl bg-gray-800/90 border border-gray-600 w-full sm:w-fit">
+            <button
+              type="button"
+              class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-semibold transition-all"
+              :class="
+                lightningSetupTab === 'paste'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700/80'
+              "
+              @click="lightningSetupTab = 'paste'"
             >
-              {{ t("create_store.choose_wallet_backend") }}
-            </p>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <label
-                class="relative flex flex-col p-6 border-2 rounded-2xl cursor-pointer transition-all hover:bg-gray-700/50"
-                :class="
-                  form.wallet_type === 'blink'
-                    ? 'border-indigo-500 bg-indigo-900/10'
-                    : 'border-gray-600 bg-gray-800'
-                "
-              >
-                <div class="flex items-center justify-between mb-2">
-                  <span class="font-bold text-white text-lg">{{
-                    t("create_store.blink_wallet")
-                  }}</span>
-                  <div
-                    v-if="form.wallet_type === 'blink'"
-                    class="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-white"
-                  >
-                    <svg
-                      class="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="3"
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  </div>
-                  <div
-                    v-else
-                    class="w-6 h-6 rounded-full border-2 border-gray-500"
-                  ></div>
-                </div>
-                <p class="text-sm text-gray-400">
-                  {{ t("create_store.blink_description") }}
-                </p>
-                <input
-                  type="radio"
-                  v-model="form.wallet_type"
-                  value="blink"
-                  class="hidden"
-                />
-              </label>
+              {{ t("stores.wallet_smart_paste_label") }}
+            </button>
+            <button
+              type="button"
+              class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
+              :class="
+                lightningSetupTab === 'samrock'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700/80'
+              "
+              @click="lightningSetupTab = 'samrock'"
+            >
+              <span class="inline-flex items-center gap-2 flex-wrap">
+                {{ t("create_store.tab_samrock") }}
+                <span
+                  class="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                >{{ t("stores.wallet_recommended_badge") }}</span>
+              </span>
+            </button>
+          </div>
 
-              <label
-                class="relative flex flex-col p-6 border-2 rounded-2xl cursor-pointer transition-all hover:bg-gray-700/50"
-                :class="
-                  form.wallet_type === 'aqua_boltz'
-                    ? 'border-indigo-500 bg-indigo-900/10'
-                    : 'border-gray-600 bg-gray-800'
-                "
-              >
-                <div class="flex items-center justify-between mb-2">
-                  <span class="font-bold text-white text-lg">{{
-                    t("create_store.aqua_wallet")
-                  }}</span>
-                  <div
-                    v-if="form.wallet_type === 'aqua_boltz'"
-                    class="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-white"
-                  >
-                    <svg
-                      class="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="3"
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  </div>
-                  <div
-                    v-else
-                    class="w-6 h-6 rounded-full border-2 border-gray-500"
-                  ></div>
-                </div>
-                <p class="text-sm text-gray-400">
-                  {{ t("create_store.aqua_description") }}
-                </p>
-                <input
-                  type="radio"
-                  v-model="form.wallet_type"
-                  value="aqua_boltz"
-                  class="hidden"
-                />
-              </label>
+          <div
+            v-show="lightningSetupTab === 'paste'"
+            class="bg-gray-900/50 rounded-xl p-6 border border-gray-700 space-y-6"
+          >
+            <WalletConnectionSmartPaste
+              v-model="form.connection_string"
+              v-model:connection-type="connectionType"
+              input-id="create-wallet-smart-paste"
+            />
 
-              <label
-                class="relative flex flex-col p-6 border-2 rounded-2xl cursor-pointer transition-all hover:bg-gray-700/50"
-                :class="
-                  form.wallet_type === 'cashu'
-                    ? 'border-indigo-500 bg-indigo-900/10'
-                    : 'border-gray-600 bg-gray-800'
-                "
-              >
-                <div class="flex items-center justify-between mb-2 gap-2">
-                  <span class="font-bold text-white text-lg inline-flex items-center gap-2 flex-wrap">
-                    {{ t("create_store.wallet_type_cashu") }}
-                    <span
-                      class="text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                    >{{ t("stores.cashu_beta_badge") }}</span>
-                  </span>
-                  <div
-                    v-if="form.wallet_type === 'cashu'"
-                    class="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-white"
-                  >
-                    <svg
-                      class="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="3"
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  </div>
-                  <div
-                    v-else
-                    class="w-6 h-6 rounded-full border-2 border-gray-500"
-                  ></div>
-                </div>
-                <p class="text-sm text-gray-400">
-                  {{ t("create_store.cashu_description") }}
-                </p>
-                <input
-                  type="radio"
-                  v-model="form.wallet_type"
-                  value="cashu"
-                  class="hidden"
-                />
-              </label>
-            </div>
             <div
-              v-if="form.wallet_type === 'cashu'"
-              class="mt-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-4"
+              v-if="cashuDetectedFromPaste"
+              class="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-4"
             >
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-bold text-amber-300 uppercase tracking-wider">
+                  {{ t("stores.cashu_settings_title") }}
+                </span>
+                <span
+                  class="text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                >{{ t("stores.cashu_beta_badge") }}</span>
+              </div>
               <p class="text-sm text-amber-200/95 leading-relaxed">
                 {{ t("stores.cashu_beta_notice_short") }}
               </p>
@@ -383,168 +289,59 @@
                 <span class="text-sm text-amber-100 leading-relaxed">{{ t("stores.cashu_beta_consent_checkbox") }}</span>
               </label>
             </div>
+
+            <div
+              v-if="cashuDetectedFromPaste && form.cashu_beta_accepted"
+              class="space-y-5 pt-2 border-t border-gray-700"
+            >
+              <div>
+                <label for="mint_url" class="block text-sm font-medium text-gray-500 mb-2">
+                  {{ t("stores.cashu_mint_url_label") }}
+                </label>
+                <input
+                  id="mint_url"
+                  v-model="form.mint_url"
+                  type="text"
+                  required
+                  :placeholder="t('stores.cashu_mint_url_placeholder')"
+                  class="block w-full rounded-lg p-2 border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono text-sm"
+                />
+                <p class="mt-2 text-sm text-gray-500 leading-relaxed whitespace-pre-line">
+                  {{ t("stores.cashu_mint_url_hint") }}
+                </p>
+              </div>
+              <div>
+                <label for="lightning_address" class="block text-sm font-medium text-gray-500 mb-2">
+                  {{ t("stores.cashu_lightning_address_label") }}
+                </label>
+                <input
+                  id="lightning_address"
+                  v-model="form.lightning_address"
+                  type="text"
+                  required
+                  :placeholder="t('stores.cashu_lightning_address_placeholder')"
+                  class="block w-full rounded-lg p-2 border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+                <p class="mt-2 text-sm text-gray-500 leading-relaxed">
+                  {{ t("stores.cashu_lightning_address_hint") }}
+                </p>
+                <p class="mt-2 text-sm text-gray-500 leading-relaxed">
+                  <span>{{ t("stores.cashu_lightning_address_coinos_prefix") }}</span>
+                  <a
+                    href="https://coinos.io"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-indigo-400 hover:text-indigo-300 underline font-medium"
+                  >coinos.io</a>
+                </p>
+              </div>
+            </div>
           </div>
 
-          <!-- Connection String Input -->
-          <transition
-            enter-active-class="transition ease-out duration-200"
-            enter-from-class="opacity-0 translate-y-2"
-            enter-to-class="opacity-100 translate-y-0"
-            leave-active-class="transition ease-in duration-150"
-            leave-from-class="opacity-100 translate-y-0"
-            leave-to-class="opacity-0 translate-y-2"
+          <div
+            v-show="lightningSetupTab === 'samrock'"
+            class="bg-gray-900/50 border border-indigo-500/30 rounded-2xl p-6 space-y-4"
           >
-            <div
-              v-if="form.wallet_type"
-              class="bg-gray-900/50 rounded-xl p-6 border border-gray-700"
-            >
-              <template v-if="form.wallet_type === 'cashu'">
-                <div class="space-y-5">
-                  <div>
-                    <label
-                      for="mint_url"
-                      class="block text-sm font-medium text-gray-500 mb-2"
-                    >
-                      {{ t("stores.cashu_mint_url_label") }}
-                    </label>
-                    <input
-                      id="mint_url"
-                      v-model="form.mint_url"
-                      type="text"
-                      required
-                      :placeholder="t('stores.cashu_mint_url_placeholder')"
-                      class="block w-full rounded-lg p-2 border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono text-sm"
-                    />
-                    <p class="mt-2 text-sm text-gray-500 leading-relaxed whitespace-pre-line">
-                      {{ t("stores.cashu_mint_url_hint") }}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label for="lightning_address" class="block text-sm font-medium text-gray-500 mb-2">
-                      {{ t("stores.cashu_lightning_address_label") }}
-                    </label>
-                    <input
-                      id="lightning_address"
-                      v-model="form.lightning_address"
-                      type="text"
-                      required
-                      :placeholder="t('stores.cashu_lightning_address_placeholder')"
-                      class="block w-full rounded-lg p-2 border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                    />
-                    <p class="mt-2 text-sm text-gray-500 leading-relaxed">
-                      {{ t("stores.cashu_lightning_address_hint") }}
-                    </p>
-                    <p class="mt-2 text-sm text-gray-500 leading-relaxed">
-                      <span>{{ t("stores.cashu_lightning_address_coinos_prefix") }}</span>
-                      <a
-                        href="https://coinos.io"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="text-indigo-400 hover:text-indigo-300 underline font-medium"
-                      >coinos.io</a>
-                    </p>
-                  </div>
-                </div>
-              </template>
-
-              <template v-else-if="form.wallet_type === 'blink'">
-                <label
-                  for="connection_string_blink"
-                  class="block text-sm font-medium text-indigo-300 mb-2"
-                >
-                  {{ t("create_store.connection_string") }}
-                </label>
-                <textarea
-                  id="connection_string_blink"
-                  v-model="form.connection_string"
-                  rows="4"
-                  class="block w-full rounded-lg p-2 border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono text-sm placeholder-gray-600"
-                  placeholder="type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx"
-                ></textarea>
-                <p
-                  class="mt-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-sm text-amber-400"
-                >
-                  {{ t("stores.blink_keys_warning") }}
-                  <a
-                    href="https://dashboard.blink.sv/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="underline hover:text-amber-300 ml-1"
-                    >{{ t("stores.blink_dashboard_link") }}</a
-                  >
-                </p>
-                <p class="mt-3 text-sm text-gray-400 leading-relaxed">
-                  {{ t("create_store.connection_string_format") }}<br />
-                  {{ t("create_store.connection_string_help") }}
-                </p>
-                <p class="mt-2 text-sm text-gray-400">
-                  <a
-                    :href="docBlinkPath"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="text-indigo-400 hover:text-indigo-300 hover:underline"
-                  >
-                    {{ t("create_store.doc_link_blink") }}
-                    <svg
-                      class="inline w-3.5 h-3.5 ml-0.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                      />
-                    </svg>
-                  </a>
-                </p>
-              </template>
-
-              <template v-else-if="form.wallet_type === 'aqua_boltz'">
-                <div
-                  class="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10"
-                >
-                  <p class="text-sm text-amber-400">
-                    {{ t("stores.aqua_warning_btcpay") }}
-                  </p>
-                  <p class="text-sm text-amber-400 mt-2">
-                    {{ t("stores.aqua_limits_warning") }}
-                  </p>
-                </div>
-                <div class="flex gap-1 p-1 rounded-xl bg-gray-800/90 border border-gray-600 w-full sm:w-auto mb-6">
-                  <button
-                    type="button"
-                    class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-semibold transition-all"
-                    :class="
-                      aquaSetupTab === 'samrock'
-                        ? 'bg-indigo-600 text-white shadow-md'
-                        : 'text-gray-400 hover:text-white hover:bg-gray-700/80'
-                    "
-                    @click="aquaSetupTab = 'samrock'"
-                  >
-                    {{ t("create_store.tab_samrock") }}
-                  </button>
-                  <button
-                    type="button"
-                    class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
-                    :class="
-                      aquaSetupTab === 'descriptor'
-                        ? 'bg-indigo-600 text-white shadow-md'
-                        : 'text-gray-400 hover:text-white hover:bg-gray-700/80'
-                    "
-                    @click="aquaSetupTab = 'descriptor'"
-                  >
-                    {{ t("create_store.tab_descriptor") }}
-                  </button>
-                </div>
-
-                <div
-                  v-show="aquaSetupTab === 'samrock'"
-                  class="bg-gray-900/50 border border-indigo-500/30 rounded-2xl p-6 space-y-4"
-                >
                   <h3 class="text-sm font-bold text-indigo-400 uppercase tracking-wider">
                     {{ t("stores.samrock_title") }}
                   </h3>
@@ -611,97 +408,16 @@
                   >
                     {{ t("stores.samrock_pairing_complete") }}
                   </div>
-                </div>
-
-                <div v-show="aquaSetupTab === 'descriptor'" class="space-y-3">
-                  <div class="flex flex-wrap items-center gap-3 mb-2">
-                    <span class="text-sm font-medium text-gray-400">{{
-                      t("create_store.wallet_brand_label")
-                    }}</span>
-                    <div class="flex gap-2">
-                      <button
-                        type="button"
-                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all"
-                        :class="
-                          aquaWalletBrand === 'aqua'
-                            ? 'border-indigo-500 bg-indigo-600/20 text-white'
-                            : 'border-gray-600 text-gray-400 hover:border-gray-500'
-                        "
-                        @click="aquaWalletBrand = 'aqua'"
-                      >
-                        <WalletTypeIcon type="aqua_boltz" brand="aqua" size="sm" />
-                      </button>
-                      <button
-                        type="button"
-                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all"
-                        :class="
-                          aquaWalletBrand === 'bull'
-                            ? 'border-indigo-500 bg-indigo-600/20 text-white'
-                            : 'border-gray-600 text-gray-400 hover:border-gray-500'
-                        "
-                        @click="aquaWalletBrand = 'bull'"
-                      >
-                        <WalletTypeIcon type="aqua_boltz" brand="bull" size="sm" />
-                      </button>
-                    </div>
-                  </div>
-                  <p
-                    v-if="
-                      detectedAquaWalletBrand &&
-                      detectedAquaWalletBrand !== aquaWalletBrand
-                    "
-                    class="text-sm text-amber-400"
-                  >
-                    {{ t("create_store.wallet_brand_mismatch") }}
-                  </p>
-                  <label
-                    for="connection_string_aqua"
-                    class="block text-sm font-medium text-indigo-300 mb-2"
-                  >
-                    {{ t("create_store.descriptor") }}
-                  </label>
-                  <textarea
-                    id="connection_string_aqua"
-                    v-model="form.connection_string"
-                    rows="4"
-                    class="block w-full rounded-lg p-2 border-gray-600 bg-gray-800 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono text-sm placeholder-gray-600"
-                    :placeholder="t('create_store.descriptor_placeholder')"
-                  ></textarea>
-                  <p class="mt-3 text-sm text-gray-400 leading-relaxed">
-                    {{ t("create_store.descriptor_help") }}<br />
-                    {{ t("create_store.descriptor_example") }}
-                  </p>
-                  <p class="mt-2 text-sm text-gray-400">
-                    <a
-                      :href="docAquaPath"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-indigo-400 hover:text-indigo-300 hover:underline"
-                    >
-                      {{ t("create_store.doc_link_aqua") }}
-                      <svg
-                        class="inline w-3.5 h-3.5 ml-0.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                        />
-                      </svg>
-                    </a>
-                  </p>
-                </div>
-              </template>
-            </div>
-          </transition>
+          </div>
 
           <p v-if="createdStoreId" class="text-xs text-gray-500 pt-2">
             {{ t("create_store.store_created_hint") }}
           </p>
+
+          <WalletConnectionTypeGuide
+            :highlight-kind="pasteDetection.kind === 'unknown' ? null : pasteDetection.kind"
+            :highlight-brand="pasteDetection.brand"
+          />
 
           <div class="flex justify-between pt-4">
             <button
@@ -725,9 +441,7 @@
               {{ t("create_store.back") }}
             </button>
 
-            <template
-              v-if="form.wallet_type === 'aqua_boltz' && aquaSetupTab === 'samrock'"
-            >
+            <template v-if="lightningSetupTab === 'samrock'">
               <button
                 type="button"
                 @click="finishSamrockAndGoToStore"
@@ -859,11 +573,10 @@ import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 import { storesApi, walletApi } from "../../services/api";
 import { DEFAULT_CASHU_MINT_URL } from "../../constants/cashu";
 import { isValidAquaBoltzDescriptor } from "../../utils/aquaBoltzDescriptor";
-import {
-  detectWalletBrandFromDescriptor,
-  type AquaBoltzWalletBrand,
-} from "../../utils/aquaBoltzWalletBrand";
-import WalletTypeIcon from "../../components/WalletTypeIcon.vue";
+import { detectWalletConnectionInput, isValidCashuLightningAddress } from "../../utils/detectWalletConnectionInput";
+import { isCashuWalletNwcUri } from "../../utils/walletNwcHelpers";
+import WalletConnectionSmartPaste from "../../components/stores/WalletConnectionSmartPaste.vue";
+import WalletConnectionTypeGuide from "../../components/stores/WalletConnectionTypeGuide.vue";
 
 const { t } = useI18n();
 
@@ -890,11 +603,9 @@ const botWaitFailureDetail = ref("");
 let botWaitCountdownInterval: ReturnType<typeof setInterval> | null = null;
 let botPollInterval: ReturnType<typeof setInterval> | null = null;
 
-/** Aqua step 2: primary SamRock tab vs secondary manual descriptor tab */
-const aquaSetupTab = ref<"samrock" | "descriptor">("samrock");
-
-/** Explicit wallet brand for descriptor tab (chips); auto-detected from pasted descriptor when possible */
-const aquaWalletBrand = ref<AquaBoltzWalletBrand>("aqua");
+/** Step 2: smart paste vs SamRock QR (SamRock = recommended Aqua path) */
+const lightningSetupTab = ref<"samrock" | "paste">("samrock");
+const connectionType = ref<"blink" | "nwc" | "aqua_descriptor">("aqua_descriptor");
 
 /** SamRock pairing (step 2, Aqua tab) */
 const samrockOtp = ref("");
@@ -911,16 +622,11 @@ const form = ref({
   default_currency: "EUR",
   timezone: "UTC",
   preferred_exchange: "",
-  wallet_type: "" as "blink" | "aqua_boltz" | "cashu" | "",
   connection_string: "",
-  // Cashu fields (default mint prefilled as a starting point)
   mint_url: DEFAULT_CASHU_MINT_URL,
   lightning_address: "",
   cashu_beta_accepted: false,
 });
-
-const docBlinkPath = "/documentation/blink-wallet";
-const docAquaPath = "/documentation/aqua-wallet";
 
 // Validate Blink connection string: type=blink;server=...;api-key=...;wallet-id=... (all keys present, type=blink, non-empty values)
 function validateBlinkConnectionString(s: string): boolean {
@@ -948,67 +654,86 @@ function validateBlinkConnectionString(s: string): boolean {
   return typeVal === "blink" && !!serverVal && !!apiKeyVal && !!walletIdVal;
 }
 
-const detectedAquaWalletBrand = computed((): AquaBoltzWalletBrand | null => {
-  const cs = form.value.connection_string?.trim() ?? "";
-  return detectWalletBrandFromDescriptor(cs);
-});
+function validateNwcUri(value: string): boolean {
+  if (isCashuWalletNwcUri(value)) {
+    return false;
+  }
+  let uri = value.trim();
+  if (uri.toLowerCase().startsWith("type=nwc;")) {
+    uri = uri.replace(/^type=nwc;key=/i, "");
+  }
+  uri = uri.replace("nostr+walletconnect://", "nostr+walletconnect:");
+  const lower = uri.toLowerCase();
+  return (
+    lower.startsWith("nostr+walletconnect:") &&
+    uri.length >= 80 &&
+    lower.includes("relay=") &&
+    lower.includes("secret=") &&
+    !/\s/.test(uri)
+  );
+}
 
-watch(detectedAquaWalletBrand, (detected) => {
-  if (detected) {
-    aquaWalletBrand.value = detected;
+function validatePasteConnection(): boolean {
+  const cs = form.value.connection_string?.trim() ?? "";
+  if (!cs) return false;
+  if (pasteDetection.value.kind === "cashu_wallet_nwc") {
+    return false;
+  }
+  if (connectionType.value === "blink") {
+    return validateBlinkConnectionString(cs);
+  }
+  if (connectionType.value === "nwc") {
+    return validateNwcUri(cs);
+  }
+  return isValidAquaBoltzDescriptor(cs);
+}
+
+function validateCashuFields(): boolean {
+  const mintUrl = (form.value.mint_url ?? "").trim();
+  const lnAddress = (form.value.lightning_address ?? "").trim();
+  if (!mintUrl || !mintUrl.startsWith("https://")) return false;
+  if (!isValidCashuLightningAddress(lnAddress)) return false;
+  if (!form.value.cashu_beta_accepted) return false;
+  return true;
+}
+
+const pasteDetection = computed(() =>
+  detectWalletConnectionInput(form.value.connection_string ?? ""),
+);
+
+const cashuDetectedFromPaste = computed(
+  () =>
+    pasteDetection.value.kind === "cashu" ||
+    pasteDetection.value.kind === "cashu_wallet_nwc",
+);
+
+watch(pasteDetection, (det) => {
+  if (det.kind !== "cashu" && det.kind !== "cashu_wallet_nwc") {
+    form.value.cashu_beta_accepted = false;
+    return;
+  }
+  form.value.cashu_beta_accepted = false;
+  if (det.cashuMintUrl) {
+    form.value.mint_url = det.cashuMintUrl;
+  } else if (!(form.value.mint_url ?? "").trim()) {
+    form.value.mint_url = DEFAULT_CASHU_MINT_URL;
+  }
+  if (det.cashuLightningAddress) {
+    form.value.lightning_address = det.cashuLightningAddress;
   }
 });
 
 const canProceedFromStep2 = computed(() => {
-  const wt = form.value.wallet_type;
-  if (!wt) return false;
-
-  if (wt === "blink") {
-    const cs = form.value.connection_string?.trim() ?? "";
-    return validateBlinkConnectionString(cs);
+  if (lightningSetupTab.value === "samrock") {
+    return false;
   }
 
-  if (wt === "aqua_boltz") {
-    if (aquaSetupTab.value === "samrock") {
-      return false;
-    }
-    const cs = form.value.connection_string?.trim() ?? "";
-    if (!isValidAquaBoltzDescriptor(cs)) {
-      return false;
-    }
-    const detected = detectWalletBrandFromDescriptor(cs);
-    if (detected && detected !== aquaWalletBrand.value) {
-      return false;
-    }
-    return true;
+  if (cashuDetectedFromPaste.value) {
+    return validateCashuFields();
   }
 
-  if (wt === "cashu") {
-    const mintUrl = (form.value.mint_url ?? "").trim();
-    const lnAddress = (form.value.lightning_address ?? "").trim();
-    if (!mintUrl || !mintUrl.startsWith("https://")) return false;
-    if (!lnAddress.match(/^[^@]+@[^@]+$/)) return false;
-    if (!form.value.cashu_beta_accepted) return false;
-    return true;
-  }
-
-  return false;
+  return validatePasteConnection();
 });
-
-watch(
-  () => form.value.wallet_type,
-  (wt) => {
-    if (wt !== "cashu") {
-      form.value.cashu_beta_accepted = false;
-    }
-    if (wt === "cashu" && !(form.value.mint_url ?? "").trim()) {
-      form.value.mint_url = DEFAULT_CASHU_MINT_URL;
-    }
-    if (wt === "aqua_boltz") {
-      aquaSetupTab.value = "samrock";
-    }
-  }
-);
 
 // Common timezones - you can expand this list
 const timezones = [
@@ -1246,6 +971,7 @@ function cancelBotWait() {
   stopBotWaitTimers();
   currentStep.value = 2;
   botWaitPhase.value = "polling";
+  lightningSetupTab.value = "paste";
 }
 
 async function submitStep1Create() {
@@ -1287,7 +1013,7 @@ async function submitWalletConfiguration() {
   flashStore.clear();
 
   try {
-    if (form.value.wallet_type === "cashu") {
+    if (cashuDetectedFromPaste.value) {
       await walletApi.cashu.updateSettings(sid, {
         mint_url: form.value.mint_url,
         lightning_address: form.value.lightning_address,
@@ -1298,11 +1024,18 @@ async function submitWalletConfiguration() {
       return;
     }
 
-    const secret = (form.value.connection_string ?? "").trim();
-    const connType =
-      form.value.wallet_type === "blink" ? "blink" : "aqua_descriptor";
+    const rawSecret = (form.value.connection_string ?? "").trim();
+    let secret = rawSecret;
+    if (connectionType.value === "nwc") {
+      secret = rawSecret
+        .replace(/^type=nwc;key=/i, "")
+        .replace("nostr+walletconnect://", "nostr+walletconnect:");
+    }
 
-    await walletApi.connection.create(sid, { type: connType, secret });
+    await walletApi.connection.create(sid, {
+      type: connectionType.value,
+      secret,
+    });
 
     await storesStore.fetchStore(sid);
     currentStep.value = 3;

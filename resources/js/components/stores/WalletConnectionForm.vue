@@ -15,11 +15,7 @@
 
     <!-- Cashu store: read-only summary until user confirms password -->
     <template
-      v-if="
-        walletType === 'cashu' &&
-        cashuSectionMode === 'readonly' &&
-        !preferLightningFromCashu
-      "
+      v-if="walletType === 'cashu' && cashuSectionMode === 'readonly'"
     >
       <h3
         class="text-sm font-bold text-indigo-400 mb-6 uppercase tracking-wider"
@@ -233,36 +229,6 @@
       </div>
 
       <div
-        v-if="walletType === 'cashu' && cashuSectionMode === 'editing'"
-        class="flex flex-wrap gap-3 text-sm mb-6"
-      >
-        <button
-          type="button"
-          class="px-4 py-2 rounded-xl border border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white transition-all"
-          @click="
-            preferLightningFromCashu = true;
-            form.type = 'blink';
-            form.secret = '';
-            lightningFormAquaTab = 'samrock';
-          "
-        >
-          {{ t("stores.wallet_connection_switch_to_blink") }}
-        </button>
-        <button
-          type="button"
-          class="px-4 py-2 rounded-xl border border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white transition-all"
-          @click="
-            preferLightningFromCashu = true;
-            form.type = 'aqua_descriptor';
-            form.secret = '';
-            lightningFormAquaTab = 'samrock';
-          "
-        >
-          {{ t("stores.wallet_connection_switch_to_aqua") }}
-        </button>
-      </div>
-
-      <div
         class="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-4"
       >
         <p class="text-sm text-amber-200/95 leading-relaxed">
@@ -311,7 +277,7 @@
         </svg>
       </div>
 
-      <form v-else @submit.prevent="handleSaveCashu" class="space-y-6">
+      <form v-else-if="cashuBetaAccepted" @submit.prevent="handleSaveCashu" class="space-y-6">
         <div>
           <label
             for="cashu-mint-url"
@@ -485,462 +451,8 @@
   </div>
 
   <div v-else class="space-y-8">
-    <!-- wallet_type null (e.g. store created step 1 only): pick Cashu vs Lightning path -->
-    <template v-if="isUnsetWalletType && unsetWalletChoice === 'choose'">
-      <div
-        class="bg-gray-900/50 border border-gray-700 rounded-2xl p-8 space-y-6"
-      >
-        <p class="text-sm text-gray-300 leading-relaxed">
-          {{ t("stores.wallet_connection_choose_wallet") }}
-        </p>
-        <div class="grid sm:grid-cols-2 gap-4">
-          <button
-            type="button"
-            class="flex flex-col items-start p-5 rounded-xl border border-gray-600 bg-gray-800/80 hover:border-indigo-500 hover:bg-indigo-500/10 text-left transition-all"
-            @click="unsetWalletChoice = 'lightning'"
-          >
-            <span
-              class="font-semibold text-white inline-flex items-center gap-2 flex-wrap"
-            >
-              {{ t("stores.wallet_connection_choose_lightning") }}
-              <span
-                class="text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                >{{ t("stores.wallet_recommended_badge") }}</span
-              >
-            </span>
-            <span class="text-sm text-gray-400 mt-2">{{
-              t("stores.wallet_connection_choose_lightning_hint")
-            }}</span>
-          </button>
-          <button
-            type="button"
-            class="flex flex-col items-start p-5 rounded-xl border border-gray-600 bg-gray-800/80 hover:border-indigo-500 hover:bg-indigo-500/10 text-left transition-all"
-            @click="unsetWalletChoice = 'cashu'"
-          >
-            <span
-              class="font-semibold text-white inline-flex items-center gap-2 flex-wrap"
-            >
-              {{ t("stores.wallet_connection_choose_cashu") }}
-              <span
-                class="text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                >{{ t("stores.cashu_beta_badge") }}</span
-              >
-            </span>
-            <span class="text-sm text-gray-400 mt-2"
-              >{{ t("create_store.wallet_type_cashu") }} -
-              {{ t("stores.cashu_description") }}</span
-            >
-          </button>
-        </div>
-      </div>
-    </template>
-
-    <!-- Aqua (Boltz): primary SamRock tab | secondary Descriptor tab -->
-    <template v-else-if="isAquaTabbedUi">
-      <div
-        class="flex gap-1 p-1 rounded-xl bg-gray-800/90 border border-gray-600 w-full sm:w-fit"
-      >
-        <button
-          type="button"
-          class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-semibold transition-all"
-          :class="
-            aquaWalletTab === 'samrock'
-              ? 'bg-indigo-600 text-white shadow-md'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700/80'
-          "
-          @click="aquaWalletTab = 'samrock'"
-        >
-          {{ t("stores.samrock_tab") }}
-        </button>
-        <button
-          type="button"
-          class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
-          :class="
-            aquaWalletTab === 'descriptor'
-              ? 'bg-indigo-600 text-white shadow-md'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700/80'
-          "
-          @click="aquaWalletTab = 'descriptor'"
-        >
-          {{ t("stores.descriptor_tab") }}
-        </button>
-      </div>
-
-      <div
-        v-if="viewMode === 'editing'"
-        class="flex flex-wrap gap-3 text-sm mb-2"
-      >
-        <button
-          type="button"
-          class="px-4 py-2 rounded-xl border border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white transition-all"
-          @click="
-            preferLightningWalletForm = true;
-            form.type = 'blink';
-            form.secret = '';
-            aquaWalletTab = 'descriptor';
-          "
-        >
-          {{ t("stores.wallet_connection_switch_to_blink") }}
-        </button>
-        <button
-          type="button"
-          class="px-4 py-2 rounded-xl border border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white transition-all"
-          @click="
-            switchToCashuIntent = true;
-            preferLightningWalletForm = false;
-          "
-        >
-          {{ t("stores.wallet_connection_switch_to_cashu") }}
-        </button>
-      </div>
-
-      <div
-        v-show="aquaWalletTab === 'samrock'"
-        class="bg-gray-900/50 border border-indigo-500/30 rounded-2xl p-8"
-      >
-        <div
-          v-if="
-            viewMode === 'editing' &&
-            existingConnection &&
-            existingConnection.status === 'connected'
-          "
-          class="mb-5 p-4 rounded-xl border border-green-500/25 bg-green-500/10 text-sm text-green-100 space-y-1"
-        >
-          <p class="font-medium text-green-400">
-            {{ t("stores.aqua_wallet_connected_title") }}
-          </p>
-          <p class="text-gray-300 leading-relaxed">
-            {{ t("stores.aqua_wallet_connected_samrock_hint") }}
-          </p>
-        </div>
-        <h3
-          class="text-sm font-bold text-indigo-400 mb-3 uppercase tracking-wider"
-        >
-          {{ t("stores.samrock_title") }}
-        </h3>
-        <p class="text-sm text-gray-400 mb-2 leading-relaxed">
-          {{ t("stores.samrock_description") }}
-        </p>
-        <p
-          v-if="samrockErrorMessage && !samrockQrObjectUrl"
-          class="text-red-400 text-sm mb-4"
-        >
-          {{ samrockErrorMessage }}
-        </p>
-
-        <div v-if="!samrockOtp && !samrockBusy" class="flex flex-wrap gap-3">
-          <button
-            type="button"
-            class="px-6 py-3 rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
-            :disabled="samrockBusy"
-            @click="startSamRockPairing"
-          >
-            {{ t("stores.samrock_generate_qr") }}
-          </button>
-          <button
-            v-if="samrockErrorMessage"
-            type="button"
-            class="px-6 py-3 rounded-xl text-sm font-medium border border-gray-600 text-gray-300 hover:bg-gray-800"
-            @click="
-              samrockErrorMessage = '';
-              startSamRockPairing();
-            "
-          >
-            {{ t("stores.samrock_try_again") }}
-          </button>
-        </div>
-
-        <div
-          v-else-if="samrockBusy && !samrockQrObjectUrl"
-          class="flex items-center gap-3 py-6 text-gray-400"
-        >
-          <svg
-            class="animate-spin h-6 w-6 text-indigo-500"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              class="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              stroke-width="4"
-            ></circle>
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-            ></path>
-          </svg>
-          <span>{{ t("common.loading") }}</span>
-        </div>
-
-        <div v-else-if="samrockQrObjectUrl" class="space-y-4">
-          <p class="text-sm text-gray-300">
-            {{ t("stores.samrock_waiting_scan") }}
-          </p>
-          <div class="flex flex-col sm:flex-row gap-6 items-start">
-            <img
-              :src="samrockQrObjectUrl"
-              alt="SamRock QR"
-              class="w-48 h-48 rounded-xl border border-gray-600 bg-white p-2"
-            />
-            <div class="text-sm space-y-2">
-              <p v-if="samrockExpiresAt" class="text-gray-500">
-                {{ t("stores.samrock_expires") }}:
-                {{ formatSamRockExpiry(samrockExpiresAt) }}
-              </p>
-              <p v-if="samrockPollStatus" class="font-mono text-indigo-300">
-                {{ samrockPollStatus }}
-              </p>
-              <p v-if="samrockErrorMessage" class="text-red-400">
-                {{ samrockErrorMessage }}
-              </p>
-            </div>
-          </div>
-          <div class="flex flex-wrap gap-3 pt-2">
-            <button
-              type="button"
-              class="px-4 py-2 rounded-xl text-sm border border-gray-600 text-gray-300 hover:bg-gray-800"
-              @click="cancelSamRockPairing"
-            >
-              {{ t("stores.samrock_cancel") }}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <form
-        v-show="aquaWalletTab === 'descriptor'"
-        class="space-y-8 bg-gray-900/50 border border-gray-700 rounded-2xl p-8"
-        @submit.prevent="handleSubmit"
-      >
-        <div class="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10">
-          <p class="text-sm text-amber-400">
-            {{ t("stores.aqua_warning_btcpay") }}
-          </p>
-          <p class="text-sm text-amber-400 mt-2">
-            {{ t("stores.aqua_limits_warning") }}
-          </p>
-        </div>
-        <div class="flex flex-wrap items-center gap-3 mb-4">
-          <span class="text-sm font-medium text-gray-400">{{
-            t("create_store.wallet_brand_label")
-          }}</span>
-          <div class="flex gap-2">
-            <button
-              type="button"
-              class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all"
-              :class="
-                aquaWalletBrand === 'aqua'
-                  ? 'border-indigo-500 bg-indigo-600/20 text-white'
-                  : 'border-gray-600 text-gray-400 hover:border-gray-500'
-              "
-              @click="aquaWalletBrand = 'aqua'"
-            >
-              <WalletTypeIcon type="aqua_boltz" brand="aqua" size="sm" />
-            </button>
-            <button
-              type="button"
-              class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all"
-              :class="
-                aquaWalletBrand === 'bull'
-                  ? 'border-indigo-500 bg-indigo-600/20 text-white'
-                  : 'border-gray-600 text-gray-400 hover:border-gray-500'
-              "
-              @click="aquaWalletBrand = 'bull'"
-            >
-              <WalletTypeIcon type="aqua_boltz" brand="bull" size="sm" />
-            </button>
-          </div>
-        </div>
-        <p
-          v-if="
-            detectedAquaWalletBrand &&
-            detectedAquaWalletBrand !== aquaWalletBrand
-          "
-          class="text-sm text-amber-400 mb-4"
-        >
-          {{ t("create_store.wallet_brand_mismatch") }}
-        </p>
-        <div>
-          <label
-            for="secret-aqua"
-            class="block text-sm font-medium text-indigo-300 mb-2 uppercase tracking-wider"
-          >
-            {{ t("create_store.descriptor") }}
-          </label>
-          <textarea
-            id="secret-aqua"
-            v-model="form.secret"
-            rows="5"
-            class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono p-4"
-            :placeholder="t('create_store.descriptor_placeholder')"
-            required
-          ></textarea>
-          <div
-            class="mt-3 text-sm text-gray-400 bg-gray-900/30 p-4 rounded-xl border border-gray-700/50"
-          >
-            <p class="font-medium text-gray-300 mb-2">
-              {{ t("stores.format_help") }}
-            </p>
-            <div class="space-y-1">
-              <p>{{ t("create_store.descriptor_help") }}</p>
-              <p>{{ t("create_store.descriptor_example") }}</p>
-            </div>
-          </div>
-          <p v-if="errors.secret" class="mt-2 text-sm text-red-400">
-            {{ errors.secret }}
-          </p>
-        </div>
-
-        <div
-          v-if="testResult"
-          class="rounded-xl p-4 border"
-          :class="
-            testResult.success
-              ? 'bg-green-500/10 border-green-500/20'
-              : 'bg-red-500/10 border-red-500/20'
-          "
-        >
-          <div class="flex">
-            <div class="flex-shrink-0">
-              <svg
-                v-if="testResult.success"
-                class="h-5 w-5 text-green-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              <svg
-                v-else
-                class="h-5 w-5 text-red-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <div class="ml-3">
-              <p
-                class="text-sm font-medium"
-                :class="testResult.success ? 'text-green-400' : 'text-red-400'"
-              >
-                {{ testResult.message }}
-              </p>
-              <p
-                v-if="testResult.requires_manual_config"
-                class="mt-1 text-sm text-gray-400"
-              >
-                {{ t("stores.manual_config_required") }}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div
-          class="flex flex-col-reverse sm:flex-row justify-between items-center gap-4 pt-4 border-t border-gray-700"
-        >
-          <div class="flex w-full sm:w-auto gap-4">
-            <button
-              type="button"
-              @click="handleTestConnection"
-              :disabled="testing || !form.secret.trim()"
-              class="w-full sm:w-auto px-6 py-3 border border-gray-600 rounded-xl shadow-sm text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              <svg
-                v-if="testing"
-                class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-400 inline"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              {{ testing ? t("stores.testing") : t("stores.test_connection") }}
-            </button>
-          </div>
-          <div class="flex w-full sm:w-auto gap-4">
-            <button
-              v-if="existingConnection && viewMode === 'editing'"
-              type="button"
-              @click="handleCancelEdit"
-              class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all"
-            >
-              {{ t("common.cancel") }}
-            </button>
-            <button
-              v-else
-              type="button"
-              @click="$emit('cancel')"
-              class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all"
-            >
-              {{ t("common.cancel") }}
-            </button>
-            <button
-              type="submit"
-              :disabled="submitting"
-              class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-xl shadow-lg shadow-indigo-600/20 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              <svg
-                v-if="submitting"
-                class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              {{
-                submitting ? t("common.loading") : t("stores.save_connection")
-              }}
-            </button>
-          </div>
-        </div>
-      </form>
-    </template>
-
     <!-- Read-only: Current Connection + Change button (when connection exists and not editing) -->
-    <template v-else-if="existingConnection && viewMode === 'readonly'">
+    <template v-if="existingConnection && viewMode === 'readonly'">
       <div class="bg-gray-900/50 border border-gray-700 rounded-2xl p-8">
         <h3
           class="text-sm font-bold text-indigo-400 mb-6 uppercase tracking-wider"
@@ -1032,10 +544,9 @@
             }}</span>
           </span>
         </div>
-        <p v-if="passwordError" class="mt-4 text-sm text-red-400">
-          {{ passwordError }}
-        </p>
-        <div class="mt-8 flex flex-wrap items-center gap-4">
+      </div>
+
+      <div class="mt-6 flex flex-wrap items-center gap-4">
           <button
             type="button"
             @click="startWalletConnectionEdit"
@@ -1052,7 +563,9 @@
             {{ t("common.cancel") }}
           </button>
         </div>
-      </div>
+      <p v-if="passwordError" class="mt-4 text-sm text-red-400">
+        {{ passwordError }}
+      </p>
     </template>
 
     <!-- Password step: before revealing secret -->
@@ -1139,534 +652,304 @@
       </div>
     </template>
 
-    <!-- Blink / legacy NWC / Lightning path after explicit choice when wallet_type unset -->
-    <form
-      v-else-if="showLightningWalletForm"
-      @submit.prevent="handleSubmit"
-      class="space-y-8"
-    >
-      <div v-if="preferLightningFromCashu" class="mb-2">
+    <!-- Unified wallet setup (paste first, SamRock second - same as create store) -->
+    <template v-else-if="showWalletSetupForm">
+      <div
+        v-if="showWalletSetupTabs"
+        class="flex gap-1 p-1 rounded-xl bg-gray-800/90 border border-gray-600 w-full sm:w-fit"
+      >
         <button
           type="button"
-          class="text-sm font-medium text-indigo-400 hover:text-indigo-300"
-          @click="preferLightningFromCashu = false"
+          class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-semibold transition-all"
+          :class="
+            walletSetupTab === 'paste'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'text-gray-400 hover:text-white hover:bg-gray-700/80'
+          "
+          @click="walletSetupTab = 'paste'"
         >
-          ← {{ t("stores.wallet_connection_back_to_cashu") }}
+          {{ t("stores.wallet_smart_paste_label") }}
+        </button>
+        <button
+          type="button"
+          class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
+          :class="
+            walletSetupTab === 'samrock'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'text-gray-400 hover:text-white hover:bg-gray-700/80'
+          "
+          @click="walletSetupTab = 'samrock'"
+        >
+          <span class="inline-flex items-center gap-2 flex-wrap">
+            {{ t("create_store.tab_samrock") }}
+            <span
+              class="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+            >{{ t("stores.wallet_recommended_badge") }}</span>
+          </span>
         </button>
       </div>
-      <div>
-        <label
-          class="block text-sm font-medium text-gray-300 mb-4 uppercase tracking-wider"
-        >
-          {{ t("create_store.wallet_type_label") }}
-        </label>
-        <div class="space-y-4">
-          <label
-            class="flex items-start p-5 border rounded-xl cursor-pointer transition-all duration-200 group"
-            :class="
-              form.type === 'blink'
-                ? 'border-indigo-500 bg-indigo-900/10 shadow-lg shadow-indigo-900/20'
-                : 'border-gray-700 bg-gray-800 hover:bg-gray-700/50 hover:border-gray-600'
-            "
-          >
-            <div class="flex items-center h-5 mt-1">
-              <input
-                type="radio"
-                v-model="form.type"
-                value="blink"
-                class="h-4 w-4 text-indigo-600 border-gray-600 focus:ring-indigo-500 bg-gray-700"
-                required
-              />
-            </div>
-            <div class="ml-4">
-              <div class="font-bold text-white text-lg">
-                {{ t("create_store.wallet_type_blink") }}
-              </div>
-              <div class="text-sm text-gray-400 mt-1">
-                {{ t("stores.blink_connection_description") }}
-              </div>
-            </div>
-          </label>
 
-          <label
-            class="flex items-start p-5 border rounded-xl cursor-pointer transition-all duration-200 group"
-            :class="
-              form.type === 'aqua_descriptor'
-                ? 'border-indigo-500 bg-indigo-900/10 shadow-lg shadow-indigo-900/20'
-                : 'border-gray-700 bg-gray-800 hover:bg-gray-700/50 hover:border-gray-600'
-            "
-          >
-            <div class="flex items-center h-5 mt-1">
-              <input
-                type="radio"
-                v-model="form.type"
-                value="aqua_descriptor"
-                class="h-4 w-4 text-indigo-600 border-gray-600 focus:ring-indigo-500 bg-gray-700"
-                required
-              />
-            </div>
-            <div class="ml-4">
-              <div class="font-bold text-white text-lg">
-                {{ t("create_store.wallet_type_aqua") }}
-              </div>
-              <div class="text-sm text-gray-400 mt-1">
-                {{ t("stores.aqua_connection_description") }}
-              </div>
-            </div>
-          </label>
-        </div>
-        <button
-          type="button"
-          class="w-full mt-2 px-4 py-3 rounded-xl border border-gray-600 text-sm text-gray-300 hover:bg-gray-800 hover:border-indigo-500/50 transition-all text-left"
-          @click="
-            switchToCashuIntent = true;
-            preferLightningWalletForm = false;
-          "
-        >
-          {{ t("create_store.wallet_type_cashu") }} -
-          {{ t("stores.wallet_connection_switch_to_cashu_hint") }}
-        </button>
+      <div
+        v-show="!showWalletSetupTabs || walletSetupTab === 'paste'"
+        class="bg-gray-900/50 rounded-xl p-6 border border-gray-700 space-y-6"
+      >
         <div
-          v-if="form.type === 'aqua_descriptor'"
-          class="mt-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10"
+          v-if="
+            viewMode === 'editing' &&
+            existingConnection &&
+            existingConnection.status === 'connected' &&
+            walletType === 'aqua_boltz'
+          "
+          class="p-4 rounded-xl border border-green-500/25 bg-green-500/10 text-sm text-green-100 space-y-1"
+        >
+          <p class="font-medium text-green-400">
+            {{ t("stores.aqua_wallet_connected_title") }}
+          </p>
+          <p class="text-gray-300 leading-relaxed">
+            {{ t("stores.aqua_wallet_connected_samrock_hint") }}
+          </p>
+        </div>
+
+        <div
+          v-if="showAquaDescriptorWarnings"
+          class="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-2"
         >
           <p class="text-sm text-amber-400">
             {{ t("stores.aqua_warning_btcpay") }}
           </p>
-          <p class="text-sm text-amber-400 mt-2">
+          <p class="text-sm text-amber-400">
             {{ t("stores.aqua_limits_warning") }}
           </p>
         </div>
-        <p v-if="errors.type" class="mt-2 text-sm text-red-400">
-          {{ errors.type }}
-        </p>
-      </div>
 
-      <div>
-        <!-- Blink -->
-        <template v-if="form.type === 'blink'">
-          <label
-            for="secret-blink"
-            class="block text-sm font-medium text-indigo-300 mb-2 uppercase tracking-wider"
-          >
-            {{ t("create_store.connection_string") }}
-          </label>
-          <textarea
-            id="secret-blink"
-            v-model="form.secret"
-            rows="5"
-            class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono p-4"
-            placeholder="type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx"
-            required
-          ></textarea>
-          <div
-            class="mt-3 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10"
-          >
-            <p class="text-sm text-amber-400 font-medium">
-              {{ t("stores.blink_keys_warning") }}
-              <a
-                href="https://dashboard.blink.sv/"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="underline hover:text-amber-300 ml-1"
-                >{{ t("stores.blink_dashboard_link") }}</a
-              >
-            </p>
-          </div>
-          <div
-            class="mt-3 text-sm text-gray-400 bg-gray-900/30 p-4 rounded-xl border border-gray-700/50"
-          >
-            <p class="font-medium text-gray-300 mb-2">
-              {{ t("stores.format_help") }}
-            </p>
-            <div class="space-y-1">
-              <p>{{ t("create_store.connection_string_format") }}</p>
-              <p>{{ t("create_store.connection_string_help") }}</p>
-            </div>
-          </div>
-        </template>
+        <WalletConnectionSmartPaste
+          v-model="form.secret"
+          v-model:connection-type="form.type"
+          input-id="wallet-connection-smart-paste"
+          @detect-cashu="onDetectCashuFromPaste"
+        />
 
-        <!-- Aqua in this form: SamRock QR + Descriptor (same as dedicated Aqua flow) -->
-        <template v-else-if="showSamrockTabsInLightningForm">
-          <div
-            class="flex gap-1 p-1 rounded-xl bg-gray-800/90 border border-gray-600 w-full sm:w-fit mb-6"
-          >
-            <button
-              type="button"
-              class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-semibold transition-all"
-              :class="
-                lightningFormAquaTab === 'samrock'
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-700/80'
-              "
-              @click="lightningFormAquaTab = 'samrock'"
-            >
-              {{ t("stores.samrock_tab") }}
-            </button>
-            <button
-              type="button"
-              class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
-              :class="
-                lightningFormAquaTab === 'descriptor'
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-700/80'
-              "
-              @click="lightningFormAquaTab = 'descriptor'"
-            >
-              {{ t("stores.descriptor_tab") }}
-            </button>
-          </div>
+        <p v-if="errors.type" class="text-sm text-red-400">{{ errors.type }}</p>
+        <p v-if="errors.secret" class="text-sm text-red-400">{{ errors.secret }}</p>
 
-          <div
-            v-show="lightningFormAquaTab === 'samrock'"
-            class="bg-gray-900/50 border border-indigo-500/30 rounded-2xl p-8 mb-6"
-          >
-            <h3
-              class="text-sm font-bold text-indigo-400 mb-3 uppercase tracking-wider"
-            >
-              {{ t("stores.samrock_title") }}
-            </h3>
-            <p class="text-sm text-gray-400 mb-2 leading-relaxed">
-              {{ t("stores.samrock_description") }}
-            </p>
-            <p
-              v-if="samrockErrorMessage && !samrockQrObjectUrl"
-              class="text-red-400 text-sm mb-4"
-            >
-              {{ samrockErrorMessage }}
-            </p>
-
-            <div
-              v-if="!samrockOtp && !samrockBusy"
-              class="flex flex-wrap gap-3"
-            >
-              <button
-                type="button"
-                class="px-6 py-3 rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
-                :disabled="samrockBusy"
-                @click="startSamRockPairing"
-              >
-                {{ t("stores.samrock_generate_qr") }}
-              </button>
-              <button
-                v-if="samrockErrorMessage"
-                type="button"
-                class="px-6 py-3 rounded-xl text-sm font-medium border border-gray-600 text-gray-300 hover:bg-gray-800"
-                @click="
-                  samrockErrorMessage = '';
-                  startSamRockPairing();
-                "
-              >
-                {{ t("stores.samrock_try_again") }}
-              </button>
-            </div>
-
-            <div
-              v-else-if="samrockBusy && !samrockQrObjectUrl"
-              class="flex items-center gap-3 py-6 text-gray-400"
-            >
+        <div
+          v-if="testResult"
+          class="rounded-xl p-4 border"
+          :class="
+            testResult.success
+              ? 'bg-green-500/10 border-green-500/20'
+              : 'bg-red-500/10 border-red-500/20'
+          "
+        >
+          <div class="flex">
+            <div class="flex-shrink-0">
               <svg
-                class="animate-spin h-6 w-6 text-indigo-500"
-                xmlns="http://www.w3.org/2000/svg"
+                v-if="testResult.success"
+                class="h-5 w-5 text-green-400"
                 fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
                 <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                ></path>
-              </svg>
-              <span>{{ t("common.loading") }}</span>
-            </div>
-
-            <div v-else-if="samrockQrObjectUrl" class="space-y-4">
-              <p class="text-sm text-gray-300">
-                {{ t("stores.samrock_waiting_scan") }}
-              </p>
-              <div class="flex flex-col sm:flex-row gap-6 items-start">
-                <img
-                  :src="samrockQrObjectUrl"
-                  alt="SamRock QR"
-                  class="w-48 h-48 rounded-xl border border-gray-600 bg-white p-2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 13l4 4L19 7"
                 />
-                <div class="text-sm space-y-2">
-                  <p v-if="samrockExpiresAt" class="text-gray-500">
-                    {{ t("stores.samrock_expires") }}:
-                    {{ formatSamRockExpiry(samrockExpiresAt) }}
-                  </p>
-                  <p v-if="samrockPollStatus" class="font-mono text-indigo-300">
-                    {{ samrockPollStatus }}
-                  </p>
-                  <p v-if="samrockErrorMessage" class="text-red-400">
-                    {{ samrockErrorMessage }}
-                  </p>
-                </div>
-              </div>
-              <div class="flex flex-wrap gap-3 pt-2">
-                <button
-                  type="button"
-                  class="px-4 py-2 rounded-xl text-sm border border-gray-600 text-gray-300 hover:bg-gray-800"
-                  @click="cancelSamRockPairing"
-                >
-                  {{ t("stores.samrock_cancel") }}
-                </button>
-              </div>
+              </svg>
+              <svg
+                v-else
+                class="h-5 w-5 text-red-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
             </div>
-          </div>
-
-          <div
-            v-show="lightningFormAquaTab === 'descriptor'"
-            class="rounded-2xl border border-gray-700 bg-gray-900/30 p-6"
-          >
-            <div class="flex flex-wrap items-center gap-3 mb-4">
-              <span class="text-sm font-medium text-gray-400">{{
-                t("create_store.wallet_brand_label")
-              }}</span>
-              <div class="flex gap-2">
-                <button
-                  type="button"
-                  class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all"
-                  :class="
-                    aquaWalletBrand === 'aqua'
-                      ? 'border-indigo-500 bg-indigo-600/20 text-white'
-                      : 'border-gray-600 text-gray-400 hover:border-gray-500'
-                  "
-                  @click="aquaWalletBrand = 'aqua'"
-                >
-                  <WalletTypeIcon type="aqua_boltz" brand="aqua" size="sm" />
-                </button>
-                <button
-                  type="button"
-                  class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all"
-                  :class="
-                    aquaWalletBrand === 'bull'
-                      ? 'border-indigo-500 bg-indigo-600/20 text-white'
-                      : 'border-gray-600 text-gray-400 hover:border-gray-500'
-                  "
-                  @click="aquaWalletBrand = 'bull'"
-                >
-                  <WalletTypeIcon type="aqua_boltz" brand="bull" size="sm" />
-                </button>
-              </div>
-            </div>
-            <p
-              v-if="
-                detectedAquaWalletBrand &&
-                detectedAquaWalletBrand !== aquaWalletBrand
-              "
-              class="text-sm text-amber-400 mb-4"
-            >
-              {{ t("create_store.wallet_brand_mismatch") }}
-            </p>
-            <label
-              for="secret-lightning-aqua"
-              class="block text-sm font-medium text-indigo-300 mb-2 uppercase tracking-wider"
-            >
-              {{ t("create_store.descriptor") }}
-            </label>
-            <textarea
-              id="secret-lightning-aqua"
-              v-model="form.secret"
-              rows="5"
-              class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono p-4"
-              :placeholder="t('create_store.descriptor_placeholder')"
-            ></textarea>
-            <div
-              class="mt-3 text-sm text-gray-400 bg-gray-900/30 p-4 rounded-xl border border-gray-700/50"
-            >
-              <p class="font-medium text-gray-300 mb-2">
-                {{ t("stores.format_help") }}
+            <div class="ml-3">
+              <p
+                class="text-sm font-medium"
+                :class="testResult.success ? 'text-green-400' : 'text-red-400'"
+              >
+                {{ testResult.message }}
               </p>
-              <div class="space-y-1">
-                <p>{{ t("create_store.descriptor_help") }}</p>
-                <p>{{ t("create_store.descriptor_example") }}</p>
-              </div>
+              <p
+                v-if="testResult.requires_manual_config"
+                class="mt-1 text-sm text-gray-400"
+              >
+                {{ t("stores.manual_config_required") }}
+              </p>
             </div>
           </div>
-        </template>
+        </div>
 
-        <!-- Aqua without tabbed UI (should not occur in lightning form) -->
-        <template v-else>
-          <label
-            for="secret-fallback"
-            class="block text-sm font-medium text-indigo-300 mb-2 uppercase tracking-wider"
-          >
-            {{ t("create_store.descriptor") }}
-          </label>
-          <textarea
-            id="secret-fallback"
-            v-model="form.secret"
-            rows="5"
-            class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono p-4"
-            :placeholder="t('create_store.descriptor_placeholder')"
-            required
-          ></textarea>
-          <div
-            class="mt-3 text-sm text-gray-400 bg-gray-900/30 p-4 rounded-xl border border-gray-700/50"
-          >
-            <p class="font-medium text-gray-300 mb-2">
-              {{ t("stores.format_help") }}
-            </p>
-            <div class="space-y-1">
-              <p>{{ t("create_store.descriptor_help") }}</p>
-              <p>{{ t("create_store.descriptor_example") }}</p>
-            </div>
-          </div>
-        </template>
-
-        <p v-if="errors.secret" class="mt-2 text-sm text-red-400">
-          {{ errors.secret }}
-        </p>
-      </div>
-
-      <div
-        v-if="testResult"
-        class="rounded-xl p-4 border"
-        :class="
-          testResult.success
-            ? 'bg-green-500/10 border-green-500/20'
-            : 'bg-red-500/10 border-red-500/20'
-        "
-      >
-        <div class="flex">
-          <div class="flex-shrink-0">
-            <svg
-              v-if="testResult.success"
-              class="h-5 w-5 text-green-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+        <div
+          class="flex flex-col-reverse sm:flex-row justify-between items-center gap-4 pt-4 border-t border-gray-700"
+        >
+          <div class="flex w-full sm:w-auto gap-4">
+            <button
+              type="button"
+              @click="handleTestConnection"
+              :disabled="testing || !form.secret.trim()"
+              class="w-full sm:w-auto px-6 py-3 border border-gray-600 rounded-xl shadow-sm text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-            <svg
+              {{ testing ? t("stores.testing") : t("stores.test_connection") }}
+            </button>
+          </div>
+          <div class="flex w-full sm:w-auto gap-4">
+            <button
+              v-if="existingConnection && viewMode === 'editing'"
+              type="button"
+              @click="handleCancelEdit"
+              class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all"
+            >
+              {{ t("common.cancel") }}
+            </button>
+            <button
               v-else
-              class="h-5 w-5 text-red-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+              type="button"
+              @click="$emit('cancel')"
+              class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-          </div>
-          <div class="ml-3">
-            <p
-              class="text-sm font-medium"
-              :class="testResult.success ? 'text-green-400' : 'text-red-400'"
+              {{ t("common.cancel") }}
+            </button>
+            <button
+              type="button"
+              :disabled="submitting"
+              class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-xl shadow-lg shadow-indigo-600/20 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              @click="handleSubmit"
             >
-              {{ testResult.message }}
-            </p>
-            <p
-              v-if="testResult.requires_manual_config"
-              class="mt-1 text-sm text-gray-400"
-            >
-              {{ t("stores.manual_config_required") }}
-            </p>
+              {{ submitting ? t("common.loading") : t("stores.save_connection") }}
+            </button>
           </div>
         </div>
       </div>
 
       <div
-        class="flex flex-col-reverse sm:flex-row justify-between items-center gap-4 pt-4 border-t border-gray-700"
+        v-show="showWalletSetupTabs && walletSetupTab === 'samrock'"
+        class="bg-gray-900/50 border border-indigo-500/30 rounded-2xl p-8 space-y-4"
       >
-        <div class="flex w-full sm:w-auto gap-4">
+        <div
+          v-if="
+            viewMode === 'editing' &&
+            existingConnection &&
+            existingConnection.status === 'connected'
+          "
+          class="p-4 rounded-xl border border-green-500/25 bg-green-500/10 text-sm text-green-100 space-y-1"
+        >
+          <p class="font-medium text-green-400">
+            {{ t("stores.aqua_wallet_connected_title") }}
+          </p>
+          <p class="text-gray-300 leading-relaxed">
+            {{ t("stores.aqua_wallet_connected_samrock_hint") }}
+          </p>
+        </div>
+        <h3 class="text-sm font-bold text-indigo-400 uppercase tracking-wider">
+          {{ t("stores.samrock_title") }}
+        </h3>
+        <p class="text-sm text-gray-400 leading-relaxed">
+          {{ t("stores.samrock_description") }}
+        </p>
+        <p
+          v-if="samrockErrorMessage && !samrockQrObjectUrl"
+          class="text-red-400 text-sm"
+        >
+          {{ samrockErrorMessage }}
+        </p>
+
+        <div v-if="!samrockOtp && !samrockBusy" class="flex flex-wrap gap-3">
           <button
             type="button"
-            @click="handleTestConnection"
-            :disabled="testing || !form.secret.trim()"
-            class="w-full sm:w-auto px-6 py-3 border border-gray-600 rounded-xl shadow-sm text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            class="px-6 py-3 rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
+            :disabled="samrockBusy"
+            @click="startSamRockPairing"
           >
-            <svg
-              v-if="testing"
-              class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-400 inline"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-            {{ testing ? t("stores.testing") : t("stores.test_connection") }}
+            {{ t("stores.samrock_generate_qr") }}
+          </button>
+          <button
+            v-if="samrockErrorMessage"
+            type="button"
+            class="px-6 py-3 rounded-xl text-sm font-medium border border-gray-600 text-gray-300 hover:bg-gray-800"
+            @click="
+              samrockErrorMessage = '';
+              startSamRockPairing();
+            "
+          >
+            {{ t("stores.samrock_try_again") }}
           </button>
         </div>
-        <div class="flex w-full sm:w-auto gap-4">
+
+        <div
+          v-else-if="samrockBusy && !samrockQrObjectUrl"
+          class="flex items-center gap-3 py-6 text-gray-400"
+        >
+          <svg
+            class="animate-spin h-6 w-6 text-indigo-500"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            ></circle>
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+            ></path>
+          </svg>
+          <span>{{ t("common.loading") }}</span>
+        </div>
+
+        <div v-else-if="samrockQrObjectUrl" class="space-y-4">
+          <p class="text-sm text-gray-300">{{ t("stores.samrock_waiting_scan") }}</p>
+          <div class="flex flex-col sm:flex-row gap-6 items-start">
+            <img
+              :src="samrockQrObjectUrl"
+              alt="SamRock QR"
+              class="w-48 h-48 rounded-xl border border-gray-600 bg-white p-2"
+            />
+            <div class="text-sm space-y-2">
+              <p v-if="samrockExpiresAt" class="text-gray-500">
+                {{ t("stores.samrock_expires") }}:
+                {{ formatSamRockExpiry(samrockExpiresAt) }}
+              </p>
+              <p v-if="samrockPollStatus" class="font-mono text-indigo-300">
+                {{ samrockPollStatus }}
+              </p>
+              <p v-if="samrockErrorMessage" class="text-red-400">
+                {{ samrockErrorMessage }}
+              </p>
+            </div>
+          </div>
           <button
-            v-if="existingConnection && viewMode === 'editing'"
             type="button"
-            @click="handleCancelEdit"
-            class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all"
+            class="px-4 py-2 rounded-xl text-sm border border-gray-600 text-gray-300 hover:bg-gray-800"
+            @click="cancelSamRockPairing"
           >
-            {{ t("common.cancel") }}
-          </button>
-          <button
-            v-else
-            type="button"
-            @click="$emit('cancel')"
-            class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all"
-          >
-            {{ t("common.cancel") }}
-          </button>
-          <button
-            type="submit"
-            :disabled="submitting"
-            class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-xl shadow-lg shadow-indigo-600/20 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-          >
-            <svg
-              v-if="submitting"
-              class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-            {{ submitting ? t("common.loading") : t("stores.save_connection") }}
+            {{ t("stores.samrock_cancel") }}
           </button>
         </div>
       </div>
-    </form>
+
+      <WalletConnectionTypeGuide
+        :highlight-kind="
+          walletPasteDetection.kind === 'unknown' ? null : walletPasteDetection.kind
+        "
+        :highlight-brand="walletPasteDetection.brand"
+      />
+    </template>
 
     <div
       v-else
@@ -1713,7 +996,14 @@ import { useAuthStore } from "../../store/auth";
 import api, { walletApi } from "../../services/api";
 import { DEFAULT_CASHU_MINT_URL } from "../../constants/cashu";
 import WalletTypeIcon from "../WalletTypeIcon.vue";
+import WalletConnectionSmartPaste from "./WalletConnectionSmartPaste.vue";
+import WalletConnectionTypeGuide from "./WalletConnectionTypeGuide.vue";
 import { isValidAquaBoltzDescriptor } from "../../utils/aquaBoltzDescriptor";
+import {
+  detectWalletConnectionInput,
+  isValidCashuLightningAddress,
+} from "../../utils/detectWalletConnectionInput";
+import { isCashuWalletNwcUri } from "../../utils/walletNwcHelpers";
 import {
   detectWalletBrandFromDescriptor,
   type AquaBoltzWalletBrand,
@@ -1725,28 +1015,22 @@ interface Props {
   storeId: string;
   existingConnection?: any;
   walletType?: "blink" | "aqua_boltz" | "cashu" | "nwc" | string | null;
+  /** When wallet_type is aqua_boltz: Aqua vs Bull (from API) */
+  walletBrand?: AquaBoltzWalletBrand | null;
   /** After create-store redirect: auto-open SamRock QR flow */
   autoSamrock?: boolean;
 }
 
 const props = defineProps<Props>();
 
-type UnsetWalletChoice = "choose" | "cashu" | "lightning";
-const unsetWalletChoice = ref<UnsetWalletChoice>("choose");
-
-/** User chose Lightning (Blink) instead of Aqua tabs while store is aqua_boltz. */
-const preferLightningWalletForm = ref(false);
-/** User opened Cashu settings while store wallet type is not yet cashu. */
 const switchToCashuIntent = ref(false);
-/** Cashu store: switching to Blink/Aqua Lightning form (after unlock). */
-const preferLightningFromCashu = ref(false);
 /** Native Cashu store: readonly summary → password → editing. */
 const cashuSectionMode = ref<"readonly" | "password" | "editing">("editing");
 const cashuInitializedFromFetch = ref(false);
 /** LNURL challenge completion targets Cashu confirm-edit instead of wallet reveal. */
 const lnurlRevealForCashuEdit = ref(false);
-/** SamRock vs descriptor tab inside the shared Lightning wallet form (Blink/NWC path). */
-const lightningFormAquaTab = ref<"samrock" | "descriptor">("samrock");
+/** Smart paste vs SamRock tab (paste first - same as create store). */
+const walletSetupTab = ref<"paste" | "samrock">("paste");
 
 const isUnsetWalletType = computed(() => {
   const w = props.walletType;
@@ -1754,12 +1038,28 @@ const isUnsetWalletType = computed(() => {
 });
 
 const isCashuFlow = computed(() => {
-  if (preferLightningFromCashu.value) return false;
   if (props.walletType === "cashu") return true;
-  if (isUnsetWalletType.value && unsetWalletChoice.value === "cashu")
-    return true;
   if (switchToCashuIntent.value) return true;
   return false;
+});
+
+const showWalletSetupForm = computed(() => {
+  if (viewMode.value !== "create" && viewMode.value !== "editing") return false;
+  if (isCashuFlow.value) return false;
+  const wt = props.walletType;
+  if (wt === "aqua_boltz" || wt === "blink" || wt === "nwc") return true;
+  if (isUnsetWalletType.value) return true;
+  return false;
+});
+
+const showWalletSetupTabs = computed(() => {
+  const wt = props.walletType;
+  return wt === "aqua_boltz" || isUnsetWalletType.value;
+});
+
+const showAquaDescriptorWarnings = computed(() => {
+  if (props.walletType === "aqua_boltz") return true;
+  return form.type === "aqua_descriptor";
 });
 
 function maskCashuMintUrl(url: string): string {
@@ -1796,6 +1096,15 @@ const walletTypeLabel = computed(() => {
   const w = props.walletType;
   if (w === null || w === undefined || w === "")
     return t("stores.wallet_type_not_set");
+  if (w === "aqua_boltz") {
+    const brand = props.walletBrand ?? readonlyAquaWalletBrand.value;
+    return brand === "bull"
+      ? t("create_store.wallet_type_bull")
+      : t("create_store.wallet_type_aqua");
+  }
+  if (w === "blink") return t("create_store.wallet_type_blink");
+  if (w === "cashu") return t("create_store.wallet_type_cashu");
+  if (w === "nwc") return t("create_store.wallet_type_nwc");
   return String(w);
 });
 
@@ -1846,22 +1155,6 @@ watch(
     }
   },
 );
-
-const samrockPanelVisible = computed(() => {
-  if (props.walletType !== "aqua_boltz") return false;
-  if (viewMode.value !== "create") return false;
-  if (!props.existingConnection) return true;
-  if (props.existingConnection.configuration_source === "samrock") return false;
-  return props.existingConnection.status === "pending";
-});
-
-const isAquaTabbedUi = computed(() => {
-  if (props.walletType !== "aqua_boltz") return false;
-  if (preferLightningWalletForm.value) return false;
-  return samrockPanelVisible.value || viewMode.value === "editing";
-});
-
-const aquaWalletTab = ref<"samrock" | "descriptor">("samrock");
 
 const autoSamrockConsumed = ref(false);
 
@@ -1987,9 +1280,10 @@ const testResult = ref<{
 } | null>(null);
 
 const form = reactive({
-  type: (props.existingConnection?.type || "blink") as
+  type: (props.existingConnection?.type || "aqua_descriptor") as
     | "blink"
-    | "aqua_descriptor",
+    | "aqua_descriptor"
+    | "nwc",
   secret: "",
 });
 
@@ -1999,8 +1293,21 @@ const detectedAquaWalletBrand = computed((): AquaBoltzWalletBrand | null =>
   detectWalletBrandFromDescriptor(form.secret),
 );
 
+const walletPasteDetection = computed(() =>
+  detectWalletConnectionInput(form.secret ?? ""),
+);
+
 /** Stable brand for read-only view (no mutable chip state). */
 const readonlyAquaWalletBrand = computed((): AquaBoltzWalletBrand => {
+  if (props.walletBrand === "bull" || props.walletBrand === "aqua") {
+    return props.walletBrand;
+  }
+  if (
+    props.existingConnection?.brand === "bull" ||
+    props.existingConnection?.brand === "aqua"
+  ) {
+    return props.existingConnection.brand;
+  }
   if (props.existingConnection?.configuration_source === "samrock") {
     return "aqua";
   }
@@ -2013,25 +1320,10 @@ watch(detectedAquaWalletBrand, (detected) => {
   }
 });
 
-const showLightningWalletForm = computed(() => {
-  if (props.walletType === "blink" || props.walletType === "nwc") return true;
-  if (isUnsetWalletType.value && unsetWalletChoice.value === "lightning")
-    return true;
-  if (
-    props.walletType === "aqua_boltz" &&
-    preferLightningWalletForm.value &&
-    viewMode.value === "editing"
-  ) {
-    return true;
-  }
-  if (props.walletType === "cashu" && preferLightningFromCashu.value)
-    return true;
-  return false;
-});
-
-const showSamrockTabsInLightningForm = computed(
-  () => showLightningWalletForm.value && form.type === "aqua_descriptor",
-);
+function startSwitchToCashu() {
+  switchToCashuIntent.value = true;
+  cashuBetaAccepted.value = false;
+}
 
 const nostrRevealConfirmPurpose = computed(() =>
   props.walletType === "cashu" && cashuSectionMode.value === "password"
@@ -2061,6 +1353,28 @@ const cashuOriginal = reactive({
 
 const cashuBetaAccepted = ref(false);
 
+/** Apply Cashu mint/LN fields from smart-paste detection (same rules as Create.vue). */
+function syncCashuFieldsFromPasteDetection() {
+  const det = walletPasteDetection.value;
+  if (det.kind !== "cashu" && det.kind !== "cashu_wallet_nwc") {
+    return;
+  }
+  if (det.cashuMintUrl) {
+    cashuForm.mint_url = det.cashuMintUrl;
+  } else if (!(cashuForm.mint_url ?? "").trim()) {
+    cashuForm.mint_url = DEFAULT_CASHU_MINT_URL;
+  }
+  if (det.cashuLightningAddress) {
+    cashuForm.lightning_address = det.cashuLightningAddress;
+  }
+}
+
+watch(walletPasteDetection, (det) => {
+  if (det.kind === "cashu") {
+    syncCashuFieldsFromPasteDetection();
+  }
+});
+
 const cashuMaxMeltSatsDisplay = computed(() =>
   String(cashuForm.max_melt_fee_reserve_sats ?? "").trim(),
 );
@@ -2082,17 +1396,13 @@ const canSaveCashu = computed(() => {
   const mintUrl = (cashuForm.mint_url ?? "").trim();
   const lnAddress = (cashuForm.lightning_address ?? "").trim();
   if (!mintUrl || !mintUrl.startsWith("https://")) return false;
-  if (!lnAddress.match(/^[^@]+@[^@]+$/)) return false;
+  if (!isValidCashuLightningAddress(lnAddress)) return false;
   if (!cashuBetaAccepted.value) return false;
   return true;
 });
 
 watch(switchToCashuIntent, (on) => {
   if (on) cashuBetaAccepted.value = false;
-});
-
-watch(unsetWalletChoice, (c) => {
-  if (c === "cashu") cashuBetaAccepted.value = false;
 });
 
 watch(cashuSectionMode, (m, prev) => {
@@ -2139,7 +1449,6 @@ async function fetchCashuSettings() {
     if (
       props.walletType === "cashu" &&
       !switchToCashuIntent.value &&
-      !preferLightningFromCashu.value &&
       !cashuInitializedFromFetch.value
     ) {
       cashuInitializedFromFetch.value = true;
@@ -2153,6 +1462,7 @@ async function fetchCashuSettings() {
       err.response?.data?.message || "Failed to load Cashu settings";
   } finally {
     cashuLoading.value = false;
+    syncCashuFieldsFromPasteDetection();
   }
 }
 
@@ -2231,26 +1541,13 @@ async function handleSaveCashu() {
 }
 
 watch(
-  () =>
-    [
-      props.walletType,
-      unsetWalletChoice.value,
-      switchToCashuIntent.value,
-      preferLightningWalletForm.value,
-    ] as const,
-  ([wt, unset, cashuIntent]: [
-    Props["walletType"],
-    UnsetWalletChoice,
-    boolean,
-  ]) => {
-    const cashuActive =
-      wt === "cashu" ||
-      ((wt == null || wt === "") && unset === "cashu") ||
-      cashuIntent;
+  () => [props.walletType, switchToCashuIntent.value] as const,
+  ([wt, cashuIntent]) => {
+    const cashuActive = wt === "cashu" || cashuIntent;
     if (cashuActive) {
       fetchCashuSettings();
     }
-    if (wt === "aqua_boltz" && !preferLightningWalletForm.value) {
+    if (wt === "aqua_boltz") {
       form.type = "aqua_descriptor";
     }
   },
@@ -2260,13 +1557,10 @@ watch(
 watch(
   () => props.storeId,
   () => {
-    unsetWalletChoice.value = "choose";
-    preferLightningWalletForm.value = false;
-    preferLightningFromCashu.value = false;
     switchToCashuIntent.value = false;
     cashuSectionMode.value = "editing";
     cashuInitializedFromFetch.value = false;
-    lightningFormAquaTab.value = "samrock";
+    walletSetupTab.value = "paste";
     lnurlRevealForCashuEdit.value = false;
     cashuBetaAccepted.value = false;
   },
@@ -2281,7 +1575,10 @@ watch(
       return;
     }
     if (viewMode.value !== "editing") {
-      form.type = (conn.type || "blink") as "blink" | "aqua_descriptor";
+      form.type = (conn.type || "blink") as
+        | "blink"
+        | "aqua_descriptor"
+        | "nwc";
     }
     if (conn.status === "pending") {
       viewMode.value = "create";
@@ -2293,12 +1590,12 @@ watch(
 );
 
 watch(
-  () => [props.autoSamrock, isAquaTabbedUi.value] as const,
+  () => [props.autoSamrock, showWalletSetupForm.value, showWalletSetupTabs.value] as const,
   async () => {
     if (!props.autoSamrock || autoSamrockConsumed.value) return;
-    if (!isAquaTabbedUi.value) return;
+    if (!showWalletSetupForm.value || !showWalletSetupTabs.value) return;
     autoSamrockConsumed.value = true;
-    aquaWalletTab.value = "samrock";
+    walletSetupTab.value = "samrock";
     await nextTick();
     startSamRockPairing();
   },
@@ -2572,16 +1869,8 @@ async function handleCashuConfirmPassword() {
 }
 
 function handleCancelEdit() {
-  if (preferLightningFromCashu.value) {
-    preferLightningFromCashu.value = false;
-    form.secret = "";
-    testResult.value = null;
-    Object.keys(errors).forEach((k) => delete errors[k]);
-    return;
-  }
-  preferLightningWalletForm.value = false;
   switchToCashuIntent.value = false;
-  lightningFormAquaTab.value = "samrock";
+  walletSetupTab.value = "paste";
   form.secret = "";
   if (props.existingConnection) {
     form.type = (props.existingConnection.type || "blink") as
@@ -2646,13 +1935,13 @@ function sanitizeSecretForDeclaredType() {
 }
 
 function syncWalletFormAquaTabAfterReveal() {
-  if (form.type !== "aqua_descriptor") return;
-  const hasDescriptor = validateDescriptor(form.secret);
-  if (showLightningWalletForm.value) {
-    lightningFormAquaTab.value = hasDescriptor ? "descriptor" : "samrock";
-  } else if (isAquaTabbedUi.value) {
-    aquaWalletTab.value = hasDescriptor ? "descriptor" : "samrock";
+  if (form.type !== "aqua_descriptor") {
+    walletSetupTab.value = "paste";
+    return;
   }
+  const hasDescriptor = validateDescriptor(form.secret);
+  walletSetupTab.value =
+    hasDescriptor || !showWalletSetupTabs.value ? "paste" : "samrock";
 }
 
 watch(
@@ -2674,8 +1963,8 @@ watch(
         form.secret = "";
       }
     }
-    if (newType === "aqua_descriptor" && showLightningWalletForm.value) {
-      lightningFormAquaTab.value = "samrock";
+    if (newType === "aqua_descriptor" && showWalletSetupTabs.value) {
+      walletSetupTab.value = "paste";
     }
   },
 );
@@ -2702,11 +1991,25 @@ async function handleTestConnection() {
     };
     return;
   }
+  if (form.type === "nwc" && isCashuWalletNwcUri(form.secret)) {
+    testResult.value = {
+      success: false,
+      message: t("stores.wallet_cashu_nwc_rejected"),
+    };
+    return;
+  }
+  if (form.type === "nwc" && !validateNwcUri(form.secret)) {
+    testResult.value = {
+      success: false,
+      message: t("stores.nwc_invalid_connection"),
+    };
+    return;
+  }
   testing.value = true;
   testResult.value = null;
   try {
     const result = await walletApi.connection.test(props.storeId, {
-      connection_string: form.secret,
+      connection_string: formatConnectionStringForApi(form.secret, form.type),
       crypto_code: "BTC",
     });
     testResult.value = {
@@ -2726,6 +2029,51 @@ async function handleTestConnection() {
   }
 }
 
+function validateNwcUri(value: string): boolean {
+  if (isCashuWalletNwcUri(value)) {
+    return false;
+  }
+  let uri = value.trim();
+  if (uri.toLowerCase().startsWith("type=nwc;")) {
+    uri = uri.replace(/^type=nwc;key=/i, "");
+  }
+  uri = uri.replace("nostr+walletconnect://", "nostr+walletconnect:");
+  const lower = uri.toLowerCase();
+  return (
+    lower.startsWith("nostr+walletconnect:") &&
+    uri.length >= 80 &&
+    lower.includes("relay=") &&
+    lower.includes("secret=") &&
+    !/\s/.test(uri)
+  );
+}
+
+function formatConnectionStringForApi(value: string, type: string): string {
+  if (type !== "nwc") {
+    return value.trim();
+  }
+  const trimmed = value.trim();
+  if (trimmed.toLowerCase().startsWith("type=nwc;")) {
+    return trimmed;
+  }
+  const normalized = trimmed.replace(
+    "nostr+walletconnect://",
+    "nostr+walletconnect:",
+  );
+  return `type=nwc;key=${normalized}`;
+}
+
+function onDetectCashuFromPaste(_payload: {
+  mintUrl: string;
+  lightningAddress: string | null;
+}) {
+  syncCashuFieldsFromPasteDetection();
+  if (walletPasteDetection.value.kind === "cashu_wallet_nwc") {
+    return;
+  }
+  startSwitchToCashu();
+}
+
 async function handleSubmit() {
   submitting.value = true;
   Object.keys(errors).forEach((k) => delete errors[k]);
@@ -2741,11 +2089,31 @@ async function handleSubmit() {
     submitting.value = false;
     return;
   }
+  if (form.type === "nwc" && isCashuWalletNwcUri(form.secret)) {
+    testResult.value = {
+      success: false,
+      message: t("stores.wallet_cashu_nwc_rejected"),
+    };
+    return;
+  }
+  if (form.type === "nwc" && !validateNwcUri(form.secret)) {
+    errors.secret = t("stores.nwc_invalid_connection");
+    submitting.value = false;
+    return;
+  }
 
   try {
+    const secretPayload =
+      form.type === "nwc"
+        ? form.secret
+            .trim()
+            .replace(/^type=nwc;key=/i, "")
+            .replace("nostr+walletconnect://", "nostr+walletconnect:")
+        : form.secret.trim();
+
     await walletApi.connection.create(props.storeId, {
       type: form.type,
-      secret: form.secret,
+      secret: secretPayload,
     });
     emit("submitted");
   } catch (err: any) {

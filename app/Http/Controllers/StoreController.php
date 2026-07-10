@@ -172,7 +172,7 @@ class StoreController extends Controller
     public function setWalletType(Request $request, Store $store)
     {
         $validated = $request->validate([
-            'wallet_type' => ['required', 'string', Rule::in(['blink', 'aqua_boltz', 'cashu'])],
+            'wallet_type' => ['required', 'string', Rule::in(['blink', 'aqua_boltz', 'cashu', 'nwc'])],
         ]);
 
         $next = $validated['wallet_type'];

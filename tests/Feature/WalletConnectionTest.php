@@ -258,6 +258,112 @@ class WalletConnectionTest extends TestCase
     }
 
     #[Test]
+    public function nwc_connection_syncs_to_btcpay_with_formatted_string(): void
+    {
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+        $btcpayStoreId = 'store-nwc-greenfield';
+        $nwcUri = 'nostr+walletconnect://abc1234567890123456789012345678901234567890123456789012345678901234?relay=wss%3A%2F%2Frelay.example.com&secret=deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($btcpayStoreId, $nwcUri) {
+            $url = $request->url();
+
+            if (str_contains($url, "/api/v1/stores/{$btcpayStoreId}/lightning/BTC/connect") && $request->method() === 'POST') {
+                $body = $request->data();
+                $connectionString = $body['ConnectionString'] ?? $body['connectionString'] ?? $body['connection_string'] ?? null;
+                if ($connectionString === 'type=nwc;key='.$nwcUri) {
+                    return Http::response(['success' => true], 200);
+                }
+            }
+
+            if (str_contains($url, "/api/v1/stores/{$btcpayStoreId}/lightning/BTC") && $request->method() === 'GET') {
+                return Http::response(['implementation' => 'nwc'], 200);
+            }
+
+            if (str_contains($url, '/payment-methods/') && $request->method() === 'DELETE') {
+                return Http::response([], 404);
+            }
+
+            if (str_contains($url, '/plugins/cashumelt/settings') && $request->method() === 'GET') {
+                return Http::response(['message' => 'not configured'], 404);
+            }
+
+            return Http::response(['message' => 'unexpected'], 404);
+        });
+
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-nwc-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'blink',
+            'btcpay_store_id' => $btcpayStoreId,
+        ]);
+
+        $response = $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", [
+            'type' => 'nwc',
+            'secret' => $nwcUri,
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.type', 'nwc');
+
+        $this->assertDatabaseHas('wallet_connections', [
+            'store_id' => $store->id,
+            'type' => 'nwc',
+        ]);
+
+        $this->assertSame('nwc', $store->fresh()->wallet_type);
+    }
+
+    #[Test]
+    public function aqua_descriptor_marks_connected_when_boltz_fails_but_btcpay_lightning_is_active(): void
+    {
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+        $btcpayStoreId = 'store-boltz-probe';
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($btcpayStoreId) {
+            $url = $request->url();
+
+            if (str_contains($url, "/api/v1/stores/{$btcpayStoreId}/boltz/wallets") && $request->method() === 'POST') {
+                return Http::response(['message' => 'boltz import failed'], 500);
+            }
+
+            if (str_contains($url, "/api/v1/stores/{$btcpayStoreId}/lightning/BTC/info") && $request->method() === 'GET') {
+                return Http::response(['implementation' => 'boltz'], 200);
+            }
+
+            if (str_contains($url, '/plugins/cashumelt/settings') && $request->method() === 'GET') {
+                return Http::response(['message' => 'not configured'], 404);
+            }
+
+            if (str_contains($url, '/payment-methods/') && $request->method() === 'DELETE') {
+                return Http::response([], 404);
+            }
+
+            return Http::response(['message' => 'unexpected'], 404);
+        });
+
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-probe-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'aqua_boltz',
+            'btcpay_store_id' => $btcpayStoreId,
+        ]);
+
+        $response = $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", [
+            'type' => 'aqua_descriptor',
+            'secret' => self::VALID_AQUA_DESCRIPTOR,
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.status', 'connected');
+
+        $this->assertDatabaseHas('wallet_connections', [
+            'store_id' => $store->id,
+            'type' => 'aqua_descriptor',
+            'status' => 'connected',
+        ]);
+    }
+
+    #[Test]
     public function wallet_connection_store_validates_type_and_secret(): void
     {
         $user = User::factory()->create();
