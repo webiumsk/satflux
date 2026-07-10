@@ -911,7 +911,6 @@
       />
 
       <div
-        v-show="!showWalletSetupTabs || walletSetupTab === 'paste'"
         class="flex flex-col-reverse sm:flex-row justify-between items-center gap-4 pt-2"
       >
         <div class="flex w-full sm:w-auto gap-4">
@@ -1061,6 +1060,7 @@ const showWalletSetupTabs = computed(() => {
 });
 
 const showAquaDescriptorWarnings = computed(() => {
+  if (props.walletType === "nwc" || props.walletType === "blink") return false;
   if (props.walletType === "aqua_boltz") return true;
   return form.type === "aqua_descriptor";
 });
@@ -1116,6 +1116,20 @@ const route = useRoute();
 const router = useRouter();
 
 type ViewMode = "readonly" | "password" | "editing" | "create";
+
+type WalletConnectionFormType = "blink" | "aqua_descriptor" | "nwc";
+
+function defaultWalletConnectionType(
+  walletType: Props["walletType"],
+  existing?: Props["existingConnection"],
+): WalletConnectionFormType {
+  if (existing?.type) {
+    return existing.type as WalletConnectionFormType;
+  }
+  if (walletType === "nwc") return "nwc";
+  if (walletType === "blink") return "blink";
+  return "aqua_descriptor";
+}
 
 /** Pending = user can still use SamRock QR or finish manual descriptor; do not lock to readonly. */
 function initialWalletViewMode(conn: Props["existingConnection"]): ViewMode {
@@ -1283,10 +1297,10 @@ const testResult = ref<{
 } | null>(null);
 
 const form = reactive({
-  type: (props.existingConnection?.type || "aqua_descriptor") as
-    | "blink"
-    | "aqua_descriptor"
-    | "nwc",
+  type: defaultWalletConnectionType(
+    props.walletType,
+    props.existingConnection,
+  ),
   secret: "",
 });
 
@@ -1832,7 +1846,7 @@ async function handleConfirmPassword() {
     const reveal = await walletApi.connection.reveal(props.storeId, payload);
     form.type = (reveal.type ||
       props.existingConnection?.type ||
-      "blink") as "blink" | "aqua_descriptor";
+      defaultWalletConnectionType(props.walletType, props.existingConnection)) as WalletConnectionFormType;
     form.secret = reveal.secret || "";
     sanitizeSecretForDeclaredType();
     syncWalletFormAquaTabAfterReveal();
@@ -1876,9 +1890,10 @@ function handleCancelEdit() {
   walletSetupTab.value = "paste";
   form.secret = "";
   if (props.existingConnection) {
-    form.type = (props.existingConnection.type || "blink") as
-      | "blink"
-      | "aqua_descriptor";
+    form.type = defaultWalletConnectionType(
+      props.walletType,
+      props.existingConnection,
+    );
   }
   viewMode.value = "readonly";
   testResult.value = null;

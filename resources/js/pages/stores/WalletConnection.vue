@@ -22,7 +22,7 @@
     <!-- Main Content -->
     <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-l border-gray-800 bg-gray-900">
       <AppScrollPane>
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-16">
           <div class="mb-8">
             <h1 class="text-3xl font-bold text-white">
               {{
@@ -53,18 +53,19 @@
             </div>
           </div>
 
-          <div v-else class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden">
-            <div class="p-8">
-              <WalletConnectionForm
-                :store-id="storeId"
-                :existing-connection="connection"
-                :wallet-type="store?.wallet_type"
-                :wallet-brand="resolveStoreWalletBrand(store)"
-                :auto-samrock="route.query.samrock === '1'"
-                @submitted="handleSubmitted"
-                @cancel="handleCancel"
-              />
-            </div>
+          <div
+            v-else
+            class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 p-8"
+          >
+            <WalletConnectionForm
+              :store-id="storeId"
+              :existing-connection="connection"
+              :wallet-type="store?.wallet_type"
+              :wallet-brand="resolveStoreWalletBrand(store)"
+              :auto-samrock="route.query.samrock === '1'"
+              @submitted="handleSubmitted"
+              @cancel="handleCancel"
+            />
           </div>
         </div>
       </AppScrollPane>
