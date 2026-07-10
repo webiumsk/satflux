@@ -479,8 +479,9 @@ function handleViewAllInvoices() {
 }
 
 function handleViewInvoice(invoice: any) {
-   // Placeholder for future invoice detail view
-   console.log("View Invoice", invoice);
+   const invoiceId = invoice?.invoice_id || invoice?.id;
+   if (!invoiceId) return;
+   router.push(`/stores/${route.params.id}/invoices/${invoiceId}`);
 }
 
 // Handler for when store is updated in Settings component

@@ -88,6 +88,12 @@ class ProcessBtcPayWebhook implements ShouldQueue
                     'error' => $e->getMessage(),
                 ]);
             }
+
+            $settlementEvents = ['InvoiceReceivedPayment', 'InvoicePaymentSettled', 'InvoiceSettled'];
+            $invoiceId = $payload['invoiceId'] ?? null;
+            if (is_string($invoiceId) && $invoiceId !== '' && in_array($eventType, $settlementEvents, true)) {
+                SyncInvoiceSettlements::dispatch($store->id, $invoiceId);
+            }
         }
 
         // Check if this is a subscription store

@@ -58,6 +58,7 @@ use App\Http\Controllers\StoreController;
 use App\Http\Controllers\StoreDashboardController;
 use App\Http\Controllers\StoreEmailRuleController;
 use App\Http\Controllers\StoreSettingsController;
+use App\Http\Controllers\StoreSettlementController;
 use App\Http\Controllers\StripeController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TicketController;
@@ -838,6 +839,12 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
     // Boltz readiness (informational snapshot; authoritative validation happens in BTCPay)
     Route::get('/stores/{store}/boltz/readiness', [BoltzReadinessController::class, 'show'])
         ->middleware([EnsureStoreOwnership::class]);
+
+    // Settlement ledger (synced from BTCPay invoice payments; Boltz net side is estimated)
+    Route::get('/stores/{store}/settlements', [StoreSettlementController::class, 'index'])
+        ->middleware([EnsureStoreOwnership::class]);
+    Route::post('/stores/{store}/settlements/sync', [StoreSettlementController::class, 'sync'])
+        ->middleware([EnsureStoreOwnership::class, 'throttle:10,1']);
 
     // Wallet Connections (Merchant)
     Route::get('/stores/{store}/wallet-connection', [WalletConnectionController::class, 'show'])
