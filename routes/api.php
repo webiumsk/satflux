@@ -15,6 +15,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\NostrAuthController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\BlinkMigrationAlertController;
+use App\Http\Controllers\BoltzReadinessController;
 use App\Http\Controllers\CashuController;
 use App\Http\Controllers\ChoralaController;
 use App\Http\Controllers\ChoralaProxyController;
@@ -833,6 +834,10 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
         Route::post('/pos-orders', [PosOrderController::class, 'store'])
             ->middleware(AuditLog::class.':pos-order.created');
     });
+
+    // Boltz readiness (informational snapshot; authoritative validation happens in BTCPay)
+    Route::get('/stores/{store}/boltz/readiness', [BoltzReadinessController::class, 'show'])
+        ->middleware([EnsureStoreOwnership::class]);
 
     // Wallet Connections (Merchant)
     Route::get('/stores/{store}/wallet-connection', [WalletConnectionController::class, 'show'])

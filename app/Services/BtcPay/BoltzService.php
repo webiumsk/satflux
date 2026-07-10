@@ -36,6 +36,32 @@ class BoltzService
     }
 
     /**
+     * Boltz plugin setup state for the store (Greenfield GET /boltz/setup).
+     *
+     * @return array{reachable: bool, enabled?: bool, wallet?: array, error?: string, status?: int}
+     */
+    public function getSetup(string $btcpayStoreId, string $userApiKey): array
+    {
+        try {
+            $response = $this->client->withUserKey($userApiKey, function () use ($btcpayStoreId) {
+                return $this->client->get("/api/v1/stores/{$btcpayStoreId}/boltz/setup");
+            });
+
+            return [
+                'reachable' => true,
+                'enabled' => (bool) ($response['enabled'] ?? false),
+                'wallet' => is_array($response['wallet'] ?? null) ? $response['wallet'] : null,
+            ];
+        } catch (BtcPayException $e) {
+            return [
+                'reachable' => false,
+                'error' => $e->getMessage(),
+                'status' => $e->getStatusCode(),
+            ];
+        }
+    }
+
+    /**
      * Import watch-only L-BTC wallet via descriptor and enable Boltz standalone for the store.
      *
      * @return array{success: bool, message: string, data?: array}

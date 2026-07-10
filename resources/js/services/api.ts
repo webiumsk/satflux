@@ -331,7 +331,29 @@ export const walletApi = {
             return data.data;
         },
     },
+    boltz: {
+        async readiness(storeId: string, params?: { refresh?: boolean }): Promise<BoltzReadiness> {
+            const { data } = await api.get<ApiEnvelope<BoltzReadiness>>(`/stores/${storeId}/boltz/readiness`, {
+                params: params?.refresh ? { refresh: 1 } : undefined,
+            });
+            return data.data;
+        },
+    },
 };
+
+export type BoltzReadinessStatus = 'ready' | 'degraded' | 'stale' | 'unavailable' | 'misconfigured' | 'unsupported';
+
+export interface BoltzReadiness {
+    status: BoltzReadinessStatus;
+    reasons: string[];
+    wallet_type: string | null;
+    plugin: { reachable: boolean | null; enabled: boolean | null; wallet_readonly: boolean | null };
+    lightning_active: boolean | null;
+    onchain_fallback: boolean | null;
+    limits: { min: number; max: number; source: string; fetched_at: string; is_stale: boolean } | null;
+    fees: { percentage: number; miner_fees: Record<string, number> } | null;
+    checked_at: string;
+}
 
 // Support wallet API - support/admin flows over wallet connections.
 export const supportWalletApi = {
