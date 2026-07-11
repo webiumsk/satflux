@@ -116,6 +116,14 @@ class SecurityHeadersTest extends TestCase
     #[Test]
     public function csp_report_endpoint_accepts_and_logs_reports(): void
     {
+        \Illuminate\Support\Facades\Log::shouldReceive('warning')
+            ->once()
+            ->withArgs(function (string $message, array $context): bool {
+                return $message === 'CSP violation reported'
+                    && ($context['violated_directive'] ?? null) === 'script-src'
+                    && ($context['blocked_uri'] ?? null) === 'https://evil.example.com/x.js';
+            });
+
         $this->call('POST', '/api/csp-report', [], [], [], [
             'CONTENT_TYPE' => 'application/csp-report',
         ], json_encode([
@@ -126,7 +134,8 @@ class SecurityHeadersTest extends TestCase
             ],
         ]))->assertStatus(204);
 
-        // Oversized bodies are dropped without error.
+        // Oversized bodies are dropped without error - and without logging
+        // (the mock above allows exactly one warning call).
         $this->call('POST', '/api/csp-report', [], [], [], [
             'CONTENT_TYPE' => 'application/csp-report',
         ], str_repeat('x', 20000))->assertStatus(204);

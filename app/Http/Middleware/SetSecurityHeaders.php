@@ -117,7 +117,9 @@ class SetSecurityHeaders
             if ($relayOrigin) {
                 $sources[] = $relayOrigin;
                 // Websocket origins are matched by scheme; add the ws(s) form too.
-                $sources[] = preg_replace('/^http/', 'ws', $relayOrigin) ?? $relayOrigin;
+                if (str_starts_with($relayOrigin, 'http')) {
+                    $sources[] = 'ws'.substr($relayOrigin, 4);
+                }
             }
         }
 
@@ -128,7 +130,10 @@ class SetSecurityHeaders
         $extra = trim((string) config('security.csp.connect_src_extra', ''));
         if ($extra !== '') {
             foreach (preg_split('/\s+/', $extra) ?: [] as $origin) {
-                if ($origin !== '') {
+                // Reject tokens with CSP metacharacters (;,'" and control chars) -
+                // a malformed env value must not be able to rewrite the policy
+                // structure or smuggle extra directives.
+                if ($origin !== '' && preg_match('/^[A-Za-z0-9+.:\/\*\-_\[\]@]+$/', $origin) === 1) {
                     $sources[] = $origin;
                 }
             }

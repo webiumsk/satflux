@@ -1275,7 +1275,7 @@ import {
   getStoredAccountMnemonic,
 } from "../../services/accountSeed";
 import { isInvoicingLocalFirst } from "../../evolu/flags";
-import { getEvoluRelayBuildInfo } from "../../evolu/config";
+import { getEvoluRelayBuildInfo, normalizeEvoluRelayBaseUrl } from "../../evolu/config";
 import { getEvoluRelayRuntimeInfo } from "../../services/evoluRelayPreference";
 import { refreshEvoluRelaySubscription } from "../../evolu/evoluRelaySubscription";
 import { ensureEvoluBoundToAccountSeed, resetEvoluBootstrapForRetry } from "../../evolu/bootstrap";
@@ -1796,7 +1796,10 @@ async function saveEvoluRelayUrl(): Promise<void> {
     // built at document load. A full reload gets a fresh CSP header that permits
     // the new relay websocket; a live reconnect alone would be blocked under an
     // enforced CSP. Only reload when the relay origin actually changed.
-    if (localFirst && url !== previous) {
+    if (
+      localFirst
+      && normalizeEvoluRelayBaseUrl(url) !== normalizeEvoluRelayBaseUrl(previous)
+    ) {
       window.location.reload();
       return;
     }
