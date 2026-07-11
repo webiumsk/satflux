@@ -55,6 +55,16 @@ export function signRecoveryMessage(mnemonic: string, messageUtf8: string): stri
 
 export { deriveEvoluOwnerMnemonic };
 
+/**
+ * Store the recovery phrase for the current session only (sessionStorage).
+ *
+ * The phrase is the Evolu owner secret that decrypts all invoicing data, so it
+ * is deliberately NOT written to localStorage: a plaintext copy at rest is
+ * readable by any same-origin script (XSS, hostile extension) and survives on
+ * disk. It lives in sessionStorage so it survives a tab reload but is gone once
+ * the browser is fully closed - the user then re-unlocks with their phrase.
+ * It is never sent to the server, logs, analytics, or the URL.
+ */
 export function storeAccountMnemonic(mnemonic: string): void {
     const normalized = normalizeAccountMnemonic(mnemonic);
     if (!validateMnemonic(normalized, wordlist)) {
@@ -63,14 +73,17 @@ export function storeAccountMnemonic(mnemonic: string): void {
     sessionStorage.setItem(ACCOUNT_MNEMONIC_STORAGE_KEY, normalized);
     sessionStorage.removeItem(LEGACY_GUEST_MNEMONIC_STORAGE_KEY);
     clearEvoluOwnerRestoreAttempted();
-    try {
-        localStorage.setItem(PERSISTENT_ACCOUNT_MNEMONIC_KEY, normalized);
-    } catch {
-        // Quota or private mode - session-only is still enough for this tab.
-    }
 }
 
-/** Restore session mnemonic after a new tab opened while the Laravel session cookie is still valid. */
+/**
+ * One-time migration bridge for users who still have a plaintext phrase in the
+ * legacy localStorage key: copy it into the session so they keep working this
+ * session, WITHOUT deleting the localStorage copy yet. The localStorage copy is
+ * only removed once the user has confirmed their backup
+ * (finalizeSeedMigrationAfterBackupConfirmed) - deleting it before that could
+ * lock out someone who relied solely on the browser copy. Data-loss-safe: the
+ * phrase is a key, and the encrypted Evolu data remains recoverable with it.
+ */
 export function hydrateAccountMnemonicSession(): void {
     if (getStoredAccountMnemonic()) {
         return;
@@ -103,15 +116,30 @@ export function getStoredAccountMnemonic(): string | null {
         sessionStorage.removeItem(LEGACY_GUEST_MNEMONIC_STORAGE_KEY);
         return legacy;
     }
+    return null;
+}
+
+/** True when a plaintext phrase still sits in the legacy localStorage key. */
+export function hasLegacyPersistedMnemonic(): boolean {
     try {
         const persisted = localStorage.getItem(PERSISTENT_ACCOUNT_MNEMONIC_KEY);
-        if (persisted && validateMnemonic(normalizeAccountMnemonic(persisted), wordlist)) {
-            return normalizeAccountMnemonic(persisted);
-        }
+        return !!persisted && validateMnemonic(normalizeAccountMnemonic(persisted), wordlist);
     } catch {
-        // Storage unavailable.
+        return false;
     }
-    return null;
+}
+
+/**
+ * Remove the legacy plaintext localStorage copy. Idempotent. Call only after the
+ * user has confirmed their recovery phrase is backed up - after this the phrase
+ * lives session-only, so a browser restart requires re-unlocking with it.
+ */
+export function finalizeSeedMigrationAfterBackupConfirmed(): void {
+    try {
+        localStorage.removeItem(PERSISTENT_ACCOUNT_MNEMONIC_KEY);
+    } catch {
+        // Storage unavailable - nothing persisted to remove.
+    }
 }
 
 export function clearStoredAccountMnemonic(): void {
