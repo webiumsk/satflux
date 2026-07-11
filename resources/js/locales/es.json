@@ -2510,6 +2510,7 @@
     "company_delete_confirm_label": "Escriba el nombre de la empresa para confirmar: {name}",
     "create_first_company": "Crear perfil de empresa",
     "company_save_validation_error": "No se pudo guardar la empresa. Revise los campos obligatorios e inténtelo de nuevo.",
+    "store_link_server_sync_failed": "No se pudo sincronizar el enlace de la tienda con el servidor - la numeración de documentos del lado del servidor seguirá sin estar disponible hasta que vuelva a guardar la empresa con conexión.",
     "local_first_notice": "Modo local-first: empresas, contactos, documentos, ajustes y branding se guardan en tu navegador (sync E2EE). PDF, correo, BTCPay y envío de e-factura usan un puente efímero con el servidor (los datos no se guardan en el servidor).",
     "local_first_data_notice": "Los datos de facturación (empresas, contactos, documentos) están en su navegador con sync E2EE, no en la base de datos de satflux.",
     "local_first_bridge_title": "Puente con servidor necesario",

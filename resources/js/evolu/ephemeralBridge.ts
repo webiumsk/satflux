@@ -170,6 +170,51 @@ export async function resolveEphemeralBridgeCompanyId(match?: {
     }
 }
 
+export type StoreLinkSyncResult = "synced" | "no_bridge_company" | "failed";
+
+/**
+ * Mirror the Evolu company's linkedStoreId to the server bridge company
+ * (stores.company_id). Server-side features - number-series preview/reserve,
+ * WooCommerce invoicing - resolve the link through $store->company, so a
+ * local-only link leaves them answering 422 store_not_linked.
+ *
+ * Matches the bridge company by identity ONLY (legal name + registration
+ * number). No first-row fallback here: linking a store to the wrong server
+ * company would cross-wire document sequences.
+ */
+export async function syncLinkedStoreToServerBridge(
+    match: { legal_name?: string | null; registration_number?: string | null },
+    storeId: string | null,
+): Promise<StoreLinkSyncResult> {
+    if (!match.legal_name) {
+        return "no_bridge_company";
+    }
+    try {
+        const rows = await invoicingApi.companies.list<{
+            id: string;
+            legal_name: string;
+            registration_number?: string | null;
+        }>();
+        const key = normalizeCompanyIdentityKey(match.legal_name, match.registration_number ?? null);
+        const found = rows.find(
+            (row) => normalizeCompanyIdentityKey(row.legal_name, row.registration_number ?? null) === key,
+        );
+        if (!found) {
+            return "no_bridge_company";
+        }
+        await invoicingApi.companies.updateStores(found.id, storeId ? [storeId] : []);
+        return "synced";
+    } catch (error) {
+        if (import.meta.env.DEV) {
+            console.warn(
+                "[invoicing] store link sync to server bridge failed:",
+                error instanceof Error ? error.message : error,
+            );
+        }
+        return "failed";
+    }
+}
+
 function emailSettingsForEphemeralSnapshot(
     company: Record<string, unknown> | null,
 ): Record<string, unknown> | undefined {

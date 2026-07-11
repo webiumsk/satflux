@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
     formatNumberFromStoreCounter,
     localHighCounterForStoreBridge,
@@ -56,5 +56,82 @@ describe("formatNumberFromStoreCounter", () => {
         ];
 
         expect(formatNumberFromStoreCounter(companyId, "invoice", 66, series)).toBe("20260066");
+    });
+});
+
+describe("reserveNextDocumentNumberFromStore self-healing", () => {
+    it("heals a missing server store link (422 store_not_linked) and retries once", async () => {
+        vi.resetModules();
+
+        const notLinkedError = Object.assign(new Error("422"), {
+            response: { status: 422, data: { error: "store_not_linked" } },
+        });
+        const reserve = vi
+            .fn()
+            .mockRejectedValueOnce(notLinkedError)
+            .mockResolvedValueOnce({ data: { counter: 71, number: "20260071" } });
+        const syncLinkedStoreToServerBridge = vi.fn().mockResolvedValue("synced");
+
+        vi.doMock("@/services/api", () => ({
+            invoicingApi: { storeNumberSeries: { reserve, preview: vi.fn() } },
+            default: {},
+        }));
+        vi.doMock("@/evolu/ephemeralBridge", () => ({ syncLinkedStoreToServerBridge }));
+
+        const { reserveNextDocumentNumberFromStore } = await import("@/evolu/numberSequenceBridge");
+
+        const result = await reserveNextDocumentNumberFromStore(
+            "store-1",
+            "invoice",
+            undefined,
+            70,
+            undefined,
+            companyId,
+            { legal_name: "ACME s.r.o.", registration_number: "12345678" },
+        );
+
+        expect(syncLinkedStoreToServerBridge).toHaveBeenCalledWith(
+            { legal_name: "ACME s.r.o.", registration_number: "12345678" },
+            "store-1",
+        );
+        expect(reserve).toHaveBeenCalledTimes(2);
+        expect(result).toEqual({ ok: true, value: { number: "20260071", counter: 71 } });
+
+        vi.doUnmock("@/services/api");
+        vi.doUnmock("@/evolu/ephemeralBridge");
+    });
+
+    it("does not loop when the heal retry still fails", async () => {
+        vi.resetModules();
+
+        const notLinkedError = Object.assign(new Error("422"), {
+            response: { status: 422, data: { error: "store_not_linked" } },
+        });
+        const reserve = vi.fn().mockRejectedValue(notLinkedError);
+        const syncLinkedStoreToServerBridge = vi.fn().mockResolvedValue("synced");
+
+        vi.doMock("@/services/api", () => ({
+            invoicingApi: { storeNumberSeries: { reserve, preview: vi.fn() } },
+            default: {},
+        }));
+        vi.doMock("@/evolu/ephemeralBridge", () => ({ syncLinkedStoreToServerBridge }));
+
+        const { reserveNextDocumentNumberFromStore } = await import("@/evolu/numberSequenceBridge");
+
+        const result = await reserveNextDocumentNumberFromStore(
+            "store-1",
+            "invoice",
+            undefined,
+            70,
+            undefined,
+            companyId,
+            { legal_name: "ACME s.r.o.", registration_number: null },
+        );
+
+        expect(reserve).toHaveBeenCalledTimes(2);
+        expect(result).toEqual({ ok: false, error: "store_not_found" });
+
+        vi.doUnmock("@/services/api");
+        vi.doUnmock("@/evolu/ephemeralBridge");
     });
 });

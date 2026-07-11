@@ -467,6 +467,8 @@ import {
 } from '../../composables/useCompanyRegistryLookup';
 import { useViesValidation } from '../../composables/useViesValidation';
 import { useStoresStore } from '../../store/stores';
+import { useFlashStore } from '../../store/flash';
+import { syncLinkedStoreToServerBridge } from '../../evolu/ephemeralBridge';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
 import { useInvoicingEvolu } from '../../evolu/client';
 import { asCompanyId } from '../../composables/useInvoicingCompany';
@@ -517,12 +519,19 @@ const { t, te } = useI18n();
 const { notifySaved } = useInvoicingSaveFeedback();
 const router = useRouter();
 const storesStore = useStoresStore();
+const flashStore = useFlashStore();
 const localFirst = computed(() => props.localFirst ?? isInvoicingLocalFirst());
 const evolu = isInvoicingLocalFirst() ? useInvoicingEvolu() : null;
 
 const activeTab = ref<'contact' | 'bank' | 'branding' | 'efaktura'>('contact');
 const linkedStoreId = ref('');
 const savedLinkedStoreId = ref('');
+/** Identity used for the bridge-company match - renaming the company can break it. */
+const savedBridgeIdentity = ref('');
+
+function bridgeIdentityKey(legalName: string, registrationNumber: string | null): string {
+  return `${legalName}|${registrationNumber ?? ''}`;
+}
 const userStores = computed(() => storesStore.stores);
 const currencyOptions = computed(() => companyCurrencyOptions(bankForm.default_currency));
 const savingContact = ref(false);
@@ -756,6 +765,7 @@ function applyCompany(c: Record<string, any>) {
   contactForm.street = c.street ?? '';
   linkedStoreId.value = c.stores?.[0]?.id ?? '';
   savedLinkedStoreId.value = linkedStoreId.value;
+  savedBridgeIdentity.value = bridgeIdentityKey(c.legal_name ?? '', c.registration_number ?? null);
   contactForm.city = c.city ?? '';
   contactForm.postal_code = c.postal_code ?? '';
   contactForm.state_region = c.state_region ?? '';
@@ -838,7 +848,38 @@ async function saveContact() {
         saveError.value = t('invoicing.company_save_validation_error');
         return;
       }
+      // Server-side features (number series, WooCommerce invoicing) read the
+      // link from stores.company_id - mirror the local link to the bridge
+      // company or they answer 422 store_not_linked on every issue. Runs on
+      // every save (idempotent PATCH), not only on change: the local link may
+      // already be set while the server one is missing, and re-saving is the
+      // documented repair path.
+      const linkChanged = linkedStoreId.value !== savedLinkedStoreId.value;
+      const identityKey = bridgeIdentityKey(
+        contactForm.legal_name,
+        contactForm.registration_number || null,
+      );
+      // Renaming the company (or changing its registration number) can break the
+      // identity match against the server bridge company - treat it like a link
+      // change for warning purposes.
+      const identityChanged = identityKey !== savedBridgeIdentity.value;
+      if (linkedStoreId.value || linkChanged) {
+        const syncResult = await syncLinkedStoreToServerBridge(
+          {
+            legal_name: contactForm.legal_name,
+            registration_number: contactForm.registration_number || null,
+          },
+          linkedStoreId.value || null,
+        );
+        if (
+          syncResult === 'failed'
+          || (syncResult === 'no_bridge_company' && (linkChanged || identityChanged))
+        ) {
+          flashStore.warning(t('invoicing.store_link_server_sync_failed'));
+        }
+      }
       savedLinkedStoreId.value = linkedStoreId.value;
+      savedBridgeIdentity.value = identityKey;
       const row = evoluCompanyToApi(
         {
           id: asCompanyId(props.companyId),

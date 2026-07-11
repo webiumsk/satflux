@@ -155,6 +155,7 @@
     "company_delete_confirm_label": "Pre potvrdenie zadajte názov firmy: {name}",
     "create_first_company": "Vytvoriť firemný profil",
     "company_save_validation_error": "Firmu sa nepodarilo uložiť. Skontrolujte povinné polia a skúste znova.",
+    "store_link_server_sync_failed": "Prepojenie so store sa nepodarilo zosynchronizovať na server - serverové číslovanie dokladov zostane nedostupné, kým firmu neuložíte znova s funkčným pripojením.",
     "local_first_notice": "Local-first režim: firmy, kontakty, doklady, nastavenia a branding sú v prehliadači (E2EE sync). PDF, e-mail, BTCPay a odoslanie e-faktúry idú cez ephemerálny serverový most (dáta sa na serveri neukladajú).",
     "local_first_data_notice": "Fakturačné dáta (firmy, kontakty, doklady) sú vo vašom prehliadači so synchronizáciou E2EE, nie v databáze satflux.",
     "local_first_bridge_title": "Potrebný serverový most",
