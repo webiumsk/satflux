@@ -34,7 +34,15 @@ module.exports = {
     "vue/require-toggle-inside-transition": "off",
     "vue/no-dupe-keys": "warn",
     "vue/no-unused-vars": "off",
-    "@typescript-eslint/no-unused-vars": "warn",
+    // `_`-prefixed args/vars are the "intentionally unused" convention.
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      {
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+        caughtErrorsIgnorePattern: "^_",
+      },
+    ],
     "@typescript-eslint/no-explicit-any": "warn",
   },
 };

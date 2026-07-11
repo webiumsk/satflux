@@ -597,7 +597,6 @@ import { DEFAULT_CASHU_MINT_URL } from "../../constants/cashu";
 import { isValidAquaBoltzDescriptor } from "../../utils/aquaBoltzDescriptor";
 import { detectWalletConnectionInput, isValidCashuLightningAddress } from "../../utils/detectWalletConnectionInput";
 import {
-  isCashuWalletNwcUri,
   normalizeNwcUri,
   validateBlinkConnectionString,
   validateNwcUri,

@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 npm run dev          # Vite dev server (watch mode)
 npm run build        # Production build
-npm run lint         # ESLint with auto-fix
+npm run lint         # ESLint; fails on NEW warnings (ratchet via --max-warnings in package.json - lower it when you burn warnings down, never raise it)
 ```
 
 ### Backend (all via Docker)

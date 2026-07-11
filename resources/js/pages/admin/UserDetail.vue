@@ -348,6 +348,7 @@ import { useAuthStore } from "../../store/auth";
 import api from "../../services/api";
 import Select from "../../components/ui/Select.vue";
 import WalletTypeIcon from "../../components/WalletTypeIcon.vue";
+import { getApiErrorMessage } from "../../composables/useApiError";
 
 const { t } = useI18n();
 const route = useRoute();
@@ -425,8 +426,8 @@ const handleUpdateUser = async () => {
     await api.put(`/admin/users/${user.value.id}`, editForm.value);
     user.value = { ...user.value, ...editForm.value };
     closeEditModal();
-  } catch (e: any) {
-    editError.value = e.response?.data?.message ?? "Failed to update.";
+  } catch (e) {
+    editError.value = getApiErrorMessage(e, "Failed to update.");
   } finally {
     updateLoading.value = false;
   }
@@ -444,8 +445,8 @@ const handleDeleteUser = async () => {
   try {
     await api.delete(`/admin/users/${user.value.id}`);
     router.push("/admin/users");
-  } catch (e: any) {
-    deleteError.value = e.response?.data?.message ?? "Failed to delete.";
+  } catch (e) {
+    deleteError.value = getApiErrorMessage(e, "Failed to delete.");
   } finally {
     deleteLoading.value = false;
   }

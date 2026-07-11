@@ -345,6 +345,7 @@ import { ref, computed, onMounted } from "vue";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/auth";
 import Select from "../../components/ui/Select.vue";
+import { getApiErrorMessage } from "../../composables/useApiError";
 
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
@@ -452,10 +453,8 @@ const handleUpdateUser = async () => {
 
     closeEditModal();
     await loadUsers(meta.value?.current_page || 1);
-  } catch (error: any) {
-    editError.value =
-      error.response?.data?.message ||
-      "Failed to update user. Please try again.";
+  } catch (error) {
+    editError.value = getApiErrorMessage(error, "Failed to update user. Please try again.");
   } finally {
     updateLoading.value = false;
   }
@@ -482,10 +481,8 @@ const handleDeleteUser = async () => {
 
     cancelDelete();
     await loadUsers(meta.value?.current_page || 1);
-  } catch (error: any) {
-    deleteError.value =
-      error.response?.data?.message ||
-      "Failed to delete user. Please try again.";
+  } catch (error) {
+    deleteError.value = getApiErrorMessage(error, "Failed to delete user. Please try again.");
   } finally {
     deleteLoading.value = false;
   }
