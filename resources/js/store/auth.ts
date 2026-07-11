@@ -124,14 +124,13 @@ export const useAuthStore = defineStore('auth', () => {
             const message = guestRecoveryMessage(challenge_id, nonce);
             const pk = guestRecoveryPublicKeyHexFromMnemonic(mnemonic);
             const signature = signGuestRecoveryMessage(mnemonic, message);
-            const response = await api.post('/auth/guest/recovery', {
+            await api.post('/auth/guest/recovery', {
                 challenge_id,
                 recovery_public_key: pk,
                 signature,
             });
-            user.value = response.data.user;
+            await fetchUser();
             await syncAccountSeedAfterAuth(mnemonic);
-            scheduleChoralaSync();
             const storesStore = useStoresStore();
             await storesStore.fetchStores();
         } catch {
@@ -152,14 +151,13 @@ export const useAuthStore = defineStore('auth', () => {
                 password,
                 remember,
             });
-            user.value = normalizeUserPayload({
-                ...response.data.user,
-                requires_recovery_migration:
-                    response.data.requires_recovery_migration ??
-                    response.data.user?.requires_recovery_migration,
-            });
-            hydrateAccountMnemonicSession();
-            scheduleChoralaSync();
+            // Auth responses carry a raw user without the computed /user
+            // payload fields (guest_recovery_enrolled, can_use_password_login,
+            // plan_features, subscription) - load the canonical payload so the
+            // UI renders correctly without a hard refresh. fetchUser also
+            // schedules the Chorala identity sync on the id transition.
+            void response;
+            await fetchUser();
             if (getStoredGuestMnemonic() && isInvoicingLocalFirst()) {
                 void ensureEvoluBoundToAccountSeed();
             }
@@ -218,8 +216,7 @@ export const useAuthStore = defineStore('auth', () => {
                     ? { recovery_public_key: recoveryPublicKeyHex }
                     : {}),
             });
-            user.value = response.data.user;
-            scheduleChoralaSync();
+            await fetchUser();
             return response.data;
         } finally {
             loading.value = false;
@@ -235,7 +232,8 @@ export const useAuthStore = defineStore('auth', () => {
                 recovery_public_key: recoveryPublicKeyHex,
             });
             if (response.data?.user) {
-                user.value = response.data.user;
+                // Same user id - fetchUser will not re-trigger the Chorala sync.
+                await fetchUser();
                 scheduleChoralaSync();
             }
             return response.data;
@@ -258,9 +256,8 @@ export const useAuthStore = defineStore('auth', () => {
                 recovery_public_key: pk,
                 signature,
             });
-            user.value = response.data.user;
+            await fetchUser();
             await syncAccountSeedAfterAuth(mnemonic);
-            scheduleChoralaSync();
             const storesStore = useStoresStore();
             await storesStore.fetchStores();
             return response.data;
