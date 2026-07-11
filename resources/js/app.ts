@@ -1,3 +1,4 @@
+import './intlifyFlags';
 import './bootstrap';
 import '@fontsource/outfit/400.css';
 import '@fontsource/outfit/600.css';

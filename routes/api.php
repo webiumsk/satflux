@@ -17,6 +17,7 @@ use App\Http\Controllers\BoltzReadinessController;
 use App\Http\Controllers\CashuController;
 use App\Http\Controllers\ChoralaController;
 use App\Http\Controllers\ChoralaProxyController;
+use App\Http\Controllers\CspReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\EshopIntegrationController;
@@ -272,6 +273,10 @@ Route::middleware(['throttle:auth'])->group(function () {
 Route::get('/auth/verify-email/{id}/{hash}', [EmailVerificationController::class, 'verify'])
     ->middleware(['throttle:6,1'])
     ->name('verification.verify');
+
+// CSP violation reports (report-uri; browsers POST without auth). Sanitized + size-capped.
+Route::post('/csp-report', [CspReportController::class, 'store'])
+    ->middleware(['throttle:30,1']);
 
 // Chorala widget public API proxy (localhost / dev - avoids cross-origin CORS to chorala.com)
 Route::any('/chorala-proxy/v1/{path}', [ChoralaProxyController::class, 'forward'])

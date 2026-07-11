@@ -28,6 +28,11 @@ function wasmMimeType(): Plugin {
 }
 
 export default defineConfig({
+    // vue-i18n JIT compilation: compiles messages to AST without new Function/eval,
+    // so the CSP script-src does not need 'unsafe-eval' (vue-i18n >= 9.3).
+    define: {
+        __INTLIFY_JIT_COMPILATION__: true,
+    },
     build: {
         outDir: 'public/build',
         emptyOutDir: true,
@@ -95,6 +100,14 @@ export default defineConfig({
     },
     optimizeDeps: {
         exclude: evoluOptimizeExclude,
+        // Dev server: define replacements are not applied to pre-bundled deps,
+        // so the vue-i18n JIT flag must be set for esbuild here too (the
+        // runtime shim in resources/js/intlifyFlags.ts is the belt-and-braces).
+        esbuildOptions: {
+            define: {
+                __INTLIFY_JIT_COMPILATION__: 'true',
+            },
+        },
     },
     worker: {
         format: 'es',
