@@ -79,6 +79,45 @@ class SecurityHeadersTest extends TestCase
     }
 
     #[Test]
+    public function script_src_allows_wasm_and_chorala_but_not_eval(): void
+    {
+        config([
+            'security.csp.enabled' => true,
+            'security.csp.report_only' => false,
+            'services.chorala.widget_url' => 'https://chorala.com',
+        ]);
+
+        $policy = (string) $this->get('/')->headers->get('Content-Security-Policy');
+        preg_match('/script-src ([^;]+)/', $policy, $m);
+        $script = $m[1] ?? '';
+
+        // Evolu sqlite WASM needs wasm compilation; JS eval stays blocked.
+        $this->assertStringContainsString("'wasm-unsafe-eval'", $script);
+        $this->assertStringContainsString('https://chorala.com', $script);
+        $this->assertStringNotContainsString("'unsafe-eval'", $script);
+        $this->assertStringContainsString('report-uri /api/csp-report', $policy);
+    }
+
+    #[Test]
+    public function csp_report_endpoint_accepts_and_logs_reports(): void
+    {
+        $this->call('POST', '/api/csp-report', [], [], [], [
+            'CONTENT_TYPE' => 'application/csp-report',
+        ], json_encode([
+            'csp-report' => [
+                'document-uri' => 'https://satflux.io/invoicing',
+                'violated-directive' => 'script-src',
+                'blocked-uri' => 'https://evil.example.com/x.js',
+            ],
+        ]))->assertStatus(204);
+
+        // Oversized bodies are dropped without error.
+        $this->call('POST', '/api/csp-report', [], [], [], [
+            'CONTENT_TYPE' => 'application/csp-report',
+        ], str_repeat('x', 20000))->assertStatus(204);
+    }
+
+    #[Test]
     public function matomo_origin_is_added_to_script_src_when_configured(): void
     {
         config([
@@ -89,9 +128,8 @@ class SecurityHeadersTest extends TestCase
 
         $response = $this->get('/');
 
-        $this->assertStringContainsString(
-            "script-src 'self' https://analytics.example.com",
-            $response->headers->get('Content-Security-Policy'),
-        );
+        $policy = (string) $response->headers->get('Content-Security-Policy');
+        preg_match('/script-src ([^;]+)/', $policy, $m);
+        $this->assertStringContainsString('https://analytics.example.com', $m[1] ?? '');
     }
 }

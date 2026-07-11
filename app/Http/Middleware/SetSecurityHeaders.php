@@ -44,10 +44,14 @@ class SetSecurityHeaders
     {
         // Matomo (when configured) loads matomo.js from its own origin.
         $matomoOrigin = $this->originOf((string) config('services.matomo.url', ''));
+        // Chorala support widget script (loaded client-side when a widget key is configured).
+        $choralaOrigin = $this->originOf((string) config('services.chorala.widget_url', ''));
 
         $directives = [
             'default-src' => ["'self'"],
-            'script-src' => array_filter(["'self'", $matomoOrigin]),
+            // 'wasm-unsafe-eval': Evolu's sqlite WASM module (local-first invoicing DB).
+            // Allows WebAssembly compilation only - JS eval stays blocked.
+            'script-src' => array_filter(["'self'", "'wasm-unsafe-eval'", $matomoOrigin, $choralaOrigin]),
             // 'unsafe-inline' styles: Vue transitions/components set inline style attributes.
             // Google Fonts: WooCommerce connect pages (resources/views/woocommerce/*).
             'style-src' => ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
@@ -56,15 +60,18 @@ class SetSecurityHeaders
             // blob:/data: - client-generated previews and QR codes.
             'img-src' => ["'self'", 'data:', 'blob:', 'https:'],
             // Explicit allowlist (no bare https:/wss:): BTCPay, Evolu relay,
-            // Matomo beacon and any extra configured origins.
-            'connect-src' => $this->connectSrc($matomoOrigin),
+            // Matomo beacon, Chorala widget and any extra configured origins.
+            'connect-src' => $this->connectSrc($matomoOrigin, $choralaOrigin),
             'worker-src' => ["'self'", 'blob:'],
-            // YouTube embeds: landing SK video + documentation articles (both use youtube-nocookie)
-            'frame-src' => ["'self'", 'blob:', 'https://www.youtube-nocookie.com', 'https://www.youtube.com'],
+            // YouTube embeds: landing SK video + documentation articles (both use youtube-nocookie);
+            // Chorala widget may render its UI in an iframe.
+            'frame-src' => array_filter(["'self'", 'blob:', 'https://www.youtube-nocookie.com', 'https://www.youtube.com', $choralaOrigin]),
             'object-src' => ["'none'"],
             'base-uri' => ["'self'"],
             'form-action' => ["'self'"],
             'frame-ancestors' => ["'self'"],
+            // Violation reports land in the app log via CspReportController.
+            'report-uri' => ['/api/csp-report'],
         ];
 
         return collect($directives)
@@ -78,9 +85,13 @@ class SetSecurityHeaders
      *
      * @return list<string>
      */
-    protected function connectSrc(?string $matomoOrigin): array
+    protected function connectSrc(?string $matomoOrigin, ?string $choralaOrigin = null): array
     {
         $sources = ["'self'"];
+
+        if ($choralaOrigin) {
+            $sources[] = $choralaOrigin;
+        }
 
         $btcpay = $this->originOf((string) config('services.btcpay.public_url', ''));
         if ($btcpay) {

@@ -28,6 +28,11 @@ function wasmMimeType(): Plugin {
 }
 
 export default defineConfig({
+    // vue-i18n JIT compilation: compiles messages to AST without new Function/eval,
+    // so the CSP script-src does not need 'unsafe-eval' (vue-i18n >= 9.3).
+    define: {
+        __INTLIFY_JIT_COMPILATION__: true,
+    },
     build: {
         outDir: 'public/build',
         emptyOutDir: true,
