@@ -324,18 +324,15 @@ async function handleLogin() {
   }
 }
 
-function redirectAfterGuestRestore(payload: { store_id?: string | null }) {
-  const storesStore = useStoresStore();
-  void storesStore.fetchStores().then(() => {
-    const storeId =
-      payload?.store_id
-      ?? storesStore.stores[0]?.id
-      ?? null;
-    if (storeId) {
-      router.replace(`/stores/${storeId}/wallet-connection`);
-      return;
-    }
-    router.replace("/stores/create");
-  });
+function redirectAfterGuestRestore(_payload: { store_id?: string | null }) {
+  // A restored account is not a fresh guest: it may already have a connected
+  // wallet or be fully upgraded. Go home and let the router's guest hard-gate
+  // decide - it redirects to the wallet connection only when the account is
+  // still a guest AND the primary store's wallet is not ready.
+  void useStoresStore()
+    .fetchStores()
+    .finally(() => {
+      router.replace({ name: "home" });
+    });
 }
 </script>
