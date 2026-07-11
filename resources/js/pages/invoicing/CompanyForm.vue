@@ -214,6 +214,7 @@ import { isInvoicingLocalFirst } from '../../evolu/flags';
 import { useInvoicingEvolu, allCompaniesQuery } from '../../evolu/client';
 import { insertLocalCompanyFromPayload } from '../../evolu/companyInsert';
 import { normalizeCompanyIdentityKey } from '../../evolu/duplicateCompanies';
+import { syncLinkedStoreToServerBridge } from '../../evolu/ephemeralBridge';
 import { seedDefaultNumberSeries, localizedDefaultSeries } from '../../evolu/numberSeriesCrud';
 import { useStoresStore } from '../../store/stores';
 
@@ -439,6 +440,18 @@ async function save() {
         return;
       }
       seedDefaultNumberSeries(evolu, result.value.id, [], localizedDefaultSeries(t));
+      if (payload.store_id) {
+        // Best-effort: a brand-new local company usually has no server bridge
+        // company yet ("no_bridge_company" is expected then) - but when one
+        // exists (migrated identity), keep stores.company_id in sync.
+        void syncLinkedStoreToServerBridge(
+          {
+            legal_name: payload.legal_name,
+            registration_number: payload.registration_number,
+          },
+          payload.store_id,
+        );
+      }
       router.push({ name: 'invoicing' });
       return;
     }

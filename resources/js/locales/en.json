@@ -155,6 +155,7 @@
     "company_delete_confirm_label": "Type the company name to confirm: {name}",
     "create_first_company": "Create company profile",
     "company_save_validation_error": "Could not save the company. Check required fields and try again.",
+    "store_link_server_sync_failed": "The store link could not be synced to the server - server-side document numbering stays unavailable until the company is saved again with a working connection.",
     "local_first_notice": "Local-first mode: companies, contacts, documents, settings, and branding are stored in your browser (E2EE sync). PDF, email, BTCPay, and e-faktura submission use an ephemeral server bridge (data is not stored on the server).",
     "local_first_data_notice": "Invoicing data (companies, contacts, documents) is stored in your browser with E2EE sync, not in the satflux database.",
     "local_first_bridge_title": "Server bridge required",

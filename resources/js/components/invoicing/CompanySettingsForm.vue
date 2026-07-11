@@ -467,6 +467,8 @@ import {
 } from '../../composables/useCompanyRegistryLookup';
 import { useViesValidation } from '../../composables/useViesValidation';
 import { useStoresStore } from '../../store/stores';
+import { useFlashStore } from '../../store/flash';
+import { syncLinkedStoreToServerBridge } from '../../evolu/ephemeralBridge';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
 import { useInvoicingEvolu } from '../../evolu/client';
 import { asCompanyId } from '../../composables/useInvoicingCompany';
@@ -517,6 +519,7 @@ const { t, te } = useI18n();
 const { notifySaved } = useInvoicingSaveFeedback();
 const router = useRouter();
 const storesStore = useStoresStore();
+const flashStore = useFlashStore();
 const localFirst = computed(() => props.localFirst ?? isInvoicingLocalFirst());
 const evolu = isInvoicingLocalFirst() ? useInvoicingEvolu() : null;
 
@@ -837,6 +840,21 @@ async function saveContact() {
       if (!result.ok) {
         saveError.value = t('invoicing.company_save_validation_error');
         return;
+      }
+      if (linkedStoreId.value !== savedLinkedStoreId.value) {
+        // Server-side features (number series, WooCommerce invoicing) read the
+        // link from stores.company_id - mirror the local change to the bridge
+        // company or they answer 422 store_not_linked on every issue.
+        const syncResult = await syncLinkedStoreToServerBridge(
+          {
+            legal_name: contactForm.legal_name,
+            registration_number: contactForm.registration_number || null,
+          },
+          linkedStoreId.value || null,
+        );
+        if (syncResult !== 'synced') {
+          flashStore.warning(t('invoicing.store_link_server_sync_failed'));
+        }
       }
       savedLinkedStoreId.value = linkedStoreId.value;
       const row = evoluCompanyToApi(
