@@ -1,4 +1,9 @@
 import { invoicingApi } from "@/services/api";
+import { normalizeCompanyIdentityKey } from "./duplicateCompanies";
+import {
+    isCompanyKnownUnbridged,
+    markCompanyUnbridged,
+} from "./bridgeCompanyCache";
 import type { EvoluDocumentRow } from "./documentMap";
 import {
     highestIssuedDocumentCounter,
@@ -19,11 +24,24 @@ function isStoreNotLinkedError(error: unknown): boolean {
     return response?.status === 422 && response?.data?.error === "store_not_linked";
 }
 
+function identityKeyOf(identity: CompanyBridgeIdentity | undefined): string | null {
+    return identity?.legal_name
+        ? normalizeCompanyIdentityKey(identity.legal_name, identity.registration_number ?? null)
+        : null;
+}
+
+/** Skip the server round trip for companies known (this session) to have no bridge company. */
+function isKnownUnbridged(identity: CompanyBridgeIdentity | undefined): boolean {
+    const key = identityKeyOf(identity);
+    return key != null && isCompanyKnownUnbridged(key);
+}
+
 /**
  * Self-heal for the local-first split-brain: the Evolu company says it is
  * linked to the store, but the server-side stores.company_id is missing
  * (422 store_not_linked). Mirror the link to the bridge company once and
- * let the caller retry.
+ * let the caller retry. A definitive "no bridge company exists" answer is
+ * remembered for the session so later previews skip the doomed server call.
  */
 async function healStoreLink(
     identity: CompanyBridgeIdentity | undefined,
@@ -36,7 +54,14 @@ async function healStoreLink(
         // Dynamic import: ephemeralBridge transitively pulls the Evolu client,
         // which this module must not load eagerly (tests, bundle weight).
         const { syncLinkedStoreToServerBridge } = await import("./ephemeralBridge");
-        return (await syncLinkedStoreToServerBridge(identity, linkedStoreId)) === "synced";
+        const result = await syncLinkedStoreToServerBridge(identity, linkedStoreId);
+        if (result === "no_bridge_company") {
+            const key = identityKeyOf(identity);
+            if (key) {
+                markCompanyUnbridged(key);
+            }
+        }
+        return result === "synced";
     } catch {
         // Chunk load failure - healing is best-effort, the caller falls back.
         return false;
@@ -77,6 +102,9 @@ export async function previewNextDocumentNumberFromStore(
     isRetryAfterHeal = false,
 ): Promise<string | null> {
     if (validStoreIds && !isKnownStoreId(linkedStoreId, validStoreIds)) {
+        return null;
+    }
+    if (isKnownUnbridged(companyIdentity)) {
         return null;
     }
 
@@ -139,6 +167,9 @@ export async function reserveNextDocumentNumberFromStore(
     isRetryAfterHeal = false,
 ): Promise<{ ok: true; value: { number: string; counter: number } } | { ok: false; error: string }> {
     if (validStoreIds && !isKnownStoreId(linkedStoreId, validStoreIds)) {
+        return { ok: false, error: "store_not_found" };
+    }
+    if (isKnownUnbridged(companyIdentity)) {
         return { ok: false, error: "store_not_found" };
     }
 
