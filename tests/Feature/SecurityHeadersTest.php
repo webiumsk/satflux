@@ -48,6 +48,37 @@ class SecurityHeadersTest extends TestCase
     }
 
     #[Test]
+    public function connect_src_is_an_explicit_allowlist_not_bare_wildcards(): void
+    {
+        config([
+            'security.csp.enabled' => true,
+            'security.csp.report_only' => false,
+            'security.csp.evolu_relay_url' => 'wss://relay.example.com',
+            'services.btcpay.public_url' => 'https://pay.example.com',
+        ]);
+
+        $policy = $this->get('/')->headers->get('Content-Security-Policy');
+
+        // The connect-src directive must not fall back to bare https:/wss:.
+        preg_match('/connect-src ([^;]+)/', (string) $policy, $m);
+        $connect = $m[1] ?? '';
+        $this->assertStringContainsString("'self'", $connect);
+        $this->assertStringContainsString('https://pay.example.com', $connect);
+        $this->assertStringContainsString('wss://relay.example.com', $connect);
+        $this->assertStringNotContainsString(' https: ', " {$connect} ");
+        $this->assertStringNotContainsString(' wss: ', " {$connect} ");
+    }
+
+    #[Test]
+    public function csp_disabled_in_production_fails_closed(): void
+    {
+        config(['security.csp.enabled' => false]);
+        app()->detectEnvironment(fn () => 'production');
+
+        $this->get('/')->assertStatus(500);
+    }
+
+    #[Test]
     public function matomo_origin_is_added_to_script_src_when_configured(): void
     {
         config([

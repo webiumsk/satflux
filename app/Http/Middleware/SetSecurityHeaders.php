@@ -4,16 +4,25 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Adds a Content-Security-Policy header (opt-in via config/security.php).
+ * Adds a Content-Security-Policy header (config/security.php).
  * See the config file for the rollout procedure and policy rationale.
  */
 class SetSecurityHeaders
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // Fail-closed: refuse to serve production traffic with CSP explicitly
+        // disabled rather than shipping invoicing pages (which hold an account
+        // mnemonic in browser storage) without script/connect restrictions.
+        if (! config('security.csp.enabled') && app()->environment('production')) {
+            Log::critical('CSP is disabled in production (CSP_ENABLED=false). Refusing to serve without a Content-Security-Policy.');
+            abort(500, 'Server security configuration error.');
+        }
+
         $response = $next($request);
 
         if (! config('security.csp.enabled')) {
@@ -46,8 +55,9 @@ class SetSecurityHeaders
             // https: - user-controlled remote images (crowdfund mainImageUrl, BTCPay logos);
             // blob:/data: - client-generated previews and QR codes.
             'img-src' => ["'self'", 'data:', 'blob:', 'https:'],
-            // https:/wss: - Reverb websocket, user-configured Evolu relays, Matomo beacon.
-            'connect-src' => ["'self'", 'https:', 'wss:'],
+            // Explicit allowlist (no bare https:/wss:): BTCPay, Evolu relay,
+            // Matomo beacon and any extra configured origins.
+            'connect-src' => $this->connectSrc($matomoOrigin),
             'worker-src' => ["'self'", 'blob:'],
             // YouTube embeds: landing SK video + documentation articles (both use youtube-nocookie)
             'frame-src' => ["'self'", 'blob:', 'https://www.youtube-nocookie.com', 'https://www.youtube.com'],
@@ -60,6 +70,44 @@ class SetSecurityHeaders
         return collect($directives)
             ->map(fn (array $sources, string $directive) => $directive.' '.implode(' ', $sources))
             ->implode('; ');
+    }
+
+    /**
+     * connect-src allowlist: self + BTCPay + Evolu relay (ws/wss) + Matomo +
+     * extras. XHR/fetch and WebSocket targets the SPA legitimately reaches.
+     *
+     * @return list<string>
+     */
+    protected function connectSrc(?string $matomoOrigin): array
+    {
+        $sources = ["'self'"];
+
+        $btcpay = $this->originOf((string) config('services.btcpay.public_url', ''));
+        if ($btcpay) {
+            $sources[] = $btcpay;
+        }
+
+        $relayOrigin = $this->originOf((string) config('security.csp.evolu_relay_url', ''));
+        if ($relayOrigin) {
+            $sources[] = $relayOrigin;
+            // Websocket origins are matched by scheme; add the ws(s) form too.
+            $sources[] = preg_replace('/^http/', 'ws', $relayOrigin) ?? $relayOrigin;
+        }
+
+        if ($matomoOrigin) {
+            $sources[] = $matomoOrigin;
+        }
+
+        $extra = trim((string) config('security.csp.connect_src_extra', ''));
+        if ($extra !== '') {
+            foreach (preg_split('/\s+/', $extra) ?: [] as $origin) {
+                if ($origin !== '') {
+                    $sources[] = $origin;
+                }
+            }
+        }
+
+        return array_values(array_unique($sources));
     }
 
     protected function originOf(string $url): ?string
