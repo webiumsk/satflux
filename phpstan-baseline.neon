@@ -1225,62 +1225,14 @@ parameters:
 			path: app/Jobs/ProcessBankNotificationEmail.php
 
 		-
-			message: '#^If condition is always false\.$#'
-			identifier: if.alwaysFalse
-			count: 1
-			path: app/Jobs/ProcessBtcPayWebhook.php
-
-		-
 			message: '#^Negated boolean expression is always false\.$#'
 			identifier: booleanNot.alwaysFalse
 			count: 1
 			path: app/Jobs/ProcessBtcPayWebhook.php
 
 		-
-			message: '#^Offset ''storeId'' on string on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Jobs/ProcessBtcPayWebhook.php
-
-		-
-			message: '#^Parameter \#1 \$payload of method App\\Jobs\\ProcessBtcPayWebhook\:\:handleSubscriberCreditLedgerEvent\(\) expects array, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Jobs/ProcessBtcPayWebhook.php
-
-		-
-			message: '#^Parameter \#1 \$payload of method App\\Jobs\\ProcessBtcPayWebhook\:\:handleSubscriptionInvoicePaid\(\) expects array, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Jobs/ProcessBtcPayWebhook.php
-
-		-
-			message: '#^Parameter \#1 \$payload of method App\\Jobs\\ProcessBtcPayWebhook\:\:handleSubscriptionLifecycleEvent\(\) expects array, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Jobs/ProcessBtcPayWebhook.php
-
-		-
-			message: '#^Parameter \#1 \$payload of method App\\Jobs\\ProcessBtcPayWebhook\:\:handleSubscriptionPlanStarted\(\) expects array, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Jobs/ProcessBtcPayWebhook.php
-
-		-
-			message: '#^Parameter \#2 \$payload of method App\\Services\\Invoicing\\BusinessDocumentPaymentWebhookService\:\:handleInvoicePayment\(\) expects array\<string, mixed\>, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Jobs/ProcessBtcPayWebhook.php
-
-		-
 			message: '#^Property App\\Models\\User\:\:\$role \(''admin''\|''merchant''\|''support''\) does not accept ''enterprise''\|''pro''\.$#'
 			identifier: assign.propertyType
-			count: 1
-			path: app/Jobs/ProcessBtcPayWebhook.php
-
-		-
-			message: '#^Ternary operator condition is always false\.$#'
-			identifier: ternary.alwaysFalse
 			count: 1
 			path: app/Jobs/ProcessBtcPayWebhook.php
 

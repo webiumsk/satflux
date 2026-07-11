@@ -341,6 +341,52 @@ export const walletApi = {
     },
 };
 
+export interface StoreSettlement {
+    id: string;
+    btcpay_invoice_id: string;
+    payment_method_id: string;
+    payment_id: string;
+    category: 'lightning_boltz' | 'lightning' | 'onchain' | 'other';
+    destination: string | null;
+    payment_status: string | null;
+    paid_at: string | null;
+    gross_sats: number;
+    invoice_currency: string | null;
+    invoice_amount: string | null;
+    rate: string | null;
+    settlement_asset: string | null;
+    estimated_service_fee_sats: number | null;
+    estimated_network_fee_sats: number | null;
+    estimated_net_settlement_sats: number | null;
+    estimate_basis: Record<string, unknown> | null;
+    net_quality: 'unknown' | 'estimated' | 'derived' | 'reported' | 'final';
+    boltz_swap_id: string | null;
+    settlement_txid: string | null;
+    flags: Record<string, unknown> | null;
+    synced_at: string;
+}
+
+// Settlement ledger - synced from BTCPay invoice payments; Boltz net side is estimated.
+export const settlementsApi = {
+    async list(
+        storeId: string,
+        params?: { invoice_id?: string; per_page?: number; page?: number },
+    ): Promise<PagedList<StoreSettlement>> {
+        const { data } = await api.get<PagedList<StoreSettlement>>(`/stores/${storeId}/settlements`, { params });
+        return data;
+    },
+    async sync(
+        storeId: string,
+        payload?: { invoice_id?: string; limit?: number },
+    ): Promise<{ invoices?: number; rows?: number }> {
+        const { data } = await api.post<ApiEnvelope<{ invoices?: number; rows?: number }>>(
+            `/stores/${storeId}/settlements/sync`,
+            payload ?? {},
+        );
+        return data.data ?? {};
+    },
+};
+
 export type BoltzReadinessStatus = 'ready' | 'degraded' | 'stale' | 'unavailable' | 'misconfigured' | 'unsupported';
 
 export interface BoltzReadiness {

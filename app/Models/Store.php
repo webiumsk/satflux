@@ -93,6 +93,16 @@ class Store extends Model
     }
 
     /**
+     * Settlement ledger rows (synced from BTCPay invoice payments).
+     *
+     * @return HasMany<StoreSettlement, $this>
+     */
+    public function settlements(): HasMany
+    {
+        return $this->hasMany(StoreSettlement::class);
+    }
+
+    /**
      * Get the exports for the store.
      */
     public function exports(): HasMany

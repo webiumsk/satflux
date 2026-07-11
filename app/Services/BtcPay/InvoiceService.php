@@ -267,7 +267,7 @@ class InvoiceService
     /**
      * Convert BTCPay amount to sats. API may return in BTC (e.g. 0.00005) or in sats (e.g. 5000).
      */
-    private static function btcAmountToSats(float $amount): int
+    public static function btcAmountToSats(float $amount): int
     {
         if ($amount <= 0) {
             return 0;
