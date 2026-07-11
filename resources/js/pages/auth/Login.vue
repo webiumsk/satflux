@@ -329,10 +329,13 @@ function redirectAfterGuestRestore(_payload: { store_id?: string | null }) {
   // wallet or be fully upgraded. Go home and let the router's guest hard-gate
   // decide - it redirects to the wallet connection only when the account is
   // still a guest AND the primary store's wallet is not ready.
+  // Path-based on purpose: the public marketing router has no "home" route
+  // (a named location throws in matcher.resolve before any guard runs), but
+  // its guard turns unknown paths into a full page load of the app bundle.
   void useStoresStore()
     .fetchStores()
     .finally(() => {
-      router.replace({ name: "home" });
+      router.replace("/dashboard");
     });
 }
 </script>
