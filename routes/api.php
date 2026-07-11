@@ -10,9 +10,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AppController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\GuestAuthController;
-use App\Http\Controllers\Auth\LnurlAuthController;
 use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Auth\NostrAuthController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\BlinkMigrationAlertController;
 use App\Http\Controllers\BoltzReadinessController;
@@ -268,33 +266,12 @@ Route::middleware(['throttle:auth'])->group(function () {
 
     // Email verification
     Route::post('/auth/email/verification-notification', [EmailVerificationController::class, 'sendVerificationEmail']);
-
-    // LNURL-auth
-    Route::post('/lnurl-auth/challenge', [LnurlAuthController::class, 'challenge']);
-    Route::get('/lnurl-auth/verify', [LnurlAuthController::class, 'verify']);
-    Route::post('/lnurl-auth/complete-registration', [LnurlAuthController::class, 'completeRegistration']);
-    Route::post('/lnurl-auth/check-email', [LnurlAuthController::class, 'checkEmailExists']);
-
-    // Nostr auth
-    Route::post('/nostr-auth/challenge', [NostrAuthController::class, 'challenge']);
-    Route::post('/nostr-auth/verify', [NostrAuthController::class, 'verify']);
-    Route::post('/nostr-auth/complete-registration', [NostrAuthController::class, 'completeRegistration']);
-    Route::post('/nostr-auth/check-email', [NostrAuthController::class, 'checkEmailExists']);
 });
 
 // Email verification (GET request from email link - no auth required, separate from main auth group)
 Route::get('/auth/verify-email/{id}/{hash}', [EmailVerificationController::class, 'verify'])
     ->middleware(['throttle:6,1'])
     ->name('verification.verify');
-
-// LNURL-auth: public config (so frontend can always respect LNURL_AUTH_ENABLED without rebuild)
-Route::get('/lnurl-auth/enabled', [LnurlAuthController::class, 'enabled']);
-// LNURL-auth challenge status (polling every 1s = 60/min)
-Route::get('/lnurl-auth/challenge-status/{k1}', [LnurlAuthController::class, 'challengeStatus'])
-    ->middleware(['throttle:60,1']);
-Route::get('/nostr-auth/enabled', [NostrAuthController::class, 'enabled']);
-Route::get('/nostr-auth/challenge-status/{id}', [NostrAuthController::class, 'challengeStatus'])
-    ->middleware(['throttle:60,1']);
 
 // Chorala widget public API proxy (localhost / dev - avoids cross-origin CORS to chorala.com)
 Route::any('/chorala-proxy/v1/{path}', [ChoralaProxyController::class, 'forward'])
@@ -309,10 +286,6 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
     // User/Account routes
     Route::get('/user', [AccountController::class, 'user']);
     Route::get('/chorala/widget-token', [ChoralaController::class, 'widgetToken']);
-    Route::post('/lnurl-auth/link-challenge', [LnurlAuthController::class, 'linkChallenge']);
-    Route::post('/lnurl-auth/reveal-confirm-challenge', [LnurlAuthController::class, 'revealConfirmChallenge']);
-    Route::post('/nostr-auth/link-challenge', [NostrAuthController::class, 'linkChallenge']);
-    Route::post('/nostr-auth/reveal-confirm-challenge', [NostrAuthController::class, 'revealConfirmChallenge']);
     Route::get('/user/limits', [AccountController::class, 'limits']);
     Route::put('/user', [AccountController::class, 'updateProfile']);
     Route::put('/user/password', [AccountController::class, 'updatePassword'])

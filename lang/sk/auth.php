@@ -17,7 +17,7 @@ return [
     'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
     'lightning_key_already_registered' => 'Táto Lightning peňaženka je už zaregistrovaná.',
     'nostr_key_already_registered' => 'Tento Nostr kľúč je už prepojený s účtom.',
-    'invalid_password_or_confirm_lnurl' => 'Nesprávne heslo alebo potvrďte Lightning peňaženkou alebo Nostr.',
+    'invalid_password' => 'Nesprávne heslo.',
     'email_not_verified' => 'Pred prihlásením prosím potvrďte e-mail. V schránke nájdete odkaz na overenie.',
     'guest_feature_requires_account' => 'Táto akcia vyžaduje plný účet. Upgradujte v nastaveniach účtu.',
     'guest_one_store_only' => 'Hosťovská relácia je obmedzená na jeden obchod. Pre viac obchodov vytvorte plný účet.',

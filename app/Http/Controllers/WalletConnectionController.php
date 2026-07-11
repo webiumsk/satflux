@@ -63,8 +63,6 @@ class WalletConnectionController extends Controller
     {
         $request->validate([
             'password' => ['nullable', 'string'],
-            'confirm_via_lnurl' => ['nullable', 'boolean'],
-            'confirm_via_nostr' => ['nullable', 'boolean'],
         ]);
 
         $store = $request->route('store');
@@ -316,8 +314,6 @@ class WalletConnectionController extends Controller
     {
         $request->validate([
             'password' => ['nullable', 'string'],
-            'confirm_via_lnurl' => ['nullable', 'boolean'],
-            'confirm_via_nostr' => ['nullable', 'boolean'],
         ]);
 
         SensitiveActionAuthorization::assertAllowed($request->user(), $request);
