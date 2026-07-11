@@ -1,6 +1,15 @@
 import api, { invoicingApi } from "@/services/api";
 import { matchCompanyByIdentity, normalizeCompanyIdentityKey } from "@/evolu/duplicateCompanies";
 import { clearCompanyUnbridged } from "@/evolu/bridgeCompanyCache";
+import { allDocumentSnapshotsQuery } from "./client";
+import {
+    buildIssuedSnapshotContentV1,
+    insertIssuedDocumentSnapshot,
+    latestSnapshotRowForDocument,
+    parseIssuedSnapshotRow,
+    type EvoluDocumentSnapshotRow,
+    type IssuedDocumentSnapshotV1,
+} from "./documentSnapshotCrud";
 import { normalizeIsoCountryCode } from "@/utils/isoCountryCode";
 import type { DocumentSavePayload } from "./documentCrud";
 import type { CompanyId, DocumentId } from "./schema";
@@ -762,6 +771,87 @@ export function buildEphemeralSnapshotFromApiDocument(
 
 type LocalDocSupport = ReturnType<typeof useLocalInvoiceDocumentSupport>;
 
+/**
+ * Resolves the frozen issued snapshot for a non-draft document, backfilling
+ * one (marked backfilled) for documents issued before F2. Returns null for
+ * drafts and when no valid snapshot can be obtained - callers then render
+ * from live rows as before.
+ */
+async function resolveFrozenIssuedContent(
+    localDoc: LocalDocSupport,
+    doc: Record<string, unknown>,
+    company: Record<string, unknown> | null,
+    contact: Record<string, unknown> | null,
+    documentId: string,
+): Promise<IssuedDocumentSnapshotV1 | null> {
+    if (doc.status === "draft") return null;
+
+    const rows = (await localDoc.evolu.loadQuery(
+        allDocumentSnapshotsQuery,
+    )) as unknown as EvoluDocumentSnapshotRow[];
+    const latest = latestSnapshotRowForDocument(rows, documentId);
+    if (latest) {
+        const parsed = parseIssuedSnapshotRow(latest);
+        return parsed.ok ? parsed.value : null;
+    }
+
+    // Legacy issued document (pre-F2): freeze the current live state once,
+    // honestly marked as backfilled - it may not equal the issue-time state.
+    if (!company) return null;
+    const content = buildIssuedSnapshotContentV1({
+        company,
+        contact,
+        document: doc,
+        lines: (doc.lines as Record<string, unknown>[]) ?? [],
+    });
+    if (!content.ok) return null;
+    insertIssuedDocumentSnapshot(localDoc.evolu, documentId as DocumentId, content.value, {
+        backfilled: true,
+    });
+    return content.value;
+}
+
+/** Frozen snapshot content merged with live operational fields into render inputs. */
+function renderInputsFromFrozen(
+    frozen: IssuedDocumentSnapshotV1,
+    liveCompany: Record<string, unknown> | null,
+    liveDoc: Record<string, unknown>,
+): {
+    company: Record<string, unknown>;
+    contact: Record<string, unknown> | null;
+    document: Record<string, unknown>;
+    lines: DocumentSavePayload["lines"];
+} {
+    return {
+        company: {
+            ...frozen.company,
+            vat_rate_default: Number(frozen.company.vat_rate_default ?? 0) || 0,
+            // Operational, not part of the frozen document content:
+            app_settings: liveCompany?.app_settings,
+            email_settings: liveCompany?.email_settings,
+            logo_url: liveCompany?.logo_url,
+            signature_stamp_url: liveCompany?.signature_stamp_url,
+        },
+        contact: frozen.contact ? { ...frozen.contact } : null,
+        document: {
+            ...frozen.document,
+            status: liveDoc.status,
+            amount_paid: liveDoc.amount_paid,
+        },
+        lines: frozen.lines.map((line) => ({
+            name: line.name,
+            description: line.description,
+            quantity: Number(line.quantity) || 0,
+            unit: line.unit ?? "ks",
+            unit_price: Number(line.unit_price) || 0,
+            line_discount_percent: Number(line.line_discount_percent) || 0,
+            tax_rate: Number(line.tax_rate) || 0,
+            company_stock_item_id: null,
+            company_warehouse_id: null,
+        })),
+    };
+}
+
 export async function buildLocalDocumentEphemeralSnapshot(
     localDoc: LocalDocSupport,
     companyId: string,
@@ -777,7 +867,6 @@ export async function buildLocalDocumentEphemeralSnapshot(
     const contact = contactId
         ? localDoc.contactsForCompany(companyId).find((c) => c.id === contactId) ?? null
         : null;
-    const payload = localDoc.payloadFromApiDocument(doc);
     const emailSettings = resolveLocalEmailSettingsForBridge(
         localDoc.evolu,
         companyId as CompanyId,
@@ -792,6 +881,24 @@ export async function buildLocalDocumentEphemeralSnapshot(
             : undefined,
     );
 
+    // Issued documents render from their frozen snapshot (audit F2) so later
+    // contact/company edits cannot rewrite them; drafts render live.
+    const frozen = await resolveFrozenIssuedContent(localDoc, doc, company, contact, documentId);
+    if (frozen) {
+        const inputs = renderInputsFromFrozen(frozen, company, doc);
+        return {
+            bridgeCompanyId,
+            snapshot: buildEphemeralSnapshotFromApiDocument(
+                inputs.company,
+                inputs.contact,
+                inputs.document,
+                inputs.lines,
+                emailSettings,
+            ),
+        };
+    }
+
+    const payload = localDoc.payloadFromApiDocument(doc);
     return {
         bridgeCompanyId,
         snapshot: buildEphemeralSnapshotFromApiDocument(

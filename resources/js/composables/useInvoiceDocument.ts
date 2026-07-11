@@ -4,7 +4,13 @@ import { useRoute, useRouter } from 'vue-router';
 import type { InvoiceLineForm } from '../components/invoicing/InvoiceLivePreview.vue';
 import { invoicingApi } from '../services/api';
 import { isInvoicingLocalFirst } from '../evolu/flags';
-import { allDocumentEventsQuery } from '../evolu/client';
+import { allDocumentEventsQuery, allDocumentSnapshotsQuery } from '../evolu/client';
+import {
+  latestSnapshotRowForDocument,
+  parseIssuedSnapshotRow,
+  type EvoluDocumentSnapshotRow,
+  type IssuedDocumentSnapshotV1,
+} from '../evolu/documentSnapshotCrud';
 import type { CompanyId, DocumentId } from '../evolu/schema';
 import type { DocumentSavePayload } from '../evolu/documentCrud';
 import { payloadFromApiDocument, markLocalDocumentPaid } from '../evolu/documentCrud';
@@ -440,6 +446,12 @@ export function useInvoiceDocument() {
       ...localTaxHelpers(),
       documentId: documentId.value as DocumentId | undefined,
       existingDocument: existingLocalDocument(),
+      // Edit + re-freeze (audit F2): saving an issued document appends a new
+      // snapshot version with the current supplier/buyer.
+      refreezeContext: {
+        company: (company.value as Record<string, unknown> | null) ?? null,
+        contact: (selectedContact.value as Record<string, unknown> | null) ?? null,
+      },
     };
   }
 
@@ -755,12 +767,36 @@ export function useInvoiceDocument() {
     },
   );
 
+  /**
+   * Newest frozen snapshot of the displayed document (audit F2). The detail
+   * render uses its supplier/buyer for non-draft documents so a later edit
+   * of the contact or company row cannot rewrite an issued document.
+   */
+  const frozenIssuedContent = ref<IssuedDocumentSnapshotV1 | null>(null);
+
+  async function refreshFrozenIssuedContent() {
+    frozenIssuedContent.value = null;
+    if (!local || !documentId.value) return;
+    try {
+      const rows = (await local.evolu.loadQuery(
+        allDocumentSnapshotsQuery,
+      )) as unknown as EvoluDocumentSnapshotRow[];
+      const latest = latestSnapshotRowForDocument(rows, documentId.value);
+      if (!latest) return;
+      const parsed = parseIssuedSnapshotRow(latest);
+      if (parsed.ok) frozenIssuedContent.value = parsed.value;
+    } catch {
+      // Render falls back to live rows.
+    }
+  }
+
   async function reloadDocument() {
     if (!documentId.value) return;
     if (local) {
       await local.refreshAll();
       const apiDoc = local.documentApi(documentId.value as DocumentId);
       if (apiDoc) await applyDocument(apiDoc);
+      await refreshFrozenIssuedContent();
       await loadLocalBtcpayCheckout();
       return;
     }
@@ -778,9 +814,22 @@ export function useInvoiceDocument() {
       );
       companyForSnapshot = { ...companyForSnapshot, email_settings: emailSettings };
     }
+    // Non-draft documents take supplier/buyer from the frozen snapshot (audit
+    // F2); document content stays form-driven so unsaved edits still preview,
+    // and every save of an issued document re-freezes the snapshot to match.
+    let contactForSnapshot = selectedContact.value;
+    const frozen = documentStatus.value !== 'draft' ? frozenIssuedContent.value : null;
+    if (frozen) {
+      companyForSnapshot = {
+        ...(companyForSnapshot ?? {}),
+        ...frozen.company,
+        vat_rate_default: Number(frozen.company.vat_rate_default ?? 0) || 0,
+      };
+      contactForSnapshot = frozen.contact ? { ...frozen.contact } : null;
+    }
     return buildEphemeralSnapshot(
       companyForSnapshot,
-      selectedContact.value,
+      contactForSnapshot,
       {
         type: documentType.value,
         status: documentStatus.value,
@@ -1032,6 +1081,7 @@ export function useInvoiceDocument() {
       const apiDoc = local.documentApi(docId as DocumentId);
       if (apiDoc) await applyDocument(apiDoc);
     }
+    await refreshFrozenIssuedContent();
     return docId;
   }
 

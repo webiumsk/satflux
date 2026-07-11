@@ -197,6 +197,7 @@ export function evoluDocumentToApi(
                 unit_price: line.unitPrice || "0",
                 line_discount_percent: line.lineDiscountPercent || "0",
                 tax_rate: line.taxRate || "0",
+                line_total: line.lineTotal || "0",
                 company_stock_item_id: line.companyStockItemId,
                 company_warehouse_id: line.companyWarehouseId,
             })),

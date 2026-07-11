@@ -59,6 +59,9 @@ export type BankTransactionId = typeof BankTransactionId.Type;
 export const BankTransactionMatchId = id("BankTransactionMatch");
 export type BankTransactionMatchId = typeof BankTransactionMatchId.Type;
 
+export const DocumentSnapshotId = id("DocumentSnapshot");
+export type DocumentSnapshotId = typeof DocumentSnapshotId.Type;
+
 const LegalName = maxLength(255)(NonEmptyString);
 const OptionalString16 = nullOr(maxLength(16)(NonEmptyString));
 const OptionalString32 = nullOr(maxLength(32)(NonEmptyString));
@@ -72,6 +75,9 @@ const OptionalString4000 = nullOr(maxLength(4000)(NonEmptyString));
 const OptionalImageDataUrl = nullOr(maxLength(131072)(NonEmptyString));
 /** Raw base64 file payload (~384 KB decoded max). Synced via E2EE relay. */
 const OptionalAttachmentContent = nullOr(maxLength(524288)(NonEmptyString));
+/** Issued document snapshot JSON (frozen supplier/buyer/lines/totals). */
+const SnapshotPayloadJson = maxLength(262144)(NonEmptyString);
+const SnapshotFormatVersion = maxLength(16)(NonEmptyString);
 const CountryCode = maxLength(2)(NonEmptyString);
 const CurrencyCode = maxLength(3)(NonEmptyString);
 const ContactName = maxLength(255)(NonEmptyString);
@@ -291,6 +297,20 @@ export const InvoicingLocalSchema = {
         documentId: DocumentId,
         action: DocumentAction,
         metadataJson: OptionalString4000,
+    },
+    /**
+     * Frozen copy of an issued document (F2): supplier, buyer, lines and
+     * totals at issue time. Append-only by convention - every re-freeze
+     * (edit of an issued document) INSERTS a new row; rows are never
+     * updated. Render of issued documents reads the newest row.
+     */
+    documentSnapshot: {
+        id: DocumentSnapshotId,
+        documentId: DocumentId,
+        formatVersion: SnapshotFormatVersion,
+        payloadJson: SnapshotPayloadJson,
+        /** Set on snapshots reconstructed for documents issued before F2 - lower fidelity. */
+        backfilled: nullOr(SqliteBoolean),
     },
     expense: {
         id: ExpenseId,

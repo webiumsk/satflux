@@ -11,6 +11,7 @@ import {
     allContactsQuery,
     allDocumentEventsQuery,
     allDocumentLinesQuery,
+    allDocumentSnapshotsQuery,
     allDocumentsQuery,
     allExpensesQuery,
     allExpenseAttachmentsQuery,
@@ -39,6 +40,7 @@ export type InvoicingDataSnapshot = {
     document: ReadonlyArray<Record<string, unknown>>;
     documentLine: ReadonlyArray<Record<string, unknown>>;
     documentEvent: ReadonlyArray<Record<string, unknown>>;
+    documentSnapshot: ReadonlyArray<Record<string, unknown>>;
     expense: ReadonlyArray<Record<string, unknown>>;
     expenseAttachment: ReadonlyArray<Record<string, unknown>>;
     recurringProfile: ReadonlyArray<Record<string, unknown>>;
@@ -59,6 +61,7 @@ export const EMPTY_INVOICING_SNAPSHOT: InvoicingDataSnapshot = {
     document: [],
     documentLine: [],
     documentEvent: [],
+    documentSnapshot: [],
     expense: [],
     expenseAttachment: [],
     recurringProfile: [],
@@ -79,6 +82,7 @@ const UPSERT_ORDER: InvoicingTable[] = [
     "document",
     "documentLine",
     "documentEvent",
+    "documentSnapshot",
     "expense",
     "expenseAttachment",
     "recurringProfile",
@@ -102,6 +106,7 @@ export async function snapshotInvoicingData(
         document,
         documentLine,
         documentEvent,
+        documentSnapshot,
         expense,
         expenseAttachment,
         recurringProfile,
@@ -120,6 +125,7 @@ export async function snapshotInvoicingData(
         evolu.loadQuery(allDocumentsQuery),
         evolu.loadQuery(allDocumentLinesQuery),
         evolu.loadQuery(allDocumentEventsQuery),
+        evolu.loadQuery(allDocumentSnapshotsQuery),
         evolu.loadQuery(allExpensesQuery),
         evolu.loadQuery(allExpenseAttachmentsQuery),
         evolu.loadQuery(allRecurringProfilesQuery),
@@ -140,6 +146,7 @@ export async function snapshotInvoicingData(
         document: document as ReadonlyArray<Record<string, unknown>>,
         documentLine: documentLine as ReadonlyArray<Record<string, unknown>>,
         documentEvent: documentEvent as ReadonlyArray<Record<string, unknown>>,
+        documentSnapshot: documentSnapshot as ReadonlyArray<Record<string, unknown>>,
         expense: expense as ReadonlyArray<Record<string, unknown>>,
         expenseAttachment: expenseAttachment as ReadonlyArray<Record<string, unknown>>,
         recurringProfile: recurringProfile as ReadonlyArray<Record<string, unknown>>,
@@ -204,7 +211,7 @@ export function restoreInvoicingSnapshotDetailed(
     let upserted = 0;
     const failed: SnapshotRestoreFailure[] = [];
     for (const table of UPSERT_ORDER) {
-        const rows = snapshot[table];
+        const rows = snapshot[table] ?? [];
         for (const row of rows) {
             const result = evolu.upsert(table, rowForUpsert(row) as never);
             if (result.ok) {
@@ -224,7 +231,7 @@ export async function restoreInvoicingSnapshotDetailedAsync(
     let upserted = 0;
     const failed: SnapshotRestoreFailure[] = [];
     for (const table of UPSERT_ORDER) {
-        for (const row of snapshot[table]) {
+        for (const row of snapshot[table] ?? []) {
             const result = await upsertRowAwait(evolu, table, row as Record<string, unknown>);
             if (result.ok) {
                 upserted += 1;
@@ -237,5 +244,5 @@ export async function restoreInvoicingSnapshotDetailedAsync(
 }
 
 export function snapshotHasInvoicingData(snapshot: InvoicingDataSnapshot): boolean {
-    return UPSERT_ORDER.some((table) => snapshot[table].length > 0);
+    return UPSERT_ORDER.some((table) => (snapshot[table] ?? []).length > 0);
 }

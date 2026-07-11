@@ -52,6 +52,7 @@ describe("server snapshot field validation", () => {
             document: [],
             documentLine: [],
             documentEvent: [],
+            documentSnapshot: [],
             expense: [],
             expenseAttachment: [],
             recurringProfile: [],
