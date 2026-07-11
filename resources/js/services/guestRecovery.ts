@@ -3,8 +3,10 @@ import { wordlist } from "@scure/bip39/wordlists/english.js";
 import {
     clearStoredAccountMnemonic,
     deriveRecoveryPublicKeyHex,
+    finalizeSeedMigrationAfterBackupConfirmed,
     generateAccountMnemonic24,
     getStoredAccountMnemonic,
+    hasLegacyPersistedMnemonic,
     hydrateAccountMnemonicSession,
     normalizeAccountMnemonic,
     signRecoveryMessage,
@@ -13,7 +15,9 @@ import {
 
 export {
     clearStoredAccountMnemonic as clearStoredGuestMnemonic,
+    finalizeSeedMigrationAfterBackupConfirmed,
     getStoredAccountMnemonic as getStoredGuestMnemonic,
+    hasLegacyPersistedMnemonic,
     hydrateAccountMnemonicSession,
     storeAccountMnemonic as storeGuestMnemonic,
 };

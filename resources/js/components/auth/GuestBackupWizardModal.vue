@@ -106,6 +106,7 @@ import {
   generateGuestMnemonic24,
   guestRecoveryPublicKeyHexFromMnemonic,
 } from "../../services/guestRecovery";
+import { finalizeSeedMigrationAfterBackupConfirmed } from "../../services/accountSeed";
 
 const props = withDefaults(
   defineProps<{
@@ -187,6 +188,9 @@ async function copyWords() {
 
 function finish() {
   try {
+    // Reaching finish requires the "I saved my recovery phrase" checkbox, so this
+    // is the safe point to drop any legacy plaintext copy from localStorage.
+    finalizeSeedMigrationAfterBackupConfirmed();
     const recoveryPublicKeyHex = guestRecoveryPublicKeyHexFromMnemonic(mnemonic.value);
     emit("done", { recoveryPublicKeyHex, mnemonic: mnemonic.value });
     if (!props.mandatory) {
