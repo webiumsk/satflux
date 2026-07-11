@@ -561,6 +561,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, defineAsyncComponent } from "vue";
+import { useSamRockPairing } from "../../composables/useSamRockPairing";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useStoresStore } from "../../store/stores";
@@ -618,15 +619,18 @@ let botPollInterval: ReturnType<typeof setInterval> | null = null;
 const lightningSetupTab = ref<"samrock" | "paste">("samrock");
 const connectionType = ref<"blink" | "nwc" | "aqua_descriptor">("aqua_descriptor");
 
-/** SamRock pairing (step 2, Aqua tab) */
-const samrockOtp = ref("");
-const samrockExpiresAt = ref<string | null>(null);
-const samrockQrObjectUrl = ref<string | null>(null);
-const samrockBusy = ref(false);
-const samrockPollStatus = ref("");
-const samrockErrorMessage = ref("");
+/** SamRock pairing (step 2, Aqua tab) - shared flow lives in useSamRockPairing */
+const {
+  samrockOtp,
+  samrockExpiresAt,
+  samrockQrObjectUrl,
+  samrockBusy,
+  samrockPollStatus,
+  samrockErrorMessage,
+  cancelSamRockPairing,
+  startSamRockPairing: startSamRockPairingCore,
+} = useSamRockPairing(() => createdStoreId.value ?? "");
 const samrockWalletReady = ref(false);
-let samrockPollInterval: ReturnType<typeof setInterval> | null = null;
 
 const form = ref({
   name: "",
@@ -756,44 +760,12 @@ const timezones = [
 
 const timezoneOptions = timezones.map((tz) => ({ label: tz, value: tz }));
 
-function revokeSamRockQr() {
-  if (samrockQrObjectUrl.value) {
-    URL.revokeObjectURL(samrockQrObjectUrl.value);
-    samrockQrObjectUrl.value = null;
-  }
-}
-
 function formatSamRockExpiry(iso: string) {
   try {
     return new Date(iso).toLocaleString();
   } catch {
     return iso;
   }
-}
-
-function stopSamRockPolling() {
-  if (samrockPollInterval != null) {
-    window.clearInterval(samrockPollInterval);
-    samrockPollInterval = null;
-  }
-}
-
-async function cancelSamRockPairing() {
-  stopSamRockPolling();
-  revokeSamRockQr();
-  const sid = createdStoreId.value;
-  if (samrockOtp.value && sid) {
-    try {
-      await walletApi.samrock.deleteOtp(sid, samrockOtp.value);
-    } catch {
-      /* ignore */
-    }
-  }
-  samrockOtp.value = "";
-  samrockExpiresAt.value = null;
-  samrockErrorMessage.value = "";
-  samrockPollStatus.value = "";
-  samrockBusy.value = false;
 }
 
 async function startSamRockPairing() {
@@ -809,64 +781,11 @@ async function startSamRockPairing() {
     return;
   }
 
-  samrockBusy.value = true;
-  samrockErrorMessage.value = "";
   samrockWalletReady.value = false;
-  revokeSamRockQr();
-  samrockOtp.value = "";
-  stopSamRockPolling();
-
-  try {
-    const d = await walletApi.samrock.createOtp(sid, {
-      btc: true,
-      btcln: true,
-      lbtc: false,
-      expires_in_seconds: 300,
-    });
-    const otp = d.otp ?? "";
-    if (!otp) {
-      samrockErrorMessage.value = t("stores.samrock_error");
-      samrockBusy.value = false;
-      return;
-    }
-    samrockOtp.value = otp;
-    samrockExpiresAt.value = d.expires_at ?? null;
-
-    const qrBlob = await walletApi.samrock.otpQr(sid, otp, { format: "png" });
-    samrockQrObjectUrl.value = URL.createObjectURL(qrBlob);
-    samrockBusy.value = false;
-    samrockPollStatus.value = "pending";
-
-    const pollOnce = async () => {
-      if (!samrockOtp.value || !sid) return;
-      try {
-        const st = await walletApi.samrock.otpStatus(sid, samrockOtp.value);
-        const status = st.status ?? "";
-        samrockPollStatus.value = status;
-        if (status === "success") {
-          stopSamRockPolling();
-          await walletApi.samrock.complete(sid, { otp: samrockOtp.value });
-          revokeSamRockQr();
-          samrockOtp.value = "";
-          samrockWalletReady.value = true;
-          await storesStore.fetchStore(sid);
-        } else if (status === "error") {
-          stopSamRockPolling();
-          samrockErrorMessage.value =
-            st.error_message ?? t("stores.samrock_error");
-        }
-      } catch {
-        /* ignore */
-      }
-    };
-
-    await pollOnce();
-    samrockPollInterval = window.setInterval(pollOnce, 3000);
-  } catch (err: any) {
-    samrockErrorMessage.value =
-      err.response?.data?.message ?? t("stores.samrock_error");
-    samrockBusy.value = false;
-  }
+  await startSamRockPairingCore(async () => {
+    samrockWalletReady.value = true;
+    await storesStore.fetchStore(sid);
+  });
 }
 
 function stopBotWaitTimers() {
@@ -1036,8 +955,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  stopSamRockPolling();
+  // SamRock polling/QR cleanup happens inside useSamRockPairing.
   stopBotWaitTimers();
-  revokeSamRockQr();
 });
 </script>

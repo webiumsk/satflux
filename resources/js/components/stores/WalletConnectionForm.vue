@@ -996,6 +996,7 @@ import { ref, reactive, computed, watch, onUnmounted, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
+import { useSamRockPairing } from "../../composables/useSamRockPairing";
 import api, { walletApi } from "../../services/api";
 import { DEFAULT_CASHU_MINT_URL } from "../../constants/cashu";
 import WalletTypeIcon from "../WalletTypeIcon.vue";
@@ -1179,20 +1180,16 @@ watch(
 
 const autoSamrockConsumed = ref(false);
 
-const samrockOtp = ref("");
-const samrockExpiresAt = ref<string | null>(null);
-const samrockQrObjectUrl = ref<string | null>(null);
-const samrockBusy = ref(false);
-const samrockPollStatus = ref("");
-const samrockErrorMessage = ref("");
-let samrockPollInterval: number | null = null;
-
-function revokeSamRockQr() {
-  if (samrockQrObjectUrl.value) {
-    URL.revokeObjectURL(samrockQrObjectUrl.value);
-    samrockQrObjectUrl.value = null;
-  }
-}
+const {
+  samrockOtp,
+  samrockExpiresAt,
+  samrockQrObjectUrl,
+  samrockBusy,
+  samrockPollStatus,
+  samrockErrorMessage,
+  cancelSamRockPairing,
+  startSamRockPairing: startSamRockPairingCore,
+} = useSamRockPairing(() => props.storeId);
 
 function formatSamRockExpiry(iso: string) {
   try {
@@ -1202,93 +1199,15 @@ function formatSamRockExpiry(iso: string) {
   }
 }
 
-function stopSamRockPolling() {
-  if (samrockPollInterval != null) {
-    window.clearInterval(samrockPollInterval);
-    samrockPollInterval = null;
-  }
-}
-
-async function cancelSamRockPairing() {
-  stopSamRockPolling();
-  revokeSamRockQr();
-  if (samrockOtp.value) {
-    try {
-      await walletApi.samrock.deleteOtp(props.storeId, samrockOtp.value);
-    } catch {
-      /* ignore */
-    }
-  }
-  samrockOtp.value = "";
-  samrockExpiresAt.value = null;
-  samrockErrorMessage.value = "";
-  samrockPollStatus.value = "";
-  samrockBusy.value = false;
-}
-
-async function startSamRockPairing() {
+function startSamRockPairing() {
   if (route.query.samrock) {
     const q = { ...route.query };
     delete q.samrock;
     router.replace({ path: route.path, query: q });
   }
-
-  samrockBusy.value = true;
-  samrockErrorMessage.value = "";
-  revokeSamRockQr();
-  samrockOtp.value = "";
-  stopSamRockPolling();
-
-  try {
-    const d = await walletApi.samrock.createOtp(props.storeId, {
-      btc: true,
-      btcln: true,
-      lbtc: false,
-      expires_in_seconds: 300,
-    });
-    const otp = d.otp ?? "";
-    if (!otp) {
-      samrockErrorMessage.value = t("stores.samrock_error");
-      samrockBusy.value = false;
-      return;
-    }
-    samrockOtp.value = otp;
-    samrockExpiresAt.value = d.expires_at ?? null;
-
-    const qrBlob = await walletApi.samrock.otpQr(props.storeId, otp, { format: "png" });
-    samrockQrObjectUrl.value = URL.createObjectURL(qrBlob);
-    samrockBusy.value = false;
-    samrockPollStatus.value = "pending";
-
-    const pollOnce = async () => {
-      if (!samrockOtp.value) return;
-      try {
-        const st = await walletApi.samrock.otpStatus(props.storeId, samrockOtp.value);
-        const status = st.status ?? "";
-        samrockPollStatus.value = status;
-        if (status === "success") {
-          stopSamRockPolling();
-          await walletApi.samrock.complete(props.storeId, { otp: samrockOtp.value });
-          revokeSamRockQr();
-          samrockOtp.value = "";
-          emit("submitted");
-        } else if (status === "error") {
-          stopSamRockPolling();
-          samrockErrorMessage.value =
-            st.error_message ?? t("stores.samrock_error");
-        }
-      } catch {
-        /* ignore */
-      }
-    };
-
-    await pollOnce();
-    samrockPollInterval = window.setInterval(pollOnce, 3000);
-  } catch (err: any) {
-    samrockErrorMessage.value =
-      err.response?.data?.message ?? t("stores.samrock_error");
-    samrockBusy.value = false;
-  }
+  void startSamRockPairingCore(() => {
+    emit("submitted");
+  });
 }
 
 const submitting = ref(false);
@@ -1815,8 +1734,7 @@ function onNostrRevealSuccess(rawPayload?: unknown) {
 onUnmounted(() => {
   if (lnurlRevealPollingInterval != null)
     window.clearInterval(lnurlRevealPollingInterval);
-  stopSamRockPolling();
-  revokeSamRockQr();
+  // SamRock polling/QR cleanup happens inside useSamRockPairing.
 });
 
 function startWalletConnectionEdit() {

@@ -117,6 +117,8 @@ export function useSamRockPairing(storeId: () => string) {
             samrockPollInterval = window.setInterval(() => {
                 void pollSamRockStatus(onComplete);
             }, 3000);
+            // First poll right away - the wallet may scan within seconds.
+            void pollSamRockStatus(onComplete);
         } catch (err: unknown) {
             samrockErrorMessage.value = getApiErrorMessage(err, t('stores.samrock_error'));
             samrockBusy.value = false;
