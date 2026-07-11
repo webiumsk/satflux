@@ -1626,6 +1626,7 @@
     "wallet_connection_back_from_cashu": "Back to Lightning wallet options",
     "wallet_connection_switch_to_aqua": "Switch to Aqua/Bull (Boltz)",
     "wallet_connection_back_to_cashu": "Back to Cashu settings",
+    "cashu_switch_to_lightning": "Use a Lightning wallet instead",
     "aqua_wallet_connected_title": "Aqua / Lightning is connected",
     "aqua_wallet_connected_samrock_hint": "Your wallet is already linked. You can generate a new SamRock QR to re-pair, or paste an updated watch-only descriptor in the Smart paste tab.",
     "cashu_connected_via_plugin": "Configured via the BTCPay Cashu plugin.",

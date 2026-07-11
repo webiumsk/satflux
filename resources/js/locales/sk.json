@@ -1627,6 +1627,7 @@
     "wallet_connection_back_from_cashu": "Späť na možnosti Lightning peňaženky",
     "wallet_connection_switch_to_aqua": "Prepnúť na Aqua/Bull (Boltz)",
     "wallet_connection_back_to_cashu": "Späť na nastavenia Cashu",
+    "cashu_switch_to_lightning": "Prejsť na Lightning peňaženku",
     "aqua_wallet_connected_title": "Aqua / Lightning je prepojené",
     "aqua_wallet_connected_samrock_hint": "Peňaženka je už prepojená. Môžete znova vygenerovať SamRock QR na opätovné párovanie, alebo vložiť aktualizovaný watch-only deskriptor v záložke Smart paste.",
     "cashu_connected_via_plugin": "Nastavené cez BTCPay Cashu plugin.",

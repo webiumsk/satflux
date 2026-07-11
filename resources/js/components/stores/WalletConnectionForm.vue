@@ -5,6 +5,7 @@
     :wallet-type="walletType"
     v-model:switch-intent="switchToCashuIntent"
     :paste-detection="walletPasteDetection"
+    @switch-to-lightning="switchToLightningIntent = true"
     @submitted="$emit('submitted')"
     @cancel="$emit('cancel')"
   />
@@ -71,44 +72,21 @@
             </button>
           </div>
         </form>
-        <div
-          v-if="hasLightningLogin || hasNostrLogin"
-          class="mt-4 pt-4 border-t border-gray-700 space-y-2"
-        >
-          <p class="text-sm text-gray-400 mb-2">
-            {{ t("account.or_confirm_with_lightning") }}
-          </p>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-if="hasLightningLogin"
-              type="button"
-              :disabled="lnurlRevealLoading || lnurlRevealPolling"
-              @click="handleConfirmWithLightning"
-              class="px-4 py-2 border border-indigo-500 rounded-xl text-sm font-medium text-indigo-400 hover:bg-indigo-500/10 disabled:opacity-50"
-            >
-              <span v-if="lnurlRevealLoading || lnurlRevealPolling">{{
-                t("common.loading")
-              }}</span>
-              <span v-else>{{
-                t("account.confirm_with_lightning_wallet")
-              }}</span>
-            </button>
-            <button
-              v-if="hasNostrLogin"
-              type="button"
-              @click="showNostrRevealModal = true"
-              class="px-4 py-2 border border-amber-500/50 rounded-xl text-sm font-medium text-amber-400 hover:bg-amber-500/10"
-            >
-              🟠 {{ t("auth.nostr_confirm_reveal") }}
-            </button>
-          </div>
-        </div>
       </div>
     </template>
 
     <!-- Unified wallet setup (paste first, SamRock second - same as create store) -->
     <template v-else-if="showWalletSetupForm">
       <div class="space-y-6">
+      <div v-if="walletType === 'cashu'">
+        <button
+          type="button"
+          class="text-sm font-medium text-indigo-400 hover:text-indigo-300"
+          @click="switchToLightningIntent = false"
+        >
+          ← {{ t("stores.wallet_connection_back_to_cashu") }}
+        </button>
+      </div>
       <div
         v-if="showWalletSetupTabs"
         class="flex gap-1 p-1 rounded-xl bg-gray-800/90 border border-gray-600 w-full sm:w-fit"
@@ -425,24 +403,6 @@
     </div>
   </div>
 
-  <LnurlQrModal
-    :open="showLnurlRevealModal"
-    :title="t('account.confirm_with_lightning_wallet')"
-    :lnurl="lnurlRevealUrl"
-    :error="lnurlRevealError"
-    :polling="lnurlRevealPolling"
-    :expires-in-seconds="300"
-    @close="closeLnurlRevealModal"
-    @regenerate="requestNewRevealChallenge"
-  />
-  <NostrAuthModal
-    :open="showNostrRevealModal"
-    mode="reveal"
-    :store-id="storeId"
-    confirm-purpose="wallet_reveal"
-    @close="showNostrRevealModal = false"
-    @success="onNostrRevealSuccess"
-  />
 </template>
 
 <script setup lang="ts">
@@ -451,7 +411,6 @@ import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
 import { useSamRockPairing } from "../../composables/useSamRockPairing";
-import { useLnurlRevealConfirm } from "../../composables/useLnurlRevealConfirm";
 import CashuConnectionSection from "./wallet-connection/CashuConnectionSection.vue";
 import ConnectionReadonlyCard from "./wallet-connection/ConnectionReadonlyCard.vue";
 import { walletApi } from "../../services/api";
@@ -469,8 +428,6 @@ import {
   detectWalletBrandFromDescriptor,
   type AquaBoltzWalletBrand,
 } from "../../utils/aquaBoltzWalletBrand";
-import LnurlQrModal from "../auth/LnurlQrModal.vue";
-import NostrAuthModal from "../auth/NostrAuthModal.vue";
 
 interface Props {
   storeId: string;
@@ -493,23 +450,32 @@ const isUnsetWalletType = computed(() => {
   return w === null || w === undefined || w === "";
 });
 
+/** Cashu store wants to switch to a Lightning wallet (shows the LN setup form). */
+const switchToLightningIntent = ref(false);
+
 const isCashuFlow = computed(() => {
-  if (props.walletType === "cashu") return true;
-  if (switchToCashuIntent.value) return true;
-  return false;
+  if (props.walletType === "cashu") return !switchToLightningIntent.value;
+  return switchToCashuIntent.value;
 });
 
 const showWalletSetupForm = computed(() => {
   if (viewMode.value !== "create" && viewMode.value !== "editing") return false;
   if (isCashuFlow.value) return false;
   const wt = props.walletType;
+  if (wt === "cashu") return switchToLightningIntent.value;
   if (wt === "aqua_boltz" || wt === "blink" || wt === "nwc") return true;
   if (isUnsetWalletType.value) return true;
   return false;
 });
 
-/** SamRock can (re)provision Aqua/Bull for any non-Cashu store (backend allows the Blink/NWC → Aqua switch). */
-const showWalletSetupTabs = computed(() => !isCashuFlow.value);
+/**
+ * SamRock can (re)provision Aqua/Bull for any non-Cashu store (backend allows the
+ * Blink/NWC → Aqua switch). While a Cashu store is switching to Lightning the tab is
+ * hidden: SamRockController rejects Cashu stores until the LN connection is saved.
+ */
+const showWalletSetupTabs = computed(
+  () => !isCashuFlow.value && props.walletType !== "cashu",
+);
 
 const showAquaDescriptorWarnings = computed(() => {
   if (props.walletType === "nwc" || props.walletType === "blink") return false;
@@ -578,40 +544,10 @@ const passwordInput = ref("");
 const passwordError = ref("");
 const revealing = ref(false);
 
-const hasLightningLogin = computed(() => !!authStore.user?.has_lightning_login);
-const hasNostrLogin = computed(() => !!authStore.user?.has_nostr_login);
 /** Legacy email/password accounts; recovery-phrase users have no password. */
 const canUsePasswordLogin = computed(
   () => authStore.user?.can_use_password_login ?? true,
 );
-const showNostrRevealModal = ref(false);
-const {
-  showModal: showLnurlRevealModal,
-  lnurl: lnurlRevealUrl,
-  loading: lnurlRevealLoading,
-  error: lnurlRevealError,
-  polling: lnurlRevealPolling,
-  open: handleConfirmWithLightning,
-  close: closeLnurlRevealModal,
-  requestNew: requestNewRevealChallenge,
-} = useLnurlRevealConfirm({
-  onConfirmed: async () => {
-    revealing.value = true;
-    try {
-      const reveal = await walletApi.connection.reveal(props.storeId, {
-        confirm_via_lnurl: true,
-      });
-      applyRevealedConnection(reveal);
-    } finally {
-      revealing.value = false;
-    }
-  },
-  confirmErrorMessage: (err: any) =>
-    err?.response?.data?.errors?.password?.[0] ||
-    err?.response?.data?.message ||
-    t("stores.invalid_password"),
-});
-
 /** Shared post-reveal handoff: prefill the setup form and switch to editing. */
 function applyRevealedConnection(reveal: { secret?: string; type?: string }) {
   form.type = (reveal.type ||
@@ -726,6 +662,7 @@ watch(
   () => props.storeId,
   () => {
     switchToCashuIntent.value = false;
+    switchToLightningIntent.value = false;
     walletSetupTab.value = "paste";
   },
 );
@@ -765,17 +702,6 @@ watch(
   },
   { flush: "post" },
 );
-
-function onNostrRevealSuccess(rawPayload?: unknown) {
-  // NostrAuthModal emits `unknown`; narrow to the reveal payload shape.
-  const payload = (rawPayload ?? undefined) as
-    | { secret?: string; type?: string; ok?: boolean }
-    | undefined;
-  showNostrRevealModal.value = false;
-  if (payload?.secret) {
-    applyRevealedConnection(payload);
-  }
-}
 
 function startWalletConnectionEdit() {
   passwordError.value = "";
@@ -966,6 +892,11 @@ function onDetectCashuFromPaste(_payload: {
   lightningAddress: string | null;
 }) {
   if (walletPasteDetection.value.kind === "cashu_wallet_nwc") {
+    return;
+  }
+  if (props.walletType === "cashu") {
+    // Already a Cashu store (mid-switch to Lightning): pasted Cashu content means "stay".
+    switchToLightningIntent.value = false;
     return;
   }
   startSwitchToCashu();

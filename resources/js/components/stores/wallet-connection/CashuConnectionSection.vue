@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-gray-900/50 border border-gray-700 rounded-2xl p-8">
+  <div>
     <div v-if="switchIntent && walletType !== 'cashu'" class="mb-6">
       <button
         type="button"
@@ -98,6 +98,13 @@
         </button>
         <button
           type="button"
+          class="px-6 py-3 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 hover:text-white transition-all"
+          @click="$emit('switchToLightning')"
+        >
+          ⚡ {{ t("stores.cashu_switch_to_lightning") }}
+        </button>
+        <button
+          type="button"
           class="px-6 py-3 border border-transparent rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-transparent hover:bg-gray-800 transition-all"
           @click="$emit('cancel')"
         >
@@ -162,43 +169,20 @@
             </button>
           </div>
         </form>
-        <div
-          v-if="hasLightningLogin || hasNostrLogin"
-          class="mt-4 pt-4 border-t border-gray-700 space-y-2"
-        >
-          <p class="text-sm text-gray-400 mb-2">
-            {{ t("account.or_confirm_with_lightning") }}
-          </p>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-if="hasLightningLogin"
-              type="button"
-              :disabled="lnurlRevealLoading || lnurlRevealPolling"
-              @click="handleCashuEditWithLightning"
-              class="px-4 py-2 border border-indigo-500 rounded-xl text-sm font-medium text-indigo-400 hover:bg-indigo-500/10 disabled:opacity-50"
-            >
-              <span v-if="lnurlRevealLoading || lnurlRevealPolling">{{
-                t("common.loading")
-              }}</span>
-              <span v-else>{{
-                t("account.confirm_with_lightning_wallet")
-              }}</span>
-            </button>
-            <button
-              v-if="hasNostrLogin"
-              type="button"
-              @click="showNostrRevealModal = true"
-              class="px-4 py-2 border border-amber-500/50 rounded-xl text-sm font-medium text-amber-400 hover:bg-amber-500/10"
-            >
-              🟠 {{ t("auth.nostr_confirm_reveal") }}
-            </button>
-          </div>
-        </div>
       </div>
     </template>
 
     <!-- Cashu: editing (first-time setup, after password, or switching from Lightning) -->
     <template v-else>
+      <div v-if="walletType === 'cashu' && !switchIntent" class="mb-6">
+        <button
+          type="button"
+          class="text-sm font-medium text-indigo-400 hover:text-indigo-300"
+          @click="$emit('switchToLightning')"
+        >
+          ⚡ {{ t("stores.cashu_switch_to_lightning") }} →
+        </button>
+      </div>
       <h3
         class="text-sm font-bold text-indigo-400 mb-6 uppercase tracking-wider inline-flex items-center gap-2 flex-wrap"
       >
@@ -275,6 +259,7 @@
       </div>
 
       <form v-else-if="cashuBetaAccepted" @submit.prevent="handleSaveCashu" class="space-y-6">
+        <div class="grid lg:grid-cols-2 gap-6">
         <div>
           <label
             for="cashu-mint-url"
@@ -332,6 +317,7 @@
           >
             {{ cashuErrors.lightning_address }}
           </p>
+        </div>
         </div>
 
         <div>
@@ -447,39 +433,18 @@
     </template>
   </div>
 
-  <LnurlQrModal
-    :open="showLnurlRevealModal"
-    :title="t('account.confirm_with_lightning_wallet')"
-    :lnurl="lnurlRevealUrl"
-    :error="lnurlRevealError"
-    :polling="lnurlRevealPolling"
-    :expires-in-seconds="300"
-    @close="closeLnurlRevealModal"
-    @regenerate="requestNewRevealChallenge"
-  />
-  <NostrAuthModal
-    :open="showNostrRevealModal"
-    mode="reveal"
-    :store-id="storeId"
-    confirm-purpose="cashu_edit"
-    @close="showNostrRevealModal = false"
-    @success="onNostrConfirmSuccess"
-  />
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../../store/auth";
-import { useLnurlRevealConfirm } from "../../../composables/useLnurlRevealConfirm";
 import { walletApi } from "../../../services/api";
 import { DEFAULT_CASHU_MINT_URL } from "../../../constants/cashu";
 import {
   isValidCashuLightningAddress,
   type WalletConnectionDetection,
 } from "../../../utils/detectWalletConnectionInput";
-import LnurlQrModal from "../../auth/LnurlQrModal.vue";
-import NostrAuthModal from "../../auth/NostrAuthModal.vue";
 
 const props = defineProps<{
   storeId: string;
@@ -493,14 +458,13 @@ const props = defineProps<{
 const emit = defineEmits<{
   submitted: [];
   cancel: [];
+  switchToLightning: [];
   "update:switchIntent": [value: boolean];
 }>();
 
 const { t } = useI18n();
 const authStore = useAuthStore();
 
-const hasLightningLogin = computed(() => !!authStore.user?.has_lightning_login);
-const hasNostrLogin = computed(() => !!authStore.user?.has_nostr_login);
 const canUsePasswordLogin = computed(
   () => authStore.user?.can_use_password_login ?? true,
 );
@@ -512,7 +476,6 @@ const cashuInitializedFromFetch = ref(false);
 const passwordInput = ref("");
 const passwordError = ref("");
 const revealing = ref(false);
-const showNostrRevealModal = ref(false);
 
 const cashuLoading = ref(false);
 const cashuSubmitting = ref(false);
@@ -813,39 +776,4 @@ async function handleCashuConfirmPassword() {
   }
 }
 
-const {
-  showModal: showLnurlRevealModal,
-  lnurl: lnurlRevealUrl,
-  loading: lnurlRevealLoading,
-  error: lnurlRevealError,
-  polling: lnurlRevealPolling,
-  open: openLnurlConfirm,
-  close: closeLnurlRevealModal,
-  requestNew: requestNewRevealChallenge,
-} = useLnurlRevealConfirm({
-  onConfirmed: async () => {
-    revealing.value = true;
-    try {
-      await walletApi.cashu.confirmEdit(props.storeId, {
-        confirm_via_lnurl: true,
-      });
-      cashuSectionMode.value = "editing";
-    } finally {
-      revealing.value = false;
-    }
-  },
-  confirmErrorMessage: (err: any) =>
-    err?.response?.data?.errors?.password?.[0] ||
-    err?.response?.data?.message ||
-    t("stores.invalid_password"),
-});
-
-function handleCashuEditWithLightning() {
-  void openLnurlConfirm();
-}
-
-function onNostrConfirmSuccess() {
-  showNostrRevealModal.value = false;
-  cashuSectionMode.value = "editing";
-}
 </script>
