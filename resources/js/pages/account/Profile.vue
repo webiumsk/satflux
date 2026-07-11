@@ -1784,16 +1784,26 @@ async function saveEvoluRelayUrl(): Promise<void> {
   evoluRelaySaving.value = true;
   try {
     const url = evoluRelayForm.value.url.trim();
+    const previous = authStore.user?.evolu_relay_url ?? "";
     await api.put("/user", {
       evolu_relay_url: url !== "" ? url : null,
     });
     await authStore.fetchUser();
     evoluRelayForm.value.url = authStore.user?.evolu_relay_url ?? "";
+    flashStore.success(t("account.evolu_relay_saved"));
+
+    // The Content-Security-Policy connect-src allowlist for the custom relay is
+    // built at document load. A full reload gets a fresh CSP header that permits
+    // the new relay websocket; a live reconnect alone would be blocked under an
+    // enforced CSP. Only reload when the relay origin actually changed.
+    if (localFirst && url !== previous) {
+      window.location.reload();
+      return;
+    }
     if (localFirst) {
       const { evolu } = await import("@/evolu/client");
       await refreshEvoluRelaySubscription(evolu);
     }
-    flashStore.success(t("account.evolu_relay_saved"));
     void refreshEvoluStats();
   } catch {
     flashStore.error(t("account.evolu_relay_save_failed"));

@@ -34,13 +34,24 @@ class SetSecurityHeaders
             : 'Content-Security-Policy';
 
         if (! $response->headers->has($header)) {
-            $response->headers->set($header, $this->buildPolicy());
+            // Include the authenticated user's own Evolu relay so a custom relay
+            // set in Profile is not blocked by connect-src on the next document load.
+            $userRelay = $this->userRelayOrigin($request);
+            $response->headers->set($header, $this->buildPolicy($userRelay));
         }
 
         return $response;
     }
 
-    protected function buildPolicy(): string
+    protected function userRelayOrigin(Request $request): ?string
+    {
+        $user = $request->user();
+        $relay = is_object($user) ? ($user->evolu_relay_url ?? null) : null;
+
+        return is_string($relay) && $relay !== '' ? $this->originOf($relay) : null;
+    }
+
+    protected function buildPolicy(?string $userRelayOrigin = null): string
     {
         // Matomo (when configured) loads matomo.js from its own origin.
         $matomoOrigin = $this->originOf((string) config('services.matomo.url', ''));
@@ -60,8 +71,8 @@ class SetSecurityHeaders
             // blob:/data: - client-generated previews and QR codes.
             'img-src' => ["'self'", 'data:', 'blob:', 'https:'],
             // Explicit allowlist (no bare https:/wss:): BTCPay, Evolu relay,
-            // Matomo beacon, Chorala widget and any extra configured origins.
-            'connect-src' => $this->connectSrc($matomoOrigin, $choralaOrigin),
+            // Matomo beacon, Chorala widget, the user's own relay and any extras.
+            'connect-src' => $this->connectSrc($matomoOrigin, $choralaOrigin, $userRelayOrigin),
             'worker-src' => ["'self'", 'blob:'],
             // YouTube embeds: landing SK video + documentation articles (both use youtube-nocookie);
             // Chorala widget may render its UI in an iframe.
@@ -85,7 +96,7 @@ class SetSecurityHeaders
      *
      * @return list<string>
      */
-    protected function connectSrc(?string $matomoOrigin, ?string $choralaOrigin = null): array
+    protected function connectSrc(?string $matomoOrigin, ?string $choralaOrigin = null, ?string $userRelayOrigin = null): array
     {
         $sources = ["'self'"];
 
@@ -98,11 +109,16 @@ class SetSecurityHeaders
             $sources[] = $btcpay;
         }
 
-        $relayOrigin = $this->originOf((string) config('security.csp.evolu_relay_url', ''));
-        if ($relayOrigin) {
-            $sources[] = $relayOrigin;
-            // Websocket origins are matched by scheme; add the ws(s) form too.
-            $sources[] = preg_replace('/^http/', 'ws', $relayOrigin) ?? $relayOrigin;
+        // Build-default relay plus the authenticated user's own relay override.
+        foreach ([
+            $this->originOf((string) config('security.csp.evolu_relay_url', '')),
+            $userRelayOrigin,
+        ] as $relayOrigin) {
+            if ($relayOrigin) {
+                $sources[] = $relayOrigin;
+                // Websocket origins are matched by scheme; add the ws(s) form too.
+                $sources[] = preg_replace('/^http/', 'ws', $relayOrigin) ?? $relayOrigin;
+            }
         }
 
         if ($matomoOrigin) {

@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class SecurityHeadersTest extends TestCase
 {
+    use RefreshDatabase;
+
     #[Test]
     public function csp_header_is_absent_when_disabled(): void
     {
@@ -67,6 +70,18 @@ class SecurityHeadersTest extends TestCase
         $this->assertStringContainsString('wss://relay.example.com', $connect);
         $this->assertStringNotContainsString(' https: ', " {$connect} ");
         $this->assertStringNotContainsString(' wss: ', " {$connect} ");
+    }
+
+    #[Test]
+    public function connect_src_includes_the_authenticated_users_custom_relay(): void
+    {
+        config(['security.csp.enabled' => true, 'security.csp.report_only' => false]);
+
+        $user = \App\Models\User::factory()->create(['evolu_relay_url' => 'wss://my-relay.example.com']);
+
+        $policy = (string) $this->actingAs($user)->get('/')->headers->get('Content-Security-Policy');
+        preg_match('/connect-src ([^;]+)/', $policy, $m);
+        $this->assertStringContainsString('wss://my-relay.example.com', $m[1] ?? '');
     }
 
     #[Test]
