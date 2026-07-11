@@ -42,6 +42,13 @@ Schedule::command('data:retention-run')
     ->withoutOverlapping()
     ->runInBackground();
 
+// Settlement ledger reconciliation: re-sync recent settled invoices from BTCPay,
+// flag stuck payments and settlement-asset mismatches (idempotent upserts).
+Schedule::command('boltz:reconcile-settlements')
+    ->dailyAt('04:45')
+    ->withoutOverlapping()
+    ->runInBackground();
+
 // MaxMind GeoLite2 refresh for compliance geo-blocking (monthly)
 Schedule::command('compliance:update-geoip')
     ->monthlyOn(1, '04:15')
