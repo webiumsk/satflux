@@ -25,6 +25,12 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SetSecurityHeaders::class,
         ]);
         $middleware->statefulApi();
+        // Browser-native CSP report-uri POSTs carry the session cookie but no
+        // XSRF header - statefulApi() would 419 them. The endpoint is throttled,
+        // size-capped and logs sanitized technical fields only.
+        $middleware->validateCsrfTokens(except: [
+            'api/csp-report',
+        ]);
 
         $middleware->alias([
             'guest.restrict' => \App\Http\Middleware\RejectGuestRestrictedFeatures::class,

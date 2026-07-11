@@ -68,6 +68,8 @@ class SecurityHeadersTest extends TestCase
         $this->assertStringContainsString("'self'", $connect);
         $this->assertStringContainsString('https://pay.example.com', $connect);
         $this->assertStringContainsString('wss://relay.example.com', $connect);
+        // The relay host serves the usage endpoint over HTTPS too.
+        $this->assertStringContainsString('https://relay.example.com', $connect);
         $this->assertStringNotContainsString(' https: ', " {$connect} ");
         $this->assertStringNotContainsString(' wss: ', " {$connect} ");
     }

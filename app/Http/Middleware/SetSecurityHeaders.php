@@ -116,9 +116,12 @@ class SetSecurityHeaders
         ] as $relayOrigin) {
             if ($relayOrigin) {
                 $sources[] = $relayOrigin;
-                // Websocket origins are matched by scheme; add the ws(s) form too.
+                // The relay host is used over BOTH schemes: wss for sync and
+                // https for the usage/quota endpoint - allow the twin form.
                 if (str_starts_with($relayOrigin, 'http')) {
                     $sources[] = 'ws'.substr($relayOrigin, 4);
+                } elseif (str_starts_with($relayOrigin, 'ws')) {
+                    $sources[] = 'http'.substr($relayOrigin, 2);
                 }
             }
         }
