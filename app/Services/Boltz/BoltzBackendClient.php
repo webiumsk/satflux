@@ -9,9 +9,9 @@ use Illuminate\Support\Facades\Log;
 /**
  * Read-only client for the upstream Boltz backend REST API (api.boltz.exchange/v2).
  *
- * Provides informational pair limits and fees for the swap directions SATFLUX cares about:
- * - reverse: customer Lightning payment -> merchant L-BTC settlement (BTC -> L-BTC)
- * - chain:   treasury sweep L-BTC -> BTC
+ * Provides informational pair limits and fees for the one swap direction SATFLUX cares about:
+ * reverse (customer Lightning payment -> merchant L-BTC settlement, BTC -> L-BTC). SATFLUX
+ * deliberately has no reach into the merchant wallet (no treasury/sweep features).
  *
  * These numbers are the Boltz backend's truth, not the per-store boltz-client daemon's view,
  * so they are always presented as orientational. The authoritative per-invoice validation
@@ -37,12 +37,6 @@ class BoltzBackendClient
     public function getReversePairBtcToLbtc(): ?array
     {
         return $this->getPair('reverse', '/v2/swap/reverse', 'BTC', 'L-BTC');
-    }
-
-    /** Chain swap L-BTC -> BTC (treasury sweep direction). Same shape as getReversePairBtcToLbtc(). */
-    public function getChainPairLbtcToBtc(): ?array
-    {
-        return $this->getPair('chain', '/v2/swap/chain', 'L-BTC', 'BTC');
     }
 
     /**
@@ -115,16 +109,8 @@ class BoltzBackendClient
                 return null;
             }
 
-            $minerFees = $pair['fees']['minerFees'] ?? [];
-            // Reverse pairs report flat {claim, lockup}; chain pairs nest user fees under "user".
-            if (isset($minerFees['user']) && is_array($minerFees['user'])) {
-                $minerFees = array_merge(
-                    ['server' => (int) ($minerFees['server'] ?? 0)],
-                    array_map('intval', $minerFees['user'])
-                );
-            } else {
-                $minerFees = array_map('intval', array_filter($minerFees, 'is_numeric'));
-            }
+            // Reverse pairs report flat {claim, lockup} miner fees.
+            $minerFees = array_map('intval', array_filter($pair['fees']['minerFees'] ?? [], 'is_numeric'));
 
             return [
                 'min' => (int) ($pair['limits']['minimal'] ?? 0),
