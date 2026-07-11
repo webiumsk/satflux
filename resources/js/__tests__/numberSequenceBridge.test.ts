@@ -101,6 +101,68 @@ describe("reserveNextDocumentNumberFromStore self-healing", () => {
         vi.doUnmock("@/evolu/ephemeralBridge");
     });
 
+    it("remembers a no_bridge_company answer and skips the server on later calls", async () => {
+        vi.resetModules();
+
+        const notLinkedError = Object.assign(new Error("422"), {
+            response: { status: 422, data: { error: "store_not_linked" } },
+        });
+        const reserve = vi.fn().mockRejectedValue(notLinkedError);
+        const preview = vi.fn().mockRejectedValue(notLinkedError);
+        const syncLinkedStoreToServerBridge = vi.fn().mockResolvedValue("no_bridge_company");
+
+        vi.doMock("@/services/api", () => ({
+            invoicingApi: { storeNumberSeries: { reserve, preview } },
+            default: {},
+        }));
+        vi.doMock("@/evolu/ephemeralBridge", () => ({ syncLinkedStoreToServerBridge }));
+
+        const { previewNextDocumentNumberFromStore, reserveNextDocumentNumberFromStore } =
+            await import("@/evolu/numberSequenceBridge");
+        const identity = { legal_name: "Local Only s.r.o.", registration_number: null };
+
+        const first = await previewNextDocumentNumberFromStore(
+            "store-1",
+            "invoice",
+            undefined,
+            undefined,
+            undefined,
+            companyId,
+            identity,
+        );
+        expect(first).toBeNull();
+        expect(preview).toHaveBeenCalledTimes(1);
+        expect(syncLinkedStoreToServerBridge).toHaveBeenCalledTimes(1);
+
+        // Later preview AND reserve for the same company skip the server entirely.
+        const second = await previewNextDocumentNumberFromStore(
+            "store-1",
+            "invoice",
+            undefined,
+            undefined,
+            undefined,
+            companyId,
+            identity,
+        );
+        const reserved = await reserveNextDocumentNumberFromStore(
+            "store-1",
+            "invoice",
+            undefined,
+            undefined,
+            undefined,
+            companyId,
+            identity,
+        );
+        expect(second).toBeNull();
+        expect(reserved).toEqual({ ok: false, error: "store_not_found" });
+        expect(preview).toHaveBeenCalledTimes(1);
+        expect(reserve).not.toHaveBeenCalled();
+        expect(syncLinkedStoreToServerBridge).toHaveBeenCalledTimes(1);
+
+        vi.doUnmock("@/services/api");
+        vi.doUnmock("@/evolu/ephemeralBridge");
+    });
+
     it("does not loop when the heal retry still fails", async () => {
         vi.resetModules();
 

@@ -1,5 +1,6 @@
 import api, { invoicingApi } from "@/services/api";
-import { matchCompanyByIdentity } from "@/evolu/duplicateCompanies";
+import { matchCompanyByIdentity, normalizeCompanyIdentityKey } from "@/evolu/duplicateCompanies";
+import { clearCompanyUnbridged } from "@/evolu/bridgeCompanyCache";
 import { normalizeIsoCountryCode } from "@/utils/isoCountryCode";
 import type { DocumentSavePayload } from "./documentCrud";
 import type { CompanyId, DocumentId } from "./schema";
@@ -205,6 +206,11 @@ export async function syncLinkedStoreToServerBridge(
             return "no_bridge_company";
         }
         await invoicingApi.companies.updateStores(found.id, storeId ? [storeId] : []);
+        // The bridge company exists after all: re-enable server number-series
+        // calls that a previous no_bridge_company answer suppressed.
+        clearCompanyUnbridged(
+            normalizeCompanyIdentityKey(match.legal_name, match.registration_number ?? null),
+        );
         return "synced";
     } catch (error) {
         if (import.meta.env.DEV) {
