@@ -116,21 +116,26 @@ watch(
 
 async function submit() {
   error.value = "";
+  // Snapshot the inputs: edits made while the restore request is in flight
+  // must not change what was validated and what gets persisted.
+  const mnemonic = mnemonicInput.value;
+  const remember = rememberDevice.value;
+  const passphrase = devicePassphrase.value;
   // Validate the optional device passphrase BEFORE authenticating, so a weak
   // passphrase fails fast without a half-done restore.
-  if (rememberDevice.value && !isAcceptableDevicePassphrase(devicePassphrase.value)) {
+  if (remember && !isAcceptableDevicePassphrase(passphrase)) {
     error.value = t("account.device_passphrase_too_weak");
     return;
   }
   loading.value = true;
   try {
-    const data = await authStore.restoreGuestFromMnemonic(mnemonicInput.value);
-    storeGuestMnemonic(mnemonicInput.value);
-    if (rememberDevice.value) {
+    const data = await authStore.restoreGuestFromMnemonic(mnemonic);
+    storeGuestMnemonic(mnemonic);
+    if (remember) {
       // Best-effort: the phrase is already session-bound; remembering failing
       // must not block the login.
       try {
-        await rememberDeviceWithPassphrase(mnemonicInput.value, devicePassphrase.value);
+        await rememberDeviceWithPassphrase(mnemonic, passphrase);
       } catch {
         flashStore.warning(t("account.device_remember_failed"));
       }
