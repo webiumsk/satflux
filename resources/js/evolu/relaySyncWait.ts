@@ -5,7 +5,6 @@ import { getStoredAccountMnemonic } from "@/services/accountSeed";
 import { isTargetEvoluOwner } from "@/services/evoluOwner";
 import {
     isEvoluRelayConfigured,
-    ensureEvoluRelaySubscription,
     refreshEvoluRelaySubscription,
 } from "./evoluRelaySubscription";
 import {

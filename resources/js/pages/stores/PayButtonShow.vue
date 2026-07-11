@@ -112,6 +112,7 @@ import CopyFeedbackButton from "../../components/ui/CopyFeedbackButton.vue";
 import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
 import { useCopiedFeedback } from "../../composables/useCopiedFeedback";
 import { isPayButtonEmbedCodeCopyable } from "../../utils/payButtonEmbed";
+import { getApiErrorMessage } from "../../composables/useApiError";
 
 const { t } = useI18n();
 const { btcPayUrl, load: loadBtcpayConfig } = useBtcPayUrl();
@@ -201,8 +202,8 @@ async function handleArchive() {
     await appsStore.archiveApp(storeId.value, appId.value);
     flashStore.success(t("stores.app_archived"));
     router.push({ name: "stores-show", params: { id: storeId.value } });
-  } catch (err: any) {
-    deleteError.value = err.response?.data?.message || "Failed to archive app";
+  } catch (err) {
+    deleteError.value = getApiErrorMessage(err, "Failed to archive app");
   } finally {
     archiving.value = false;
   }
@@ -217,8 +218,8 @@ async function handleUnarchive() {
     if (layoutApp && typeof layoutApp === "object" && "value" in layoutApp && updatedApp) {
       layoutApp.value = updatedApp;
     }
-  } catch (err: any) {
-    deleteError.value = err.response?.data?.message || "Failed to unarchive app";
+  } catch (err) {
+    deleteError.value = getApiErrorMessage(err, "Failed to unarchive app");
   } finally {
     archiving.value = false;
   }

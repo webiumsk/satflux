@@ -441,6 +441,7 @@ import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../../store/auth";
 import { walletApi } from "../../../services/api";
 import { DEFAULT_CASHU_MINT_URL } from "../../../constants/cashu";
+import { getApiErrorMessage } from '../../../composables/useApiError';
 import {
   isValidCashuLightningAddress,
   type WalletConnectionDetection,
@@ -631,9 +632,8 @@ async function fetchCashuSettings() {
         (cashuForm.lightning_address || "").trim();
       cashuSectionMode.value = has ? "readonly" : "editing";
     }
-  } catch (err: any) {
-    cashuErrorMessage.value =
-      err.response?.data?.message || "Failed to load Cashu settings";
+  } catch (err) {
+    cashuErrorMessage.value = getApiErrorMessage(err, "Failed to load Cashu settings");
   } finally {
     cashuLoading.value = false;
     syncCashuFieldsFromPasteDetection();

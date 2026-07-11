@@ -377,6 +377,7 @@ import api from "../../services/api";
 import RevealSecretModal from "../../components/support/RevealSecretModal.vue";
 import WalletTypeIcon from "../../components/WalletTypeIcon.vue";
 import Select from "../../components/ui/Select.vue";
+import { getApiErrorMessage } from "../../composables/useApiError";
 
 const loading = ref(true);
 const error = ref<string | null>(null);
@@ -402,9 +403,8 @@ async function loadConnections() {
       params: { status },
     });
     connections.value = response.data.data || [];
-  } catch (err: any) {
-    error.value =
-      err.response?.data?.message || "Failed to load wallet connections";
+  } catch (err) {
+    error.value = getApiErrorMessage(err, "Failed to load wallet connections");
   } finally {
     loading.value = false;
   }
