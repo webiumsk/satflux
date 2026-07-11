@@ -17,7 +17,7 @@ return [
     'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
     'lightning_key_already_registered' => 'This Lightning wallet is already registered.',
     'nostr_key_already_registered' => 'This Nostr key is already linked to an account.',
-    'invalid_password_or_confirm_lnurl' => 'Invalid password.',
+    'invalid_password' => 'Invalid password.',
     'email_not_verified' => 'Please verify your email address before signing in. Check your inbox for the confirmation link.',
     'guest_feature_requires_account' => 'This action requires a full account. Upgrade from Account settings.',
     'guest_one_store_only' => 'Guest sessions are limited to one store. Create a full account to add more stores.',

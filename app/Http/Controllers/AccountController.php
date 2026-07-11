@@ -274,7 +274,6 @@ class AccountController extends Controller
      * Upgrade a guest account to a regular (non-guest) identity.
      *
      * Guest → Free: real email + verification. Password optional when upgrade_email_only.
-     * Lightning path additionally requires that login method to already be linked.
      */
     public function upgradeGuest(Request $request)
     {

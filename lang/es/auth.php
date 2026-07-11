@@ -17,7 +17,7 @@ return [
     'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
     'lightning_key_already_registered' => 'Esta billetera Lightning ya está registrada.',
     'nostr_key_already_registered' => 'Esta clave Nostr ya está vinculada a una cuenta.',
-    'invalid_password_or_confirm_lnurl' => 'Contraseña incorrecta.',
+    'invalid_password' => 'Contraseña incorrecta.',
     'email_not_verified' => 'Verifique su correo antes de iniciar sesión. Revise su bandeja de entrada para el enlace de confirmación.',
     'guest_feature_requires_account' => 'Esta acción requiere una cuenta completa. Mejore la cuenta en Ajustes.',
     'guest_one_store_only' => 'Las sesiones de invitado están limitadas a una tienda. Cree una cuenta completa para añadir más.',

@@ -35,7 +35,7 @@ class SensitiveActionAuthorization
         }
 
         throw ValidationException::withMessages([
-            'password' => [__('auth.invalid_password_or_confirm_lnurl')],
+            'password' => [__('auth.invalid_password')],
         ]);
     }
 }
