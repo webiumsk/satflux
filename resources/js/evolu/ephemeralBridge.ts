@@ -1,5 +1,5 @@
 import api, { invoicingApi } from "@/services/api";
-import { normalizeCompanyIdentityKey } from "@/evolu/duplicateCompanies";
+import { matchCompanyByIdentity } from "@/evolu/duplicateCompanies";
 import { normalizeIsoCountryCode } from "@/utils/isoCountryCode";
 import type { DocumentSavePayload } from "./documentCrud";
 import type { CompanyId, DocumentId } from "./schema";
@@ -155,10 +155,10 @@ export async function resolveEphemeralBridgeCompanyId(match?: {
         }>();
 
         if (match?.legal_name) {
-            const key = normalizeCompanyIdentityKey(match.legal_name, match.registration_number ?? null);
-            const found = rows.find((row) =>
-                normalizeCompanyIdentityKey(row.legal_name, row.registration_number ?? null) === key,
-            );
+            const found = matchCompanyByIdentity(rows, {
+                legal_name: match.legal_name,
+                registration_number: match.registration_number ?? null,
+            });
             if (found) {
                 return found.id;
             }
@@ -179,8 +179,10 @@ export type StoreLinkSyncResult = "synced" | "no_bridge_company" | "failed";
  * local-only link leaves them answering 422 store_not_linked.
  *
  * Matches the bridge company by identity ONLY (legal name + registration
- * number). No first-row fallback here: linking a store to the wrong server
- * company would cross-wire document sequences.
+ * number, with a name-only fallback when one side is missing the registration
+ * number and the name is unambiguous - see matchCompanyByIdentity). No
+ * first-row fallback here: linking a store to the wrong server company would
+ * cross-wire document sequences.
  */
 export async function syncLinkedStoreToServerBridge(
     match: { legal_name?: string | null; registration_number?: string | null },
@@ -195,10 +197,10 @@ export async function syncLinkedStoreToServerBridge(
             legal_name: string;
             registration_number?: string | null;
         }>();
-        const key = normalizeCompanyIdentityKey(match.legal_name, match.registration_number ?? null);
-        const found = rows.find(
-            (row) => normalizeCompanyIdentityKey(row.legal_name, row.registration_number ?? null) === key,
-        );
+        const found = matchCompanyByIdentity(rows, {
+            legal_name: match.legal_name,
+            registration_number: match.registration_number ?? null,
+        });
         if (!found) {
             return "no_bridge_company";
         }
