@@ -97,7 +97,7 @@ function setManualType(type: 'blink' | 'nwc' | 'aqua_descriptor') {
       :id="inputId"
       :value="modelValue"
       rows="7"
-      class="block w-full rounded-xl border-2 border-gray-500/80 bg-gray-950 text-white placeholder-gray-600 focus:border-indigo-400 focus:ring-indigo-400 text-sm sm:text-base font-mono p-4 shadow-inner"
+      class="block w-full rounded-xl border-2 border-gray-500/80 bg-gray-950 text-white placeholder-gray-500 focus:border-indigo-400 focus:ring-indigo-400 text-sm sm:text-base font-mono p-4 shadow-inner"
       :placeholder="t('stores.wallet_smart_paste_placeholder')"
       required
       @input="onInput"

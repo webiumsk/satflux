@@ -137,12 +137,12 @@ defineEmits<{
 const { t } = useI18n();
 
 function formatStatus(status: string): string {
-  const statusMap: Record<string, string> = {
-    pending: "Pending",
-    needs_support: "Needs Support",
-    connected: "Connected",
+  const statusKeys: Record<string, string> = {
+    pending: "stores.pending",
+    needs_support: "stores.needs_support",
+    connected: "stores.connected",
   };
-  return statusMap[status] || status;
+  return statusKeys[status] ? t(statusKeys[status]) : status;
 }
 
 function getStatusColorClass(status: string): string {

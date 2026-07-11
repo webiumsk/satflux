@@ -215,10 +215,18 @@
             {{ t("create_store.wallet_paste_hint") }}
           </p>
 
-          <div role="tablist" class="flex gap-6 border-b border-gray-700/60">
+          <div
+            role="tablist"
+            class="flex gap-6 border-b border-gray-700/60"
+            @keydown.left.prevent="focusLightningTab(lightningSetupTab === 'paste' ? 'samrock' : 'paste')"
+            @keydown.right.prevent="focusLightningTab(lightningSetupTab === 'paste' ? 'samrock' : 'paste')"
+          >
             <button
+              id="create-ln-tab-paste"
               type="button"
               role="tab"
+              aria-controls="create-ln-panel-paste"
+              :tabindex="lightningSetupTab === 'paste' ? 0 : -1"
               :aria-selected="lightningSetupTab === 'paste'"
               class="pb-3 -mb-px text-sm font-medium border-b-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-t-sm"
               :class="
@@ -231,8 +239,11 @@
               {{ t("stores.wallet_smart_paste_label") }}
             </button>
             <button
+              id="create-ln-tab-samrock"
               type="button"
               role="tab"
+              aria-controls="create-ln-panel-samrock"
+              :tabindex="lightningSetupTab === 'samrock' ? 0 : -1"
               :aria-selected="lightningSetupTab === 'samrock'"
               class="pb-3 -mb-px text-sm font-medium border-b-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-t-sm"
               :class="
@@ -252,7 +263,10 @@
           </div>
 
           <div
+            id="create-ln-panel-paste"
             v-show="lightningSetupTab === 'paste'"
+            role="tabpanel"
+            aria-labelledby="create-ln-tab-paste"
             class="bg-gray-900/50 rounded-xl p-6 border border-gray-700 space-y-6"
           >
             <WalletConnectionSmartPaste
@@ -343,7 +357,10 @@
           </div>
 
           <div
+            id="create-ln-panel-samrock"
             v-show="lightningSetupTab === 'samrock'"
+            role="tabpanel"
+            aria-labelledby="create-ln-tab-samrock"
             class="bg-gray-900/50 border border-indigo-500/30 rounded-2xl p-6 space-y-4"
           >
                   <h3 class="text-sm font-bold text-indigo-400 uppercase tracking-wider">
@@ -564,7 +581,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, defineAsyncComponent } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch, nextTick, defineAsyncComponent } from "vue";
 import { useSamRockPairing } from "../../composables/useSamRockPairing";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -770,6 +787,13 @@ function formatSamRockExpiry(iso: string) {
   } catch {
     return iso;
   }
+}
+
+function focusLightningTab(tab: "paste" | "samrock") {
+  lightningSetupTab.value = tab;
+  void nextTick(() => {
+    document.getElementById(`create-ln-tab-${tab}`)?.focus();
+  });
 }
 
 async function startSamRockPairing() {

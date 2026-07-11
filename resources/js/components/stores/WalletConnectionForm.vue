@@ -91,11 +91,16 @@
         v-if="showWalletSetupTabs"
         role="tablist"
         class="flex gap-6 border-b border-gray-700/60"
+        @keydown.left.prevent="focusWalletTab(walletSetupTab === 'paste' ? 'samrock' : 'paste')"
+        @keydown.right.prevent="focusWalletTab(walletSetupTab === 'paste' ? 'samrock' : 'paste')"
       >
         <button
+          id="wallet-setup-tab-paste"
           type="button"
           role="tab"
+          aria-controls="wallet-setup-panel-paste"
           :aria-selected="walletSetupTab === 'paste'"
+          :tabindex="walletSetupTab === 'paste' ? 0 : -1"
           class="pb-3 -mb-px text-sm font-medium border-b-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-t-sm"
           :class="
             walletSetupTab === 'paste'
@@ -107,9 +112,12 @@
           {{ t("stores.wallet_smart_paste_label") }}
         </button>
         <button
+          id="wallet-setup-tab-samrock"
           type="button"
           role="tab"
+          aria-controls="wallet-setup-panel-samrock"
           :aria-selected="walletSetupTab === 'samrock'"
+          :tabindex="walletSetupTab === 'samrock' ? 0 : -1"
           class="pb-3 -mb-px text-sm font-medium border-b-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-t-sm"
           :class="
             walletSetupTab === 'samrock'
@@ -128,7 +136,10 @@
       </div>
 
       <div
+        id="wallet-setup-panel-paste"
         v-show="!showWalletSetupTabs || walletSetupTab === 'paste'"
+        role="tabpanel"
+        aria-labelledby="wallet-setup-tab-paste"
         class="space-y-6"
       >
         <WalletConnectionSmartPaste
@@ -229,7 +240,10 @@
       </div>
 
       <div
+        id="wallet-setup-panel-samrock"
         v-show="showWalletSetupTabs && walletSetupTab === 'samrock'"
+        role="tabpanel"
+        aria-labelledby="wallet-setup-tab-samrock"
         class="bg-gray-900/50 border border-indigo-500/30 rounded-2xl p-8 space-y-4"
       >
         <div
@@ -586,6 +600,13 @@ function formatSamRockExpiry(iso: string) {
   } catch {
     return iso;
   }
+}
+
+function focusWalletTab(tab: "paste" | "samrock") {
+  walletSetupTab.value = tab;
+  void nextTick(() => {
+    document.getElementById(`wallet-setup-tab-${tab}`)?.focus();
+  });
 }
 
 function startSamRockPairing() {
