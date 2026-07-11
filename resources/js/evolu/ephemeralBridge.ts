@@ -786,9 +786,16 @@ async function resolveFrozenIssuedContent(
 ): Promise<IssuedDocumentSnapshotV1 | null> {
     if (doc.status === "draft") return null;
 
-    const rows = (await localDoc.evolu.loadQuery(
-        allDocumentSnapshotsQuery,
-    )) as unknown as EvoluDocumentSnapshotRow[];
+    let rows: EvoluDocumentSnapshotRow[];
+    try {
+        rows = (await localDoc.evolu.loadQuery(
+            allDocumentSnapshotsQuery,
+        )) as unknown as EvoluDocumentSnapshotRow[];
+    } catch {
+        // Query failure: fall back to live render. No backfill either - we
+        // cannot tell whether a snapshot already exists.
+        return null;
+    }
     const latest = latestSnapshotRowForDocument(rows, documentId);
     if (latest) {
         const parsed = parseIssuedSnapshotRow(latest);

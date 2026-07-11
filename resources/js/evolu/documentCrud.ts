@@ -601,7 +601,6 @@ export function applyReservedNumberToLocalDocument(
     variableSymbol?: string | null,
     snapshotContext?: ReservedIssueSnapshotContext,
 ) {
-    syncLocalSeriesCounterFromIssuedNumber(evolu, companyId, documentType, number, allSeries);
     const quoteStatus = documentType === "quote" ? "pending" : null;
 
     // Snapshot before status flip (audit F2) - same invariant as issueLocalDocument.
@@ -626,6 +625,10 @@ export function applyReservedNumberToLocalDocument(
         quoteStatus,
     });
     if (result.ok) {
+        // Advance the local series counter only after the document is issued -
+        // same commit ordering as issueLocalDocument, so a failed snapshot or
+        // update leaves the counter untouched.
+        syncLocalSeriesCounterFromIssuedNumber(evolu, companyId, documentType, number, allSeries);
         logDocumentEvent(evolu, documentId, "business_document.issued", { number, source: "woo_inbox" });
     }
     return result;

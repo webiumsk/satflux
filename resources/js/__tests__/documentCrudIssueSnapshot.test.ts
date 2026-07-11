@@ -174,6 +174,73 @@ describe("issueLocalDocument snapshot invariant", () => {
     });
 });
 
+describe("applyReservedNumberToLocalDocument snapshot invariant", () => {
+    it("fails without issuing or advancing the series counter when the snapshot insert fails", async () => {
+        const { applyReservedNumberToLocalDocument } = await import("@/evolu/documentCrud");
+        const evolu = fakeEvolu();
+        evolu.insert.mockImplementation((table: string): MutationResult =>
+            table === "documentSnapshot"
+                ? { ok: false, error: "boom" }
+                : { ok: true, value: { id: `${table}-id` } },
+        );
+
+        const result = applyReservedNumberToLocalDocument(
+            evolu as never,
+            documentId,
+            companyId,
+            "invoice",
+            "20260071",
+            series,
+            null,
+            {
+                company,
+                doc: draft,
+                allDocuments: [draft],
+                lines: [line],
+                contact: null,
+            },
+        );
+
+        expect(result.ok).toBe(false);
+        expect(
+            evolu.calls.some((c) => c.table === "document" && c.row.status === "issued"),
+        ).toBe(false);
+        expect(evolu.calls.some((c) => c.table === "numberSeries")).toBe(false);
+    });
+
+    it("issues, then advances the counter, when the snapshot persists", async () => {
+        const { applyReservedNumberToLocalDocument } = await import("@/evolu/documentCrud");
+        const evolu = fakeEvolu();
+
+        const result = applyReservedNumberToLocalDocument(
+            evolu as never,
+            documentId,
+            companyId,
+            "invoice",
+            "20260071",
+            series,
+            null,
+            {
+                company,
+                doc: draft,
+                allDocuments: [draft],
+                lines: [line],
+                contact: null,
+            },
+        );
+
+        expect(result.ok).toBe(true);
+        const snapshotIndex = evolu.calls.findIndex((c) => c.table === "documentSnapshot");
+        const issueIndex = evolu.calls.findIndex(
+            (c) => c.table === "document" && c.row.status === "issued",
+        );
+        const counterIndex = evolu.calls.findIndex((c) => c.table === "numberSeries");
+        expect(snapshotIndex).toBeGreaterThanOrEqual(0);
+        expect(issueIndex).toBeGreaterThan(snapshotIndex);
+        expect(counterIndex).toBeGreaterThan(issueIndex);
+    });
+});
+
 describe("saveLocalDocument re-freeze", () => {
     const savePayload = {
         type: "invoice",
