@@ -140,6 +140,10 @@ export function useLocalInvoiceDocumentSupport() {
                 localHigh,
                 series,
                 companyId,
+                {
+                    legal_name: companyRow?.legalName ?? null,
+                    registration_number: companyRow?.registrationNumber ?? null,
+                },
             );
             if (fromStore) {
                 return fromStore;

@@ -841,10 +841,14 @@ async function saveContact() {
         saveError.value = t('invoicing.company_save_validation_error');
         return;
       }
-      if (linkedStoreId.value !== savedLinkedStoreId.value) {
-        // Server-side features (number series, WooCommerce invoicing) read the
-        // link from stores.company_id - mirror the local change to the bridge
-        // company or they answer 422 store_not_linked on every issue.
+      // Server-side features (number series, WooCommerce invoicing) read the
+      // link from stores.company_id - mirror the local link to the bridge
+      // company or they answer 422 store_not_linked on every issue. Runs on
+      // every save (idempotent PATCH), not only on change: the local link may
+      // already be set while the server one is missing, and re-saving is the
+      // documented repair path.
+      const linkChanged = linkedStoreId.value !== savedLinkedStoreId.value;
+      if (linkedStoreId.value || linkChanged) {
         const syncResult = await syncLinkedStoreToServerBridge(
           {
             legal_name: contactForm.legal_name,
@@ -852,7 +856,7 @@ async function saveContact() {
           },
           linkedStoreId.value || null,
         );
-        if (syncResult !== 'synced') {
+        if (syncResult === 'failed' || (syncResult === 'no_bridge_company' && linkChanged)) {
           flashStore.warning(t('invoicing.store_link_server_sync_failed'));
         }
       }

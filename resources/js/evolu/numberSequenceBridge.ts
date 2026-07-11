@@ -9,6 +9,35 @@ import type { CompanyId, DocumentType } from "./schema";
 import { isKnownStoreId } from "./storeIdUtils";
 import { formatDocumentNumber } from "./numberSeriesFormat";
 
+export type CompanyBridgeIdentity = {
+    legal_name?: string | null;
+    registration_number?: string | null;
+};
+
+function isStoreNotLinkedError(error: unknown): boolean {
+    const response = (error as { response?: { status?: number; data?: { error?: string } } })?.response;
+    return response?.status === 422 && response?.data?.error === "store_not_linked";
+}
+
+/**
+ * Self-heal for the local-first split-brain: the Evolu company says it is
+ * linked to the store, but the server-side stores.company_id is missing
+ * (422 store_not_linked). Mirror the link to the bridge company once and
+ * let the caller retry.
+ */
+async function healStoreLink(
+    identity: CompanyBridgeIdentity | undefined,
+    linkedStoreId: string,
+): Promise<boolean> {
+    if (!identity?.legal_name) {
+        return false;
+    }
+    // Dynamic import: ephemeralBridge transitively pulls the Evolu client,
+    // which this module must not load eagerly (tests, bundle weight).
+    const { syncLinkedStoreToServerBridge } = await import("./ephemeralBridge");
+    return (await syncLinkedStoreToServerBridge(identity, linkedStoreId)) === "synced";
+}
+
 export function localHighCounterForStoreBridge(
     companyId: CompanyId,
     documentType: DocumentType,
@@ -39,6 +68,8 @@ export async function previewNextDocumentNumberFromStore(
     localHighCounter?: number,
     allSeries?: EvoluNumberSeriesRow[],
     companyId?: CompanyId,
+    companyIdentity?: CompanyBridgeIdentity,
+    isRetryAfterHeal = false,
 ): Promise<string | null> {
     if (validStoreIds && !isKnownStoreId(linkedStoreId, validStoreIds)) {
         return null;
@@ -72,6 +103,18 @@ export async function previewNextDocumentNumberFromStore(
         }
         return (data.data?.next_number as string | undefined) ?? null;
     } catch (error: unknown) {
+        if (!isRetryAfterHeal && isStoreNotLinkedError(error) && await healStoreLink(companyIdentity, linkedStoreId)) {
+            return previewNextDocumentNumberFromStore(
+                linkedStoreId,
+                documentType,
+                validStoreIds,
+                localHighCounter,
+                allSeries,
+                companyId,
+                companyIdentity,
+                true,
+            );
+        }
         const status = (error as { response?: { status?: number } })?.response?.status;
         if (status === 404 || status === 422) {
             return null;
@@ -87,6 +130,8 @@ export async function reserveNextDocumentNumberFromStore(
     localHighCounter?: number,
     allSeries?: EvoluNumberSeriesRow[],
     companyId?: CompanyId,
+    companyIdentity?: CompanyBridgeIdentity,
+    isRetryAfterHeal = false,
 ): Promise<{ ok: true; value: { number: string; counter: number } } | { ok: false; error: string }> {
     if (validStoreIds && !isKnownStoreId(linkedStoreId, validStoreIds)) {
         return { ok: false, error: "store_not_found" };
@@ -117,6 +162,18 @@ export async function reserveNextDocumentNumberFromStore(
                 : serverNumber;
         return { ok: true, value: { number, counter } };
     } catch (error: unknown) {
+        if (!isRetryAfterHeal && isStoreNotLinkedError(error) && await healStoreLink(companyIdentity, linkedStoreId)) {
+            return reserveNextDocumentNumberFromStore(
+                linkedStoreId,
+                documentType,
+                validStoreIds,
+                localHighCounter,
+                allSeries,
+                companyId,
+                companyIdentity,
+                true,
+            );
+        }
         const status = (error as { response?: { status?: number } })?.response?.status;
         if (status === 404 || status === 422) {
             return { ok: false, error: "store_not_found" };

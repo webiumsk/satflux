@@ -398,6 +398,10 @@ export async function issueLocalDocumentAsync(
             localHigh,
             series,
             company.id,
+            {
+                legal_name: company.legalName ?? null,
+                registration_number: company.registrationNumber ?? null,
+            },
         );
         if (reserved.ok) {
             const result = await applyReservedNumberToLocalDocumentAsync(
