@@ -205,10 +205,11 @@ class AccountTest extends TestCase
         $this->assertSame('trimmed-case@satflux.io', $guest->email);
     }
 
-    public function test_guest_upgrade_lightning_requires_lightning_linked(): void
+    public function test_guest_upgrade_lightning_method_is_no_longer_supported(): void
     {
+        $pk = '02'.str_repeat('ab', 32);
         $guest = User::factory()->guest()->create([
-            'lightning_public_key' => null,
+            'lightning_public_key' => $pk,
         ]);
         Sanctum::actingAs($guest);
 
@@ -219,37 +220,8 @@ class AccountTest extends TestCase
             'password_confirmation' => 'new-secure-password',
         ]));
 
-        $response->assertStatus(422);
-    }
-
-    public function test_guest_upgrade_with_lightning_sets_email_password_and_clears_guest(): void
-    {
-        $pk = '02'.str_repeat('ab', 32);
-        $guest = User::factory()->guest()->create([
-            'email' => 'guest-ln@satflux.io',
-            'lightning_public_key' => $pk,
-            'btcpay_user_id' => null,
-            'btcpay_api_key' => null,
-        ]);
-        Sanctum::actingAs($guest);
-
-        $response = $this->putJson('/api/user/guest/upgrade', $this->guestUpgradePayload([
-            'method' => 'lightning',
-            'email' => 'upgraded-ln@satflux.io',
-            'password' => 'new-secure-password',
-            'password_confirmation' => 'new-secure-password',
-        ]));
-
-        $response->assertStatus(200);
-        $response->assertJsonPath('user.email', 'upgraded-ln@satflux.io');
-        $response->assertJsonPath('user.is_guest', false);
-        $response->assertJsonPath('user.allows_satflux_email_changes', true);
-
-        $guest->refresh();
-        $this->assertSame('upgraded-ln@satflux.io', $guest->email);
-        $this->assertFalse((bool) $guest->is_guest);
-        $this->assertTrue((bool) $guest->allows_satflux_email_changes);
-        $this->assertSame($pk, $guest->lightning_public_key);
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['method']);
     }
 
     /**

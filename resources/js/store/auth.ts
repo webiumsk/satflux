@@ -51,8 +51,6 @@ export interface User {
         offline_payment_methods: boolean;
         business_invoicing?: boolean;
     };
-    has_lightning_login?: boolean;
-    has_nostr_login?: boolean;
     evolu_relay_url?: string | null;
 }
 

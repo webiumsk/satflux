@@ -25,8 +25,6 @@ class User extends Authenticatable implements MustVerifyEmailContract
         'email',
         'last_login_at',
         'password',
-        'lightning_public_key',
-        'nostr_public_key',
         'btcpay_user_id',
         'btcpay_api_key',
         // 'role' is intentionally NOT fillable - assign explicitly or via forceFill()

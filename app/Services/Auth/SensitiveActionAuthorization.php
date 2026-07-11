@@ -4,14 +4,13 @@ namespace App\Services\Auth;
 
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Re-auth for sensitive actions (wallet secret reveal, Cashu edit unlock).
  *
- * Legacy email/password accounts must confirm with password or LNURL/Nostr.
+ * Legacy email/password accounts must confirm with their password.
  * Recovery-phrase accounts have no password; an authenticated Sanctum session is sufficient.
  */
 class SensitiveActionAuthorization
@@ -24,16 +23,6 @@ class SensitiveActionAuthorization
 
         if (! $user->canUsePasswordLogin()) {
             return true;
-        }
-
-        $cacheKey = 'reveal_confirmed:'.$user->id;
-
-        if ($request->boolean('confirm_via_lnurl') && $user->lightning_public_key) {
-            return Cache::pull($cacheKey) !== null;
-        }
-
-        if ($request->boolean('confirm_via_nostr') && $user->nostr_public_key) {
-            return Cache::pull($cacheKey) !== null;
         }
 
         return false;

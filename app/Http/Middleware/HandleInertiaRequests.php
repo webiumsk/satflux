@@ -84,7 +84,6 @@ class HandleInertiaRequests extends Middleware
             'app' => [
                 'version' => config('app.version', '1.1.0'),
                 'name' => config('app.name', 'satflux.io'),
-                'lnurlAuthEnabled' => config('services.lnurl_auth.enabled', false),
             ],
             'flash' => [
                 'message' => $request->session()->get('message'),

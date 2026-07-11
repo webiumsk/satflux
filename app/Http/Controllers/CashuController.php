@@ -35,8 +35,6 @@ class CashuController extends Controller
 
         $request->validate([
             'password' => ['nullable', 'string'],
-            'confirm_via_lnurl' => ['nullable', 'boolean'],
-            'confirm_via_nostr' => ['nullable', 'boolean'],
         ]);
 
         SensitiveActionAuthorization::assertAllowed($request->user(), $request);

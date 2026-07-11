@@ -106,16 +106,6 @@ return [
         'support_webhook_url' => env('SUPPORT_DISCORD_WEBHOOK_URL'),
     ],
 
-    'lnurl_auth' => [
-        'enabled' => filter_var(env('LNURL_AUTH_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
-        'domain' => env('LNURL_AUTH_DOMAIN'),
-    ],
-
-    'nostr_auth' => [
-        'enabled' => filter_var(env('NOSTR_AUTH_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
-        'challenge_ttl_seconds' => (int) env('NOSTR_AUTH_CHALLENGE_TTL', 300),
-    ],
-
     /*
     | Synthetic BTCPay user emails for guest sessions: guest+<token>@<domain>.
     | Set GUEST_EMAIL_DOMAIN when APP_URL host is localhost, *.local, or otherwise unsuitable for BTCPay.

@@ -66,8 +66,6 @@ class AccountController extends Controller
             'business_invoicing' => $user->planFeature('business_invoicing'),
             'expense_isdoc_extract_unlimited' => $user->planFeature('expense_isdoc_extract_unlimited'),
         ];
-        $payload['has_lightning_login'] = ! empty($user->lightning_public_key);
-        $payload['has_nostr_login'] = ! empty($user->nostr_public_key);
         $payload['guest_recovery_enrolled'] = ! empty($user->guest_recovery_public_key ?? null);
         $payload['requires_recovery_migration'] = $user->requiresRecoveryMigration();
         $payload['can_use_password_login'] = $user->canUsePasswordLogin();
@@ -292,7 +290,7 @@ class AccountController extends Controller
         $emailOnlyUpgrade = (bool) config('guest.upgrade_email_only');
 
         $validated = $request->validate(array_merge([
-            'method' => ['required', 'in:email,lightning'],
+            'method' => ['required', 'in:email'],
             'email' => [
                 'required',
                 'string',
@@ -304,12 +302,6 @@ class AccountController extends Controller
                 ? ['nullable', 'confirmed', Password::defaults()]
                 : ['required', 'confirmed', Password::defaults()],
         ], LegalConsent::registrationRules()));
-
-        if ($validated['method'] === 'lightning' && empty($user->lightning_public_key)) {
-            throw ValidationException::withMessages([
-                'method' => ['Lightning upgrade requires a linked lightning_public_key.'],
-            ]);
-        }
 
         $this->complianceGate->assertRegistrationAllowed(
             $request,

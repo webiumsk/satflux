@@ -1543,24 +1543,6 @@ parameters:
 			path: app/Models/IntegrationDocumentInbox.php
 
 		-
-			message: '#^Cannot call method isPast\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Models/LnurlAuthChallenge.php
-
-		-
-			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\LnurlAuthChallenge\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
-			identifier: property.phpDocType
-			count: 1
-			path: app/Models/LnurlAuthChallenge.php
-
-		-
-			message: '#^Cannot call method isPast\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Models/NostrAuthChallenge.php
-
-		-
 			message: '#^Call to function is_array\(\) with array\{''lightning'', ''onchain''\} will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
