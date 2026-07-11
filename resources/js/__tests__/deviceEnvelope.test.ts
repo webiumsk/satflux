@@ -122,6 +122,26 @@ describe("device unlock envelope", () => {
         ).rejects.toBeInstanceOf(DeviceUnlockError);
     });
 
+    it("rejects a weak passphrase when adding a slot", async () => {
+        const envelope = await makeEnvelope("first device passphrase");
+        const { dekRaw } = await unlockWithPassphrase(envelope, "first device passphrase");
+        await expect(
+            addPassphraseSlot({ envelope, dekRaw, passphrase: "1234", iterations: FAST }),
+        ).rejects.toBeInstanceOf(WeakPassphraseError);
+    });
+
+    it("rejects a weak new passphrase when rotating", async () => {
+        const envelope = await makeEnvelope("old passphrase words");
+        await expect(
+            rotatePassphrase({
+                envelope,
+                oldPassphrase: "old passphrase words",
+                newPassphrase: "1234",
+                iterations: FAST,
+            }),
+        ).rejects.toBeInstanceOf(WeakPassphraseError);
+    });
+
     it("uses a fresh nonce per encryption (envelope secret iv != slot iv)", async () => {
         const envelope = await makeEnvelope();
         expect(envelope.encryptedSecret.ivB64).not.toBe(envelope.slots[0].wrappedDek.ivB64);

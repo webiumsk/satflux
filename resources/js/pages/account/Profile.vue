@@ -1199,6 +1199,7 @@
                 v-model="devicePassphraseInput"
                 type="password"
                 autocomplete="current-password"
+                :aria-label="t('account.device_passphrase_placeholder')"
                 class="w-full rounded-xl border border-gray-600 bg-gray-900/80 px-4 py-3 text-sm text-gray-200"
                 :placeholder="t('account.device_passphrase_placeholder')"
               />
@@ -1268,6 +1269,7 @@
                 v-model="devicePassphraseInput"
                 type="password"
                 autocomplete="new-password"
+                :aria-label="t('account.device_passphrase_new_placeholder')"
                 class="w-full rounded-xl border border-gray-600 bg-gray-900/80 px-4 py-3 text-sm text-gray-200"
                 :placeholder="t('account.device_passphrase_new_placeholder')"
               />
@@ -1744,7 +1746,9 @@ onMounted(async () => {
   await Promise.all([loadPricing(), loadPlanFeatures()]);
   storedGuestMnemonic.value = getStoredGuestMnemonic();
   if (localFirst) {
-    void refreshDeviceRemembered();
+    // Await: the restore_phrase redirect below reads deviceRemembered to pick
+    // the modal mode (passphrase unlock vs phrase entry).
+    await refreshDeviceRemembered();
   }
   if (authStore.user) {
     profileForm.value.name = authStore.user.name || "";
@@ -1758,8 +1762,8 @@ onMounted(async () => {
   }
   if (route.query.restore_phrase === "1" && !storedGuestMnemonic.value) {
     setProfileTab("account");
-    // If this device is remembered, default to the shorter passphrase unlock;
-    // the modal still offers "use recovery phrase instead".
+    // deviceRemembered was awaited above; if remembered, default to the shorter
+    // passphrase unlock. The modal still offers "use recovery phrase instead".
     useRecoveryPhraseInstead.value = !deviceRemembered.value;
     showRestoreOnDeviceModal.value = true;
     flashStore.warning(t("account.recovery_phrase_required_for_invoicing"));
