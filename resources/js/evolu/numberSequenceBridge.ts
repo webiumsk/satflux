@@ -32,10 +32,15 @@ async function healStoreLink(
     if (!identity?.legal_name) {
         return false;
     }
-    // Dynamic import: ephemeralBridge transitively pulls the Evolu client,
-    // which this module must not load eagerly (tests, bundle weight).
-    const { syncLinkedStoreToServerBridge } = await import("./ephemeralBridge");
-    return (await syncLinkedStoreToServerBridge(identity, linkedStoreId)) === "synced";
+    try {
+        // Dynamic import: ephemeralBridge transitively pulls the Evolu client,
+        // which this module must not load eagerly (tests, bundle weight).
+        const { syncLinkedStoreToServerBridge } = await import("./ephemeralBridge");
+        return (await syncLinkedStoreToServerBridge(identity, linkedStoreId)) === "synced";
+    } catch {
+        // Chunk load failure - healing is best-effort, the caller falls back.
+        return false;
+    }
 }
 
 export function localHighCounterForStoreBridge(

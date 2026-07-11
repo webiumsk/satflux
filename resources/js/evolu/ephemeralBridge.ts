@@ -204,7 +204,13 @@ export async function syncLinkedStoreToServerBridge(
         }
         await invoicingApi.companies.updateStores(found.id, storeId ? [storeId] : []);
         return "synced";
-    } catch {
+    } catch (error) {
+        if (import.meta.env.DEV) {
+            console.warn(
+                "[invoicing] store link sync to server bridge failed:",
+                error instanceof Error ? error.message : error,
+            );
+        }
         return "failed";
     }
 }
