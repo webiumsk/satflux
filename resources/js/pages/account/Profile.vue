@@ -436,6 +436,61 @@
           >
             {{ t("account.recovery_phrase_setup") }}
           </button>
+
+          <!-- Remembered-device management (local-first only) -->
+          <div
+            v-if="localFirst && deviceRemembered"
+            class="mt-4 rounded-xl border border-gray-700 bg-gray-900/50 p-4 space-y-3"
+          >
+            <p class="text-sm text-gray-200">{{ t("account.device_remembered_status") }}</p>
+            <p class="text-xs text-gray-500">{{ t("account.device_remembered_hint") }}</p>
+            <div class="flex flex-wrap gap-2">
+              <button
+                type="button"
+                class="px-3 py-1.5 border border-gray-600 rounded-lg text-xs text-gray-300 hover:bg-gray-700"
+                @click="showChangeDevicePassphrase = !showChangeDevicePassphrase"
+              >
+                {{ t("account.device_change_passphrase") }}
+              </button>
+              <button
+                type="button"
+                class="px-3 py-1.5 border border-amber-500/50 rounded-lg text-xs text-amber-200 hover:bg-amber-500/10"
+                @click="forgetThisDevice"
+              >
+                {{ t("account.device_forget") }}
+              </button>
+            </div>
+            <form
+              v-if="showChangeDevicePassphrase"
+              class="space-y-2 pt-1"
+              autocomplete="on"
+              @submit.prevent="submitChangeDevicePassphrase"
+            >
+              <input
+                v-model="oldDevicePassphraseInput"
+                type="password"
+                autocomplete="current-password"
+                class="w-full rounded-lg border border-gray-600 bg-gray-900/80 px-3 py-2 text-sm text-gray-200"
+                :placeholder="t('account.device_passphrase_current_placeholder')"
+              />
+              <input
+                v-model="newDevicePassphraseInput"
+                type="password"
+                autocomplete="new-password"
+                class="w-full rounded-lg border border-gray-600 bg-gray-900/80 px-3 py-2 text-sm text-gray-200"
+                :placeholder="t('account.device_passphrase_new_placeholder')"
+              />
+              <p v-if="changeDevicePassphraseError" class="text-xs text-red-400">
+                {{ changeDevicePassphraseError }}
+              </p>
+              <button
+                type="submit"
+                class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs text-white"
+              >
+                {{ t("account.device_change_passphrase_submit") }}
+              </button>
+            </form>
+          </div>
         </div>
 
         <!-- Change Password -->
@@ -1131,43 +1186,118 @@
         <div
           class="bg-gray-800 rounded-2xl border border-gray-700 max-w-lg w-full p-6 space-y-4"
         >
-          <h5 class="text-lg font-bold text-white">
-            {{ t("account.recovery_phrase_restore_on_device") }}
-          </h5>
-          <p class="text-sm text-gray-300">
-            {{ t("account.recovery_phrase_restore_on_device_detail") }}
-          </p>
-          <textarea
-            v-model="restoreOnDeviceInput"
-            rows="4"
-            class="w-full rounded-xl border border-gray-600 bg-gray-900/80 px-4 py-3 text-sm text-gray-200"
-            :placeholder="t('auth.guest_restore_placeholder')"
-            autocomplete="off"
-          />
-          <p v-if="restoreOnDeviceError" class="text-sm text-red-400">
-            {{ restoreOnDeviceError }}
-          </p>
-          <div class="flex justify-end gap-2">
-            <button
-              type="button"
-              class="px-4 py-2 border border-gray-600 rounded-lg text-sm text-gray-300 hover:bg-gray-700"
-              @click="showRestoreOnDeviceModal = false"
-            >
-              {{ t("common.cancel") }}
-            </button>
-            <button
-              type="button"
-              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm text-white disabled:opacity-50"
-              :disabled="restoreOnDeviceLoading"
-              @click="submitRestoreOnDevice"
-            >
-              {{
-                restoreOnDeviceLoading
-                  ? t("common.loading")
-                  : t("account.recovery_phrase_restore_on_device_submit")
-              }}
-            </button>
-          </div>
+          <!-- Unlock mode: device is remembered, unlock with the device passphrase -->
+          <template v-if="deviceRemembered && !useRecoveryPhraseInstead">
+            <h5 class="text-lg font-bold text-white">
+              {{ t("account.device_unlock_title") }}
+            </h5>
+            <p class="text-sm text-gray-300">
+              {{ t("account.device_unlock_detail") }}
+            </p>
+            <form autocomplete="on" @submit.prevent="submitDeviceUnlock">
+              <input
+                v-model="devicePassphraseInput"
+                type="password"
+                autocomplete="current-password"
+                class="w-full rounded-xl border border-gray-600 bg-gray-900/80 px-4 py-3 text-sm text-gray-200"
+                :placeholder="t('account.device_passphrase_placeholder')"
+              />
+              <p v-if="deviceUnlockError" class="mt-2 text-sm text-red-400">
+                {{ deviceUnlockError }}
+              </p>
+              <div class="mt-4 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex gap-3 text-xs">
+                  <button
+                    type="button"
+                    class="text-indigo-300 hover:text-indigo-200"
+                    @click="useRecoveryPhraseInstead = true"
+                  >
+                    {{ t("account.device_use_recovery_phrase") }}
+                  </button>
+                  <button
+                    type="button"
+                    class="text-gray-400 hover:text-gray-200"
+                    @click="forgetThisDevice"
+                  >
+                    {{ t("account.device_forget") }}
+                  </button>
+                </div>
+                <button
+                  type="submit"
+                  class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm text-white disabled:opacity-50"
+                  :disabled="deviceUnlockLoading"
+                >
+                  {{ deviceUnlockLoading ? t("common.loading") : t("account.device_unlock_submit") }}
+                </button>
+              </div>
+            </form>
+          </template>
+
+          <!-- Recovery-phrase mode: enter the phrase, optionally remember the device -->
+          <template v-else>
+            <h5 class="text-lg font-bold text-white">
+              {{ t("account.recovery_phrase_restore_on_device") }}
+            </h5>
+            <p class="text-sm text-gray-300">
+              {{ t("account.recovery_phrase_restore_on_device_detail") }}
+            </p>
+            <textarea
+              v-model="restoreOnDeviceInput"
+              rows="4"
+              class="w-full rounded-xl border border-gray-600 bg-gray-900/80 px-4 py-3 text-sm text-gray-200"
+              :placeholder="t('auth.guest_restore_placeholder')"
+              autocomplete="off"
+            />
+
+            <div class="rounded-xl border border-gray-700 bg-gray-900/50 p-4 space-y-3">
+              <label class="flex items-start gap-3 cursor-pointer select-none">
+                <input
+                  v-model="rememberDeviceOptIn"
+                  type="checkbox"
+                  class="mt-1 h-4 w-4 rounded border-gray-500 bg-gray-800 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span class="text-sm text-gray-200">
+                  {{ t("account.device_remember_label") }}
+                  <span class="block text-xs text-gray-500 mt-1">
+                    {{ t("account.device_remember_hint") }}
+                  </span>
+                </span>
+              </label>
+              <input
+                v-if="rememberDeviceOptIn"
+                v-model="devicePassphraseInput"
+                type="password"
+                autocomplete="new-password"
+                class="w-full rounded-xl border border-gray-600 bg-gray-900/80 px-4 py-3 text-sm text-gray-200"
+                :placeholder="t('account.device_passphrase_new_placeholder')"
+              />
+            </div>
+
+            <p v-if="restoreOnDeviceError" class="text-sm text-red-400">
+              {{ restoreOnDeviceError }}
+            </p>
+            <div class="flex justify-end gap-2">
+              <button
+                type="button"
+                class="px-4 py-2 border border-gray-600 rounded-lg text-sm text-gray-300 hover:bg-gray-700"
+                @click="showRestoreOnDeviceModal = false"
+              >
+                {{ t("common.cancel") }}
+              </button>
+              <button
+                type="button"
+                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm text-white disabled:opacity-50"
+                :disabled="restoreOnDeviceLoading"
+                @click="submitRestoreOnDevice"
+              >
+                {{
+                  restoreOnDeviceLoading
+                    ? t("common.loading")
+                    : t("account.recovery_phrase_restore_on_device_submit")
+                }}
+              </button>
+            </div>
+          </template>
         </div>
       </div>
 
@@ -1274,6 +1404,14 @@ import {
   bindRecoveryPhraseOnThisDevice,
   getStoredAccountMnemonic,
 } from "../../services/accountSeed";
+import {
+  changeDevicePassphrase,
+  forgetDevice,
+  isDeviceRemembered,
+  rememberDeviceWithPassphrase,
+  unlockDeviceWithPassphrase,
+} from "../../services/deviceUnlock/provider";
+import { isAcceptableDevicePassphrase } from "../../services/deviceUnlock/envelope";
 import { isInvoicingLocalFirst } from "../../evolu/flags";
 import { getEvoluRelayBuildInfo, normalizeEvoluRelayBaseUrl } from "../../evolu/config";
 import { getEvoluRelayRuntimeInfo } from "../../services/evoluRelayPreference";
@@ -1351,6 +1489,70 @@ const showRestoreOnDeviceModal = ref(false);
 const restoreOnDeviceInput = ref("");
 const restoreOnDeviceLoading = ref(false);
 const restoreOnDeviceError = ref("");
+
+// "Remember this device" - opt-in device passphrase unlock (see deviceUnlock).
+const deviceRemembered = ref(false);
+const rememberDeviceOptIn = ref(false);
+const devicePassphraseInput = ref("");
+const useRecoveryPhraseInstead = ref(false);
+const deviceUnlockLoading = ref(false);
+const deviceUnlockError = ref("");
+const showChangeDevicePassphrase = ref(false);
+const oldDevicePassphraseInput = ref("");
+const newDevicePassphraseInput = ref("");
+const changeDevicePassphraseError = ref("");
+
+async function refreshDeviceRemembered(): Promise<void> {
+  try {
+    deviceRemembered.value = await isDeviceRemembered();
+  } catch {
+    deviceRemembered.value = false;
+  }
+}
+
+/** Unlock this device with the device passphrase (no need to retype the phrase). */
+async function submitDeviceUnlock(): Promise<void> {
+  deviceUnlockError.value = "";
+  deviceUnlockLoading.value = true;
+  try {
+    resetEvoluBootstrapForRetry();
+    await unlockDeviceWithPassphrase(devicePassphraseInput.value);
+    storedGuestMnemonic.value = getStoredGuestMnemonic();
+    devicePassphraseInput.value = "";
+    showRestoreOnDeviceModal.value = false;
+    const { evolu } = await import("@/evolu/client");
+    allowEvoluPageReload();
+    evolu.reloadApp();
+  } catch {
+    // Non-distinguishing: wrong passphrase, tampered or missing envelope.
+    deviceUnlockError.value = t("account.device_unlock_failed");
+  } finally {
+    deviceUnlockLoading.value = false;
+  }
+}
+
+async function forgetThisDevice(): Promise<void> {
+  await forgetDevice();
+  await refreshDeviceRemembered();
+  flashStore.success(t("account.device_forgotten"));
+}
+
+async function submitChangeDevicePassphrase(): Promise<void> {
+  changeDevicePassphraseError.value = "";
+  if (!isAcceptableDevicePassphrase(newDevicePassphraseInput.value)) {
+    changeDevicePassphraseError.value = t("account.device_passphrase_too_weak");
+    return;
+  }
+  try {
+    await changeDevicePassphrase(oldDevicePassphraseInput.value, newDevicePassphraseInput.value);
+    oldDevicePassphraseInput.value = "";
+    newDevicePassphraseInput.value = "";
+    showChangeDevicePassphrase.value = false;
+    flashStore.success(t("account.device_passphrase_changed"));
+  } catch {
+    changeDevicePassphraseError.value = t("account.device_unlock_failed");
+  }
+}
 const storedGuestMnemonic = ref<string | null>(null);
 const copiedSeed = ref(false);
 const localFirst = isInvoicingLocalFirst();
@@ -1541,6 +1743,9 @@ const showEnterpriseUpgrade = computed(() => {
 onMounted(async () => {
   await Promise.all([loadPricing(), loadPlanFeatures()]);
   storedGuestMnemonic.value = getStoredGuestMnemonic();
+  if (localFirst) {
+    void refreshDeviceRemembered();
+  }
   if (authStore.user) {
     profileForm.value.name = authStore.user.name || "";
     evoluRelayForm.value.url = authStore.user.evolu_relay_url ?? "";
@@ -1553,6 +1758,9 @@ onMounted(async () => {
   }
   if (route.query.restore_phrase === "1" && !storedGuestMnemonic.value) {
     setProfileTab("account");
+    // If this device is remembered, default to the shorter passphrase unlock;
+    // the modal still offers "use recovery phrase instead".
+    useRecoveryPhraseInstead.value = !deviceRemembered.value;
     showRestoreOnDeviceModal.value = true;
     flashStore.warning(t("account.recovery_phrase_required_for_invoicing"));
     void router.replace({
@@ -1762,11 +1970,35 @@ async function submitRestoreOnDevice(): Promise<void> {
   restoreOnDeviceError.value = "";
   restoreOnDeviceLoading.value = true;
   try {
+    // Optional "remember this device": validate the passphrase before touching
+    // anything, so a weak passphrase fails fast without half-binding.
+    const wantsRemember = rememberDeviceOptIn.value;
+    if (wantsRemember && !isAcceptableDevicePassphrase(devicePassphraseInput.value)) {
+      restoreOnDeviceError.value = t("account.device_passphrase_too_weak");
+      restoreOnDeviceLoading.value = false;
+      return;
+    }
+
     resetEvoluBootstrapForRetry();
     const result = await bindRecoveryPhraseOnThisDevice(restoreOnDeviceInput.value);
+
+    if (wantsRemember) {
+      // Wrap the just-entered phrase in a device passphrase envelope. If this
+      // fails the phrase is still bound for the session - surface the error but
+      // do not block the restore.
+      try {
+        await rememberDeviceWithPassphrase(restoreOnDeviceInput.value, devicePassphraseInput.value);
+        await refreshDeviceRemembered();
+      } catch {
+        flashStore.warning(t("account.device_remember_failed"));
+      }
+    }
+
     storedGuestMnemonic.value = getStoredGuestMnemonic();
     showRestoreOnDeviceModal.value = false;
     restoreOnDeviceInput.value = "";
+    devicePassphraseInput.value = "";
+    rememberDeviceOptIn.value = false;
     if (result === "restored" || result === "migrated_legacy_owner") {
       const { evolu } = await import("@/evolu/client");
       allowEvoluPageReload();
