@@ -124,8 +124,15 @@
 
       <div
         v-show="!showWalletSetupTabs || walletSetupTab === 'paste'"
-        class="bg-gray-900/50 rounded-xl p-6 border border-gray-700 space-y-6"
+        class="space-y-6"
       >
+        <WalletConnectionSmartPaste
+          v-model="form.secret"
+          v-model:connection-type="form.type"
+          input-id="wallet-connection-smart-paste"
+          @detect-cashu="onDetectCashuFromPaste"
+        />
+
         <div
           v-if="
             viewMode === 'editing' &&
@@ -133,34 +140,27 @@
             existingConnection.status === 'connected' &&
             walletType === 'aqua_boltz'
           "
-          class="p-4 rounded-xl border border-green-500/25 bg-green-500/10 text-sm text-green-100 space-y-1"
+          class="border-l-2 border-green-500/40 pl-3 text-sm space-y-1"
         >
           <p class="font-medium text-green-400">
             {{ t("stores.aqua_wallet_connected_title") }}
           </p>
-          <p class="text-gray-300 leading-relaxed">
+          <p class="text-gray-400 leading-relaxed">
             {{ t("stores.aqua_wallet_connected_samrock_hint") }}
           </p>
         </div>
 
         <div
           v-if="showAquaDescriptorWarnings"
-          class="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-2"
+          class="border-l-2 border-amber-500/40 pl-3 space-y-1"
         >
-          <p class="text-sm text-amber-400">
+          <p class="text-sm text-amber-300/90">
             {{ t("stores.aqua_warning_btcpay") }}
           </p>
-          <p class="text-sm text-amber-400">
+          <p class="text-sm text-amber-300/70">
             {{ t("stores.aqua_limits_warning") }}
           </p>
         </div>
-
-        <WalletConnectionSmartPaste
-          v-model="form.secret"
-          v-model:connection-type="form.type"
-          input-id="wallet-connection-smart-paste"
-          @detect-cashu="onDetectCashuFromPaste"
-        />
 
         <p v-if="errors.type" class="text-sm text-red-400">{{ errors.type }}</p>
         <p v-if="errors.secret" class="text-sm text-red-400">{{ errors.secret }}</p>

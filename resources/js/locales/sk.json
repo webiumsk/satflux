@@ -2075,7 +2075,7 @@
     "boltz_reason_onchain_fallback_missing": "Nie je nakonfigurovaná BTC on-chain peňaženka - zákazníci nemajú fallback, keď je platba mimo Lightning limitov. Pridáte ju spárovaním cez SamRock.",
     "boltz_reason_payment_methods_unavailable": "Platobné metódy store sa teraz nepodarilo overiť.",
     "wallet_smart_paste_label": "Vložte pripojenie peňaženky",
-    "wallet_smart_paste_placeholder": "Vložte Aqua/Bull descriptor, SamRock QR cestu, Blink connection string, Cashu mint URL alebo Lightning Address, prípadne NWC z vlastného Alby Hubu...",
+    "wallet_smart_paste_placeholder": "Descriptor, Blink string, NWC URI, mint URL alebo Lightning Address",
     "wallet_smart_paste_hint": "Typ peňaženky rozpoznáme automaticky podľa vloženého textu.",
     "wallet_guide_title": "Ktorú peňaženku použiť?",
     "wallet_guide_intro": "Rozbaľte možnosť nižšie - uvidíte, čo vložiť a kde to nájsť vo svojej peňaženke.",
