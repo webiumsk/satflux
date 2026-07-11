@@ -129,7 +129,7 @@ watch(
             </span>
             <span
               v-if="item.recommended"
-              class="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-indigo-400/90"
+              class="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-emerald-400/90"
             >
               {{ t('stores.wallet_recommended_badge') }}
             </span>

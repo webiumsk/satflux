@@ -89,15 +89,18 @@
       </div>
       <div
         v-if="showWalletSetupTabs"
-        class="flex gap-1 p-1 rounded-xl bg-gray-800/90 border border-gray-600 w-full sm:w-fit"
+        role="tablist"
+        class="flex gap-6 border-b border-gray-700/60"
       >
         <button
           type="button"
-          class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-semibold transition-all"
+          role="tab"
+          :aria-selected="walletSetupTab === 'paste'"
+          class="pb-3 -mb-px text-sm font-medium border-b-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-t-sm"
           :class="
             walletSetupTab === 'paste'
-              ? 'bg-indigo-600 text-white shadow-md'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700/80'
+              ? 'border-indigo-500 text-white'
+              : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-600'
           "
           @click="walletSetupTab = 'paste'"
         >
@@ -105,18 +108,20 @@
         </button>
         <button
           type="button"
-          class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
+          role="tab"
+          :aria-selected="walletSetupTab === 'samrock'"
+          class="pb-3 -mb-px text-sm font-medium border-b-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-t-sm"
           :class="
             walletSetupTab === 'samrock'
-              ? 'bg-indigo-600 text-white shadow-md'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700/80'
+              ? 'border-indigo-500 text-white'
+              : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-600'
           "
           @click="walletSetupTab = 'samrock'"
         >
-          <span class="inline-flex items-center gap-2 flex-wrap">
+          <span class="inline-flex items-center gap-2">
             {{ t("create_store.tab_samrock") }}
             <span
-              class="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+              class="text-[10px] font-semibold uppercase tracking-wide text-emerald-400/90"
             >{{ t("stores.wallet_recommended_badge") }}</span>
           </span>
         </button>
