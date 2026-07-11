@@ -98,54 +98,45 @@ watch(
 </script>
 
 <template>
-  <div
-    class="rounded-xl border border-gray-700 bg-gray-900/40 p-4 sm:p-5 space-y-3"
-  >
-    <div>
-      <h3 class="text-sm font-semibold text-gray-200">
+  <div class="border-t border-gray-700/60 pt-6">
+    <div class="mb-2">
+      <h3 class="text-sm font-medium text-gray-400">
         {{ t('stores.wallet_guide_title') }}
+        <span class="text-gray-600">- {{ t('stores.wallet_guide_intro') }}</span>
       </h3>
-      <p class="mt-1 text-sm text-gray-400 leading-relaxed">
-        {{ t('stores.wallet_guide_intro') }}
-      </p>
     </div>
 
-    <div class="space-y-2">
-      <div
-        v-for="item in items"
-        :key="item.id"
-        class="rounded-xl border overflow-hidden transition-colors"
-        :class="
-          isOpen(item.id)
-            ? 'border-indigo-500/40 bg-gray-800/70'
-            : 'border-gray-700 bg-gray-800/40 hover:border-gray-600'
-        "
-      >
+    <div class="divide-y divide-gray-800">
+      <div v-for="item in items" :key="item.id">
         <button
           type="button"
-          class="w-full px-4 py-3 text-left flex items-center justify-between gap-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-inset"
+          class="w-full py-3 text-left flex items-center justify-between gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-md group"
           :aria-expanded="isOpen(item.id)"
           @click="toggle(item.id)"
         >
           <span class="flex items-center gap-2.5 min-w-0">
             <WalletTypeIcon
+              v-if="item.iconType === 'aqua_boltz' || item.iconType === 'blink'"
               :type="item.iconType"
               :brand="item.brand"
               size="sm"
             />
-            <span class="text-sm font-medium text-white truncate">
+            <span
+              class="text-sm truncate transition-colors"
+              :class="isOpen(item.id) ? 'text-white font-medium' : 'text-gray-400 group-hover:text-gray-200'"
+            >
               {{ t(item.titleKey) }}
             </span>
             <span
               v-if="item.recommended"
-              class="shrink-0 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-200 border border-indigo-500/30"
+              class="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-emerald-400/90"
             >
               {{ t('stores.wallet_recommended_badge') }}
             </span>
           </span>
           <svg
-            class="w-4 h-4 text-gray-400 shrink-0 transition-transform"
-            :class="isOpen(item.id) ? 'rotate-180' : ''"
+            class="w-4 h-4 text-gray-600 shrink-0 transition-transform"
+            :class="isOpen(item.id) ? 'rotate-180 text-gray-400' : ''"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -162,7 +153,7 @@ watch(
 
         <div
           v-show="isOpen(item.id)"
-          class="px-4 pb-4 pt-1 border-t border-gray-700/80 text-sm text-gray-300 space-y-3 leading-relaxed"
+          class="pb-4 pl-1 text-sm text-gray-300 space-y-3 leading-relaxed"
         >
           <!-- NWC -->
           <template v-if="item.id === 'nwc'">

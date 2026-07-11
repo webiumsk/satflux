@@ -215,40 +215,58 @@
             {{ t("create_store.wallet_paste_hint") }}
           </p>
 
-          <div class="flex gap-1 p-1 rounded-xl bg-gray-800/90 border border-gray-600 w-full sm:w-fit">
+          <div
+            role="tablist"
+            class="flex gap-6 border-b border-gray-700/60"
+            @keydown.left.prevent="focusLightningTab(lightningSetupTab === 'paste' ? 'samrock' : 'paste')"
+            @keydown.right.prevent="focusLightningTab(lightningSetupTab === 'paste' ? 'samrock' : 'paste')"
+          >
             <button
+              id="create-ln-tab-paste"
               type="button"
-              class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-semibold transition-all"
+              role="tab"
+              aria-controls="create-ln-panel-paste"
+              :tabindex="lightningSetupTab === 'paste' ? 0 : -1"
+              :aria-selected="lightningSetupTab === 'paste'"
+              class="pb-3 -mb-px text-sm font-medium border-b-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-t-sm"
               :class="
                 lightningSetupTab === 'paste'
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-700/80'
+                  ? 'border-indigo-500 text-white'
+                  : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-600'
               "
               @click="lightningSetupTab = 'paste'"
             >
               {{ t("stores.wallet_smart_paste_label") }}
             </button>
             <button
+              id="create-ln-tab-samrock"
               type="button"
-              class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
+              role="tab"
+              aria-controls="create-ln-panel-samrock"
+              :tabindex="lightningSetupTab === 'samrock' ? 0 : -1"
+              :aria-selected="lightningSetupTab === 'samrock'"
+              class="pb-3 -mb-px text-sm font-medium border-b-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-t-sm"
               :class="
                 lightningSetupTab === 'samrock'
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-700/80'
+                  ? 'border-indigo-500 text-white'
+                  : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-600'
               "
               @click="lightningSetupTab = 'samrock'"
             >
-              <span class="inline-flex items-center gap-2 flex-wrap">
+              <span class="inline-flex items-center gap-2">
                 {{ t("create_store.tab_samrock") }}
                 <span
-                  class="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                  class="text-[10px] font-semibold uppercase tracking-wide text-emerald-400/90"
                 >{{ t("stores.wallet_recommended_badge") }}</span>
               </span>
             </button>
           </div>
 
           <div
+            id="create-ln-panel-paste"
             v-show="lightningSetupTab === 'paste'"
+            role="tabpanel"
+            aria-labelledby="create-ln-tab-paste"
             class="bg-gray-900/50 rounded-xl p-6 border border-gray-700 space-y-6"
           >
             <WalletConnectionSmartPaste
@@ -339,7 +357,10 @@
           </div>
 
           <div
+            id="create-ln-panel-samrock"
             v-show="lightningSetupTab === 'samrock'"
+            role="tabpanel"
+            aria-labelledby="create-ln-tab-samrock"
             class="bg-gray-900/50 border border-indigo-500/30 rounded-2xl p-6 space-y-4"
           >
                   <h3 class="text-sm font-bold text-indigo-400 uppercase tracking-wider">
@@ -560,7 +581,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, defineAsyncComponent } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch, nextTick, defineAsyncComponent } from "vue";
+import { useSamRockPairing } from "../../composables/useSamRockPairing";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useStoresStore } from "../../store/stores";
@@ -618,15 +640,18 @@ let botPollInterval: ReturnType<typeof setInterval> | null = null;
 const lightningSetupTab = ref<"samrock" | "paste">("samrock");
 const connectionType = ref<"blink" | "nwc" | "aqua_descriptor">("aqua_descriptor");
 
-/** SamRock pairing (step 2, Aqua tab) */
-const samrockOtp = ref("");
-const samrockExpiresAt = ref<string | null>(null);
-const samrockQrObjectUrl = ref<string | null>(null);
-const samrockBusy = ref(false);
-const samrockPollStatus = ref("");
-const samrockErrorMessage = ref("");
+/** SamRock pairing (step 2, Aqua tab) - shared flow lives in useSamRockPairing */
+const {
+  samrockOtp,
+  samrockExpiresAt,
+  samrockQrObjectUrl,
+  samrockBusy,
+  samrockPollStatus,
+  samrockErrorMessage,
+  cancelSamRockPairing,
+  startSamRockPairing: startSamRockPairingCore,
+} = useSamRockPairing(() => createdStoreId.value ?? "");
 const samrockWalletReady = ref(false);
-let samrockPollInterval: ReturnType<typeof setInterval> | null = null;
 
 const form = ref({
   name: "",
@@ -756,13 +781,6 @@ const timezones = [
 
 const timezoneOptions = timezones.map((tz) => ({ label: tz, value: tz }));
 
-function revokeSamRockQr() {
-  if (samrockQrObjectUrl.value) {
-    URL.revokeObjectURL(samrockQrObjectUrl.value);
-    samrockQrObjectUrl.value = null;
-  }
-}
-
 function formatSamRockExpiry(iso: string) {
   try {
     return new Date(iso).toLocaleString();
@@ -771,29 +789,11 @@ function formatSamRockExpiry(iso: string) {
   }
 }
 
-function stopSamRockPolling() {
-  if (samrockPollInterval != null) {
-    window.clearInterval(samrockPollInterval);
-    samrockPollInterval = null;
-  }
-}
-
-async function cancelSamRockPairing() {
-  stopSamRockPolling();
-  revokeSamRockQr();
-  const sid = createdStoreId.value;
-  if (samrockOtp.value && sid) {
-    try {
-      await walletApi.samrock.deleteOtp(sid, samrockOtp.value);
-    } catch {
-      /* ignore */
-    }
-  }
-  samrockOtp.value = "";
-  samrockExpiresAt.value = null;
-  samrockErrorMessage.value = "";
-  samrockPollStatus.value = "";
-  samrockBusy.value = false;
+function focusLightningTab(tab: "paste" | "samrock") {
+  lightningSetupTab.value = tab;
+  void nextTick(() => {
+    document.getElementById(`create-ln-tab-${tab}`)?.focus();
+  });
 }
 
 async function startSamRockPairing() {
@@ -809,64 +809,11 @@ async function startSamRockPairing() {
     return;
   }
 
-  samrockBusy.value = true;
-  samrockErrorMessage.value = "";
   samrockWalletReady.value = false;
-  revokeSamRockQr();
-  samrockOtp.value = "";
-  stopSamRockPolling();
-
-  try {
-    const d = await walletApi.samrock.createOtp(sid, {
-      btc: true,
-      btcln: true,
-      lbtc: false,
-      expires_in_seconds: 300,
-    });
-    const otp = d.otp ?? "";
-    if (!otp) {
-      samrockErrorMessage.value = t("stores.samrock_error");
-      samrockBusy.value = false;
-      return;
-    }
-    samrockOtp.value = otp;
-    samrockExpiresAt.value = d.expires_at ?? null;
-
-    const qrBlob = await walletApi.samrock.otpQr(sid, otp, { format: "png" });
-    samrockQrObjectUrl.value = URL.createObjectURL(qrBlob);
-    samrockBusy.value = false;
-    samrockPollStatus.value = "pending";
-
-    const pollOnce = async () => {
-      if (!samrockOtp.value || !sid) return;
-      try {
-        const st = await walletApi.samrock.otpStatus(sid, samrockOtp.value);
-        const status = st.status ?? "";
-        samrockPollStatus.value = status;
-        if (status === "success") {
-          stopSamRockPolling();
-          await walletApi.samrock.complete(sid, { otp: samrockOtp.value });
-          revokeSamRockQr();
-          samrockOtp.value = "";
-          samrockWalletReady.value = true;
-          await storesStore.fetchStore(sid);
-        } else if (status === "error") {
-          stopSamRockPolling();
-          samrockErrorMessage.value =
-            st.error_message ?? t("stores.samrock_error");
-        }
-      } catch {
-        /* ignore */
-      }
-    };
-
-    await pollOnce();
-    samrockPollInterval = window.setInterval(pollOnce, 3000);
-  } catch (err: any) {
-    samrockErrorMessage.value =
-      err.response?.data?.message ?? t("stores.samrock_error");
-    samrockBusy.value = false;
-  }
+  await startSamRockPairingCore(async () => {
+    samrockWalletReady.value = true;
+    await storesStore.fetchStore(sid);
+  });
 }
 
 function stopBotWaitTimers() {
@@ -1036,8 +983,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  stopSamRockPolling();
+  // SamRock polling/QR cleanup happens inside useSamRockPairing.
   stopBotWaitTimers();
-  revokeSamRockQr();
 });
 </script>

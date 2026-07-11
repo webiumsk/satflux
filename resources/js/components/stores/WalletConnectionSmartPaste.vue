@@ -82,17 +82,22 @@ function setManualType(type: 'blink' | 'nwc' | 'aqua_descriptor') {
 
 <template>
   <div class="space-y-4">
-    <label
-      :for="inputId"
-      class="block text-sm font-medium text-indigo-300 mb-2 uppercase tracking-wider"
-    >
-      {{ t('stores.wallet_smart_paste_label') }}
-    </label>
+    <div>
+      <label
+        :for="inputId"
+        class="block text-lg font-semibold text-white"
+      >
+        {{ t('stores.wallet_smart_paste_label') }}
+      </label>
+      <p class="mt-1 text-sm text-gray-400">
+        {{ t('stores.wallet_smart_paste_hint') }}
+      </p>
+    </div>
     <textarea
       :id="inputId"
       :value="modelValue"
-      rows="6"
-      class="block w-full rounded-xl border-gray-600 bg-gray-900/50 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono p-4"
+      rows="7"
+      class="block w-full rounded-xl border-2 border-gray-500/80 bg-gray-950 text-white placeholder-gray-500 focus:border-indigo-400 focus:ring-indigo-400 text-sm sm:text-base font-mono p-4 shadow-inner"
       :placeholder="t('stores.wallet_smart_paste_placeholder')"
       required
       @input="onInput"
@@ -100,7 +105,7 @@ function setManualType(type: 'blink' | 'nwc' | 'aqua_descriptor') {
 
     <div
       v-if="modelValue.trim()"
-      class="flex flex-wrap items-center gap-2 rounded-xl border border-gray-700 bg-gray-800/60 px-4 py-3"
+      class="flex flex-wrap items-center gap-2"
     >
       <span class="text-xs uppercase tracking-wider text-gray-500">
         {{ t('stores.wallet_detected_label') }}
@@ -132,10 +137,6 @@ function setManualType(type: 'blink' | 'nwc' | 'aqua_descriptor') {
         {{ detectedLabel }}
       </span>
     </div>
-
-    <p class="text-sm text-gray-400">
-      {{ t('stores.wallet_smart_paste_hint') }}
-    </p>
 
     <div
       v-if="showTypeOverride && effectiveKind === 'unknown' && modelValue.trim()"
@@ -181,31 +182,31 @@ function setManualType(type: 'blink' | 'nwc' | 'aqua_descriptor') {
 
     <div
       v-if="effectiveKind === 'blink'"
-      class="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10"
+      class="border-l-2 border-amber-500/40 pl-3"
     >
-      <p class="text-sm text-amber-300">
+      <p class="text-sm text-amber-300/90">
         {{ t('stores.blink_eu_legacy_notice') }}
       </p>
     </div>
 
     <div
       v-if="effectiveKind === 'nwc'"
-      class="p-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10 text-sm text-indigo-100 space-y-2"
+      class="border-l-2 border-indigo-500/40 pl-3 text-sm space-y-1"
     >
-      <p class="font-medium text-amber-200/95">{{ t('stores.wallet_guide_nwc_alby_requirement') }}</p>
-      <p>{{ t('stores.nwc_connection_hint') }}</p>
+      <p class="font-medium text-amber-200/90">{{ t('stores.wallet_guide_nwc_alby_requirement') }}</p>
+      <p class="text-gray-300">{{ t('stores.nwc_connection_hint') }}</p>
     </div>
 
     <div
       v-if="effectiveKind === 'aqua_descriptor'"
-      class="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10"
+      class="border-l-2 border-amber-500/40 pl-3"
     >
-      <p class="text-sm text-amber-400">{{ t('stores.aqua_warning_btcpay') }}</p>
+      <p class="text-sm text-amber-300/90">{{ t('stores.aqua_warning_btcpay') }}</p>
     </div>
 
     <div
       v-if="effectiveKind === 'cashu'"
-      class="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm text-amber-200/95"
+      class="border-l-2 border-amber-500/40 pl-3 text-sm text-amber-200/90"
     >
       {{ t('stores.cashu_beta_notice_short') }}
     </div>
