@@ -34,6 +34,30 @@
             :placeholder="t('auth.guest_restore_placeholder')"
             autocomplete="off"
           />
+          <div class="rounded-xl border border-gray-700 bg-gray-900/50 p-4 space-y-3">
+            <label class="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                v-model="rememberDevice"
+                type="checkbox"
+                class="mt-1 h-4 w-4 rounded border-gray-500 bg-gray-800 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span class="text-sm text-gray-200">
+                {{ t("account.device_remember_label") }}
+                <span class="block text-xs text-gray-500 mt-1">
+                  {{ t("account.device_remember_hint") }}
+                </span>
+              </span>
+            </label>
+            <input
+              v-if="rememberDevice"
+              v-model="devicePassphrase"
+              type="password"
+              autocomplete="new-password"
+              :aria-label="t('account.device_passphrase_new_placeholder')"
+              class="w-full rounded-xl border border-gray-600 bg-gray-900/80 px-4 py-3 text-sm text-gray-200"
+              :placeholder="t('account.device_passphrase_new_placeholder')"
+            />
+          </div>
           <div v-if="error" class="text-sm text-red-400">
             {{ error }}
           </div>
@@ -56,6 +80,9 @@ import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
 import { storeGuestMnemonic } from "../../services/guestRecovery";
+import { rememberDeviceWithPassphrase } from "../../services/deviceUnlock/provider";
+import { isAcceptableDevicePassphrase } from "../../services/deviceUnlock/envelope";
+import { useFlashStore } from "../../store/flash";
 
 const props = defineProps<{ open: boolean }>();
 
@@ -67,9 +94,13 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const authStore = useAuthStore();
 
+const flashStore = useFlashStore();
+
 const mnemonicInput = ref("");
 const loading = ref(false);
 const error = ref("");
+const rememberDevice = ref(false);
+const devicePassphrase = ref("");
 
 watch(
   () => props.open,
@@ -77,16 +108,38 @@ watch(
     if (isOpen) {
       mnemonicInput.value = "";
       error.value = "";
+      rememberDevice.value = false;
+      devicePassphrase.value = "";
     }
   },
 );
 
 async function submit() {
   error.value = "";
+  // Snapshot the inputs: edits made while the restore request is in flight
+  // must not change what was validated and what gets persisted.
+  const mnemonic = mnemonicInput.value;
+  const remember = rememberDevice.value;
+  const passphrase = devicePassphrase.value;
+  // Validate the optional device passphrase BEFORE authenticating, so a weak
+  // passphrase fails fast without a half-done restore.
+  if (remember && !isAcceptableDevicePassphrase(passphrase)) {
+    error.value = t("account.device_passphrase_too_weak");
+    return;
+  }
   loading.value = true;
   try {
-    const data = await authStore.restoreGuestFromMnemonic(mnemonicInput.value);
-    storeGuestMnemonic(mnemonicInput.value);
+    const data = await authStore.restoreGuestFromMnemonic(mnemonic);
+    storeGuestMnemonic(mnemonic);
+    if (remember) {
+      // Best-effort: the phrase is already session-bound; remembering failing
+      // must not block the login.
+      try {
+        await rememberDeviceWithPassphrase(mnemonic, passphrase);
+      } catch {
+        flashStore.warning(t("account.device_remember_failed"));
+      }
+    }
     emit("success", { store_id: data?.store_id ?? null });
     emit("close");
   } catch (e: any) {
