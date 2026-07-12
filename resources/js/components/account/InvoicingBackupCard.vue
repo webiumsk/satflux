@@ -4,14 +4,23 @@
       <h5 class="text-sm font-semibold text-white">
         {{ t("account.backup_title") }}
       </h5>
-      <button
-        type="button"
-        class="text-xs font-medium rounded-md px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50"
-        :disabled="exporting"
-        @click="runExport"
-      >
-        {{ exporting ? t("common.loading") : t("account.backup_export_button") }}
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="text-xs font-medium rounded-md px-3 py-1.5 border border-gray-600 text-gray-300 hover:text-white"
+          @click="showRestoreModal = true"
+        >
+          {{ t("account.backup_restore_button") }}
+        </button>
+        <button
+          type="button"
+          class="text-xs font-medium rounded-md px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50"
+          :disabled="exporting"
+          @click="runExport"
+        >
+          {{ exporting ? t("common.loading") : t("account.backup_export_button") }}
+        </button>
+      </div>
     </div>
     <p class="text-xs text-gray-400">
       {{ t("account.backup_desc") }}
@@ -35,6 +44,13 @@
     >
       {{ message }}
     </p>
+
+    <InvoicingBackupRestoreModal
+      :open="showRestoreModal"
+      :owner-id-hash="ownerIdHash"
+      @close="showRestoreModal = false"
+      @restored="refreshLastExport"
+    />
   </div>
 </template>
 
@@ -46,6 +62,7 @@ import {
   type LastExportMeta,
 } from "../../services/backupState";
 import { sha256Hex } from "../../utils/sha256";
+import InvoicingBackupRestoreModal from "./InvoicingBackupRestoreModal.vue";
 
 /**
  * Full-dataset backup export (P1 phase 2). Lives in the Profile next to the
@@ -63,9 +80,12 @@ const lastExport = ref<LastExportMeta | null>(null);
 // Hashing the owner id failed (no WebCrypto) - the export history is
 // unknown, which must not be presented as "never exported".
 const lastExportUnknown = ref(false);
+const showRestoreModal = ref(false);
+const ownerIdHash = ref<string | null>(null);
 
 async function refreshLastExport() {
   const hash = await sha256Hex(props.ownerId);
+  ownerIdHash.value = hash;
   lastExportUnknown.value = hash === null;
   lastExport.value = hash ? getLastExportMeta(hash) : null;
 }
