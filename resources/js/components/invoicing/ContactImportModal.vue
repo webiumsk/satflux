@@ -161,7 +161,9 @@
           >
             {{
               importing
-                ? t("common.loading")
+                ? importProgress
+                  ? t("invoicing.import_progress_counter", { done: importProgress.done, total: importProgress.total })
+                  : t("common.loading")
                 : t("invoicing.contact_import_submit")
             }}
           </button>
@@ -215,6 +217,7 @@ const mapping = reactive<ContactImportMapping>({});
 const rowCount = ref(0);
 const loadingPreview = ref(false);
 const importing = ref(false);
+const importProgress = ref<{ done: number; total: number } | null>(null);
 const error = ref("");
 const result = ref<{
   imported: number;
@@ -362,12 +365,17 @@ async function submitImport() {
         return;
       }
       const text = await readContactImportCsvFile(selectedFile.value);
-      result.value = importContactsFromCsv(
+      importProgress.value = null;
+      result.value = await importContactsFromCsv(
         evolu,
         props.companyId as CompanyId,
         text,
         mapping,
+        (done, total) => {
+          importProgress.value = { done, total };
+        },
       );
+      importProgress.value = null;
       if (result.value.imported > 0) {
         emit("imported");
       }

@@ -30,6 +30,7 @@
       </p>
     </template>
 
+    <OfflineNoticeBanner v-if="localFirst && canUse" class="mb-4" />
     <LocalStorageWarningBanner v-if="localFirst && canUse" class="mb-4" />
     <BackupReminderBanner v-if="localFirst && canUse" class="mb-4" />
 
@@ -186,6 +187,7 @@ import { useRouter } from 'vue-router';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import BackupReminderBanner from '../../components/invoicing/BackupReminderBanner.vue';
 import LocalStorageWarningBanner from '../../components/invoicing/LocalStorageWarningBanner.vue';
+import OfflineNoticeBanner from '../../components/invoicing/OfflineNoticeBanner.vue';
 import InvoicingLoadingState from '../../components/invoicing/ui/InvoicingLoadingState.vue';
 import InvoicingRelaySyncModal from '../../components/invoicing/InvoicingRelaySyncModal.vue';
 import InvoicingRelaySyncStatusButton, {

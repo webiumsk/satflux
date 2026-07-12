@@ -248,7 +248,15 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>) {
           entry.file,
         );
         if (!result.ok) {
-          throw new Error('upload_failed');
+          // Preserve the Evolu rejection reason (e.g. a maxLength failure)
+          // instead of collapsing it - callers surface error.message and can
+          // inspect the cause. The reason is a validation shape, never file
+          // content.
+          console.error('Expense attachment insert rejected for', entry.file.name);
+          // TS lib target predates ErrorOptions - attach the cause manually.
+          const uploadError = new Error(`upload_failed: ${entry.file.name}`);
+          (uploadError as Error & { cause?: unknown }).cause = (result as { error?: unknown }).error;
+          throw uploadError;
         }
       }
       return;
