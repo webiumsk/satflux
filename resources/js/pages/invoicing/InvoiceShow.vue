@@ -611,7 +611,9 @@ async function issueDocument() {
         documentId.value as import('../../evolu/schema').DocumentId,
         companyRow as import('../../evolu/companyMap').EvoluCompanyRow,
       );
-      if (!issueResult.ok) throw new Error('issue');
+      if (!issueResult.ok) {
+        throw new Error(typeof issueResult.error === 'string' ? issueResult.error : 'issue');
+      }
       success.value = t('invoicing.issue_success');
       await reloadDocument();
       return;

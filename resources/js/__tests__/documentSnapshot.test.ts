@@ -182,7 +182,10 @@ describe("insertIssuedDocumentSnapshot", () => {
             buildValid(),
         );
 
-        expect(result).toEqual({ ok: true });
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+            expect(JSON.parse(result.payloadJson).document.number).toBe("20260071");
+        }
         expect(insert).toHaveBeenCalledTimes(1);
         const [table, rowArg] = insert.mock.calls[0];
         expect(table).toBe("documentSnapshot");

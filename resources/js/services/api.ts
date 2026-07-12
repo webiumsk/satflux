@@ -455,6 +455,10 @@ export const invoicingApi = {
             const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}`);
             return data.data;
         },
+        async create<T = unknown>(payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>('/invoicing/companies', payload);
+            return data.data;
+        },
         async update<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
             const { data } = await api.patch<ApiEnvelope<T>>(`/invoicing/companies/${companyId}`, payload);
             return data.data;
@@ -756,6 +760,25 @@ export const invoicingApi = {
         async reserve<T = unknown>(storeId: string, payload: Record<string, unknown>): Promise<{ data?: T; error?: string }> {
             const { data } = await api.post<{ data?: T; error?: string }>(`/invoicing/stores/${storeId}/number-series/reserve`, payload);
             return data;
+        },
+    },
+    // Server number allocator (audit F3) - company-scoped, store-independent.
+    numberAllocator: {
+        async reserve<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/number-allocator/reserve`, payload);
+            return data.data;
+        },
+        async confirm<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/number-allocator/confirm`, payload);
+            return data.data;
+        },
+        async void<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/number-allocator/void`, payload);
+            return data.data;
+        },
+        async status<T = unknown>(companyId: string, params: Record<string, unknown>): Promise<T | null> {
+            const { data } = await api.get<ApiEnvelope<T | null>>(`/invoicing/companies/${companyId}/number-allocator/status`, { params });
+            return data.data ?? null;
         },
     },
     recurringProfiles: {

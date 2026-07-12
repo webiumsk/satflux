@@ -97,83 +97,6 @@ beforeEach(() => {
     vi.resetModules();
 });
 
-describe("issueLocalDocument snapshot invariant", () => {
-    it("persists the frozen snapshot before flipping the document to issued", async () => {
-        const { issueLocalDocument } = await import("@/evolu/documentCrud");
-        const evolu = fakeEvolu();
-
-        const result = issueLocalDocument(
-            evolu as never,
-            documentId,
-            company,
-            [draft],
-            series,
-            { lines: [line], contact: null },
-        );
-
-        expect(result.ok).toBe(true);
-        const snapshotIndex = evolu.calls.findIndex((c) => c.table === "documentSnapshot");
-        const issueIndex = evolu.calls.findIndex(
-            (c) => c.table === "document" && c.row.status === "issued",
-        );
-        expect(snapshotIndex).toBeGreaterThanOrEqual(0);
-        expect(issueIndex).toBeGreaterThan(snapshotIndex);
-
-        const snapshotRow = evolu.calls[snapshotIndex].row;
-        const payload = JSON.parse(String(snapshotRow.payloadJson));
-        expect(payload.company.legal_name).toBe("ACME s.r.o.");
-        expect(payload.document.number).toBeTruthy();
-        expect(payload.document.number).toBe(
-            evolu.calls[issueIndex].row.number,
-        );
-        expect(payload.lines).toHaveLength(1);
-        expect(payload.lines[0].line_total).toBe("120.00");
-    });
-
-    it("does not issue when the snapshot cannot be persisted", async () => {
-        const { issueLocalDocument } = await import("@/evolu/documentCrud");
-        const evolu = fakeEvolu();
-        evolu.insert.mockImplementation((table: string): MutationResult =>
-            table === "documentSnapshot"
-                ? { ok: false, error: "boom" }
-                : { ok: true, value: { id: `${table}-id` } },
-        );
-
-        const result = issueLocalDocument(
-            evolu as never,
-            documentId,
-            company,
-            [draft],
-            series,
-            { lines: [line], contact: null },
-        );
-
-        expect(result.ok).toBe(false);
-        expect(
-            evolu.calls.some((c) => c.table === "document" && c.row.status === "issued"),
-        ).toBe(false);
-    });
-
-    it("refuses the snapshot (and the issue) when the draft has no lines", async () => {
-        const { issueLocalDocument } = await import("@/evolu/documentCrud");
-        const evolu = fakeEvolu();
-
-        const result = issueLocalDocument(
-            evolu as never,
-            documentId,
-            company,
-            [draft],
-            series,
-            { lines: [], contact: null },
-        );
-
-        expect(result).toEqual({ ok: false, error: "snapshot_lines_missing" });
-        expect(
-            evolu.calls.some((c) => c.table === "document" && c.row.status === "issued"),
-        ).toBe(false);
-    });
-});
-
 describe("applyReservedNumberToLocalDocument snapshot invariant", () => {
     it("fails without issuing or advancing the series counter when the snapshot insert fails", async () => {
         const { applyReservedNumberToLocalDocument } = await import("@/evolu/documentCrud");
@@ -206,6 +129,33 @@ describe("applyReservedNumberToLocalDocument snapshot invariant", () => {
             evolu.calls.some((c) => c.table === "document" && c.row.status === "issued"),
         ).toBe(false);
         expect(evolu.calls.some((c) => c.table === "numberSeries")).toBe(false);
+    });
+
+    it("refuses the snapshot (and the issue) when the draft has no lines", async () => {
+        const { applyReservedNumberToLocalDocument } = await import("@/evolu/documentCrud");
+        const evolu = fakeEvolu();
+
+        const result = applyReservedNumberToLocalDocument(
+            evolu as never,
+            documentId,
+            companyId,
+            "invoice",
+            "20260071",
+            series,
+            null,
+            {
+                company,
+                doc: draft,
+                allDocuments: [draft],
+                lines: [],
+                contact: null,
+            },
+        );
+
+        expect(result).toEqual({ ok: false, error: "snapshot_lines_missing" });
+        expect(
+            evolu.calls.some((c) => c.table === "document" && c.row.status === "issued"),
+        ).toBe(false);
     });
 
     it("issues, then advances the counter, when the snapshot persists", async () => {

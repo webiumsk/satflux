@@ -12,15 +12,11 @@ import {
     type EvoluDocumentRow,
 } from "./documentMap";
 import {
-    allocateNextNumberForIssue,
-    commitNumberSeriesCounter,
     syncLocalSeriesCounterFromIssuedNumber,
     syncNumberSeriesCounterFromDocuments,
 } from "./numberSeriesCrud";
-import {
-    localHighCounterForStoreBridge,
-    reserveNextDocumentNumberFromStore,
-} from "./numberSequenceBridge";
+import { localHighCounterForStoreBridge } from "./numberSequenceBridge";
+import { confirmIssueNumber, reserveIssueNumber } from "./numberAllocatorBridge";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import { documentVariableSymbol } from "./documentNumber";
 import { evoluCompanyToApi, type EvoluCompanyRow } from "./companyMap";
@@ -28,6 +24,7 @@ import { evoluContactToApi, type EvoluContactRow } from "./contactMap";
 import { logDocumentEvent } from "./documentEventLog";
 import { applyDocumentStockOnIssueAsync, reverseDocumentStockOnCancelAsync } from "./documentStockMovement";
 import {
+    ISSUED_SNAPSHOT_FORMAT_VERSION,
     buildIssuedSnapshotContentV1,
     insertIssuedDocumentSnapshot,
 } from "./documentSnapshotCrud";
@@ -266,7 +263,7 @@ function writeIssueSnapshot(
     company: EvoluCompanyRow,
     context: IssueSnapshotContext,
     allDocuments: EvoluDocumentRow[],
-): { ok: true } | { ok: false; error: string } {
+): { ok: true; payloadJson: string } | { ok: false; error: string } {
     const apiDoc = evoluDocumentToApi(
         { ...doc, status: "issued", number, variableSymbol },
         [],
@@ -439,76 +436,6 @@ async function waitForDraftDocument(
     return null;
 }
 
-export function issueLocalDocument(
-    evolu: Evolu<InvoicingLocalSchema>,
-    documentId: DocumentId,
-    company: EvoluCompanyRow,
-    allDocuments: EvoluDocumentRow[],
-    allSeries: EvoluNumberSeriesRow[],
-    snapshotContext?: IssueSnapshotContext,
-) {
-    const doc = allDocuments.find((d) => d.id === documentId);
-    if (!doc || doc.status !== "draft") {
-        return { ok: false as const, error: "not_draft" };
-    }
-
-    const allocation = allocateNextNumberForIssue(
-        evolu,
-        company.id,
-        doc.documentType,
-        allDocuments,
-        allSeries,
-        documentId,
-    );
-    if (!allocation.ok) {
-        return allocation;
-    }
-    const number = allocation.value;
-    const variableSymbol = documentVariableSymbol(doc.variableSymbol, number);
-    const quoteStatus = doc.documentType === "quote" ? "pending" : doc.quoteStatus;
-
-    // Freeze the snapshot BEFORE flipping to issued: a document may only
-    // become issued once its frozen copy is persisted (audit F2).
-    if (snapshotContext) {
-        const snapshot = writeIssueSnapshot(
-            evolu,
-            doc,
-            number,
-            variableSymbol,
-            company,
-            snapshotContext,
-            allDocuments,
-        );
-        if (!snapshot.ok) return snapshot;
-    }
-
-    const result = evolu.update("document", {
-        id: documentId,
-        status: "issued",
-        number,
-        variableSymbol,
-        quoteStatus,
-    });
-    if (!result.ok) {
-        return result;
-    }
-
-    const committed = commitNumberSeriesCounter(evolu, allocation);
-    if (!committed.ok) {
-        evolu.update("document", {
-            id: documentId,
-            status: "draft",
-            number: null,
-            variableSymbol: doc.variableSymbol,
-            quoteStatus: doc.quoteStatus,
-        });
-        return committed;
-    }
-
-    logDocumentEvent(evolu, documentId, "business_document.issued", { number });
-    return result;
-}
-
 async function finalizeIssueStock(
     evolu: Evolu<InvoicingLocalSchema>,
     documentId: DocumentId,
@@ -540,48 +467,56 @@ export async function issueLocalDocumentAsync(
             ((contactRows as unknown as EvoluContactRow[]).find((c) => c.id === draft.contactId)
                 ?? null),
     };
-    const linkedStoreId = company.linkedStoreId?.trim() ?? "";
-    if (linkedStoreId) {
-        const localHigh = localHighCounterForStoreBridge(
-            company.id,
-            draft.documentType,
-            documents,
-            series,
-        );
-        const reserved = await reserveNextDocumentNumberFromStore(
-            linkedStoreId,
-            draft.documentType,
-            undefined,
-            localHigh,
-            series,
-            company.id,
-            {
-                legal_name: company.legalName ?? null,
-                registration_number: company.registrationNumber ?? null,
-            },
-        );
-        if (reserved.ok) {
-            const result = await applyReservedNumberToLocalDocumentAsync(
-                evolu,
-                documentId,
-                company.id,
-                draft.documentType,
-                reserved.value.number,
-                series,
-                draft.variableSymbol,
-                {
-                    company,
-                    doc: draft,
-                    allDocuments: documents,
-                    ...snapshotContext,
-                },
-            );
-            return result;
-        }
+
+    // Server number allocator (audit F3): the number is reserved atomically
+    // on the server, keyed by the document id so a retried issue gets the
+    // same number back. There is deliberately NO local fallback - definitive
+    // issuing requires being online; offline the document stays a draft.
+    const localHigh = localHighCounterForStoreBridge(
+        company.id,
+        draft.documentType,
+        documents,
+        series,
+    );
+    const reserved = await reserveIssueNumber(
+        {
+            legal_name: company.legalName ?? null,
+            registration_number: company.registrationNumber ?? null,
+        },
+        draft.documentType,
+        documentId,
+        localHigh,
+    );
+    if (!reserved.ok) {
+        return { ok: false as const, error: reserved.error };
     }
 
-    const result = issueLocalDocument(evolu, documentId, company, documents, series, snapshotContext);
-    await finalizeIssueStock(evolu, documentId, result);
+    const result = await applyReservedNumberToLocalDocumentAsync(
+        evolu,
+        documentId,
+        company.id,
+        draft.documentType,
+        reserved.value.number,
+        series,
+        draft.variableSymbol,
+        {
+            company,
+            doc: draft,
+            allDocuments: documents,
+            ...snapshotContext,
+        },
+    );
+    if (result.ok) {
+        // Best-effort content commitment; the reservation stays "reserved"
+        // on the server when this fails and can be confirmed on a retry.
+        void confirmIssueNumber(
+            reserved.value.bridgeCompanyId,
+            draft.documentType,
+            documentId,
+            "snapshotPayloadJson" in result ? result.snapshotPayloadJson : null,
+            ISSUED_SNAPSHOT_FORMAT_VERSION,
+        );
+    }
     return result;
 }
 
@@ -603,7 +538,9 @@ export function applyReservedNumberToLocalDocument(
 ) {
     const quoteStatus = documentType === "quote" ? "pending" : null;
 
-    // Snapshot before status flip (audit F2) - same invariant as issueLocalDocument.
+    // Snapshot before status flip (audit F2): a document may only become
+    // issued once its frozen copy is persisted.
+    let snapshotPayloadJson: string | null = null;
     if (snapshotContext) {
         const snapshot = writeIssueSnapshot(
             evolu,
@@ -615,6 +552,7 @@ export function applyReservedNumberToLocalDocument(
             snapshotContext.allDocuments,
         );
         if (!snapshot.ok) return snapshot;
+        snapshotPayloadJson = snapshot.payloadJson;
     }
 
     const result = evolu.update("document", {
@@ -624,14 +562,14 @@ export function applyReservedNumberToLocalDocument(
         variableSymbol: documentVariableSymbol(variableSymbol, number),
         quoteStatus,
     });
-    if (result.ok) {
-        // Advance the local series counter only after the document is issued -
-        // same commit ordering as issueLocalDocument, so a failed snapshot or
-        // update leaves the counter untouched.
-        syncLocalSeriesCounterFromIssuedNumber(evolu, companyId, documentType, number, allSeries);
-        logDocumentEvent(evolu, documentId, "business_document.issued", { number, source: "woo_inbox" });
+    if (!result.ok) {
+        return result;
     }
-    return result;
+    // Advance the local series counter only after the document is issued, so
+    // a failed snapshot or update leaves the counter untouched.
+    syncLocalSeriesCounterFromIssuedNumber(evolu, companyId, documentType, number, allSeries);
+    logDocumentEvent(evolu, documentId, "business_document.issued", { number });
+    return { ok: true as const, value: result.value, snapshotPayloadJson };
 }
 
 export async function applyReservedNumberToLocalDocumentAsync(

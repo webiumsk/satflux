@@ -59,28 +59,28 @@ describe("formatNumberFromStoreCounter", () => {
     });
 });
 
-describe("reserveNextDocumentNumberFromStore self-healing", () => {
+describe("previewNextDocumentNumberFromStore self-healing", () => {
     it("heals a missing server store link (422 store_not_linked) and retries once", async () => {
         vi.resetModules();
 
         const notLinkedError = Object.assign(new Error("422"), {
             response: { status: 422, data: { error: "store_not_linked" } },
         });
-        const reserve = vi
+        const preview = vi
             .fn()
             .mockRejectedValueOnce(notLinkedError)
-            .mockResolvedValueOnce({ data: { counter: 71, number: "20260071" } });
+            .mockResolvedValueOnce({ data: { next_counter: 71, next_number: "20260071" } });
         const syncLinkedStoreToServerBridge = vi.fn().mockResolvedValue("synced");
 
         vi.doMock("@/services/api", () => ({
-            invoicingApi: { storeNumberSeries: { reserve, preview: vi.fn() } },
+            invoicingApi: { storeNumberSeries: { preview } },
             default: {},
         }));
         vi.doMock("@/evolu/ephemeralBridge", () => ({ syncLinkedStoreToServerBridge }));
 
-        const { reserveNextDocumentNumberFromStore } = await import("@/evolu/numberSequenceBridge");
+        const { previewNextDocumentNumberFromStore } = await import("@/evolu/numberSequenceBridge");
 
-        const result = await reserveNextDocumentNumberFromStore(
+        const result = await previewNextDocumentNumberFromStore(
             "store-1",
             "invoice",
             undefined,
@@ -94,8 +94,8 @@ describe("reserveNextDocumentNumberFromStore self-healing", () => {
             { legal_name: "ACME s.r.o.", registration_number: "12345678" },
             "store-1",
         );
-        expect(reserve).toHaveBeenCalledTimes(2);
-        expect(result).toEqual({ ok: true, value: { number: "20260071", counter: 71 } });
+        expect(preview).toHaveBeenCalledTimes(2);
+        expect(result).toBe("20260071");
 
         vi.doUnmock("@/services/api");
         vi.doUnmock("@/evolu/ephemeralBridge");
@@ -107,17 +107,16 @@ describe("reserveNextDocumentNumberFromStore self-healing", () => {
         const notLinkedError = Object.assign(new Error("422"), {
             response: { status: 422, data: { error: "store_not_linked" } },
         });
-        const reserve = vi.fn().mockRejectedValue(notLinkedError);
         const preview = vi.fn().mockRejectedValue(notLinkedError);
         const syncLinkedStoreToServerBridge = vi.fn().mockResolvedValue("no_bridge_company");
 
         vi.doMock("@/services/api", () => ({
-            invoicingApi: { storeNumberSeries: { reserve, preview } },
+            invoicingApi: { storeNumberSeries: { preview } },
             default: {},
         }));
         vi.doMock("@/evolu/ephemeralBridge", () => ({ syncLinkedStoreToServerBridge }));
 
-        const { previewNextDocumentNumberFromStore, reserveNextDocumentNumberFromStore } =
+        const { previewNextDocumentNumberFromStore } =
             await import("@/evolu/numberSequenceBridge");
         const identity = { legal_name: "Local Only s.r.o.", registration_number: null };
 
@@ -134,7 +133,7 @@ describe("reserveNextDocumentNumberFromStore self-healing", () => {
         expect(preview).toHaveBeenCalledTimes(1);
         expect(syncLinkedStoreToServerBridge).toHaveBeenCalledTimes(1);
 
-        // Later preview AND reserve for the same company skip the server entirely.
+        // A later preview for the same company skips the server entirely.
         const second = await previewNextDocumentNumberFromStore(
             "store-1",
             "invoice",
@@ -144,19 +143,8 @@ describe("reserveNextDocumentNumberFromStore self-healing", () => {
             companyId,
             identity,
         );
-        const reserved = await reserveNextDocumentNumberFromStore(
-            "store-1",
-            "invoice",
-            undefined,
-            undefined,
-            undefined,
-            companyId,
-            identity,
-        );
         expect(second).toBeNull();
-        expect(reserved).toEqual({ ok: false, error: "store_not_found" });
         expect(preview).toHaveBeenCalledTimes(1);
-        expect(reserve).not.toHaveBeenCalled();
         expect(syncLinkedStoreToServerBridge).toHaveBeenCalledTimes(1);
 
         vi.doUnmock("@/services/api");
@@ -169,18 +157,18 @@ describe("reserveNextDocumentNumberFromStore self-healing", () => {
         const notLinkedError = Object.assign(new Error("422"), {
             response: { status: 422, data: { error: "store_not_linked" } },
         });
-        const reserve = vi.fn().mockRejectedValue(notLinkedError);
+        const preview = vi.fn().mockRejectedValue(notLinkedError);
         const syncLinkedStoreToServerBridge = vi.fn().mockResolvedValue("synced");
 
         vi.doMock("@/services/api", () => ({
-            invoicingApi: { storeNumberSeries: { reserve, preview: vi.fn() } },
+            invoicingApi: { storeNumberSeries: { preview } },
             default: {},
         }));
         vi.doMock("@/evolu/ephemeralBridge", () => ({ syncLinkedStoreToServerBridge }));
 
-        const { reserveNextDocumentNumberFromStore } = await import("@/evolu/numberSequenceBridge");
+        const { previewNextDocumentNumberFromStore } = await import("@/evolu/numberSequenceBridge");
 
-        const result = await reserveNextDocumentNumberFromStore(
+        const result = await previewNextDocumentNumberFromStore(
             "store-1",
             "invoice",
             undefined,
@@ -190,8 +178,8 @@ describe("reserveNextDocumentNumberFromStore self-healing", () => {
             { legal_name: "ACME s.r.o.", registration_number: null },
         );
 
-        expect(reserve).toHaveBeenCalledTimes(2);
-        expect(result).toEqual({ ok: false, error: "store_not_found" });
+        expect(preview).toHaveBeenCalledTimes(2);
+        expect(result).toBeNull();
 
         vi.doUnmock("@/services/api");
         vi.doUnmock("@/evolu/ephemeralBridge");

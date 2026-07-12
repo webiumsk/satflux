@@ -407,9 +407,23 @@ export function useInvoiceDocument() {
     };
   }
 
+  const KNOWN_ISSUE_ERROR_CODES = new Set([
+    'validation',
+    'issue',
+    'issue_requires_online',
+    'reserve_failed',
+    'not_draft',
+    'series_update_failed',
+    'no_default_series',
+    'number_collision',
+  ]);
+
   function extractError(e: any) {
-    if (e instanceof Error && e.message && e.message !== 'validation' && e.message !== 'issue') {
+    if (e instanceof Error && e.message && !KNOWN_ISSUE_ERROR_CODES.has(e.message)) {
       return e.message;
+    }
+    if (e?.message === 'issue_requires_online') {
+      return t('invoicing.issue_requires_online');
     }
     const fieldErrors = e?.response?.data?.errors;
     if (fieldErrors && typeof fieldErrors === 'object') {
@@ -425,7 +439,7 @@ export function useInvoiceDocument() {
       || e?.response?.data?.errors?.store_id?.[0]
       || e?.response?.data?.errors?.document?.[0]
       || (e?.message === 'validation' ? t('invoicing.company_save_validation_error') : null)
-      || (e?.message === 'issue' || e?.message === 'not_draft' || e?.message === 'series_update_failed' || e?.message === 'no_default_series' || e?.message === 'number_collision'
+      || (e?.message === 'issue' || e?.message === 'reserve_failed' || e?.message === 'not_draft' || e?.message === 'series_update_failed' || e?.message === 'no_default_series' || e?.message === 'number_collision'
         ? t('invoicing.issue_error')
         : null)
       || t('common.error')
@@ -1075,7 +1089,7 @@ export function useInvoiceDocument() {
         companyRow as import('../evolu/companyMap').EvoluCompanyRow,
       );
       if (!issueResult.ok) {
-        throw new Error(issueResult.error || 'issue');
+        throw new Error(typeof issueResult.error === 'string' ? issueResult.error : 'issue');
       }
       await local.refreshAll();
       const apiDoc = local.documentApi(docId as DocumentId);
