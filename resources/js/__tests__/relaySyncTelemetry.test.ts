@@ -47,6 +47,19 @@ describe("deriveRelaySyncState", () => {
         expect(deriveRelaySyncState({ ...base, pending: true })).toBe("syncing");
     });
 
+    it("lets unreachable evidence beat pending and error signals", () => {
+        expect(
+            deriveRelaySyncState({ ...base, pending: true, meta: { ...emptyMeta, lastProbeOk: false } }),
+        ).toBe("unreachable");
+        expect(
+            deriveRelaySyncState({
+                ...base,
+                hasEvoluError: true,
+                meta: { ...emptyMeta, lastProbeOk: false },
+            }),
+        ).toBe("unreachable");
+    });
+
     it("reports error on an unhandled Evolu error", () => {
         expect(deriveRelaySyncState({ ...base, hasEvoluError: true })).toBe("error");
     });

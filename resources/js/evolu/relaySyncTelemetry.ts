@@ -100,13 +100,15 @@ export type DeriveRelaySyncStateInput = {
 /**
  * Pure state derivation - unit tested as a truth table. Precedence:
  * local_only > offline/unreachable evidence > syncing > error > ok > unknown.
+ * Unreachable evidence beats "syncing": a sync gate cannot succeed against a
+ * provably unreachable relay, and claiming it would be dishonest.
  */
 export function deriveRelaySyncState(input: DeriveRelaySyncStateInput): RelaySyncUiState {
     if (!input.relayConfigured) return "local_only";
     if (!input.online) return "unreachable";
+    if (input.meta.lastProbeOk === false) return "unreachable";
     if (input.pending) return "syncing";
     if (input.hasEvoluError) return "error";
-    if (input.meta.lastProbeOk === false) return "unreachable";
     if (input.meta.lastProbeOk === true) return "ok";
     return "unknown";
 }
