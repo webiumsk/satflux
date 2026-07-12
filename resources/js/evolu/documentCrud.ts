@@ -482,6 +482,9 @@ export async function issueLocalDocumentAsync(
         {
             legal_name: company.legalName ?? null,
             registration_number: company.registrationNumber ?? null,
+            jurisdiction: company.jurisdiction ?? null,
+            country: company.country ?? null,
+            default_currency: company.defaultCurrency ?? null,
         },
         draft.documentType,
         documentId,
