@@ -15,6 +15,14 @@ import { matchCompanyByIdentity } from "./duplicateCompanies";
 export type AllocatorIdentity = {
     legal_name?: string | null;
     registration_number?: string | null;
+    /**
+     * Creation hints for a missing bridge company row - the server REQUIRES
+     * jurisdiction on create; country and currency improve fidelity. Not
+     * part of the identity match itself.
+     */
+    jurisdiction?: string | null;
+    country?: string | null;
+    default_currency?: string | null;
 };
 
 export type AllocatorReservation = {
@@ -76,6 +84,10 @@ async function resolveOrCreateBridgeCompanyId(identity: AllocatorIdentity): Prom
     const created = await invoicingApi.companies.create<BridgeCompanyRow>({
         legal_name: identity.legal_name,
         registration_number: identity.registration_number ?? null,
+        // Server-side validation requires a jurisdiction on create.
+        jurisdiction: identity.jurisdiction || "eu_other",
+        ...(identity.country ? { country: identity.country } : {}),
+        ...(identity.default_currency ? { default_currency: identity.default_currency } : {}),
     });
     const converged = canonicalIdentityMatch(
         await invoicingApi.companies.list<BridgeCompanyRow>(),

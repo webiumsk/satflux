@@ -63,11 +63,18 @@ describe("reserveIssueNumber", () => {
             reserve: vi.fn().mockResolvedValue({ number: "20260001", counter: 1 }),
         });
 
-        const result = await bridge.reserveIssueNumber(identity, "invoice", "doc-request-0002");
+        const result = await bridge.reserveIssueNumber(
+            { ...identity, jurisdiction: "eu_sk", country: "SK", default_currency: "EUR" },
+            "invoice",
+            "doc-request-0002",
+        );
 
         expect(api.create).toHaveBeenCalledWith({
             legal_name: "ACME s.r.o.",
             registration_number: "12345678",
+            jurisdiction: "eu_sk",
+            country: "SK",
+            default_currency: "EUR",
         });
         expect(result.ok).toBe(true);
         if (result.ok) expect(result.value.bridgeCompanyId).toBe("co-new");
@@ -134,6 +141,24 @@ describe("reserveIssueNumber", () => {
         const result = await bridge.reserveIssueNumber({ legal_name: null }, "invoice", "doc-request-0006");
         expect(result).toEqual({ ok: false, error: "reserve_failed" });
         expect(api.reserve).not.toHaveBeenCalled();
+    });
+});
+
+describe("reserveIssueNumber create defaults", () => {
+    it("defaults the required jurisdiction when the local company has none", async () => {
+        const { bridge, api } = await loadBridge({
+            list: vi.fn().mockResolvedValue([]),
+            create: vi.fn().mockResolvedValue({ id: "co-new" }),
+            reserve: vi.fn().mockResolvedValue({ number: "20260001", counter: 1 }),
+        });
+
+        await bridge.reserveIssueNumber(identity, "invoice", "doc-request-0010");
+
+        expect(api.create).toHaveBeenCalledWith({
+            legal_name: "ACME s.r.o.",
+            registration_number: "12345678",
+            jurisdiction: "eu_other",
+        });
     });
 });
 
