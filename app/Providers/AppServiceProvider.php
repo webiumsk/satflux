@@ -8,9 +8,12 @@ use App\Pdf\DomPdfDriver;
 use App\Policies\StorePolicy;
 use App\Services\Invoicing\UsSalesTax\StripeTaxUsSalesTaxCalculator;
 use App\Services\Invoicing\UsSalesTax\UsSalesTaxCalculationService;
+use App\Support\ErrorRateCounter;
 use App\Support\ProductionConfigValidator;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
@@ -44,6 +47,17 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->enforceProductionConfig();
+
+        // Error-rate counters (P1 phase 8): count error+ log records per hour
+        // (counts only, never message content) for health checks + dashboard.
+        Event::listen(
+            MessageLogged::class,
+            function (MessageLogged $event): void {
+                if (ErrorRateCounter::shouldCount($event->level)) {
+                    ErrorRateCounter::increment();
+                }
+            },
+        );
 
         // Authorization policies
         Gate::policy(Store::class, StorePolicy::class);

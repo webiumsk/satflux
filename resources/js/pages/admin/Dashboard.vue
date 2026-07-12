@@ -18,6 +18,16 @@
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
           <div
             class="bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-amber-500/50 transition-all cursor-pointer"
+            @click="$router.push('/admin/system-health')"
+          >
+            <p class="text-gray-400 text-xs font-medium mb-1">
+              {{ t("admin.health.title") }}
+            </p>
+            <p class="text-2xl font-bold text-white">→</p>
+            <p class="text-xs text-gray-500 mt-1">{{ t("admin.health.description") }}</p>
+          </div>
+          <div
+            class="bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-amber-500/50 transition-all cursor-pointer"
             @click="$router.push('/admin/users')"
           >
             <p class="text-gray-400 text-xs font-medium mb-1">
