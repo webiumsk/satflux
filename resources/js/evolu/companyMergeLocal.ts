@@ -13,6 +13,7 @@ import {
     allNumberSeriesQuery,
     allRecurringProfilesQuery,
 } from "./client";
+import { allCompaniesQuery } from "./client";
 import { findDuplicateCompanyGroups } from "./duplicateCompanies";
 import {
     countCompanyInvoicesForList,
@@ -40,6 +41,36 @@ export type CompanyMergeListRow = {
     registration_number?: string | null;
     documents_count?: number;
 };
+
+/** update() resolves onComplete when the worker APPLIED the mutation - a
+ * timeout means it was accepted but never materialized. */
+function deleteCompanyAwait(
+    evolu: Evolu<InvoicingLocalSchema>,
+    id: CompanyId,
+): Promise<"applied" | "rejected" | "timeout"> {
+    return new Promise((resolve) => {
+        const timer = setTimeout(() => resolve("timeout"), 8_000);
+        const result = evolu.update(
+            "company",
+            { id, isDeleted: sqliteTrue },
+            {
+                onComplete: () => {
+                    clearTimeout(timer);
+                    resolve("applied");
+                },
+            },
+        );
+        if (!result.ok) {
+            clearTimeout(timer);
+            console.error(
+                "[invoicing] duplicate company delete rejected:",
+                id,
+                JSON.stringify(result.error).slice(0, 300),
+            );
+            resolve("rejected");
+        }
+    });
+}
 
 export type MergeDuplicateCompaniesResult = {
     mergedGroups: number;
@@ -201,29 +232,42 @@ export async function mergeDuplicateCompaniesLocal(
         const keepId = pickCanonicalCompanyId(group, documents) as CompanyId;
         if (!keepId) continue;
 
+        const removedIds: CompanyId[] = [];
         for (const row of group) {
             if (row.id === keepId) continue;
             reassignCompanyForeignKeys(evolu, row.id as CompanyId, keepId);
-            const result = evolu.update("company", { id: row.id as CompanyId, isDeleted: sqliteTrue });
-            if (result.ok) {
+            const outcome = await deleteCompanyAwait(evolu, row.id as CompanyId);
+            if (outcome === "applied") {
                 removedCompanies += 1;
+                removedIds.push(row.id as CompanyId);
             } else {
                 failedRemovals += 1;
-                console.error(
-                    "[invoicing] duplicate company delete rejected:",
-                    row.id,
-                    JSON.stringify(result.error).slice(0, 300),
-                );
+                if (outcome === "timeout") {
+                    console.error(
+                        "[invoicing] duplicate company delete accepted but never applied (worker timeout):",
+                        row.id,
+                    );
+                }
             }
         }
 
         dedupeNumberSeriesForCompany(evolu, keepId);
-    }
 
-    // Local mutations apply asynchronously - wait until the data settles so
-    // the caller's list reload actually observes the deletes.
-    const { waitForInvoicingDataSettled } = await import("./relaySyncWait");
-    await waitForInvoicingDataSettled(evolu);
+        // Post-verify: the deleted ids must be gone from the live query.
+        const companiesAfter = await evolu.loadQuery(allCompaniesQuery);
+        for (const removedId of removedIds) {
+            if (companiesAfter.some((row) => row.id === removedId)) {
+                failedRemovals += 1;
+                removedCompanies -= 1;
+                console.error(
+                    "[invoicing] duplicate company delete applied but row still present:",
+                    removedId,
+                    "evolu error:",
+                    JSON.stringify(evolu.getError() ?? null)?.slice(0, 300),
+                );
+            }
+        }
+    }
 
     return {
         mergedGroups: groups.length,
