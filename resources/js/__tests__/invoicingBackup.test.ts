@@ -76,6 +76,22 @@ describe("buildBackupEnvelopeFromSnapshot", () => {
         expect(await sha256Hex(deterministicStringify(parsed.data))).not.toBe(parsed.sha256);
     });
 
+    it("rejects instead of producing an envelope without a verifiable hash", async () => {
+        const digestSpy = vi
+            .spyOn(crypto.subtle, "digest")
+            .mockRejectedValue(new Error("no webcrypto"));
+        try {
+            await expect(
+                buildBackupEnvelopeFromSnapshot(snapshot, "owner-1"),
+            ).rejects.toThrow("backup_hash_unavailable");
+        } finally {
+            digestSpy.mockRestore();
+        }
+        // The normal implementation keeps working after restore.
+        const envelope = await buildBackupEnvelopeFromSnapshot(snapshot, "owner-1");
+        expect(envelope.sha256).toMatch(/^[0-9a-f]{64}$/);
+    });
+
     it("omits the owner hash without an owner id and never embeds the raw id", async () => {
         const anonymous = await buildBackupEnvelopeFromSnapshot(snapshot, null);
         expect(anonymous.owner_id_hash).toBeNull();

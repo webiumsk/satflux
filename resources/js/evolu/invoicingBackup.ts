@@ -28,9 +28,10 @@ export type InvoicingBackupEnvelope = {
     version: typeof INVOICING_BACKUP_VERSION;
     created_at: string;
     app_version: string | null;
+    /** Null only when the backup was made without a known owner id. */
     owner_id_hash: string | null;
     table_counts: Record<string, number>;
-    sha256: string | null;
+    sha256: string;
     data: InvoicingDataSnapshot;
 };
 
@@ -47,20 +48,33 @@ function appVersion(): string | null {
     return typeof fromEnv === "string" && fromEnv.trim() !== "" ? fromEnv.trim() : null;
 }
 
-/** Pure envelope builder - unit tested without an Evolu instance. */
+/**
+ * Pure envelope builder - unit tested without an Evolu instance. Throws when
+ * the WebCrypto digest is unavailable: a backup without a verifiable
+ * integrity hash (or with a silently missing owner pairing) must not be
+ * produced at all.
+ */
 export async function buildBackupEnvelopeFromSnapshot(
     snapshot: InvoicingDataSnapshot,
     ownerId: string | null,
     now: Date = new Date(),
 ): Promise<InvoicingBackupEnvelope> {
+    const sha256 = await sha256Hex(deterministicStringify(snapshot));
+    if (!sha256) {
+        throw new Error("backup_hash_unavailable");
+    }
+    const ownerIdHash = ownerId ? await sha256Hex(ownerId) : null;
+    if (ownerId && !ownerIdHash) {
+        throw new Error("backup_hash_unavailable");
+    }
     return {
         format: INVOICING_BACKUP_FORMAT,
         version: INVOICING_BACKUP_VERSION,
         created_at: now.toISOString(),
         app_version: appVersion(),
-        owner_id_hash: ownerId ? await sha256Hex(ownerId) : null,
+        owner_id_hash: ownerIdHash,
         table_counts: backupTableCounts(snapshot),
-        sha256: await sha256Hex(deterministicStringify(snapshot)),
+        sha256,
         data: snapshot,
     };
 }
@@ -105,7 +119,7 @@ export async function exportInvoicingBackup(
 
     const meta: LastExportMeta = {
         exportedAt: envelope.created_at,
-        sha256: envelope.sha256 ?? "",
+        sha256: envelope.sha256,
         tableCounts: envelope.table_counts,
     };
     if (envelope.owner_id_hash) {

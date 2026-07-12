@@ -1456,7 +1456,7 @@
   },
   "account": {
     "backup_title": "Copia de seguridad de datos",
-    "backup_desc": "Descarga una copia completa de tus datos locales de facturación (empresas, contactos, documentos, gastos, adjuntos) como archivo JSON con suma de verificación de integridad. Guárdala en un lugar seguro; se puede restaurar en cualquier dispositivo.",
+    "backup_desc": "Descarga una copia completa de tus datos locales de facturación (empresas, contactos, documentos, gastos, adjuntos) como archivo JSON con suma de verificación de integridad. Guárdala en un lugar seguro.",
     "backup_plaintext_warning": "El archivo NO está cifrado; contiene facturas legibles. Guárdalo como un archivo en papel.",
     "backup_export_button": "Exportar datos",
     "backup_export_success": "Copia descargada. Verifica que el archivo esté guardado de forma segura.",

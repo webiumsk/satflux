@@ -2383,7 +2383,7 @@
   },
   "account": {
     "backup_title": "Záloha dát",
-    "backup_desc": "Stiahne kompletnú kópiu lokálnych fakturačných dát (firmy, kontakty, doklady, výdavky, prílohy) ako JSON súbor s kontrolným súčtom integrity. Uložte si ju na bezpečné miesto - obnoviť sa dá na ľubovoľnom zariadení.",
+    "backup_desc": "Stiahne kompletnú kópiu lokálnych fakturačných dát (firmy, kontakty, doklady, výdavky, prílohy) ako JSON súbor s kontrolným súčtom integrity. Uložte si ju na bezpečné miesto.",
     "backup_plaintext_warning": "Súbor NIE JE šifrovaný - obsahuje čitateľné faktúry. Uchovávajte ho ako papierový archív.",
     "backup_export_button": "Exportovať dáta",
     "backup_export_success": "Záloha stiahnutá. Overte, že je súbor bezpečne uložený.",

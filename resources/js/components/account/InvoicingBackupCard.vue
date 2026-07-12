@@ -19,14 +19,20 @@
     <p class="text-xs text-amber-300">
       {{ t("account.backup_plaintext_warning") }}
     </p>
-    <p class="text-xs" :class="lastExport ? 'text-gray-300' : 'text-gray-500'">
+    <p v-if="!lastExportUnknown" class="text-xs" :class="lastExport ? 'text-gray-300' : 'text-gray-500'">
       {{
         lastExport
           ? t("account.backup_last_export_at", { date: formatDate(lastExport.exportedAt) })
           : t("account.backup_never_exported")
       }}
     </p>
-    <p v-if="message" class="text-xs" :class="messageIsError ? 'text-red-400' : 'text-emerald-300'">
+    <p
+      v-if="message"
+      role="status"
+      aria-live="polite"
+      class="text-xs"
+      :class="messageIsError ? 'text-red-400' : 'text-emerald-300'"
+    >
       {{ message }}
     </p>
   </div>
@@ -54,9 +60,13 @@ const exporting = ref(false);
 const message = ref("");
 const messageIsError = ref(false);
 const lastExport = ref<LastExportMeta | null>(null);
+// Hashing the owner id failed (no WebCrypto) - the export history is
+// unknown, which must not be presented as "never exported".
+const lastExportUnknown = ref(false);
 
 async function refreshLastExport() {
   const hash = await sha256Hex(props.ownerId);
+  lastExportUnknown.value = hash === null;
   lastExport.value = hash ? getLastExportMeta(hash) : null;
 }
 
@@ -72,8 +82,10 @@ async function runExport() {
     const { exportInvoicingBackup } = await import("../../evolu/invoicingBackup");
     const meta = await exportInvoicingBackup(evolu, props.ownerId);
     lastExport.value = meta;
+    lastExportUnknown.value = false;
     message.value = t("account.backup_export_success");
-  } catch {
+  } catch (error) {
+    console.error("Invoicing backup export failed:", error);
     message.value = t("account.backup_export_failed");
     messageIsError.value = true;
   } finally {
