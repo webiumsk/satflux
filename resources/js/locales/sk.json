@@ -53,6 +53,9 @@
     }
   },
   "invoicing": {
+    "import_progress_counter": "Importujem {done} / {total}...",
+    "offline_notice_title": "Ste offline",
+    "offline_notice_body": "Koncepty, zoznamy a úpravy fungujú ďalej a zosynchronizujú sa neskôr. Vystavenie dokladov, PDF, ISDOC/UBL export, e-faktúra, e-mail a BTCPay vyžadujú internetové pripojenie.",
     "storage_warning_title": "Úložisko prehliadača sa míňa",
     "storage_warning_80": "Táto stránka využíva {percent} % kvóty úložiska prehliadača. Exportujte zálohu skôr, než sa zaplní.",
     "storage_quota_exceeded": "Prehliadač nahlásil chybu úložiska - lokálne zápisy môžu zlyhávať. Exportujte zálohu hneď.",

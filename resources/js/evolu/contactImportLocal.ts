@@ -1,4 +1,5 @@
 import type { Evolu } from "@evolu/common/local-first";
+import { IMPORT_YIELD_EVERY_ROWS, yieldToEventLoop } from "./importYield";
 import { emptyContactForm, type ContactFormState } from "@/composables/useCompanyContact";
 import {
     CONTACT_IMPORT_FIELD_KEYS,
@@ -415,12 +416,14 @@ export function previewContactImportCsv(
     };
 }
 
-export function importContactsFromCsv(
+
+export async function importContactsFromCsv(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
     csvText: string,
     mapping: ContactImportMapping,
-): ContactImportResult {
+    onProgress?: (done: number, total: number) => void,
+): Promise<ContactImportResult> {
     const parsed = parseContactImportCsv(csvText);
     const normalizedMapping = normalizeMapping(mapping);
 
@@ -428,9 +431,15 @@ export function importContactsFromCsv(
     let skipped = 0;
     const errors: ContactImportRowError[] = [];
     let rowNumber = 1;
+    let processed = 0;
 
     for (const row of parsed.rows) {
         rowNumber++;
+        processed++;
+        if (processed % IMPORT_YIELD_EVERY_ROWS === 0) {
+            onProgress?.(processed, parsed.rows.length);
+            await yieldToEventLoop();
+        }
 
         if (imported + skipped >= MAX_ROWS) {
             errors.push({
@@ -476,6 +485,8 @@ export function importContactsFromCsv(
             });
         }
     }
+
+    onProgress?.(processed, parsed.rows.length);
 
     return { imported, skipped, errors };
 }

@@ -26,7 +26,9 @@ export function getEvoluRelayBuildInfo(): EvoluRelayBuildInfo {
             source: "default",
         };
     }
-    const url = String(raw).trim();
+    // Normalize (and validate) at the source: an invalid VITE_EVOLU_RELAY_URL
+    // must yield a DISABLED config, never { url: "", enabled: true }.
+    const url = normalizeEvoluRelayBaseUrl(String(raw));
     if (!url) {
         return { url: "", enabled: false, source: "disabled" };
     }
@@ -35,18 +37,32 @@ export function getEvoluRelayBuildInfo(): EvoluRelayBuildInfo {
 
 export const EVOLU_RELAY_URL = getEvoluRelayBuildInfo().url;
 
-/** Normalize user/build relay URL to WebSocket base (no path, no query). */
+/**
+ * Normalize user/build relay URL to WebSocket base (no path, no query).
+ * A value that does not parse as a ws(s)/http(s) URL is rejected (empty
+ * string) with a console warning - a malformed relay URL must fall back to
+ * local-only mode instead of half-configuring the transport (P1 phase 6).
+ */
 export function normalizeEvoluRelayBaseUrl(raw: string): string {
     const trimmed = raw.trim();
     if (!trimmed) {
         return "";
     }
-    try {
-        const parsed = new URL(trimmed);
-        return `${parsed.protocol}//${parsed.host}`;
-    } catch {
-        return trimmed.replace(/[/?#].*$/, "").replace(/\/$/, "");
+    const candidates = trimmed.includes("://") ? [trimmed] : [`wss://${trimmed}`];
+    for (const candidate of candidates) {
+        try {
+            const parsed = new URL(candidate);
+            if (!/^(wss?|https?):$/.test(parsed.protocol)) {
+                console.warn(`[evolu] relay URL has unsupported protocol "${parsed.protocol}" - sync disabled`);
+                return "";
+            }
+            return `${parsed.protocol}//${parsed.host}`;
+        } catch {
+            // Fall through to the rejection below.
+        }
     }
+    console.warn("[evolu] relay URL is not a valid URL - sync disabled");
+    return "";
 }
 
 /** Resolve relay URL: profile override, then build-time, then public default. */

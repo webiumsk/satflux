@@ -34,3 +34,51 @@ describe("evoluTransports", () => {
         expect(evoluTransports()).toEqual([]);
     });
 });
+
+describe("normalizeEvoluRelayBaseUrl validation (P1 phase 6)", () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.resetModules();
+    });
+
+    it("keeps valid ws/wss/http/https origins and strips paths", async () => {
+        const { normalizeEvoluRelayBaseUrl } = await import("../evolu/config");
+        expect(normalizeEvoluRelayBaseUrl("wss://relay.example.com/path?x=1")).toBe(
+            "wss://relay.example.com",
+        );
+        expect(normalizeEvoluRelayBaseUrl("https://relay.example.com:8443/")).toBe(
+            "https://relay.example.com:8443",
+        );
+    });
+
+    it("prefixes wss:// for scheme-less host input", async () => {
+        const { normalizeEvoluRelayBaseUrl } = await import("../evolu/config");
+        expect(normalizeEvoluRelayBaseUrl("relay.example.com")).toBe("wss://relay.example.com");
+    });
+
+    it("rejects unsupported protocols and garbage with a warning (sync disabled)", async () => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        const { normalizeEvoluRelayBaseUrl } = await import("../evolu/config");
+        expect(normalizeEvoluRelayBaseUrl("ftp://relay.example.com")).toBe("");
+        expect(normalizeEvoluRelayBaseUrl("::not a url::")).toBe("");
+        expect(warn).toHaveBeenCalled();
+    });
+});
+
+describe("getEvoluRelayBuildInfo validation", () => {
+    afterEach(() => {
+        vi.unstubAllEnvs();
+        vi.restoreAllMocks();
+        vi.resetModules();
+    });
+
+    it("disables sync entirely for an invalid VITE_EVOLU_RELAY_URL", async () => {
+        vi.spyOn(console, "warn").mockImplementation(() => {});
+        vi.stubEnv("VITE_EVOLU_RELAY_URL", "ftp://nope.example.com");
+
+        const { getEvoluRelayBuildInfo, evoluTransports } = await import("../evolu/config");
+
+        expect(getEvoluRelayBuildInfo()).toEqual({ url: "", enabled: false, source: "disabled" });
+        expect(evoluTransports()).toEqual([]);
+    });
+});

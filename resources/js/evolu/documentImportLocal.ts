@@ -1,4 +1,5 @@
 import { booleanToSqliteBoolean, maxLength, NonEmptyString } from "@evolu/common";
+import { IMPORT_YIELD_EVERY_ROWS, yieldToEventLoop } from "./importYield";
 import type { Evolu } from "@evolu/common/local-first";
 import { emptyContactForm, type ContactFormState } from "@/composables/useCompanyContact";
 import {
@@ -102,7 +103,10 @@ export type DocumentImportOptions = {
     defaultVat?: number;
     lineTaxApplies?: (line: DocumentLinePayload) => boolean;
     lineTaxRate?: (line: DocumentLinePayload) => number;
+    /** Progress callback for the import UI - called with processed and total row counts. */
+    onProgress?: (done: number, total: number) => void;
 };
+
 
 function vatOptionsForContact(company: VatPolicyCompany, contact: VatPolicyContact | null) {
     const vatPolicy = useCompanyVatPolicy();
@@ -755,13 +759,13 @@ export function previewDocumentImportCsv(
     return previewDocumentImport(parsed.headers, parsed.rows, mapping, options);
 }
 
-export function importDocumentImportCsv(
+export async function importDocumentImportCsv(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
     rows: string[][],
     mapping: DocumentImportMapping,
     options: DocumentImportOptions,
-): DocumentImportResult {
+): Promise<DocumentImportResult> {
     const normalizedMapping = normalizeDocumentMapping(mapping);
     const dateFormat = options.dateFormat ?? "dmy_dot";
     const documents = evolu.getQueryRows(allDocumentsQuery) as EvoluDocumentRow[];
@@ -775,10 +779,16 @@ export function importDocumentImportCsv(
     let contactsLinked = 0;
     const errors: DocumentImportRowError[] = [];
     let rowNumber = 1;
+    let processed = 0;
     const workingDocuments = [...documents];
 
     for (const row of rows) {
         rowNumber++;
+        processed++;
+        if (processed % IMPORT_YIELD_EVERY_ROWS === 0) {
+            options.onProgress?.(processed, rows.length);
+            await yieldToEventLoop();
+        }
 
         if (imported + skipped >= MAX_ROWS) {
             errors.push({
@@ -940,6 +950,8 @@ export function importDocumentImportCsv(
             series,
         );
     }
+
+    options.onProgress?.(processed, rows.length);
 
     return {
         imported,

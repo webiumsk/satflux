@@ -329,7 +329,13 @@
           :disabled="importing || !selectedFile"
           @click="runImport"
         >
-          {{ importing ? t("common.loading") : t("invoicing.import_submit") }}
+          {{
+            importing
+              ? importProgress
+                ? t("invoicing.import_progress_counter", { done: importProgress.done, total: importProgress.total })
+                : t("common.loading")
+              : t("invoicing.import_submit")
+          }}
         </button>
         <RouterLink
           v-if="importDone"
@@ -404,6 +410,7 @@ const lineDescription = ref("");
 const dateFormat = ref<ImportDateFormat>("auto");
 const loading = ref(false);
 const importing = ref(false);
+const importProgress = ref<{ done: number; total: number } | null>(null);
 const error = ref("");
 const importDone = ref(false);
 
@@ -655,7 +662,8 @@ async function runImport() {
       }
       await ensureLocalQueriesLoaded();
       const company = localCompanyApi();
-      const result = importDocumentImportCsv(
+      importProgress.value = null;
+      const result = await importDocumentImportCsv(
         evolu,
         companyId.value as CompanyId,
         csvRows.value,
@@ -668,8 +676,12 @@ async function runImport() {
           noteFooter: company?.legal_footer_note ?? null,
           company,
           dateFormat: dateFormat.value,
+          onProgress: (done, total) => {
+            importProgress.value = { done, total };
+          },
         },
       );
+      importProgress.value = null;
       importResult.value = {
         imported: result.imported,
         skipped: result.skipped,
