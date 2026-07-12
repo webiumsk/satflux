@@ -29,6 +29,8 @@
       </p>
     </template>
 
+    <BackupReminderBanner v-if="localFirst && canUse" class="mb-4" />
+
     <div v-if="localFirst && duplicateCompanyGroups.length" class="invoicing-alert-warn mb-4">
       <p class="text-sm font-medium">{{ t('invoicing.duplicate_companies_title') }}</p>
       <p class="text-sm mt-2 opacity-90">{{ t('invoicing.duplicate_companies_detail') }}</p>
@@ -180,6 +182,7 @@ import { computed, onMounted, ref, unref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
+import BackupReminderBanner from '../../components/invoicing/BackupReminderBanner.vue';
 import InvoicingLoadingState from '../../components/invoicing/ui/InvoicingLoadingState.vue';
 import InvoicingRelaySyncModal from '../../components/invoicing/InvoicingRelaySyncModal.vue';
 import InvoicingRelaySyncStatusButton, {

@@ -79,6 +79,41 @@ function parseMeta(raw: string | null): LastExportMeta | null {
     }
 }
 
+export const BACKUP_STALE_AFTER_DAYS = 7;
+const REMINDER_SNOOZE_KEY = "satflux.backup.reminder_snooze.v1";
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** True when no export exists or the newest one is older than the staleness window. */
+export function isBackupStale(
+    meta: LastExportMeta | null,
+    now: Date = new Date(),
+    maxAgeDays: number = BACKUP_STALE_AFTER_DAYS,
+): boolean {
+    if (!meta) return true;
+    const exportedAt = new Date(meta.exportedAt).getTime();
+    if (Number.isNaN(exportedAt)) return true;
+    return now.getTime() - exportedAt > maxAgeDays * DAY_MS;
+}
+
+export function snoozeBackupReminder(now: Date = new Date(), days: number = BACKUP_STALE_AFTER_DAYS): void {
+    try {
+        localStorage.setItem(REMINDER_SNOOZE_KEY, new Date(now.getTime() + days * DAY_MS).toISOString());
+    } catch {
+        // Storage unavailable - the banner just reappears.
+    }
+}
+
+export function isBackupReminderSnoozed(now: Date = new Date()): boolean {
+    try {
+        const until = localStorage.getItem(REMINDER_SNOOZE_KEY);
+        if (!until) return false;
+        const untilTime = new Date(until).getTime();
+        return !Number.isNaN(untilTime) && untilTime > now.getTime();
+    } catch {
+        return false;
+    }
+}
+
 export type LogoutGuardDecision = "block" | "confirm" | "none";
 
 /**
