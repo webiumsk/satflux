@@ -1,4 +1,5 @@
 import { getStoredAccountMnemonic, initEvoluFromAccountSeedIfNeeded } from "@/services/accountSeed";
+import { requestPersistence } from "@/services/browserStorage";
 import { sleep, withTimeout } from "./asyncTimeout";
 import { isInvoicingLocalFirst } from "./flags";
 
@@ -38,6 +39,9 @@ export function ensureEvoluBoundToAccountSeed(): Promise<void> {
     if (!bootstrapPromise) {
         const generation = bootstrapGeneration;
         bootstrapState = "running";
+        // Durable storage for the local-first database (P1 phase 5): ask the
+        // browser not to evict this origin. Best-effort, fire-and-forget.
+        void requestPersistence();
         bootstrapPromise = sleep(EVOLU_BOOTSTRAP_DEFER_MS)
             .then(() => {
                 if (generation !== bootstrapGeneration) {

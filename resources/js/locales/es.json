@@ -1455,6 +1455,16 @@
     "samrock_expires": "El código QR expira en {seconds}s"
   },
   "account": {
+    "storage_title": "Almacenamiento local del navegador",
+    "storage_persisted_label": "Protegido contra borrado",
+    "storage_persisted_yes": "Sí; el navegador concedió almacenamiento persistente",
+    "storage_persisted_no": "No; el navegador puede borrar datos si falta espacio",
+    "storage_persisted_unknown": "Desconocido; este navegador no lo informa",
+    "storage_usage_label": "Almacenamiento usado",
+    "storage_usage_value": "{used} de {quota} ({percent} %)",
+    "storage_usage_unknown": "Desconocido; este navegador no lo informa",
+    "storage_warning_hint": "El almacenamiento está casi lleno. Exporta una copia y considera liberar espacio; un origen lleno no puede guardar datos nuevos.",
+    "storage_not_persisted_hint": "Sin almacenamiento persistente el navegador puede borrar los datos locales si falta espacio. Mantén una copia exportada reciente.",
     "backup_restore_button": "Restaurar desde archivo",
     "backup_restore_title": "Restaurar datos desde una copia",
     "backup_restore_desc": "Elige un archivo JSON satflux-backup. Su suma de verificación se comprueba antes de escribir nada.",
@@ -2464,6 +2474,10 @@
     }
   },
   "invoicing": {
+    "storage_warning_title": "El almacenamiento del navegador se está agotando",
+    "storage_warning_80": "Este sitio usa el {percent} % de su cuota de almacenamiento. Exporta una copia antes de que se llene.",
+    "storage_quota_exceeded": "El navegador informó un error de almacenamiento; las escrituras locales pueden estar fallando. Exporta una copia ahora.",
+    "storage_export_cta": "Exportar copia",
     "relay_sync_state_unknown": "Estado de sincronización desconocido; aún no se ha verificado contacto con el relay en esta sesión.",
     "relay_sync_state_local_only": "Modo solo local; no hay ningún relay de sincronización configurado.",
     "relay_sync_state_unreachable": "El relay de sincronización no está disponible. Los cambios permanecen seguros en este dispositivo y se subirán cuando vuelva.",
