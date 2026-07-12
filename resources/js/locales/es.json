@@ -1,5 +1,9 @@
 {
   "common": {
+    "danger_type_word_label": "Escribe {word} para confirmar",
+    "danger_legacy_phrase_warning": "Tu frase de recuperación está guardada solo en este navegador. Haz una copia antes de continuar; sin ella, los datos de facturación no se pueden recuperar.",
+    "danger_backup_last_export_at": "Última exportación de datos: {date}",
+    "danger_backup_never_exported": "Todavía no se ha realizado ninguna exportación de datos en este dispositivo.",
     "copied": "Copiado al portapapeles",
     "copy_failed": "Error al copiar",
     "copy_url": "Copiar URL",
@@ -63,6 +67,14 @@
     "info_page_subtitle": "Versión, documentos legales, código abierto y soporte."
   },
   "auth": {
+    "logout_guard_title": "Haz una copia antes de cerrar sesión",
+    "logout_guard_body": "Cerrar sesión elimina la copia de la frase de recuperación guardada en este navegador. Sin la frase, los datos de facturación de este dispositivo no se pueden recuperar. Anota primero tu frase de recuperación (Perfil - Copia de seguridad) o exporta tus datos.",
+    "logout_confirm_word": "SALIR",
+    "logout_confirm_title": "¿Cerrar sesión?",
+    "logout_confirm_body": "Tus datos de facturación permanecen en este dispositivo, pero necesitarás tu frase de recuperación para acceder de nuevo.",
+    "guest_restore_owner_switch_title": "Esta frase pertenece a otra cuenta",
+    "guest_restore_owner_switch_body": "Este dispositivo contiene datos locales ({documents} documentos, {contacts} contactos, {companies} empresas) que se vincularán a la cuenta restaurada. Si quieres mantenerlos separados, cancela y haz primero una copia.",
+    "guest_restore_owner_switch_confirm": "Entiendo - restaurar de todos modos",
     "welcome_back": "Bienvenido de nuevo",
     "sign_in_to_account": "Inicia sesión en tu cuenta",
     "email": "Dirección de correo electrónico",

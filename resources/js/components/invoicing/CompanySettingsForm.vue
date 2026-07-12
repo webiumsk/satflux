@@ -366,75 +366,32 @@
       </div>
     </div>
 
-    <div
-      v-if="showDeleteModal"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-      role="dialog"
-      aria-modal="true"
-      @click.self="showDeleteModal = false"
-    >
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5 space-y-4">
-        <h3 class="text-lg font-semibold text-gray-900">{{ t('invoicing.company_delete_confirm_title') }}</h3>
-        <p class="text-sm text-gray-700">{{ t('invoicing.company_delete_confirm_desc') }}</p>
-        <div>
-          <label class="invoicing-sf-label">{{ t('invoicing.company_delete_confirm_label', { name: companyDisplayName }) }}</label>
-          <input v-model="deleteConfirmName" type="text" class="invoicing-sf-input" />
-        </div>
-        <p v-if="deleteError" class="text-sm text-red-600">{{ deleteError }}</p>
-        <div class="flex justify-end gap-3">
-          <button type="button" class="invoicing-btn-secondary" :disabled="deleting" @click="showDeleteModal = false">
-            {{ t('common.cancel') }}
-          </button>
-          <button
-            type="button"
-            class="invoicing-btn-primary bg-red-600 hover:bg-red-700 border-red-600"
-            :disabled="deleting || !deleteConfirmMatches"
-            @click="deleteCompanyProfile"
-          >
-            {{ deleting ? t('common.loading') : t('invoicing.company_delete_action') }}
-          </button>
-        </div>
-      </div>
-    </div>
+    <DangerConfirmModal
+      :open="showDeleteModal"
+      :title="t('invoicing.company_delete_confirm_title')"
+      :body="t('invoicing.company_delete_confirm_desc')"
+      :confirm-label="t('invoicing.company_delete_action')"
+      :confirm-word="companyDisplayName"
+      :busy="deleting"
+      :error="deleteError || null"
+      :backup-state="destructiveBackupState"
+      @close="showDeleteModal = false"
+      @confirm="deleteCompanyProfile"
+    />
 
-    <div
-      v-if="showResetModal"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-      role="dialog"
-      aria-modal="true"
-      @click.self="showResetModal = false"
-    >
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5 space-y-4">
-        <h3 class="text-lg font-semibold text-gray-900">{{ t('invoicing.company_reset_confirm_title') }}</h3>
-        <p class="text-sm text-gray-700">{{ t('invoicing.company_reset_confirm_desc') }}</p>
-        <ul class="text-sm text-gray-600 list-disc pl-5 space-y-1">
-          <li>{{ t('invoicing.company_reset_item_documents') }}</li>
-          <li>{{ t('invoicing.company_reset_item_contacts') }}</li>
-          <li>{{ t('invoicing.company_reset_item_expenses') }}</li>
-          <li>{{ t('invoicing.company_reset_item_payments') }}</li>
-          <li>{{ t('invoicing.company_reset_item_recurring') }}</li>
-          <li>{{ t('invoicing.company_reset_item_sequences') }}</li>
-        </ul>
-        <div>
-          <label class="invoicing-sf-label">{{ t('invoicing.company_reset_confirm_label', { name: companyDisplayName }) }}</label>
-          <input v-model="resetConfirmName" type="text" class="invoicing-sf-input" />
-        </div>
-        <p v-if="resetError" class="text-sm text-red-600">{{ resetError }}</p>
-        <div class="flex justify-end gap-3">
-          <button type="button" class="invoicing-btn-secondary" :disabled="resetting" @click="showResetModal = false">
-            {{ t('common.cancel') }}
-          </button>
-          <button
-            type="button"
-            class="invoicing-btn-primary bg-red-600 hover:bg-red-700 border-red-600"
-            :disabled="resetting || !resetConfirmMatches"
-            @click="resetCompanyData"
-          >
-            {{ resetting ? t('common.loading') : t('invoicing.company_reset_action') }}
-          </button>
-        </div>
-      </div>
-    </div>
+    <DangerConfirmModal
+      :open="showResetModal"
+      :title="t('invoicing.company_reset_confirm_title')"
+      :body="t('invoicing.company_reset_confirm_desc')"
+      :items="resetImpactItems"
+      :confirm-label="t('invoicing.company_reset_action')"
+      :confirm-word="companyDisplayName"
+      :busy="resetting"
+      :error="resetError || null"
+      :backup-state="destructiveBackupState"
+      @close="showResetModal = false"
+      @confirm="resetCompanyData"
+    />
   </section>
 </template>
 
@@ -446,6 +403,8 @@ import { invoicingApi } from "../../services/api";
 import CompanyEfakturaSettingsForm from './CompanyEfakturaSettingsForm.vue';
 import InvoicingJurisdictionSelect from './InvoicingJurisdictionSelect.vue';
 import RegistryLookupField from './RegistryLookupField.vue';
+import DangerConfirmModal from '../ui/DangerConfirmModal.vue';
+import { getAnyLastExportMeta, hasLegacyPlaintextMnemonic } from '../../services/backupState';
 import {
   countryAllowedForJurisdiction,
   countriesForJurisdiction,
@@ -540,11 +499,9 @@ const uploadingLogo = ref(false);
 const uploadingSignature = ref(false);
 const saveError = ref('');
 const showResetModal = ref(false);
-const resetConfirmName = ref('');
 const resetting = ref(false);
 const resetError = ref('');
 const showDeleteModal = ref(false);
-const deleteConfirmName = ref('');
 const deleting = ref(false);
 const deleteError = ref('');
 const logoPreviewUrl = ref<string | null>(null);
@@ -597,19 +554,20 @@ const companyDisplayName = computed(
   () => props.company?.trade_name || props.company?.legal_name || ''
 );
 
-const resetConfirmMatches = computed(() => {
-  const confirm = resetConfirmName.value.trim();
-  const legal = String(props.company?.legal_name ?? '').trim();
-  const trade = String(props.company?.trade_name ?? '').trim();
-  return confirm !== '' && (confirm === legal || confirm === trade);
-});
+// Backup evidence line for the destructive confirms (P1 data-loss guards).
+const destructiveBackupState = computed(() => ({
+  lastExportAt: getAnyLastExportMeta()?.exportedAt ?? null,
+  legacyPhraseOnDevice: hasLegacyPlaintextMnemonic(),
+}));
 
-const deleteConfirmMatches = computed(() => {
-  const confirm = deleteConfirmName.value.trim();
-  const legal = String(props.company?.legal_name ?? '').trim();
-  const trade = String(props.company?.trade_name ?? '').trim();
-  return confirm !== '' && (confirm === legal || confirm === trade);
-});
+const resetImpactItems = computed(() => [
+  t('invoicing.company_reset_item_documents'),
+  t('invoicing.company_reset_item_contacts'),
+  t('invoicing.company_reset_item_expenses'),
+  t('invoicing.company_reset_item_payments'),
+  t('invoicing.company_reset_item_recurring'),
+  t('invoicing.company_reset_item_sequences'),
+]);
 
 const isUs = computed(() => isUsJurisdiction(contactForm.jurisdiction));
 const { enabled: efakturaGloballyEnabled, load: loadEfakturaFeature } = useEfakturaFeature();
@@ -1129,7 +1087,6 @@ async function removeSignature() {
 }
 
 async function resetCompanyData() {
-  if (!resetConfirmMatches.value) return;
   resetting.value = true;
   resetError.value = '';
   try {
@@ -1143,11 +1100,10 @@ async function resetCompanyData() {
       resetLocalCompanyData(evolu, asCompanyId(props.companyId));
     } else {
       await invoicingApi.companies.resetData(props.companyId, {
-        confirm_name: resetConfirmName.value.trim(),
+        confirm_name: companyDisplayName.value.trim(),
       });
     }
     showResetModal.value = false;
-    resetConfirmName.value = '';
     await router.push({ name: 'invoicing-invoices', params: { companyId: props.companyId } });
   } catch (e: any) {
     resetError.value = e?.response?.data?.message || t('errors.generic');
@@ -1179,7 +1135,6 @@ async function loadLocalCompanyDeleteQueries(): Promise<void> {
 }
 
 async function deleteCompanyProfile() {
-  if (!deleteConfirmMatches.value) return;
   deleting.value = true;
   deleteError.value = '';
   try {
@@ -1190,7 +1145,6 @@ async function deleteCompanyProfile() {
       await invoicingApi.companies.delete(props.companyId);
     }
     showDeleteModal.value = false;
-    deleteConfirmName.value = '';
     await router.push({ name: 'invoicing' });
   } catch (e: any) {
     deleteError.value = e?.response?.data?.message || t('errors.generic');

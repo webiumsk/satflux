@@ -1318,6 +1318,10 @@
     "issuer_email": "Email"
   },
   "common": {
+    "danger_type_word_label": "Type {word} to confirm",
+    "danger_legacy_phrase_warning": "Your recovery phrase is stored only in this browser. Back it up before continuing - without it, your invoicing data cannot be recovered.",
+    "danger_backup_last_export_at": "Last data export: {date}",
+    "danger_backup_never_exported": "No data export has been made on this device yet.",
     "copied": "Copied to clipboard",
     "copy_failed": "Failed to copy",
     "copy_url": "Copy URL",
@@ -1381,6 +1385,14 @@
     "info_page_subtitle": "Version, legal documents, open source, and support."
   },
   "auth": {
+    "logout_guard_title": "Back up before signing out",
+    "logout_guard_body": "Signing out removes the recovery phrase copy stored in this browser. Without the phrase, the invoicing data on this device cannot be recovered. Write down your recovery phrase (Profile - Account backup) or export your data first.",
+    "logout_confirm_word": "SIGN OUT",
+    "logout_confirm_title": "Sign out?",
+    "logout_confirm_body": "Your invoicing data stays on this device, but you will need your recovery phrase to access it again.",
+    "guest_restore_owner_switch_title": "This phrase belongs to a different account",
+    "guest_restore_owner_switch_body": "This device holds local data ({documents} documents, {contacts} contacts, {companies} companies) that will be re-linked to the restored account. If you meant to keep them separate, cancel and back up first.",
+    "guest_restore_owner_switch_confirm": "I understand - restore anyway",
     "welcome_back": "Welcome back",
     "sign_in_to_account": "Sign in to your account",
     "email": "Email address",
