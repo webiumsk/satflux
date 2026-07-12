@@ -7,6 +7,7 @@ use App\Http\Requests\Invoicing\StoreCompanyDocumentSequenceRequest;
 use App\Models\AuditLog;
 use App\Models\Company;
 use App\Models\CompanyDocumentSequence;
+use App\Models\DocumentNumberReservation;
 use App\Services\Invoicing\DocumentNumberFormatter;
 use App\Services\Invoicing\DocumentSequenceService;
 use Illuminate\Http\JsonResponse;
@@ -113,6 +114,17 @@ class CompanyDocumentSequenceController extends Controller
     public function destroy(Company $company, CompanyDocumentSequence $sequence): JsonResponse
     {
         $this->assertBelongsToCompany($sequence, $company);
+
+        // Number reservations are the audit trail of allocated numbers and
+        // reference the sequence with a restricting foreign key - refuse the
+        // delete cleanly instead of failing at the database level.
+        if (DocumentNumberReservation::query()
+            ->where('company_document_sequence_id', $sequence->id)
+            ->exists()) {
+            throw ValidationException::withMessages([
+                'series' => ['Cannot delete a number series with allocated number reservations.'],
+            ]);
+        }
 
         if ($sequence->is_default) {
             $others = CompanyDocumentSequence::query()

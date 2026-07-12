@@ -6,6 +6,7 @@ use App\Models\BusinessDocument;
 use App\Models\BusinessExpense;
 use App\Models\Company;
 use App\Models\CompanyDocumentSequence;
+use App\Models\DocumentNumberReservation;
 use App\Support\LandingCopy;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -38,6 +39,179 @@ class DocumentSequenceService
                 (int) $series->last_number,
             );
         });
+    }
+
+    /**
+     * Atomically reserves the next number for an issue attempt (audit F3).
+     *
+     * Idempotent per (company, document type, issue_request_id): a retried
+     * request returns the existing reservation - including its number - in
+     * whatever status it currently has, so a client can recover an
+     * interrupted issue without burning another number.
+     */
+    public function reserveNumberForIssue(
+        Company $company,
+        string $documentType,
+        string $issueRequestId,
+        ?int $localHighCounter = null,
+    ): DocumentNumberReservation {
+        return DB::transaction(function () use ($company, $documentType, $issueRequestId, $localHighCounter) {
+            $existing = DocumentNumberReservation::query()
+                ->where('company_id', $company->id)
+                ->where('document_type', $documentType)
+                ->where('issue_request_id', $issueRequestId)
+                ->lockForUpdate()
+                ->first();
+            if ($existing) {
+                return $existing;
+            }
+
+            $series = $this->resolveSeriesForIssue($company, $documentType);
+            $series = CompanyDocumentSequence::query()
+                ->where('id', $series->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->syncPeriod($series);
+            $this->ensureCounterSynced($series);
+            $this->applyLocalHighCounter($series, $localHighCounter);
+            // ensureCounterSynced derives the counter from SERVER documents,
+            // which local-first clients do not create - never hand out a
+            // number at or below an existing reservation for this period.
+            // Voided reservations count too: numbers are never recycled.
+            $this->applyReservedCounterFloor($series);
+
+            $series->last_number = (int) $series->last_number + 1;
+            $series->save();
+
+            $counter = (int) $series->last_number;
+
+            return DocumentNumberReservation::create([
+                'company_id' => $company->id,
+                'document_type' => $documentType,
+                'company_document_sequence_id' => $series->id,
+                'issue_request_id' => $issueRequestId,
+                'period_key' => $series->period_key,
+                'counter' => $counter,
+                'number' => $this->formatter->format($series->format, $counter),
+                'status' => DocumentNumberReservation::STATUS_RESERVED,
+            ]);
+        });
+    }
+
+    /**
+     * Marks a reservation confirmed once the client has persisted the issued
+     * snapshot. Stores only an opaque hash + format version - never content.
+     * Idempotent for already confirmed reservations; refuses voided ones.
+     */
+    public function confirmReservation(
+        Company $company,
+        string $documentType,
+        string $issueRequestId,
+        ?string $snapshotHash = null,
+        ?string $snapshotFormatVersion = null,
+    ): DocumentNumberReservation {
+        return DB::transaction(function () use ($company, $documentType, $issueRequestId, $snapshotHash, $snapshotFormatVersion) {
+            $reservation = $this->lockedReservation($company, $documentType, $issueRequestId);
+
+            if ($reservation->status === DocumentNumberReservation::STATUS_VOIDED) {
+                throw ValidationException::withMessages([
+                    'issue_request_id' => ['Reservation was voided and cannot be confirmed.'],
+                ]);
+            }
+
+            if ($reservation->status !== DocumentNumberReservation::STATUS_CONFIRMED) {
+                $reservation->status = DocumentNumberReservation::STATUS_CONFIRMED;
+                $reservation->confirmed_hash = $snapshotHash;
+                $reservation->confirmed_format_version = $snapshotFormatVersion;
+                $reservation->save();
+            }
+
+            return $reservation;
+        });
+    }
+
+    /**
+     * Voids an unconfirmed reservation (client abandoned the issue). The
+     * number is NOT recycled - the sequence keeps its gap. Idempotent for
+     * already voided reservations; refuses confirmed ones.
+     */
+    public function voidReservation(
+        Company $company,
+        string $documentType,
+        string $issueRequestId,
+    ): DocumentNumberReservation {
+        return DB::transaction(function () use ($company, $documentType, $issueRequestId) {
+            $reservation = $this->lockedReservation($company, $documentType, $issueRequestId);
+
+            if ($reservation->status === DocumentNumberReservation::STATUS_CONFIRMED) {
+                throw ValidationException::withMessages([
+                    'issue_request_id' => ['Reservation was confirmed and cannot be voided.'],
+                ]);
+            }
+
+            if ($reservation->status !== DocumentNumberReservation::STATUS_VOIDED) {
+                $reservation->status = DocumentNumberReservation::STATUS_VOIDED;
+                $reservation->save();
+            }
+
+            return $reservation;
+        });
+    }
+
+    public function findReservation(
+        Company $company,
+        string $documentType,
+        string $issueRequestId,
+    ): ?DocumentNumberReservation {
+        return DocumentNumberReservation::query()
+            ->where('company_id', $company->id)
+            ->where('document_type', $documentType)
+            ->where('issue_request_id', $issueRequestId)
+            ->first();
+    }
+
+    /**
+     * Raises the series counter to the highest counter ever reserved for the
+     * current period. Safe against races: every reservation for a series runs
+     * under the same lockForUpdate on the series row.
+     */
+    protected function applyReservedCounterFloor(CompanyDocumentSequence $series): void
+    {
+        $reservedMax = (int) DocumentNumberReservation::query()
+            ->where('company_document_sequence_id', $series->id)
+            ->when(
+                $series->period_key === null,
+                fn ($query) => $query->whereNull('period_key'),
+                fn ($query) => $query->where('period_key', $series->period_key),
+            )
+            ->max('counter');
+
+        if ($reservedMax > (int) $series->last_number) {
+            $series->last_number = $reservedMax;
+            $series->save();
+        }
+    }
+
+    protected function lockedReservation(
+        Company $company,
+        string $documentType,
+        string $issueRequestId,
+    ): DocumentNumberReservation {
+        $reservation = DocumentNumberReservation::query()
+            ->where('company_id', $company->id)
+            ->where('document_type', $documentType)
+            ->where('issue_request_id', $issueRequestId)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $reservation) {
+            throw ValidationException::withMessages([
+                'issue_request_id' => ['No reservation found for this issue request.'],
+            ]);
+        }
+
+        return $reservation;
     }
 
     public function lastIssuedCounter(Company $company, string $documentType): int

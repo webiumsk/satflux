@@ -33,6 +33,7 @@ use App\Http\Controllers\Invoicing\CompanyContactController;
 use App\Http\Controllers\Invoicing\CompanyController;
 use App\Http\Controllers\Invoicing\CompanyDocumentSequenceController;
 use App\Http\Controllers\Invoicing\CompanyEmailSettingsController;
+use App\Http\Controllers\Invoicing\CompanyNumberAllocatorController;
 use App\Http\Controllers\Invoicing\CompanyRegistryController;
 use App\Http\Controllers\Invoicing\CompanyStockItemController;
 use App\Http\Controllers\Invoicing\CompanyWarehouseController;
@@ -359,6 +360,16 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyOwnership::class);
 
             Route::get('/companies/{company}/number-series/preview', [CompanyDocumentSequenceController::class, 'preview'])
+                ->middleware(EnsureCompanyOwnership::class);
+
+            // Server number allocator (audit F3) - company-scoped, store-independent.
+            Route::post('/companies/{company}/number-allocator/reserve', [CompanyNumberAllocatorController::class, 'reserve'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/number-allocator/confirm', [CompanyNumberAllocatorController::class, 'confirm'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/number-allocator/void', [CompanyNumberAllocatorController::class, 'void'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/number-allocator/status', [CompanyNumberAllocatorController::class, 'status'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::get('/companies/{company}/number-series', [CompanyDocumentSequenceController::class, 'index'])
                 ->middleware(EnsureCompanyOwnership::class);
