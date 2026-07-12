@@ -15,7 +15,10 @@ import {
     syncLocalSeriesCounterFromIssuedNumber,
     syncNumberSeriesCounterFromDocuments,
 } from "./numberSeriesCrud";
-import { localHighCounterForStoreBridge } from "./numberSequenceBridge";
+import {
+    formatNumberFromStoreCounter,
+    localHighCounterForStoreBridge,
+} from "./numberSequenceBridge";
 import { confirmIssueNumber, reserveIssueNumber } from "./numberAllocatorBridge";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import { documentVariableSymbol } from "./documentNumber";
@@ -494,12 +497,22 @@ export async function issueLocalDocumentAsync(
         return { ok: false as const, error: reserved.error };
     }
 
+    // The reserved COUNTER is authoritative; the visible number is formatted
+    // with the LOCAL series format. The server bridge sequence may carry a
+    // different default (e.g. INVYYYYNNNN) than the user's configured series.
+    const number = formatNumberFromStoreCounter(
+        company.id,
+        draft.documentType,
+        reserved.value.counter,
+        series,
+    );
+
     const result = await applyReservedNumberToLocalDocumentAsync(
         evolu,
         documentId,
         company.id,
         draft.documentType,
-        reserved.value.number,
+        number,
         series,
         draft.variableSymbol,
         {
