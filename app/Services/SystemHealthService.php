@@ -100,7 +100,7 @@ class SystemHealthService
             return ['ok' => true, 'detail' => 'no relay configured'];
         }
 
-        $httpUrl = preg_replace('/^wss:/i', 'https:', preg_replace('/^ws:/i', 'http:', $relayUrl) ?? $relayUrl) ?? $relayUrl;
+        $httpUrl = preg_replace(['/^wss:/i', '/^ws:/i'], ['https:', 'http:'], $relayUrl) ?? $relayUrl;
         // ANY HTTP response proves the relay host is up (mirrors the client probe).
         $response = Http::timeout(5)->get(rtrim($httpUrl, '/').'/usage/probe');
 

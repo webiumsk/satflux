@@ -34,9 +34,12 @@ class ProductionConfigValidator
         $missing = [];
         foreach (self::REQUIRED as $key => $envName) {
             $value = $config($key);
+            // An env value of "" exploded into an array yields [''] - treat
+            // arrays with no non-empty elements as missing too.
             $empty = $value === null
                 || $value === ''
-                || (is_array($value) && $value === []);
+                || (is_array($value)
+                    && array_filter($value, fn ($item) => $item !== null && $item !== '') === []);
             if ($empty) {
                 $missing[] = $envName;
             }

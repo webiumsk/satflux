@@ -36,4 +36,21 @@ class ProductionConfigValidatorTest extends TestCase
             ProductionConfigValidator::missing(fn (string $key) => $config[$key] ?? null),
         );
     }
+
+    #[Test]
+    public function it_reports_sanctum_stateful_domains_when_env_produces_empty_string_element(): void
+    {
+        $config = [
+            'app.key' => 'base64:abc',
+            'services.btcpay.base_url' => 'https://btcpay.example.com',
+            'services.btcpay.api_key' => 'key',
+            // SANCTUM_STATEFUL_DOMAINS="" exploded by the config file.
+            'sanctum.stateful' => [''],
+        ];
+
+        $this->assertSame(
+            ['SANCTUM_STATEFUL_DOMAINS'],
+            ProductionConfigValidator::missing(fn (string $key) => $config[$key] ?? null),
+        );
+    }
 }

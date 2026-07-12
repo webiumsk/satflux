@@ -8,11 +8,14 @@ use App\Pdf\DomPdfDriver;
 use App\Policies\StorePolicy;
 use App\Services\Invoicing\UsSalesTax\StripeTaxUsSalesTaxCalculator;
 use App\Services\Invoicing\UsSalesTax\UsSalesTaxCalculationService;
+use App\Support\ProductionConfigValidator;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -76,14 +79,14 @@ class AppServiceProvider extends ServiceProvider
             return;
         }
 
-        \Illuminate\Support\Facades\URL::forceScheme('https');
+        URL::forceScheme('https');
 
-        $missing = \App\Support\ProductionConfigValidator::missing(fn (string $key) => config($key));
+        $missing = ProductionConfigValidator::missing(fn (string $key) => config($key));
         if ($missing === []) {
             return;
         }
 
-        \Illuminate\Support\Facades\Log::critical('Production configuration is incomplete', [
+        Log::critical('Production configuration is incomplete', [
             'missing' => $missing,
         ]);
 
