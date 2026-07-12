@@ -229,6 +229,11 @@
             <p v-else-if="evoluStatsNeedPhrase" class="text-xs text-amber-300">
               {{ t("account.evolu_stats_need_phrase") }}
             </p>
+
+            <InvoicingBackupCard
+              v-if="evoluLocalStats?.ownerId"
+              :owner-id="evoluLocalStats.ownerId"
+            />
           </div>
 
           <p class="text-xs text-gray-500">
@@ -1425,6 +1430,7 @@ import {
   loadInvoicingLocalStats,
   type InvoicingLocalStats,
 } from "../../evolu/invoicingLocalStats";
+import InvoicingBackupCard from "../../components/account/InvoicingBackupCard.vue";
 import {
   fetchEvoluRelayUsage,
   relayUsagePercent,

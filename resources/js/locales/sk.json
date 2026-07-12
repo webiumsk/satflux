@@ -2382,6 +2382,14 @@
     "waiting": "Čakám..."
   },
   "account": {
+    "backup_title": "Záloha dát",
+    "backup_desc": "Stiahne kompletnú kópiu lokálnych fakturačných dát (firmy, kontakty, doklady, výdavky, prílohy) ako JSON súbor s kontrolným súčtom integrity. Uložte si ju na bezpečné miesto.",
+    "backup_plaintext_warning": "Súbor NIE JE šifrovaný - obsahuje čitateľné faktúry. Uchovávajte ho ako papierový archív.",
+    "backup_export_button": "Exportovať dáta",
+    "backup_export_success": "Záloha stiahnutá. Overte, že je súbor bezpečne uložený.",
+    "backup_export_failed": "Export zlyhal. Skúste to znova.",
+    "backup_last_export_at": "Posledný export: {date}",
+    "backup_never_exported": "Na tomto zariadení zatiaľ nebol vytvorený žiadny export.",
     "title": "Nastavenia účtu",
     "manage_profile": "Spravujte svoj profil, heslo a predplatné.",
     "tabs_aria": "Sekcie profilu",

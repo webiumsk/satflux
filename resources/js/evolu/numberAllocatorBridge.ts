@@ -1,5 +1,6 @@
 import { invoicingApi } from "@/services/api";
 import { matchCompanyByIdentity } from "./duplicateCompanies";
+import { sha256Hex } from "@/utils/sha256";
 
 /**
  * Client side of the server number allocator (audit F3).
@@ -147,17 +148,8 @@ export async function reserveIssueNumber(
     }
 }
 
-/** SHA-256 hex of the snapshot payload - the opaque content commitment sent on confirm. */
-export async function sha256Hex(text: string): Promise<string | null> {
-    try {
-        const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-        return Array.from(new Uint8Array(digest))
-            .map((byte) => byte.toString(16).padStart(2, "0"))
-            .join("");
-    } catch {
-        return null;
-    }
-}
+// Re-exported for existing importers; implementation moved to the shared util.
+export { sha256Hex } from "@/utils/sha256";
 
 /**
  * Confirms a reservation after the issued snapshot is persisted locally.
