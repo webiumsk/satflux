@@ -162,6 +162,7 @@
     "duplicate_companies_merge": "Zlúčiť duplicity automaticky",
     "duplicate_companies_merging": "Zlučujem duplicity…",
     "duplicate_companies_merge_success": "Zlúčených {groups} skupín duplicít, odstránených {removed} prebytočných profilov.",
+    "duplicate_companies_merge_partial": "Zlúčenie skončilo s problémami - odstránených {removed}, {failed} sa nepodarilo odstrániť. Skontrolujte konzolu prehliadača a skúste znova.",
     "duplicate_companies_merge_none": "Nebolo čo zlučovať.",
     "duplicate_companies_merge_failed": "Duplicity sa nepodarilo zlúčiť. Skúste znova alebo ich zmažte ručne v nastaveniach firmy.",
     "company_delete_title": "Zmazať firemný profil",

@@ -504,7 +504,14 @@ async function runMergeDuplicates(): Promise<void> {
   mergeRunning.value = true;
   try {
     const result = await mergeDuplicateCompaniesLocal(evolu, companyList.value);
-    if (result.removedCompanies === 0) {
+    if (result.failedRemovals > 0) {
+      flashStore.error(
+        t('invoicing.duplicate_companies_merge_partial', {
+          failed: result.failedRemovals,
+          removed: result.removedCompanies,
+        }),
+      );
+    } else if (result.removedCompanies === 0) {
       flashStore.warning(t('invoicing.duplicate_companies_merge_none'));
     } else {
       flashStore.success(

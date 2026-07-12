@@ -162,6 +162,7 @@
     "duplicate_companies_merge": "Merge duplicates automatically",
     "duplicate_companies_merging": "Merging duplicates…",
     "duplicate_companies_merge_success": "Merged {groups} duplicate group(s) and removed {removed} extra profile(s).",
+    "duplicate_companies_merge_partial": "Merge finished with issues - {removed} removed, {failed} could not be removed. Check the browser console and try again.",
     "duplicate_companies_merge_none": "No duplicate profiles could be merged.",
     "duplicate_companies_merge_failed": "Could not merge duplicate companies. Try again or merge manually in company settings.",
     "company_delete_title": "Delete company profile",

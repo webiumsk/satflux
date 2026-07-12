@@ -44,6 +44,8 @@ export type CompanyMergeListRow = {
 export type MergeDuplicateCompaniesResult = {
     mergedGroups: number;
     removedCompanies: number;
+    /** Rows whose delete mutation was rejected - surfaced instead of silently ignored. */
+    failedRemovals: number;
 };
 
 function pickCanonicalCompanyId<T extends { id: string }>(
@@ -193,6 +195,7 @@ export async function mergeDuplicateCompaniesLocal(
     const documents = evolu.getQueryRows(allDocumentsQuery);
     const groups = findDuplicateCompanyGroups(companies);
     let removedCompanies = 0;
+    let failedRemovals = 0;
 
     for (const group of groups) {
         const keepId = pickCanonicalCompanyId(group, documents) as CompanyId;
@@ -201,15 +204,30 @@ export async function mergeDuplicateCompaniesLocal(
         for (const row of group) {
             if (row.id === keepId) continue;
             reassignCompanyForeignKeys(evolu, row.id as CompanyId, keepId);
-            evolu.update("company", { id: row.id as CompanyId, isDeleted: sqliteTrue });
-            removedCompanies += 1;
+            const result = evolu.update("company", { id: row.id as CompanyId, isDeleted: sqliteTrue });
+            if (result.ok) {
+                removedCompanies += 1;
+            } else {
+                failedRemovals += 1;
+                console.error(
+                    "[invoicing] duplicate company delete rejected:",
+                    row.id,
+                    JSON.stringify(result.error).slice(0, 300),
+                );
+            }
         }
 
         dedupeNumberSeriesForCompany(evolu, keepId);
     }
 
+    // Local mutations apply asynchronously - wait until the data settles so
+    // the caller's list reload actually observes the deletes.
+    const { waitForInvoicingDataSettled } = await import("./relaySyncWait");
+    await waitForInvoicingDataSettled(evolu);
+
     return {
         mergedGroups: groups.length,
         removedCompanies,
+        failedRemovals,
     };
 }
