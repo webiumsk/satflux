@@ -97,7 +97,7 @@ class SystemHealthService
     {
         $relayUrl = trim((string) config('security.csp.evolu_relay_url'));
         if ($relayUrl === '') {
-            return ['ok' => true, 'detail' => 'no relay configured'];
+            return ['ok' => true, 'detail' => 'CSP_EVOLU_RELAY_URL not set - relay check skipped'];
         }
 
         $httpUrl = preg_replace(['/^wss:/i', '/^ws:/i'], ['https:', 'http:'], $relayUrl) ?? $relayUrl;
