@@ -1,4 +1,5 @@
 import type { Evolu } from "@evolu/common/local-first";
+import { IMPORT_YIELD_EVERY_ROWS, yieldToEventLoop } from "./importYield";
 import { emptyContactForm, type ContactFormState } from "@/composables/useCompanyContact";
 import {
     CONTACT_IMPORT_FIELD_KEYS,
@@ -415,14 +416,6 @@ export function previewContactImportCsv(
     };
 }
 
-/** Rows processed between event-loop yields - keeps the UI responsive on large files. */
-const IMPORT_YIELD_EVERY_ROWS = 25;
-
-function yieldToEventLoop(): Promise<void> {
-    return new Promise((resolve) => {
-        setTimeout(resolve, 0);
-    });
-}
 
 export async function importContactsFromCsv(
     evolu: Evolu<InvoicingLocalSchema>,

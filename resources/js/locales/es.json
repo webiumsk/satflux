@@ -2476,7 +2476,7 @@
   "invoicing": {
     "import_progress_counter": "Importando {done} / {total}...",
     "offline_notice_title": "Estás sin conexión",
-    "offline_notice_body": "Los borradores, listas y ediciones siguen funcionando y se sincronizarán después. Emitir documentos, PDF, correo y BTCPay necesitan conexión a internet.",
+    "offline_notice_body": "Los borradores, listas y ediciones siguen funcionando y se sincronizarán después. Emitir documentos, PDF, exportación ISDOC/UBL, facturación electrónica, correo y BTCPay necesitan conexión a internet.",
     "storage_warning_title": "El almacenamiento del navegador se está agotando",
     "storage_warning_80": "Este sitio usa el {percent} % de su cuota de almacenamiento. Exporta una copia antes de que se llene.",
     "storage_quota_exceeded": "El navegador informó un error de almacenamiento; las escrituras locales pueden estar fallando. Exporta una copia ahora.",

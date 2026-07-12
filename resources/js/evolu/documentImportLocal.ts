@@ -1,4 +1,5 @@
 import { booleanToSqliteBoolean, maxLength, NonEmptyString } from "@evolu/common";
+import { IMPORT_YIELD_EVERY_ROWS, yieldToEventLoop } from "./importYield";
 import type { Evolu } from "@evolu/common/local-first";
 import { emptyContactForm, type ContactFormState } from "@/composables/useCompanyContact";
 import {
@@ -106,14 +107,6 @@ export type DocumentImportOptions = {
     onProgress?: (done: number, total: number) => void;
 };
 
-/** Rows processed between event-loop yields - keeps the UI responsive on large files. */
-const IMPORT_YIELD_EVERY_ROWS = 25;
-
-function yieldToEventLoop(): Promise<void> {
-    return new Promise((resolve) => {
-        setTimeout(resolve, 0);
-    });
-}
 
 function vatOptionsForContact(company: VatPolicyCompany, contact: VatPolicyContact | null) {
     const vatPolicy = useCompanyVatPolicy();

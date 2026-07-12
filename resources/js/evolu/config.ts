@@ -26,7 +26,9 @@ export function getEvoluRelayBuildInfo(): EvoluRelayBuildInfo {
             source: "default",
         };
     }
-    const url = String(raw).trim();
+    // Normalize (and validate) at the source: an invalid VITE_EVOLU_RELAY_URL
+    // must yield a DISABLED config, never { url: "", enabled: true }.
+    const url = normalizeEvoluRelayBaseUrl(String(raw));
     if (!url) {
         return { url: "", enabled: false, source: "disabled" };
     }

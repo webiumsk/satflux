@@ -55,7 +55,7 @@
   "invoicing": {
     "import_progress_counter": "Importing {done} / {total}...",
     "offline_notice_title": "You are offline",
-    "offline_notice_body": "Drafts, lists and edits keep working and will sync later. Issuing documents, PDF, e-mail and BTCPay need an internet connection.",
+    "offline_notice_body": "Drafts, lists and edits keep working and will sync later. Issuing documents, PDF, ISDOC/UBL export, e-invoicing, e-mail and BTCPay need an internet connection.",
     "storage_warning_title": "Browser storage is running out",
     "storage_warning_80": "This site uses {percent}% of its browser storage quota. Export a backup before it fills up.",
     "storage_quota_exceeded": "The browser reported a storage error - local writes may be failing. Export a backup now.",

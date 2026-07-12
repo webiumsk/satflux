@@ -64,3 +64,21 @@ describe("normalizeEvoluRelayBaseUrl validation (P1 phase 6)", () => {
         expect(warn).toHaveBeenCalled();
     });
 });
+
+describe("getEvoluRelayBuildInfo validation", () => {
+    afterEach(() => {
+        vi.unstubAllEnvs();
+        vi.restoreAllMocks();
+        vi.resetModules();
+    });
+
+    it("disables sync entirely for an invalid VITE_EVOLU_RELAY_URL", async () => {
+        vi.spyOn(console, "warn").mockImplementation(() => {});
+        vi.stubEnv("VITE_EVOLU_RELAY_URL", "ftp://nope.example.com");
+
+        const { getEvoluRelayBuildInfo, evoluTransports } = await import("../evolu/config");
+
+        expect(getEvoluRelayBuildInfo()).toEqual({ url: "", enabled: false, source: "disabled" });
+        expect(evoluTransports()).toEqual([]);
+    });
+});
