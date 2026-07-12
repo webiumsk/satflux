@@ -51,6 +51,37 @@ export async function fetchEvoluRelayUsage(
     }
 }
 
+/**
+ * Reachability probe (P1 phase 4): ANY HTTP response from the relay's usage
+ * endpoint - even a 404 for an unknown owner - proves the relay host is up.
+ * Only a network failure or timeout counts as unreachable.
+ */
+export async function probeRelayReachability(
+    relayWssUrl: string,
+    ownerId?: string | null,
+    options?: { timeoutMs?: number },
+): Promise<boolean> {
+    const url = relayUsageHttpUrl(relayWssUrl, ownerId || "probe");
+    const controller = new AbortController();
+    const timeout = window.setTimeout(
+        () => controller.abort(),
+        options?.timeoutMs ?? 6_000,
+    );
+    try {
+        await fetch(url, {
+            method: "GET",
+            credentials: "omit",
+            signal: controller.signal,
+            headers: { Accept: "application/json" },
+        });
+        return true;
+    } catch {
+        return false;
+    } finally {
+        window.clearTimeout(timeout);
+    }
+}
+
 export function relayUsagePercent(storedBytes: number, quotaBytes: number): number {
     if (!quotaBytes || quotaBytes <= 0) {
         return 0;

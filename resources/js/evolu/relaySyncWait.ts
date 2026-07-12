@@ -15,6 +15,22 @@ import {
     readEvoluErrorMessage,
     readEvoluOwnerHint,
 } from "./relayPushMutations";
+import { ownerIdHashFor, recordPullSuccess, recordPushSuccess } from "./relaySyncTelemetry";
+
+/** Best-effort exchange evidence for the honest sync state (P1 phase 4). */
+async function recordExchange(
+    evolu: Evolu<InvoicingLocalSchema>,
+    kind: "pull" | "push",
+): Promise<void> {
+    try {
+        const hash = await ownerIdHashFor(evolu);
+        if (!hash) return;
+        if (kind === "pull") recordPullSuccess(hash);
+        else recordPushSuccess(hash);
+    } catch {
+        // Telemetry only - never block the sync flow.
+    }
+}
 
 const EVOLU_RELAY_PENDING_KEY = "satflux.evolu.relay_pending.v1";
 
@@ -213,6 +229,7 @@ export async function pullInvoicingFromRelay(
 
     const finalGlobalFingerprint = await loadInvoicingRelayFingerprint(evolu);
     if (companyId && finalGlobalFingerprint !== baselineGlobalFingerprint) {
+        await recordExchange(evolu, "pull");
         return {
             ownerStatus: "ok",
             changed: true,
@@ -238,6 +255,8 @@ async function buildPullResult(
         baselineListFingerprint: string;
     },
 ): Promise<PullInvoicingFromRelayResult> {
+    // Relay merges landed - definite evidence of a successful exchange.
+    await recordExchange(evolu, "pull");
     const companyFingerprint = await loadInvoicingRelayFingerprint(evolu, args.listFilter.companyId);
     const listFingerprint = await loadDocumentListFingerprint(evolu, args.listFilter);
     const companyChanged = companyFingerprint !== args.baselineCompanyFingerprint;
@@ -441,6 +460,14 @@ export async function pushInvoicingToRelay(
 
     const evoluError = readEvoluErrorMessage(evolu);
 
+    const ok =
+        (force
+            ? rowsForceTouched > 0
+            : companiesUpdated > 0 || syncEvents > 0) && !evoluError;
+    if (ok) {
+        await recordExchange(evolu, "push");
+    }
+
     return {
         ownerStatus: "ok",
         companiesUpdated,
@@ -448,10 +475,7 @@ export async function pushInvoicingToRelay(
         rowsForceTouched: force ? rowsForceTouched : undefined,
         ownerHint,
         evoluError,
-        ok:
-            (force
-                ? rowsForceTouched > 0
-                : companiesUpdated > 0 || syncEvents > 0) && !evoluError,
+        ok,
         force,
     };
 }

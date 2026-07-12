@@ -9,7 +9,8 @@
         v-if="showRelaySyncStatusIcon && relaySyncStatusLevel"
         :level="relaySyncStatusLevel"
         :spinning="isRelaySyncing"
-        @click="showRelaySyncModal = true"
+        :title-override="relaySyncStatusTitle"
+        @click="openRelaySyncModal"
       />
       <button
         v-if="canUse && canCreateCompany"
@@ -223,12 +224,12 @@ withDefaults(
   { embedded: false },
 );
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const router = useRouter();
 const authStore = useAuthStore();
 const flashStore = useFlashStore();
 const { canUse } = useBusinessInvoicing();
-const { isRelaySyncing, localFirst, pushToRelay, refreshFromRelay } = useInvoicingRelaySync();
+const { isRelaySyncing, localFirst, pushToRelay, refreshFromRelay, syncState, lastExchangeAt, probeNow } = useInvoicingRelaySync();
 const relayRuntimeInfo = computed(() => getEvoluRelayRuntimeInfo());
 const relayPushBusy = ref(false);
 const relayPullBusy = ref(false);
@@ -264,10 +265,16 @@ const showRelaySyncStatusIcon = computed(
   () => localFirst && canUse && !loading.value && !loadError.value,
 );
 
+/**
+ * Honest sync indicator (P1 phase 4): green ONLY with reachability + exchange
+ * evidence (syncState "ok"); gray when nothing is known yet or sync is
+ * local-only; red for unreachable/error; orange while syncing or when
+ * migrations/duplicates need attention.
+ */
 const relaySyncStatusLevel = computed((): RelaySyncStatusLevel | null => {
   if (!localFirst) return null;
   if (!relayRuntimeInfo.value.enabled) return 'red';
-  if (isRelaySyncing.value) return 'orange';
+  if (syncState.value === 'syncing') return 'orange';
   if (
     showServerMigration.value ||
     showAttachmentMigration.value ||
@@ -276,7 +283,35 @@ const relaySyncStatusLevel = computed((): RelaySyncStatusLevel | null => {
   ) {
     return 'orange';
   }
-  return 'green';
+  switch (syncState.value) {
+    case 'ok':
+      return 'green';
+    case 'unreachable':
+    case 'error':
+      return 'red';
+    case 'local_only':
+    case 'unknown':
+    default:
+      return 'gray';
+  }
+});
+
+/** Opening the sync modal re-probes relay reachability on demand. */
+function openRelaySyncModal(): void {
+  showRelaySyncModal.value = true;
+  void probeNow();
+}
+
+const relaySyncStatusTitle = computed((): string | null => {
+  if (syncState.value === 'ok' && lastExchangeAt.value) {
+    return t('invoicing.relay_sync_last_exchange_at', {
+      time: new Date(lastExchangeAt.value).toLocaleString(locale.value),
+    });
+  }
+  if (syncState.value === 'unreachable') return t('invoicing.relay_sync_state_unreachable');
+  if (syncState.value === 'error') return t('invoicing.relay_sync_state_error');
+  if (syncState.value === 'local_only') return t('invoicing.relay_sync_state_local_only');
+  return null;
 });
 
 const showServerMigration = computed(() => {

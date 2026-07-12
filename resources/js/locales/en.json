@@ -53,6 +53,11 @@
     }
   },
   "invoicing": {
+    "relay_sync_state_unknown": "Sync state unknown - no relay contact verified yet in this session.",
+    "relay_sync_state_local_only": "Local-only mode - no sync relay is configured.",
+    "relay_sync_state_unreachable": "Sync relay is unreachable. Changes stay safely on this device and upload once the relay is back.",
+    "relay_sync_state_error": "Sync reported an error. Your data stays on this device - open sync options for details.",
+    "relay_sync_last_exchange_at": "Relay reachable - last data exchange {time}.",
     "backup_reminder_title": "Back up your invoicing data",
     "backup_reminder_never": "No data export has been made on this device yet. Download a backup in your Profile.",
     "backup_reminder_stale": "Last export: {date}. Download a fresh backup in your Profile.",
@@ -101,7 +106,7 @@
     "relay_sync_wait_hint": "Sync in progress - wait before adding a company.",
     "relay_sync_ready": "E2EE sync is up to date on this device.",
     "relay_sync_modal_title": "E2EE sync",
-    "relay_sync_status_green": "Sync up to date - click for details",
+    "relay_sync_status_green": "Relay reachable - click for details",
     "relay_sync_status_orange": "Sync needs attention - click for details",
     "relay_sync_status_red": "Sync disabled - click for details",
     "relay_sync_relay_host": "Relay in this build: {host} (WebSocket opens in the Evolu worker, not the main page Network tab).",

@@ -30,11 +30,13 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-export type RelaySyncStatusLevel = 'green' | 'orange' | 'red';
+export type RelaySyncStatusLevel = 'green' | 'orange' | 'red' | 'gray';
 
 const props = defineProps<{
   level: RelaySyncStatusLevel;
   spinning?: boolean;
+  /** Override the level-based tooltip (e.g. with a last-exchange timestamp). */
+  titleOverride?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -50,15 +52,24 @@ const ringClass = computed(() => {
   if (props.level === 'orange') {
     return 'border-amber-400 bg-amber-50 text-amber-800 hover:bg-amber-100';
   }
+  if (props.level === 'gray') {
+    return 'border-gray-300 bg-gray-50 text-gray-500 hover:bg-gray-100';
+  }
   return 'border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100';
 });
 
 const title = computed(() => {
+  if (props.titleOverride) {
+    return props.titleOverride;
+  }
   if (props.level === 'red') {
     return t('invoicing.relay_sync_status_red');
   }
   if (props.level === 'orange') {
     return t('invoicing.relay_sync_status_orange');
+  }
+  if (props.level === 'gray') {
+    return t('invoicing.relay_sync_state_unknown');
   }
   return t('invoicing.relay_sync_status_green');
 });

@@ -53,6 +53,11 @@
     }
   },
   "invoicing": {
+    "relay_sync_state_unknown": "Stav synchronizácie neznámy - v tejto relácii zatiaľ nebol overený kontakt s relay.",
+    "relay_sync_state_local_only": "Len lokálny režim - nie je nakonfigurovaný žiadny sync relay.",
+    "relay_sync_state_unreachable": "Sync relay je nedostupný. Zmeny zostávajú bezpečne na tomto zariadení a nahrajú sa, keď bude relay opäť dostupný.",
+    "relay_sync_state_error": "Synchronizácia hlási chybu. Dáta zostávajú na tomto zariadení - detaily nájdete v možnostiach synchronizácie.",
+    "relay_sync_last_exchange_at": "Relay dostupný - posledná výmena dát {time}.",
     "backup_reminder_title": "Zálohujte si fakturačné dáta",
     "backup_reminder_never": "Na tomto zariadení zatiaľ nebol vytvorený žiadny export dát. Stiahnite si zálohu v Profile.",
     "backup_reminder_stale": "Posledný export: {date}. Stiahnite si čerstvú zálohu v Profile.",
@@ -101,7 +106,7 @@
     "relay_sync_wait_hint": "Prebieha synchronizácia - pred pridaním firmy počkajte.",
     "relay_sync_ready": "E2EE synchronizácia je na tomto zariadení aktuálna.",
     "relay_sync_modal_title": "E2EE synchronizácia",
-    "relay_sync_status_green": "Synchronizácia aktuálna - kliknite pre detail",
+    "relay_sync_status_green": "Relay dostupný - kliknite pre detail",
     "relay_sync_status_orange": "Synchronizácia vyžaduje pozornosť - kliknite pre detail",
     "relay_sync_status_red": "Synchronizácia vypnutá - kliknite pre detail",
     "relay_sync_relay_host": "Relay v tomto build-e: {host} (WebSocket sa otvára vo workeri Evolu, nie v hlavnom okne stránky).",
