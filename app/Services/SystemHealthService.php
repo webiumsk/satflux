@@ -126,6 +126,9 @@ class SystemHealthService
     protected function checkErrors(): array
     {
         $count = \App\Support\ErrorRateCounter::currentHourCount();
+        if ($count === null) {
+            return ['ok' => false, 'detail' => 'error counter unavailable (cache read failed)'];
+        }
         $threshold = (int) config('monitoring.error_rate_threshold', 25);
 
         return [

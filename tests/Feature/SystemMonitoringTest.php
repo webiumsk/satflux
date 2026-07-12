@@ -125,10 +125,15 @@ class SystemMonitoringTest extends TestCase
         ]);
 
         $admin = User::factory()->admin()->create();
-        $this->actingAs($admin)
+        $response = $this->actingAs($admin)
             ->getJson('/api/admin/system-health/history')
             ->assertOk()
-            ->assertJsonPath('data.0.healthy', false);
+            ->assertJsonPath('data.0.healthy', false)
+            ->assertJsonPath('data.0.failed_checks.0', 'database');
+
+        // Check details (which may carry exception messages) never leave the
+        // live report - the history carries names only.
+        $this->assertStringNotContainsString('"detail"', $response->getContent());
 
         $user = User::factory()->create();
         $this->actingAs($user)

@@ -32,18 +32,19 @@ class ErrorRateCounter
         }
     }
 
-    /** Errors counted in the current hour bucket. */
-    public static function currentHourCount(?\DateTimeInterface $at = null): int
+    /** Errors counted in the current hour bucket. Null when the counter cannot be read. */
+    public static function currentHourCount(?\DateTimeInterface $at = null): ?int
     {
         try {
             return (int) Cache::get(self::bucketKey($at), 0);
         } catch (\Throwable) {
-            return 0;
+            // A broken cache must be distinguishable from a clean zero.
+            return null;
         }
     }
 
     /** Errors counted in the previous hour bucket (dashboard context). */
-    public static function previousHourCount(): int
+    public static function previousHourCount(): ?int
     {
         return self::currentHourCount(now()->subHour());
     }

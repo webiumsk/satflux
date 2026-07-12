@@ -24,12 +24,18 @@ class SystemHealthCheck extends Command
             $result['ok'] ? $this->info($line) : $this->error($line);
         }
 
-        SystemHealthSnapshot::create([
-            'healthy' => $healthy,
-            'checks' => $results,
-            'created_at' => now(),
-        ]);
-        $this->pruneSnapshots();
+        // Persistence must never block alerting: when the database is down,
+        // the snapshot insert fails exactly when the alert matters most.
+        try {
+            SystemHealthSnapshot::create([
+                'healthy' => $healthy,
+                'checks' => $results,
+                'created_at' => now(),
+            ]);
+            $this->pruneSnapshots();
+        } catch (\Throwable $e) {
+            $this->error('Snapshot persistence failed: '.$e->getMessage());
+        }
 
         $alerter->handle($results);
 

@@ -45,7 +45,7 @@
               class="text-xs font-medium rounded-full px-2 py-0.5"
               :class="check.ok ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'"
             >
-              {{ check.ok ? "OK" : "FAILED" }}
+              {{ check.ok ? t("admin.health.status_ok") : t("admin.health.status_failed") }}
             </span>
           </div>
           <p class="text-xs text-gray-400 mt-2">{{ check.detail }}</p>
@@ -55,7 +55,7 @@
         <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
           <p class="text-sm font-semibold text-white">{{ t("admin.health.error_rate") }}</p>
           <p class="text-2xl font-bold mt-1" :class="errorRateCritical ? 'text-red-400' : 'text-white'">
-            {{ current.error_rate.current_hour }}
+            {{ current.error_rate.current_hour ?? "?" }}
           </p>
           <p class="text-xs text-gray-400">
             {{
@@ -102,12 +102,13 @@ type HealthReport = {
   healthy: boolean;
   checked_at: string;
   checks: Record<string, HealthCheck>;
-  error_rate: { current_hour: number; previous_hour: number; threshold: number };
+  error_rate: { current_hour: number | null; previous_hour: number | null; threshold: number };
 };
 type HealthSnapshot = {
   id: number;
   healthy: boolean;
-  checks: Record<string, HealthCheck>;
+  /** Failed check NAMES only - details never leave the live report. */
+  failed_checks: string[];
   created_at: string;
 };
 
@@ -120,10 +121,16 @@ const loading = ref(false);
 let timer: ReturnType<typeof setInterval> | undefined;
 
 const errorRateCritical = computed(
-  () => !!current.value && current.value.error_rate.current_hour >= current.value.error_rate.threshold,
+  () =>
+    !!current.value
+    && current.value.error_rate.current_hour != null
+    && current.value.error_rate.current_hour >= current.value.error_rate.threshold,
 );
 
 async function refresh() {
+  // Guard against overlapping polls: a slow request must finish before the
+  // next interval tick (or manual click) starts another one.
+  if (loading.value) return;
   loading.value = true;
   try {
     const [live, past] = await Promise.all([
@@ -140,10 +147,7 @@ async function refresh() {
 }
 
 function failedCheckNames(snapshot: HealthSnapshot): string {
-  return Object.entries(snapshot.checks)
-    .filter(([, check]) => !check.ok)
-    .map(([name]) => name)
-    .join(", ");
+  return snapshot.failed_checks.join(", ");
 }
 
 function formatTime(iso: string): string {

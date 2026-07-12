@@ -29,7 +29,11 @@ class SystemHealthController extends Controller
         ]);
     }
 
-    /** Recent scheduled snapshots for the admin dashboard history strip. */
+    /**
+     * Recent scheduled snapshots for the admin dashboard history strip.
+     * Check details can carry raw exception messages - the history exposes
+     * only the failed check NAMES, never the details.
+     */
     public function history(Request $request): JsonResponse
     {
         $limit = min(200, max(1, (int) $request->query('limit', 50)));
@@ -37,7 +41,16 @@ class SystemHealthController extends Controller
         $snapshots = SystemHealthSnapshot::query()
             ->latest('created_at')
             ->limit($limit)
-            ->get(['id', 'healthy', 'checks', 'created_at']);
+            ->get(['id', 'healthy', 'checks', 'created_at'])
+            ->map(fn (SystemHealthSnapshot $snapshot): array => [
+                'id' => $snapshot->id,
+                'healthy' => $snapshot->healthy,
+                'failed_checks' => array_keys(array_filter(
+                    $snapshot->checks,
+                    fn (array $check): bool => ! ($check['ok'] ?? false),
+                )),
+                'created_at' => $snapshot->created_at->toIso8601String(),
+            ]);
 
         return response()->json(['data' => $snapshots]);
     }
