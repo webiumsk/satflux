@@ -15,7 +15,7 @@
       </p>
     </div>
     <router-link
-      to="/account"
+      to="/account?tab=sync"
       class="text-xs font-medium rounded-md px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white"
     >
       {{ t("invoicing.storage_export_cta") }}

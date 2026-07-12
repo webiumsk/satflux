@@ -235,7 +235,7 @@
               :owner-id="evoluLocalStats.ownerId"
             />
 
-            <LocalStorageCard v-if="evoluLocalStats" />
+            <LocalStorageCard v-if="localFirst" />
           </div>
 
           <p class="text-xs text-gray-500">

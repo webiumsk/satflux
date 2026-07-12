@@ -23,7 +23,7 @@
         {{ t("invoicing.backup_reminder_snooze") }}
       </button>
       <router-link
-        to="/account"
+        to="/account?tab=sync"
         class="text-xs font-medium rounded-md px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white"
       >
         {{ t("invoicing.backup_reminder_export_now") }}

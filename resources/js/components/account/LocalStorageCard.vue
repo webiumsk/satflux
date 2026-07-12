@@ -20,11 +20,11 @@
         <dt class="text-gray-500">{{ t("account.storage_usage_label") }}</dt>
         <dd class="text-gray-200">
           {{
-            estimate.usageBytes != null && estimate.quotaBytes != null
+            estimate.usageBytes != null && estimate.quotaBytes != null && estimate.usagePercent != null
               ? t("account.storage_usage_value", {
                   used: formatByteSize(estimate.usageBytes),
                   quota: formatByteSize(estimate.quotaBytes),
-                  percent: estimate.usagePercent ?? 0,
+                  percent: estimate.usagePercent,
                 })
               : t("account.storage_usage_unknown")
           }}

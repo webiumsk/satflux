@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     getStorageEstimate,
+    isStoragePersisted,
     isStorageUsageCritical,
     requestPersistence,
     resetBrowserStorageStateForTests,
@@ -70,6 +71,26 @@ describe("requestPersistence", () => {
     it("returns null when the API is unavailable", async () => {
         vi.stubGlobal("navigator", {});
         expect(await requestPersistence()).toBeNull();
+    });
+});
+
+describe("isStoragePersisted", () => {
+    it("returns the current grant without prompting", async () => {
+        const persisted = vi.fn().mockResolvedValue(true);
+        stubStorage({ persisted });
+        expect(await isStoragePersisted()).toBe(true);
+        expect(persisted).toHaveBeenCalledTimes(1);
+
+        stubStorage({ persisted: vi.fn().mockResolvedValue(false) });
+        expect(await isStoragePersisted()).toBe(false);
+    });
+
+    it("returns null when the API is unavailable or fails", async () => {
+        vi.stubGlobal("navigator", {});
+        expect(await isStoragePersisted()).toBeNull();
+
+        stubStorage({ persisted: vi.fn().mockRejectedValue(new Error("nope")) });
+        expect(await isStoragePersisted()).toBeNull();
     });
 });
 
