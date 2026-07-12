@@ -230,7 +230,7 @@ class EmailVerificationController extends Controller
                         // Create new BTCPay user with random password
                         // Merchant never needs BTCPay UI access, so random password is sufficient
                         $btcpayUser = $this->userService->createUser([
-                            'email' => LogSanitizer::email($user->email),
+                            'email' => $user->email,
                             'password' => $btcpayRandomPassword,
                             'isAdministrator' => false,
                             'sendInvitationEmail' => false,

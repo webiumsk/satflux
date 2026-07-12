@@ -36,7 +36,7 @@ class RegistrationService
                 ]);
             } else {
                 $user = User::create([
-                    'email' => LogSanitizer::email($email),
+                    'email' => $email,
                     'password' => Hash::make($plainPassword),
                 ]);
             }
