@@ -171,6 +171,12 @@ async function submit() {
     // Show the impact once; the second click on the amber button confirms.
     if (!ownerSwitchImpact.value || ownerSwitchConfirmedFor.value !== mnemonic) {
       const impact = await previewOwnerSwitchImpact(mnemonic);
+      // The phrase was edited while the preview ran - the result no longer
+      // describes the current input. Drop it and let the user resubmit.
+      if (mnemonicInput.value !== mnemonic) {
+        loading.value = false;
+        return;
+      }
       if (impact.switches) {
         ownerSwitchImpact.value = impact;
         ownerSwitchConfirmedFor.value = mnemonic;

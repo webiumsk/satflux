@@ -1,20 +1,24 @@
 <template>
   <div
     v-if="open"
+    ref="dialogRef"
     class="fixed inset-0 z-50 flex items-center justify-center p-4"
     :class="variant === 'dark' ? 'bg-gray-900/90 backdrop-blur-sm' : 'bg-black/50'"
     role="dialog"
     aria-modal="true"
+    :aria-labelledby="titleId"
+    :aria-describedby="bodyId"
     @click.self="!busy && $emit('close')"
+    @keydown="onKeydown"
   >
     <div
       class="w-full max-w-md rounded-lg shadow-xl p-5 space-y-4"
       :class="variant === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white'"
     >
-      <h3 class="text-lg font-semibold" :class="variant === 'dark' ? 'text-white' : 'text-gray-900'">
+      <h3 :id="titleId" class="text-lg font-semibold" :class="variant === 'dark' ? 'text-white' : 'text-gray-900'">
         {{ title }}
       </h3>
-      <p class="text-sm" :class="variant === 'dark' ? 'text-gray-300' : 'text-gray-700'">
+      <p :id="bodyId" class="text-sm" :class="variant === 'dark' ? 'text-gray-300' : 'text-gray-700'">
         {{ body }}
       </p>
       <ul
@@ -47,6 +51,7 @@
           {{ t("common.danger_type_word_label", { word: confirmWord }) }}
         </label>
         <input
+          ref="wordInputRef"
           v-model="typedWord"
           type="text"
           class="w-full rounded-md px-3 py-2 text-sm border"
@@ -63,6 +68,7 @@
 
       <div class="flex justify-end gap-3">
         <button
+          ref="cancelButtonRef"
           type="button"
           class="px-4 py-2 rounded-md text-sm font-medium border"
           :class="
@@ -89,7 +95,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 
 /**
@@ -100,6 +106,11 @@ import { useI18n } from "vue-i18n";
  * modal is a lightweight confirm. `backupState` renders an informational line
  * about the last data export and, when the recovery phrase still sits only in
  * this browser, an explicit warning.
+ *
+ * Accessibility: the dialog is named/described via aria-labelledby and
+ * aria-describedby, focus moves into the modal on open, Tab and Shift+Tab are
+ * trapped while it is open, Escape closes it (unless busy), and focus returns
+ * to the triggering element on close.
  */
 const props = withDefaults(
   defineProps<{
@@ -120,16 +131,32 @@ const props = withDefaults(
   { variant: "light", confirmWord: null, busy: false, error: null, backupState: null, items: undefined },
 );
 
-defineEmits<{ close: []; confirm: [] }>();
+const emit = defineEmits<{ close: []; confirm: [] }>();
 
 const { t, locale } = useI18n();
 
+const instanceId = `danger-confirm-${Math.random().toString(36).slice(2, 10)}`;
+const titleId = `${instanceId}-title`;
+const bodyId = `${instanceId}-body`;
+
 const typedWord = ref("");
+const dialogRef = ref<HTMLElement | null>(null);
+const wordInputRef = ref<HTMLInputElement | null>(null);
+const cancelButtonRef = ref<HTMLButtonElement | null>(null);
+let triggerElement: HTMLElement | null = null;
 
 watch(
   () => props.open,
-  (isOpen) => {
-    if (isOpen) typedWord.value = "";
+  async (isOpen) => {
+    if (isOpen) {
+      typedWord.value = "";
+      triggerElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      await nextTick();
+      (wordInputRef.value ?? cancelButtonRef.value)?.focus();
+    } else if (triggerElement) {
+      triggerElement.focus();
+      triggerElement = null;
+    }
   },
 );
 
@@ -137,6 +164,36 @@ const confirmEnabled = computed(() => {
   if (!props.confirmWord) return true;
   return typedWord.value.trim().toLowerCase() === props.confirmWord.trim().toLowerCase();
 });
+
+function focusableElements(): HTMLElement[] {
+  if (!dialogRef.value) return [];
+  return Array.from(
+    dialogRef.value.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), [href], select, textarea, [tabindex]:not([tabindex="-1"])',
+    ),
+  );
+}
+
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === "Escape" && !props.busy) {
+    event.preventDefault();
+    emit("close");
+    return;
+  }
+  if (event.key !== "Tab") return;
+  const elements = focusableElements();
+  if (elements.length === 0) return;
+  const first = elements[0];
+  const last = elements[elements.length - 1];
+  const active = document.activeElement;
+  if (event.shiftKey && (active === first || !dialogRef.value?.contains(active))) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && (active === last || !dialogRef.value?.contains(active))) {
+    event.preventDefault();
+    first.focus();
+  }
+}
 
 function formatDate(iso: string): string {
   const date = new Date(iso);
