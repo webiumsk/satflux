@@ -2464,6 +2464,11 @@
     }
   },
   "invoicing": {
+    "relay_sync_state_unknown": "Estado de sincronización desconocido; aún no se ha verificado contacto con el relay en esta sesión.",
+    "relay_sync_state_local_only": "Modo solo local; no hay ningún relay de sincronización configurado.",
+    "relay_sync_state_unreachable": "El relay de sincronización no está disponible. Los cambios permanecen seguros en este dispositivo y se subirán cuando vuelva.",
+    "relay_sync_state_error": "La sincronización informó un error. Tus datos permanecen en este dispositivo; abre las opciones de sincronización para más detalles.",
+    "relay_sync_last_exchange_at": "Relay disponible; último intercambio de datos {time}.",
     "backup_reminder_title": "Haz una copia de tus datos de facturación",
     "backup_reminder_never": "Todavía no se ha realizado ninguna exportación en este dispositivo. Descarga una copia en tu Perfil.",
     "backup_reminder_stale": "Última exportación: {date}. Descarga una copia nueva en tu Perfil.",
@@ -2512,7 +2517,7 @@
     "relay_sync_wait_hint": "Sincronización en curso: espere antes de añadir una empresa.",
     "relay_sync_ready": "La sincronización E2EE está al día en este dispositivo.",
     "relay_sync_modal_title": "Sincronización E2EE",
-    "relay_sync_status_green": "Sincronización al día - clic para detalles",
+    "relay_sync_status_green": "Relay disponible - clic para detalles",
     "relay_sync_status_orange": "La sincronización requiere atención - clic para detalles",
     "relay_sync_status_red": "Sincronización desactivada - clic para detalles",
     "relay_sync_relay_host": "Relay en este build: {host} (WebSocket en el worker de Evolu, no en la pestaña Network principal).",
