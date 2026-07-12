@@ -3,6 +3,7 @@
 namespace App\Services\Auth;
 
 use App\Models\User;
+use App\Support\LogSanitizer;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -35,7 +36,7 @@ class RegistrationService
                 ]);
             } else {
                 $user = User::create([
-                    'email' => $email,
+                    'email' => LogSanitizer::email($email),
                     'password' => Hash::make($plainPassword),
                 ]);
             }
@@ -44,7 +45,7 @@ class RegistrationService
                 event(new Registered($user));
             } catch (TransportExceptionInterface $e) {
                 Log::warning('Failed to send verification email during registration', [
-                    'email' => $user->email,
+                    'email' => LogSanitizer::email($user->email),
                     'error' => $e->getMessage(),
                 ]);
                 throw ValidationException::withMessages([
