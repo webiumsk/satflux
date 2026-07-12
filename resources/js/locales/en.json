@@ -53,6 +53,10 @@
     }
   },
   "invoicing": {
+    "storage_warning_title": "Browser storage is running out",
+    "storage_warning_80": "This site uses {percent}% of its browser storage quota. Export a backup before it fills up.",
+    "storage_quota_exceeded": "The browser reported a storage error - local writes may be failing. Export a backup now.",
+    "storage_export_cta": "Export backup",
     "relay_sync_state_unknown": "Sync state unknown - no relay contact verified yet in this session.",
     "relay_sync_state_local_only": "Local-only mode - no sync relay is configured.",
     "relay_sync_state_unreachable": "Sync relay is unreachable. Changes stay safely on this device and upload once the relay is back.",
@@ -2391,6 +2395,16 @@
     "waiting": "Waiting..."
   },
   "account": {
+    "storage_title": "Local browser storage",
+    "storage_persisted_label": "Protected from eviction",
+    "storage_persisted_yes": "Yes - the browser granted persistent storage",
+    "storage_persisted_no": "No - the browser may evict data under pressure",
+    "storage_persisted_unknown": "Unknown - this browser does not report it",
+    "storage_usage_label": "Storage used",
+    "storage_usage_value": "{used} of {quota} ({percent}%)",
+    "storage_usage_unknown": "Unknown - this browser does not report it",
+    "storage_warning_hint": "Storage is nearly full. Export a backup and consider freeing space - a full origin cannot save new data.",
+    "storage_not_persisted_hint": "Without persistent storage the browser may delete local data under disk pressure. Keep a fresh backup export.",
     "backup_restore_button": "Restore from file",
     "backup_restore_title": "Restore data from a backup",
     "backup_restore_desc": "Pick a satflux-backup JSON file. Its integrity checksum is verified before anything is written.",

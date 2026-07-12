@@ -53,6 +53,10 @@
     }
   },
   "invoicing": {
+    "storage_warning_title": "Úložisko prehliadača sa míňa",
+    "storage_warning_80": "Táto stránka využíva {percent} % kvóty úložiska prehliadača. Exportujte zálohu skôr, než sa zaplní.",
+    "storage_quota_exceeded": "Prehliadač nahlásil chybu úložiska - lokálne zápisy môžu zlyhávať. Exportujte zálohu hneď.",
+    "storage_export_cta": "Exportovať zálohu",
     "relay_sync_state_unknown": "Stav synchronizácie neznámy - v tejto relácii zatiaľ nebol overený kontakt s relay.",
     "relay_sync_state_local_only": "Len lokálny režim - nie je nakonfigurovaný žiadny sync relay.",
     "relay_sync_state_unreachable": "Sync relay je nedostupný. Zmeny zostávajú bezpečne na tomto zariadení a nahrajú sa, keď bude relay opäť dostupný.",
@@ -2392,6 +2396,16 @@
     "waiting": "Čakám..."
   },
   "account": {
+    "storage_title": "Lokálne úložisko prehliadača",
+    "storage_persisted_label": "Chránené pred vymazaním",
+    "storage_persisted_yes": "Áno - prehliadač priznal trvalé úložisko",
+    "storage_persisted_no": "Nie - prehliadač môže dáta pri nedostatku miesta vymazať",
+    "storage_persisted_unknown": "Neznáme - tento prehliadač to nehlási",
+    "storage_usage_label": "Využité úložisko",
+    "storage_usage_value": "{used} z {quota} ({percent} %)",
+    "storage_usage_unknown": "Neznáme - tento prehliadač to nehlási",
+    "storage_warning_hint": "Úložisko je takmer plné. Exportujte zálohu a zvážte uvoľnenie miesta - plný origin nedokáže ukladať nové dáta.",
+    "storage_not_persisted_hint": "Bez trvalého úložiska môže prehliadač pri nedostatku miesta lokálne dáta zmazať. Majte čerstvý export zálohy.",
     "backup_restore_button": "Obnoviť zo súboru",
     "backup_restore_title": "Obnova dát zo zálohy",
     "backup_restore_desc": "Vyberte satflux-backup JSON súbor. Pred zápisom sa overí kontrolný súčet integrity.",

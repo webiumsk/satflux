@@ -30,6 +30,7 @@
       </p>
     </template>
 
+    <LocalStorageWarningBanner v-if="localFirst && canUse" class="mb-4" />
     <BackupReminderBanner v-if="localFirst && canUse" class="mb-4" />
 
     <div v-if="localFirst && duplicateCompanyGroups.length" class="invoicing-alert-warn mb-4">
@@ -184,6 +185,7 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import BackupReminderBanner from '../../components/invoicing/BackupReminderBanner.vue';
+import LocalStorageWarningBanner from '../../components/invoicing/LocalStorageWarningBanner.vue';
 import InvoicingLoadingState from '../../components/invoicing/ui/InvoicingLoadingState.vue';
 import InvoicingRelaySyncModal from '../../components/invoicing/InvoicingRelaySyncModal.vue';
 import InvoicingRelaySyncStatusButton, {
