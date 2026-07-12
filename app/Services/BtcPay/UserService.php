@@ -3,6 +3,7 @@
 namespace App\Services\BtcPay;
 
 use App\Services\BtcPay\Exceptions\BtcPayException;
+use App\Support\LogSanitizer;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -48,7 +49,7 @@ class UserService
             Log::error('BTCPay user creation failed', [
                 'error' => $e->getMessage(),
                 'data' => [
-                    'email' => $data['email'] ?? 'N/A',
+                    'email' => LogSanitizer::email($data['email'] ?? null),
                     'has_password' => isset($data['password']) && ! empty($data['password']),
                 ],
             ]);
@@ -111,7 +112,7 @@ class UserService
         } catch (BtcPayException $e) {
             Log::error('BTCPay email check failed', [
                 'error' => $e->getMessage(),
-                'email' => $email,
+                'email' => LogSanitizer::email($email),
             ]);
             throw $e;
         }
@@ -166,7 +167,7 @@ class UserService
             Log::error('BTCPay user retrieval by email failed', [
                 'error' => $e->getMessage(),
                 'status' => $e->getStatusCode(),
-                'email' => $email,
+                'email' => LogSanitizer::email($email),
             ]);
             throw $e;
         }

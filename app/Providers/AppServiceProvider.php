@@ -8,11 +8,14 @@ use App\Pdf\DomPdfDriver;
 use App\Policies\StorePolicy;
 use App\Services\Invoicing\UsSalesTax\StripeTaxUsSalesTaxCalculator;
 use App\Services\Invoicing\UsSalesTax\UsSalesTaxCalculationService;
+use App\Support\ProductionConfigValidator;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -40,6 +43,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->enforceProductionConfig();
+
         // Authorization policies
         Gate::policy(Store::class, StorePolicy::class);
 
@@ -59,6 +64,35 @@ class AppServiceProvider extends ServiceProvider
                 ? Limit::perMinute(120)->by('user:'.$request->user()->id)
                 : Limit::perMinute(30)->by($request->ip());
         });
+    }
+
+    /**
+     * Production boot guards (P1 phase 7): generated URLs are forced to
+     * https, and missing security-critical configuration refuses to serve
+     * HTTP traffic (fail-fast, same posture as the CSP guard). Console
+     * commands only log - deploy tooling (key:generate, config:cache) must
+     * keep working on a half-configured box.
+     */
+    protected function enforceProductionConfig(): void
+    {
+        if (! $this->app->environment('production')) {
+            return;
+        }
+
+        URL::forceScheme('https');
+
+        $missing = ProductionConfigValidator::missing(fn (string $key) => config($key));
+        if ($missing === []) {
+            return;
+        }
+
+        Log::critical('Production configuration is incomplete', [
+            'missing' => $missing,
+        ]);
+
+        if (! $this->app->runningInConsole()) {
+            abort(500, 'Server configuration error.');
+        }
     }
 
     /**

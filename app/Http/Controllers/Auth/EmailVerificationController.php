@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\BtcPay\UserService;
+use App\Support\LogSanitizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -51,7 +52,7 @@ class EmailVerificationController extends Controller
             $user->sendEmailVerificationNotification();
         } catch (TransportExceptionInterface $e) {
             Log::warning('Failed to send verification email', [
-                'email' => $user->email,
+                'email' => LogSanitizer::email($user->email),
                 'error' => $e->getMessage(),
             ]);
             throw ValidationException::withMessages([
@@ -109,7 +110,7 @@ class EmailVerificationController extends Controller
 
         Log::info('Email verification signature validation attempt', [
             'user_id' => $user->id,
-            'email' => $user->email,
+            'email' => LogSanitizer::email($user->email),
             'current_timestamp' => $currentTimestamp,
             'current_time' => $currentTime,
             'expires_timestamp' => $expires,
@@ -123,7 +124,7 @@ class EmailVerificationController extends Controller
         if ($expires && $currentTimestamp > $expires) {
             Log::warning('Email verification link expired', [
                 'user_id' => $user->id,
-                'email' => $user->email,
+                'email' => LogSanitizer::email($user->email),
                 'expires_timestamp' => $expires,
                 'expires_time' => $expiresTime,
                 'current_timestamp' => $currentTimestamp,
@@ -164,7 +165,7 @@ class EmailVerificationController extends Controller
         if (! URL::hasValidSignature($validationRequest, false)) {
             Log::warning('Email verification signature validation failed', [
                 'user_id' => $user->id,
-                'email' => $user->email,
+                'email' => LogSanitizer::email($user->email),
                 'correct_url' => $correctUrl,
                 'query_string_for_validation' => $queryStringForValidation,
                 'original_query_string' => $request->server->get('QUERY_STRING', ''),
@@ -204,7 +205,7 @@ class EmailVerificationController extends Controller
 
             Log::info('Email verified', [
                 'user_id' => $user->id,
-                'email' => $user->email,
+                'email' => LogSanitizer::email($user->email),
             ]);
 
             // Create or link BTCPay user
@@ -327,7 +328,7 @@ class EmailVerificationController extends Controller
                 } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
                     Log::error('BTCPay user creation/linking failed during email verification', [
                         'user_id' => $user->id,
-                        'email' => $user->email,
+                        'email' => LogSanitizer::email($user->email),
                         'error' => $e->getMessage(),
                         'trace' => $e->getTraceAsString(),
                     ]);
