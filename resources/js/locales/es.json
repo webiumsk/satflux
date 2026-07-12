@@ -1455,6 +1455,14 @@
     "samrock_expires": "El código QR expira en {seconds}s"
   },
   "account": {
+    "backup_title": "Copia de seguridad de datos",
+    "backup_desc": "Descarga una copia completa de tus datos locales de facturación (empresas, contactos, documentos, gastos, adjuntos) como archivo JSON con suma de verificación de integridad. Guárdala en un lugar seguro; se puede restaurar en cualquier dispositivo.",
+    "backup_plaintext_warning": "El archivo NO está cifrado; contiene facturas legibles. Guárdalo como un archivo en papel.",
+    "backup_export_button": "Exportar datos",
+    "backup_export_success": "Copia descargada. Verifica que el archivo esté guardado de forma segura.",
+    "backup_export_failed": "La exportación falló. Inténtalo de nuevo.",
+    "backup_last_export_at": "Última exportación: {date}",
+    "backup_never_exported": "Todavía no se ha realizado ninguna exportación en este dispositivo.",
     "title": "Configuración de cuenta",
     "manage_profile": "Administra tu perfil, contraseña y plan de suscripción.",
     "tabs_aria": "Secciones del perfil",

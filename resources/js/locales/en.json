@@ -2381,6 +2381,14 @@
     "waiting": "Waiting..."
   },
   "account": {
+    "backup_title": "Data backup",
+    "backup_desc": "Downloads a complete copy of your local invoicing data (companies, contacts, documents, expenses, attachments) as a JSON file with an integrity checksum. Keep it somewhere safe - it can be restored on any device.",
+    "backup_plaintext_warning": "The file is NOT encrypted - it contains readable invoices. Store it like a paper archive.",
+    "backup_export_button": "Export data",
+    "backup_export_success": "Backup downloaded. Verify the file is stored safely.",
+    "backup_export_failed": "The export failed. Try again.",
+    "backup_last_export_at": "Last export: {date}",
+    "backup_never_exported": "No export has been made on this device yet.",
     "title": "Account Settings",
     "manage_profile": "Manage your profile, password, and subscription plan.",
     "tabs_aria": "Profile sections",
