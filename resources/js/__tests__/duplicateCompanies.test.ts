@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+    dedupeRowsById,
+    findDuplicateCompanyGroups,
     matchCompanyByIdentity,
     normalizeCompanyIdentityKey,
 } from "@/evolu/duplicateCompanies";
@@ -14,6 +16,41 @@ describe("normalizeCompanyIdentityKey", () => {
         expect(normalizeCompanyIdentityKey("Webium LLC", "2024-0012345")).toBe(
             "webium llc|2024-0012345",
         );
+    });
+});
+
+describe("dedupeRowsById", () => {
+    it("keeps the first occurrence of each id", () => {
+        const rows = [
+            { id: "a", n: 1 },
+            { id: "b", n: 2 },
+            { id: "a", n: 3 },
+        ];
+        expect(dedupeRowsById(rows)).toEqual([
+            { id: "a", n: 1 },
+            { id: "b", n: 2 },
+        ]);
+    });
+});
+
+describe("findDuplicateCompanyGroups with phantom repeats", () => {
+    it("does not treat same-id repeats as duplicates", () => {
+        const rows = [
+            { id: "one", legal_name: "Webium s.r.o.", registration_number: null },
+            { id: "one", legal_name: "Webium s.r.o.", registration_number: null },
+        ];
+        expect(findDuplicateCompanyGroups(rows)).toEqual([]);
+    });
+
+    it("still finds real duplicates among phantom repeats", () => {
+        const rows = [
+            { id: "one", legal_name: "MONACOR", registration_number: null },
+            { id: "one", legal_name: "MONACOR", registration_number: null },
+            { id: "two", legal_name: "MONACOR", registration_number: null },
+        ];
+        const groups = findDuplicateCompanyGroups(rows);
+        expect(groups).toHaveLength(1);
+        expect(groups[0].map((row) => row.id).sort()).toEqual(["one", "two"]);
     });
 });
 
