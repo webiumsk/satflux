@@ -39,19 +39,37 @@ function isNetworkError(error: unknown): boolean {
 }
 
 /**
+ * Deterministic identity match: rows are sorted by id (UUIDv7, so oldest
+ * first) before matching, giving every client the SAME canonical row even
+ * when a concurrent first issue produced duplicate bridge companies.
+ */
+function canonicalIdentityMatch(
+    rows: BridgeCompanyRow[],
+    identity: AllocatorIdentity,
+): BridgeCompanyRow | null {
+    const sorted = [...rows].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    return matchCompanyByIdentity(sorted, {
+        legal_name: identity.legal_name ?? "",
+        registration_number: identity.registration_number ?? null,
+    });
+}
+
+/**
  * Resolves the server bridge company for this identity, creating a minimal
  * identity-only row when none exists yet. The bridge company carries no
  * document content - it anchors ownership, plan gating and number series.
+ *
+ * The server has no atomic resolve-or-create, so two concurrent first
+ * issues can both create a row; the post-create re-list converges both
+ * clients on the canonical (oldest) match, keeping all reservations in one
+ * sequence. A losing duplicate stays behind empty and harmless.
  */
 async function resolveOrCreateBridgeCompanyId(identity: AllocatorIdentity): Promise<string | null> {
     if (!identity.legal_name) {
         return null;
     }
     const rows = await invoicingApi.companies.list<BridgeCompanyRow>();
-    const found = matchCompanyByIdentity(rows, {
-        legal_name: identity.legal_name,
-        registration_number: identity.registration_number ?? null,
-    });
+    const found = canonicalIdentityMatch(rows, identity);
     if (found) {
         return found.id;
     }
@@ -59,7 +77,11 @@ async function resolveOrCreateBridgeCompanyId(identity: AllocatorIdentity): Prom
         legal_name: identity.legal_name,
         registration_number: identity.registration_number ?? null,
     });
-    return created?.id ?? null;
+    const converged = canonicalIdentityMatch(
+        await invoicingApi.companies.list<BridgeCompanyRow>(),
+        identity,
+    );
+    return converged?.id ?? created?.id ?? null;
 }
 
 /**

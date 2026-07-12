@@ -73,6 +73,30 @@ describe("reserveIssueNumber", () => {
         if (result.ok) expect(result.value.bridgeCompanyId).toBe("co-new");
     });
 
+    it("converges on the canonical (oldest) bridge company after a concurrent create race", async () => {
+        // First list: empty (we create). Re-list after create: a concurrent
+        // client's row (older id) AND ours exist - both clients must settle
+        // on the older row so all reservations share one sequence.
+        const list = vi
+            .fn()
+            .mockResolvedValueOnce([])
+            .mockResolvedValueOnce([
+                { id: "co-b-ours", legal_name: "ACME s.r.o.", registration_number: "12345678" },
+                { id: "co-a-racer", legal_name: "ACME s.r.o.", registration_number: "12345678" },
+            ]);
+        const { bridge, api } = await loadBridge({
+            list,
+            create: vi.fn().mockResolvedValue({ id: "co-b-ours" }),
+            reserve: vi.fn().mockResolvedValue({ number: "20260001", counter: 1 }),
+        });
+
+        const result = await bridge.reserveIssueNumber(identity, "invoice", "doc-request-0009");
+
+        expect(result.ok).toBe(true);
+        if (result.ok) expect(result.value.bridgeCompanyId).toBe("co-a-racer");
+        expect(api.reserve).toHaveBeenCalledWith("co-a-racer", expect.any(Object));
+    });
+
     it("requires being online - no server call, no local fallback number", async () => {
         const { bridge, api } = await loadBridge();
         vi.stubGlobal("navigator", { onLine: false });

@@ -38,7 +38,6 @@
   "resources/js/components/stores/WalletChecklist.vue|TS2339|Property 'checked' does not exist on type 'EventTarget'.": 1,
   "resources/js/components/ui/InfoTooltip.vue|TS2769|No overload matches this call.": 2,
   "resources/js/composables/useExpenseIsdocAttachment.ts|TS2304|Cannot find name 'invoicingApi'.": 5,
-  "resources/js/composables/useInvoiceDocument.ts|TS2345|Argument of type 'string | ValidMutationSizeError | ObjectError<{ id: StringError | TableIdError<\"Document\">; companyId: StringError | TableIdError<...>; ... 31 more ...; isDeleted: UnionError<...>; }": 1,
   "resources/js/composables/useInvoiceDocument.ts|TS2352|Conversion of type 'QueryRows<{ number: (string & Brand<\"MinLength1\"> & Brand<\"MaxLength64\">) | null; status: \"draft\" | \"issued\" | \"paid\" | \"cancelled\" | null; contactId: (string & Brand<\"Id\"> & Brand": 1,
   "resources/js/composables/useInvoicingBankPayments.ts|TS2322|Type 'Promise<[QueryRows<{ companyId: (string & Brand<\"Id\"> & Brand<\"Company\">) | null; source: \"manual\" | \"csv\" | \"camt053\" | \"inbound_email\" | \"wise\" | null; id: string & Brand<\"Id\"> & Brand<...>; .": 5,
   "resources/js/composables/useInvoicingBankPayments.ts|TS2352|Conversion of type 'QueryRows<{ companyId: (string & Brand<\"Id\"> & Brand<\"Company\">) | null; source: \"manual\" | \"csv\" | \"camt053\" | \"inbound_email\" | \"wise\" | null; id: string & Brand<\"Id\"> & Brand<..": 2,

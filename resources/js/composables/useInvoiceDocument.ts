@@ -407,15 +407,19 @@ export function useInvoiceDocument() {
     };
   }
 
+  const KNOWN_ISSUE_ERROR_CODES = new Set([
+    'validation',
+    'issue',
+    'issue_requires_online',
+    'reserve_failed',
+    'not_draft',
+    'series_update_failed',
+    'no_default_series',
+    'number_collision',
+  ]);
+
   function extractError(e: any) {
-    if (
-      e instanceof Error
-      && e.message
-      && e.message !== 'validation'
-      && e.message !== 'issue'
-      && e.message !== 'issue_requires_online'
-      && e.message !== 'reserve_failed'
-    ) {
+    if (e instanceof Error && e.message && !KNOWN_ISSUE_ERROR_CODES.has(e.message)) {
       return e.message;
     }
     if (e?.message === 'issue_requires_online') {
@@ -1085,7 +1089,7 @@ export function useInvoiceDocument() {
         companyRow as import('../evolu/companyMap').EvoluCompanyRow,
       );
       if (!issueResult.ok) {
-        throw new Error(issueResult.error || 'issue');
+        throw new Error(typeof issueResult.error === 'string' ? issueResult.error : 'issue');
       }
       await local.refreshAll();
       const apiDoc = local.documentApi(docId as DocumentId);
