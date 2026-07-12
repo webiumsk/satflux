@@ -11,6 +11,7 @@ import {
     DocumentEventId,
     DocumentId,
     DocumentLineId,
+    DocumentSnapshotId,
     ExpenseAttachmentId,
     ExpenseId,
     NumberSeriesId,
@@ -254,6 +255,12 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
         documentEvent: snapshot.documentEvent.map((row) =>
             mapRowIds(row, {
                 id: DocumentEventId,
+                fields: { documentId: DocumentId },
+            }),
+        ),
+        documentSnapshot: snapshot.documentSnapshot.map((row) =>
+            mapRowIds(row, {
+                id: DocumentSnapshotId,
                 fields: { documentId: DocumentId },
             }),
         ),

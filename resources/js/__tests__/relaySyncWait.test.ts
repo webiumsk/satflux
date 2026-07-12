@@ -10,6 +10,7 @@ const EMPTY_INVOICING_SNAPSHOT: InvoicingDataSnapshot = {
     document: [],
     documentLine: [],
     documentEvent: [],
+    documentSnapshot: [],
     expense: [],
     expenseAttachment: [],
     recurringProfile: [],

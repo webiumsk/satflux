@@ -23,11 +23,22 @@ import {
 } from "./numberSequenceBridge";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import { documentVariableSymbol } from "./documentNumber";
-import type { EvoluCompanyRow } from "./companyMap";
+import { evoluCompanyToApi, type EvoluCompanyRow } from "./companyMap";
+import { evoluContactToApi, type EvoluContactRow } from "./contactMap";
 import { logDocumentEvent } from "./documentEventLog";
 import { applyDocumentStockOnIssueAsync, reverseDocumentStockOnCancelAsync } from "./documentStockMovement";
+import {
+    buildIssuedSnapshotContentV1,
+    insertIssuedDocumentSnapshot,
+} from "./documentSnapshotCrud";
 import type { DocumentType } from "./schema";
-import { allDocumentsQuery, allNumberSeriesQuery } from "./client";
+import {
+    allCompaniesDetailQuery,
+    allContactsQuery,
+    allDocumentLinesQuery,
+    allDocumentsQuery,
+    allNumberSeriesQuery,
+} from "./client";
 
 export type DocumentLinePayload = {
     name: string;
@@ -207,6 +218,72 @@ function syncDocumentLines(
     });
 }
 
+/** Lines + buyer needed to freeze an issue snapshot (audit F2). */
+export type IssueSnapshotContext = {
+    lines: EvoluDocumentLineRow[];
+    contact: EvoluContactRow | null;
+};
+
+function snapshotLinesFromRows(documentId: DocumentId, lines: EvoluDocumentLineRow[]): Record<string, unknown>[] {
+    return lines
+        .filter((line) => line.documentId === documentId)
+        .sort((a, b) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0))
+        .map((line) => ({
+            name: line.name,
+            description: line.description,
+            quantity: line.quantity || "0",
+            unit: line.unit || "ks",
+            unit_price: line.unitPrice || "0",
+            line_discount_percent: line.lineDiscountPercent || "0",
+            tax_rate: line.taxRate || "0",
+            line_total: line.lineTotal || "0",
+        }));
+}
+
+function snapshotLinesFromPayload(payload: DocumentSavePayload, lineTotals: string[]): Record<string, unknown>[] {
+    return payload.lines.map((line, index) => ({
+        name: line.name.trim(),
+        description: line.description,
+        quantity: fmtDec(line.quantity, 4),
+        unit: line.unit || "ks",
+        unit_price: fmtDec(line.unit_price, 4),
+        line_discount_percent: fmtDec(line.line_discount_percent || 0),
+        tax_rate: fmtDec(line.tax_rate ?? 0),
+        line_total: lineTotals[index] || "0",
+    }));
+}
+
+/**
+ * Freezes the document being issued (with its just-allocated number) into a
+ * documentSnapshot row. Called BEFORE the status flips to issued - a failed
+ * snapshot aborts the issue, never the other way around.
+ */
+function writeIssueSnapshot(
+    evolu: Evolu<InvoicingLocalSchema>,
+    doc: EvoluDocumentRow,
+    number: string,
+    variableSymbol: string | null,
+    company: EvoluCompanyRow,
+    context: IssueSnapshotContext,
+    allDocuments: EvoluDocumentRow[],
+): { ok: true } | { ok: false; error: string } {
+    const apiDoc = evoluDocumentToApi(
+        { ...doc, status: "issued", number, variableSymbol },
+        [],
+        allDocuments,
+    );
+    const content = buildIssuedSnapshotContentV1({
+        company: evoluCompanyToApi(company) as unknown as Record<string, unknown>,
+        contact: context.contact
+            ? (evoluContactToApi(context.contact) as unknown as Record<string, unknown>)
+            : null,
+        document: apiDoc,
+        lines: snapshotLinesFromRows(doc.id as DocumentId, context.lines),
+    });
+    if (!content.ok) return content;
+    return insertIssuedDocumentSnapshot(evolu, doc.id as DocumentId, content.value);
+}
+
 export function saveLocalDocument(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
@@ -219,6 +296,16 @@ export function saveLocalDocument(
         lineTaxRate: (line: DocumentLinePayload) => number;
         existingLines: EvoluDocumentLineRow[];
         sourceDocumentId?: DocumentId | null;
+        /**
+         * API-shaped supplier/buyer for re-freezing the issued snapshot when
+         * an already issued document is edited ("edit + re-freeze" model).
+         * Without it, editing an issued document leaves the previous snapshot
+         * version in place.
+         */
+        refreezeContext?: {
+            company: Record<string, unknown> | null;
+            contact: Record<string, unknown> | null;
+        };
     },
 ) {
     if (!payload.lines.length) {
@@ -274,6 +361,50 @@ export function saveLocalDocument(
     }
 
     syncDocumentLines(evolu, docId, payload, totals.lineTotals, options.existingLines);
+
+    // Edit + re-freeze: saving an already issued document appends a new
+    // snapshot version reflecting the edited content. Best-effort - the save
+    // itself has succeeded; a failed re-freeze keeps the previous version.
+    if (
+        existing
+        && existing.status !== "draft"
+        && numberForSave
+        && options.refreezeContext?.company
+    ) {
+        const content = buildIssuedSnapshotContentV1({
+            company: options.refreezeContext.company,
+            contact: options.refreezeContext.contact,
+            document: {
+                type: payload.type,
+                title: fields.value.title,
+                number: numberForSave,
+                variable_symbol: fields.value.variableSymbol,
+                constant_symbol: fields.value.constantSymbol,
+                specific_symbol: fields.value.specificSymbol,
+                issue_date: fields.value.issueDate,
+                delivery_date: fields.value.deliveryDate,
+                due_date: fields.value.dueDate,
+                currency: fields.value.currency,
+                subtotal: totals.subtotal,
+                tax_total: totals.taxTotal,
+                discount_percent: fields.value.discountPercent,
+                total: totals.total,
+                note_above_lines: fields.value.noteAboveLines,
+                note_footer: fields.value.noteFooter,
+                internal_note: fields.value.internalNote,
+                pdf_locale: fields.value.pdfLocale,
+                pdf_show_signature: payload.pdf_show_signature,
+                pdf_show_payment_info: payload.pdf_show_payment_info,
+                payment_bank_enabled: payload.payment_bank_enabled,
+                payment_btc_enabled: payload.payment_btc_enabled,
+            },
+            lines: snapshotLinesFromPayload(payload, totals.lineTotals),
+        });
+        if (content.ok) {
+            insertIssuedDocumentSnapshot(evolu, docId, content.value);
+        }
+    }
+
     return { ok: true as const, value: { id: docId } };
 }
 
@@ -314,6 +445,7 @@ export function issueLocalDocument(
     company: EvoluCompanyRow,
     allDocuments: EvoluDocumentRow[],
     allSeries: EvoluNumberSeriesRow[],
+    snapshotContext?: IssueSnapshotContext,
 ) {
     const doc = allDocuments.find((d) => d.id === documentId);
     if (!doc || doc.status !== "draft") {
@@ -334,6 +466,21 @@ export function issueLocalDocument(
     const number = allocation.value;
     const variableSymbol = documentVariableSymbol(doc.variableSymbol, number);
     const quoteStatus = doc.documentType === "quote" ? "pending" : doc.quoteStatus;
+
+    // Freeze the snapshot BEFORE flipping to issued: a document may only
+    // become issued once its frozen copy is persisted (audit F2).
+    if (snapshotContext) {
+        const snapshot = writeIssueSnapshot(
+            evolu,
+            doc,
+            number,
+            variableSymbol,
+            company,
+            snapshotContext,
+            allDocuments,
+        );
+        if (!snapshot.ok) return snapshot;
+    }
 
     const result = evolu.update("document", {
         id: documentId,
@@ -383,6 +530,16 @@ export async function issueLocalDocumentAsync(
     }
 
     const { documents, series } = await loadIssueContext(evolu);
+    const [lineRows, contactRows] = await Promise.all([
+        evolu.loadQuery(allDocumentLinesQuery),
+        evolu.loadQuery(allContactsQuery),
+    ]);
+    const snapshotContext: IssueSnapshotContext = {
+        lines: lineRows as unknown as EvoluDocumentLineRow[],
+        contact:
+            ((contactRows as unknown as EvoluContactRow[]).find((c) => c.id === draft.contactId)
+                ?? null),
+    };
     const linkedStoreId = company.linkedStoreId?.trim() ?? "";
     if (linkedStoreId) {
         const localHigh = localHighCounterForStoreBridge(
@@ -412,15 +569,27 @@ export async function issueLocalDocumentAsync(
                 reserved.value.number,
                 series,
                 draft.variableSymbol,
+                {
+                    company,
+                    doc: draft,
+                    allDocuments: documents,
+                    ...snapshotContext,
+                },
             );
             return result;
         }
     }
 
-    const result = issueLocalDocument(evolu, documentId, company, documents, series);
+    const result = issueLocalDocument(evolu, documentId, company, documents, series, snapshotContext);
     await finalizeIssueStock(evolu, documentId, result);
     return result;
 }
+
+export type ReservedIssueSnapshotContext = IssueSnapshotContext & {
+    company: EvoluCompanyRow;
+    doc: EvoluDocumentRow;
+    allDocuments: EvoluDocumentRow[];
+};
 
 export function applyReservedNumberToLocalDocument(
     evolu: Evolu<InvoicingLocalSchema>,
@@ -430,9 +599,24 @@ export function applyReservedNumberToLocalDocument(
     number: string,
     allSeries: EvoluNumberSeriesRow[],
     variableSymbol?: string | null,
+    snapshotContext?: ReservedIssueSnapshotContext,
 ) {
-    syncLocalSeriesCounterFromIssuedNumber(evolu, companyId, documentType, number, allSeries);
     const quoteStatus = documentType === "quote" ? "pending" : null;
+
+    // Snapshot before status flip (audit F2) - same invariant as issueLocalDocument.
+    if (snapshotContext) {
+        const snapshot = writeIssueSnapshot(
+            evolu,
+            snapshotContext.doc,
+            number,
+            documentVariableSymbol(variableSymbol, number),
+            snapshotContext.company,
+            snapshotContext,
+            snapshotContext.allDocuments,
+        );
+        if (!snapshot.ok) return snapshot;
+    }
+
     const result = evolu.update("document", {
         id: documentId,
         status: "issued",
@@ -441,6 +625,10 @@ export function applyReservedNumberToLocalDocument(
         quoteStatus,
     });
     if (result.ok) {
+        // Advance the local series counter only after the document is issued -
+        // same commit ordering as issueLocalDocument, so a failed snapshot or
+        // update leaves the counter untouched.
+        syncLocalSeriesCounterFromIssuedNumber(evolu, companyId, documentType, number, allSeries);
         logDocumentEvent(evolu, documentId, "business_document.issued", { number, source: "woo_inbox" });
     }
     return result;
@@ -454,7 +642,39 @@ export async function applyReservedNumberToLocalDocumentAsync(
     number: string,
     allSeries: EvoluNumberSeriesRow[],
     variableSymbol?: string | null,
+    snapshotContext?: ReservedIssueSnapshotContext,
 ) {
+    // Callers without local row context (e.g. Woo inbox import) get it loaded
+    // here so their issues also freeze a snapshot. Best-effort: a missing
+    // company row falls back to issuing without a snapshot (legacy behavior).
+    let context = snapshotContext;
+    if (!context) {
+        const doc = await waitForDraftDocument(evolu, documentId);
+        if (doc) {
+            const [lineRows, contactRows, companyRows, documents] = await Promise.all([
+                evolu.loadQuery(allDocumentLinesQuery),
+                evolu.loadQuery(allContactsQuery),
+                evolu.loadQuery(allCompaniesDetailQuery),
+                evolu.loadQuery(allDocumentsQuery),
+            ]);
+            const company = (companyRows as unknown as EvoluCompanyRow[]).find(
+                (row) => row.id === companyId,
+            );
+            if (company) {
+                context = {
+                    company,
+                    doc,
+                    allDocuments: documents as unknown as EvoluDocumentRow[],
+                    lines: lineRows as unknown as EvoluDocumentLineRow[],
+                    contact:
+                        ((contactRows as unknown as EvoluContactRow[]).find(
+                            (c) => c.id === doc.contactId,
+                        ) ?? null),
+                };
+            }
+        }
+    }
+
     const result = applyReservedNumberToLocalDocument(
         evolu,
         documentId,
@@ -463,6 +683,7 @@ export async function applyReservedNumberToLocalDocumentAsync(
         number,
         allSeries,
         variableSymbol,
+        context,
     );
     await finalizeIssueStock(evolu, documentId, result);
     return result;

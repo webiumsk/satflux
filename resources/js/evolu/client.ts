@@ -151,6 +151,15 @@ const documentEventColumns = [
     "createdAt",
 ] as const;
 
+const documentSnapshotColumns = [
+    "id",
+    "documentId",
+    "formatVersion",
+    "payloadJson",
+    "backfilled",
+    "createdAt",
+] as const;
+
 export const allCompaniesQuery = evolu.createQuery((db) =>
     db
         .selectFrom("company")
@@ -218,6 +227,16 @@ export const allDocumentEventsQuery = evolu.createQuery((db) =>
         .where("isDeleted", "is not", sqliteTrue)
         .where("action", "is not", null)
         .$narrowType<{ action: kysely.NotNull }>()
+        .orderBy("createdAt"),
+);
+
+export const allDocumentSnapshotsQuery = evolu.createQuery((db) =>
+    db
+        .selectFrom("documentSnapshot")
+        .select(documentSnapshotColumns)
+        .where("isDeleted", "is not", sqliteTrue)
+        .where("payloadJson", "is not", null)
+        .$narrowType<{ payloadJson: kysely.NotNull }>()
         .orderBy("createdAt"),
 );
 

@@ -12,6 +12,7 @@ const EMPTY_INVOICING_SNAPSHOT: InvoicingDataSnapshot = {
     document: [],
     documentLine: [],
     documentEvent: [],
+    documentSnapshot: [],
     expense: [],
     expenseAttachment: [],
     recurringProfile: [],
@@ -53,12 +54,22 @@ describe("invoicingRelayFingerprint", () => {
                 { id: "c-a", companyId: "co-a" },
                 { id: "c-b", companyId: "co-b" },
             ],
+            document: [
+                { id: "d-a", companyId: "co-a" },
+                { id: "d-b", companyId: "co-b" },
+            ],
+            documentSnapshot: [
+                { id: "s-a", documentId: "d-a" },
+                { id: "s-b", documentId: "d-b" },
+            ],
             expense: [{ id: "e-a", companyId: "co-a" }],
         };
 
         const scoped = filterInvoicingSnapshotByCompany(snapshot, "co-a");
         expect(scoped.company).toHaveLength(1);
         expect(scoped.contact).toHaveLength(1);
+        expect(scoped.document).toHaveLength(1);
+        expect(scoped.documentSnapshot).toEqual([{ id: "s-a", documentId: "d-a" }]);
         expect(scoped.expense).toHaveLength(1);
 
         const fpA = fingerprintInvoicingSnapshot(scoped);

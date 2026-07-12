@@ -7,6 +7,7 @@ const SNAPSHOT_TABLE_KEYS = [
     "document",
     "documentLine",
     "documentEvent",
+    "documentSnapshot",
     "expense",
     "expenseAttachment",
     "recurringProfile",
@@ -57,6 +58,9 @@ export function filterInvoicingSnapshotByCompany(
             documentIds.has(String(row.documentId)),
         ),
         documentEvent: snapshot.documentEvent.filter((row) =>
+            documentIds.has(String(row.documentId)),
+        ),
+        documentSnapshot: snapshot.documentSnapshot.filter((row) =>
             documentIds.has(String(row.documentId)),
         ),
         expense: expenses,

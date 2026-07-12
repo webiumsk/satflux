@@ -8,6 +8,7 @@ const emptySnapshot = {
     document: [] as Record<string, unknown>[],
     documentLine: [] as Record<string, unknown>[],
     documentEvent: [] as Record<string, unknown>[],
+    documentSnapshot: [] as Record<string, unknown>[],
     expense: [] as Record<string, unknown>[],
     expenseAttachment: [] as Record<string, unknown>[],
     recurringProfile: [] as Record<string, unknown>[],

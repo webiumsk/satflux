@@ -124,7 +124,9 @@ export async function fetchServerMigrationExport(): Promise<{
             params: { include_attachments: 0, include_branding: 0 },
         });
         return {
-            snapshot: data.data as InvoicingDataSnapshot,
+            // The server export predates newer local-only tables (e.g.
+            // documentSnapshot) - default missing keys to empty arrays.
+            snapshot: { ...EMPTY_INVOICING_SNAPSHOT, ...(data.data as Partial<InvoicingDataSnapshot>) },
             meta: data.meta as ServerMigrationExportMeta,
         };
     } catch (error: unknown) {
