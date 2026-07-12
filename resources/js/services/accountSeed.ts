@@ -152,6 +152,44 @@ export function clearStoredAccountMnemonic(): void {
     }
 }
 
+export type OwnerSwitchImpact =
+    | { switches: false }
+    | { switches: true; companies: number; contacts: number; documents: number };
+
+/**
+ * Data-loss guard preview (P1): would restoring with this phrase switch the
+ * local Evolu owner, and how much local data would that re-link? Read-only -
+ * nothing is mutated. Invalid phrases report no switch (authentication will
+ * reject them anyway).
+ */
+export async function previewOwnerSwitchImpact(mnemonic: string): Promise<OwnerSwitchImpact> {
+    const normalized = normalizeAccountMnemonic(mnemonic);
+    if (!validateMnemonic(normalized, wordlist)) {
+        return { switches: false };
+    }
+    try {
+        const { evolu } = await import("@/evolu/client");
+        const owner = await evolu.appOwner;
+        if (owner.mnemonic == null || isTargetEvoluOwner(owner.mnemonic, normalized)) {
+            return { switches: false };
+        }
+        const { countLocalInvoicingData } = await import("@/evolu/localDataPresence");
+        const counts = await countLocalInvoicingData();
+        if (!counts.hasData) {
+            return { switches: false };
+        }
+        return {
+            switches: true,
+            companies: counts.companies,
+            contacts: counts.contacts,
+            documents: counts.documents,
+        };
+    } catch {
+        // Evolu unavailable - nothing local to lose.
+        return { switches: false };
+    }
+}
+
 /** Store recovery phrase on this browser and bind Evolu (logged-in users, new device). */
 export async function bindRecoveryPhraseOnThisDevice(
     mnemonic: string,

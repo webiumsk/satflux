@@ -657,6 +657,19 @@
         </button>
       </div>
     </aside>
+
+    <DangerConfirmModal
+      :open="showLogoutGuard"
+      variant="dark"
+      :title="logoutGuardBlocking ? t('auth.logout_guard_title') : t('auth.logout_confirm_title')"
+      :body="logoutGuardBlocking ? t('auth.logout_guard_body') : t('auth.logout_confirm_body')"
+      :confirm-label="t('auth.sign_out')"
+      :confirm-word="logoutGuardBlocking ? t('auth.logout_confirm_word') : null"
+      :backup-state="logoutGuardBlocking ? logoutBackupState : null"
+      :busy="loggingOut"
+      @close="showLogoutGuard = false"
+      @confirm="performLogout"
+    />
   </header>
 </template>
 
@@ -673,6 +686,12 @@ import {
   isInvoicingNavActive,
 } from "../../utils/dashboardInvoicingTab";
 import LanguageSwitcher from "../LanguageSwitcher.vue";
+import DangerConfirmModal from "../ui/DangerConfirmModal.vue";
+import {
+  getAnyLastExportMeta,
+  hasLegacyPlaintextMnemonic,
+  shouldBlockLogout,
+} from "../../services/backupState";
 import api from "../../services/api";
 import { getEcho } from "../../echo";
 
@@ -740,9 +759,49 @@ const handleUserButtonClick = () => {
   showUserMenu.value = !showUserMenu.value;
 };
 
+const showLogoutGuard = ref(false);
+const logoutGuardBlocking = ref(false);
+const loggingOut = ref(false);
+const logoutBackupState = ref<{ lastExportAt: string | null; legacyPhraseOnDevice: boolean } | null>(null);
+
+/**
+ * Data-loss guard (P1): a guest whose recovery phrase still sits only in this
+ * browser would lose access to their encrypted local data on logout - block
+ * with a typed-word confirm. Other guests get a lightweight confirm; regular
+ * accounts sign out unchanged.
+ */
 const handleLogout = async () => {
   closeUserMenu();
   closeMobileMenu();
+
+  const isGuest = !!authStore.user?.is_guest;
+  const hasLegacyPhrase = isGuest && hasLegacyPlaintextMnemonic();
+  let hasLocalData = false;
+  if (hasLegacyPhrase) {
+    try {
+      const { countLocalInvoicingData } = await import("../../evolu/localDataPresence");
+      hasLocalData = (await countLocalInvoicingData()).hasData;
+    } catch {
+      // Cannot verify - fail safe toward warning the user.
+      hasLocalData = true;
+    }
+  }
+
+  const decision = shouldBlockLogout({ isGuest, hasLegacyPhrase, hasLocalData });
+  if (decision === "none") {
+    await performLogout();
+    return;
+  }
+  logoutGuardBlocking.value = decision === "block";
+  logoutBackupState.value = {
+    lastExportAt: getAnyLastExportMeta()?.exportedAt ?? null,
+    legacyPhraseOnDevice: hasLegacyPhrase,
+  };
+  showLogoutGuard.value = true;
+};
+
+const performLogout = async () => {
+  loggingOut.value = true;
   try {
     await authStore.logout();
     if (isInertia) inertiaRouter.visit("/login");
@@ -751,6 +810,9 @@ const handleLogout = async () => {
     console.error("Logout error:", error);
     if (isInertia) inertiaRouter.visit("/login");
     else vueRouter!.push({ name: "login" });
+  } finally {
+    loggingOut.value = false;
+    showLogoutGuard.value = false;
   }
 };
 

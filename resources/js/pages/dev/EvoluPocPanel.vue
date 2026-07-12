@@ -139,6 +139,17 @@
         <p v-else class="text-sm text-gray-500">{{ t("evolu.no_documents") }}</p>
       </section>
     </div>
+
+    <DangerConfirmModal
+      :open="showResetOwnerConfirm"
+      variant="dark"
+      :title="t('evolu.reset_owner')"
+      :body="t('evolu.reset_confirm')"
+      :confirm-label="t('evolu.reset_owner')"
+      confirm-word="RESET"
+      @close="showResetOwnerConfirm = false"
+      @confirm="confirmResetOwner"
+    />
   </div>
 </template>
 
@@ -161,9 +172,11 @@ import {
 import { insertLocalCompanyFromPayload } from "@/evolu/companyInsert";
 import { seedDefaultNumberSeries } from "@/evolu/numberSeriesCrud";
 import { getStoredAccountMnemonic, initEvoluFromAccountSeedIfNeeded } from "@/services/accountSeed";
+import DangerConfirmModal from "@/components/ui/DangerConfirmModal.vue";
 import type { CompanyId, ContactId, DocumentId } from "@/evolu/schema";
 
 const { t } = useI18n();
+const showResetOwnerConfirm = ref(false);
 const evolu = useInvoicingEvolu();
 const companies = useQuery(allCompaniesQuery);
 const contacts = useQuery(allContactsQuery);
@@ -328,7 +341,11 @@ async function onRestoreMnemonic(): Promise<void> {
 }
 
 async function onResetOwner(): Promise<void> {
-    if (!window.confirm(t("evolu.reset_confirm"))) return;
+    showResetOwnerConfirm.value = true;
+}
+
+async function confirmResetOwner(): Promise<void> {
+    showResetOwnerConfirm.value = false;
     await evolu.resetAppOwner();
 }
 </script>

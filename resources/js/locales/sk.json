@@ -1318,6 +1318,10 @@
     "issuer_email": "Email"
   },
   "common": {
+    "danger_type_word_label": "Napíšte {word} pre potvrdenie",
+    "danger_legacy_phrase_warning": "Vaša obnovovacia fráza je uložená len v tomto prehliadači. Pred pokračovaním si ju zálohujte - bez nej sa fakturačné dáta nedajú obnoviť.",
+    "danger_backup_last_export_at": "Posledný export dát: {date}",
+    "danger_backup_never_exported": "Na tomto zariadení zatiaľ nebol vytvorený žiadny export dát.",
     "copied": "Skopírované do schránky",
     "copy_failed": "Nepodarilo sa skopírovať",
     "copy_url": "Kopírovať URL",
@@ -1381,6 +1385,14 @@
     "info_page_subtitle": "Verzia, právne dokumenty, open source a podpora."
   },
   "auth": {
+    "logout_guard_title": "Pred odhlásením sa zálohujte",
+    "logout_guard_body": "Odhlásenie odstráni kópiu obnovovacej frázy uloženú v tomto prehliadači. Bez frázy sa fakturačné dáta na tomto zariadení nedajú obnoviť. Najprv si zapíšte obnovovaciu frázu (Profil - Záloha účtu) alebo exportujte dáta.",
+    "logout_confirm_word": "ODHLASIT",
+    "logout_confirm_title": "Odhlásiť sa?",
+    "logout_confirm_body": "Fakturačné dáta zostanú na tomto zariadení, ale na ďalší prístup budete potrebovať obnovovaciu frázu.",
+    "guest_restore_owner_switch_title": "Táto fráza patrí inému účtu",
+    "guest_restore_owner_switch_body": "Toto zariadenie obsahuje lokálne dáta ({documents} dokladov, {contacts} kontaktov, {companies} firiem), ktoré sa previažu na obnovený účet. Ak ich chcete ponechať oddelene, zrušte akciu a najprv sa zálohujte.",
+    "guest_restore_owner_switch_confirm": "Rozumiem - napriek tomu obnoviť",
     "welcome_back": "Vitajte späť",
     "sign_in_to_account": "Prihláste sa do vášho účtu",
     "email": "E-mailová adresa",

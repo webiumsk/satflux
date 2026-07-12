@@ -61,13 +61,37 @@
           <div v-if="error" class="text-sm text-red-400">
             {{ error }}
           </div>
+          <div
+            v-if="ownerSwitchImpact"
+            class="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-2"
+          >
+            <p class="text-sm font-medium text-amber-300">
+              {{ t("auth.guest_restore_owner_switch_title") }}
+            </p>
+            <p class="text-sm text-gray-300">
+              {{
+                t("auth.guest_restore_owner_switch_body", {
+                  documents: ownerSwitchImpact.documents,
+                  contacts: ownerSwitchImpact.contacts,
+                  companies: ownerSwitchImpact.companies,
+                })
+              }}
+            </p>
+          </div>
           <button
             type="button"
             :disabled="loading"
-            class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-50"
+            class="w-full py-3 rounded-xl text-white text-sm font-semibold disabled:opacity-50"
+            :class="ownerSwitchImpact ? 'bg-amber-600 hover:bg-amber-500' : 'bg-indigo-600 hover:bg-indigo-500'"
             @click="submit"
           >
-            {{ loading ? t("common.loading") : t("auth.guest_restore_submit") }}
+            {{
+              loading
+                ? t("common.loading")
+                : ownerSwitchImpact
+                  ? t("auth.guest_restore_owner_switch_confirm")
+                  : t("auth.guest_restore_submit")
+            }}
           </button>
         </div>
       </div>
@@ -82,6 +106,7 @@ import { useAuthStore } from "../../store/auth";
 import { storeGuestMnemonic } from "../../services/guestRecovery";
 import { rememberDeviceWithPassphrase } from "../../services/deviceUnlock/provider";
 import { isAcceptableDevicePassphrase } from "../../services/deviceUnlock/envelope";
+import { previewOwnerSwitchImpact, type OwnerSwitchImpact } from "../../services/accountSeed";
 import { useFlashStore } from "../../store/flash";
 
 const props = defineProps<{ open: boolean }>();
@@ -101,6 +126,8 @@ const loading = ref(false);
 const error = ref("");
 const rememberDevice = ref(false);
 const devicePassphrase = ref("");
+const ownerSwitchImpact = ref<Extract<OwnerSwitchImpact, { switches: true }> | null>(null);
+const ownerSwitchConfirmedFor = ref("");
 
 watch(
   () => props.open,
@@ -110,9 +137,19 @@ watch(
       error.value = "";
       rememberDevice.value = false;
       devicePassphrase.value = "";
+      ownerSwitchImpact.value = null;
+      ownerSwitchConfirmedFor.value = "";
     }
   },
 );
+
+// Editing the phrase after the warning was shown invalidates the confirmation.
+watch(mnemonicInput, (value) => {
+  if (ownerSwitchImpact.value && value !== ownerSwitchConfirmedFor.value) {
+    ownerSwitchImpact.value = null;
+    ownerSwitchConfirmedFor.value = "";
+  }
+});
 
 async function submit() {
   error.value = "";
@@ -129,6 +166,18 @@ async function submit() {
   }
   loading.value = true;
   try {
+    // Data-loss guard (P1): restoring with a different phrase switches the
+    // local Evolu owner and re-links existing local data to the new account.
+    // Show the impact once; the second click on the amber button confirms.
+    if (!ownerSwitchImpact.value || ownerSwitchConfirmedFor.value !== mnemonic) {
+      const impact = await previewOwnerSwitchImpact(mnemonic);
+      if (impact.switches) {
+        ownerSwitchImpact.value = impact;
+        ownerSwitchConfirmedFor.value = mnemonic;
+        loading.value = false;
+        return;
+      }
+    }
     const data = await authStore.restoreGuestFromMnemonic(mnemonic);
     storeGuestMnemonic(mnemonic);
     if (remember) {
