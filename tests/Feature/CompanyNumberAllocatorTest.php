@@ -246,6 +246,28 @@ class CompanyNumberAllocatorTest extends TestCase
     }
 
     #[Test]
+    public function a_sequence_with_reservations_cannot_be_deleted(): void
+    {
+        $this->reserve([
+            'document_type' => 'invoice',
+            'issue_request_id' => 'draft-jjjj-0001',
+        ])->assertOk();
+
+        $sequenceId = DocumentNumberReservation::query()->sole()->company_document_sequence_id;
+
+        $this->actingAs($this->proUser)->postJson(
+            "/api/invoicing/companies/{$this->company->id}/number-series",
+            ['document_type' => 'invoice', 'name' => 'Second', 'format' => 'YYYYNNNN', 'reset_period' => 'yearly'],
+        )->assertSuccessful();
+
+        $this->actingAs($this->proUser)
+            ->deleteJson("/api/invoicing/companies/{$this->company->id}/number-series/{$sequenceId}")
+            ->assertStatus(422);
+
+        $this->assertSame(1, DocumentNumberReservation::query()->count());
+    }
+
+    #[Test]
     public function it_validates_the_issue_request_id_shape(): void
     {
         $this->reserve([

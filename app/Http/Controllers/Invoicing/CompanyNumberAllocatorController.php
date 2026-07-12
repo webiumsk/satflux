@@ -33,11 +33,24 @@ class CompanyNumberAllocatorController extends Controller
         protected DocumentSequenceService $sequenceService,
     ) {}
 
+    /**
+     * Rules shared by every allocator endpoint: which sequence (document
+     * type) and which issue attempt (idempotency key) is being addressed.
+     *
+     * @return array<string, array<int, mixed>>
+     */
+    protected function baseRules(): array
+    {
+        return [
+            'document_type' => ['required', 'string', Rule::in(self::DOCUMENT_TYPES)],
+            'issue_request_id' => ['required', 'string', 'min:8', 'max:64', 'regex:/^[A-Za-z0-9._-]+$/'],
+        ];
+    }
+
     public function reserve(Request $request, Company $company): JsonResponse
     {
         $validated = $request->validate([
-            'document_type' => ['required', 'string', Rule::in(self::DOCUMENT_TYPES)],
-            'issue_request_id' => ['required', 'string', 'min:8', 'max:64', 'regex:/^[A-Za-z0-9._-]+$/'],
+            ...$this->baseRules(),
             'local_high_counter' => ['sometimes', 'integer', 'min:0', 'max:99999999'],
         ]);
 
@@ -54,8 +67,7 @@ class CompanyNumberAllocatorController extends Controller
     public function confirm(Request $request, Company $company): JsonResponse
     {
         $validated = $request->validate([
-            'document_type' => ['required', 'string', Rule::in(self::DOCUMENT_TYPES)],
-            'issue_request_id' => ['required', 'string', 'min:8', 'max:64', 'regex:/^[A-Za-z0-9._-]+$/'],
+            ...$this->baseRules(),
             'snapshot_hash' => ['sometimes', 'nullable', 'string', 'max:128', 'regex:/^[A-Fa-f0-9]+$/'],
             'snapshot_format_version' => ['sometimes', 'nullable', 'string', 'max:16'],
         ]);
@@ -73,10 +85,7 @@ class CompanyNumberAllocatorController extends Controller
 
     public function void(Request $request, Company $company): JsonResponse
     {
-        $validated = $request->validate([
-            'document_type' => ['required', 'string', Rule::in(self::DOCUMENT_TYPES)],
-            'issue_request_id' => ['required', 'string', 'min:8', 'max:64', 'regex:/^[A-Za-z0-9._-]+$/'],
-        ]);
+        $validated = $request->validate($this->baseRules());
 
         $reservation = $this->sequenceService->voidReservation(
             $company,
@@ -90,10 +99,7 @@ class CompanyNumberAllocatorController extends Controller
     /** Recovery of an interrupted issue: what happened to this issue request? */
     public function status(Request $request, Company $company): JsonResponse
     {
-        $validated = $request->validate([
-            'document_type' => ['required', 'string', Rule::in(self::DOCUMENT_TYPES)],
-            'issue_request_id' => ['required', 'string', 'min:8', 'max:64', 'regex:/^[A-Za-z0-9._-]+$/'],
-        ]);
+        $validated = $request->validate($this->baseRules());
 
         $reservation = $this->sequenceService->findReservation(
             $company,

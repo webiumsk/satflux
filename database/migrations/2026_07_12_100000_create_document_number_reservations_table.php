@@ -24,9 +24,13 @@ return new class extends Migration
             $table->id();
             $table->foreignUuid('company_id')->constrained('companies')->cascadeOnDelete();
             $table->string('document_type', 32);
+            // Restrict, not cascade: reservations are the audit trail of
+            // allocated numbers - deleting a sequence must not erase them.
+            // The sequence destroy endpoint refuses deletion while
+            // reservations exist.
             $table->foreignId('company_document_sequence_id')
                 ->constrained('company_document_sequences')
-                ->cascadeOnDelete();
+                ->restrictOnDelete();
             $table->string('issue_request_id', 64);
             $table->string('period_key', 32)->nullable();
             $table->unsignedInteger('counter');
@@ -42,6 +46,11 @@ return new class extends Migration
                 'doc_number_reservations_request_unique',
             );
             $table->index(['company_id', 'status']);
+            // applyReservedCounterFloor(): max(counter) per sequence + period.
+            $table->index(
+                ['company_document_sequence_id', 'period_key'],
+                'doc_number_reservations_sequence_period_index',
+            );
         });
     }
 
