@@ -156,64 +156,7 @@ export async function previewNextDocumentNumberFromStore(
     }
 }
 
-export async function reserveNextDocumentNumberFromStore(
-    linkedStoreId: string,
-    documentType: string,
-    validStoreIds?: ReadonlySet<string>,
-    localHighCounter?: number,
-    allSeries?: EvoluNumberSeriesRow[],
-    companyId?: CompanyId,
-    companyIdentity?: CompanyBridgeIdentity,
-    isRetryAfterHeal = false,
-): Promise<{ ok: true; value: { number: string; counter: number } } | { ok: false; error: string }> {
-    if (validStoreIds && !isKnownStoreId(linkedStoreId, validStoreIds)) {
-        return { ok: false, error: "store_not_found" };
-    }
-    if (isKnownUnbridged(companyIdentity)) {
-        return { ok: false, error: "store_not_found" };
-    }
-
-    try {
-        const body: Record<string, string | number> = { document_type: documentType };
-        if (localHighCounter != null && localHighCounter > 0) {
-            body.local_high_counter = localHighCounter;
-        }
-        const data = await invoicingApi.storeNumberSeries.reserve(linkedStoreId, body);
-        if (data?.error === "store_not_linked" || !data?.data) {
-            return { ok: false, error: "store_not_found" };
-        }
-        const counter = data.data?.counter as number | undefined;
-        const serverNumber = data.data?.number as string | undefined;
-        if (counter == null || !serverNumber) {
-            return { ok: false, error: "reserve_failed" };
-        }
-        const number =
-            allSeries && companyId
-                ? formatNumberFromStoreCounter(
-                      companyId,
-                      documentType as DocumentType,
-                      counter,
-                      allSeries,
-                  )
-                : serverNumber;
-        return { ok: true, value: { number, counter } };
-    } catch (error: unknown) {
-        if (!isRetryAfterHeal && isStoreNotLinkedError(error) && await healStoreLink(companyIdentity, linkedStoreId)) {
-            return reserveNextDocumentNumberFromStore(
-                linkedStoreId,
-                documentType,
-                validStoreIds,
-                localHighCounter,
-                allSeries,
-                companyId,
-                companyIdentity,
-                true,
-            );
-        }
-        const status = (error as { response?: { status?: number } })?.response?.status;
-        if (status === 404 || status === 422) {
-            return { ok: false, error: "store_not_found" };
-        }
-        return { ok: false, error: "reserve_failed" };
-    }
-}
+// NOTE: reserveNextDocumentNumberFromStore was removed with audit F3 -
+// issuing reserves numbers via the company-scoped server allocator
+// (numberAllocatorBridge). The store-scoped PREVIEW above remains for the
+// form's next-number hint.

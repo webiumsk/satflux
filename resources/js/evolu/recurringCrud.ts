@@ -330,7 +330,12 @@ export async function generateLocalRecurringDocument(
         saveResult.value.id,
         company,
     );
-    if (!issueResult.ok) return issueResult;
+    if (!issueResult.ok) {
+        return {
+            ok: false,
+            error: typeof issueResult.error === "string" ? issueResult.error : "issue",
+        };
+    }
 
     await evolu.loadQuery(allDocumentsQuery);
     const issuedDocuments = (await evolu.loadQuery(allDocumentsQuery)) as EvoluDocumentRow[];

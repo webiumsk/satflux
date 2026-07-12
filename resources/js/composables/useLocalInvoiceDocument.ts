@@ -21,7 +21,6 @@ import {
     deleteLocalDocument,
     deleteLocalDocumentAsync,
     getLocalDocumentApi,
-    issueLocalDocument,
     issueLocalDocumentAsync,
     markLocalDocumentPaid,
     markLocalDocumentEmailSent,
@@ -87,20 +86,6 @@ export function useLocalInvoiceDocumentSupport() {
             evolu,
             companyId,
             documentType as Parameters<typeof previewNextLocalDocumentNumber>[2],
-            documentRows.value as EvoluDocumentRow[],
-            seriesRows.value as EvoluNumberSeriesRow[],
-        );
-    }
-
-    function issueLocalDocumentWrapped(
-        evoluInst: typeof evolu,
-        documentId: DocumentId,
-        company: EvoluCompanyRow,
-    ) {
-        return issueLocalDocument(
-            evoluInst,
-            documentId,
-            company,
             documentRows.value as EvoluDocumentRow[],
             seriesRows.value as EvoluNumberSeriesRow[],
         );
@@ -192,7 +177,6 @@ export function useLocalInvoiceDocumentSupport() {
         documentApi,
         saveOptions,
         saveLocalDocument,
-        issueLocalDocument: issueLocalDocumentWrapped,
         issueLocalDocumentAsync: issueLocalDocumentAsyncWrapped,
         deleteLocalDocument,
         deleteLocalDocumentAsync,

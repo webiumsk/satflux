@@ -1310,6 +1310,7 @@
     "draft_issue_hint": "This document is a draft. Issue it to assign a number, enable PDF, and record payment.",
     "issue_success": "Document issued.",
     "issue_error": "Could not issue the document. Check the number series and try again.",
+    "issue_requires_online": "You need an internet connection to issue documents. The draft is saved - try again once you are online.",
     "col_line_total_vat": "Total incl. VAT",
     "issuer_name": "Issued by",
     "issuer_phone": "Phone",

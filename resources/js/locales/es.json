@@ -3684,6 +3684,7 @@
     "draft_issue_hint": "Este documento es un borrador. Emítalo para asignar número, PDF y registrar el pago.",
     "issue_success": "Documento emitido.",
     "issue_error": "No se pudo emitir el documento. Compruebe la serie numérica e inténtelo de nuevo.",
+    "issue_requires_online": "Para emitir documentos necesitas conexión a internet. El borrador está guardado; inténtalo de nuevo cuando estés en línea.",
     "col_line_total_vat": "Total con IVA",
     "issuer_name": "Emitido por",
     "issuer_phone": "Teléfono",

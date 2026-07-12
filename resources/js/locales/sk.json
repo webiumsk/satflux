@@ -1310,6 +1310,7 @@
     "draft_issue_hint": "Dokument je koncept. Vystavte ho pre priradenie čísla, PDF a úhradu.",
     "issue_success": "Dokument bol vystavený.",
     "issue_error": "Dokument sa nepodarilo vystaviť. Skontrolujte číselnú radu a skúste znova.",
+    "issue_requires_online": "Na vystavenie dokladu je potrebné internetové pripojenie. Koncept je uložený - skúste to znova online.",
     "col_line_total_vat": "Celkom s DPH",
     "issuer_name": "Faktúru vystavil",
     "issuer_phone": "Telefón",

@@ -343,25 +343,27 @@ export function parseIssuedSnapshotRow(
 /**
  * Validates and appends a snapshot version. Never updates an existing row.
  * Returns the insert result so issue flows can refuse to flip a document to
- * issued when the snapshot could not be persisted.
+ * issued when the snapshot could not be persisted; the serialized payload is
+ * returned so callers can hash it (allocator confirm commitment, audit F3).
  */
 export function insertIssuedDocumentSnapshot(
     evolu: Evolu<InvoicingLocalSchema>,
     documentId: DocumentId,
     content: IssuedDocumentSnapshotV1,
     options: { backfilled?: boolean } = {},
-): { ok: true } | { ok: false; error: string } {
+): { ok: true; payloadJson: string } | { ok: false; error: string } {
     const validated = validateIssuedSnapshotV1(content);
     if (!validated.ok) return validated;
 
+    const payloadJson = deterministicStringify(validated.value);
     const result = evolu.insert("documentSnapshot", {
         documentId,
         formatVersion: ISSUED_SNAPSHOT_FORMAT_VERSION,
-        payloadJson: deterministicStringify(validated.value),
+        payloadJson,
         backfilled: options.backfilled ? sqliteTrue : null,
     });
     if (!result.ok) {
         return { ok: false, error: "snapshot_persist_failed" };
     }
-    return { ok: true };
+    return { ok: true, payloadJson };
 }

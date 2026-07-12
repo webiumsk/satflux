@@ -408,8 +408,18 @@ export function useInvoiceDocument() {
   }
 
   function extractError(e: any) {
-    if (e instanceof Error && e.message && e.message !== 'validation' && e.message !== 'issue') {
+    if (
+      e instanceof Error
+      && e.message
+      && e.message !== 'validation'
+      && e.message !== 'issue'
+      && e.message !== 'issue_requires_online'
+      && e.message !== 'reserve_failed'
+    ) {
       return e.message;
+    }
+    if (e?.message === 'issue_requires_online') {
+      return t('invoicing.issue_requires_online');
     }
     const fieldErrors = e?.response?.data?.errors;
     if (fieldErrors && typeof fieldErrors === 'object') {
@@ -425,7 +435,7 @@ export function useInvoiceDocument() {
       || e?.response?.data?.errors?.store_id?.[0]
       || e?.response?.data?.errors?.document?.[0]
       || (e?.message === 'validation' ? t('invoicing.company_save_validation_error') : null)
-      || (e?.message === 'issue' || e?.message === 'not_draft' || e?.message === 'series_update_failed' || e?.message === 'no_default_series' || e?.message === 'number_collision'
+      || (e?.message === 'issue' || e?.message === 'reserve_failed' || e?.message === 'not_draft' || e?.message === 'series_update_failed' || e?.message === 'no_default_series' || e?.message === 'number_collision'
         ? t('invoicing.issue_error')
         : null)
       || t('common.error')
