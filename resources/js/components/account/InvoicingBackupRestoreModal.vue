@@ -10,10 +10,11 @@
         class="relative w-full max-w-lg rounded-2xl border border-gray-700 bg-gray-800 shadow-xl"
         role="dialog"
         aria-modal="true"
+        :aria-labelledby="titleId"
       >
         <div class="p-6 sm:p-8 space-y-4">
           <div class="flex justify-between items-start gap-4">
-            <h3 class="text-lg font-bold text-white">
+            <h3 :id="titleId" class="text-lg font-bold text-white">
               {{ t("account.backup_restore_title") }}
             </h3>
             <button
@@ -135,6 +136,7 @@ const emit = defineEmits<{ close: []; restored: [] }>();
 
 const { t, locale } = useI18n();
 
+const titleId = `backup-restore-title-${Math.random().toString(36).slice(2, 10)}`;
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const validated = ref<ValidatedBackup | null>(null);
 const validationError = ref<BackupValidationError | null>(null);
@@ -203,7 +205,9 @@ async function onFilePicked(event: Event) {
 }
 
 async function applyRestore() {
-  if (!validated.value) return;
+  // Re-entrancy guard: the confirm button disables via busy, but a queued
+  // second invocation (e.g. Enter keypress) must not start a parallel restore.
+  if (!validated.value || restoring.value) return;
   restoring.value = true;
   try {
     const { evolu } = await import("../../evolu/client");
