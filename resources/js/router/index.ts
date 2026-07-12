@@ -345,6 +345,12 @@ const router = createRouter({
             meta: { requiresAuth: true, requiresSupportOrAdmin: true },
         },
         {
+            path: '/admin/system-health',
+            name: 'admin-system-health',
+            component: () => import('../pages/admin/SystemHealth.vue'),
+            meta: { requiresAuth: true, requiresAdmin: true },
+        },
+        {
             path: '/admin/users',
             name: 'admin-users',
             component: () => import('../pages/admin/Users.vue'),

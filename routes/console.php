@@ -26,6 +26,12 @@ Schedule::command('guests:purge-inactive')
     ->withoutOverlapping()
     ->runInBackground();
 
+// System health (P1 phase 8): snapshot + e-mail alerting on failures/recovery
+Schedule::command('system:health-check')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
+
 // Failed jobs monitoring - alert if more than 5 failures in the last hour
 Schedule::command('jobs:monitor-failed --hours=1 --threshold=5')
     ->hourly()

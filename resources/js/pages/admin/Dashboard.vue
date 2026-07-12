@@ -16,6 +16,18 @@
           {{ t("admin.dashboard.platform_overview") }}
         </h2>
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
+          <button
+            type="button"
+            class="bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-amber-500/50 transition-all cursor-pointer text-left w-full"
+            :aria-label="t('admin.health.title')"
+            @click="$router.push('/admin/system-health')"
+          >
+            <p class="text-gray-400 text-xs font-medium mb-1">
+              {{ t("admin.health.title") }}
+            </p>
+            <p class="text-2xl font-bold text-white" aria-hidden="true">→</p>
+            <p class="text-xs text-gray-500 mt-1">{{ t("admin.health.description") }}</p>
+          </button>
           <div
             class="bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-amber-500/50 transition-all cursor-pointer"
             @click="$router.push('/admin/users')"

@@ -1828,6 +1828,7 @@
     "marked_helpful": "Marcado como útil"
   },
   "admin": {
+    "health": {"status_ok": "OK", "status_failed": "Fallido", "title": "Salud del sistema", "description": "Comprobaciones en vivo, tasa de errores e historial de snapshots programados", "refresh": "Actualizar", "all_ok": "Todas las comprobaciones pasan", "failing": "Algunas comprobaciones fallan", "checked_at": "Comprobado a las {time}", "error_rate": "Errores esta hora", "error_rate_detail": "hora anterior: {previous} - umbral de alerta: {threshold}", "history": "Historial de snapshots (cada 5 minutos)", "history_empty": "Aún no hay snapshots; el planificador escribe uno cada 5 minutos."},
     "dashboard": {
       "title": "Panel de Administración",
       "description": "Gestiona el contenido de la plataforma y los usuarios",

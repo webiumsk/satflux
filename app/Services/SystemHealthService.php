@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Http;
  */
 class SystemHealthService
 {
-    public const CHECKS = ['database', 'queue', 'btcpay', 'relay', 'disk', 'webhooks'];
+    public const CHECKS = ['database', 'queue', 'btcpay', 'relay', 'disk', 'webhooks', 'errors'];
 
     /** Free disk space below this fails the disk check. */
     public const MIN_FREE_DISK_BYTES = 500 * 1024 * 1024;
@@ -119,6 +119,21 @@ class SystemHealthService
         return [
             'ok' => $free >= self::MIN_FREE_DISK_BYTES,
             'detail' => "{$freeMb} MB free",
+        ];
+    }
+
+    /** @return array{ok: bool, detail: string} */
+    protected function checkErrors(): array
+    {
+        $count = \App\Support\ErrorRateCounter::currentHourCount();
+        if ($count === null) {
+            return ['ok' => false, 'detail' => 'error counter unavailable (cache read failed)'];
+        }
+        $threshold = (int) config('monitoring.error_rate_threshold', 25);
+
+        return [
+            'ok' => $count < $threshold,
+            'detail' => "{$count} error(s) this hour (threshold {$threshold})",
         ];
     }
 

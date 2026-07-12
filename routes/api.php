@@ -908,6 +908,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
     // Admin routes
     Route::middleware([EnsureAdminRole::class])->group(function () {
         Route::get('/admin/system-health', [\App\Http\Controllers\Admin\SystemHealthController::class, 'show']);
+        Route::get('/admin/system-health/history', [\App\Http\Controllers\Admin\SystemHealthController::class, 'history']);
         Route::get('/admin/stats', [AdminController::class, 'stats']);
         Route::get('/admin/stats/export', [AdminController::class, 'statsExport']);
         Route::get('/admin/users', [AdminController::class, 'index']);
