@@ -1,0 +1,123 @@
+<?php
+
+namespace App\Http\Controllers\Invoicing;
+
+use App\Http\Controllers\Controller;
+use App\Models\Company;
+use App\Models\DocumentNumberReservation;
+use App\Services\Invoicing\DocumentSequenceService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+
+/**
+ * Server-side number allocator for local-first issuing (invoicing audit F3).
+ *
+ * Company-scoped on purpose - NOT bound to a BTCPay store link - so invoicing
+ * numbering works for any bridge company. The server only ever sees counters,
+ * an idempotency key and (on confirm) an opaque snapshot hash; document
+ * content stays on the client.
+ */
+class CompanyNumberAllocatorController extends Controller
+{
+    protected const DOCUMENT_TYPES = [
+        'invoice',
+        'credit_note',
+        'proforma',
+        'delivery_note',
+        'quote',
+        'order_received',
+    ];
+
+    public function __construct(
+        protected DocumentSequenceService $sequenceService,
+    ) {}
+
+    public function reserve(Request $request, Company $company): JsonResponse
+    {
+        $validated = $request->validate([
+            'document_type' => ['required', 'string', Rule::in(self::DOCUMENT_TYPES)],
+            'issue_request_id' => ['required', 'string', 'min:8', 'max:64', 'regex:/^[A-Za-z0-9._-]+$/'],
+            'local_high_counter' => ['sometimes', 'integer', 'min:0', 'max:99999999'],
+        ]);
+
+        $reservation = $this->sequenceService->reserveNumberForIssue(
+            $company,
+            $validated['document_type'],
+            $validated['issue_request_id'],
+            $validated['local_high_counter'] ?? null,
+        );
+
+        return response()->json(['data' => $this->reservationPayload($reservation)]);
+    }
+
+    public function confirm(Request $request, Company $company): JsonResponse
+    {
+        $validated = $request->validate([
+            'document_type' => ['required', 'string', Rule::in(self::DOCUMENT_TYPES)],
+            'issue_request_id' => ['required', 'string', 'min:8', 'max:64', 'regex:/^[A-Za-z0-9._-]+$/'],
+            'snapshot_hash' => ['sometimes', 'nullable', 'string', 'max:128', 'regex:/^[A-Fa-f0-9]+$/'],
+            'snapshot_format_version' => ['sometimes', 'nullable', 'string', 'max:16'],
+        ]);
+
+        $reservation = $this->sequenceService->confirmReservation(
+            $company,
+            $validated['document_type'],
+            $validated['issue_request_id'],
+            $validated['snapshot_hash'] ?? null,
+            $validated['snapshot_format_version'] ?? null,
+        );
+
+        return response()->json(['data' => $this->reservationPayload($reservation)]);
+    }
+
+    public function void(Request $request, Company $company): JsonResponse
+    {
+        $validated = $request->validate([
+            'document_type' => ['required', 'string', Rule::in(self::DOCUMENT_TYPES)],
+            'issue_request_id' => ['required', 'string', 'min:8', 'max:64', 'regex:/^[A-Za-z0-9._-]+$/'],
+        ]);
+
+        $reservation = $this->sequenceService->voidReservation(
+            $company,
+            $validated['document_type'],
+            $validated['issue_request_id'],
+        );
+
+        return response()->json(['data' => $this->reservationPayload($reservation)]);
+    }
+
+    /** Recovery of an interrupted issue: what happened to this issue request? */
+    public function status(Request $request, Company $company): JsonResponse
+    {
+        $validated = $request->validate([
+            'document_type' => ['required', 'string', Rule::in(self::DOCUMENT_TYPES)],
+            'issue_request_id' => ['required', 'string', 'min:8', 'max:64', 'regex:/^[A-Za-z0-9._-]+$/'],
+        ]);
+
+        $reservation = $this->sequenceService->findReservation(
+            $company,
+            $validated['document_type'],
+            $validated['issue_request_id'],
+        );
+
+        return response()->json([
+            'data' => $reservation ? $this->reservationPayload($reservation) : null,
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function reservationPayload(DocumentNumberReservation $reservation): array
+    {
+        return [
+            'issue_request_id' => $reservation->issue_request_id,
+            'document_type' => $reservation->document_type,
+            'number' => $reservation->number,
+            'counter' => $reservation->counter,
+            'status' => $reservation->status,
+            'period_key' => $reservation->period_key,
+        ];
+    }
+}
