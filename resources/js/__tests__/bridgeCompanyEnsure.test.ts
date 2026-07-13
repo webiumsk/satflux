@@ -40,7 +40,7 @@ describe("ensureBridgeCompanyIdForLocalCompany", () => {
 
         const result = await module.ensureBridgeCompanyIdForLocalCompany("local-1");
 
-        expect(result).toBe("bridge-1");
+        expect(result).toEqual({ ok: true, bridgeCompanyId: "bridge-1" });
         expect(resolveOrCreateBridgeCompanyId).toHaveBeenCalledWith({
             legal_name: "Webium s.r.o.",
             registration_number: "12345678",
@@ -50,19 +50,23 @@ describe("ensureBridgeCompanyIdForLocalCompany", () => {
         });
     });
 
-    it("returns null for an unknown or nameless local company without calling the resolver", async () => {
+    it("reports no-identity (ok, null id) for an unknown or nameless local company", async () => {
         const { module, resolveOrCreateBridgeCompanyId } = await loadHelper({
             rows: [{ id: "local-2", legalName: null }],
         });
 
-        expect(await module.ensureBridgeCompanyIdForLocalCompany("missing")).toBeNull();
-        expect(await module.ensureBridgeCompanyIdForLocalCompany("local-2")).toBeNull();
-        expect(await module.ensureBridgeCompanyIdForLocalCompany("")).toBeNull();
+        const noIdentity = { ok: true, bridgeCompanyId: null };
+        expect(await module.ensureBridgeCompanyIdForLocalCompany("missing")).toEqual(noIdentity);
+        expect(await module.ensureBridgeCompanyIdForLocalCompany("local-2")).toEqual(noIdentity);
+        expect(await module.ensureBridgeCompanyIdForLocalCompany("")).toEqual(noIdentity);
         expect(resolveOrCreateBridgeCompanyId).not.toHaveBeenCalled();
     });
 
-    it("degrades to null when the local query fails", async () => {
+    it("reports a FAILURE (not a missing bridge) when the local query fails", async () => {
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
         const { module } = await loadHelper({ loadFails: true });
-        expect(await module.ensureBridgeCompanyIdForLocalCompany("local-1")).toBeNull();
+        expect(await module.ensureBridgeCompanyIdForLocalCompany("local-1")).toEqual({ ok: false });
+        expect(errorSpy).toHaveBeenCalled();
+        errorSpy.mockRestore();
     });
 });

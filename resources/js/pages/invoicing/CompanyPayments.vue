@@ -995,10 +995,16 @@ async function resolveInboundCompanyId(): Promise<string | null> {
   // Per-company bridge resolved by THIS company's legal identity (created on
   // demand) - never a first-row fallback, which handed every local company
   // the same bridge and therefore the same inbound address.
-  const bridgeId = await ensureBridgeCompanyIdForLocalCompany(companyId.value);
-  inboundBridgeCompanyId.value = bridgeId;
+  const result = await ensureBridgeCompanyIdForLocalCompany(companyId.value);
+  if (!result.ok) {
+    // Transient failure - do not claim the bridge is missing; leaving the
+    // check unfinished lets the next loadInbound() run retry.
+    inboundBridgeChecked.value = false;
+    return null;
+  }
+  inboundBridgeCompanyId.value = result.bridgeCompanyId;
   inboundBridgeChecked.value = true;
-  return bridgeId;
+  return result.bridgeCompanyId;
 }
 
 async function loadInbound() {
