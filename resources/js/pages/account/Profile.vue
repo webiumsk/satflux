@@ -2074,6 +2074,8 @@ async function testEvoluRelayUrl(): Promise<void> {
     const url = normalizeEvoluRelayBaseUrl(evoluRelayForm.value.url.trim() || activeRelayUrl.value);
     const reachable = url ? await probeRelayReachability(url) : false;
     evoluRelayTestResult.value = reachable ? "ok" : "failed";
+  } catch {
+    evoluRelayTestResult.value = "failed";
   } finally {
     evoluRelayTesting.value = false;
   }

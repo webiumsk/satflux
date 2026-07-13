@@ -120,7 +120,15 @@ export function evoluTransports(): { type: "WebSocket"; url: string }[] {
     if (!enabled || !url) {
         return [];
     }
-    return [{ type: "WebSocket", url: normalizeEvoluRelayBaseUrl(url) }];
+    // Normalize first, guard after - the default-branch URL bypasses the
+    // source normalization in getEvoluRelayBuildInfo (env branch is already
+    // normalized), and an empty result must mean local-only, never a
+    // WebSocket transport with an empty URL.
+    const normalized = normalizeEvoluRelayBaseUrl(url);
+    if (!normalized) {
+        return [];
+    }
+    return [{ type: "WebSocket", url: normalized }];
 }
 
 export function isEvoluRelayEnabledInBuild(): boolean {
