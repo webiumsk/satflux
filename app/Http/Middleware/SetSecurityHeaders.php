@@ -100,6 +100,14 @@ class SetSecurityHeaders
     {
         $sources = ["'self'"];
 
+        // 'self' covers only the page scheme (https) - the Echo/Reverb
+        // websocket (broadcasting/auth + ws connection) needs the wss twin of
+        // the app origin explicitly.
+        $appOrigin = $this->originOf((string) config('app.url', ''));
+        if ($appOrigin && str_starts_with($appOrigin, 'http')) {
+            $sources[] = 'ws'.substr($appOrigin, 4);
+        }
+
         if ($choralaOrigin) {
             $sources[] = $choralaOrigin;
         }
