@@ -1,4 +1,6 @@
 /** Default Evolu relay for sync/backup (Phase 0 PoC). Override via VITE_EVOLU_RELAY_URL. */
+import { readRelayOverride } from "./relayOverrideStorage";
+
 export const DEFAULT_EVOLU_RELAY_URL = "wss://free.evoluhq.com";
 
 export type EvoluRelayBuildInfo = {
@@ -95,13 +97,38 @@ export function resolveEvoluRelayUrl(profileRelayUrl?: string | null): EvoluRela
     };
 }
 
-/** Empty transports = local-only SQLite, no cross-browser sync. */
+/**
+ * Empty transports = local-only SQLite, no cross-browser sync.
+ *
+ * Runtime ladder (P2 phase 1): device override (cached profile relay or a
+ * device-level "sync off") -> build env -> public default. The override is
+ * read synchronously because createEvolu runs at module init, before auth;
+ * saving a relay in Profile writes the cache and prompts a reload.
+ */
 export function evoluTransports(): { type: "WebSocket"; url: string }[] {
+    const override = readRelayOverride();
+    if (override.kind === "disabled") {
+        return [];
+    }
+    if (override.kind === "url") {
+        const url = normalizeEvoluRelayBaseUrl(override.url);
+        if (url) {
+            return [{ type: "WebSocket", url }];
+        }
+    }
     const { url, enabled } = getEvoluRelayBuildInfo();
     if (!enabled || !url) {
         return [];
     }
-    return [{ type: "WebSocket", url: normalizeEvoluRelayBaseUrl(url) }];
+    // Normalize first, guard after - the default-branch URL bypasses the
+    // source normalization in getEvoluRelayBuildInfo (env branch is already
+    // normalized), and an empty result must mean local-only, never a
+    // WebSocket transport with an empty URL.
+    const normalized = normalizeEvoluRelayBaseUrl(url);
+    if (!normalized) {
+        return [];
+    }
+    return [{ type: "WebSocket", url: normalized }];
 }
 
 export function isEvoluRelayEnabledInBuild(): boolean {
