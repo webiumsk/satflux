@@ -136,8 +136,13 @@ Pre nové prostredie:
 - createEvolu transport je build-time; profilová relay URL platí len pre
   manuálne push/pull (dokumentovaný mismatch, P2).
 - Záloha je plaintext na vlastnom disku (vedomé rozhodnutie v1).
-- Bulk PDF bez cancel (all-or-nothing).
-- Error-rate countery sú per-proces cache - restart ich nuluje.
+- Bulk PDF bez cancel (all-or-nothing). (Vyriešené v P2 fáze 4 -
+  AbortController + cancel tlačidlo.)
+- ~~Error-rate countery sú per-proces cache - restart ich nuluje.~~
+  KOREKCIA (P2 fáza 6): countery používajú default cache store a produkcia
+  beží na redis - sú zdieľané naprieč procesmi a prežívajú restart aj
+  deploy, pokiaľ deploy neflushne cache (`cache:clear`/`optimize:clear`).
+  Overené priamo v Redise; sémantika a limity: docs/ERROR_RATE_COUNTERS.md.
 
 ## 11. Otvorené problémy
 
