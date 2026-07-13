@@ -11,6 +11,7 @@ import {
     type IssuedDocumentSnapshotV1,
 } from "./documentSnapshotCrud";
 import { normalizeIsoCountryCode } from "@/utils/isoCountryCode";
+import { isAbortError } from "@/utils/abortError";
 import type { DocumentSavePayload } from "./documentCrud";
 import type { CompanyId, DocumentId } from "./schema";
 import { resolveLocalEmailSettingsForBridge } from "./companySettingsCrud";
@@ -128,11 +129,15 @@ async function postWithCompanyScopedFallback<T>(
     companyLessPath: string,
     companyScopedPath: string | null,
     body: unknown,
-    config?: { responseType?: "blob" },
+    config?: { responseType?: "blob"; signal?: AbortSignal },
 ): Promise<AxiosResponse<T>> {
     try {
         return await api.post<T>(companyLessPath, body, config);
     } catch (error: unknown) {
+        // A user-initiated abort must not fall back to the second route.
+        if (isAbortError(error)) {
+            throw error;
+        }
         if (companyScopedPath && shouldFallbackEphemeralRoute(error)) {
             try {
                 return await api.post<T>(companyScopedPath, body, config);
@@ -647,12 +652,13 @@ function downloadResponseBlob(blob: Blob, filename: string): void {
 export async function downloadEphemeralPdfZip(
     body: EphemeralBulkRequestBody,
     bridgeCompanyId?: string | null,
+    options?: { signal?: AbortSignal },
 ): Promise<void> {
     const res = await postWithCompanyScopedFallback<Blob>(
         EPHEMERAL_BULK_PDF_ZIP_PATH,
         bridgeCompanyId ? companyScopedEphemeralBulkPdfZipPath(bridgeCompanyId) : null,
         body,
-        { responseType: "blob" },
+        { responseType: "blob", signal: options?.signal },
     );
     downloadResponseBlob(res.data as Blob, "invoices.zip");
 }
@@ -660,12 +666,13 @@ export async function downloadEphemeralPdfZip(
 export async function downloadEphemeralPdfMerge(
     body: EphemeralBulkRequestBody,
     bridgeCompanyId?: string | null,
+    options?: { signal?: AbortSignal },
 ): Promise<void> {
     const res = await postWithCompanyScopedFallback<Blob>(
         EPHEMERAL_BULK_PDF_MERGE_PATH,
         bridgeCompanyId ? companyScopedEphemeralBulkPdfMergePath(bridgeCompanyId) : null,
         body,
-        { responseType: "blob" },
+        { responseType: "blob", signal: options?.signal },
     );
     downloadResponseBlob(res.data as Blob, "invoices-merged.pdf");
 }
