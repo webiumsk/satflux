@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\Cache;
  * Hourly error/critical log counters (P1 phase 8). Counts ONLY - never the
  * message content. Incremented by a MessageLogged listener; read by the
  * health checks and the admin dashboard.
+ *
+ * Uses the DEFAULT cache store: with redis (production) the buckets are
+ * shared across php-fpm/queue/scheduler processes, survive restarts, and
+ * increments are atomic. See docs/ERROR_RATE_COUNTERS.md (P2 phase 6).
  */
 class ErrorRateCounter
 {
