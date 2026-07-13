@@ -68,7 +68,14 @@ export function useInvoicingRelaySync(options?: UseInvoicingRelaySyncOptions) {
                 ownerHash.value = await ownerIdHashFor(evolu);
             }
             if (!ownerHash.value) return;
-            const reachable = await probeRelayReachability(getResolvedEvoluRelayUrl());
+            // Probe with the REAL owner id: the usage endpoint answers 200
+            // for it, so the browser console stays free of failed-request
+            // noise (a placeholder id draws a 400 on every probe).
+            const owner = evolu ? await evolu.appOwner : null;
+            const reachable = await probeRelayReachability(
+                getResolvedEvoluRelayUrl(),
+                owner ? String(owner.id) : null,
+            );
             recordProbe(ownerHash.value, reachable);
             refreshSyncMeta();
         } catch {
