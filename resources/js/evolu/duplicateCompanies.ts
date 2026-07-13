@@ -1,3 +1,20 @@
+/**
+ * Drops repeated occurrences of the SAME row id, keeping the first. The
+ * reactive Evolu query layer can surface one physical row multiple times
+ * (observed with the relay sync owner subscribed) - such phantom repeats are
+ * not duplicates to merge and must not trigger the duplicate-companies flow.
+ */
+export function dedupeRowsById<T extends { id: string }>(rows: readonly T[]): T[] {
+    const seen = new Set<string>();
+    const unique: T[] = [];
+    for (const row of rows) {
+        if (seen.has(row.id)) continue;
+        seen.add(row.id);
+        unique.push(row);
+    }
+    return unique;
+}
+
 export function normalizeCompanyIdentityKey(
     legalName: string,
     registrationNumber?: string | null,
@@ -52,7 +69,8 @@ export function findDuplicateCompanyGroups<
 >(companies: readonly T[]): T[][] {
     const groups = new Map<string, T[]>();
 
-    for (const company of companies) {
+    // Phantom same-id repeats are not mergeable duplicates.
+    for (const company of dedupeRowsById(companies)) {
         const key = normalizeCompanyIdentityKey(
             company.legal_name,
             company.registration_number ?? null,

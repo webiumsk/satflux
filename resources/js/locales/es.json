@@ -2584,6 +2584,7 @@
     "duplicate_companies_merge": "Fusionar duplicados automáticamente",
     "duplicate_companies_merging": "Fusionando duplicados…",
     "duplicate_companies_merge_success": "Se fusionaron {groups} grupo(s) duplicado(s) y se eliminaron {removed} perfil(es) extra.",
+    "duplicate_companies_merge_partial": "La fusión terminó con problemas: {removed} eliminados, {failed} no se pudieron eliminar. Revisa la consola del navegador e inténtalo de nuevo.",
     "duplicate_companies_merge_none": "No había perfiles duplicados para fusionar.",
     "duplicate_companies_merge_failed": "No se pudieron fusionar los duplicados. Inténtelo de nuevo o elimínelos manualmente en los ajustes de la empresa.",
     "company_delete_title": "Eliminar perfil de empresa",

@@ -14,6 +14,7 @@ import {
 import type { CompanyId } from "@/evolu/schema";
 import type { InvoicingCompanyListItem, UseInvoicingCompaniesResult } from "./useInvoicingCompanies";
 import { countCompanyInvoicesForList } from "@/evolu/companyInvoiceCount";
+import { dedupeRowsById } from "@/evolu/duplicateCompanies";
 
 function mapEvoluCompanies(
     rows: ReadonlyArray<{
@@ -25,7 +26,10 @@ function mapEvoluCompanies(
     }>,
     documentRows: ReadonlyArray<{ companyId: CompanyId; documentType: string; status: string }>,
 ): InvoicingCompanyListItem[] {
-    return rows.map((row) => ({
+    // The reactive query layer can repeat the same physical row (phantom
+    // duplicates observed with the relay sync owner subscribed) - the list,
+    // the duplicate detection and the merge must all see each id once.
+    return dedupeRowsById([...rows]).map((row) => ({
         id: row.id,
         legal_name: row.legalName,
         trade_name: row.tradeName,
