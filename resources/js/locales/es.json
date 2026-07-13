@@ -3546,7 +3546,7 @@
     "bank_summary_balance": "Saldo",
     "bank_summary_account_balance": "Saldo de la cuenta",
     "bulk_pdf_separate": "Descargar PDF (cada una)",
-    "bulk_pdf_running": "Preparando la exportación PDF...",
+    "bulk_pdf_running": "Preparando la exportación...",
     "bulk_pdf_cancel": "Cancelar exportación",
     "bulk_pdf_cancelled": "Exportación cancelada. Volver a ejecutarla empieza desde cero.",
     "bulk_pdf_merge": "Descargar PDF (combinado)",
