@@ -15,6 +15,7 @@
     "typecheck": "node scripts/typecheck-baseline.mjs",
     "typecheck:update-baseline": "node scripts/typecheck-baseline.mjs --update",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "test:locale-parity": "node scripts/check-locale-parity.mjs",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

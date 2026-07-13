@@ -63,6 +63,92 @@ jobs:
       - name: Security audit (composer)
         run: composer audit
 
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      # No BTCPay Server and no redis in this job: sqlite + file cache +
+      # sync queue, local-first invoicing build, relay sync disabled. The
+      # scenarios only cover flows that work against this stack (see
+      # docs/E2E_HARNESS.md).
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php -r "file_put_contents('.env', preg_replace('/^APP_KEY=.*/m', 'APP_KEY=base64:'.base64_encode(random_bytes(32)), file_get_contents('.env')));"
+          sed -i \
+            -e 's|^APP_URL=.*|APP_URL=http://localhost:8000|' \
+            -e 's|^DB_CONNECTION=.*|DB_CONNECTION=sqlite|' \
+            -e 's|^CACHE_STORE=.*|CACHE_STORE=file|' \
+            -e 's|^QUEUE_CONNECTION=.*|QUEUE_CONNECTION=sync|' \
+            .env
+          sed -i '/^DB_HOST=/d;/^DB_PORT=/d;/^DB_DATABASE=/d;/^DB_USERNAME=/d;/^DB_PASSWORD=/d' .env
+          {
+            echo "DB_DATABASE=${{ github.workspace }}/database/e2e.sqlite"
+            echo "VITE_INVOICING_LOCAL_FIRST=true"
+            echo "VITE_EVOLU_RELAY_URL="
+          } >> .env
+          mkdir -p bootstrap/cache && chmod -R 777 bootstrap/cache
+          touch database/e2e.sqlite
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Migrate and seed the e2e fixture user
+        run: |
+          php artisan migrate --force
+          php artisan db:seed --class=E2eTestSeeder --force
+
+      - name: Start application server
+        run: |
+          php artisan serve --port=8000 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/login >/dev/null && break
+            sleep 1
+          done
+          if ! curl -sf http://localhost:8000/login >/dev/null; then
+            echo "::error::Application server failed to start on http://localhost:8000 within 30s"
+            exit 1
+          fi
+
+      - name: Install Playwright chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run e2e tests
+        env:
+          APP_URL: http://localhost:8000
+          E2E_SEEDED_USER: "1"
+          E2E_INVOICING_LOCAL_FIRST: "1"
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
   frontend:
     name: Node (lint + build)
     runs-on: ubuntu-latest
