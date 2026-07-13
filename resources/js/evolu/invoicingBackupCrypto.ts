@@ -1,5 +1,6 @@
 import { wordlist } from "@scure/bip39/wordlists/english.js";
 import {
+    PASSPHRASE_MAX_ITERATIONS,
     aesGcmDecrypt,
     aesGcmEncrypt,
     calibratePbkdf2Iterations,
@@ -91,10 +92,17 @@ export async function decryptBackupEnvelopeText(
         if (encrypted.version !== ENCRYPTED_BACKUP_VERSION) {
             throw new Error("unsupported");
         }
+        // The file is untrusted: a hostile iteration count must not dictate
+        // minutes of key derivation. (A low count only weakens the attacker's
+        // own file, so only the upper bound is a safety property.)
+        const iterations = encrypted.kdf.iterations;
+        if (!Number.isInteger(iterations) || iterations < 1 || iterations > PASSPHRASE_MAX_ITERATIONS) {
+            throw new Error("unsupported");
+        }
         const key = await deriveKekPbkdf2Sha256(
             passphrase,
             fromB64(encrypted.kdf.saltB64),
-            encrypted.kdf.iterations,
+            iterations,
         );
         const plaintext = await aesGcmDecrypt(
             key,

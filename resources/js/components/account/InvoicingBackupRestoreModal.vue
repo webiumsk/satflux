@@ -293,7 +293,7 @@ async function applyRestore() {
 }
 
 function close() {
-  if (restoring.value) return;
+  if (restoring.value || decrypting.value) return;
   emit("close");
 }
 

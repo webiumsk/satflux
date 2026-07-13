@@ -100,6 +100,20 @@ describe("encrypted backup envelope (P2 phase 2)", () => {
         expect(result).toEqual({ ok: false, error: "decrypt_failed" });
     });
 
+    it("rejects a hostile iteration count before deriving any key", async () => {
+        const inner = await makePlaintextEnvelopeJson();
+        const encrypted = await encryptBackupEnvelopeText(inner, PASSPHRASE, {
+            iterations: TEST_ITERATIONS,
+        });
+
+        for (const iterations of [2 ** 31, 0, -1, 1.5, Number.NaN]) {
+            const hostile = { ...encrypted, kdf: { ...encrypted.kdf, iterations } };
+            await expect(decryptBackupEnvelopeText(hostile, PASSPHRASE)).rejects.toThrow(
+                "backup_decrypt_failed",
+            );
+        }
+    });
+
     it("classifies encrypted, plaintext and invalid files", async () => {
         const inner = await makePlaintextEnvelopeJson();
         const encrypted = await encryptBackupEnvelopeText(inner, PASSPHRASE, {

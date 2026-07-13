@@ -11,6 +11,14 @@
 /** OWASP 2023 floor for PBKDF2-HMAC-SHA-256; calibration only raises it. */
 export const PASSPHRASE_MIN_ITERATIONS = 600_000;
 
+/**
+ * Upper bound for PBKDF2 iterations - a sanity cap for calibration on devices
+ * with a glitchy clock and a hard limit when the count comes from an
+ * UNTRUSTED file (a hostile backup must not dictate minutes of key
+ * derivation). ~17x the floor, far above any honest calibration target.
+ */
+export const PASSPHRASE_MAX_ITERATIONS = 10_000_000;
+
 /** A short numeric PIN is rejected - too weak for an offline-brute-forceable ciphertext. */
 export const PASSPHRASE_MIN_LENGTH = 8;
 
@@ -118,5 +126,5 @@ export async function calibratePbkdf2Iterations(
         return minIterations;
     }
     const scaled = Math.round((probeIterations * targetMs) / elapsed);
-    return Math.max(minIterations, scaled);
+    return Math.min(PASSPHRASE_MAX_ITERATIONS, Math.max(minIterations, scaled));
 }
