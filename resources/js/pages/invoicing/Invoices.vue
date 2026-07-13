@@ -260,7 +260,15 @@
     </InvoicingMobileBulkBar>
 
     <div v-if="loading" class="invoicing-muted py-8">
-      {{ t("common.loading") }}
+      <span>{{ bulkFileAbort ? t("invoicing.bulk_pdf_running") : t("common.loading") }}</span>
+      <button
+        v-if="bulkFileAbort"
+        type="button"
+        class="invoicing-btn-secondary text-sm ml-3"
+        @click="cancelBulkFile"
+      >
+        {{ t("invoicing.bulk_pdf_cancel") }}
+      </button>
     </div>
 
     <div
@@ -1216,6 +1224,7 @@ import {
   localBulkFilterOptions,
   resolveBulkTargets,
 } from "../../evolu/documentBulkLocal";
+import { isAbortError } from "../../utils/abortError";
 import { useInvoicingRelaySync } from "../../composables/useInvoicingRelaySync";
 import { useInvoicingSaveFeedback } from "../../composables/useInvoicingSaveFeedback";
 import { useInvoicingLayout } from "../../composables/useInvoicingLayout";
@@ -1437,6 +1446,9 @@ const documents = ref<any[]>([]);
 const loading = ref(false);
 const error = ref("");
 const success = ref("");
+// Non-null while a bulk file export (PDF zip/merge, XLSX) is in flight -
+// drives the cancel button and aborts the underlying request.
+const bulkFileAbort = ref<AbortController | null>(null);
 const actionId = ref<string | null>(null);
 const companyName = ref("");
 const activeFilter = ref("all");
@@ -2084,10 +2096,11 @@ async function runBulkLocal(action: string) {
       return;
     }
 
+    const signal = bulkFileAbort.value?.signal;
     if (action === "pdf_zip") {
-      await downloadEphemeralPdfZip(bulk.body, bulk.bridgeCompanyId);
+      await downloadEphemeralPdfZip(bulk.body, bulk.bridgeCompanyId, { signal });
     } else {
-      await downloadEphemeralPdfMerge(bulk.body, bulk.bridgeCompanyId);
+      await downloadEphemeralPdfMerge(bulk.body, bulk.bridgeCompanyId, { signal });
     }
     clearSelection();
   }
@@ -2111,6 +2124,9 @@ async function runBulk(action: string) {
   error.value = "";
   success.value = "";
   loading.value = true;
+  if (fileActions.has(action)) {
+    bulkFileAbort.value = new AbortController();
+  }
 
   try {
     if (localFirst && localDoc && localDocuments) {
@@ -2121,7 +2137,7 @@ async function runBulk(action: string) {
 
     const isFile = fileActions.has(action);
     const res = isFile
-      ? await invoicingApi.documents.bulkExport(companyId.value, bulkPayload(action))
+      ? await invoicingApi.documents.bulkExport(companyId.value, bulkPayload(action), bulkFileAbort.value?.signal)
       : await invoicingApi.documents.bulk(companyId.value, bulkPayload(action));
 
     if (isFile) {
@@ -2147,7 +2163,11 @@ async function runBulk(action: string) {
       clearSelection();
     }
   } catch (e: any) {
-    if (e?.response?.data instanceof Blob) {
+    if (isAbortError(e)) {
+      // User-initiated cancel - no partial file exists (all-or-nothing on
+      // the server); re-running the action starts from scratch.
+      success.value = t("invoicing.bulk_pdf_cancelled");
+    } else if (e?.response?.data instanceof Blob) {
       const text = await e.response.data.text();
       try {
         const json = JSON.parse(text);
@@ -2159,8 +2179,13 @@ async function runBulk(action: string) {
       error.value = e?.response?.data?.message || t("common.error");
     }
   } finally {
+    bulkFileAbort.value = null;
     loading.value = false;
   }
+}
+
+function cancelBulkFile() {
+  bulkFileAbort.value?.abort();
 }
 
 function formatMoney(amount: string | number, currency: string) {

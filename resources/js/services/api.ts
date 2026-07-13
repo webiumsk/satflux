@@ -588,8 +588,8 @@ export const invoicingApi = {
             const { data } = await api.post<T>(`/invoicing/companies/${companyId}/documents/bulk`, payload);
             return data;
         },
-        async bulkExport(companyId: string, payload: Record<string, unknown>): Promise<Blob> {
-            const { data } = await api.post<Blob>(`/invoicing/companies/${companyId}/documents/bulk`, payload, { responseType: 'blob' });
+        async bulkExport(companyId: string, payload: Record<string, unknown>, signal?: AbortSignal): Promise<Blob> {
+            const { data } = await api.post<Blob>(`/invoicing/companies/${companyId}/documents/bulk`, payload, { responseType: 'blob', signal });
             return data;
         },
         import: spreadsheetImportGroup('documents/import'),
