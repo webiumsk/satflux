@@ -44,6 +44,7 @@
             <li v-for="company in group.companies" :key="company.id">
               {{ company.trade_name || company.legal_name }}
               · {{ company.documents_count ?? 0 }} {{ t('invoicing.invoices_short') }}
+              · <code class="text-xs opacity-75">{{ company.id }}</code>
             </li>
           </ul>
         </li>
@@ -485,6 +486,14 @@ watch(companyList, () => {
 const duplicateCompanyGroups = computed(() => {
   if (!localFirst) return [];
   const groups = findDuplicateCompanyGroups(companyList.value);
+  if (groups.length > 0) {
+    // Diagnostic for duplicate investigations: ids + counts, no document
+    // content. Helps distinguish phantom same-id repeats from real rows.
+    console.info(
+      '[invoicing] duplicate company groups:',
+      groups.map((group) => group.map((c) => `${c.id} (${c.documents_count ?? 0} docs)`)),
+    );
+  }
   return groups.map((group) => {
     const row = group[0] as InvoicingCompanyListItem | undefined;
     const label = row?.trade_name || row?.legal_name || '';
@@ -504,7 +513,14 @@ async function runMergeDuplicates(): Promise<void> {
   mergeRunning.value = true;
   try {
     const result = await mergeDuplicateCompaniesLocal(evolu, companyList.value);
-    if (result.removedCompanies === 0) {
+    if (result.failedRemovals > 0) {
+      flashStore.error(
+        t('invoicing.duplicate_companies_merge_partial', {
+          failed: result.failedRemovals,
+          removed: result.removedCompanies,
+        }),
+      );
+    } else if (result.removedCompanies === 0) {
       flashStore.warning(t('invoicing.duplicate_companies_merge_none'));
     } else {
       flashStore.success(
