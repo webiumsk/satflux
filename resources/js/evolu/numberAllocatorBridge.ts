@@ -73,7 +73,7 @@ function canonicalIdentityMatch(
  * clients on the canonical (oldest) match, keeping all reservations in one
  * sequence. A losing duplicate stays behind empty and harmless.
  */
-async function resolveOrCreateBridgeCompanyId(identity: AllocatorIdentity): Promise<string | null> {
+export async function resolveOrCreateBridgeCompanyId(identity: AllocatorIdentity): Promise<string | null> {
     if (!identity.legal_name) {
         return null;
     }

@@ -778,7 +778,7 @@ import { useInvoicingBankPayments } from "../../composables/useInvoicingBankPaym
 import { invoicingDocumentRoutesForType } from "../../composables/useInvoicingDocumentRoutes";
 import { useFlashStore } from "../../store/flash";
 import { invoicingApi } from "../../services/api";
-import { resolveEphemeralBridgeCompanyId } from "../../evolu/ephemeralBridge";
+import { ensureBridgeCompanyIdForLocalCompany } from "../../evolu/bridgeCompanyEnsure";
 
 type LinkedDocument = { id: string; number?: string; type?: string };
 type LinkedExpense = { id: string; internal_number: string };
@@ -992,10 +992,19 @@ async function resolveInboundCompanyId(): Promise<string | null> {
   if (!bank.localFirst) {
     return companyId.value || null;
   }
-  const bridgeId = await resolveEphemeralBridgeCompanyId();
-  inboundBridgeCompanyId.value = bridgeId;
+  // Per-company bridge resolved by THIS company's legal identity (created on
+  // demand) - never a first-row fallback, which handed every local company
+  // the same bridge and therefore the same inbound address.
+  const result = await ensureBridgeCompanyIdForLocalCompany(companyId.value);
+  if (!result.ok) {
+    // Transient failure - do not claim the bridge is missing; leaving the
+    // check unfinished lets the next loadInbound() run retry.
+    inboundBridgeChecked.value = false;
+    return null;
+  }
+  inboundBridgeCompanyId.value = result.bridgeCompanyId;
   inboundBridgeChecked.value = true;
-  return bridgeId;
+  return result.bridgeCompanyId;
 }
 
 async function loadInbound() {
