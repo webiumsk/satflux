@@ -140,7 +140,8 @@ Pre nové prostredie:
   AbortController + cancel tlačidlo.)
 - ~~Error-rate countery sú per-proces cache - restart ich nuluje.~~
   KOREKCIA (P2 fáza 6): countery používajú default cache store a produkcia
-  beží na redis - sú zdieľané naprieč procesmi a prežívajú restart.
+  beží na redis - sú zdieľané naprieč procesmi a prežívajú restart aj
+  deploy, pokiaľ deploy neflushne cache (`cache:clear`/`optimize:clear`).
   Overené priamo v Redise; sémantika a limity: docs/ERROR_RATE_COUNTERS.md.
 
 ## 11. Otvorené problémy

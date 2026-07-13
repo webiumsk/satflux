@@ -12,7 +12,9 @@ lokálny Docker majú `CACHE_STORE=redis`, takže:
 
 - countery sú **zdieľané naprieč procesmi** (php-fpm, queue worker,
   scheduler, artisan) - jeden bucket vidia všetci,
-- **prežívajú restart** aplikácie aj deploy (žijú v Redise, nie v procese),
+- **prežívajú restart** aplikácie aj deploy (žijú v Redise, nie v procese) -
+  POKIAĽ deploy nespúšťa `cache:clear`/`optimize:clear`, ktoré cache store
+  flushnú (pozri prevádzkové poznámky),
 - inkrement je **atomický** (redis INCR; `Cache::add` + `Cache::increment`
   vzor je bezpečný aj pri súbehu - NX add vyhrá len raz, INCR je atomický).
 
@@ -22,13 +24,16 @@ neplatí - opravené v P1 reporte.
 
 ## Overenie (2026-07-13, lokálny Docker stack s redis)
 
-```
-$ php artisan tinker: ErrorRateCounter::increment(); currentHourCount() → 13
+```text
+$ php artisan tinker --execute='\App\Support\ErrorRateCounter::increment(); echo \App\Support\ErrorRateCounter::currentHourCount();'
+13
 $ redis-cli -n 1 --scan --pattern '*error_rate*'
-d21_panel_database_satflux.error_rate.2026-07-13-20   ← aktuálna hodina
-d21_panel_database_satflux.error_rate.2026-07-13-19   ← predchádzajúca
-$ redis-cli -n 1 GET ..._2026-07-13-20 → 13
-$ redis-cli -n 1 TTL ..._2026-07-13-20 → 4217 s
+d21_panel_database_satflux.error_rate.2026-07-13-20   <- aktuálna hodina
+d21_panel_database_satflux.error_rate.2026-07-13-19   <- predchádzajúca
+$ redis-cli -n 1 GET d21_panel_database_satflux.error_rate.2026-07-13-20
+"13"
+$ redis-cli -n 1 TTL d21_panel_database_satflux.error_rate.2026-07-13-20
+(integer) 4217
 ```
 
 Kľúč = `{CACHE_PREFIX}satflux.error_rate.YYYY-MM-DD-HH` v redis DB pre
