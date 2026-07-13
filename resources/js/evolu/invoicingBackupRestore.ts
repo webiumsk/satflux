@@ -14,6 +14,7 @@ import {
 } from "./invoicingBackup";
 import { deterministicStringify } from "./documentSnapshotCrud";
 import { sha256Hex } from "@/utils/sha256";
+import type { EncryptedBackupEnvelope } from "./invoicingBackupCrypto";
 
 /**
  * Backup restore (P1 phase 3): parse + validate a backup file, verify its
@@ -30,7 +31,54 @@ export type BackupValidationError =
     | "unsupported_version"
     | "hash_missing"
     | "hash_mismatch"
-    | "hash_unavailable";
+    | "hash_unavailable"
+    | "decrypt_failed";
+
+/**
+ * First-pass classification of a picked file (P2 phase 2): an encrypted
+ * backup needs a passphrase before any validation can run, a plaintext one
+ * goes straight to parseAndValidateBackup. "invalid" covers non-JSON too -
+ * the caller surfaces it via the plaintext path for the precise error code.
+ */
+export async function classifyBackupText(
+    text: string,
+): Promise<{ kind: "plaintext" } | { kind: "encrypted"; envelope: EncryptedBackupEnvelope } | { kind: "invalid" }> {
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(text);
+    } catch {
+        return { kind: "invalid" };
+    }
+    const { isEncryptedBackupEnvelope } = await import("./invoicingBackupCrypto");
+    if (isEncryptedBackupEnvelope(parsed)) {
+        return { kind: "encrypted", envelope: parsed };
+    }
+    const candidate = parsed as { format?: unknown } | null;
+    if (candidate && typeof candidate === "object" && candidate.format === INVOICING_BACKUP_FORMAT) {
+        return { kind: "plaintext" };
+    }
+    return { kind: "invalid" };
+}
+
+/**
+ * Decrypt an encrypted backup and validate the inner plaintext envelope with
+ * the exact same schema + SHA-256 pipeline as an unencrypted file. A wrong
+ * passphrase and a tampered file are indistinguishable by design (GCM).
+ */
+export async function decryptAndValidateBackup(
+    encrypted: EncryptedBackupEnvelope,
+    passphrase: string,
+    currentOwnerIdHash: string | null,
+): Promise<{ ok: true; value: ValidatedBackup } | { ok: false; error: BackupValidationError }> {
+    let innerText: string;
+    try {
+        const { decryptBackupEnvelopeText } = await import("./invoicingBackupCrypto");
+        innerText = await decryptBackupEnvelopeText(encrypted, passphrase);
+    } catch {
+        return { ok: false, error: "decrypt_failed" };
+    }
+    return parseAndValidateBackup(innerText, currentOwnerIdHash);
+}
 
 export type ValidatedBackup = {
     envelope: InvoicingBackupEnvelope;

@@ -22,7 +22,9 @@ function flattenMessages(obj: Record<string, unknown>, prefix = ''): string[] {
 
 describe('locale messages', () => {
   for (const [locale, messages] of Object.entries(locales)) {
-    it(`parses all ${locale} strings without vue-i18n linked-format errors`, () => {
+    // Walks every string in the locale - runtime grows with the catalog and
+    // exceeds the default 5s when the full suite runs in parallel.
+    it(`parses all ${locale} strings without vue-i18n linked-format errors`, { timeout: 30_000 }, () => {
       const i18n = createI18n({
         legacy: false,
         locale,

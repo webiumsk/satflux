@@ -6,6 +6,7 @@ import {
 } from "./invoicingSnapshot";
 import { deterministicStringify } from "./documentSnapshotCrud";
 import { sha256Hex } from "@/utils/sha256";
+import { isAcceptablePassphrase } from "@/services/passphraseCrypto";
 import { setLastExportMeta, type LastExportMeta } from "@/services/backupState";
 
 /**
@@ -87,11 +88,12 @@ export async function buildBackupEnvelope(
     return buildBackupEnvelopeFromSnapshot(snapshot, ownerId);
 }
 
-export function backupFilename(date: Date = new Date()): string {
+export function backupFilename(date: Date = new Date(), encrypted = false): string {
     const yyyy = date.getFullYear();
     const mm = String(date.getMonth() + 1).padStart(2, "0");
     const dd = String(date.getDate()).padStart(2, "0");
-    return `satflux-backup-${yyyy}-${mm}-${dd}.json`;
+    const suffix = encrypted ? ".encrypted.json" : ".json";
+    return `satflux-backup-${yyyy}-${mm}-${dd}${suffix}`;
 }
 
 function triggerDownload(content: string, filename: string): void {
@@ -108,14 +110,27 @@ function triggerDownload(content: string, filename: string): void {
 
 /**
  * Builds the envelope, downloads it as a JSON file and records the export
- * evidence (read by the data-loss guards and the Profile card).
+ * evidence (read by the data-loss guards and the Profile card). With a
+ * passphrase the file is the AES-GCM encrypted wrapper (P2 phase 2) - the
+ * export evidence is identical either way, taken from the inner envelope.
  */
 export async function exportInvoicingBackup(
     evolu: Evolu<InvoicingLocalSchema>,
     ownerId: string | null,
+    passphrase: string | null = null,
 ): Promise<LastExportMeta> {
     const envelope = await buildBackupEnvelope(evolu, ownerId);
-    triggerDownload(JSON.stringify(envelope), backupFilename());
+
+    if (passphrase !== null) {
+        if (!isAcceptablePassphrase(passphrase)) {
+            throw new Error("weak_passphrase");
+        }
+        const { encryptBackupEnvelopeText } = await import("./invoicingBackupCrypto");
+        const encrypted = await encryptBackupEnvelopeText(JSON.stringify(envelope), passphrase);
+        triggerDownload(JSON.stringify(encrypted), backupFilename(new Date(), true));
+    } else {
+        triggerDownload(JSON.stringify(envelope), backupFilename());
+    }
 
     const meta: LastExportMeta = {
         exportedAt: envelope.created_at,

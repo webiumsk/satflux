@@ -25,9 +25,45 @@
     <p class="text-xs text-gray-400">
       {{ t("account.backup_desc") }}
     </p>
-    <p class="text-xs text-amber-300">
+    <p v-if="!encryptEnabled" class="text-xs text-amber-300">
       {{ t("account.backup_plaintext_warning") }}
     </p>
+
+    <label class="flex items-center gap-2 text-xs text-gray-300">
+      <input
+        v-model="encryptEnabled"
+        type="checkbox"
+        class="rounded border-gray-600 bg-gray-700 text-indigo-500 focus:ring-indigo-500"
+      />
+      {{ t("account.backup_encrypt_toggle") }}
+    </label>
+
+    <div v-if="encryptEnabled" class="space-y-2">
+      <div class="flex gap-2">
+        <input
+          v-model="encryptPassphrase"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          class="flex-1 rounded-md border border-gray-600 bg-gray-900/60 px-3 py-1.5 text-xs font-mono text-gray-200 placeholder-gray-500"
+          :placeholder="t('account.backup_encrypt_passphrase_placeholder')"
+          :aria-label="t('account.backup_encrypt_toggle')"
+        />
+        <button
+          type="button"
+          class="text-xs font-medium rounded-md px-3 py-1.5 border border-gray-600 text-gray-300 hover:text-white whitespace-nowrap"
+          @click="fillGeneratedPassphrase"
+        >
+          {{ t("account.backup_encrypt_generate") }}
+        </button>
+      </div>
+      <p v-if="passphraseTooWeak" class="text-xs text-red-400">
+        {{ t("account.backup_encrypt_passphrase_weak") }}
+      </p>
+      <p class="text-xs text-amber-300">
+        {{ t("account.backup_encrypt_loss_warning") }}
+      </p>
+    </div>
     <p v-if="!lastExportUnknown" class="text-xs" :class="lastExport ? 'text-gray-300' : 'text-gray-500'">
       {{
         lastExport
@@ -74,6 +110,9 @@ const props = defineProps<{ ownerId: string }>();
 const { t, locale } = useI18n();
 
 const exporting = ref(false);
+const encryptEnabled = ref(false);
+const encryptPassphrase = ref("");
+const passphraseTooWeak = ref(false);
 const message = ref("");
 const messageIsError = ref(false);
 const lastExport = ref<LastExportMeta | null>(null);
@@ -93,14 +132,29 @@ async function refreshLastExport() {
 onMounted(refreshLastExport);
 watch(() => props.ownerId, refreshLastExport);
 
+async function fillGeneratedPassphrase() {
+  const { generateBackupPassphrase } = await import("../../evolu/invoicingBackupCrypto");
+  encryptPassphrase.value = generateBackupPassphrase();
+  passphraseTooWeak.value = false;
+}
+
 async function runExport() {
+  passphraseTooWeak.value = false;
+  if (encryptEnabled.value) {
+    const { isAcceptablePassphrase } = await import("../../services/passphraseCrypto");
+    if (!isAcceptablePassphrase(encryptPassphrase.value)) {
+      passphraseTooWeak.value = true;
+      return;
+    }
+  }
   exporting.value = true;
   message.value = "";
   messageIsError.value = false;
   try {
     const { evolu } = await import("../../evolu/client");
     const { exportInvoicingBackup } = await import("../../evolu/invoicingBackup");
-    const meta = await exportInvoicingBackup(evolu, props.ownerId);
+    const passphrase = encryptEnabled.value ? encryptPassphrase.value : null;
+    const meta = await exportInvoicingBackup(evolu, props.ownerId, passphrase);
     lastExport.value = meta;
     lastExportUnknown.value = false;
     message.value = t("account.backup_export_success");

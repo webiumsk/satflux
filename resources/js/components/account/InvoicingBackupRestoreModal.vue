@@ -42,6 +42,32 @@
               {{ validationErrorText }}
             </p>
 
+            <div v-if="pendingEncrypted && !validated" class="space-y-2">
+              <p class="text-sm text-gray-300">
+                {{ t("account.backup_restore_encrypted_detected") }}
+              </p>
+              <div class="flex gap-2">
+                <input
+                  v-model="restorePassphrase"
+                  type="text"
+                  autocomplete="off"
+                  spellcheck="false"
+                  class="flex-1 rounded-md border border-gray-600 bg-gray-900/60 px-3 py-1.5 text-sm font-mono text-gray-200 placeholder-gray-500"
+                  :placeholder="t('account.backup_restore_passphrase_placeholder')"
+                  :aria-label="t('account.backup_restore_encrypted_detected')"
+                  @keydown.enter.prevent="decryptPicked"
+                />
+                <button
+                  type="button"
+                  class="text-sm font-medium rounded-md px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 whitespace-nowrap"
+                  :disabled="decrypting || restorePassphrase === ''"
+                  @click="decryptPicked"
+                >
+                  {{ decrypting ? t("common.loading") : t("account.backup_restore_decrypt_button") }}
+                </button>
+              </div>
+            </div>
+
             <div
               v-if="validated"
               class="rounded-xl border border-gray-700 bg-gray-900/50 p-4 space-y-2 text-sm"
@@ -123,6 +149,7 @@ import type {
   BackupValidationError,
   ValidatedBackup,
 } from "../../evolu/invoicingBackupRestore";
+import type { EncryptedBackupEnvelope } from "../../evolu/invoicingBackupCrypto";
 
 /**
  * Backup restore flow (P1 phase 3): pick file -> validate (schema + SHA-256)
@@ -140,6 +167,9 @@ const titleId = `backup-restore-title-${Math.random().toString(36).slice(2, 10)}
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const validated = ref<ValidatedBackup | null>(null);
 const validationError = ref<BackupValidationError | null>(null);
+const pendingEncrypted = ref<EncryptedBackupEnvelope | null>(null);
+const restorePassphrase = ref("");
+const decrypting = ref(false);
 const restoring = ref(false);
 const showApplyConfirm = ref(false);
 const report = ref<SnapshotRestoreReport | null>(null);
@@ -150,6 +180,9 @@ watch(
     if (isOpen) {
       validated.value = null;
       validationError.value = null;
+      pendingEncrypted.value = null;
+      restorePassphrase.value = "";
+      decrypting.value = false;
       restoring.value = false;
       showApplyConfirm.value = false;
       report.value = null;
@@ -169,6 +202,8 @@ const validationErrorText = computed(() => {
       return t("account.backup_restore_hash_mismatch");
     case "hash_unavailable":
       return t("account.backup_restore_failed");
+    case "decrypt_failed":
+      return t("account.backup_restore_decrypt_failed");
     default:
       return "";
   }
@@ -187,12 +222,21 @@ const previewCounts = computed(() => {
 async function onFilePicked(event: Event) {
   validated.value = null;
   validationError.value = null;
+  pendingEncrypted.value = null;
+  restorePassphrase.value = "";
   const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
   try {
     const text = await file.text();
-    const { parseAndValidateBackup } = await import("../../evolu/invoicingBackupRestore");
-    const result = await parseAndValidateBackup(text, props.ownerIdHash);
+    const restoreModule = await import("../../evolu/invoicingBackupRestore");
+    const classified = await restoreModule.classifyBackupText(text);
+    if (classified.kind === "encrypted") {
+      pendingEncrypted.value = classified.envelope;
+      return;
+    }
+    // Plaintext and invalid files share the full validation pipeline - it
+    // produces the precise error code (invalid_json vs invalid_format etc.).
+    const result = await restoreModule.parseAndValidateBackup(text, props.ownerIdHash);
     if (result.ok) {
       validated.value = result.value;
     } else {
@@ -201,6 +245,30 @@ async function onFilePicked(event: Event) {
   } catch (error) {
     console.error("Backup file validation failed:", error);
     validationError.value = "invalid_json";
+  }
+}
+
+async function decryptPicked() {
+  if (!pendingEncrypted.value || decrypting.value || restorePassphrase.value === "") return;
+  decrypting.value = true;
+  validationError.value = null;
+  try {
+    const { decryptAndValidateBackup } = await import("../../evolu/invoicingBackupRestore");
+    const result = await decryptAndValidateBackup(
+      pendingEncrypted.value,
+      restorePassphrase.value,
+      props.ownerIdHash,
+    );
+    if (result.ok) {
+      validated.value = result.value;
+    } else {
+      validationError.value = result.error;
+    }
+  } catch (error) {
+    console.error("Backup decrypt failed:", error);
+    validationError.value = "decrypt_failed";
+  } finally {
+    decrypting.value = false;
   }
 }
 
