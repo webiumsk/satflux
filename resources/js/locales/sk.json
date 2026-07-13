@@ -2400,6 +2400,11 @@
     "waiting": "Čakám..."
   },
   "account": {
+    "evolu_relay_test": "Otestovať pripojenie",
+    "evolu_relay_testing": "Testujem...",
+    "evolu_relay_test_ok": "Relay je dostupný.",
+    "evolu_relay_test_failed": "Relay nie je dostupný - skontrolujte URL.",
+    "evolu_relay_device_off_label": "Vypnúť synchronizáciu na tomto zariadení (len lokálny režim; dáta zostanú na zariadení, kým ju znova nezapnete). Prejaví sa po reloade.",
     "storage_title": "Lokálne úložisko prehliadača",
     "storage_persisted_label": "Chránené pred vymazaním",
     "storage_persisted_yes": "Áno - prehliadač priznal trvalé úložisko",

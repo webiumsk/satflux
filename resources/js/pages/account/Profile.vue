@@ -100,7 +100,37 @@
             >
               {{ t("account.evolu_relay_clear") }}
             </button>
+            <button
+              type="button"
+              class="inline-flex items-center px-4 py-2 border border-gray-500 rounded-lg text-sm font-medium text-gray-200 hover:bg-gray-700/50 disabled:opacity-50"
+              :disabled="evoluRelayTesting"
+              @click="testEvoluRelayUrl"
+            >
+              {{ evoluRelayTesting ? t("account.evolu_relay_testing") : t("account.evolu_relay_test") }}
+            </button>
           </div>
+          <p
+            v-if="evoluRelayTestResult"
+            class="text-xs"
+            :class="evoluRelayTestResult === 'ok' ? 'text-emerald-300' : 'text-red-400'"
+            role="status"
+            aria-live="polite"
+          >
+            {{
+              evoluRelayTestResult === "ok"
+                ? t("account.evolu_relay_test_ok")
+                : t("account.evolu_relay_test_failed")
+            }}
+          </p>
+          <label class="flex items-start gap-2 text-xs text-gray-400 cursor-pointer select-none">
+            <input
+              v-model="relaySyncDisabledOnDevice"
+              type="checkbox"
+              class="mt-0.5 h-4 w-4 rounded border-gray-500 bg-gray-800 text-indigo-600 focus:ring-indigo-500"
+              @change="toggleRelaySyncOnDevice"
+            />
+            <span>{{ t("account.evolu_relay_device_off_label") }}</span>
+          </label>
 
           <div class="mt-4 border-t border-gray-600 pt-4 space-y-3">
             <div class="flex flex-wrap items-center justify-between gap-2">
@@ -1436,9 +1466,16 @@ import InvoicingBackupCard from "../../components/account/InvoicingBackupCard.vu
 import LocalStorageCard from "../../components/account/LocalStorageCard.vue";
 import {
   fetchEvoluRelayUsage,
+  probeRelayReachability,
   relayUsagePercent,
   type EvoluRelayUsageResponse,
 } from "../../services/evoluRelayUsageApi";
+import {
+  clearRelayOverride,
+  readRelayOverride,
+  writeRelayOverrideDisabled,
+  writeRelayOverrideUrl,
+} from "../../evolu/relayOverrideStorage";
 import { dashboardInvoicingTabPath } from "../../utils/dashboardInvoicingTab";
 const { t, locale } = useI18n();
 const route = useRoute();
@@ -2025,6 +2062,42 @@ async function submitRestoreOnDevice(): Promise<void> {
   }
 }
 
+const evoluRelayTesting = ref(false);
+const evoluRelayTestResult = ref<"ok" | "failed" | null>(null);
+const relaySyncDisabledOnDevice = ref(readRelayOverride().kind === "disabled");
+
+/** Probe the ENTERED URL (not the saved one) before committing to it. */
+async function testEvoluRelayUrl(): Promise<void> {
+  evoluRelayTesting.value = true;
+  evoluRelayTestResult.value = null;
+  try {
+    const url = normalizeEvoluRelayBaseUrl(evoluRelayForm.value.url.trim() || activeRelayUrl.value);
+    const reachable = url ? await probeRelayReachability(url) : false;
+    evoluRelayTestResult.value = reachable ? "ok" : "failed";
+  } finally {
+    evoluRelayTesting.value = false;
+  }
+}
+
+/**
+ * Device-level sync off (P2 phase 1): stored only on this device; the Evolu
+ * worker boots with empty transports on next load, so a reload applies it.
+ */
+function toggleRelaySyncOnDevice(): void {
+  if (relaySyncDisabledOnDevice.value) {
+    writeRelayOverrideDisabled();
+  } else {
+    clearRelayOverride();
+    cacheProfileIntoOverride();
+  }
+  window.location.reload();
+}
+
+function cacheProfileIntoOverride(): void {
+  const normalized = normalizeEvoluRelayBaseUrl(authStore.user?.evolu_relay_url ?? "");
+  writeRelayOverrideUrl(normalized);
+}
+
 async function saveEvoluRelayUrl(): Promise<void> {
   evoluRelaySaving.value = true;
   try {
@@ -2035,6 +2108,11 @@ async function saveEvoluRelayUrl(): Promise<void> {
     });
     await authStore.fetchUser();
     evoluRelayForm.value.url = authStore.user?.evolu_relay_url ?? "";
+    // Ensure the worker transport cache matches the saved profile before the
+    // reload below boots Evolu (fetchUser also caches; belt and braces).
+    if (readRelayOverride().kind !== "disabled") {
+      cacheProfileIntoOverride();
+    }
     flashStore.success(t("account.evolu_relay_saved"));
 
     // The Content-Security-Policy connect-src allowlist for the custom relay is

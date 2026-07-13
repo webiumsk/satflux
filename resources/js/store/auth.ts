@@ -14,6 +14,8 @@ import {
 } from '../services/guestRecovery';
 import { isInvoicingLocalFirst } from '../evolu/flags';
 import { ensureEvoluBoundToAccountSeed } from '../evolu/bootstrap';
+import { readRelayOverride, writeRelayOverrideUrl } from '@/evolu/relayOverrideStorage';
+import { normalizeEvoluRelayBaseUrl } from '@/evolu/config';
 
 function scheduleChoralaSync(): void {
     void import('../services/chorala').then(({ syncChoralaIdentity }) => syncChoralaIdentity());
@@ -86,6 +88,20 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    /**
+     * Cache the profile relay URL for the NEXT page load (P2 phase 1):
+     * createEvolu picks transports at module init, before auth, so the
+     * override storage is the only way the profile relay reaches the
+     * worker socket. A device-level "sync off" choice is never overwritten.
+     */
+    function cacheRelayOverrideFromProfile(profileRelayUrl: string | null): void {
+        if (!isInvoicingLocalFirst()) return;
+        const override = readRelayOverride();
+        if (override.kind === 'disabled') return;
+        const normalized = normalizeEvoluRelayBaseUrl(profileRelayUrl ?? '');
+        writeRelayOverrideUrl(normalized);
+    }
+
     async function fetchUser() {
         try {
             await ensureCsrfCookie();
@@ -96,6 +112,7 @@ export const useAuthStore = defineStore('auth', () => {
             if ((user.value?.id ?? null) !== previousUserId) {
                 scheduleChoralaSync();
             }
+            cacheRelayOverrideFromProfile(user.value?.evolu_relay_url ?? null);
             const mnemonic = getStoredGuestMnemonic();
             if (mnemonic && isInvoicingLocalFirst()) {
                 void ensureEvoluBoundToAccountSeed();

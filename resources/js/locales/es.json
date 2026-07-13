@@ -1455,6 +1455,11 @@
     "samrock_expires": "El código QR expira en {seconds}s"
   },
   "account": {
+    "evolu_relay_test": "Probar conexión",
+    "evolu_relay_testing": "Probando...",
+    "evolu_relay_test_ok": "El relay está disponible.",
+    "evolu_relay_test_failed": "El relay no está disponible; revisa la URL.",
+    "evolu_relay_device_off_label": "Desactivar la sincronización en este dispositivo (modo solo local; los datos permanecen en el dispositivo hasta reactivarla). Se aplica tras recargar.",
     "storage_title": "Almacenamiento local del navegador",
     "storage_persisted_label": "Protegido contra borrado",
     "storage_persisted_yes": "Sí; el navegador concedió almacenamiento persistente",

@@ -2399,6 +2399,11 @@
     "waiting": "Waiting..."
   },
   "account": {
+    "evolu_relay_test": "Test connection",
+    "evolu_relay_testing": "Testing...",
+    "evolu_relay_test_ok": "Relay is reachable.",
+    "evolu_relay_test_failed": "Relay is not reachable - check the URL.",
+    "evolu_relay_device_off_label": "Turn off sync on this device (local-only mode; data stays on this device until re-enabled). Applies after reload.",
     "storage_title": "Local browser storage",
     "storage_persisted_label": "Protected from eviction",
     "storage_persisted_yes": "Yes - the browser granted persistent storage",
