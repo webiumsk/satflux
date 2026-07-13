@@ -66,3 +66,6 @@ docs/SUBSCRIPTION_IMPLEMENTATION.md
 docs/TESTING_PLAN.md
 docs/satflux.md
 docs/satoshi-tickets-includeInactive-patch.md
+# Playwright
+/playwright-report/
+/test-results/
