@@ -126,6 +126,10 @@ jobs:
             curl -sf http://localhost:8000/login >/dev/null && break
             sleep 1
           done
+          if ! curl -sf http://localhost:8000/login >/dev/null; then
+            echo "::error::Application server failed to start on http://localhost:8000 within 30s"
+            exit 1
+          fi
 
       - name: Install Playwright chromium
         run: npx playwright install --with-deps chromium
