@@ -69,22 +69,41 @@
       </div>
 
       <h2 class="text-lg font-semibold text-white mb-3">{{ t("admin.health.history") }}</h2>
-      <p v-if="history.length === 0" class="text-sm text-gray-500">
+      <p v-if="historyRanges.length === 0" class="text-sm text-gray-500">
         {{ t("admin.health.history_empty") }}
       </p>
       <div v-else class="space-y-1 max-h-96 overflow-y-auto custom-scrollbar pr-2">
         <div
-          v-for="snapshot in history"
-          :key="snapshot.id"
-          class="flex items-center gap-3 text-sm rounded-md px-3 py-1.5 bg-gray-800/60"
+          v-for="range in historyRanges"
+          :key="range.key"
+          class="flex flex-wrap items-center gap-3 text-sm rounded-md px-3 py-1.5 bg-gray-800/60"
         >
           <span
             class="inline-block h-2.5 w-2.5 rounded-full shrink-0"
-            :class="snapshot.healthy ? 'bg-emerald-400' : 'bg-red-400'"
+            :class="range.healthy ? 'bg-emerald-400' : 'bg-red-400'"
           />
-          <span class="text-gray-300 font-mono text-xs">{{ formatTime(snapshot.created_at) }}</span>
-          <span v-if="!snapshot.healthy" class="text-red-300 text-xs truncate">
-            {{ failedCheckNames(snapshot) }}
+          <span class="text-gray-300 font-mono text-xs">
+            {{
+              range.count === 1
+                ? formatTime(range.from)
+                : t("admin.health.history_range", {
+                    from: formatTime(range.from),
+                    to: formatTime(range.to),
+                  })
+            }}
+          </span>
+          <span
+            class="text-xs"
+            :class="range.healthy ? 'text-emerald-300' : 'text-red-300'"
+          >
+            {{
+              range.healthy
+                ? t("admin.health.history_ok", { count: range.count })
+                : t("admin.health.history_failing", {
+                    count: range.count,
+                    checks: range.failedChecks.join(", "),
+                  })
+            }}
           </span>
         </div>
       </div>
@@ -146,9 +165,44 @@ async function refresh() {
   }
 }
 
-function failedCheckNames(snapshot: HealthSnapshot): string {
-  return snapshot.failed_checks.join(", ");
-}
+type HistoryRange = {
+  key: string;
+  healthy: boolean;
+  failedChecks: string[];
+  from: string;
+  to: string;
+  count: number;
+};
+
+/**
+ * Collapses consecutive snapshots with the same outcome into one range row -
+ * a night of identical 5-minute failures reads as a single line instead of a
+ * wall of rows. Snapshots arrive newest-first; "from" is the older edge.
+ */
+const historyRanges = computed<HistoryRange[]>(() => {
+  const ranges: HistoryRange[] = [];
+  for (const snapshot of history.value) {
+    const failedChecks = [...snapshot.failed_checks].sort();
+    const signature = `${snapshot.healthy}|${failedChecks.join(",")}`;
+    const current = ranges[ranges.length - 1];
+    if (current && current.key.startsWith(`${signature}|`)) {
+      // history is newest-first, so each following snapshot extends the range
+      // toward the past.
+      current.from = snapshot.created_at;
+      current.count += 1;
+    } else {
+      ranges.push({
+        key: `${signature}|${snapshot.id}`,
+        healthy: snapshot.healthy,
+        failedChecks,
+        from: snapshot.created_at,
+        to: snapshot.created_at,
+        count: 1,
+      });
+    }
+  }
+  return ranges;
+});
 
 function formatTime(iso: string): string {
   const date = new Date(iso);

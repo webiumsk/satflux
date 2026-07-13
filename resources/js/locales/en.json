@@ -3483,7 +3483,7 @@
     "marked_helpful": "Marked as helpful"
   },
   "admin": {
-    "health": {"status_ok": "OK", "status_failed": "Failed", "title": "System health", "description": "Live checks, error rate and scheduled snapshot history", "refresh": "Refresh", "all_ok": "All checks passing", "failing": "Some checks are failing", "checked_at": "Checked at {time}", "error_rate": "Errors this hour", "error_rate_detail": "previous hour: {previous} - alert threshold: {threshold}", "history": "Snapshot history (every 5 minutes)", "history_empty": "No snapshots yet - the scheduler writes one every 5 minutes."},
+    "health": {"history_range": "{from} - {to}", "history_ok": "healthy ({count} snapshots)", "history_failing": "failing: {checks} ({count} snapshots)", "status_ok": "OK", "status_failed": "Failed", "title": "System health", "description": "Live checks, error rate and scheduled snapshot history", "refresh": "Refresh", "all_ok": "All checks passing", "failing": "Some checks are failing", "checked_at": "Checked at {time}", "error_rate": "Errors this hour", "error_rate_detail": "previous hour: {previous} - alert threshold: {threshold}", "history": "Snapshot history (every 5 minutes)", "history_empty": "No snapshots yet - the scheduler writes one every 5 minutes."},
     "dashboard": {
       "title": "Admin Dashboard",
       "description": "Manage your platform content and users",
