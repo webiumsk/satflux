@@ -1,12 +1,11 @@
 # P1 - Prevádzková spoľahlivosť a odolnosť: záverečný report
 
 Stav k 2026-07-13. Nadväzuje na P0 (bezpečnosť: seed storage, CSP, serverové
-číslovanie, issued snapshoty). Plán a audit: pozri históriu PR #113-#125.
+číslovanie, issued snapshoty). Plán a audit: pozri históriu PR #113-#126.
 
 ## 1. Stručné zhrnutie P1 zmien
 
-Osem fáz, každá samostatný PR, plus štyri opravné PR-ka z overovania na
-produkcii:
+Osem fáz, každá samostatný PR, plus opravné PR-ka z overovania na produkcii:
 
 | Fáza | PR branch | Obsah |
 |---|---|---|
@@ -21,7 +20,8 @@ produkcii:
 | hotfix | fix/bank-inbound-per-company | b-mail per firma podľa identity, bridge on demand |
 | hotfix | feat/health-history-polish | História snapshotov ako intervaly, relay detail |
 | hotfix | fix/csp-reverb-wss | wss dvojča app originu (Reverb/broadcasting) |
-| hotfix | fix/phantom-duplicate-company-rows | dedupe fantómových riadkov, merge onComplete+verify (v čase reportu nemergnuté) |
+| hotfix | fix/phantom-duplicate-company-rows | dedupe fantómových riadkov, merge onComplete+verify, id diagnostika (PR #126) |
+| hotfix | fix/relay-probe-real-owner | reachability probe s reálnym owner id (bez 400 šumu v konzole) |
 
 ## 2. Vyriešené problémy
 
@@ -141,11 +141,21 @@ Pre nové prostredie:
 
 ## 11. Otvorené problémy
 
-- Duplicitné firmy z pre-stable-id éry: po oprave relay transportu sa
-  zliali paralelné kópie datasetov. Diagnostika (id v alerte, merge
-  onComplete+verify) je na fix/phantom-duplicate-company-rows; ak sa
-  potvrdí plná paralelná kópia (duplicitné doklady), treba navrhnúť
-  dokladový dedupe (číslo+typ+suma). PREBIEHA.
+- Duplicitné firmy: VYRIEŠENÉ 2026-07-13 (overené na produkcii - žiadne
+  duplicity). Dve príčiny, dve opravy:
+  1. fantómové riadky - reaktívna Evolu query vrstva vracala ten istý
+     fyzický riadok viackrát (pozorované s relay subscription);
+     dedupeRowsById pri zdroji zoznamu, v detekcii duplicít aj v merge
+     (PR #126),
+  2. paralelné kópie z pre-stable-id éry - Evolu worker mieril na mŕtvy
+     default relay (chýbajúca VITE_EVOLU_RELAY_URL v build env), takže
+     kópie datasetov z iných zariadení nikdy nekonvergovali; po oprave
+     transportu sa CRDT história zliala a merge (s onComplete potvrdením
+     a post-verify) duplicity reálne odstránil.
+  Merge duplicít odteraz hlási úspech len po overenom aplikovaní deletov.
+- Zostávajúca otázka pre P2: PREČO query vrstva riadok opakovala (Evolu
+  internals, interakcia useQuery + useOwner subscription) - aplikácia je
+  voči tomu odolná, koreň patrí do upstream vyšetrenia.
 - P2 témy: backup šifrovanie (passphrase), offline PWA, e2e harness
   (Playwright), AbortController na bulk PDF, runtime relay transport.
 
