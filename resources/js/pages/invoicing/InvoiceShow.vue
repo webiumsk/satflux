@@ -753,12 +753,22 @@ async function deleteDoc() {
       : t('invoicing.confirm_delete');
   if (!window.confirm(msg)) return;
   if (localFirst && local) {
-    await local.deleteLocalDocumentAsync(
+    const result = await local.deleteLocalDocumentAsync(
       local.evolu,
       documentId.value as import('../../evolu/schema').DocumentId,
       local.documentRows.value as import('../../evolu/documentMap').EvoluDocumentRow[],
       local.seriesRows.value as import('../../evolu/numberSeriesMap').EvoluNumberSeriesRow[],
     );
+    if (!result.ok) {
+      // Gapless numbering: the number must be freed on the server first.
+      error.value =
+        result.error === 'delete_requires_online'
+          ? t('invoicing.delete_requires_online')
+          : result.error === 'not_last'
+            ? t('invoicing.delete_not_last')
+            : t('invoicing.delete_release_failed');
+      return;
+    }
     router.push({ name: documentRoutes.value.list, params: { companyId: companyId.value } });
     return;
   }

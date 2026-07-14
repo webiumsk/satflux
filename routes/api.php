@@ -364,6 +364,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyOwnership::class);
 
             // Server number allocator (audit F3) - company-scoped, store-independent.
+            Route::post('/companies/{company}/number-allocator/release', [CompanyNumberAllocatorController::class, 'release'])
+                ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/number-allocator/reserve', [CompanyNumberAllocatorController::class, 'reserve'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/number-allocator/confirm', [CompanyNumberAllocatorController::class, 'confirm'])

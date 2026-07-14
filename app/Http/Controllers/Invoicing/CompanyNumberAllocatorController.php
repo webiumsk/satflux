@@ -96,6 +96,28 @@ class CompanyNumberAllocatorController extends Controller
         return response()->json(['data' => $this->reservationPayload($reservation)]);
     }
 
+    /**
+     * Gapless numbering (P3): frees the number of a deleted invoice so the
+     * sequence hands it out again. Addressed by NUMBER (the client has no
+     * reservation key for imported/auto-issued documents); only the highest
+     * number of the series period can be released.
+     */
+    public function release(Request $request, Company $company): JsonResponse
+    {
+        $validated = $request->validate([
+            'document_type' => ['required', 'string', Rule::in(self::DOCUMENT_TYPES)],
+            'number' => ['required', 'string', 'min:1', 'max:64'],
+        ]);
+
+        $result = $this->sequenceService->releaseReservationByNumber(
+            $company,
+            $validated['document_type'],
+            $validated['number'],
+        );
+
+        return response()->json(['data' => $result]);
+    }
+
     /** Recovery of an interrupted issue: what happened to this issue request? */
     public function status(Request $request, Company $company): JsonResponse
     {

@@ -2,6 +2,7 @@
 
 namespace App\Services\Invoicing;
 
+use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\BusinessExpense;
 use App\Models\Company;
@@ -156,6 +157,77 @@ class DocumentSequenceService
             }
 
             return $reservation;
+        });
+    }
+
+    /**
+     * Releases the reservation holding a deleted invoice's number so the
+     * sequence stays GAPLESS (P3 numbering rework, user requirement: deleted
+     * numbers must be reissued). Only the HIGHEST counter of the series
+     * period can be released - deleting older invoices is refused upstream,
+     * and this guard makes the rule race-safe. Chained deletes (newest
+     * first) release one number at a time.
+     *
+     * Returns released=false with reason "not_found" when no reservation
+     * holds the number (pre-allocator documents) - a harmless no-op.
+     *
+     * @return array{released: bool, reason?: string}
+     */
+    public function releaseReservationByNumber(
+        Company $company,
+        string $documentType,
+        string $number,
+    ): array {
+        return DB::transaction(function () use ($company, $documentType, $number) {
+            $series = $this->resolveSeriesForIssue($company, $documentType);
+            $series = CompanyDocumentSequence::query()
+                ->where('id', $series->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->syncPeriod($series);
+
+            $scoped = DocumentNumberReservation::query()
+                ->where('company_document_sequence_id', $series->id)
+                ->when(
+                    $series->period_key === null,
+                    fn ($query) => $query->whereNull('period_key'),
+                    fn ($query) => $query->where('period_key', $series->period_key),
+                );
+
+            $reservation = (clone $scoped)
+                ->where('number', $number)
+                ->lockForUpdate()
+                ->first();
+            if (! $reservation) {
+                return ['released' => false, 'reason' => 'not_found'];
+            }
+
+            $maxCounter = (int) (clone $scoped)->max('counter');
+            if ((int) $reservation->counter !== $maxCounter) {
+                throw ValidationException::withMessages([
+                    'number' => ['Only the most recent number of the series can be released.'],
+                ]);
+            }
+
+            $reservation->delete();
+
+            $remainingMax = (int) (clone $scoped)->max('counter');
+            if ((int) $series->last_number > $remainingMax) {
+                // The reserve path re-derives the counter from documents,
+                // the local high counter and the remaining reservation floor
+                // - lowering here makes previews honest immediately.
+                $series->last_number = $remainingMax;
+                $series->save();
+            }
+
+            AuditLog::log('company.document_number_released', 'company', $company->id, [
+                'document_type' => $documentType,
+                'number' => $number,
+                'counter' => (int) $reservation->counter,
+            ]);
+
+            return ['released' => true];
         });
     }
 

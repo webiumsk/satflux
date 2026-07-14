@@ -787,6 +787,10 @@ export const invoicingApi = {
             const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/number-allocator/void`, payload);
             return data.data;
         },
+        async release<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/number-allocator/release`, payload);
+            return data.data;
+        },
         async status<T = unknown>(companyId: string, params: Record<string, unknown>): Promise<T | null> {
             const { data } = await api.get<ApiEnvelope<T | null>>(`/invoicing/companies/${companyId}/number-allocator/status`, { params });
             return data.data ?? null;
