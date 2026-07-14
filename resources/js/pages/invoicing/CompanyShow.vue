@@ -36,13 +36,20 @@
       @updated="onCompanyUpdated"
     />
 
-    <CompanySettingsForm
-      v-else-if="settingsSection === 'profile'"
-      :company-id="companyId"
-      :company="company"
-      :local-first="localFirst"
-      @updated="onCompanyUpdated"
-    />
+    <template v-else-if="settingsSection === 'profile'">
+      <CompanySettingsForm
+        :company-id="companyId"
+        :company="company"
+        :local-first="localFirst"
+        @updated="onCompanyUpdated"
+      />
+      <CompanyAutoIssueCard
+        v-if="localFirst"
+        ref="autoIssueCardRef"
+        :company-id="companyId"
+        :company="company as unknown as Record<string, unknown>"
+      />
+    </template>
   </InvoicingPageShell>
 
   <InvoicingPageShell v-else-if="loading" content-class="pb-8">
@@ -51,10 +58,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import CompanyAppSettingsForm from '../../components/invoicing/CompanyAppSettingsForm.vue';
+import CompanyAutoIssueCard from '../../components/invoicing/CompanyAutoIssueCard.vue';
 import CompanyEmailSettingsForm from '../../components/invoicing/CompanyEmailSettingsForm.vue';
 import CompanyNumberSeriesPanel from '../../components/invoicing/CompanyNumberSeriesPanel.vue';
 import CompanySettingsForm from '../../components/invoicing/CompanySettingsForm.vue';
@@ -86,8 +94,13 @@ const appTab = computed<'basic' | 'emails' | 'series'>(() => {
   return 'basic';
 });
 
+const autoIssueCardRef = ref<InstanceType<typeof CompanyAutoIssueCard> | null>(null);
+
 function onCompanyUpdated(c: InvoicingCompanyRecord) {
   applyCompanyPatch(c);
+  // Keep the headless auto-issue profile in step with saved company /
+  // app-settings / e-mail settings changes (no-op when not enabled).
+  void autoIssueCardRef.value?.resyncIfEnabled();
 }
 
 onMounted(() => {

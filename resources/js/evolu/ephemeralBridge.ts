@@ -237,7 +237,7 @@ export async function syncLinkedStoreToServerBridge(
     }
 }
 
-function emailSettingsForEphemeralSnapshot(
+export function emailSettingsForEphemeralSnapshot(
     company: Record<string, unknown> | null,
 ): Record<string, unknown> | undefined {
     const raw = company?.email_settings;
