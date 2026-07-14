@@ -2030,7 +2030,7 @@ async function runBulkLocal(action: string) {
   }
 
   if (action === "delete") {
-    const result = bulkDeleteLocal(
+    const result = await bulkDeleteLocal(
       localDoc.evolu,
       targets,
       allDocuments,
@@ -2555,12 +2555,21 @@ async function deleteDoc(d: {
   actionId.value = d.id;
   try {
     if (localFirst && localDoc) {
-      await deleteLocalDocumentAsync(
+      const result = await deleteLocalDocumentAsync(
         localDoc.evolu,
         d.id as DocumentId,
         localDoc.documentRows.value as EvoluDocumentRow[],
         localDoc.seriesRows.value as EvoluNumberSeriesRow[],
       );
+      if (!result.ok) {
+        error.value =
+          result.error === "delete_requires_online"
+            ? t("invoicing.delete_requires_online")
+            : result.error === "not_last"
+              ? t("invoicing.delete_not_last")
+              : t("invoicing.delete_release_failed");
+        return;
+      }
       await load();
       return;
     }

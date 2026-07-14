@@ -43,7 +43,7 @@ type BridgeCompanyRow = {
     registration_number?: string | null;
 };
 
-function isNetworkError(error: unknown): boolean {
+export function isNetworkError(error: unknown): boolean {
     return typeof error === "object" && error !== null && !("response" in error && (error as { response?: unknown }).response);
 }
 

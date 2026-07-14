@@ -691,6 +691,23 @@ export async function deleteLocalDocumentAsync(
     allSeries: EvoluNumberSeriesRow[],
 ) {
     const doc = documents.find((row) => row.id === documentId);
+
+    // Gapless numbering (P3): an issued/paid invoice frees its number on the
+    // server allocator FIRST - only then is it deleted locally. A failed
+    // release (offline, or the number is no longer the series top) blocks
+    // the deletion so the sequence can never end up with a hole.
+    if (doc && doc.status !== "draft" && doc.status !== "cancelled" && doc.number) {
+        const { releaseIssuedNumber } = await import("./numberReleaseBridge");
+        const release = await releaseIssuedNumber(
+            doc.companyId,
+            String(doc.documentType),
+            String(doc.number),
+        );
+        if (!release.ok) {
+            return { ok: false as const, error: release.error };
+        }
+    }
+
     const result = deleteLocalDocument(evolu, documentId);
     if (!result.ok || !doc) {
         return result;

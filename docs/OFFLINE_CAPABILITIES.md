@@ -48,3 +48,8 @@ auth strategy - tracked as a P2 project, deliberately out of P1 scope.
 - The relay sync indicator (P1 phase 4) shows `unreachable` while offline;
   changes stay local and upload on reconnect.
 - Issue attempts offline fail fast with `invoicing.issue_requires_online`.
+- Deleting an ISSUED invoice offline fails fast too
+  (`invoicing.delete_requires_online`): gapless numbering (P3) frees the
+  number on the server allocator before the local delete, so the sequence
+  hands the same number out again instead of keeping a hole. Only the most
+  recent invoice of a series can be deleted; older ones are refused.
