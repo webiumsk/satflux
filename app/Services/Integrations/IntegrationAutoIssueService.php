@@ -150,6 +150,32 @@ class IntegrationAutoIssueService
     }
 
     /**
+     * Why maybeAutoIssue() would skip this entry - surfaced to the plugin so
+     * a "stayed in inbox" order carries its own explanation (ops asked for
+     * this after a silent no-profile miss in production, 2026-07-14).
+     * Null when the entry was (or would be) auto-issued.
+     */
+    public function skipReason(Company $company, IntegrationDocumentInbox $entry): ?string
+    {
+        $payload = $entry->payload_json;
+
+        if (! empty($payload['number'])) {
+            return null;
+        }
+        if (($payload['type'] ?? 'invoice') !== 'invoice') {
+            return 'document_type';
+        }
+        if (empty($payload['is_paid'])) {
+            return 'not_paid';
+        }
+        if (! $this->profileFor($company)) {
+            return 'no_profile';
+        }
+
+        return 'issue_failed';
+    }
+
+    /**
      * Reservation idempotency key: per WooCommerce order when known (stable
      * across re-sent inbox entries), per inbox entry otherwise.
      */

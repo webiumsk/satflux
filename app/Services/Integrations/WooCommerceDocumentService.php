@@ -237,6 +237,31 @@ class WooCommerceDocumentService
         return $this->inboxService->serializeEntry($entry);
     }
 
+    /**
+     * Inbox response payload with auto-issue diagnostics: when the entry was
+     * NOT issued, auto_issue_skipped names the reason (not_paid, no_profile,
+     * document_type, issue_failed) so the plugin can record it on the order
+     * instead of the order silently "staying in the inbox".
+     *
+     * @return array<string, mixed>
+     */
+    public function serializeInboxEntryWithDiagnostics(
+        StoreIntegration $integration,
+        IntegrationDocumentInbox $entry,
+    ): array {
+        $data = $this->inboxService->serializeEntry($entry);
+        if (empty($data['number'])) {
+            try {
+                $company = $this->resolveCompany($integration);
+                $data['auto_issue_skipped'] = $this->autoIssueService->skipReason($company, $entry);
+            } catch (ValidationException) {
+                $data['auto_issue_skipped'] = 'no_company';
+            }
+        }
+
+        return $data;
+    }
+
     protected function shouldUseInbox(Company $company): bool
     {
         if (config('invoicing.woocommerce_inbox_mode')) {
