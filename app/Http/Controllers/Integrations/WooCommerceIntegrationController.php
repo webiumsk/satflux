@@ -112,6 +112,38 @@ class WooCommerceIntegrationController extends Controller
         ]);
     }
 
+    /**
+     * PDF of an auto-issued inbox document (WC email attachment path).
+     * Accepts the inbox row id or the evolu document id.
+     */
+    public function documentPdf(
+        Request $request,
+        string $documentId,
+        \App\Services\Invoicing\BusinessDocumentPdfService $pdfService,
+        \App\Services\Invoicing\CompanyPdfFilenameBuilder $filenameBuilder,
+    ): \Illuminate\Http\Response {
+        /** @var StoreIntegration $integration */
+        $integration = $request->attributes->get('store_integration');
+
+        $inbox = IntegrationDocumentInbox::query()
+            ->where('store_integration_id', $integration->id)
+            ->where(function ($query) use ($documentId) {
+                $query->where('id', $documentId)
+                    ->orWhere('evolu_document_id', $documentId);
+            })
+            ->first();
+        if (! $inbox) {
+            abort(404);
+        }
+
+        $pdf = $this->documentService->renderInboxPdf($integration, $inbox, $pdfService, $filenameBuilder);
+
+        return response($pdf['binary'], 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$pdf['filename'].'"',
+        ]);
+    }
+
     public function showDocument(Request $request, string $documentId): JsonResponse
     {
         /** @var StoreIntegration $integration */

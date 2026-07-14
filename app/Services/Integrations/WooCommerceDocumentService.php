@@ -24,6 +24,7 @@ class WooCommerceDocumentService
         protected BusinessDocumentIssueService $issueService,
         protected SubscriptionEntitlementService $subscriptionService,
         protected IntegrationDocumentInboxService $inboxService,
+        protected IntegrationAutoIssueService $autoIssueService,
     ) {}
 
     /**
@@ -116,8 +117,12 @@ class WooCommerceDocumentService
 
         if ($this->shouldUseInbox($company)) {
             $result = $this->inboxService->enqueueFromWoo($integration, $payload);
+            $entry = IntegrationDocumentInbox::query()->findOrFail($result['inbox_id']);
 
-            return IntegrationDocumentInbox::query()->findOrFail($result['inbox_id']);
+            // Headless issue for paid orders when the company opted in - the
+            // number lands in the response so the plugin can note it and the
+            // customer email is queued immediately (P3 auto-issue).
+            return $this->autoIssueService->maybeAutoIssue($company, $entry);
         }
 
         $wcOrderId = (int) ($payload['woocommerce_order_id'] ?? 0);
@@ -206,7 +211,7 @@ class WooCommerceDocumentService
      */
     public function serializeIssuedInboxEntry(IntegrationDocumentInbox $entry): array
     {
-        $payload = is_array($entry->payload_json) ? $entry->payload_json : [];
+        $payload = $entry->payload_json;
         $base = $this->inboxService->serializeEntry($entry);
 
         return [
@@ -239,6 +244,43 @@ class WooCommerceDocumentService
         }
 
         return ! $company->usesServerInvoicing();
+    }
+
+    /**
+     * Render an auto-issued inbox document as PDF for the plugin (WC email
+     * attachment path). Requires a stamped number and a synced profile.
+     *
+     * @return array{binary: string, filename: string}
+     */
+    public function renderInboxPdf(
+        StoreIntegration $integration,
+        IntegrationDocumentInbox $inbox,
+        \App\Services\Invoicing\BusinessDocumentPdfService $pdfService,
+        \App\Services\Invoicing\CompanyPdfFilenameBuilder $filenameBuilder,
+    ): array {
+        $this->assertInboxAccess($integration, $inbox);
+        $company = $this->resolveCompany($integration);
+
+        $payload = $inbox->payload_json;
+        if (empty($payload['number'])) {
+            throw ValidationException::withMessages([
+                'document' => ['Document has no number yet - it was not auto-issued.'],
+            ]);
+        }
+
+        $profile = $this->autoIssueService->profileFor($company);
+        if (! $profile) {
+            throw ValidationException::withMessages([
+                'document' => ['Auto-issue profile is not configured for this company.'],
+            ]);
+        }
+
+        $document = $this->autoIssueService->buildDocument($company, $inbox, $profile);
+
+        return [
+            'binary' => $pdfService->renderBinary($document),
+            'filename' => $filenameBuilder->build($document),
+        ];
     }
 
     /**
