@@ -458,6 +458,15 @@ class EphemeralBusinessDocumentController extends Controller
             ) {
                 $reused = $this->btcPayService->reusableEphemeralCheckout($store, $pending->btcpay_invoice_id);
                 if ($reused !== null) {
+                    [$auditType, $auditId] = $this->auditTarget($user, $auditCompany, $snapshotCompany);
+                    AuditLog::log('business_document.ephemeral_btcpay_checkout', $auditType, $auditId, [
+                        'document_type' => (string) $request->input('document.type'),
+                        'store_id' => $store->id,
+                        'btcpay_invoice_id' => $reused['btcpay_invoice_id'],
+                        'company_less' => $auditCompany === null,
+                        'reused' => true,
+                    ], $user->id);
+
                     return response()->json(['data' => $reused]);
                 }
             }

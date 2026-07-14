@@ -125,7 +125,7 @@ class SendWooAutoInvoiceEmail implements ShouldQueue
 
         $autoIssueService->stampEmailResult($entry, true);
 
-        AuditLog::log('integration_inbox.auto_invoice_emailed', 'company', $company->id, [
+        AuditLog::log('integration_inbox.auto_invoice_emailed', 'company', $profileCompany->id, [
             'inbox_id' => $entry->id,
             'number' => $payload['number'],
         ]);

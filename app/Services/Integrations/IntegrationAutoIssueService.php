@@ -74,11 +74,7 @@ class IntegrationAutoIssueService
             return ['company' => $company, 'profile' => $direct];
         }
 
-        $userProfiles = CompanyAutoIssueProfile::query()
-            ->whereHas('company', fn ($query) => $query->where('user_id', $company->user_id))
-            ->with('company')
-            ->get();
-
+        $userProfiles = $this->ownerProfiles($company);
         if ($userProfiles->count() !== 1) {
             return null;
         }
@@ -94,9 +90,29 @@ class IntegrationAutoIssueService
 
     public function ownerProfileCount(Company $company): int
     {
-        return CompanyAutoIssueProfile::query()
-            ->whereHas('company', fn ($query) => $query->where('user_id', $company->user_id))
-            ->count();
+        return $this->ownerProfiles($company)->count();
+    }
+
+    /** @var array<string, \Illuminate\Database\Eloquent\Collection<int, CompanyAutoIssueProfile>> */
+    protected array $ownerProfilesCache = [];
+
+    /**
+     * All auto-issue profiles of the company's owner, memoized per request -
+     * resolveProfileContext() and the skipReason() diagnostics both need it.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, CompanyAutoIssueProfile>
+     */
+    protected function ownerProfiles(Company $company): \Illuminate\Database\Eloquent\Collection
+    {
+        $userId = (string) $company->user_id;
+        if (! array_key_exists($userId, $this->ownerProfilesCache)) {
+            $this->ownerProfilesCache[$userId] = CompanyAutoIssueProfile::query()
+                ->whereHas('company', fn ($query) => $query->where('user_id', $userId))
+                ->with('company')
+                ->get();
+        }
+
+        return $this->ownerProfilesCache[$userId];
     }
 
     /**
