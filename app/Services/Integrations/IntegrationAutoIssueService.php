@@ -32,11 +32,22 @@ class IntegrationAutoIssueService
         protected EphemeralDocumentFactory $documentFactory,
     ) {}
 
+    /** @var array<string, CompanyAutoIssueProfile|null> */
+    protected array $profileCache = [];
+
+    /**
+     * Memoized per request: maybeAutoIssue() and the response diagnostics
+     * (skipReason) both need the profile of the same company.
+     */
     public function profileFor(Company $company): ?CompanyAutoIssueProfile
     {
-        return CompanyAutoIssueProfile::query()
-            ->where('company_id', $company->id)
-            ->first();
+        if (! array_key_exists($company->id, $this->profileCache)) {
+            $this->profileCache[$company->id] = CompanyAutoIssueProfile::query()
+                ->where('company_id', $company->id)
+                ->first();
+        }
+
+        return $this->profileCache[$company->id];
     }
 
     /**

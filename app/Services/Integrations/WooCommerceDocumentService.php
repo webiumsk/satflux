@@ -251,12 +251,11 @@ class WooCommerceDocumentService
     ): array {
         $data = $this->inboxService->serializeEntry($entry);
         if (empty($data['number'])) {
-            try {
-                $company = $this->resolveCompany($integration);
-                $data['auto_issue_skipped'] = $this->autoIssueService->skipReason($company, $entry);
-            } catch (ValidationException) {
-                $data['auto_issue_skipped'] = 'no_company';
-            }
+            // An inbox entry can only exist for a resolved company -
+            // createDocument (the sole flow reaching here) resolved it before
+            // enqueueing, so this cannot throw.
+            $company = $this->resolveCompany($integration);
+            $data['auto_issue_skipped'] = $this->autoIssueService->skipReason($company, $entry);
         }
 
         return $data;
