@@ -194,6 +194,32 @@ class BusinessDocumentBtcPayService
     }
 
     /**
+     * Checkout link of an existing BTCPay invoice when it is still payable
+     * (New/Processing) - reused instead of minting another BTCPay invoice
+     * for the same document on every view. Null on expired/invalid/settled
+     * invoices or any BTCPay error (the caller then creates a fresh one).
+     *
+     * @return array{checkout_link: string|null, btcpay_invoice_id: string}|null
+     */
+    public function reusableEphemeralCheckout(Store $store, string $btcpayInvoiceId): ?array
+    {
+        $invoice = $this->fetchBtcpayInvoiceForStore($store, $btcpayInvoiceId);
+        if (! is_array($invoice)) {
+            return null;
+        }
+
+        $status = strtolower((string) ($invoice['status'] ?? ''));
+        if (! in_array($status, ['new', 'processing'], true)) {
+            return null;
+        }
+
+        return [
+            'checkout_link' => isset($invoice['checkoutLink']) ? (string) $invoice['checkoutLink'] : null,
+            'btcpay_invoice_id' => $btcpayInvoiceId,
+        ];
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     protected function fetchBtcpayInvoiceForStore(Store $store, string $invoiceId): ?array
