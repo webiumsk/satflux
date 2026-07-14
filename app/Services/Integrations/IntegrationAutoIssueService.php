@@ -10,6 +10,8 @@ use App\Models\CompanyAutoIssueProfile;
 use App\Models\IntegrationDocumentInbox;
 use App\Services\Invoicing\DocumentSequenceService;
 use App\Services\Invoicing\EphemeralDocumentFactory;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -76,51 +78,75 @@ class IntegrationAutoIssueService
         // new number each time (observed in production as sequence gaps).
         // With the order key the re-send is stamped with the SAME number.
         $issueRequestId = $this->issueRequestIdFor($entry);
-        $alreadyReserved = $this->sequenceService->findReservation($company, 'invoice', $issueRequestId) !== null;
 
-        $reservation = $this->sequenceService->reserveNumberForIssue(
-            $company,
-            'invoice',
-            $issueRequestId,
-            $localHighCounter,
-        );
-        $this->sequenceService->confirmReservation(
-            $company,
-            'invoice',
-            $issueRequestId,
-            hash('sha256', json_encode($payload) ?: ''),
-            // NB: document_number_reservations.confirmed_format_version is varchar(16).
-            'woo-auto-v1',
-        );
-
-        $payload['number'] = $reservation->number;
-        $payload['variable_symbol'] = preg_replace('/\D/', '', $reservation->number) ?: null;
-        $payload['issued_at'] = now()->toIso8601String();
-        $payload['auto_issued_at'] = now()->toIso8601String();
-
-        $buyerEmail = trim((string) ($payload['buyer']['email'] ?? ''));
-        // A pre-existing reservation means an earlier inbox entry for this
-        // order was already auto-issued (and its email queued) - stamp the
-        // same number again but never email the customer twice.
-        $shouldEmail = $profile->auto_email && $buyerEmail !== '' && ! $alreadyReserved;
-        if ($shouldEmail) {
-            $payload['email_queued_at'] = now()->toIso8601String();
+        // Atomic guard (Cache::lock, redis in production): concurrent webhook
+        // deliveries for the same order must not both observe "no reservation
+        // yet" between findReservation() and reserveNumberForIssue() and
+        // double-queue the customer email. Unrelated issue request ids use
+        // distinct locks and are unaffected.
+        $lock = Cache::lock('woo-auto-issue:'.$company->id.':'.$issueRequestId, 30);
+        try {
+            $lock->block(10);
+        } catch (LockTimeoutException) {
+            // The concurrent holder is doing the same work - return its result.
+            return $entry->fresh() ?? $entry;
         }
 
-        $entry->payload_json = $payload;
-        $entry->save();
+        try {
+            $entry = $entry->fresh() ?? $entry;
+            $payload = $entry->payload_json;
+            if (! empty($payload['number'])) {
+                return $entry;
+            }
 
-        AuditLog::log('integration_inbox.auto_issued', 'company', $company->id, [
-            'inbox_id' => $entry->id,
-            'number' => $reservation->number,
-            'email_queued' => $shouldEmail,
-        ]);
+            $alreadyReserved = $this->sequenceService->findReservation($company, 'invoice', $issueRequestId) !== null;
 
-        if ($shouldEmail) {
-            SendWooAutoInvoiceEmail::dispatch($entry->id);
+            $reservation = $this->sequenceService->reserveNumberForIssue(
+                $company,
+                'invoice',
+                $issueRequestId,
+                $localHighCounter,
+            );
+            $this->sequenceService->confirmReservation(
+                $company,
+                'invoice',
+                $issueRequestId,
+                hash('sha256', json_encode($payload) ?: ''),
+                // NB: document_number_reservations.confirmed_format_version is varchar(16).
+                'woo-auto-v1',
+            );
+
+            $payload['number'] = $reservation->number;
+            $payload['variable_symbol'] = preg_replace('/\D/', '', $reservation->number) ?: null;
+            $payload['issued_at'] = now()->toIso8601String();
+            $payload['auto_issued_at'] = now()->toIso8601String();
+
+            $buyerEmail = trim((string) ($payload['buyer']['email'] ?? ''));
+            // A pre-existing reservation means an earlier inbox entry for this
+            // order was already auto-issued (and its email queued) - stamp the
+            // same number again but never email the customer twice.
+            $shouldEmail = $profile->auto_email && $buyerEmail !== '' && ! $alreadyReserved;
+            if ($shouldEmail) {
+                $payload['email_queued_at'] = now()->toIso8601String();
+            }
+
+            $entry->payload_json = $payload;
+            $entry->save();
+
+            AuditLog::log('integration_inbox.auto_issued', 'company', $company->id, [
+                'inbox_id' => $entry->id,
+                'number' => $reservation->number,
+                'email_queued' => $shouldEmail,
+            ]);
+
+            if ($shouldEmail) {
+                SendWooAutoInvoiceEmail::dispatch($entry->id);
+            }
+
+            return $entry->fresh() ?? $entry;
+        } finally {
+            $lock->release();
         }
-
-        return $entry->fresh() ?? $entry;
     }
 
     /**
