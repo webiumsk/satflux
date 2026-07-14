@@ -102,4 +102,20 @@ describe("sortRowsForSequentialDelete", () => {
             "FV20260073",
         ]);
     });
+
+    it("falls back to NUMERIC number collation on identical issue dates", () => {
+        const rows = [
+            { id: "a", issueDate: "2026-07-14", number: "FV-10" },
+            { id: "b", issueDate: "2026-07-14", number: "FV-2" },
+            { id: "c", issueDate: "2026-07-14", number: "FV-11" },
+            { id: "d", issueDate: "2026-07-14", number: "FV-9" },
+        ] as unknown as EvoluDocumentRow[];
+
+        expect(sortRowsForSequentialDelete(rows).map((row) => row.number)).toEqual([
+            "FV-11",
+            "FV-10",
+            "FV-9",
+            "FV-2",
+        ]);
+    });
 });

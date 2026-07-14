@@ -128,7 +128,8 @@ export function sortRowsForSequentialDelete(rows: EvoluDocumentRow[]): EvoluDocu
         if (aDate !== bDate) return bDate.localeCompare(aDate);
         const aNumber = String(a.number ?? "");
         const bNumber = String(b.number ?? "");
-        if (aNumber !== bNumber) return bNumber.localeCompare(aNumber);
+        // Numeric collation: FV-10 must sort after FV-2, not before it.
+        if (aNumber !== bNumber) return bNumber.localeCompare(aNumber, undefined, { numeric: true });
         return String(b.id).localeCompare(String(a.id));
     });
 }
@@ -147,6 +148,7 @@ export async function bulkDeleteLocal(
     // exist - shrink the working set as rows fall so a chain of the newest
     // invoices deletes in one pass (gapless numbering, P3).
     let remainingDocs = allDocuments;
+    const { releaseIssuedNumber } = await import("./numberReleaseBridge");
 
     for (const row of sortRowsForSequentialDelete(rows)) {
         if (!canDeleteLocalDocument(row, remainingDocs)) {
@@ -155,7 +157,6 @@ export async function bulkDeleteLocal(
         }
 
         if (row.status !== "draft" && row.status !== "cancelled" && row.number) {
-            const { releaseIssuedNumber } = await import("./numberReleaseBridge");
             const release = await releaseIssuedNumber(
                 row.companyId,
                 String(row.documentType),
