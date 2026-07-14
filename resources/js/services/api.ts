@@ -480,6 +480,17 @@ export const invoicingApi = {
             const { data } = await api.patch<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/app-settings`, payload);
             return data.data;
         },
+        async getAutoIssueProfile<T = unknown>(companyId: string): Promise<T | null> {
+            const { data } = await api.get<ApiEnvelope<T | null>>(`/invoicing/companies/${companyId}/auto-issue-profile`);
+            return data.data ?? null;
+        },
+        async putAutoIssueProfile<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.put<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/auto-issue-profile`, payload);
+            return data.data;
+        },
+        async deleteAutoIssueProfile(companyId: string): Promise<void> {
+            await api.delete(`/invoicing/companies/${companyId}/auto-issue-profile`);
+        },
         async updateEmailSettings<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
             const { data } = await api.patch<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/email-settings`, payload);
             return data.data;

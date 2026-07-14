@@ -19,7 +19,7 @@ import type { EvoluDocumentRow } from "./documentMap";
 import type { EvoluCompanyRow } from "./companyMap";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import { allNumberSeriesQuery } from "./client";
-import { isPaidWooCommercePayload } from "./integrationInboxPaid";
+import { resolveImportSettleActions } from "./integrationInboxPaid";
 import { resolveIntegrationInboxBasePath } from "./integrationInboxPaths";
 import {
     findLocalDocumentForInboxEntry,
@@ -206,11 +206,10 @@ function resolveLocalContactId(
     return { ok: true, contactId: inserted.value.id as ContactId };
 }
 
-async function settleImportedPaidDocument(
+async function issueImportedDocument(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
     documentId: DocumentId,
-    payload: Record<string, unknown>,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
     const companies = (await evolu.loadQuery(allCompaniesQuery)) as EvoluCompanyRow[];
     const companyRow = companies.find((row) => row.id === companyId);
@@ -223,6 +222,14 @@ async function settleImportedPaidDocument(
         return { ok: false, error: String(issueResult.error ?? "issue_failed") };
     }
 
+    return { ok: true };
+}
+
+async function markImportedDocumentPaid(
+    evolu: Evolu<InvoicingLocalSchema>,
+    documentId: DocumentId,
+    payload: Record<string, unknown>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
     const documents = (await evolu.loadQuery(allDocumentsQuery)) as EvoluDocumentRow[];
     const doc = documents.find((row) => row.id === documentId);
     const docTotal = parseFloat(doc?.total ?? "0");
@@ -302,8 +309,8 @@ export async function importIntegrationInboxEntry(
     }
 
     const savedDocumentId = saveResult.value.id;
-    const reservedNumber = String(entry.payload.number ?? "").trim();
-    if (reservedNumber) {
+    const actions = resolveImportSettleActions(entry.payload);
+    if (actions.reservedNumber) {
         const allSeries = (await evolu.loadQuery(allNumberSeriesQuery)) as EvoluNumberSeriesRow[];
         const documentType = String(entry.payload.type ?? "invoice") as DocumentType;
         const applyResult = await applyReservedNumberToLocalDocumentAsync(
@@ -311,22 +318,24 @@ export async function importIntegrationInboxEntry(
             savedDocumentId,
             typedCompanyId,
             documentType,
-            reservedNumber,
+            actions.reservedNumber,
             allSeries,
             entry.payload.variable_symbol as string | null | undefined,
         );
         if (!applyResult.ok) {
             return { ok: false, error: String(applyResult.error ?? "issue_failed") };
         }
-    } else if (isPaidWooCommercePayload(entry.payload)) {
-        const settleResult = await settleImportedPaidDocument(
-            evolu,
-            typedCompanyId,
-            savedDocumentId,
-            entry.payload,
-        );
-        if (!settleResult.ok) {
-            return settleResult;
+    } else if (actions.issueLocally) {
+        const issueResult = await issueImportedDocument(evolu, typedCompanyId, savedDocumentId);
+        if (!issueResult.ok) {
+            return issueResult;
+        }
+    }
+
+    if (actions.markPaid) {
+        const markResult = await markImportedDocumentPaid(evolu, savedDocumentId, entry.payload);
+        if (!markResult.ok) {
+            return markResult;
         }
     }
 
