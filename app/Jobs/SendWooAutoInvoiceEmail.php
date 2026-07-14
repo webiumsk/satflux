@@ -102,13 +102,17 @@ class SendWooAutoInvoiceEmail implements ShouldQueue
             return;
         }
 
-        $profile = $autoIssueService->profileFor($company);
-        if (! $profile) {
+        $context = $autoIssueService->resolveProfileContext($company);
+        if (! $context) {
             return;
         }
+        // Render + send from the profile's company - the same context the
+        // number was allocated on.
+        $profileCompany = $context['company'];
+        $profile = $context['profile'];
 
-        $snapshotCompany = $autoIssueService->buildCompany($company, $profile);
-        $document = $autoIssueService->buildDocument($company, $entry, $profile);
+        $snapshotCompany = $autoIssueService->buildCompany($profileCompany, $profile);
+        $document = $autoIssueService->buildDocument($profileCompany, $entry, $profile);
 
         $sender = $company->user;
 

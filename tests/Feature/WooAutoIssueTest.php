@@ -181,6 +181,82 @@ class WooAutoIssueTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    public function test_profile_on_bridge_company_of_same_user_is_used_with_its_series(): void
+    {
+        Queue::fake();
+
+        // Production scenario 2026-07-14: the integration points at a legacy
+        // company row while the client synced the profile (and allocates
+        // numbers) on a bridge company with a different identity. The owner
+        // has exactly ONE profile - auto-issue must use it, including ITS
+        // number series.
+        $bridgeCompany = Company::create([
+            'user_id' => $this->user->id,
+            'legal_name' => 'Webium bridge s.r.o.',
+            'jurisdiction' => CompanyJurisdiction::EuSk,
+            'default_currency' => 'EUR',
+        ]);
+        CompanyDocumentSequence::create([
+            'company_id' => $bridgeCompany->id,
+            'document_type' => 'invoice',
+            'name' => 'FA',
+            'format' => 'FAYYYYNNNN',
+            'reset_period' => 'yearly',
+            'is_default' => true,
+            'period_key' => now()->format('Y'),
+            'last_number' => 0,
+        ]);
+        CompanyAutoIssueProfile::create([
+            'company_id' => $bridgeCompany->id,
+            'profile_json' => [
+                'company' => ['legal_name' => 'Webium bridge s.r.o.'],
+                'local_high_counters' => ['invoice' => 70],
+            ],
+            'auto_email' => true,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$this->token)
+            ->postJson('/api/integrations/woocommerce/documents', $this->paidOrderPayload())
+            ->assertCreated()
+            ->assertJsonPath('data.number', 'FA'.now()->format('Y').'0071')
+            ->assertJsonPath('data.auto_issued', true)
+            ->assertJsonPath('data.email_queued', true);
+
+        // The reservation lives on the BRIDGE company - the same series the
+        // merchant's browser allocates on.
+        $reservation = DocumentNumberReservation::query()->firstOrFail();
+        $this->assertSame($bridgeCompany->id, $reservation->company_id);
+        $this->assertNotNull($response->json('data.inbox_id'));
+        Queue::assertPushed(SendWooAutoInvoiceEmail::class, 1);
+    }
+
+    public function test_two_profiles_none_on_integration_company_reports_ambiguous(): void
+    {
+        Queue::fake();
+
+        foreach (['Firma A s.r.o.', 'Firma B s.r.o.'] as $name) {
+            $other = Company::create([
+                'user_id' => $this->user->id,
+                'legal_name' => $name,
+                'jurisdiction' => CompanyJurisdiction::EuSk,
+                'default_currency' => 'EUR',
+            ]);
+            CompanyAutoIssueProfile::create([
+                'company_id' => $other->id,
+                'profile_json' => ['company' => ['legal_name' => $name]],
+                'auto_email' => true,
+            ]);
+        }
+
+        $this->withHeader('Authorization', 'Bearer '.$this->token)
+            ->postJson('/api/integrations/woocommerce/documents', $this->paidOrderPayload())
+            ->assertCreated()
+            ->assertJsonPath('data.number', null)
+            ->assertJsonPath('data.auto_issue_skipped', 'ambiguous_profile');
+
+        Queue::assertNothingPushed();
+    }
+
     public function test_paid_order_without_profile_stays_pending_and_names_the_reason(): void
     {
         Queue::fake();
