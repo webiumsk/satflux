@@ -22,6 +22,7 @@ import {
   buildEphemeralSnapshot,
   fetchEphemeralBtcpayCheckout,
   fetchEphemeralBtcpayStatus,
+  fetchExistingEphemeralBtcpayCheckout,
   resolveEphemeralBridgeCompanyId,
 } from '../evolu/ephemeralBridge';
 import { useLocalInvoiceDocumentSupport } from './useLocalInvoiceDocument';
@@ -876,6 +877,12 @@ export function useInvoiceDocument() {
     );
   }
 
+  /**
+   * View-time lookup ONLY: shows an existing still-payable checkout link.
+   * A BTCPay invoice is never minted by merely opening the invoice - that
+   * used to create a stray "New" BTCPay invoice per view (production
+   * 2026-07-14). Minting happens in createLocalBtcpayCheckout (button).
+   */
   async function loadLocalBtcpayCheckout() {
     localBtcpayCheckoutLink.value = '';
     localBtcpayInvoiceId.value = '';
@@ -889,6 +896,32 @@ export function useInvoiceDocument() {
     ) {
       return;
     }
+
+    localBtcpayCheckoutLoading.value = true;
+    try {
+      const result = await fetchExistingEphemeralBtcpayCheckout(
+        buildCurrentEphemeralSnapshot(),
+        form.store_id,
+        documentId.value,
+      );
+      localBtcpayCheckoutLink.value = result?.checkout_link || '';
+      localBtcpayInvoiceId.value = result?.btcpay_invoice_id || '';
+      if (localBtcpayInvoiceId.value) {
+        startLocalBtcpayPolling();
+      }
+    } catch {
+      // No existing checkout is a normal state - the create button handles it.
+      localBtcpayCheckoutLink.value = '';
+      localBtcpayInvoiceId.value = '';
+    } finally {
+      localBtcpayCheckoutLoading.value = false;
+    }
+  }
+
+  /** Explicit user action: create (or reuse server-side) the checkout link. */
+  async function createLocalBtcpayCheckout() {
+    if (!localFirst || !documentId.value) return;
+    if (!form.payment_btc_enabled || !form.store_id) return;
 
     localBtcpayCheckoutLoading.value = true;
     try {
@@ -1150,6 +1183,7 @@ export function useInvoiceDocument() {
     btcPayUrl,
     localBtcpayCheckoutLoading,
     loadLocalBtcpayCheckout,
+    createLocalBtcpayCheckout,
     paymentToken,
     documentType,
     documentKind,

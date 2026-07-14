@@ -155,7 +155,7 @@
             </template>
             <div v-else class="mt-1 flex flex-wrap items-center gap-2">
               <p class="text-sm text-gray-500">{{ t('invoicing.local_first_btcpay_checkout_missing') }}</p>
-              <button type="button" class="invoicing-btn-secondary text-sm" @click="loadLocalBtcpayCheckout">
+              <button type="button" class="invoicing-btn-secondary text-sm" @click="createLocalBtcpayCheckout">
                 {{ t('invoicing.local_first_btcpay_checkout_refresh') }}
               </button>
             </div>
@@ -327,7 +327,7 @@ const {
   pdfUrl,
   btcPayUrl,
   localBtcpayCheckoutLoading,
-  loadLocalBtcpayCheckout,
+  createLocalBtcpayCheckout,
   previewForm,
   previewTotals,
   extractError,

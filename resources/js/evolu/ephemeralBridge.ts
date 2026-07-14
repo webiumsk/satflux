@@ -453,6 +453,42 @@ export type EphemeralBtcpayCheckoutResult = {
     btcpay_invoice_id: string | null;
 };
 
+/**
+ * Read-only lookup of an existing still-payable checkout - viewing an
+ * invoice must never mint a BTCPay invoice (that is an explicit action via
+ * fetchEphemeralBtcpayCheckout). Null when none exists; also null on 404
+ * from a backend that predates the endpoint.
+ */
+export async function fetchExistingEphemeralBtcpayCheckout(
+    snapshot: EphemeralSnapshotPayload,
+    storeId: string,
+    evoluDocumentId?: string | null,
+): Promise<EphemeralBtcpayCheckoutResult | null> {
+    const body = {
+        ...snapshot,
+        store_id: storeId,
+        evolu_document_id: evoluDocumentId || undefined,
+        document: {
+            ...snapshot.document,
+            payment_btc_enabled: true,
+        },
+    };
+
+    try {
+        const res = await api.post<{ data: EphemeralBtcpayCheckoutResult | null }>(
+            `${EPHEMERAL_BTCPAY_CHECKOUT_PATH}/existing`,
+            body,
+        );
+        return res.data.data ?? null;
+    } catch (error: unknown) {
+        const status = (error as { response?: { status?: number } })?.response?.status;
+        if (status === 404) {
+            return null;
+        }
+        throw error;
+    }
+}
+
 export async function fetchEphemeralBtcpayCheckout(
     snapshot: EphemeralSnapshotPayload,
     storeId: string,
