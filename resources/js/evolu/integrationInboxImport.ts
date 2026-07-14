@@ -56,6 +56,24 @@ export async function fetchIntegrationInbox(
     return (data.data ?? []) as IntegrationInboxEntry[];
 }
 
+/**
+ * A stamped (auto-issued) entry may only be auto-cleared when the matched
+ * local document carries the SAME number - otherwise silently marking it
+ * imported would erase an issued (and possibly already emailed) invoice
+ * number from the books. Such entries stay pending for a manual decision.
+ */
+export function canAutoReconcileEntry(
+    entry: Pick<IntegrationInboxEntry, "payload">,
+    existingNumber: string | null | undefined,
+): boolean {
+    const stampedNumber = String(entry.payload?.number ?? "").trim();
+    if (stampedNumber === "") {
+        return true;
+    }
+
+    return String(existingNumber ?? "").trim() === stampedNumber;
+}
+
 /** Drop inbox rows already present locally (relay import on another device) and clear them on the server. */
 export async function reconcileIntegrationInboxWithLocalDocuments(
     evolu: Evolu<InvoicingLocalSchema>,
@@ -69,7 +87,7 @@ export async function reconcileIntegrationInboxWithLocalDocuments(
 
     for (const entry of entries) {
         const existing = findLocalDocumentForInboxEntry(documents, typedCompanyId, entry);
-        if (!existing) {
+        if (!existing || !canAutoReconcileEntry(entry, existing.number)) {
             remaining.push(entry);
             continue;
         }
@@ -275,7 +293,11 @@ export async function importIntegrationInboxEntry(
         typedCompanyId,
         entry,
     );
-    if (alreadyImported) {
+    // A stamped entry whose number is NOT represented locally must fall
+    // through to a real import (the order-id match may point at an OLDER
+    // invoice for the same order) - short-circuiting here would erase an
+    // issued, possibly already emailed number from the books.
+    if (alreadyImported && canAutoReconcileEntry(entry, alreadyImported.number)) {
         const storeIdForApi = resolveStoreIdForApi(linkedStoreId, entry.payload);
         await markIntegrationInboxImported(companyId, entry.inbox_id, storeIdForApi);
         return { ok: true };

@@ -178,6 +178,16 @@ async function importItem(item: IntegrationInboxEntry): Promise<void> {
 }
 
 async function dismissItem(item: IntegrationInboxEntry): Promise<void> {
+  // An auto-issued entry already carries an allocated invoice number (and
+  // the customer may have received the PDF) - dismissing it drops that
+  // number from the books, so it needs an explicit confirmation.
+  const stampedNumber = String(item.payload?.number ?? '').trim();
+  if (
+    stampedNumber !== ''
+    && !window.confirm(t('invoicing.integration_inbox_dismiss_issued_confirm', { number: stampedNumber }))
+  ) {
+    return;
+  }
   busyId.value = item.inbox_id;
   error.value = '';
   try {

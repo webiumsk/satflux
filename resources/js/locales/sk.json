@@ -213,6 +213,7 @@
     "auto_issue_identity_missing": "Najprv doplňte oficiálny názov firmy - je potrebný na prepojenie firmy na serveri.",
     "auto_issue_bridge_unavailable": "Firmu sa nepodarilo prepojiť na serveri. Skontrolujte pripojenie a skúste znova.",
     "auto_issue_disabled": "Automatická fakturácia vypnutá. Údaje uložené na serveri boli odstránené.",
+    "integration_inbox_dismiss_issued_confirm": "K tejto objednávke už bola vystavená faktúra {number} (zákazník ju mohol dostať e-mailom). Zahodenie ju odstráni z inboxu BEZ vytvorenia faktúry lokálne - číslo bude v účtovníctve chýbať. Naozaj zahodiť?",
     "integration_inbox_title": "WooCommerce inbox",
     "integration_inbox_relay_hint": "Ak bola objednávka importovaná na inom prehliadači, sync ju sem nedostane - kliknite Import (vytvorí rovnakú faktúru lokálne).",
     "integration_inbox_detail": "Nové objednávky z WooCommerce čakajú tu, kým ich neimportujete do lokálnej fakturácie.",

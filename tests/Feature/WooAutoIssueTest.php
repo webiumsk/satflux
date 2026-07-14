@@ -131,12 +131,14 @@ class WooAutoIssueTest extends TestCase
         $this->assertSame('FV'.now()->format('Y').'0001', $entry->payload_json['number']);
         $this->assertNotEmpty($entry->payload_json['auto_issued_at']);
 
-        // Number came from the shared reservation allocator (confirmed).
+        // Number came from the shared reservation allocator (confirmed),
+        // keyed by the WooCommerce ORDER so re-sends reuse the same number.
         $reservation = DocumentNumberReservation::query()
             ->where('company_id', $this->company->id)
-            ->where('issue_request_id', 'woo-inbox:'.$entry->evolu_document_id)
             ->first();
         $this->assertNotNull($reservation);
+        $this->assertStringStartsWith('woo-order:', $reservation->issue_request_id);
+        $this->assertStringEndsWith(':1001', $reservation->issue_request_id);
         $this->assertSame(DocumentNumberReservation::STATUS_CONFIRMED, $reservation->status);
 
         Queue::assertPushed(SendWooAutoInvoiceEmail::class, fn ($job) => $job->inboxEntryId === $inboxId);
@@ -206,6 +208,33 @@ class WooAutoIssueTest extends TestCase
 
         $this->assertSame($first['inbox_id'], $second['inbox_id']);
         $this->assertSame($first['number'], $second['number']);
+        $this->assertSame(1, DocumentNumberReservation::query()->where('company_id', $this->company->id)->count());
+        Queue::assertPushed(SendWooAutoInvoiceEmail::class, 1);
+    }
+
+    public function test_resend_after_import_reuses_the_same_number_and_sends_no_second_email(): void
+    {
+        Queue::fake();
+        $this->createProfile();
+
+        $first = $this->withHeader('Authorization', 'Bearer '.$this->token)
+            ->postJson('/api/integrations/woocommerce/documents', $this->paidOrderPayload())
+            ->json('data');
+
+        // Merchant imported the entry in the browser - the server row is gone.
+        IntegrationDocumentInbox::findOrFail($first['inbox_id'])->delete();
+
+        // The plugin re-sends the same order (status re-trigger / manual
+        // re-send): a NEW inbox entry appears, but the reservation is keyed
+        // by the WooCommerce order, so the SAME number is stamped and no
+        // second customer email is queued.
+        $second = $this->withHeader('Authorization', 'Bearer '.$this->token)
+            ->postJson('/api/integrations/woocommerce/documents', $this->paidOrderPayload())
+            ->json('data');
+
+        $this->assertNotSame($first['inbox_id'], $second['inbox_id']);
+        $this->assertSame($first['number'], $second['number']);
+        $this->assertFalse($second['email_queued']);
         $this->assertSame(1, DocumentNumberReservation::query()->where('company_id', $this->company->id)->count());
         Queue::assertPushed(SendWooAutoInvoiceEmail::class, 1);
     }

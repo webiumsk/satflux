@@ -2649,6 +2649,7 @@
     "auto_issue_identity_missing": "Primero completa la razón social de la empresa: es necesaria para vincularla en el servidor.",
     "auto_issue_bridge_unavailable": "No se pudo vincular la empresa en el servidor. Comprueba la conexión e inténtalo de nuevo.",
     "auto_issue_disabled": "Facturación automática desactivada. Los datos guardados en el servidor se eliminaron.",
+    "integration_inbox_dismiss_issued_confirm": "Para este pedido ya se emitió la factura {number} (el cliente pudo haberla recibido por correo). Descartarla la elimina de la bandeja SIN crear la factura localmente; el número faltará en tu contabilidad. ¿Descartar de todos modos?",
     "integration_inbox_title": "Bandeja WooCommerce",
     "integration_inbox_relay_hint": "Si este pedido se importó en otro navegador, la sincronización no lo traerá aquí - pulse Importar.",
     "integration_inbox_detail": "Los pedidos nuevos de WooCommerce esperan aquí hasta que los importes a la facturación local.",

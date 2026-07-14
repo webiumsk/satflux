@@ -71,16 +71,23 @@ class IntegrationAutoIssueService
             ? (int) $localHighCounters['invoice']
             : null;
 
+        // Keyed by the WooCommerce ORDER, not the inbox entry: a re-sent
+        // order creates a fresh inbox row, and a per-entry key would burn a
+        // new number each time (observed in production as sequence gaps).
+        // With the order key the re-send is stamped with the SAME number.
+        $issueRequestId = $this->issueRequestIdFor($entry);
+        $alreadyReserved = $this->sequenceService->findReservation($company, 'invoice', $issueRequestId) !== null;
+
         $reservation = $this->sequenceService->reserveNumberForIssue(
             $company,
             'invoice',
-            'woo-inbox:'.$entry->evolu_document_id,
+            $issueRequestId,
             $localHighCounter,
         );
         $this->sequenceService->confirmReservation(
             $company,
             'invoice',
-            'woo-inbox:'.$entry->evolu_document_id,
+            $issueRequestId,
             hash('sha256', json_encode($payload) ?: ''),
             // NB: document_number_reservations.confirmed_format_version is varchar(16).
             'woo-auto-v1',
@@ -92,7 +99,10 @@ class IntegrationAutoIssueService
         $payload['auto_issued_at'] = now()->toIso8601String();
 
         $buyerEmail = trim((string) ($payload['buyer']['email'] ?? ''));
-        $shouldEmail = $profile->auto_email && $buyerEmail !== '';
+        // A pre-existing reservation means an earlier inbox entry for this
+        // order was already auto-issued (and its email queued) - stamp the
+        // same number again but never email the customer twice.
+        $shouldEmail = $profile->auto_email && $buyerEmail !== '' && ! $alreadyReserved;
         if ($shouldEmail) {
             $payload['email_queued_at'] = now()->toIso8601String();
         }
@@ -111,6 +121,20 @@ class IntegrationAutoIssueService
         }
 
         return $entry->fresh() ?? $entry;
+    }
+
+    /**
+     * Reservation idempotency key: per WooCommerce order when known (stable
+     * across re-sent inbox entries), per inbox entry otherwise.
+     */
+    public function issueRequestIdFor(IntegrationDocumentInbox $entry): string
+    {
+        $orderId = (int) ($entry->woocommerce_order_id ?? 0);
+        if ($orderId > 0) {
+            return 'woo-order:'.$entry->store_integration_id.':'.$orderId;
+        }
+
+        return 'woo-inbox:'.$entry->evolu_document_id;
     }
 
     /**

@@ -213,6 +213,7 @@
     "auto_issue_identity_missing": "Fill in the company legal name first - it is needed to link the company on the server.",
     "auto_issue_bridge_unavailable": "The company could not be linked on the server. Check your connection and try again.",
     "auto_issue_disabled": "Automatic invoicing disabled. Data already stored on the server was removed.",
+    "integration_inbox_dismiss_issued_confirm": "Invoice {number} was already issued for this order (the customer may have received it by email). Dismissing removes it from the inbox WITHOUT creating the invoice locally - the number will be missing from your books. Dismiss anyway?",
     "integration_inbox_title": "WooCommerce inbox",
     "integration_inbox_relay_hint": "If this order was imported on another browser, sync will not bring it here - click Import to create the same invoice locally.",
     "integration_inbox_detail": "New WooCommerce orders wait here until you import them into local invoicing.",
