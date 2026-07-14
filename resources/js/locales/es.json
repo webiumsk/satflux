@@ -2646,6 +2646,7 @@
     "auto_issue_synced_at": "Sincronizado: {date}",
     "auto_issue_sync_success": "Configuración sincronizada con el servidor.",
     "auto_issue_sync_failed": "La sincronización falló. Inténtalo de nuevo.",
+    "auto_issue_identity_missing": "Primero completa la razón social de la empresa: es necesaria para vincularla en el servidor.",
     "auto_issue_bridge_unavailable": "No se pudo vincular la empresa en el servidor. Comprueba la conexión e inténtalo de nuevo.",
     "auto_issue_disabled": "Facturación automática desactivada. Los datos guardados en el servidor se eliminaron.",
     "integration_inbox_title": "Bandeja WooCommerce",

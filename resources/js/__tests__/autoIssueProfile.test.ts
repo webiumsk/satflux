@@ -1,23 +1,51 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveImportSettleActions } from "../evolu/integrationInboxPaid";
 
-// The sync module pulls the API client + bridge ensure transitively - keep
-// the pure builders importable without network/WASM.
+const apiMocks = vi.hoisted(() => ({
+    getAutoIssueProfile: vi.fn(),
+    putAutoIssueProfile: vi.fn(),
+    deleteAutoIssueProfile: vi.fn(),
+    updateEmailSettings: vi.fn(),
+    seriesList: vi.fn(),
+    seriesCreate: vi.fn(),
+    seriesUpdate: vi.fn(),
+    ensureBridge: vi.fn(),
+}));
+
 vi.mock("@/services/api", () => ({
     default: {},
-    invoicingApi: { companies: {}, numberSeries: {} },
+    invoicingApi: {
+        companies: {
+            getAutoIssueProfile: apiMocks.getAutoIssueProfile,
+            putAutoIssueProfile: apiMocks.putAutoIssueProfile,
+            deleteAutoIssueProfile: apiMocks.deleteAutoIssueProfile,
+            updateEmailSettings: apiMocks.updateEmailSettings,
+        },
+        numberSeries: {
+            list: apiMocks.seriesList,
+            create: apiMocks.seriesCreate,
+            update: apiMocks.seriesUpdate,
+        },
+    },
 }));
 vi.mock("@/evolu/bridgeCompanyEnsure", () => ({
-    ensureBridgeCompanyIdForLocalCompany: vi.fn(),
+    ensureBridgeCompanyIdForLocalCompany: apiMocks.ensureBridge,
 }));
-// ephemeralBridge transitively imports the real Evolu client - inert token.
+// ephemeralBridge and the lazy sync path import the real Evolu client -
+// replace it with inert queries + an empty-loading evolu.
 vi.mock("@/evolu/client", () => ({
     allDocumentSnapshotsQuery: "allDocumentSnapshotsQuery",
+    allDocumentsQuery: "allDocumentsQuery",
+    allNumberSeriesQuery: "allNumberSeriesQuery",
+    evolu: { loadQuery: vi.fn(async () => []) },
 }));
 
 import {
     buildAutoIssueCompanyPayload,
     buildLocalHighCounters,
+    disableAutoIssueProfile,
+    fetchAutoIssueProfileStatus,
+    syncAutoIssueProfile,
 } from "../evolu/autoIssueProfileSync";
 import type { CompanyId } from "../evolu/schema";
 import type { EvoluDocumentRow } from "../evolu/documentMap";
@@ -95,6 +123,98 @@ describe("buildAutoIssueCompanyPayload", () => {
         expect(payload.app_settings).toEqual({ show_pay_by_square: false });
         expect(JSON.stringify(payload)).not.toContain("EFAKTURA-SECRET");
         expect(JSON.stringify(payload)).not.toContain("secret");
+    });
+});
+
+describe("auto-issue sync orchestration", () => {
+    const localCompany = {
+        id: "local-1",
+        legal_name: "Webium s.r.o.",
+        email_settings: { delivery_method: "smtp", smtp: { host: "mail.example.com" } },
+    };
+
+    beforeEach(() => {
+        for (const mock of Object.values(apiMocks)) {
+            mock.mockReset();
+        }
+        apiMocks.ensureBridge.mockResolvedValue({ ok: true, bridgeCompanyId: "bridge-1" });
+        apiMocks.seriesList.mockResolvedValue([]);
+        apiMocks.putAutoIssueProfile.mockResolvedValue({
+            company_id: "bridge-1",
+            auto_email: true,
+            synced_at: "2026-07-14T10:00:00Z",
+        });
+    });
+
+    it("activates the profile only AFTER email settings and series synced", async () => {
+        const result = await syncAutoIssueProfile(localCompany, true);
+        expect(result.ok).toBe(true);
+
+        const emailOrder = apiMocks.updateEmailSettings.mock.invocationCallOrder[0];
+        const seriesOrder = apiMocks.seriesList.mock.invocationCallOrder[0];
+        const profileOrder = apiMocks.putAutoIssueProfile.mock.invocationCallOrder[0];
+        expect(emailOrder).toBeLessThan(profileOrder);
+        expect(seriesOrder).toBeLessThan(profileOrder);
+    });
+
+    it("a failing prerequisite leaves auto-issue OFF (profile never written)", async () => {
+        apiMocks.updateEmailSettings.mockRejectedValue(new Error("smtp save failed"));
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+        const result = await syncAutoIssueProfile(localCompany, true);
+        expect(result).toEqual({ ok: false, error: "sync_failed" });
+        expect(apiMocks.putAutoIssueProfile).not.toHaveBeenCalled();
+
+        errorSpy.mockRestore();
+    });
+
+    it("missing company identity is reported distinctly from bridge failures", async () => {
+        apiMocks.ensureBridge.mockResolvedValue({ ok: true, bridgeCompanyId: null });
+        expect(await syncAutoIssueProfile(localCompany, true)).toEqual({
+            ok: false,
+            error: "company_identity_missing",
+        });
+        expect(await fetchAutoIssueProfileStatus("local-1")).toEqual({
+            ok: false,
+            error: "company_identity_missing",
+        });
+        expect(await disableAutoIssueProfile("local-1")).toEqual({
+            ok: false,
+            error: "company_identity_missing",
+        });
+
+        apiMocks.ensureBridge.mockResolvedValue({ ok: false });
+        expect(await syncAutoIssueProfile(localCompany, true)).toEqual({
+            ok: false,
+            error: "bridge_unavailable",
+        });
+    });
+
+    it("fetch status distinguishes no-profile from fetch failure", async () => {
+        apiMocks.getAutoIssueProfile.mockResolvedValue(null);
+        expect(await fetchAutoIssueProfileStatus("local-1")).toEqual({ ok: true, status: null });
+
+        apiMocks.getAutoIssueProfile.mockResolvedValue({
+            company_id: "bridge-1",
+            auto_email: false,
+            synced_at: "2026-07-14T10:00:00Z",
+        });
+        expect(await fetchAutoIssueProfileStatus("local-1")).toEqual({
+            ok: true,
+            status: { autoEmail: false, syncedAt: "2026-07-14T10:00:00Z" },
+        });
+
+        apiMocks.getAutoIssueProfile.mockRejectedValue(new Error("500"));
+        expect(await fetchAutoIssueProfileStatus("local-1")).toEqual({
+            ok: false,
+            error: "fetch_failed",
+        });
+    });
+
+    it("disable deletes the server profile", async () => {
+        apiMocks.deleteAutoIssueProfile.mockResolvedValue(undefined);
+        expect(await disableAutoIssueProfile("local-1")).toEqual({ ok: true });
+        expect(apiMocks.deleteAutoIssueProfile).toHaveBeenCalledWith("bridge-1");
     });
 });
 

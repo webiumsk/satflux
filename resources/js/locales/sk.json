@@ -210,6 +210,7 @@
     "auto_issue_synced_at": "Synchronizované: {date}",
     "auto_issue_sync_success": "Nastavenia synchronizované na server.",
     "auto_issue_sync_failed": "Synchronizácia zlyhala. Skúste znova.",
+    "auto_issue_identity_missing": "Najprv doplňte oficiálny názov firmy - je potrebný na prepojenie firmy na serveri.",
     "auto_issue_bridge_unavailable": "Firmu sa nepodarilo prepojiť na serveri. Skontrolujte pripojenie a skúste znova.",
     "auto_issue_disabled": "Automatická fakturácia vypnutá. Údaje uložené na serveri boli odstránené.",
     "integration_inbox_title": "WooCommerce inbox",

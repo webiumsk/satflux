@@ -27,6 +27,31 @@ export type AutoIssueProfileStatus = {
     syncedAt: string | null;
 };
 
+export type AutoIssueSyncError =
+    | "company_missing"
+    /** The local company has no legal name - fix the company profile first. */
+    | "company_identity_missing"
+    /** Transient bridge resolution failure (network/server) - retryable. */
+    | "bridge_unavailable"
+    | "sync_failed";
+
+type BridgeResolution =
+    | { ok: true; bridgeCompanyId: string }
+    | { ok: false; error: "company_identity_missing" | "bridge_unavailable" };
+
+async function resolveBridgeCompany(localCompanyId: string): Promise<BridgeResolution> {
+    const bridge = await ensureBridgeCompanyIdForLocalCompany(localCompanyId);
+    if (!bridge.ok) {
+        return { ok: false, error: "bridge_unavailable" };
+    }
+    if (!bridge.bridgeCompanyId) {
+        // ok:true with a null id is a DISTINCT state: the company lacks a
+        // usable legal identity - a user-fixable condition, not an outage.
+        return { ok: false, error: "company_identity_missing" };
+    }
+    return { ok: true, bridgeCompanyId: bridge.bridgeCompanyId };
+}
+
 type ServerProfile = { company_id: string; auto_email: boolean; synced_at: string | null };
 
 type ServerSeriesRow = {
@@ -94,10 +119,13 @@ export function buildLocalHighCounters(
 
 export async function fetchAutoIssueProfileStatus(
     localCompanyId: string,
-): Promise<{ ok: true; status: AutoIssueProfileStatus | null } | { ok: false }> {
-    const bridge = await ensureBridgeCompanyIdForLocalCompany(localCompanyId);
-    if (!bridge.ok || !bridge.bridgeCompanyId) {
-        return { ok: false };
+): Promise<
+    | { ok: true; status: AutoIssueProfileStatus | null }
+    | { ok: false; error: "company_identity_missing" | "bridge_unavailable" | "fetch_failed" }
+> {
+    const bridge = await resolveBridgeCompany(localCompanyId);
+    if (!bridge.ok) {
+        return bridge;
     }
 
     try {
@@ -111,7 +139,7 @@ export async function fetchAutoIssueProfileStatus(
                 : null,
         };
     } catch {
-        return { ok: false };
+        return { ok: false, error: "fetch_failed" };
     }
 }
 
@@ -153,15 +181,15 @@ async function syncServerSeriesFormats(
 export async function syncAutoIssueProfile(
     localCompany: Record<string, unknown>,
     autoEmail: boolean,
-): Promise<{ ok: true; status: AutoIssueProfileStatus } | { ok: false; error: string }> {
+): Promise<{ ok: true; status: AutoIssueProfileStatus } | { ok: false; error: AutoIssueSyncError }> {
     const localCompanyId = String(localCompany.id ?? "");
     if (!localCompanyId) {
         return { ok: false, error: "company_missing" };
     }
 
-    const bridge = await ensureBridgeCompanyIdForLocalCompany(localCompanyId);
-    if (!bridge.ok || !bridge.bridgeCompanyId) {
-        return { ok: false, error: "bridge_unavailable" };
+    const bridge = await resolveBridgeCompany(localCompanyId);
+    if (!bridge.ok) {
+        return bridge;
     }
     const bridgeCompanyId = bridge.bridgeCompanyId;
 
@@ -175,6 +203,17 @@ export async function syncAutoIssueProfile(
         const allSeries = seriesRows as unknown as EvoluNumberSeriesRow[];
         const typedCompanyId = localCompanyId as CompanyId;
 
+        // Prerequisites FIRST: the profile row is what activates headless
+        // auto-issue, so it must land only after the e-mail settings and the
+        // local series format are already on the server - a failure here
+        // leaves auto-issue off instead of live with wrong settings.
+        const emailSettings = emailSettingsForEphemeralSnapshot(localCompany);
+        if (emailSettings) {
+            await invoicingApi.companies.updateEmailSettings(bridgeCompanyId, emailSettings);
+        }
+
+        await syncServerSeriesFormats(bridgeCompanyId, typedCompanyId, allSeries);
+
         const profile = await invoicingApi.companies.putAutoIssueProfile<ServerProfile>(
             bridgeCompanyId,
             {
@@ -183,13 +222,6 @@ export async function syncAutoIssueProfile(
                 local_high_counters: buildLocalHighCounters(typedCompanyId, documents, allSeries),
             },
         );
-
-        const emailSettings = emailSettingsForEphemeralSnapshot(localCompany);
-        if (emailSettings) {
-            await invoicingApi.companies.updateEmailSettings(bridgeCompanyId, emailSettings);
-        }
-
-        await syncServerSeriesFormats(bridgeCompanyId, typedCompanyId, allSeries);
 
         return {
             ok: true,
@@ -206,10 +238,10 @@ export async function syncAutoIssueProfile(
 
 export async function disableAutoIssueProfile(
     localCompanyId: string,
-): Promise<{ ok: boolean }> {
-    const bridge = await ensureBridgeCompanyIdForLocalCompany(localCompanyId);
-    if (!bridge.ok || !bridge.bridgeCompanyId) {
-        return { ok: false };
+): Promise<{ ok: true } | { ok: false; error: AutoIssueSyncError }> {
+    const bridge = await resolveBridgeCompany(localCompanyId);
+    if (!bridge.ok) {
+        return bridge;
     }
 
     try {
@@ -217,6 +249,6 @@ export async function disableAutoIssueProfile(
         return { ok: true };
     } catch (error) {
         console.error("Auto-issue profile disable failed:", error);
-        return { ok: false };
+        return { ok: false, error: "sync_failed" };
     }
 }

@@ -127,11 +127,7 @@ async function runSync(quiet = false): Promise<void> {
         message.value = t("invoicing.auto_issue_sync_success");
       }
     } else {
-      message.value = t(
-        result.error === "bridge_unavailable"
-          ? "invoicing.auto_issue_bridge_unavailable"
-          : "invoicing.auto_issue_sync_failed",
-      );
+      message.value = t(syncErrorKey(result.error));
       messageIsError.value = true;
     }
   } finally {
@@ -150,18 +146,30 @@ async function onToggleEnabled(): Promise<void> {
 
   busy.value = true;
   message.value = "";
+  messageIsError.value = false;
   try {
     const result = await disableAutoIssueProfile(props.companyId);
     if (result.ok) {
       syncedAt.value = null;
       message.value = t("invoicing.auto_issue_disabled");
     } else {
-      message.value = t("invoicing.auto_issue_sync_failed");
+      message.value = t(syncErrorKey(result.error));
       messageIsError.value = true;
       enabled.value = true;
     }
   } finally {
     busy.value = false;
+  }
+}
+
+function syncErrorKey(error: string): string {
+  switch (error) {
+    case "company_identity_missing":
+      return "invoicing.auto_issue_identity_missing";
+    case "bridge_unavailable":
+      return "invoicing.auto_issue_bridge_unavailable";
+    default:
+      return "invoicing.auto_issue_sync_failed";
   }
 }
 

@@ -210,6 +210,7 @@
     "auto_issue_synced_at": "Synced: {date}",
     "auto_issue_sync_success": "Settings synced to the server.",
     "auto_issue_sync_failed": "Sync failed. Try again.",
+    "auto_issue_identity_missing": "Fill in the company legal name first - it is needed to link the company on the server.",
     "auto_issue_bridge_unavailable": "The company could not be linked on the server. Check your connection and try again.",
     "auto_issue_disabled": "Automatic invoicing disabled. Data already stored on the server was removed.",
     "integration_inbox_title": "WooCommerce inbox",
