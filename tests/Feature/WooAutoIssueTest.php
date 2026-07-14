@@ -163,7 +163,7 @@ class WooAutoIssueTest extends TestCase
             ->assertJsonPath('data.number', 'FV'.now()->format('Y').'0042');
     }
 
-    public function test_unpaid_order_is_not_auto_issued(): void
+    public function test_unpaid_order_is_not_auto_issued_and_names_the_reason(): void
     {
         Queue::fake();
         $this->createProfile();
@@ -175,12 +175,13 @@ class WooAutoIssueTest extends TestCase
             ->postJson('/api/integrations/woocommerce/documents', $payload)
             ->assertCreated()
             ->assertJsonPath('data.number', null)
-            ->assertJsonPath('data.auto_issued', false);
+            ->assertJsonPath('data.auto_issued', false)
+            ->assertJsonPath('data.auto_issue_skipped', 'not_paid');
 
         Queue::assertNothingPushed();
     }
 
-    public function test_paid_order_without_profile_stays_pending_unnumbered(): void
+    public function test_paid_order_without_profile_stays_pending_and_names_the_reason(): void
     {
         Queue::fake();
 
@@ -188,7 +189,8 @@ class WooAutoIssueTest extends TestCase
             ->postJson('/api/integrations/woocommerce/documents', $this->paidOrderPayload())
             ->assertCreated()
             ->assertJsonPath('data.number', null)
-            ->assertJsonPath('data.auto_issued', false);
+            ->assertJsonPath('data.auto_issued', false)
+            ->assertJsonPath('data.auto_issue_skipped', 'no_profile');
 
         Queue::assertNothingPushed();
     }

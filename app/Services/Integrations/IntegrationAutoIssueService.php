@@ -32,11 +32,22 @@ class IntegrationAutoIssueService
         protected EphemeralDocumentFactory $documentFactory,
     ) {}
 
+    /** @var array<string, CompanyAutoIssueProfile|null> */
+    protected array $profileCache = [];
+
+    /**
+     * Memoized per request: maybeAutoIssue() and the response diagnostics
+     * (skipReason) both need the profile of the same company.
+     */
     public function profileFor(Company $company): ?CompanyAutoIssueProfile
     {
-        return CompanyAutoIssueProfile::query()
-            ->where('company_id', $company->id)
-            ->first();
+        if (! array_key_exists($company->id, $this->profileCache)) {
+            $this->profileCache[$company->id] = CompanyAutoIssueProfile::query()
+                ->where('company_id', $company->id)
+                ->first();
+        }
+
+        return $this->profileCache[$company->id];
     }
 
     /**
@@ -147,6 +158,32 @@ class IntegrationAutoIssueService
         } finally {
             $lock->release();
         }
+    }
+
+    /**
+     * Why maybeAutoIssue() would skip this entry - surfaced to the plugin so
+     * a "stayed in inbox" order carries its own explanation (ops asked for
+     * this after a silent no-profile miss in production, 2026-07-14).
+     * Null when the entry was (or would be) auto-issued.
+     */
+    public function skipReason(Company $company, IntegrationDocumentInbox $entry): ?string
+    {
+        $payload = $entry->payload_json;
+
+        if (! empty($payload['number'])) {
+            return null;
+        }
+        if (($payload['type'] ?? 'invoice') !== 'invoice') {
+            return 'document_type';
+        }
+        if (empty($payload['is_paid'])) {
+            return 'not_paid';
+        }
+        if (! $this->profileFor($company)) {
+            return 'no_profile';
+        }
+
+        return 'issue_failed';
     }
 
     /**

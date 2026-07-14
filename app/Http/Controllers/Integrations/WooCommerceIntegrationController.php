@@ -74,7 +74,7 @@ class WooCommerceIntegrationController extends Controller
 
         if ($result instanceof IntegrationDocumentInbox) {
             return response()->json([
-                'data' => $this->documentService->serializeInboxEntry($result),
+                'data' => $this->documentService->serializeInboxEntryWithDiagnostics($integration, $result),
             ], 201);
         }
 
