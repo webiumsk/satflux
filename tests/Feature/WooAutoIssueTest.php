@@ -207,6 +207,7 @@ class WooAutoIssueTest extends TestCase
         $this->assertSame($first['inbox_id'], $second['inbox_id']);
         $this->assertSame($first['number'], $second['number']);
         $this->assertSame(1, DocumentNumberReservation::query()->where('company_id', $this->company->id)->count());
+        Queue::assertPushed(SendWooAutoInvoiceEmail::class, 1);
     }
 
     public function test_email_job_sends_via_company_mailer_and_stamps_evidence(): void

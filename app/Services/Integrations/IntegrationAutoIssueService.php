@@ -197,7 +197,7 @@ class IntegrationAutoIssueService
         } catch (\Throwable $e) {
             Log::warning('Woo auto-issue: could not stamp email result', [
                 'inbox_id' => $entry->id,
-                'exception' => get_class($e),
+                'exception' => $e,
             ]);
         }
     }

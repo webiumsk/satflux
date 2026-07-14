@@ -14,6 +14,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -39,6 +40,27 @@ class SendWooAutoInvoiceEmail implements ShouldQueue
     ) {}
 
     public function handle(
+        IntegrationAutoIssueService $autoIssueService,
+        BusinessDocumentEmailService $emailService,
+    ): void {
+        // Atomic claim: a timed-out attempt may still be sending when its
+        // retry starts - without the lock both would pass the emailed_at
+        // check and the customer would get the invoice twice. The lock is
+        // atomic on the production cache (redis); emailed_at below stays as
+        // the persistent cross-attempt dedupe once a send succeeded.
+        $lock = Cache::lock('woo-auto-invoice-email:'.$this->inboxEntryId, 300);
+        if (! $lock->get()) {
+            return;
+        }
+
+        try {
+            $this->sendClaimed($autoIssueService, $emailService);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    protected function sendClaimed(
         IntegrationAutoIssueService $autoIssueService,
         BusinessDocumentEmailService $emailService,
     ): void {
