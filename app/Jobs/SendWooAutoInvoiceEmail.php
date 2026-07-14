@@ -102,13 +102,17 @@ class SendWooAutoInvoiceEmail implements ShouldQueue
             return;
         }
 
-        $profile = $autoIssueService->profileFor($company);
-        if (! $profile) {
+        $context = $autoIssueService->resolveProfileContext($company);
+        if (! $context) {
             return;
         }
+        // Render + send from the profile's company - the same context the
+        // number was allocated on.
+        $profileCompany = $context['company'];
+        $profile = $context['profile'];
 
-        $snapshotCompany = $autoIssueService->buildCompany($company, $profile);
-        $document = $autoIssueService->buildDocument($company, $entry, $profile);
+        $snapshotCompany = $autoIssueService->buildCompany($profileCompany, $profile);
+        $document = $autoIssueService->buildDocument($profileCompany, $entry, $profile);
 
         $sender = $company->user;
 
@@ -121,7 +125,7 @@ class SendWooAutoInvoiceEmail implements ShouldQueue
 
         $autoIssueService->stampEmailResult($entry, true);
 
-        AuditLog::log('integration_inbox.auto_invoice_emailed', 'company', $company->id, [
+        AuditLog::log('integration_inbox.auto_invoice_emailed', 'company', $profileCompany->id, [
             'inbox_id' => $entry->id,
             'number' => $payload['number'],
         ]);

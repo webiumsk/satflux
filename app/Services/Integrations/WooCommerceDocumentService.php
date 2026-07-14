@@ -292,14 +292,14 @@ class WooCommerceDocumentService
             ]);
         }
 
-        $profile = $this->autoIssueService->profileFor($company);
-        if (! $profile) {
+        $context = $this->autoIssueService->resolveProfileContext($company);
+        if (! $context) {
             throw ValidationException::withMessages([
                 'document' => ['Auto-issue profile is not configured for this company.'],
             ]);
         }
 
-        $document = $this->autoIssueService->buildDocument($company, $inbox, $profile);
+        $document = $this->autoIssueService->buildDocument($context['company'], $inbox, $context['profile']);
 
         return [
             'binary' => $pdfService->renderBinary($document),

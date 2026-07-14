@@ -51,6 +51,71 @@ class IntegrationAutoIssueService
     }
 
     /**
+     * Auto-issue context: which company's profile AND number series to use.
+     *
+     * The integration may be linked to a DIFFERENT server company row than
+     * the bridge company the client synced the profile to (the client
+     * resolves bridge companies by legal identity and creates them on
+     * demand; legacy integrations point at rows from the connect era -
+     * production 2026-07-14: auto-issue silently skipped while the profile
+     * AND the browser allocator both lived on the bridge row). Fallback:
+     * when the integration company has no profile and its OWNER has exactly
+     * ONE, use that one - the number then comes from the very series the
+     * merchant's browser allocates on, keeping the sequence consistent.
+     * With several profiles nothing is guessed (ambiguous_profile): the
+     * store must be linked to the right company.
+     *
+     * @return array{company: Company, profile: CompanyAutoIssueProfile}|null
+     */
+    public function resolveProfileContext(Company $company): ?array
+    {
+        $direct = $this->profileFor($company);
+        if ($direct) {
+            return ['company' => $company, 'profile' => $direct];
+        }
+
+        $userProfiles = $this->ownerProfiles($company);
+        if ($userProfiles->count() !== 1) {
+            return null;
+        }
+
+        $profile = $userProfiles->first();
+        $profileCompany = $profile?->company;
+        if (! $profile || ! $profileCompany instanceof Company) {
+            return null;
+        }
+
+        return ['company' => $profileCompany, 'profile' => $profile];
+    }
+
+    public function ownerProfileCount(Company $company): int
+    {
+        return $this->ownerProfiles($company)->count();
+    }
+
+    /** @var array<string, \Illuminate\Database\Eloquent\Collection<int, CompanyAutoIssueProfile>> */
+    protected array $ownerProfilesCache = [];
+
+    /**
+     * All auto-issue profiles of the company's owner, memoized per request -
+     * resolveProfileContext() and the skipReason() diagnostics both need it.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, CompanyAutoIssueProfile>
+     */
+    protected function ownerProfiles(Company $company): \Illuminate\Database\Eloquent\Collection
+    {
+        $userId = (string) $company->user_id;
+        if (! array_key_exists($userId, $this->ownerProfilesCache)) {
+            $this->ownerProfilesCache[$userId] = CompanyAutoIssueProfile::query()
+                ->whereHas('company', fn ($query) => $query->where('user_id', $userId))
+                ->with('company')
+                ->get();
+        }
+
+        return $this->ownerProfilesCache[$userId];
+    }
+
+    /**
      * Issue + queue delivery for a freshly enqueued PAID inbox entry.
      * Idempotent: an already numbered payload is returned unchanged.
      */
@@ -68,10 +133,14 @@ class IntegrationAutoIssueService
             return $entry;
         }
 
-        $profile = $this->profileFor($company);
-        if (! $profile) {
+        $context = $this->resolveProfileContext($company);
+        if (! $context) {
             return $entry;
         }
+        // Allocate on the PROFILE's company - the same series the merchant's
+        // browser uses - never on a possibly divergent integration link.
+        $allocatorCompany = $context['company'];
+        $profile = $context['profile'];
 
         // Shared allocator: reservation is idempotent per issue request and
         // raises the counter floor the local-first client allocator respects,
@@ -95,7 +164,7 @@ class IntegrationAutoIssueService
         // yet" between findReservation() and reserveNumberForIssue() and
         // double-queue the customer email. Unrelated issue request ids use
         // distinct locks and are unaffected.
-        $lock = Cache::lock('woo-auto-issue:'.$company->id.':'.$issueRequestId, 30);
+        $lock = Cache::lock('woo-auto-issue:'.$allocatorCompany->id.':'.$issueRequestId, 30);
         try {
             $lock->block(10);
         } catch (LockTimeoutException) {
@@ -110,16 +179,16 @@ class IntegrationAutoIssueService
                 return $entry;
             }
 
-            $alreadyReserved = $this->sequenceService->findReservation($company, 'invoice', $issueRequestId) !== null;
+            $alreadyReserved = $this->sequenceService->findReservation($allocatorCompany, 'invoice', $issueRequestId) !== null;
 
             $reservation = $this->sequenceService->reserveNumberForIssue(
-                $company,
+                $allocatorCompany,
                 'invoice',
                 $issueRequestId,
                 $localHighCounter,
             );
             $this->sequenceService->confirmReservation(
-                $company,
+                $allocatorCompany,
                 'invoice',
                 $issueRequestId,
                 hash('sha256', json_encode($payload) ?: ''),
@@ -144,7 +213,7 @@ class IntegrationAutoIssueService
             $entry->payload_json = $payload;
             $entry->save();
 
-            AuditLog::log('integration_inbox.auto_issued', 'company', $company->id, [
+            AuditLog::log('integration_inbox.auto_issued', 'company', $allocatorCompany->id, [
                 'inbox_id' => $entry->id,
                 'number' => $reservation->number,
                 'email_queued' => $shouldEmail,
@@ -179,8 +248,8 @@ class IntegrationAutoIssueService
         if (empty($payload['is_paid'])) {
             return 'not_paid';
         }
-        if (! $this->profileFor($company)) {
-            return 'no_profile';
+        if (! $this->resolveProfileContext($company)) {
+            return $this->ownerProfileCount($company) > 1 ? 'ambiguous_profile' : 'no_profile';
         }
 
         return 'issue_failed';

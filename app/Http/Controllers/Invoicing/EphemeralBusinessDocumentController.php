@@ -444,13 +444,39 @@ class EphemeralBusinessDocumentController extends Controller
             ]);
         }
 
+        $evoluDocumentId = $request->input('evolu_document_id');
+
+        // Reuse a still-payable checkout for the same document (same amount
+        // and currency) - every view of an unpaid invoice used to mint a
+        // fresh BTCPay invoice (production 2026-07-14).
+        if (is_string($evoluDocumentId) && $evoluDocumentId !== '') {
+            $pending = $this->ephemeralBtcpayCheckoutService->findLatestPending($user, $store, $evoluDocumentId);
+            if (
+                $pending
+                && abs((float) $pending->amount - (float) $document->total) < 0.005
+                && strcasecmp((string) $pending->currency, (string) $document->currency) === 0
+            ) {
+                $reused = $this->btcPayService->reusableEphemeralCheckout($store, $pending->btcpay_invoice_id);
+                if ($reused !== null) {
+                    [$auditType, $auditId] = $this->auditTarget($user, $auditCompany, $snapshotCompany);
+                    AuditLog::log('business_document.ephemeral_btcpay_checkout', $auditType, $auditId, [
+                        'document_type' => (string) $request->input('document.type'),
+                        'store_id' => $store->id,
+                        'btcpay_invoice_id' => $reused['btcpay_invoice_id'],
+                        'company_less' => $auditCompany === null,
+                        'reused' => true,
+                    ], $user->id);
+
+                    return response()->json(['data' => $reused]);
+                }
+            }
+        }
+
         $result = $this->btcPayService->createEphemeralCheckout(
             $document,
             $store,
             $request->input('evolu_document_id'),
         );
-
-        $evoluDocumentId = $request->input('evolu_document_id');
         if (
             is_string($evoluDocumentId)
             && $evoluDocumentId !== ''

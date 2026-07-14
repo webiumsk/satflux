@@ -34,6 +34,26 @@ class EphemeralBtcpayCheckoutService
         );
     }
 
+    /**
+     * Newest still-pending checkout of a document - the reuse candidate that
+     * keeps repeated invoice views from minting a new BTCPay invoice each
+     * time (production 2026-07-14: every open of an unpaid invoice created
+     * another "New" BTCPay invoice).
+     */
+    public function findLatestPending(
+        User $user,
+        Store $store,
+        string $evoluDocumentId,
+    ): ?EphemeralBtcpayCheckout {
+        return EphemeralBtcpayCheckout::query()
+            ->where('user_id', $user->id)
+            ->where('store_id', $store->id)
+            ->where('evolu_document_id', $evoluDocumentId)
+            ->where('status', EphemeralBtcpayCheckout::STATUS_PENDING)
+            ->latest('created_at')
+            ->first();
+    }
+
     public function findForUser(
         User $user,
         string $evoluDocumentId,
