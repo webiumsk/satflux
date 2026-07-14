@@ -250,6 +250,7 @@ Route::middleware(['throttle:60,1', AuthenticateWooCommerceIntegration::class])
         Route::post('/contacts/upsert', [WooCommerceIntegrationController::class, 'upsertContact']);
         Route::post('/documents', [WooCommerceIntegrationController::class, 'createDocument']);
         Route::get('/documents/{documentId}', [WooCommerceIntegrationController::class, 'showDocument']);
+        Route::get('/documents/{documentId}/pdf', [WooCommerceIntegrationController::class, 'documentPdf']);
         Route::post('/documents/{documentId}/issue', [WooCommerceIntegrationController::class, 'issueDocument']);
     });
 
@@ -476,6 +477,14 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::post('/companies/{company}/integration-inbox/{inbox}/dismiss', [IntegrationDocumentInboxController::class, 'dismiss'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/integration-inbox/{inbox}/imported', [IntegrationDocumentInboxController::class, 'markImported'])
+                ->middleware(EnsureCompanyOwnership::class);
+
+            // Headless auto-issue profile (WooCommerce paid orders, P3).
+            Route::get('/companies/{company}/auto-issue-profile', [\App\Http\Controllers\Invoicing\CompanyAutoIssueProfileController::class, 'show'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::put('/companies/{company}/auto-issue-profile', [\App\Http\Controllers\Invoicing\CompanyAutoIssueProfileController::class, 'update'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::delete('/companies/{company}/auto-issue-profile', [\App\Http\Controllers\Invoicing\CompanyAutoIssueProfileController::class, 'destroy'])
                 ->middleware(EnsureCompanyOwnership::class);
 
             Route::get('/stores/{store}/integration-inbox', [IntegrationDocumentInboxController::class, 'indexForStore'])

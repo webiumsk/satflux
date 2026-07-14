@@ -162,7 +162,7 @@ class IntegrationDocumentInboxService
 
     public function issuePendingEntry(IntegrationDocumentInbox $entry, Company $company): IntegrationDocumentInbox
     {
-        $payload = is_array($entry->payload_json) ? $entry->payload_json : [];
+        $payload = $entry->payload_json;
 
         if (! empty($payload['number'])) {
             return $entry;
@@ -228,7 +228,7 @@ class IntegrationDocumentInboxService
      */
     public function serializeEntry(IntegrationDocumentInbox $entry): array
     {
-        $payload = is_array($entry->payload_json) ? $entry->payload_json : [];
+        $payload = $entry->payload_json;
 
         return [
             'inbox_id' => $entry->id,
@@ -237,6 +237,13 @@ class IntegrationDocumentInboxService
             'status' => $entry->status->value,
             'created_at' => $entry->created_at?->toIso8601String(),
             'payload' => $payload,
+            // Auto-issue evidence (P3): present when the server issued the
+            // paid order headlessly; the plugin notes these on the WC order.
+            'number' => $payload['number'] ?? null,
+            'auto_issued' => ! empty($payload['auto_issued_at']),
+            'email_queued' => ! empty($payload['email_queued_at']),
+            'emailed' => ! empty($payload['emailed_at']),
+            'pdf_available' => ! empty($payload['number']),
             'summary' => [
                 'type' => (string) ($payload['type'] ?? 'invoice'),
                 'currency' => (string) ($payload['currency'] ?? 'EUR'),
