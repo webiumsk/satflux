@@ -23,6 +23,19 @@
       {{ t('invoicing.integration_inbox_relay_hint') }}
     </p>
 
+    <p
+      v-if="showAutoIssueHint"
+      class="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+    >
+      {{ t('invoicing.integration_inbox_auto_issue_hint') }}
+      <RouterLink
+        :to="{ name: 'invoicing-company', params: { companyId } }"
+        class="ml-1 font-medium underline"
+      >
+        {{ t('invoicing.integration_inbox_auto_issue_hint_link') }}
+      </RouterLink>
+    </p>
+
     <ul v-if="items.length" class="mt-3 space-y-2">
       <li
         v-for="item in items"
@@ -79,6 +92,7 @@ import {
   reconcileIntegrationInboxWithLocalDocuments,
   type IntegrationInboxEntry,
 } from '@/evolu/integrationInboxImport';
+import { isPaidWooCommercePayload } from '@/evolu/integrationInboxPaid';
 import { ensureEvoluBoundToAccountSeed } from '@/evolu/bootstrap';
 import { pullInvoicingFromRelay } from '@/evolu/relaySyncWait';
 
@@ -97,6 +111,17 @@ const { t } = useI18n();
 const evolu = useInvoicingEvolu();
 
 const items = ref<IntegrationInboxEntry[]>([]);
+
+// A PAID order sitting in the inbox WITHOUT a number means headless
+// auto-issue did not run - most likely the opt-in toggle in company
+// settings is off. Point the merchant straight at it.
+const showAutoIssueHint = computed(() =>
+  items.value.some(
+    (item) =>
+      !String(item.payload?.number ?? '').trim()
+      && isPaidWooCommercePayload(item.payload),
+  ),
+);
 const loading = ref(false);
 const error = ref('');
 const busyId = ref<string | null>(null);

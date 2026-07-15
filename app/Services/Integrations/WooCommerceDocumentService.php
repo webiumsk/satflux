@@ -49,6 +49,10 @@ class WooCommerceDocumentService
                 'name' => $company->legal_name,
             ] : null,
             'invoicing_enabled' => $company && $this->subscriptionService->canUseBusinessInvoicing($user),
+            // Headless auto-issue is opt-in (profile synced from the client);
+            // the plugin uses this flag to tell the merchant it is OFF.
+            'auto_issue_enabled' => $company !== null
+                && $this->autoIssueService->resolveProfileContext($company) !== null,
             'inbox_mode' => $inboxMode,
             'local_first' => (bool) config('invoicing.local_first', false),
             'uses_server_invoicing' => $company ? $company->usesServerInvoicing() : null,

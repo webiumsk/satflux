@@ -187,6 +187,48 @@ class EphemeralBusinessDocumentBtcpayTest extends TestCase
     }
 
     #[Test]
+    public function existing_checkout_lookup_never_mints_a_btcpay_invoice(): void
+    {
+        Http::fake([
+            '*/invoices/btcpay-inv-ephemeral' => Http::response([
+                'id' => 'btcpay-inv-ephemeral',
+                'status' => 'New',
+                'checkoutLink' => 'https://btcpay.example/i/ephemeral',
+            ], 200),
+            '*' => Http::response([
+                'id' => 'btcpay-inv-ephemeral',
+                'checkoutLink' => 'https://btcpay.example/i/ephemeral',
+            ], 200),
+        ]);
+
+        $user = $this->createProUser();
+        $user->update(['btcpay_api_key' => 'test-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'btcpay_store_id' => 'btcpay-store-1',
+        ]);
+
+        $payload = $this->ephemeralPayload();
+        $payload['store_id'] = $store->id;
+        $payload['evolu_document_id'] = 'evolu-doc-123';
+        $payload['document']['payment_btc_enabled'] = true;
+
+        // Viewing an invoice without a checkout: nothing exists, nothing is
+        // created - no BTCPay call at all.
+        $this->actingAs($user)->postJson('/api/invoicing/ephemeral/btcpay-checkout/existing', $payload)
+            ->assertOk()
+            ->assertJsonPath('data', null);
+        Http::assertSentCount(0);
+
+        // Explicit create, then the view lookup returns the SAME invoice.
+        $this->actingAs($user)->postJson('/api/invoicing/ephemeral/btcpay-checkout', $payload)->assertOk();
+        $this->actingAs($user)->postJson('/api/invoicing/ephemeral/btcpay-checkout/existing', $payload)
+            ->assertOk()
+            ->assertJsonPath('data.btcpay_invoice_id', 'btcpay-inv-ephemeral');
+        $this->assertDatabaseCount('ephemeral_btcpay_checkouts', 1);
+    }
+
+    #[Test]
     public function authenticated_user_can_poll_ephemeral_btcpay_status(): void
     {
         $user = $this->createProUser();
