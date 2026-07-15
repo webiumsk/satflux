@@ -23,6 +23,7 @@ import { resolveImportSettleActions } from "./integrationInboxPaid";
 import { resolveIntegrationInboxBasePath } from "./integrationInboxPaths";
 import {
     findLocalDocumentForInboxEntry,
+    resolveLinkedSourceDocumentId,
     stableDocumentIdFromInboxUuid,
 } from "./inboxDocumentStableId";
 import { waitForInvoicingDataSettled } from "./relaySyncWait";
@@ -262,6 +263,34 @@ async function markImportedDocumentPaid(
     return { ok: true };
 }
 
+/**
+ * The customer's payment settles the linked proforma together with the final
+ * invoice. Best-effort: the proforma may not be imported yet (or was deleted),
+ * and a failure here must never abort the invoice import itself.
+ */
+async function markLinkedProformaPaid(
+    evolu: Evolu<InvoicingLocalSchema>,
+    sourceDocumentId: DocumentId,
+    payload: Record<string, unknown>,
+): Promise<void> {
+    try {
+        const rows = await evolu.loadQuery(allDocumentsQuery);
+        const documents = rows as unknown as EvoluDocumentRow[];
+        const proforma = documents.find((row) => row.id === sourceDocumentId);
+        if (!proforma) {
+            return;
+        }
+        const orderTotal = Number(payload.order_total);
+        const amount =
+            Number.isFinite(orderTotal) && orderTotal > 0
+                ? orderTotal
+                : parseFloat(proforma.total ?? "0");
+        markLocalDocumentPaidWithAmount(evolu, sourceDocumentId, documents, amount);
+    } catch {
+        // Best-effort by design.
+    }
+}
+
 function resolveStoreIdForApi(
     linkedStoreId: string | null | undefined,
     payload: Record<string, unknown>,
@@ -319,9 +348,16 @@ export async function importIntegrationInboxEntry(
     const existingDocument =
         existingDocuments.find((row) => row.id === stableDocumentId) ?? null;
 
+    // Deferred-payment flow: the final invoice references the proforma's
+    // inbox uuid; the same stable-id derivation both sides use for imports
+    // turns it into the proforma's LOCAL document id, so the link works
+    // regardless of which entry is imported first.
+    const sourceDocumentId = resolveLinkedSourceDocumentId(entry.payload);
+
     const saveResult = saveLocalDocument(evolu, typedCompanyId, documentPayload, {
         documentId: stableDocumentId,
         existingDocument,
+        sourceDocumentId,
         ...vat,
         existingLines,
     });
@@ -358,6 +394,9 @@ export async function importIntegrationInboxEntry(
         const markResult = await markImportedDocumentPaid(evolu, savedDocumentId, entry.payload);
         if (!markResult.ok) {
             return markResult;
+        }
+        if (sourceDocumentId) {
+            await markLinkedProformaPaid(evolu, sourceDocumentId, entry.payload);
         }
     }
 

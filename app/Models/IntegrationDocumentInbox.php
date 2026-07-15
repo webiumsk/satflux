@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $woocommerce_order_id
  * @property string $evolu_document_id
  * @property array<string, mixed> $payload_json
+ * @property string $document_type
  * @property IntegrationDocumentInboxStatus $status
  */
 class IntegrationDocumentInbox extends Model
@@ -28,6 +29,7 @@ class IntegrationDocumentInbox extends Model
         'woocommerce_order_id',
         'evolu_document_id',
         'payload_json',
+        'document_type',
         'status',
     ];
 

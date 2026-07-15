@@ -20,6 +20,14 @@ export function stableDocumentIdFromInboxUuid(inboxEvoluUuid: string): DocumentI
     return parsed.ok ? parsed.value : null;
 }
 
+/** Local id of the linked source document (the proforma) referenced by a final-invoice payload. */
+export function resolveLinkedSourceDocumentId(
+    payload: Record<string, unknown>,
+): DocumentId | null {
+    const sourceUuid = String(payload?.source_evolu_document_id ?? "").trim();
+    return sourceUuid ? stableDocumentIdFromInboxUuid(sourceUuid) : null;
+}
+
 export function findLocalDocumentForInboxEntry(
     documents: ReadonlyArray<EvoluDocumentRow>,
     companyId: CompanyId,
@@ -33,12 +41,24 @@ export function findLocalDocumentForInboxEntry(
         }
     }
 
+    // One order may carry BOTH a proforma and its final invoice, so the
+    // order-scoped fallbacks below must never match across document types
+    // (an invoice entry matching the imported proforma would be silently
+    // cleared as already-imported). Rows without a known type stay eligible
+    // (legacy imports).
+    const entryType = String(entry.payload?.type ?? "invoice");
+    const typeMatches = (row: EvoluDocumentRow): boolean => {
+        const rowType = String(row.documentType ?? "").trim();
+        return rowType === "" || rowType === entryType;
+    };
+
     const orderId = entry.woocommerce_order_id;
     if (orderId != null && orderId > 0) {
         const orderTag = `woocommerce_order_id=${orderId}`;
         const byOrder = documents.find(
             (row) =>
                 row.companyId === companyId
+                && typeMatches(row)
                 && String(row.internalNote ?? "").includes(orderTag),
         );
         if (byOrder) {
@@ -52,6 +72,7 @@ export function findLocalDocumentForInboxEntry(
         if (Array.isArray(tagsJson) && tagsJson.map(String).includes(wcTag)) {
             const byTags = documents.find((row) => {
                 if (row.companyId !== companyId) return false;
+                if (!typeMatches(row)) return false;
                 try {
                     const tags = JSON.parse(String(row.tagsJson ?? "[]")) as unknown;
                     return Array.isArray(tags) && tags.map(String).includes(wcTag);

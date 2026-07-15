@@ -30,19 +30,23 @@ class IntegrationDocumentInboxService
         $company = $this->resolveCompany($integration);
         $store = $integration->store;
 
+        $type = BusinessDocumentType::tryFrom((string) ($payload['type'] ?? 'invoice')) ?? BusinessDocumentType::Invoice;
+
         $wcOrderId = isset($payload['woocommerce_order_id']) ? (int) $payload['woocommerce_order_id'] : null;
         if ($wcOrderId !== null && $wcOrderId > 0) {
+            // Dedupe per (order, TYPE): one order legitimately carries both a
+            // proforma (deferred payment) and its later final invoice - the
+            // invoice request must never return the pending proforma entry.
             $existing = IntegrationDocumentInbox::query()
                 ->where('store_integration_id', $integration->id)
                 ->where('woocommerce_order_id', $wcOrderId)
+                ->where('document_type', $type->value)
                 ->where('status', IntegrationDocumentInboxStatus::Pending)
                 ->first();
             if ($existing) {
                 return $this->serializeEntry($existing);
             }
         }
-
-        $type = BusinessDocumentType::tryFrom((string) ($payload['type'] ?? 'invoice')) ?? BusinessDocumentType::Invoice;
         if (! $type->isMvpEnabled()) {
             throw ValidationException::withMessages(['type' => ['Document type not supported.']]);
         }
@@ -88,6 +92,9 @@ class IntegrationDocumentInboxService
             'order_total',
             'discount_percent',
             'btcpay_invoice_id',
+            // Link to the earlier proforma entry (deferred-payment flow) -
+            // the client import resolves it to a local sourceDocumentId.
+            'source_evolu_document_id',
         ] as $passthroughKey) {
             if (array_key_exists($passthroughKey, $payload)) {
                 $documentPayload[$passthroughKey] = $payload[$passthroughKey];
@@ -106,6 +113,7 @@ class IntegrationDocumentInboxService
             'woocommerce_order_id' => $wcOrderId,
             'evolu_document_id' => (string) Str::uuid(),
             'payload_json' => $documentPayload,
+            'document_type' => $type->value,
             'status' => IntegrationDocumentInboxStatus::Pending,
         ]);
 

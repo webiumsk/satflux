@@ -115,8 +115,19 @@ class IntegrationAutoIssueService
         return $this->ownerProfilesCache[$userId];
     }
 
+    /** Document types the headless flow issues, with their payment policy. */
+    protected const AUTO_ISSUE_TYPES = [
+        // A real invoice is only issued once the order is PAID.
+        'invoice' => ['requires_paid' => true],
+        // A proforma is the payment REQUEST (COD / bank transfer orders) -
+        // it is issued precisely while unpaid.
+        'proforma' => ['requires_paid' => false],
+    ];
+
     /**
-     * Issue + queue delivery for a freshly enqueued PAID inbox entry.
+     * Issue + queue delivery for a freshly enqueued inbox entry: paid orders
+     * get an invoice, deferred-payment orders a proforma (per-gateway
+     * mapping in the WooCommerce plugin decides which type arrives).
      * Idempotent: an already numbered payload is returned unchanged.
      */
     public function maybeAutoIssue(Company $company, IntegrationDocumentInbox $entry): IntegrationDocumentInbox
@@ -126,10 +137,12 @@ class IntegrationAutoIssueService
         if (! empty($payload['number'])) {
             return $entry;
         }
-        if (($payload['type'] ?? 'invoice') !== 'invoice') {
+        $documentType = (string) ($payload['type'] ?? 'invoice');
+        $policy = self::AUTO_ISSUE_TYPES[$documentType] ?? null;
+        if ($policy === null) {
             return $entry;
         }
-        if (empty($payload['is_paid'])) {
+        if ($policy['requires_paid'] && empty($payload['is_paid'])) {
             return $entry;
         }
 
@@ -149,15 +162,15 @@ class IntegrationAutoIssueService
         // the shared allocator existed (post-allocator issues are protected
         // by the reservation floor itself).
         $localHighCounters = $profile->profile_json['local_high_counters'] ?? [];
-        $localHighCounter = is_array($localHighCounters) && isset($localHighCounters['invoice'])
-            ? (int) $localHighCounters['invoice']
+        $localHighCounter = is_array($localHighCounters) && isset($localHighCounters[$documentType])
+            ? (int) $localHighCounters[$documentType]
             : null;
 
         // Keyed by the WooCommerce ORDER, not the inbox entry: a re-sent
         // order creates a fresh inbox row, and a per-entry key would burn a
         // new number each time (observed in production as sequence gaps).
         // With the order key the re-send is stamped with the SAME number.
-        $issueRequestId = $this->issueRequestIdFor($entry);
+        $issueRequestId = $this->issueRequestIdFor($entry, $documentType);
 
         // Atomic guard (Cache::lock, redis in production): concurrent webhook
         // deliveries for the same order must not both observe "no reservation
@@ -179,17 +192,17 @@ class IntegrationAutoIssueService
                 return $entry;
             }
 
-            $alreadyReserved = $this->sequenceService->findReservation($allocatorCompany, 'invoice', $issueRequestId) !== null;
+            $alreadyReserved = $this->sequenceService->findReservation($allocatorCompany, $documentType, $issueRequestId) !== null;
 
             $reservation = $this->sequenceService->reserveNumberForIssue(
                 $allocatorCompany,
-                'invoice',
+                $documentType,
                 $issueRequestId,
                 $localHighCounter,
             );
             $this->sequenceService->confirmReservation(
                 $allocatorCompany,
-                'invoice',
+                $documentType,
                 $issueRequestId,
                 hash('sha256', json_encode($payload) ?: ''),
                 // NB: document_number_reservations.confirmed_format_version is varchar(16).
@@ -242,10 +255,12 @@ class IntegrationAutoIssueService
         if (! empty($payload['number'])) {
             return null;
         }
-        if (($payload['type'] ?? 'invoice') !== 'invoice') {
+        $documentType = (string) ($payload['type'] ?? 'invoice');
+        $policy = self::AUTO_ISSUE_TYPES[$documentType] ?? null;
+        if ($policy === null) {
             return 'document_type';
         }
-        if (empty($payload['is_paid'])) {
+        if ($policy['requires_paid'] && empty($payload['is_paid'])) {
             return 'not_paid';
         }
         if (! $this->resolveProfileContext($company)) {
@@ -257,16 +272,27 @@ class IntegrationAutoIssueService
 
     /**
      * Reservation idempotency key: per WooCommerce order when known (stable
-     * across re-sent inbox entries), per inbox entry otherwise.
+     * across re-sent inbox entries), per inbox entry otherwise. The invoice
+     * keeps the historical un-suffixed key so pre-existing reservations stay
+     * idempotent; other types (proforma) are suffixed so ONE order can carry
+     * a proforma AND its final invoice on separate sequences.
      */
-    public function issueRequestIdFor(IntegrationDocumentInbox $entry): string
+    public function issueRequestIdFor(IntegrationDocumentInbox $entry, string $documentType = 'invoice'): string
     {
+        // Short suffixes: issue_request_id is varchar(64) and the base key
+        // already carries a 36-char integration uuid + the order id.
+        $suffix = match ($documentType) {
+            'invoice' => '',
+            'proforma' => ':pf',
+            default => ':'.substr(hash('crc32b', $documentType), 0, 4),
+        };
+
         $orderId = (int) ($entry->woocommerce_order_id ?? 0);
         if ($orderId > 0) {
-            return 'woo-order:'.$entry->store_integration_id.':'.$orderId;
+            return 'woo-order:'.$entry->store_integration_id.':'.$orderId.$suffix;
         }
 
-        return 'woo-inbox:'.$entry->evolu_document_id;
+        return 'woo-inbox:'.$entry->evolu_document_id.$suffix;
     }
 
     /**
@@ -294,7 +320,9 @@ class IntegrationAutoIssueService
                 'payment_btc_enabled' => (bool) ($payload['payment_btc_enabled'] ?? false),
                 'payment_bank_enabled' => (bool) ($payload['payment_bank_enabled'] ?? true),
                 'discount_percent' => (float) ($payload['discount_percent'] ?? 0),
-                'amount_paid' => (float) ($payload['order_total'] ?? 0),
+                // A proforma is a payment request - only PAID payloads carry
+                // the settled amount into the render.
+                'amount_paid' => ! empty($payload['is_paid']) ? (float) ($payload['order_total'] ?? 0) : 0.0,
             ],
             'lines' => is_array($payload['lines'] ?? null) ? $payload['lines'] : [],
             'store_id' => $payload['store_id'] ?? null,

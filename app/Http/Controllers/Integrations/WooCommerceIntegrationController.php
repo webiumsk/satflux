@@ -62,12 +62,15 @@ class WooCommerceIntegrationController extends Controller
             'lines.*.quantity' => ['required', 'numeric', 'min:0'],
             'lines.*.unit_price' => ['required', 'numeric'],
             'lines.*.tax_rate' => ['sometimes', 'numeric'],
-            'payment_method' => ['sometimes', 'string', 'max:64'],
+            // Empty strings from the WP plugin arrive as null
+            // (convertEmptyStringsToNull) - optional strings must be nullable.
+            'payment_method' => ['sometimes', 'nullable', 'string', 'max:64'],
             'is_paid' => ['sometimes', 'boolean'],
-            'paid_at' => ['sometimes', 'string', 'max:64'],
+            'paid_at' => ['sometimes', 'nullable', 'string', 'max:64'],
             'order_total' => ['sometimes', 'numeric'],
             'discount_percent' => ['sometimes', 'numeric', 'min:0'],
-            'btcpay_invoice_id' => ['sometimes', 'string', 'max:128'],
+            'btcpay_invoice_id' => ['sometimes', 'nullable', 'string', 'max:128'],
+            'source_evolu_document_id' => ['sometimes', 'nullable', 'uuid'],
         ]);
 
         $result = $this->documentService->createDocument($integration, $validated);
