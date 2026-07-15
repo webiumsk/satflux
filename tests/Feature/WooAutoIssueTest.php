@@ -173,7 +173,8 @@ class WooAutoIssueTest extends TestCase
         $payload = $this->paidOrderPayload();
         $payload['type'] = 'proforma';
         $payload['is_paid'] = false;
-        unset($payload['paid_at']);
+        // The plugin serializes unpaid orders with an explicit null.
+        $payload['paid_at'] = null;
 
         $response = $this->withHeader('Authorization', 'Bearer '.$this->token)
             ->postJson('/api/integrations/woocommerce/documents', $payload)
