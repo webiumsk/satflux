@@ -70,9 +70,9 @@ const i18n = createI18n({
     legacy: false,
     locale: getLocale(),
     fallbackLocale: defaultLocale,
-    messages: {
-        en,
-    },
+    // Only en is bundled; the cast widens the locale type so the lazily
+    // loaded locales are assignable to i18n.global.locale.
+    messages: { en } as Record<SupportedLocale, typeof en>,
     missingWarn: false,
     fallbackWarn: false,
 });
