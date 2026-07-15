@@ -91,6 +91,20 @@ describe("resolveImportSettleActions (auto-issue convergence)", () => {
             markPaid: false,
         });
     });
+
+    it("deferred-payment proforma: applies the PF number, never marks paid", () => {
+        const actions = resolveImportSettleActions({
+            type: "proforma",
+            number: "PF20260007",
+            is_paid: false,
+            payment_method: "cod",
+        });
+        expect(actions).toEqual({
+            reservedNumber: "PF20260007",
+            issueLocally: false,
+            markPaid: false,
+        });
+    });
 });
 
 describe("buildAutoIssueCompanyPayload", () => {
