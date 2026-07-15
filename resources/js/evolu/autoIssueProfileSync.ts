@@ -244,6 +244,24 @@ export async function syncAutoIssueProfile(
     }
 }
 
+/**
+ * Re-sync the server profile after company/app/e-mail settings changed
+ * elsewhere in the UI. No-op when auto-issue is not enabled - safe to fire
+ * and forget from any save handler.
+ */
+export async function resyncAutoIssueProfileIfEnabled(
+    localCompany: Record<string, unknown>,
+): Promise<void> {
+    const companyId = String(localCompany.id ?? "");
+    if (!companyId) {
+        return;
+    }
+    const result = await fetchAutoIssueProfileStatus(companyId);
+    if (result.ok && result.status) {
+        await syncAutoIssueProfile(localCompany, result.status.autoEmail);
+    }
+}
+
 export async function disableAutoIssueProfile(
     localCompanyId: string,
 ): Promise<{ ok: true } | { ok: false; error: AutoIssueSyncError }> {

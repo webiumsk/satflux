@@ -3288,6 +3288,8 @@
     "email_ph_qr": "Código QR",
     "app_tab_notes": "Notas",
     "app_tab_pairing": "Emparejamiento automático",
+    "app_tab_woocommerce": "WooCommerce",
+    "auto_issue_server_mode_note": "Esta empresa usa facturación en el servidor: los pedidos de WooCommerce se emiten automáticamente sin configuración adicional.",
     "app_tab_series": "Series numéricas",
     "series_settings_title": "Series numéricas",
     "series_col_name": "Nombre",
