@@ -62,7 +62,7 @@
                 @endif
             @endif
             @if($company->tax_id){{ __('Tax no.') }}: {{ $company->tax_id }}<br>@endif
-            @if($company->vat_number){{ __('VAT ID') }}: {{ $company->vat_number }}<br>@endif
+            @if($company->vat_number){{ $taxIdLabel ?? __('VAT ID') }}: {{ $company->vat_number }}<br>@endif
             @if($company->commercial_register)<span class="muted">{{ $company->commercial_register }}</span><br>@endif
         </td>
         <td class="logo-col">
@@ -170,7 +170,7 @@
             @if(!empty($showSalesTaxColumn))
                 <th class="col-vat">{{ __('Tax %') }}</th>
             @elseif(!empty($showVatColumn))
-                <th class="col-vat">{{ __('VAT') }} %</th>
+                <th class="col-vat">{{ $vatLabel ?? __('VAT') }} %</th>
             @endif
             <th class="col-total">{{ __('Line total') }}</th>
         </tr>
@@ -220,13 +220,13 @@
                     @if(!empty($taxBreakdown))
                         @foreach($taxBreakdown as $row)
                             <tr>
-                                <td class="label">{{ __('VAT') }} {{ number_format($row->ratePercent, 0, ',', ' ') }} %</td>
+                                <td class="label">{{ $vatLabel ?? __('VAT') }} {{ number_format($row->ratePercent, 0, ',', ' ') }} %</td>
                                 <td class="value">{{ $fmtAmount((float) $row->taxAmount) }} {{ $document->currency }}</td>
                             </tr>
                         @endforeach
                     @else
                         <tr>
-                            <td class="label">{{ __('VAT') }}</td>
+                            <td class="label">{{ $vatLabel ?? __('VAT') }}</td>
                             <td class="value">{{ $fmtAmount((float) $document->tax_total) }} {{ $document->currency }}</td>
                         </tr>
                     @endif

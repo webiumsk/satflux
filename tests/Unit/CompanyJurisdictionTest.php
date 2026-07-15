@@ -12,7 +12,10 @@ class CompanyJurisdictionTest extends TestCase
         $this->assertSame(CompanyJurisdiction::Uk, CompanyJurisdiction::fromCountryCode('GB'));
         $this->assertSame(CompanyJurisdiction::Offshore, CompanyJurisdiction::fromCountryCode('KY'));
         $this->assertSame(CompanyJurisdiction::Asia, CompanyJurisdiction::fromCountryCode('HK'));
-        $this->assertSame(CompanyJurisdiction::EuOther, CompanyJurisdiction::fromCountryCode('CH'));
+        // CH gained its own jurisdiction (Swiss MWST area); generic EU stays
+        // the fallback for unmapped EU countries.
+        $this->assertSame(CompanyJurisdiction::Ch, CompanyJurisdiction::fromCountryCode('CH'));
+        $this->assertSame(CompanyJurisdiction::EuOther, CompanyJurisdiction::fromCountryCode('FR'));
     }
 
     public function test_pay_by_square_only_for_eu_jurisdictions(): void

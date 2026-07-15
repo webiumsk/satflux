@@ -356,6 +356,12 @@
           <button v-if="!isLocked" type="button" class="mt-2 text-sm text-indigo-600 hover:underline" @click="addLine">
             {{ t('invoicing.add_line') }}
           </button>
+          <p
+            v-if="vatRateWarning"
+            class="mt-2 text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2"
+          >
+            {{ vatRateWarning }}
+          </p>
         </section>
 
         <section class="grid md:grid-cols-2 gap-6">
@@ -468,6 +474,7 @@ import {
   resolveEphemeralBridgeCompanyId,
 } from '../../evolu/ephemeralBridge';
 import { companyCurrencyOptions } from '../../config/companyCurrencies';
+import { allowedVatRates, vatRateOutsideJurisdiction } from '../../config/jurisdictionRules';
 import { appSettingsFromCompany } from '../../composables/useCompanyAppSettings';
 import { useInvoiceDocument } from '../../composables/useInvoiceDocument';
 
@@ -521,6 +528,24 @@ const {
 const { rememberCompany } = useInvoicingLayout();
 
 const isNew = computed(() => !documentId.value);
+
+/**
+ * Soft legal check: warn when a line VAT rate is outside the company
+ * jurisdiction's known set (never blocks - history and special regimes).
+ */
+const vatRateWarning = computed(() => {
+  const jurisdiction = String(company.value?.jurisdiction ?? '');
+  if (!jurisdiction || !showLineTaxColumn.value) return '';
+  const offending = form.lines
+    .map((line) => Number(line.tax_rate) || 0)
+    .filter((rate) => vatRateOutsideJurisdiction(jurisdiction, rate));
+  if (!offending.length) return '';
+  const allowed = allowedVatRates(jurisdiction);
+  return t('invoicing.vat_rate_outside_jurisdiction', {
+    rates: [...new Set(offending)].join(', '),
+    allowed: allowed.join(', '),
+  });
+});
 const showContactCreateModal = ref(false);
 const showLineSuggester = computed(() => appSettingsFromCompany(company.value).show_line_suggester);
 
