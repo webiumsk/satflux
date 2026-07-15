@@ -92,6 +92,7 @@ import {
   reconcileIntegrationInboxWithLocalDocuments,
   type IntegrationInboxEntry,
 } from '@/evolu/integrationInboxImport';
+import { useIntegrationInboxLive } from '@/evolu/integrationInboxLive';
 import { isPaidWooCommercePayload } from '@/evolu/integrationInboxPaid';
 import { ensureEvoluBoundToAccountSeed } from '@/evolu/bootstrap';
 import { pullInvoicingFromRelay } from '@/evolu/relaySyncWait';
@@ -110,7 +111,9 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const evolu = useInvoicingEvolu();
 
-const items = ref<IntegrationInboxEntry[]>([]);
+// Shared with the header badge: the panel's stronger refresh (relay pull
+// before reconcile) writes into the same live state the polling loop feeds.
+const { entries: items } = useIntegrationInboxLive();
 
 // A PAID order sitting in the inbox WITHOUT a number means headless
 // auto-issue did not run - most likely the opt-in toggle in company
@@ -143,7 +146,8 @@ function mapImportError(code: string): string {
 
 async function refresh(): Promise<void> {
   if (!props.enabled || !props.companyId) {
-    items.value = [];
+    // Keep the shared entries - the panel is hidden while disabled and the
+    // header badge should not blank out during a relay sync.
     return;
   }
   loading.value = true;
