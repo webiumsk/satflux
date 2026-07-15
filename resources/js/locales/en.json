@@ -853,6 +853,8 @@
     "email_ph_qr": "QR code",
     "app_tab_notes": "Notes",
     "app_tab_pairing": "Automatic pairing",
+    "app_tab_woocommerce": "WooCommerce",
+    "auto_issue_server_mode_note": "This company uses server invoicing - WooCommerce orders are issued automatically without extra setup.",
     "app_tab_series": "Number series",
     "series_settings_title": "Number series",
     "series_col_name": "Name",

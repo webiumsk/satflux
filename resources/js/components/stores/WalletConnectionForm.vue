@@ -95,23 +95,6 @@
         @keydown.right.prevent="focusWalletTab(walletSetupTab === 'paste' ? 'samrock' : 'paste')"
       >
         <button
-          id="wallet-setup-tab-paste"
-          type="button"
-          role="tab"
-          aria-controls="wallet-setup-panel-paste"
-          :aria-selected="walletSetupTab === 'paste'"
-          :tabindex="walletSetupTab === 'paste' ? 0 : -1"
-          class="pb-3 -mb-px text-sm font-medium border-b-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-t-sm"
-          :class="
-            walletSetupTab === 'paste'
-              ? 'border-indigo-500 text-white'
-              : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-600'
-          "
-          @click="walletSetupTab = 'paste'"
-        >
-          {{ t("stores.wallet_smart_paste_label") }}
-        </button>
-        <button
           id="wallet-setup-tab-samrock"
           type="button"
           role="tab"
@@ -132,6 +115,23 @@
               class="text-[10px] font-semibold uppercase tracking-wide text-emerald-400/90"
             >{{ t("stores.wallet_recommended_badge") }}</span>
           </span>
+        </button>
+        <button
+          id="wallet-setup-tab-paste"
+          type="button"
+          role="tab"
+          aria-controls="wallet-setup-panel-paste"
+          :aria-selected="walletSetupTab === 'paste'"
+          :tabindex="walletSetupTab === 'paste' ? 0 : -1"
+          class="pb-3 -mb-px text-sm font-medium border-b-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-t-sm"
+          :class="
+            walletSetupTab === 'paste'
+              ? 'border-indigo-500 text-white'
+              : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-600'
+          "
+          @click="walletSetupTab = 'paste'"
+        >
+          {{ t("stores.wallet_smart_paste_label") }}
         </button>
       </div>
 
@@ -462,7 +462,7 @@ const props = defineProps<Props>();
 
 const switchToCashuIntent = ref(false);
 /** Smart paste vs SamRock tab (paste first - same as create store). */
-const walletSetupTab = ref<"paste" | "samrock">("paste");
+const walletSetupTab = ref<"paste" | "samrock">("samrock");
 
 const isUnsetWalletType = computed(() => {
   const w = props.walletType;
@@ -689,7 +689,7 @@ watch(
   () => {
     switchToCashuIntent.value = false;
     switchToLightningIntent.value = false;
-    walletSetupTab.value = "paste";
+    walletSetupTab.value = "samrock";
   },
 );
 
@@ -763,7 +763,7 @@ async function handleConfirmPassword() {
 
 function handleCancelEdit() {
   switchToCashuIntent.value = false;
-  walletSetupTab.value = "paste";
+  walletSetupTab.value = "samrock";
   form.secret = "";
   if (props.existingConnection) {
     form.type = defaultWalletConnectionType(

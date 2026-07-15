@@ -39,6 +39,12 @@ export const invoicingRoutes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, invoicingSection: 'tools' },
     },
     {
+        path: 'companies/:companyId/app/woocommerce',
+        name: 'invoicing-company-app-woocommerce',
+        component: () => import('../pages/invoicing/CompanyShow.vue'),
+        meta: { requiresAuth: true, invoicingSection: 'tools' },
+    },
+    {
         path: 'companies/:companyId/import',
         name: 'invoicing-company-import',
         component: () => import('../pages/invoicing/DocumentImport.vue'),
