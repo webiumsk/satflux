@@ -2653,6 +2653,8 @@
     "integration_inbox_auto_issue_hint": "Este pedido pagado no se emitió automáticamente. Activa la facturación automática de WooCommerce para que los pedidos pagados reciban factura y el cliente la reciba de inmediato.",
     "integration_inbox_auto_issue_hint_link": "Abrir ajustes de la empresa",
     "integration_inbox_title": "Bandeja WooCommerce",
+    "integration_inbox_badge_label": "Bandeja",
+    "integration_inbox_badge_title": "Documentos de WooCommerce pendientes - abrir la bandeja de integración",
     "integration_inbox_relay_hint": "Si este pedido se importó en otro navegador, la sincronización no lo traerá aquí - pulse Importar.",
     "integration_inbox_detail": "Los pedidos nuevos de WooCommerce esperan aquí hasta que los importes a la facturación local.",
     "integration_inbox_refresh": "Actualizar",

@@ -13,6 +13,7 @@
         >
           {{ t(item.labelKey) }}
         </button>
+        <IntegrationInboxBadge :company-id="companyId" />
         <InvoicingCompanySwitcher
           v-if="companyId && displayCompanyLabel"
           :current-label="displayCompanyLabel"
@@ -41,6 +42,7 @@
           </p>
         </div>
 
+        <IntegrationInboxBadge :company-id="companyId" />
         <button
           v-if="isMobileFilterAvailable"
           type="button"
@@ -107,6 +109,8 @@ import {
   useInvoicingLayout,
   type InvoicingMainSection,
 } from '../../composables/useInvoicingLayout';
+import { initIntegrationInboxLive } from '../../evolu/integrationInboxLive';
+import IntegrationInboxBadge from './IntegrationInboxBadge.vue';
 import InvoicingIcons from './icons/InvoicingIcons.vue';
 import InvoicingCompanySwitcher from './InvoicingCompanySwitcher.vue';
 import InvoicingMobileNavDrawer from './InvoicingMobileNavDrawer.vue';
@@ -142,6 +146,10 @@ const {
   navigateMain,
 } = useInvoicingLayout();
 const { hasBankAccount, companyName: summaryCompanyName } = useInvoicingCompanySummary();
+
+// One shared polling loop feeds the badge (and the inbox panel) - the
+// header mounts on every invoicing page, so this binds the active company.
+initIntegrationInboxLive(companyId);
 
 const navDrawerOpen = ref(false);
 const filterDrawerOpen = ref(false);

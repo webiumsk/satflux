@@ -217,6 +217,8 @@
     "integration_inbox_auto_issue_hint": "Táto zaplatená objednávka nebola vystavená automaticky. Zapnite automatickú fakturáciu WooCommerce, aby zaplatené objednávky dostali faktúru a zákazník ju dostal okamžite.",
     "integration_inbox_auto_issue_hint_link": "Otvoriť nastavenia firmy",
     "integration_inbox_title": "WooCommerce inbox",
+    "integration_inbox_badge_label": "Inbox",
+    "integration_inbox_badge_title": "Čakajúce doklady z WooCommerce - otvoriť integračný inbox",
     "integration_inbox_relay_hint": "Ak bola objednávka importovaná na inom prehliadači, sync ju sem nedostane - kliknite Import (vytvorí rovnakú faktúru lokálne).",
     "integration_inbox_detail": "Nové objednávky z WooCommerce čakajú tu, kým ich neimportujete do lokálnej fakturácie.",
     "integration_inbox_refresh": "Obnoviť",
