@@ -3364,6 +3364,7 @@
     "app_opt_reverse_charge_note": "Texto de inversión del sujeto pasivo",
     "action_isdoc": "Descargar ISDOC",
     "action_ubl": "Descargar UBL (XML)",
+    "action_xrechnung": "Descargar XRechnung (XML)",
     "vies_validate": "Comprobar en VIES",
     "vies_valid": "NIF-IVA válido en VIES",
     "vies_invalid": "NIF-IVA no válido en VIES",

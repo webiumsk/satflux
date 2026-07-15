@@ -94,7 +94,7 @@
       :disabled="busy"
       @click="$emit('ubl')"
     >
-      {{ t('invoicing.action_ubl') }}
+      {{ xrechnung ? t('invoicing.action_xrechnung') : t('invoicing.action_ubl') }}
     </button>
 
     <div v-if="documentStatus === 'paid'" class="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm">
@@ -204,6 +204,8 @@ const props = withDefaults(
     canUnmarkPaid?: boolean;
     canPdf: boolean;
     canEuExport?: boolean;
+    /** German companies download the XRechnung CIUS of the same UBL. */
+    xrechnung?: boolean;
     canMarkPaid: boolean;
     canIssue?: boolean;
     canSendEmail?: boolean;
@@ -225,6 +227,7 @@ const props = withDefaults(
   {
     canSendEmail: false,
     canEuExport: false,
+    xrechnung: false,
     canIssue: false,
     showCreateFinalInvoice: false,
     showApproveQuote: false,

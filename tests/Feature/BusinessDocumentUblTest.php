@@ -150,6 +150,76 @@ class BusinessDocumentUblTest extends TestCase
     }
 
     #[Test]
+    public function de_company_exports_the_xrechnung_cius(): void
+    {
+        [$user] = $this->proUserWithCompany();
+
+        $company = Company::create([
+            'user_id' => $user->id,
+            'legal_name' => 'Beispiel GmbH',
+            'jurisdiction' => CompanyJurisdiction::EuDe,
+            'default_currency' => 'EUR',
+            'registration_number' => 'HRB 12345 B',
+            'vat_number' => 'DE123456789',
+            'iban' => 'DE89370400440532013000',
+            'street' => 'Beispielstraße 1',
+            'city' => 'Berlin',
+            'postal_code' => '10115',
+            'country' => 'DE',
+            'vat_payer' => true,
+            'vat_rate_default' => 19,
+            'issuer_name' => 'Max Mustermann',
+            'issuer_phone' => '+49 30 1234567',
+            'issuer_email' => 'rechnung@beispiel.de',
+        ]);
+
+        $doc = BusinessDocument::create([
+            'company_id' => $company->id,
+            'type' => 'invoice',
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => 'RE20260001',
+            'subtotal' => 100,
+            'tax_total' => 19,
+            'total' => 119,
+            'currency' => 'EUR',
+            'issue_date' => now(),
+            'due_date' => now()->addDays(14),
+        ]);
+
+        BusinessDocumentLine::create([
+            'business_document_id' => $doc->id,
+            'sort_order' => 0,
+            'name' => 'Leistung',
+            'quantity' => 1,
+            'unit' => 'ks.',
+            'unit_price' => 100,
+            'tax_rate' => 19,
+            'line_total' => 119,
+        ]);
+
+        $xml = app(BusinessDocumentUblService::class)->xml($doc->fresh(['company', 'contact', 'lines']));
+
+        // XRechnung CIUS instead of plain Peppol BIS.
+        $this->assertStringContainsString('urn:xeinkauf.de:kosit:xrechnung_3.0', $xml);
+        // BT-10 is mandatory - no variable symbol, so the number backfills it.
+        $this->assertStringContainsString('<cbc:BuyerReference>RE20260001</cbc:BuyerReference>', $xml);
+        // SEPA credit transfer.
+        $this->assertStringContainsString('<cbc:PaymentMeansCode>58</cbc:PaymentMeansCode>', $xml);
+        // Electronic address = e-mail (EM), seller contact block present.
+        $this->assertStringContainsString('schemeID="EM">rechnung@beispiel.de', $xml);
+        $this->assertStringContainsString('<cbc:ElectronicMail>rechnung@beispiel.de</cbc:ElectronicMail>', $xml);
+        $this->assertStringContainsString('<cbc:Telephone>+49 30 1234567</cbc:Telephone>', $xml);
+        // German register id stays verbatim, without an ISO 6523 scheme.
+        $this->assertStringContainsString('<cbc:CompanyID>HRB 12345 B</cbc:CompanyID>', $xml);
+        $this->assertStringNotContainsString('schemeID="0208"', $xml);
+        // UBL schema order: PartyTaxScheme precedes PartyLegalEntity.
+        $this->assertLessThan(
+            strpos($xml, '<cac:PartyLegalEntity>'),
+            strpos($xml, '<cac:PartyTaxScheme>'),
+        );
+    }
+
+    #[Test]
     public function authenticated_user_can_download_ubl_via_web_route(): void
     {
         [$user, $company] = $this->proUserWithCompany();
