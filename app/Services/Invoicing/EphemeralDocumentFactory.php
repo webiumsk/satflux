@@ -129,6 +129,7 @@ class EphemeralDocumentFactory
             'note_footer' => $documentPayload['note_footer'] ?? $company->legal_footer_note,
             'internal_note' => $documentPayload['internal_note'] ?? null,
             'pdf_locale' => $documentPayload['pdf_locale'] ?? null,
+            'pdf_bank_qr' => $documentPayload['pdf_bank_qr'] ?? null,
             'pdf_show_signature' => (bool) ($documentPayload['pdf_show_signature'] ?? true),
             'pdf_show_payment_info' => (bool) ($documentPayload['pdf_show_payment_info'] ?? true),
             'payment_btc_enabled' => (bool) ($documentPayload['payment_btc_enabled'] ?? false),

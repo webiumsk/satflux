@@ -16,7 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 class BusinessDocumentPdfService
 {
     public function __construct(
-        protected PayBySquareGenerator $payBySquare,
+        protected BankQrGenerator $bankQrGenerator,
         protected BusinessDocumentPaymentTokenService $paymentTokenService,
         protected BusinessDocumentBtcPayService $btcPayService,
         protected CompanyBrandingService $brandingService,
@@ -155,7 +155,7 @@ class BusinessDocumentPdfService
         $company = $document->company;
         $bankQr = null;
         if ($document->payment_bank_enabled && $document->type !== BusinessDocumentType::Quote) {
-            $bankQr = $this->payBySquare->generateQrDataUri($company, $document);
+            $bankQr = $this->bankQrGenerator->generateQrDataUri($company, $document);
         }
 
         $btcPayQr = null;

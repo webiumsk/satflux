@@ -62,6 +62,21 @@
               <option value="en">English</option>
             </select>
           </label>
+          <label class="text-xs text-gray-600 flex items-center gap-2">
+            {{ t('invoicing.pdf_bank_qr') }}
+            <select
+              v-model="form.pdf_bank_qr"
+              class="invoicing-sf-input w-auto py-1"
+              :disabled="isLocked"
+              @change="persistPdfOptions"
+            >
+              <option value="auto">{{ t('invoicing.pdf_bank_qr_auto') }}</option>
+              <option value="paybysquare">Pay by Square</option>
+              <option value="epc">EPC (SEPA)</option>
+              <option value="swiss">Swiss QR</option>
+              <option value="none">{{ t('invoicing.pdf_bank_qr_none') }}</option>
+            </select>
+          </label>
           <label class="text-xs text-gray-700 flex items-center gap-1.5">
             <input v-model="form.pdf_show_signature" type="checkbox" class="rounded border-gray-300" @change="persistPdfOptions" />
             {{ t('invoicing.pdf_signature') }}

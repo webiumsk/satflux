@@ -2653,7 +2653,7 @@ parameters:
 			path: app/Services/Invoicing/BusinessDocumentPdfService.php
 
 		-
-			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\PayBySquareGenerator\:\:generateQrDataUri\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\BankQrGenerator\:\:generateQrDataUri\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Services/Invoicing/BusinessDocumentPdfService.php
@@ -3577,12 +3577,6 @@ parameters:
 			path: app/Services/Invoicing/OpenRegistryService.php
 
 		-
-			message: '#^Cannot call method supportsPayBySquare\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Services/Invoicing/PayBySquareGenerator.php
-
-		-
 			message: '#^Cannot call method toDateTime\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
@@ -3592,13 +3586,13 @@ parameters:
 			message: '#^Instantiated class chillerlan\\QRCode\\QROptions not found\.$#'
 			identifier: class.notFound
 			count: 1
-			path: app/Services/Invoicing/PayBySquareGenerator.php
+			path: app/Support/Invoicing/QrPngRenderer.php
 
 		-
 			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyAppSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Services/Invoicing/PayBySquareGenerator.php
+			path: app/Support/Invoicing/BankQrEligibility.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$description\.$#'
