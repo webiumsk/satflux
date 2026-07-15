@@ -976,7 +976,7 @@
     "einvoicing_receive_from": "povinný příjem od {date}",
     "einvoicing_issue_from": "povinné vystavování od {date}",
     "einvoicing_issue_from_phased": "povinné vystavování od {date}, pro všechny firmy od {all}",
-    "einvoicing_b2g_only": "povinná jen pro faktury veřejné správě (B2G)",
+    "einvoicing_b2g_only": "povinná jen pro faktury pro veřejnou správu (B2G)",
     "vat_rate_outside_jurisdiction": "Sazba DPH {rates} % není standardní sazbou ve vaší jurisdikci (povolené: {allowed} %). Před vystavením zkontrolujte sazby položek.",
     "jurisdiction_eu": "Ostatní EU",
     "jurisdiction_uk": "Spojené království",
