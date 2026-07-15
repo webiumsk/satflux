@@ -33,6 +33,14 @@
     <span class="invoicing-tab invoicing-tab--disabled" :title="t('invoicing.coming_soon')">
       {{ t('invoicing.app_tab_pairing') }}
     </span>
+    <RouterLink
+      :to="{ name: 'invoicing-company-app-woocommerce', params: { companyId } }"
+      role="tab"
+      class="invoicing-tab"
+      :class="{ 'invoicing-tab--active': activeTab === 'woocommerce' }"
+    >
+      {{ t('invoicing.app_tab_woocommerce') }}
+    </RouterLink>
   </nav>
 </template>
 
@@ -41,7 +49,7 @@ import { useI18n } from 'vue-i18n';
 
 defineProps<{
   companyId: string;
-  activeTab: 'basic' | 'emails' | 'series';
+  activeTab: 'basic' | 'emails' | 'series' | 'woocommerce';
 }>();
 
 const { t } = useI18n();
