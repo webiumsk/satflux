@@ -235,19 +235,22 @@ class BusinessDocumentPdfService
 
             $document->loadMissing(['store.user']);
             $store = $document->store;
-            if (! $store) {
+            if (! $store instanceof \App\Models\Store) {
                 return null;
             }
 
             try {
                 $evoluDocumentId = $document->getAttribute('ephemeral_evolu_document_id');
-                $result = $this->btcPayService->createEphemeralCheckout(
+
+                // Shares the checkout dedupe: paid documents render without a
+                // payment QR, existing checkouts are reused, and a mint is
+                // registered - rendering a PDF must never leave stray BTCPay
+                // invoices behind (production 2026-07-15).
+                return $this->btcPayService->qrCheckoutLinkForEphemeralRender(
                     $document,
                     $store,
                     is_string($evoluDocumentId) && $evoluDocumentId !== '' ? $evoluDocumentId : null,
                 );
-
-                return $result['checkout_link'] ?? null;
             } catch (\Throwable $e) {
                 report($e);
 
