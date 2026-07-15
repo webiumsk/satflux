@@ -138,6 +138,44 @@ final class JurisdictionRules
         };
     }
 
+    /** Accepts the enum or its raw string value (Eloquent cast ambiguity). */
+    public static function normalizeValue(mixed $jurisdiction): string
+    {
+        return $jurisdiction instanceof CompanyJurisdiction
+            ? $jurisdiction->value
+            : (string) $jurisdiction;
+    }
+
+    /**
+     * Default PDF language for documents created without an explicit choice.
+     * Mirrors defaultPdfLocaleForJurisdiction in the TS config; SK behavior
+     * (incl. the generic EU bucket) stays unchanged.
+     */
+    public static function defaultPdfLocale(mixed $jurisdiction): string
+    {
+        return match (self::normalizeValue($jurisdiction)) {
+            'eu_sk', 'eu_other' => 'sk',
+            'eu_cz' => 'cs',
+            'eu_de', 'eu_at', 'ch' => 'de',
+            default => 'en',
+        };
+    }
+
+    /**
+     * Language of server-generated document notes (e.g. the Woo "paid by
+     * proforma" reference) - specific jurisdictions get their language,
+     * everything else stays English.
+     */
+    public static function documentNoteLocale(mixed $jurisdiction): string
+    {
+        return match (self::normalizeValue($jurisdiction)) {
+            'eu_sk' => 'sk',
+            'eu_cz' => 'cs',
+            'eu_de', 'eu_at', 'ch' => 'de',
+            default => 'en',
+        };
+    }
+
     public static function vatLabel(CompanyJurisdiction $jurisdiction): string
     {
         return self::for($jurisdiction)['vat_name'];

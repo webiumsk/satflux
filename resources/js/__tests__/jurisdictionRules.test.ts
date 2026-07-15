@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
     allowedVatRates,
+    defaultPdfLocaleForJurisdiction,
     JURISDICTION_RULES,
     jurisdictionRules,
     standardVatRate,
@@ -120,6 +121,16 @@ describe("VAT rate validation", () => {
         expect(allowedVatRates("offshore")).toEqual([0]);
         expect(vatRateOutsideJurisdiction("offshore", 20)).toBe(true);
         expect(vatRateOutsideJurisdiction("offshore", 0)).toBe(false);
+    });
+
+    it("defaults the PDF language per jurisdiction (mirrors the PHP test)", () => {
+        expect(defaultPdfLocaleForJurisdiction("eu_sk")).toBe("sk");
+        expect(defaultPdfLocaleForJurisdiction("eu_other")).toBe("sk");
+        expect(defaultPdfLocaleForJurisdiction("eu_cz")).toBe("cs");
+        expect(defaultPdfLocaleForJurisdiction("eu_de")).toBe("de");
+        expect(defaultPdfLocaleForJurisdiction("eu_at")).toBe("de");
+        expect(defaultPdfLocaleForJurisdiction("ch")).toBe("de");
+        expect(defaultPdfLocaleForJurisdiction("us")).toBe("en");
     });
 
     it("derives the standard (highest) rate for prefill", () => {

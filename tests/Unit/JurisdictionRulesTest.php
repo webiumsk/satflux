@@ -98,6 +98,29 @@ class JurisdictionRulesTest extends TestCase
         $this->assertFalse(JurisdictionRules::for(CompanyJurisdiction::Us)['has_vat']);
     }
 
+    public function test_default_pdf_locale_per_jurisdiction(): void
+    {
+        // Mirrors defaultPdfLocaleForJurisdiction expectations in vitest.
+        $this->assertSame('sk', JurisdictionRules::defaultPdfLocale(CompanyJurisdiction::EuSk));
+        $this->assertSame('sk', JurisdictionRules::defaultPdfLocale(CompanyJurisdiction::EuOther));
+        $this->assertSame('cs', JurisdictionRules::defaultPdfLocale(CompanyJurisdiction::EuCz));
+        $this->assertSame('de', JurisdictionRules::defaultPdfLocale(CompanyJurisdiction::EuDe));
+        $this->assertSame('de', JurisdictionRules::defaultPdfLocale(CompanyJurisdiction::EuAt));
+        $this->assertSame('de', JurisdictionRules::defaultPdfLocale(CompanyJurisdiction::Ch));
+        $this->assertSame('en', JurisdictionRules::defaultPdfLocale(CompanyJurisdiction::Us));
+        // Raw string values (Eloquent cast ambiguity) work too.
+        $this->assertSame('de', JurisdictionRules::defaultPdfLocale('eu_de'));
+    }
+
+    public function test_document_note_locale_per_jurisdiction(): void
+    {
+        $this->assertSame('sk', JurisdictionRules::documentNoteLocale(CompanyJurisdiction::EuSk));
+        $this->assertSame('cs', JurisdictionRules::documentNoteLocale(CompanyJurisdiction::EuCz));
+        $this->assertSame('de', JurisdictionRules::documentNoteLocale(CompanyJurisdiction::EuDe));
+        // Generic bucket notes stay English (unlike the PDF default).
+        $this->assertSame('en', JurisdictionRules::documentNoteLocale(CompanyJurisdiction::EuOther));
+    }
+
     public function test_every_jurisdiction_has_a_rules_row(): void
     {
         foreach (CompanyJurisdiction::cases() as $jurisdiction) {

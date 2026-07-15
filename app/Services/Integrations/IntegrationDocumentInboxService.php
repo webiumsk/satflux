@@ -3,7 +3,6 @@
 namespace App\Services\Integrations;
 
 use App\Enums\BusinessDocumentType;
-use App\Enums\CompanyJurisdiction;
 use App\Enums\IntegrationDocumentInboxStatus;
 use App\Models\AuditLog;
 use App\Models\Company;
@@ -84,6 +83,9 @@ class IntegrationDocumentInboxService
             'internal_note' => $wcOrderId ? 'woocommerce_order_id='.$wcOrderId : null,
             'note_above_lines' => $wcOrderId ? 'WooCommerce order #'.$wcOrderId : null,
             'tags' => $wcOrderId ? ['woocommerce', 'wc_order:'.$wcOrderId] : ['woocommerce'],
+            // Headless auto-issue renders the PDF before any browser touches
+            // the document - pick the merchant's language up front.
+            'pdf_locale' => \App\Support\Invoicing\JurisdictionRules::defaultPdfLocale($company->jurisdiction),
         ];
 
         foreach ([
@@ -108,15 +110,10 @@ class IntegrationDocumentInboxService
         $sourceNumber = trim((string) ($payload['source_document_number'] ?? ''));
         if ($sourceNumber !== '' && $type === BusinessDocumentType::Invoice) {
             $documentPayload['source_document_number'] = $sourceNumber;
-            $isSk = in_array(
-                $company->jurisdiction,
-                [CompanyJurisdiction::EuSk, CompanyJurisdiction::EuSk->value],
-                true,
-            );
             $paidByProforma = __(
                 'invoicing.paid_by_proforma',
                 ['number' => $sourceNumber],
-                $isSk ? 'sk' : 'en',
+                \App\Support\Invoicing\JurisdictionRules::documentNoteLocale($company->jurisdiction),
             );
             $note = trim((string) ($documentPayload['note_above_lines'] ?? ''));
             $documentPayload['note_above_lines'] = $note === '' ? $paidByProforma : $note.' - '.$paidByProforma;
