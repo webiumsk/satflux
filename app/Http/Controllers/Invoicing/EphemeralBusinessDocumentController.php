@@ -13,6 +13,7 @@ use App\Http\Requests\Invoicing\EphemeralCompanyEmailSmtpTestRequest;
 use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\Company;
+use App\Models\EphemeralBtcpayCheckout;
 use App\Models\Store;
 use App\Models\User;
 use App\Services\Invoicing\BusinessDocumentBtcPayService;
@@ -450,24 +451,38 @@ class EphemeralBusinessDocumentController extends Controller
         // and currency) - every view of an unpaid invoice used to mint a
         // fresh BTCPay invoice (production 2026-07-14).
         if (is_string($evoluDocumentId) && $evoluDocumentId !== '') {
+            $paid = $this->ephemeralBtcpayCheckoutService->findLatestPaid($user, $store, $evoluDocumentId);
+            if ($paid) {
+                return response()->json(['data' => $this->paidEphemeralCheckoutPayload($paid)]);
+            }
+
             $pending = $this->ephemeralBtcpayCheckoutService->findLatestPending($user, $store, $evoluDocumentId);
-            if (
-                $pending
-                && abs((float) $pending->amount - (float) $document->total) < 0.005
-                && strcasecmp((string) $pending->currency, (string) $document->currency) === 0
-            ) {
-                $reused = $this->btcPayService->reusableEphemeralCheckout($store, $pending->btcpay_invoice_id);
-                if ($reused !== null) {
+            if ($pending) {
+                $checkoutState = $this->btcPayService->ephemeralCheckoutState($store, $pending->btcpay_invoice_id);
+                if (($checkoutState['state'] ?? null) === 'paid') {
+                    $paid = $this->ephemeralBtcpayCheckoutService->markPaid($pending);
+
+                    return response()->json(['data' => $this->paidEphemeralCheckoutPayload($paid)]);
+                }
+
+                if (
+                    ($checkoutState['state'] ?? null) === 'payable'
+                    && abs((float) $pending->amount - (float) $document->total) < 0.005
+                    && strcasecmp((string) $pending->currency, (string) $document->currency) === 0
+                ) {
                     [$auditType, $auditId] = $this->auditTarget($user, $auditCompany, $snapshotCompany);
                     AuditLog::log('business_document.ephemeral_btcpay_checkout', $auditType, $auditId, [
                         'document_type' => (string) $request->input('document.type'),
                         'store_id' => $store->id,
-                        'btcpay_invoice_id' => $reused['btcpay_invoice_id'],
+                        'btcpay_invoice_id' => $checkoutState['btcpay_invoice_id'],
                         'company_less' => $auditCompany === null,
                         'reused' => true,
                     ], $user->id);
 
-                    return response()->json(['data' => $reused]);
+                    return response()->json(['data' => [
+                        'checkout_link' => $checkoutState['checkout_link'],
+                        'btcpay_invoice_id' => $checkoutState['btcpay_invoice_id'],
+                    ]]);
                 }
             }
         }
@@ -503,6 +518,19 @@ class EphemeralBusinessDocumentController extends Controller
         ], $user->id);
 
         return response()->json(['data' => $result]);
+    }
+
+    /**
+     * @return array{checkout_link: null, btcpay_invoice_id: string, status: string, paid_at: string|null}
+     */
+    protected function paidEphemeralCheckoutPayload(EphemeralBtcpayCheckout $checkout): array
+    {
+        return [
+            'checkout_link' => null,
+            'btcpay_invoice_id' => $checkout->btcpay_invoice_id,
+            'status' => EphemeralBtcpayCheckout::STATUS_PAID,
+            'paid_at' => $checkout->paid_at?->toIso8601String(),
+        ];
     }
 
     protected function respondWithBulkPdfZip(

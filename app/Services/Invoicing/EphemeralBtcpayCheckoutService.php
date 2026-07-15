@@ -54,6 +54,33 @@ class EphemeralBtcpayCheckoutService
             ->first();
     }
 
+    public function findLatestPaid(
+        User $user,
+        Store $store,
+        string $evoluDocumentId,
+    ): ?EphemeralBtcpayCheckout {
+        return EphemeralBtcpayCheckout::query()
+            ->where('user_id', $user->id)
+            ->where('store_id', $store->id)
+            ->where('evolu_document_id', $evoluDocumentId)
+            ->where('status', EphemeralBtcpayCheckout::STATUS_PAID)
+            ->latest('paid_at')
+            ->latest('created_at')
+            ->first();
+    }
+
+    public function markPaid(EphemeralBtcpayCheckout $checkout): EphemeralBtcpayCheckout
+    {
+        if (! $checkout->isPaid()) {
+            $checkout->update([
+                'status' => EphemeralBtcpayCheckout::STATUS_PAID,
+                'paid_at' => Carbon::now(),
+            ]);
+        }
+
+        return $checkout->fresh();
+    }
+
     public function findForUser(
         User $user,
         string $evoluDocumentId,
@@ -88,10 +115,7 @@ class EphemeralBtcpayCheckoutService
             return $checkout;
         }
 
-        $checkout->update([
-            'status' => EphemeralBtcpayCheckout::STATUS_PAID,
-            'paid_at' => Carbon::now(),
-        ]);
+        $checkout = $this->markPaid($checkout);
 
         AuditLog::log('business_document.ephemeral_btcpay_paid', 'store', (string) $store->id, [
             'checkout_id' => $checkout->id,
@@ -99,7 +123,7 @@ class EphemeralBtcpayCheckoutService
             'evolu_document_id' => $checkout->evolu_document_id,
         ], $checkout->user_id);
 
-        return $checkout->fresh();
+        return $checkout;
     }
 
     /**
