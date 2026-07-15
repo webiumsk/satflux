@@ -212,11 +212,13 @@ class BusinessDocumentUblTest extends TestCase
         // German register id stays verbatim, without an ISO 6523 scheme.
         $this->assertStringContainsString('<cbc:CompanyID>HRB 12345 B</cbc:CompanyID>', $xml);
         $this->assertStringNotContainsString('schemeID="0208"', $xml);
-        // UBL schema order: PartyTaxScheme precedes PartyLegalEntity.
-        $this->assertLessThan(
-            strpos($xml, '<cac:PartyLegalEntity>'),
-            strpos($xml, '<cac:PartyTaxScheme>'),
-        );
+        // UBL schema order: PartyTaxScheme precedes PartyLegalEntity. Both
+        // must exist first - strpos(false) would fake position 0.
+        $taxSchemePos = strpos($xml, '<cac:PartyTaxScheme>');
+        $legalEntityPos = strpos($xml, '<cac:PartyLegalEntity>');
+        $this->assertNotFalse($taxSchemePos);
+        $this->assertNotFalse($legalEntityPos);
+        $this->assertLessThan($legalEntityPos, $taxSchemePos);
     }
 
     #[Test]
