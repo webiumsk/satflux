@@ -71,6 +71,7 @@ class WooCommerceIntegrationController extends Controller
             'discount_percent' => ['sometimes', 'numeric', 'min:0'],
             'btcpay_invoice_id' => ['sometimes', 'nullable', 'string', 'max:128'],
             'source_evolu_document_id' => ['sometimes', 'nullable', 'uuid'],
+            'source_document_number' => ['sometimes', 'nullable', 'string', 'max:64'],
         ]);
 
         $result = $this->documentService->createDocument($integration, $validated);

@@ -111,6 +111,14 @@ export const invoicingRoutes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
     },
     {
+        // Deep link from external integrations (WP plugin): resolves the
+        // inbox evolu uuid to the local document and forwards to its detail.
+        path: 'from-inbox/:evoluId',
+        name: 'invoicing-from-inbox',
+        component: () => import('../pages/invoicing/DocumentFromInboxRedirect.vue'),
+        meta: { requiresAuth: true },
+    },
+    {
         path: 'stores/:storeId/integration-inbox',
         name: 'invoicing-store-integration-inbox',
         component: () => import('../pages/invoicing/IntegrationInboxLanding.vue'),

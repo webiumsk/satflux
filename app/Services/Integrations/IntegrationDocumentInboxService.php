@@ -3,6 +3,7 @@
 namespace App\Services\Integrations;
 
 use App\Enums\BusinessDocumentType;
+use App\Enums\CompanyJurisdiction;
 use App\Enums\IntegrationDocumentInboxStatus;
 use App\Models\AuditLog;
 use App\Models\Company;
@@ -99,6 +100,26 @@ class IntegrationDocumentInboxService
             if (array_key_exists($passthroughKey, $payload)) {
                 $documentPayload[$passthroughKey] = $payload[$passthroughKey];
             }
+        }
+
+        // Deferred-payment flow: the plugin sends the proforma's number with
+        // the final invoice - surface it on the document itself (PDF + local
+        // import), the proforma inbox row may already be gone.
+        $sourceNumber = trim((string) ($payload['source_document_number'] ?? ''));
+        if ($sourceNumber !== '' && $type === BusinessDocumentType::Invoice) {
+            $documentPayload['source_document_number'] = $sourceNumber;
+            $isSk = in_array(
+                $company->jurisdiction,
+                [CompanyJurisdiction::EuSk, CompanyJurisdiction::EuSk->value],
+                true,
+            );
+            $paidByProforma = __(
+                'invoicing.paid_by_proforma',
+                ['number' => $sourceNumber],
+                $isSk ? 'sk' : 'en',
+            );
+            $note = trim((string) ($documentPayload['note_above_lines'] ?? ''));
+            $documentPayload['note_above_lines'] = $note === '' ? $paidByProforma : $note.' - '.$paidByProforma;
         }
 
         if (! isset($documentPayload['is_paid']) && isset($payload['payment_method'])) {

@@ -214,6 +214,7 @@ class WooAutoIssueTest extends TestCase
         // proforma must NOT be returned.
         $invoicePayload = $this->paidOrderPayload();
         $invoicePayload['source_evolu_document_id'] = $proforma['evolu_document_id'];
+        $invoicePayload['source_document_number'] = $proforma['number'];
 
         $invoice = $this->withHeader('Authorization', 'Bearer '.$this->token)
             ->postJson('/api/integrations/woocommerce/documents', $invoicePayload)
@@ -225,6 +226,12 @@ class WooAutoIssueTest extends TestCase
         $this->assertSame(
             $proforma['evolu_document_id'],
             $invoice['payload']['source_evolu_document_id'] ?? null,
+        );
+        // The proforma reference lands on the document itself (SK company →
+        // Slovak wording) so the PDF and the imported local doc carry it.
+        $this->assertStringContainsString(
+            'Uhradené zálohovou faktúrou '.$proforma['number'],
+            (string) ($invoice['payload']['note_above_lines'] ?? ''),
         );
 
         // Two reservations on separate series: the invoice keeps the
