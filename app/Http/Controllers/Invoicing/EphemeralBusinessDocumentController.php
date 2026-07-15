@@ -454,6 +454,10 @@ class EphemeralBusinessDocumentController extends Controller
      *    already-paid document duplicated invoices in BTCPay),
      *  - a still-payable checkout with matching amount and currency is
      *    reused,
+     *  - an UNKNOWN BTCPay state fails safe: with $failClosed the caller
+     *    must not mint a replacement blindly (the existing invoice could be
+     *    paid) - a 422 asks the user to retry; without it (read-only view)
+     *    null simply shows no link,
      *  - anything else returns null (caller may create a fresh one).
      *
      * @return array{checkout_link: string|null, btcpay_invoice_id: string, status?: string, paid_at?: string|null}|null
@@ -463,6 +467,7 @@ class EphemeralBusinessDocumentController extends Controller
         Store $store,
         BusinessDocument $document,
         mixed $evoluDocumentId,
+        bool $failClosed = false,
     ): ?array {
         if (! is_string($evoluDocumentId) || $evoluDocumentId === '') {
             return null;
@@ -479,14 +484,24 @@ class EphemeralBusinessDocumentController extends Controller
         }
 
         $state = $this->btcPayService->ephemeralCheckoutState($store, $pending->btcpay_invoice_id);
-        if (($state['state'] ?? null) === 'paid') {
+        if ($state['state'] === 'unknown') {
+            if ($failClosed) {
+                throw ValidationException::withMessages([
+                    'btcpay' => ['BTCPay did not confirm the state of the existing checkout. Try again in a moment.'],
+                ]);
+            }
+
+            return null;
+        }
+
+        if ($state['state'] === 'paid') {
             return $this->paidEphemeralCheckoutPayload(
                 $this->ephemeralBtcpayCheckoutService->markPaid($pending),
             );
         }
 
         if (
-            ($state['state'] ?? null) === 'payable'
+            $state['state'] === 'payable'
             && abs((float) $pending->amount - (float) $document->total) < 0.005
             && strcasecmp((string) $pending->currency, (string) $document->currency) === 0
         ) {
@@ -541,8 +556,9 @@ class EphemeralBusinessDocumentController extends Controller
 
         // Reuse a still-payable checkout for the same document (same amount
         // and currency) - never mint a second BTCPay invoice for it. A PAID
-        // checkout returns its paid payload instead of any new invoice.
-        $reused = $this->findReusableCheckout($user, $store, $document, $evoluDocumentId);
+        // checkout returns its paid payload instead of any new invoice;
+        // an UNKNOWN BTCPay state fails closed (422) rather than minting.
+        $reused = $this->findReusableCheckout($user, $store, $document, $evoluDocumentId, failClosed: true);
         if ($reused !== null) {
             if (! isset($reused['status'])) {
                 [$auditType, $auditId] = $this->auditTarget($user, $auditCompany, $snapshotCompany);

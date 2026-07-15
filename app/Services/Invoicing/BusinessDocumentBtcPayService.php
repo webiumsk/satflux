@@ -197,33 +197,43 @@ class BusinessDocumentBtcPayService
      * BTCPay-side state of an existing ephemeral checkout (fresh fetch):
      *  - paid: the invoice settled - the caller must surface the payment,
      *    NEVER replace it with a fresh invoice (PR #144 root cause),
-     *  - payable: New/Processing - reusable instead of minting another one,
-     *  - replaceable: expired/invalid - a fresh invoice may be created.
-     * Null on any BTCPay error (treated as replaceable by callers).
+     *  - payable: New/Processing - reusable instead of minting another one
+     *    (Processing means the customer already broadcast the payment, so
+     *    the link is reused and settlement lands via webhook/polling - it
+     *    is deliberately NOT reported paid here),
+     *  - replaceable: expired/invalid - a fresh invoice may be created,
+     *  - unknown: BTCPay could not be reached / did not answer - the caller
+     *    must fail safe and never mint a replacement blindly.
      *
-     * @return array{state: 'paid'|'payable'|'replaceable', checkout_link: string|null, btcpay_invoice_id: string}|null
+     * @return array{state: 'paid'|'payable'|'replaceable'|'unknown', checkout_link: string|null, btcpay_invoice_id: string}
      */
-    public function ephemeralCheckoutState(Store $store, string $btcpayInvoiceId): ?array
+    public function ephemeralCheckoutState(Store $store, string $btcpayInvoiceId): array
     {
         $invoice = $this->fetchBtcpayInvoiceForStore($store, $btcpayInvoiceId);
         if (! is_array($invoice)) {
-            return null;
+            return [
+                'state' => 'unknown',
+                'checkout_link' => null,
+                'btcpay_invoice_id' => $btcpayInvoiceId,
+            ];
         }
 
         $checkoutLink = isset($invoice['checkoutLink']) ? (string) $invoice['checkoutLink'] : null;
+        $status = strtolower((string) ($invoice['status'] ?? ''));
 
-        if ($this->invoiceIndicatesPaid($invoice)) {
+        // Payable takes precedence: invoiceIndicatesPaid() counts Processing
+        // as paid for the webhook/settlement flows, but an unconfirmed
+        // payment must not mark the document paid here.
+        if (in_array($status, ['new', 'processing'], true)) {
             return [
-                'state' => 'paid',
+                'state' => 'payable',
                 'checkout_link' => $checkoutLink,
                 'btcpay_invoice_id' => $btcpayInvoiceId,
             ];
         }
 
-        $status = strtolower((string) ($invoice['status'] ?? ''));
-
         return [
-            'state' => in_array($status, ['new', 'processing'], true) ? 'payable' : 'replaceable',
+            'state' => $this->invoiceIndicatesPaid($invoice) ? 'paid' : 'replaceable',
             'checkout_link' => $checkoutLink,
             'btcpay_invoice_id' => $btcpayInvoiceId,
         ];
