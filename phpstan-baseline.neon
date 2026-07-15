@@ -2677,12 +2677,6 @@ parameters:
 			path: app/Services/Invoicing/BusinessDocumentPdfService.php
 
 		-
-			message: '#^Parameter \#2 \$store of method App\\Services\\Invoicing\\BusinessDocumentBtcPayService\:\:createEphemeralCheckout\(\) expects App\\Models\\Store, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Invoicing/BusinessDocumentPdfService.php
-
-		-
 			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentType\:\:Quote will always evaluate to true\.$#'
 			identifier: notIdentical.alwaysTrue
 			count: 2
